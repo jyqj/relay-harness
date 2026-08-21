@@ -14,7 +14,7 @@ await ctx.plugin(ToolFs)                                  // this package — re
 
 `@deepseek-ai/dsh-fs-observation-policy` 是**可选的**：省略时，工具直接使用裸提供方（无条件写入/覆盖/编辑，无已观察状态）。加载这些工具的部署也应加载该插件，从而提供写入/编辑前读取行为。
 
-`read_image` 只在持久 `ctx.attachments` 服务已挂载时注册：没有它，部署无法持久提交图像字节，工具就不会出现。执行时还要求确切路由的模型声明 `image` 输入（通过 `ctx.llm.resolveModelInfo` 从会话最新请求 header 解析，缺失时回退到 agent 选项）；未知或纯文本路由在任何文件系统 I/O 之前就得到拒绝结果，因此文本路由的持久历史不会出现图像块。
+`read_image` 只在持久 `ctx.attachments` 服务已挂载时注册：没有它，部署无法持久提交图像字节，工具就不会出现。执行时还要求确切路由的模型声明 `image` 输入（通过 `ctx.llm.resolveModelInfo` 从会话最新请求 header 解析，缺失时回退到 agent 选项）；未知或纯文本路由在任何文件系统 I/O 之前就得到拒绝结果，因此文本路由的持久历史不会出现图像块；唯一例外是已配置 `visionFallback` 服务时放行，此时请求组装会把图像块替换为已记录的识图描述，路由的持久历史仍可继续承载。
 
 ## 配置
 
@@ -32,7 +32,7 @@ await ctx.plugin(ToolFs)                                  // this package — re
 | 工具 | 参数 | 行为 |
 |---|---|---|
 | `read` | `file_path`、`offset?`、`limit?` | 带行号的 UTF-8 内容和分页 footer。`offset` 从 1 开始；`limit` 默认为配置的 `readLimit`（2000），上限也为该值。 |
-| `read_image` | `file_path` | 通过有界字节 seam 读取 PNG/JPEG/WebP/GIF 文件，经 `ctx.attachments.saveImage` 持久保存，并在小型元数据信封旁返回图像块。只有确切路由的模型声明图像输入时才会成功。 |
+| `read_image` | `file_path` | 通过有界字节 seam 读取 PNG/JPEG/WebP/GIF 文件，经 `ctx.attachments.saveImage` 持久保存，并在小型元数据信封旁返回图像块。只有确切路由的模型声明图像输入、或已挂载配置好的 `visionFallback` 服务时才会成功（后者由请求组装用识图模型描述替换图像块）。 |
 | `write` | `file_path`、`content` | 创建文件或完整替换文件。有策略插件时：覆盖现有文件要求先在未变版本上执行 `read`；创建新文件不需要。没有插件时：无条件执行。 |
 | `edit` | `file_path`、非空 `old_string`、`new_string`、`replace_all?` | 字面量替换；除非 `replace_all` 为 true，否则要求唯一匹配。有策略插件时：要求先执行 `read`（任何窗口），且文件此后未变。没有插件时：无条件执行。 |
 
@@ -57,7 +57,7 @@ await ctx.plugin(ToolFs)                                  // this package — re
 
 `fs/observed` 在 read/read_image/write/edit 已经成功之后，通过普通 `ctx.emit` 发出。监听器的约定是同步且只有副作用的记录器（`@deepseek-ai/dsh-fs-observation-policy` 使用 `WeakMap.set`）；工具不保护这次发出，因此监听器抛出会作为工具的 `isError` 结果出现。异步或可能失败的观察不属于该事件。
 
-`read` 允许并发调度，因为它唯一会改变状态的操作是同步记录版本。稍后的 `write` 或 `edit` 会在目标锁内重新检查版本，因此即使记录器发生竞态，系统也会安全地拒绝操作；两个变更工具仍保持互斥。见[并行工具调用 Agent Note](../../../.agents/notes/implemented/feature/2026-07-10-parallel-tool-call-execution.md)。
+`read`、`write` 与 `edit` 会声明规范的 `fs:<FsTargetKey>` 资源意图。同一目标的 read 可以重叠，mutation 会排除同一目标的所有 reader 或 writer，无关提供方目标则可并发执行。intent／CAS policy 在锁内运行，因此排队 mutation 会观察到前一个已提交版本。见[资源锁 Agent Note](../../../.agents/notes/implemented/architecture/2026-08-21-tool-resource-intent-locks.md)。
 
 包根目录只导出 Cordis 插件约定（`name`、`inject`、`Config` 和 `apply`）。读取渲染（行窗口与输出格式化）位于 `src/read-render.ts`（不依赖 Cordis，单独进行单元测试）；`src/read.ts`/`read-image.ts`/`write.ts`/`edit.ts` 是工具执行器，`src/index.ts` 负责组合。
 

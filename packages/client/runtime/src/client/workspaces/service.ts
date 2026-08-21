@@ -7,7 +7,7 @@ import type {
 } from '@deepseek-ai/dsh-api-remotes/client'
 import type { SnapshotStore } from '../contract/store.ts'
 import { createSnapshotStore } from '../contract/store.ts'
-import type { SessionsPort, SessionsPortList } from '../contract/sessions-port.ts'
+import type { SessionsPort, SessionsPortList, SessionsPortSummary } from '../contract/sessions-port.ts'
 import type { IWorkspaces } from '../contract/workspaces.ts'
 import { WorkspaceManager, type WorkspaceListPhase } from './manager.ts'
 
@@ -55,6 +55,10 @@ export class WorkspaceRuntime implements IWorkspaces {
   private readonly manager: WorkspaceManager
   /** In-flight blank-session creates keyed by workspace (connectWorkspace coalescing). */
   private readonly connecting = new Map<WorkspaceId, Promise<SessionId>>()
+  /** In-flight no-directory blank-session create (connectNoDirectory coalescing). */
+  private connectingNone: Promise<SessionId> | undefined
+  /** Host scratch cwd from the last successful `host.describe`. */
+  private scratchCwd: string | undefined
   /** Guards the runtime-owned one-shot initial-selection subscription. */
   private initialSelectionStarted = false
 
@@ -101,11 +105,12 @@ export class WorkspaceRuntime implements IWorkspaces {
     // would open a session no grouping surface shows under this workspace.
     // An archived blank is never reused either: reuse would open a session
     // no grouping surface can show, so New Session mints a fresh one instead.
+    // Desktop-plugin contacts and subagent children are not New Session drafts.
     const archived = this.list.getSnapshot().archivedSessionIds
     const sessions = this.sessions.list.getSnapshot()
     for (const id of sessions.ids) {
       const summary = sessions.byId[id]
-      if (summary !== undefined && summary.blank && summary.cwd === workspace.path
+      if (summary !== undefined && reusableBlank(summary) && summary.cwd === workspace.path
         && workspace.sessionIds.includes(summary.id)
         && !archived.includes(summary.id)) return summary.id
     }
@@ -116,8 +121,54 @@ export class WorkspaceRuntime implements IWorkspaces {
   }
 
   /**
+   * Resolve the Host scratch directory advertised by `host.describe`.
+   * Cached for the page lifetime; the Host creates the directory on describe.
+   * @returns the scratch cwd.
+   */
+  private async resolveScratchCwd(): Promise<string> {
+    if (this.scratchCwd !== undefined) return this.scratchCwd
+    const response = await this.api.host.describe({})
+    if (!response.result.ok) {
+      throw new Error(`host.describe failed: ${response.result.error.code}: ${response.result.error.message}`)
+    }
+    this.scratchCwd = response.result.value.scratchCwd
+    return this.scratchCwd
+  }
+
+  /**
+   * Resolve the session a no-directory New Session flow lands in: reuse a
+   * blank session whose cwd is the Host scratch directory and whose id is
+   * in no Workspace index, else create one with that cwd. Archived blanks
+   * are never reused. The caller owns navigation.
+   * @returns the reused or newly created session id.
+   */
+  async connectNoDirectory(): Promise<SessionId> {
+    if (this.connectingNone !== undefined) return this.connectingNone
+    const attempt = this.connectNoDirectoryOnce()
+      .finally(() => { this.connectingNone = undefined })
+    this.connectingNone = attempt
+    return attempt
+  }
+
+  private async connectNoDirectoryOnce(): Promise<SessionId> {
+    const cwd = await this.resolveScratchCwd()
+    const archived = this.list.getSnapshot().archivedSessionIds
+    const memberIds = new Set(this.list.getSnapshot().items.flatMap(item => item.sessionIds))
+    const sessions = this.sessions.list.getSnapshot()
+    for (const id of sessions.ids) {
+      const summary = sessions.byId[id]
+      if (summary !== undefined && reusableBlank(summary) && summary.cwd === cwd
+        && !memberIds.has(summary.id)
+        && !archived.includes(summary.id)) return summary.id
+    }
+    return this.sessions.create({ cwd })
+  }
+
+  /**
    * Follow the first complete Workspace/Session baseline and select a default
-   * session exactly once. A restored current session wins; otherwise the most
+   * session exactly once. A restored current session wins only when that row is
+   * still live (present, non-blank, non-archived). Otherwise the most recently
+   * updated non-blank, non-archived session is opened. With none, the most
    * recent Workspace is connected (reusing or creating its blank session).
    * Later explicit clears stay cleared instead of retriggering this startup
    * policy. A failed connect may retry on the next baseline projection.
@@ -134,9 +185,19 @@ export class WorkspaceRuntime implements IWorkspaces {
       if (disposed || state !== 'waiting') return
       const workspace = this.list.getSnapshot()
       if (!workspace.baselinesReady) return
-      const current = this.sessions.list.getSnapshot().current
+      const sessions = this.sessions.list.getSnapshot()
+      if (isLiveCurrent(sessions, workspace.archivedSessionIds)) {
+        state = 'done'
+        return
+      }
+      const recentSession = recentNonBlankSession(sessions, workspace.archivedSessionIds)
+      if (recentSession !== undefined) {
+        this.sessions.open(recentSession)
+        state = 'done'
+        return
+      }
       const target = workspace.recentWorkspaceId
-      if (current !== undefined || target === undefined) {
+      if (target === undefined) {
         state = 'done'
         return
       }
@@ -241,8 +302,9 @@ export class WorkspaceRuntime implements IWorkspaces {
   /**
    * Open a filesystem path with the Host operating system's default application.
    * @param path - absolute or host-resolvable path.
+   * @param _options - optional jump-to-line; desktop surfaces intercept consumes it and this Host RPC ignores it.
    */
-  async openPath(path: string): Promise<void> {
+  async openPath(path: string, _options?: { line?: number }): Promise<void> {
     const response = await this.api.host.openPath({ path })
     if (!response.result.ok) {
       throw new Error(`path open failed: ${response.result.error.message}`)
@@ -325,9 +387,10 @@ export class WorkspaceRuntime implements IWorkspaces {
     this.manager.handleHostEnvelope(envelope)
   }
 
-  /** Rebuild the Workspace baseline after connection. */
-  handleConnected(): void {
-    this.manager.handleConnected()
+  /** Rebuild the Workspace baseline after connection.
+   * @returns once the workspace list refresh has settled. */
+  handleConnected(): Promise<void> {
+    return this.manager.handleConnected()
   }
 
   private project(): void {
@@ -352,6 +415,40 @@ export class WorkspaceRuntime implements IWorkspaces {
       recentWorkspaceId: baselinesReady ? recentWorkspace(workspace.items, sessions.byId) : undefined,
     })
   }
+}
+
+/** True when New Session may land on this empty-log row. */
+function reusableBlank(summary: SessionsPortSummary): boolean {
+  return summary.blank && summary.origin !== 'dshbot' && summary.origin !== 'subagent'
+}
+
+/** True when the persisted current id still names a live conversation. */
+function isLiveCurrent(
+  sessions: SessionsPortList,
+  archived: readonly SessionId[],
+): boolean {
+  const id = sessions.current
+  if (id === undefined) return false
+  const session = sessions.byId[id]
+  return session !== undefined && !session.blank && !archived.includes(id)
+}
+
+/** Most recently updated live conversation, ignoring blanks and the archive set. */
+function recentNonBlankSession(
+  sessions: SessionsPortList,
+  archived: readonly SessionId[],
+): SessionId | undefined {
+  let selected: SessionId | undefined
+  let selectedTime = Number.NEGATIVE_INFINITY
+  for (const id of sessions.ids) {
+    const session = sessions.byId[id]
+    if (session === undefined || session.blank || archived.includes(id)) continue
+    if (selected === undefined || session.updatedAt > selectedTime) {
+      selected = id
+      selectedTime = session.updatedAt
+    }
+  }
+  return selected
 }
 
 /** Stable tie-breaking follows Host Workspace order. */

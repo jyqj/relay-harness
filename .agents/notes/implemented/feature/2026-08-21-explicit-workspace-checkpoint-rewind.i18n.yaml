@@ -1,0 +1,6 @@
+# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
+# side as of the last confirmed-consistent state. Both languages carry equal authority;
+# after editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-08-21-explicit-workspace-checkpoint-rewind.md
+2026-08-21-explicit-workspace-checkpoint-rewind.md: 8b54404638b8906c06ea31620e327f54c5fb0d0b
+2026-08-21-explicit-workspace-checkpoint-rewind.zh.md: 4e871936f522fc246c614a9b1e3289e4fa1e0a0d

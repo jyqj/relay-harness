@@ -32,6 +32,14 @@ Follow-up authority comes from the exact live direct parent recorded in the chil
 
 Same-process requests, descriptors, results, and event payloads are trusted typed values borrowed as immutable. The service does not clone or freeze them; serialization and hostile-input validation belong at actual process, worker, persistence, and model boundaries.
 
+## Capacity admission
+
+`maxActivePerRoot` bounds concurrent child lifetimes across one complete live session tree; `maxActivePerParent` optionally adds a direct-sibling ceiling. The service resolves the highest live durable ancestor of the calling parent and uses one admission table for one-shot providers, continuable Activations, workflow fan-out, and team provisioning. Different roots remain independent. Omitting a ceiling leaves that scope unbounded; the base bundle configures `maxActivePerRoot: 4`.
+
+`overflow: reject` (the default and base-bundle policy) fails a saturated start with `SubagentError('CAPACITY_EXCEEDED')` before provider or Agent work begins. `overflow: queue` waits in a root-local queue, removes cancelled callers, skips a direct-parent-blocked head when another parent is eligible, and rejects pending work when the runtime closes. Queue mode is an explicit deployment choice because a nested child waiting while all root slots are occupied can depend on another lifetime releasing.
+
+Capacity follows resource ownership, not result visibility. A one-shot lease remains held until the holder calls the idempotent `SubagentRun.dispose()`; provider startup failure releases it immediately. A continuable lease transfers to the Activation and releases only after handle disposal or rollback reaches quiescence. Result settlement, lifecycle notification, provider removal, and caller cancellation after inbox acceptance do not release a live child's slot early. See the [root-tree admission decision](../../../.agents/notes/implemented/architecture/2026-08-21-root-tree-subagent-admission.md).
+
 ## Capabilities
 
 Start-time features are advertised in `provider.capabilities` because the service must reject an unsupported one-shot request before child creation:

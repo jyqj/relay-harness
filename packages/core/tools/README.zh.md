@@ -4,6 +4,10 @@
 
 工具注册表与执行流水线。工具插件注册各自的 schema 和执行器；agent loop（智能体循环）依次让每次调用经过 `tools/pre-execute`（可扩展的允许／拒绝门禁）→ 已注册的单调守卫 → `tools/execute`（供超时／重试／指标插件使用的环绕分发包装层）→ `tools/post-execute`（检查／替换结果、附加上下文）→ 由工具定义持有的 `finalizeContent` 边界 → 仅观测的 `tools/result` 通知。注册表还决定以何种方式向模型呈现工具：`mode` 配置可以选择原生 Function Calling（函数调用）、[Code Mode](#code-mode)，或同时选择两者；单个 agent 可用 `presentAs` 为自己遮蔽该默认值。
 
+每个 agent 步骤都会在提示词组装前捕获一个请求级工具快照。该快照提供面向模型的 schema，随后把直接执行绑定到最终权威组装结果，并保留同一批定义、并发分类器、Code Mode SDK 与代码后端，直到由此产生的所有调用结算。注册表变更从下一步骤起生效；实时 hook、审批、guard 与执行 policy 仍会作用于捕获调用。因此，被移除工具不能在在途请求下方被替换，而最终组装监听器仍可以把它从该请求中完整移除。[请求快照决策](../../../.agents/notes/implemented/architecture/2026-08-21-request-tool-snapshot.md)负责生命周期与 HMR 取舍。
+
+重叠安全性取决于资源关系的工具会声明 `resourceIntents(args, exec)`。resolver 在 pre-execute policy 之后运行，返回规范、带 namespace 的读写 claim；调用进入并行池，随后 runtime 会在紧邻主体前获取公平、writer 优先的锁。claim 会排序，重复项以 write 覆盖 read 的规则折叠，取消会移除排队 waiter。原生、直接与 Code Mode 调用共享一张锁表。[资源锁决策](../../../.agents/notes/implemented/architecture/2026-08-21-tool-resource-intent-locks.md)负责身份与公平性。
+
 ## 服务：`ToolRuntime`（ctx 键：`tools`）
 
 ### 配置
@@ -17,14 +21,14 @@ tools:
 
 ### 公开 API
 
-- `ctx.tools.register(definition: ToolDefinition): () => void`：注册一个受信任、带类型的同进程定义，其中必须包含规范的 `output` 声明。所在层由调用上下文的作用域决定：普通插件上下文会全局注册；agent 的 `agent.ctx` 只为该 agent 注册，并在此处遮蔽同名全局工具。同一层内名称重复会抛出；非原生模式还会拒绝保留的 `run_code` 传输名称。缺失或不受支持的输出声明，以及非正数或非有限的 `timeoutMs`，都会使注册失败。可选的同步 `finalizeContent` 回调会在调用开始时纳入快照；在所有流水线结果（包括实体化其他结果字段时发现的错误）规范化之后，它只能替换最终面向模型的内容。该注册会随调用方 fiber 一同 dispose（资源释放）。
+- `ctx.tools.register(definition: ToolDefinition): () => void`：注册一个受信任、带类型的同进程定义，其中必须包含规范的 `output` 声明。所在层由调用上下文的作用域决定：普通插件上下文会全局注册；agent 的 `agent.ctx` 只为该 agent 注册，并在此处遮蔽同名全局工具。同一层内名称重复会抛出；非原生模式还会拒绝保留的 `run_code` 传输名称。缺失或不受支持的输出声明，以及非正数或非有限的 `timeoutMs`，都会使注册失败。可选同步 `finalizeContent` 回调会在调用开始时纳入快照，并在流水线结果规范化后只替换最终面向模型的内容。可选 `resourceIntents` 会在 policy 后解析规范 claim；声明它会让调用在 runtime 锁下进入并行池。disposal 会从后续请求快照移除定义；既有快照会保留其确切对象，直到所属步骤结算。
 - `ctx.tools.presentAs(mode: ToolPresentationMode): () => void`：为本 agent 选择面向模型的呈现方式，仅对该 agent 遮蔽 `mode` 配置；从普通上下文调用会抛出（进程级呈现方式是那个配置字段），同一 scope 内第二次声明也会抛出。code 类模式还会为该 agent 注册它自己的 `tools:sdk` 段。工具目录保持不变：`schemas(agent)` 仍会报告该 agent 的能力；只有组装结果中的工具列表会按所选呈现方式收束。随调用方 fiber dispose。
 - `ctx.tools.restrict(filter)`：对全局工具应用 agent 作用域的允许／拒绝掩码；从普通上下文调用会抛出。筛选器在注册时创建快照；多个掩码取交集，随后再合并作用域本地工具。拒绝掩码会接纳后来出现且未点名的全局工具，而允许掩码会排除后来出现的名称。未知、本地或保留名称以及空筛选器都会被拒绝。这是实时可见性组合，不是权限边界；参见[作用域安全非目标](../../../.agents/notes/implemented/architecture/2026-07-08-agent-scope-contexts.md#security-and-authority-are-non-goals)。
 - `ctx.tools.get(name: string, scope?: ScopeKey): ToolDefinition | undefined`：返回指定作用域可见的解析结果，其中已应用名称遮蔽；被作用域限制排除的全局工具会被视为不存在。呈现器会传入发起调用的 agent，使卡片与实际执行内容一致。
 - `ctx.tools.schemas(scope?: ScopeKey): ToolSchema[]`：返回该作用域可见的所有 schema（不含 `execute` 函数）。已交付工具的 schema 收录在 [docs/tool-catalog.md](../../../docs/tool-catalog.md) 中；该目录通过启动每个工具插件并采集此方法的结果生成（参见[工具 schema 目录 Agent Note](../../../.agents/notes/implemented/process/2026-07-02-tool-schema-catalog.md)）。
 - `ctx.tools.guard(guard: ToolGuard): () => void`：在 `tools/pre-execute` 之后注册单调同步执行守卫：返回理由会拒绝调用，返回 `undefined` 则保持原决定。普通上下文守卫全局生效；`agent.ctx` 守卫只对该 agent 生效。后续 waterfall（瀑布式事件）监听器无法将守卫的拒绝重新变为允许。随调用 fiber dispose。
 - `ctx.tools.execute(exec)`：以无损方式快照并冻结参数，分配不透明 token，运行完整的策略／分发／结果流水线，然后在最终观测前独立快照权威结果。无效参数会进入同一结果路径，但不会到达策略或工具主体。环绕包装层只能替换 `signal`；注册表会在进入工具主体之前，立即将调用方的原始信号重新合并到当前信号中。
-- `ctx.tools.executionMode(exec)`：返回 `parallel` 的唯一条件是可见定义的 `isConcurrencySafe(exec.arguments)` 分类器恰好返回 `true`；未知、隐藏、未声明、无效或抛出异常的分类结果均为独占。
+- `ctx.tools.executionMode(exec)`：可见定义声明 `resourceIntents`，或其 `isConcurrencySafe(exec.arguments)` 分类器恰好返回 `true` 时返回 `parallel`；未知、隐藏、未声明、无效或抛出异常的分类结果均为独占。
 
 ### 注入的服务
 

@@ -13,12 +13,14 @@ import type { ResolvedConfig } from './config.ts'
 import { instructionContentSha1, trimmedInstructionDigest } from './digest.ts'
 import {
   ancestorChain,
+  createInstructionReadBudget,
   descendantDirsBetween,
   findProjectRoot,
   probeScopeInstruction,
   readScopeInstruction,
   relativeDisplay,
   type LoadedInstructionFile,
+  type ScopeInstructionProbe,
 } from './files.ts'
 import {
   candidateScopeKey,
@@ -299,7 +301,6 @@ export async function reconcileInstructionContext(
   }
 
   const versions = versionStatesFor(session, versionCache)
-  const seenAbsolutePaths = new Set<string>()
   // Per-directory trimmed-content identities kept so far this pass, iterated in
   // candidate order (base before local); a later sibling matching an earlier one
   // is a duplicate and is dropped or removed rather than rendered twice.
@@ -322,13 +323,38 @@ export async function reconcileInstructionContext(
     versionUpdates.push({ change })
   }
   const scopesByDirectory = new Map<string, string[]>()
+  const scopeOrder = new Map<string, number>()
   for (const scope of scopes) {
+    scopeOrder.set(scope, scopeOrder.size)
     const { directory } = decodeScopeKey(scope)
     const directoryScopes = scopesByDirectory.get(directory)
     if (directoryScopes === undefined) scopesByDirectory.set(directory, [scope])
     else directoryScopes.push(scope)
   }
-  for (const [directory, directoryScopes] of scopesByDirectory) {
+  const probes = new Map<string, ScopeInstructionProbe>()
+  const firstScopeByAbsolutePath = new Map<string, string>()
+  for (const scope of scopes) {
+    if (options.excludedBaselineScopes !== undefined
+      && baselineScopes.has(scope)
+      && options.excludedBaselineScopes.has(scope)) continue
+    const probe = await probeScopeInstruction(scope, projectRoot, resolved, fileSystem, options.signal)
+    probes.set(scope, probe)
+    if (probe.kind === 'present' && !firstScopeByAbsolutePath.has(probe.file.absolutePath)) {
+      firstScopeByAbsolutePath.set(probe.file.absolutePath, scope)
+    }
+  }
+  const readBudget = createInstructionReadBudget(resolved.maxTotalSourceBytes)
+  const directorySpecificity = (directory: string): number => {
+    if (directory === USER_GLOBAL_DIRECTORY) return -1
+    if (directory === '.') return 0
+    return directory.split(/[\\/]+/).filter(Boolean).length
+  }
+  const directories = [...scopesByDirectory.entries()].map((entry, index) => ({ entry, index }))
+    .sort((left, right) => (
+      directorySpecificity(right.entry[0]) - directorySpecificity(left.entry[0])
+      || left.index - right.index
+    ))
+  for (const { entry: [directory, directoryScopes] } of directories) {
     const probedScopes: string[] = []
     for (const scope of directoryScopes) {
       if (options.excludedBaselineScopes !== undefined
@@ -343,11 +369,11 @@ export async function reconcileInstructionContext(
     }
     const itemStart = items.length
     const versionUpdateStart = versionUpdates.length
-    const addedAbsolutePaths: string[] = []
     const priorVersions = new Map(probedScopes.map(scope => [scope, versions.get(scope)]))
     for (const scope of probedScopes) {
       const previous = effective.get(scope)
-      const probe = await probeScopeInstruction(scope, projectRoot, resolved, fileSystem, options.signal)
+      /* v8 ignore next -- every non-excluded scope is probed before directory processing. */
+      const probe = probes.get(scope) as ScopeInstructionProbe
       if (probe.kind === 'unavailable') {
         if (previous === undefined || previous.action === 'remove') continue
         // Same-directory candidates form one deduplicated authority group. If an
@@ -359,7 +385,6 @@ export async function reconcileInstructionContext(
           if (prior === undefined) versions.delete(candidateScope)
           else versions.set(candidateScope, prior)
         }
-        for (const absolutePath of addedAbsolutePaths) seenAbsolutePaths.delete(absolutePath)
         keptTrimmedByDir.delete(directory)
         break
       }
@@ -369,9 +394,7 @@ export async function reconcileInstructionContext(
         continue
       }
       const { file: probedFile } = probe
-      if (seenAbsolutePaths.has(probedFile.absolutePath)) continue
-      seenAbsolutePaths.add(probedFile.absolutePath)
-      addedAbsolutePaths.push(probedFile.absolutePath)
+      if (firstScopeByAbsolutePath.get(probedFile.absolutePath) !== scope) continue
       const cached = versions.get(scope)
       if (
         cached !== undefined
@@ -388,7 +411,13 @@ export async function reconcileInstructionContext(
         continue
       }
 
-      const file = await readScopeInstruction(probedFile, resolved.maxSourceBytes, fileSystem, options.signal)
+      const file = await readScopeInstruction(
+        probedFile,
+        resolved.maxSourceBytes,
+        readBudget,
+        fileSystem,
+        options.signal,
+      )
       if (file === undefined) continue
       const currentDigest = instructionContentSha1(file.content)
       const trimmedDigest = trimmedInstructionDigest(file.content)
@@ -421,6 +450,10 @@ export async function reconcileInstructionContext(
     }
   }
   if (items.length === 0) return undefined
+  items.sort((left, right) => (
+    (scopeOrder.get(left.change.scope) as number)
+    - (scopeOrder.get(right.change.scope) as number)
+  ))
   const rendered = renderInstructionChanges(items, resolved.maxBytes)
   // When no transition survived rendering (tiny budgets render notice-only
   // text), emit nothing and commit nothing — the uncommitted versions make the

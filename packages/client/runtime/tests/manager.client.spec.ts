@@ -744,6 +744,19 @@ describe('remaining branches', () => {
     expect(session.getSnapshot().running).toBe(true)
   })
 
+  it('create forwards origin and agentPreset and stamps them on the optimistic row', async () => {
+    const api = new FakeApiClient()
+    api.onCreate = () => Promise.resolve(ok({ sessionId: S1, agentPreset: 'dshbot-room' }))
+    const manager = new SessionManager(api, fakeRemote())
+    await manager.create({ origin: 'dshbot', agentPreset: 'dshbot-room', sessionId: S1 })
+    expect(api.callsOf('session.create')).toEqual([
+      { origin: 'dshbot', agentPreset: 'dshbot-room', sessionId: S1 },
+    ])
+    expect(manager.getListSnapshot().items[0]).toMatchObject({
+      sessionId: S1, origin: 'dshbot', agentPreset: 'dshbot-room',
+    })
+  })
+
   it('create passes cwd and a preallocated id, folds transport throws, and deduplicates the echo', async () => {
     const api = new FakeApiClient()
     api.onCreate = () => Promise.resolve(ok({ sessionId: S1 }))
@@ -779,15 +792,30 @@ describe('remaining branches', () => {
     api.onFork = () => Promise.resolve(err({
       code: 'workspace-attach-failed',
       message: 'forked but unattached',
-      details: { sessionId: S2, workspaceId: 'w1' },
+      details: { sessionId: S2, workspaceId: 'w1', blank: true },
     } as never))
     const manager = new SessionManager(api, fakeRemote())
     const result = await manager.fork({ sessionId: S1 })
     expect(result).toMatchObject({ ok: false, error: { code: 'workspace-attach-failed' } })
+    // The published child's blank bit rides the error details (a beforeSeq
+    // cut before the first turn publishes a blank child).
     expect(manager.getListSnapshot().items).toEqual([expect.objectContaining({
       sessionId: S2,
       parentSessionId: S1,
-      blank: false,
+      blank: true,
+    })])
+  })
+
+  it('merges a blank fork child from the response bit (beforeSeq empty cut)', async () => {
+    const api = new FakeApiClient()
+    api.onFork = () => Promise.resolve(ok({ sessionId: S2, blank: true } as never))
+    const manager = new SessionManager(api, fakeRemote())
+    const result = await manager.fork({ sessionId: S1, beforeSeq: 0 })
+    expect(result).toMatchObject({ ok: true, value: { sessionId: S2, blank: true } })
+    expect(manager.getListSnapshot().items).toEqual([expect.objectContaining({
+      sessionId: S2,
+      parentSessionId: S1,
+      blank: true,
     })])
   })
 

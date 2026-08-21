@@ -22,6 +22,7 @@ import type { ExecutionObserver } from './runtime.ts'
 import { HostToWorkerType, WorkerToHostType } from './protocol.ts'
 import type { HostToWorkerPayloads, WorkerToHostMessage } from './protocol.ts'
 import type { ChildResult, ChildStartRequest, WorkerInit } from './types.ts'
+import type { WorkflowJournal, WorkflowJournalOutcome } from './journal.ts'
 
 /** One published child and its shared quiescent-disposal transaction. */
 interface ChildRecord {
@@ -138,6 +139,7 @@ export class WorkerRun implements WorkflowRun {
     init: WorkerInit,
     private readonly provider: string,
     private readonly disposeGraceMs: number,
+    private readonly journal: WorkflowJournal | undefined,
     private readonly observer: ExecutionObserver,
     signal: AbortSignal | undefined,
   ) {
@@ -336,6 +338,19 @@ export class WorkerRun implements WorkflowRun {
       return
     }
     this.hostStarted += 1
+    if (this.journal !== undefined) {
+      let replayed: WorkflowJournalOutcome | undefined
+      try {
+        replayed = this.journal.replay(callId, request)
+      } catch (error: unknown) {
+        this.post(HostToWorkerType.ChildStartError, { callId, rendered: renderThrown(error) })
+        return
+      }
+      if (replayed !== undefined) {
+        this.replayChild(callId, replayed)
+        return
+      }
+    }
     const task = this.startChild(callId, request)
     this.pendingStarts.add(task)
     void task.then(
@@ -343,6 +358,35 @@ export class WorkerRun implements WorkflowRun {
       /* v8 ignore next -- startChild contains provider and cleanup failures */
       () => { this.finishPendingStart(task) },
     )
+  }
+
+  /** Replay one recorded child terminal outcome without starting provider work. */
+  private replayChild(callId: number, outcome: WorkflowJournalOutcome): void {
+    switch (outcome.kind) {
+      case 'start-error':
+        this.post(HostToWorkerType.ChildStartError, { callId, rendered: outcome.rendered })
+        return
+      case 'settled':
+        this.post(HostToWorkerType.ChildStarted, { callId, childId: outcome.childId })
+        this.post(HostToWorkerType.ChildSettled, { callId, result: outcome.result })
+        return
+      case 'failed':
+        this.post(HostToWorkerType.ChildStarted, { callId, childId: outcome.childId })
+        this.post(HostToWorkerType.ChildFailed, { callId, rendered: outcome.rendered })
+        return
+      /* v8 ignore next 2 -- closed journal outcome union */
+      default:
+        assertNever(outcome, 'workflow journal outcome')
+    }
+  }
+
+  /** Record a live child outcome before it becomes observable in the worker. */
+  private recordChild(
+    callId: number,
+    request: ChildStartRequest,
+    outcome: WorkflowJournalOutcome,
+  ): void {
+    this.journal?.record(callId, request, outcome)
   }
 
   /** Await one provider-owned startup transaction and publish only while admitted. */
@@ -365,9 +409,18 @@ export class WorkerRun implements WorkflowRun {
       })
     } catch (error: unknown) {
       const failure = this.childAdmissionFailure()
+      const rendered = failure?.rendered ?? renderThrown(error)
+      if (failure === undefined) {
+        try {
+          this.recordChild(callId, request, { kind: 'start-error', rendered })
+        } catch (journalError: unknown) {
+          this.post(HostToWorkerType.ChildStartError, { callId, rendered: renderThrown(journalError) })
+          return
+        }
+      }
       this.post(HostToWorkerType.ChildStartError, {
         callId,
-        rendered: failure?.rendered ?? renderThrown(error),
+        rendered,
       })
       return
     }
@@ -396,15 +449,64 @@ export class WorkerRun implements WorkflowRun {
             stopReason: result.stopReason,
           })
           if (snapshot === undefined) throw new TypeError('child result is not losslessly JSON-serializable')
-          return () => { this.post(HostToWorkerType.ChildSettled, { callId, result: snapshot }) }
+          return () => {
+            /* v8 ignore next 3 -- cancellation normally resolves the provider as
+             * an ordinary aborted result; an uncloneable result winning first is
+             * a backend contract violation converging on the same no-record rule. */
+            if (this.cancelReason !== undefined) {
+              this.post(HostToWorkerType.ChildSettled, { callId, result: snapshot })
+              return
+            }
+            try {
+              this.recordChild(callId, request, {
+                kind: 'settled',
+                childId: run.id,
+                result: snapshot,
+              })
+              this.post(HostToWorkerType.ChildSettled, { callId, result: snapshot })
+            } catch (error: unknown) {
+              this.post(HostToWorkerType.ChildFailed, { callId, rendered: renderThrown(error) })
+            }
+          }
         } catch (error: unknown) {
           const rendered = `workflow child result could not cross the worker boundary: ${renderThrown(error)}`
-          return () => { this.post(HostToWorkerType.ChildFailed, { callId, rendered }) }
+          return () => {
+            /* v8 ignore next 3 -- cancellation normally resolves an ordinary
+             * aborted result; an uncloneable result winning first converges on
+             * this same no-record rule. */
+            if (this.cancelReason !== undefined) {
+              this.post(HostToWorkerType.ChildFailed, { callId, rendered })
+              return
+            }
+            try {
+              this.recordChild(callId, request, { kind: 'failed', childId: run.id, rendered })
+              this.post(HostToWorkerType.ChildFailed, { callId, rendered })
+            } catch (journalError: unknown) {
+              /* v8 ignore next -- append failure is covered on the ordinary
+               * settled-result path; this branch differs only in payload. */
+              this.post(HostToWorkerType.ChildFailed, { callId, rendered: renderThrown(journalError) })
+            }
+          }
         }
       },
       (error: unknown) => {
         const rendered = renderThrown(error)
-        return () => { this.post(HostToWorkerType.ChildFailed, { callId, rendered }) }
+        return () => {
+          /* v8 ignore next 3 -- current providers resolve aborted on cancellation;
+           * a simultaneous infrastructure rejection converges on this no-record rule. */
+          if (this.cancelReason !== undefined) {
+            this.post(HostToWorkerType.ChildFailed, { callId, rendered })
+            return
+          }
+          try {
+            this.recordChild(callId, request, { kind: 'failed', childId: run.id, rendered })
+            this.post(HostToWorkerType.ChildFailed, { callId, rendered })
+          } catch (journalError: unknown) {
+            /* v8 ignore next -- append failure is covered on the ordinary
+             * settled-result path; this branch differs only in payload. */
+            this.post(HostToWorkerType.ChildFailed, { callId, rendered: renderThrown(journalError) })
+          }
+        }
       },
     )
     this.post(HostToWorkerType.ChildStarted, { callId, childId: run.id })

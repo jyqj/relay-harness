@@ -12,6 +12,7 @@ import type {} from '@deepseek-ai/dsh-fs'
 import type {} from '@deepseek-ai/dsh-system-prompt'
 import { computeHunkDiffs, diffsFromMeta } from './diff.ts'
 import { remediateFsError } from './error.ts'
+import { fileResourceIntent } from './resource.ts'
 import { sessionResolveOptions } from './session-cwd.ts'
 import type { FsSandboxController } from './sandbox.ts'
 
@@ -108,6 +109,10 @@ export function applyEditTool(ctx: Context, sandbox: FsSandboxController): void 
         diffs: computeHunkDiffs(args.file_path, value.before, value.after)
           .map(({ path, oldText, newText }) => ({ path, oldText, newText })),
       }),
+    },
+    resourceIntents: async (args, exec) => {
+      const input = parseEditArgs(args)
+      return [await fileResourceIntent(ctx, exec, input.filePath, 'write')]
     },
     async execute(args: EditToolArgs, exec) {
       const input = parseEditArgs(args)

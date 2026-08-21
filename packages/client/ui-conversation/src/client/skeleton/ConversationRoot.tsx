@@ -14,7 +14,7 @@ export type ConversationRootProps = ConversationSlotProps
 
 export function ConversationRoot({
   sessionId, useSession, useSessions, useWorkspaces, useInput, useComposerBlock,
-  renderSlot, renderSlotChain, selectWorkspace, t,
+  renderSlot, renderSlotChain, selectWorkspace, selectNoDirectory, t,
 }: ConversationRootProps) {
   const openState = useSession(s => s.openState)
   const composerPhase = useSession(s => s.composerPhase)
@@ -23,6 +23,7 @@ export function ConversationRoot({
   const inputState = useInput(s => s)
   const cwd = useSessions(s => sessionId === undefined ? undefined : s.byId[sessionId]?.cwd)
   const summaryBlank = useSessions(s => sessionId === undefined ? undefined : s.byId[sessionId]?.blank)
+  const summaryOrigin = useSessions(s => sessionId === undefined ? undefined : s.byId[sessionId]?.origin)
   const workspaces = useWorkspaces(s => s)
   // A plugin this package cannot import (ui-model-selection) says this session cannot
   // send; its reason is already localized by whoever raised it.
@@ -30,6 +31,7 @@ export function ConversationRoot({
 
   const [pickerOpen, setPickerOpen] = useState(false)
   const [pendingWorkspaceId, setPendingWorkspaceId] = useState<WorkspaceId | undefined>()
+  const [pendingNoDirectory, setPendingNoDirectory] = useState(false)
   const pickerAnchor = useRef<HTMLButtonElement>(null)
 
   // Publishes the seat's live height as --dsh-composer-height on the scroll
@@ -65,6 +67,13 @@ export function ConversationRoot({
     }
   }, [pendingWorkspaceId, sessionWorkspace?.workspaceId, workspaces.phase, pendingWorkspace])
 
+  useEffect(() => {
+    if (!pendingNoDirectory) return
+    if (sessionId !== undefined && sessionWorkspace === undefined && workspaces.phase === 'ready') {
+      setPendingNoDirectory(false)
+    }
+  }, [pendingNoDirectory, sessionId, sessionWorkspace, workspaces.phase])
+
   // While a session is still replaying (loading + blank) the hero/docked
   // choice is unknowable — render the composer hidden instead of flashing
   // the centered hero and snapping to the docked bar (or vice versa).
@@ -74,22 +83,31 @@ export function ConversationRoot({
   // The exemption is deliberately open-state-wide, not loading-only: a
   // summary-blank session is the hero before its open starts (`cold`) and
   // after one fails (`error`) for the same reason — there is no history.
+  // `origin: 'dshbot'` contacts are never the New Session draft: they skip
+  // hero chrome even while the log is still empty.
   const settling = sessionId !== undefined && composerPhase === 'blank' && openState === 'loading'
     && summaryBlank !== true
-  const hero = sessionId === undefined
-    || (composerPhase === 'blank' && (openState === 'open' || summaryBlank === true))
+    && summaryOrigin !== 'dshbot'
+  const hero = summaryOrigin !== 'dshbot' && (sessionId === undefined
+    || (composerPhase === 'blank' && (openState === 'open' || summaryBlank === true)))
   const zone: InputZone | undefined =
     session === undefined || inputState === undefined ? undefined : { session, input: inputState }
 
   // The chip is a selector; label resolution walks the flow top-down:
   //   1. a just-picked workspace (pending) → its title;
-  //   2. cold start, no session yet → placeholder ("Choose workspace");
-  //   3. the blank session's workspace is in the list → its title;
-  //   4. list still loading → cwd folder name bridges so the title does not
+  //   2. a just-picked no-directory session → "No workspace folder";
+  //   3. cold start, no session yet → placeholder ("Choose workspace");
+  //   4. the blank session's workspace is in the list → its title;
+  //   5. list still loading → cwd folder name bridges so the title does not
   //      flash on refresh (empty cwd → placeholder);
-  //   5. list ready but no owning workspace (deleted from the sidebar) →
-  //      placeholder, never the deleted folder's name via cwd.
+  //   6. list ready but no owning workspace → "No workspace folder"
+  //      (membership, never the scratch directory's basename).
+  const noDirectoryTitle = (pendingNoDirectory
+    || (sessionId !== undefined && sessionWorkspace === undefined && workspaces.phase === 'ready'))
+    ? t('hero.noDirectory')
+    : undefined
   const chipTitle = pendingWorkspace?.title
+    ?? noDirectoryTitle
     ?? (sessionId === undefined
       ? undefined
       : sessionWorkspace?.title
@@ -97,7 +115,7 @@ export function ConversationRoot({
           ? undefined
           : workspaceLabel(cwd)))
 
-  const heroWorkspaceRow = (
+  const heroWorkspaceRow = !hero ? null : (
     <div className={css.heroWorkspaceRow}>
       <WorkspaceChip
         buttonRef={pickerAnchor}
@@ -110,12 +128,21 @@ export function ConversationRoot({
         open: pickerOpen,
         anchorRef: pickerAnchor,
         selectedId: pendingWorkspaceId ?? sessionWorkspace?.workspaceId,
+        noDirectorySelected: pendingNoDirectory
+          || (sessionId !== undefined && sessionWorkspace === undefined && workspaces.phase === 'ready'),
         onPick: (workspaceId) => {
           setPickerOpen(false)
+          setPendingNoDirectory(false)
           setPendingWorkspaceId(workspaceId)
           void selectWorkspace(workspaceId).catch(() => {
             setPendingWorkspaceId(current => current === workspaceId ? undefined : current)
           })
+        },
+        onPickNoDirectory: () => {
+          setPickerOpen(false)
+          setPendingWorkspaceId(undefined)
+          setPendingNoDirectory(true)
+          void selectNoDirectory().catch(() => { setPendingNoDirectory(false) })
         },
         onClose: () => { setPickerOpen(false) },
       })}
@@ -124,10 +151,9 @@ export function ConversationRoot({
   )
 
   // The placeholder chip ("Choose workspace") and the Workspace-trigger input travel
-  // together: no workspace picked yet (cold start, no session at all), or a
-  // blank session whose workspace vanished (deleted from the sidebar). The
-  // bar is ONE session-maybe slot rendered unconditionally — inert is a prop,
-  // not a different tree, so the textarea DOM survives the transition.
+  // together: no workspace picked yet (cold start, no session at all). A blank
+  // session with no Workspace membership is a no-directory task: the chip
+  // shows that copy and the composer accepts input.
   const inert = sessionId === undefined || (hero && chipTitle === undefined)
   // A raised block is the same inert posture with the blocker's own reason:
   // one disabled textarea, never a second tree. The no-workspace state wins

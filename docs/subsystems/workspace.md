@@ -16,6 +16,25 @@ Source: [`packages/workspace/workspace/src/types.ts`](../../packages/workspace/w
 type WorkspaceId = Branded<'WorkspaceId'>
 ```
 
+```ts type-equiv
+/** Identifies one co-located workspace filesystem checkpoint. */
+type WorkspaceCheckpointId = Branded<'WorkspaceCheckpointId'>
+```
+
+```ts type-equiv
+/** Metadata returned after a checkpoint is durably captured. */
+interface WorkspaceCheckpoint {
+  /** Opaque id supplied to {@link Workspace.rewind}. */
+  readonly id: WorkspaceCheckpointId
+  /** ISO-8601 capture instant. */
+  readonly createdAt: string
+  /** Stable sorted workspace-relative file paths captured. */
+  readonly paths: readonly string[]
+  /** Complete bytes retained across present files. */
+  readonly bytes: number
+}
+```
+
 `WorkspaceId` is a [branded id](core.md#branded-ids). Path identity is separate: `realpathNormalize` (`fs.realpath`; trailing slashes, `..`, and symlinks resolved) is the one uniqueness canon — workspace paths are stored canonicalized, uniqueness is string equality of canonical paths (a symlink to an owned directory collides), and attach-time session cwd checks go through the same canon.
 
 ## The workspace entity
@@ -110,10 +129,29 @@ interface Workspace {
    * @returns `'ok'` when the directory exists, `'missing-dir'` otherwise.
    */
   status(): Promise<'ok' | 'missing-dir'>
+
+  /**
+   * Durably capture selected regular files or confirmed-absent paths before a
+   * risky operation. Paths are relative to this workspace; symlinks,
+   * directories, escapes, more than 4096 paths, or more than 64 MiB reject.
+   * @param paths - workspace-relative paths to snapshot.
+   * @returns durable checkpoint metadata.
+   */
+  checkpoint(paths: readonly string[]): Promise<WorkspaceCheckpoint>
+
+  /**
+   * Restore every path in one checkpoint transactionally, rolling back applied
+   * changes when a later write fails, then remove that checkpoint and newer
+   * checkpoints from the local timeline.
+   * @param checkpointId - checkpoint previously returned by {@link checkpoint}.
+   */
+  rewind(checkpointId: WorkspaceCheckpointId): Promise<void>
 }
 ```
 
 Ownership truth is the record's ordered `sessionIds`, never derived from session cwd — but membership requires both: an id on the account and a header whose canonical cwd equals the workspace path, so one session structurally belongs to at most one workspace. Failed writes reject (`insertSessionBefore` account errors as `WorkspaceMoveInvalidError`, storage failures as plain errors); every accepted mutation stamps `updatedAt` and durably prunes candidates that no longer pass the membership check.
+
+Filesystem rewind is explicit and separate from session history. `checkpoint(paths)` stores regular-file bytes/modes plus confirmed absence under gitignored `.dsh/rewind-checkpoints`, with lexical containment, component-symlink rejection, 4096-path and 64 MiB caps, owner-only atomic files, and a stable opaque id. `rewind(id)` validates the complete record and current path types before mutation, restores all paths, rolls back earlier siblings if a later write fails, and truncates the selected checkpoint plus newer entries. It neither runs automatically at prompt boundaries nor rewrites the Session log. Rationale: [explicit workspace checkpoint Agent Note](../../.agents/notes/implemented/feature/2026-08-21-explicit-workspace-checkpoint-rewind.md).
 
 ## The registry: `ctx.workspaceRegistry`
 
@@ -147,7 +185,7 @@ Abstract directory-picking service. Subclass, implement `capability()`, and load
 abstract capability(): DirectoryPickerCapability
 ```
 
-Source: [`packages/host/directory-picker/src/index.ts:131`](../../packages/host/directory-picker/src/index.ts)
+Source: [`packages/host/directory-picker/src/index.ts:140`](../../packages/host/directory-picker/src/index.ts)
 
 <a id="ctxworkspaceregistry--workspaceregistry"></a>
 
@@ -224,5 +262,5 @@ async resolveByPath(path: string): Promise<Workspace | undefined>
 
 Types: [SessionId](core.md)
 
-Source: [`packages/workspace/workspace/src/index.ts:92`](../../packages/workspace/workspace/src/index.ts)
+Source: [`packages/workspace/workspace/src/index.ts:107`](../../packages/workspace/workspace/src/index.ts)
 <!-- END GENERATED cordis-surface -->

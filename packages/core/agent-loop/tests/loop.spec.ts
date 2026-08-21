@@ -146,6 +146,7 @@ describe('agent loop', () => {
       await finish.promise
     })
     await started.promise
+    expect(() => agent.runMaintenance(async () => undefined)).toThrow(`agent "${agent.id}" already has active work`)
 
     const wake = createUserMessage({ content: [{ type: 'text', text: 'removed wake' }], source: { kind: 'user' } })
     agent.followup(wake)

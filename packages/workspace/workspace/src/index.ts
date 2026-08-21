@@ -19,15 +19,21 @@ export { WorkspaceMoveInvalidError } from './entity.ts'
 import { realpathNormalize } from './paths.ts'
 import { workspaceDomainSpec } from './spec.ts'
 import type { WorkspaceDomainState, WorkspaceRecord } from './spec.ts'
-import type { Workspace, WorkspaceId as WorkspaceIdBrand } from './types.ts'
+import type {
+  Workspace,
+  WorkspaceCheckpointId as WorkspaceCheckpointIdBrand,
+  WorkspaceId as WorkspaceIdBrand,
+} from './types.ts'
 
-export type { Workspace } from './types.ts'
+export type { Workspace, WorkspaceCheckpoint } from './types.ts'
 export { workspaceDomainState, workspaceRecord, workspaceDomainSpec } from './spec.ts'
 export type { WorkspaceDomainState, WorkspaceRecord } from './spec.ts'
 export { realpathNormalize } from './paths.ts'
 
 /** Identifies one workspace record (see `src/types.ts` for the brand rationale). */
 export type WorkspaceId = WorkspaceIdBrand
+/** Public checkpoint identity brand. */
+export type WorkspaceCheckpointId = WorkspaceCheckpointIdBrand
 
 /**
  * Brand a string as a {@link WorkspaceId}.
@@ -36,6 +42,15 @@ export type WorkspaceId = WorkspaceIdBrand
  */
 export function WorkspaceId(id: string): WorkspaceId {
   return id as WorkspaceId
+}
+
+/**
+ * Brand a persisted checkpoint id without validation.
+ * @param id - raw persisted checkpoint id.
+ * @returns the same string with the checkpoint brand.
+ */
+export function WorkspaceCheckpointId(id: string): WorkspaceCheckpointId {
+  return id as WorkspaceCheckpointId
 }
 
 /**

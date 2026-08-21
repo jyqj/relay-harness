@@ -6,11 +6,13 @@
 
 ## 模型看到的内容
 
-工具有三个参数：`meta`（必需的身份数据：`name`、`description` 和可选的进度注解）、`script`（必需的纯 JavaScript 脚本体，不含 `export const meta` 语句；工具描述包含完整的编写约定）以及 `args`（可选 JSON 对象，作为全局变量 `args` 向脚本公开；裸列表应包装到字段中，使协议 schema 如实表达形态）。插件还会贡献一个 `tool:<toolName>` 系统提示词段，其中包含使用策略：只有用户明确要求工作流／大型编排时才使用该工具；一两项委派优先使用普通 subagent 调用。这遵循工具指导随工具插件交付、绝不放入部署 persona 的约定。
+工具有四个参数：`meta`（必需的身份数据：`name`、`description` 和可选的进度注解）、`script`（必需的纯 JavaScript 脚本体，不含 `export const meta` 语句；工具描述包含完整的编写约定）、`args`（可选 JSON 对象，作为全局变量 `args` 向脚本公开；裸列表应包装到字段中，使协议 schema 如实表达形态），以及 `resumeRunId`（可选的确切既有 run id，用于在已配置引擎上做确定性 journal replay）。恢复要求使用相同 script、meta、args、provider 与 limit。插件还会贡献一个 `tool:<toolName>` 系统提示词段，其中包含使用策略：只有用户明确要求工作流／大型编排时才使用该工具；一两项委派优先使用普通 subagent 调用。这遵循工具指导随工具插件交付、绝不放入部署 persona 的约定。
 
 ## 生命周期
 
 收集是同步的（类似 [`dsh-tool-subagent`](../../subagent/tool-subagent/README.md)）：`execute` 启动运行并等待 `run.result`；这些操作位于 `try/finally` 中，该结构总会 dispose（资源释放）运行，使脚本及其子 agent（智能体）在每条路径上完全停稳。`exec.signal` 会桥接到 `run.cancel()`，包括启动前已经中止的情况。非 `completed` 结束原因会映射为报告原因的 `isError` 结果，绝不会把局部输出当作成功；`start()` 同步抛出的解析／meta 失败会变成模型可据以修正的 `isError`。完成时返回规范值 `{ runId, agentsStarted, result }`；Native 渲染器保留 meta 名称、agent 数量和 JSON 值，只会在 `maxResultChars` 处截断该投影。
+
+存在 `resumeRunId` 时，工具会为其加 brand，并原样转交给 `WorkflowStartRequest`。它不会检查 journal 文件，也不会静默回退到 fresh run；缺失 journal 支持、已编辑 fingerprint 与调用 divergence 都保持为返回给模型的引擎错误。
 
 对于根 transport 执行（`exec.parent` 缺省），工具还会把运行投影到调用 Agent 的 Session：`start()` 返回后写 run-start，只记录 `run.id` 匹配的成员开始与结束，并且只在 `run.result` 已取得且 `dispose()` 完全停稳后写 run-end。嵌套 transport 调用照常执行，但不写工作流记录。任一次 Session append 首次失败后，本运行会停止后续记录并只告警一次，留下空记录或合法连续前缀，同时不改变工具结果和清理。
 
@@ -82,4 +84,5 @@ Use the <toolName> tool ONLY when the user explicitly asks for a workflow or for
 - **父级轮次会阻塞到整个工作流结算**：没有后台启动／轮询接口，取消会丢弃局部输出并返回错误。
 - **`args` 必须是对象，Native 结果文本有界**：调用方把顶层数组／标量包装到字段中；规范工作流结果保持完整，超过 `maxResultChars` 的 JSON 会在面向模型的投影中截断，而不是存储在检索句柄背后。
 - **每次工具注册的工作流策略固定**：提供方选择、上限和工具名称属于部署配置，不是模型调用参数。
+- **恢复要求 opt-in 引擎存储**：挂载引擎没有 journal root 时，`resumeRunId` 会失败；除每次成功返回 `runId` 外，工具不会发现或列出可恢复 id。
 - **持久记录只覆盖顶层且只供观察**：嵌套 Code Mode dispatch 不记录；记录故障会刻意退化为不完整前缀，而不改变执行。

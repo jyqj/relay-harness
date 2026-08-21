@@ -14,6 +14,21 @@ import type { SessionId } from '@deepseek-ai/dsh-session'
  */
 export type WorkspaceId = Branded<'WorkspaceId'>
 
+/** Identifies one co-located workspace filesystem checkpoint. */
+export type WorkspaceCheckpointId = Branded<'WorkspaceCheckpointId'>
+
+/** Metadata returned after a checkpoint is durably captured. */
+export interface WorkspaceCheckpoint {
+  /** Opaque id supplied to {@link Workspace.rewind}. */
+  readonly id: WorkspaceCheckpointId
+  /** ISO-8601 capture instant. */
+  readonly createdAt: string
+  /** Stable sorted workspace-relative file paths captured. */
+  readonly paths: readonly string[]
+  /** Complete bytes retained across present files. */
+  readonly bytes: number
+}
+
 /**
  * One workspace: a stable id over an existing directory, a display title, and
  * an ordered candidate account of sessions. Membership requires both an id in
@@ -101,4 +116,21 @@ export interface Workspace {
    * @returns `'ok'` when the directory exists, `'missing-dir'` otherwise.
    */
   status(): Promise<'ok' | 'missing-dir'>
+
+  /**
+   * Durably capture selected regular files or confirmed-absent paths before a
+   * risky operation. Paths are relative to this workspace; symlinks,
+   * directories, escapes, more than 4096 paths, or more than 64 MiB reject.
+   * @param paths - workspace-relative paths to snapshot.
+   * @returns durable checkpoint metadata.
+   */
+  checkpoint(paths: readonly string[]): Promise<WorkspaceCheckpoint>
+
+  /**
+   * Restore every path in one checkpoint transactionally, rolling back applied
+   * changes when a later write fails, then remove that checkpoint and newer
+   * checkpoints from the local timeline.
+   * @param checkpointId - checkpoint previously returned by {@link checkpoint}.
+   */
+  rewind(checkpointId: WorkspaceCheckpointId): Promise<void>
 }

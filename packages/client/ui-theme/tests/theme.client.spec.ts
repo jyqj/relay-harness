@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import { stubSettingsScope, type StubSettingsScope } from '@deepseek-ai/dsh-client-test-runtime'
 import type {
@@ -8,6 +8,18 @@ import type {
   ThemeTokenOverrides,
 } from '@deepseek-ai/dsh-client-ui-theme/client'
 import { ThemeRuntime } from '@deepseek-ai/dsh-client-ui-theme/client'
+import {
+  DEFAULT_THEME_SETTINGS,
+  DEFAULT_WALLPAPER_SOURCES,
+  resolveThemeSettings,
+  sanitizeWallpaperFavorites,
+  sanitizeWallpaperSources,
+  ThemeSettingsSchema,
+} from '../src/theme-settings.ts'
+
+function section(overrides: Partial<ThemeSettings> = {}): ThemeSettings {
+  return { ...DEFAULT_THEME_SETTINGS, customThemes: [], ...overrides }
+}
 
 const make = (host = stubSettingsScope<ThemeSettings>()): {
   ctx: Context
@@ -21,14 +33,23 @@ const make = (host = stubSettingsScope<ThemeSettings>()): {
   return { ctx, theme: new ThemeRuntime(ctx, host.scope), events, host }
 }
 
+/** Advance past the durable-write debounce so queued scope writes land. */
+const flushWrites = (): void => { vi.advanceTimersByTime(300) }
+
 describe('ThemeRuntime', () => {
+  beforeEach(() => { vi.useFakeTimers() })
+  afterEach(() => { vi.useRealTimers() })
+
   it('defaults to the system preference resolved against prefers-color-scheme', () => {
     const { theme } = make()
     const snapshot = theme.getTheme()
     expect(snapshot.preference).toBe('system')
     // jsdom matchMedia is absent; system resolves to light.
-    expect(snapshot.active.id).toBe('light')
+    expect(snapshot.active.id).toBe('deepseek')
     expect(snapshot.active.colorScheme).toBe('light')
+    expect(snapshot.active.tokens).toMatchObject({ '--dsw-alias-glass-opacity': '80%' })
+    expect(snapshot.activeLightThemeId).toBe('deepseek')
+    expect(snapshot.activeDarkThemeId).toBe('deepseek')
     expect(snapshot.themes.map(t => t.id)).toEqual(['light', 'dark'])
   })
 
@@ -37,6 +58,7 @@ describe('ThemeRuntime', () => {
     theme.setTheme('dark')
     expect(theme.getTheme().preference).toBe('dark')
     expect(theme.getTheme().active.colorScheme).toBe('dark')
+    flushWrites()
     expect(host.set).toHaveBeenCalledWith('preference', 'dark')
     expect(events).toHaveLength(1)
     expect(events[0]).toBe(theme.getTheme())
@@ -45,22 +67,23 @@ describe('ThemeRuntime', () => {
     // Same-value set is a no-op (no extra event).
     theme.setTheme('dark')
     expect(events).toHaveLength(1)
+    flushWrites()
     expect(host.set).toHaveBeenCalledOnce()
   })
 
   it('adopts a published Host section without writing it back', () => {
     const { theme, events, host } = make()
-    host.publish({ status: 'ready', value: { preference: 'dark' }, revision: 1, writable: true })
+    host.publish({ status: 'ready', value: section({ preference: 'dark' }), revision: 1, writable: true })
     expect(theme.getTheme().preference).toBe('dark')
     expect(events).toHaveLength(1)
     expect(host.set).not.toHaveBeenCalled()
-    host.publish({ value: { preference: 'dark' }, revision: 2 })
+    host.publish({ value: section({ preference: 'dark' }), revision: 2 })
     expect(events).toHaveLength(1)
   })
 
   it('adopts a section already standing at construction', () => {
     const host = stubSettingsScope<ThemeSettings>()
-    host.publish({ status: 'ready', value: { preference: 'dark' }, revision: 1, writable: true })
+    host.publish({ status: 'ready', value: section({ preference: 'dark' }), revision: 1, writable: true })
     const { theme } = make(host)
     expect(theme.getTheme().preference).toBe('dark')
   })
@@ -83,6 +106,7 @@ describe('ThemeRuntime', () => {
     expect(theme.getTheme().themes.map(t => t.id)).toEqual(['light', 'dark'])
     // Custom ids are in-process extension themes; only the built-in product
     // preferences cross the Host settings schema.
+    flushWrites()
     expect(host.set).not.toHaveBeenCalled()
     // register + set + dispose = three publishes; disposer is idempotent.
     expect(events.length).toBe(3)
@@ -144,10 +168,10 @@ describe('ThemeRuntime', () => {
       '--new': { light: 'new-light', dark: 'new-dark' },
     })
     stale()
-    expect(theme.getTheme().active.tokens).toEqual({ '--new': 'new-light' })
+    expect(theme.getTheme().active.tokens).toMatchObject({ '--new': 'new-light' })
     current()
     current()
-    expect(theme.getTheme().active.tokens).toEqual({})
+    expect(theme.getTheme().active.tokens).toEqual({ '--dsw-alias-glass-opacity': '80%' })
     expect(events).toHaveLength(3)
   })
 
@@ -223,9 +247,10 @@ describe('ThemeRuntime', () => {
       const media = stubMedia(true)
       const { theme, events } = make()
       expect(theme.getTheme().preference).toBe('system')
-      expect(theme.getTheme().active.id).toBe('dark')
+      expect(theme.getTheme().active.id).toBe('deepseek')
+      expect(theme.getTheme().active.colorScheme).toBe('dark')
       media.flip()
-      expect(theme.getTheme().active.id).toBe('light')
+      expect(theme.getTheme().active.colorScheme).toBe('light')
       expect(events).toHaveLength(1)
     })
 
@@ -236,7 +261,7 @@ describe('ThemeRuntime', () => {
       expect(events).toHaveLength(1)
       media.flip()
       expect(events).toHaveLength(1)
-      expect(theme.getTheme().active.id).toBe('light')
+      expect(theme.getTheme().active.colorScheme).toBe('light')
     })
 
     it('context dispose releases the media listener', async () => {
@@ -245,6 +270,363 @@ describe('ThemeRuntime', () => {
       expect(media.listenerCount()).toBe(1)
       await ctx.fiber.dispose()
       expect(media.listenerCount()).toBe(0)
+    })
+  })
+
+  it('setThemeHalf persists one half and derives tokens for non-DeepSeek families', () => {
+    const { theme, host } = make()
+    theme.setTheme('light')
+    theme.setThemeHalf('light', 'celadon')
+    expect(theme.getTheme().activeLightThemeId).toBe('celadon')
+    expect(theme.getTheme().active.id).toBe('celadon')
+    expect(theme.getTheme().active.tokens['--dsw-alias-bg-base']).toBe('#f3faf7')
+    flushWrites()
+    expect(host.set).toHaveBeenCalledWith('activeLightThemeId', 'celadon')
+    theme.setThemeHalf('light', 'celadon')
+    flushWrites()
+    expect(host.set).toHaveBeenCalledTimes(2)
+    expect(() => { theme.setThemeHalf('dark', 'missing') }).toThrow('not registered')
+  })
+
+  it('previews a transient family without writing the scope, and clears back', () => {
+    const { theme, events, host } = make()
+    theme.setTheme('light')
+    const before = theme.getTheme()
+    const draft = {
+      id: 'red-draft',
+      name: 'red',
+      origin: 'custom' as const,
+      light: { accent: '#e60000', background: '#ffffff', foreground: '#0f1115', contrast: 46 },
+      dark: { accent: '#ff8080', background: '#151517', foreground: '#f5f5f5', contrast: 41 },
+    }
+    theme.setPreviewFamily(draft)
+    expect(theme.getTheme().active.id).toBe('red-draft')
+    expect(theme.getTheme().active.tokens['--dsw-alias-brand-primary']).toBe('#e60000')
+    // Durable selection is untouched: no scope write, half ids unchanged.
+    expect(theme.getTheme().activeLightThemeId).toBe(before.activeLightThemeId)
+    flushWrites()
+    expect(host.set).toHaveBeenCalledTimes(1) // only the setTheme('light') write
+    // Same reference is a no-op; clearing restores the stored family.
+    const published = events.length
+    theme.setPreviewFamily(draft)
+    expect(events).toHaveLength(published)
+    theme.setPreviewFamily(null)
+    expect(theme.getTheme().active.id).toBe('deepseek')
+  })
+
+  it('adopts half ids from Host and keeps DeepSeek tokens empty besides glass', () => {
+    const { theme, host } = make()
+    host.publish({
+      status: 'ready',
+      value: section({ preference: 'dark', activeDarkThemeId: 'violet' }),
+      revision: 1,
+      writable: true,
+    })
+    expect(theme.getTheme().activeDarkThemeId).toBe('violet')
+    expect(theme.getTheme().active.tokens['--dsw-alias-bg-base']).toBe('#120e18')
+    theme.setTheme('light')
+    expect(theme.getTheme().active.tokens['--dsw-alias-bg-base']).toBeUndefined()
+  })
+
+  it('stores custom families and falls back to DeepSeek when the active one is removed', () => {
+    const { theme, host } = make()
+    const custom = {
+      id: 'grove',
+      name: 'Grove',
+      origin: 'custom' as const,
+      light: { accent: '#0f766e', background: '#f3faf7', foreground: '#10211c', contrast: 44 },
+      dark: { accent: '#3dd6b5', background: '#071411', foreground: '#e7f6f1', contrast: 50 },
+    }
+    theme.setCustomThemes([custom])
+    theme.setThemeHalf('light', 'grove')
+    theme.setTheme('light')
+    expect(theme.getTheme().active.id).toBe('grove')
+    theme.setThemeHalf('dark', 'grove')
+    theme.setCustomThemes([])
+    expect(theme.getTheme().activeLightThemeId).toBe('deepseek')
+    expect(theme.getTheme().activeDarkThemeId).toBe('deepseek')
+    flushWrites()
+    expect(host.set).toHaveBeenCalledWith('activeLightThemeId', 'deepseek')
+    expect(host.set).toHaveBeenCalledWith('activeDarkThemeId', 'deepseek')
+  })
+
+  it('resolves a registered extension theme and falls back when the id is unknown', () => {
+    const { theme, host } = make()
+    theme.register({ id: 'sepia', colorScheme: 'dark', tokens: {} })
+    theme.setTheme('sepia')
+    expect(theme.getTheme().active.colorScheme).toBe('dark')
+    host.publish({
+      status: 'ready',
+      value: section({ preference: 'ghost' as never }),
+      revision: 1,
+      writable: true,
+    })
+    expect(theme.getTheme().active.colorScheme).toBe('light')
+  })
+
+  it('persists glass opacity and typography extras', () => {
+    const { theme, host } = make()
+    theme.setGlassOpacity(60)
+    expect(theme.getTheme().active.tokens['--dsw-alias-glass-opacity']).toBe('60%')
+    flushWrites()
+    expect(host.set).toHaveBeenCalledWith('glassOpacity', 60)
+    theme.setGlassOpacity(60)
+    theme.setTypography({ fontFamilySans: 'Inter', fontSizeInterface: 18, fontFamilyComposer: 'Georgia' })
+    expect(theme.getTheme().fontFamilySans).toBe('Inter')
+    expect(theme.getTheme().fontSizeInterface).toBe(18)
+    expect(theme.getTheme().fontFamilyComposer).toBe('Georgia')
+    flushWrites()
+    expect(host.set).toHaveBeenCalledWith('fontFamilySans', 'Inter')
+  })
+
+  it('persists a wallpaper and mixes chrome fills so the image can show through', () => {
+    const { theme, host } = make()
+    const png = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='
+    theme.setWallpaper({ wallpaperImage: png, wallpaperBlur: 25, wallpaperPixelate: 40 })
+    expect(theme.getTheme().wallpaperImage).toBe(png)
+    expect(theme.getTheme().wallpaperBlur).toBe(25)
+    expect(theme.getTheme().wallpaperPixelate).toBe(40)
+    expect(theme.getTheme().active.tokens['--dsw-alias-bg-base']).toContain('var(--dsw-static-neutral-bluish-00)')
+    expect(theme.getTheme().active.tokens['--dsw-alias-terminal-pane']).toBe('var(--dsw-static-neutral-bluish-00)')
+    theme.setTheme('dark')
+    expect(theme.getTheme().active.tokens['--dsw-alias-bg-base']).toContain('var(--dsw-static-neutral-bluish-950)')
+    expect(theme.getTheme().active.tokens['--dsw-alias-terminal-pane']).toBe('var(--dsw-static-neutral-bluish-950)')
+    theme.setTheme('light')
+    theme.setThemeHalf('light', 'celadon')
+    expect(theme.getTheme().active.tokens['--dsw-alias-bg-base']).toContain('#f3faf7')
+    flushWrites()
+    expect(host.set).toHaveBeenCalledWith('wallpaperImage', png)
+    theme.setWallpaper({ wallpaperImage: png, wallpaperBlur: 25, wallpaperPixelate: 40 })
+    theme.setWallpaper({ wallpaperImage: 'javascript:alert(1)' })
+    expect(theme.getTheme().wallpaperImage).toBe('')
+    theme.setWallpaper({ wallpaperBlur: 250, wallpaperPixelate: -4 })
+    expect(theme.getTheme().wallpaperBlur).toBe(100)
+    expect(theme.getTheme().wallpaperPixelate).toBe(0)
+  })
+
+  it('coalesces a drag into one durable write per field', () => {
+    const { theme, host } = make()
+    theme.setGlassOpacity(45)
+    theme.setGlassOpacity(50)
+    theme.setGlassOpacity(65)
+    expect(host.set).not.toHaveBeenCalled()
+    flushWrites()
+    expect(host.set).toHaveBeenCalledOnce()
+    expect(host.set).toHaveBeenCalledWith('glassOpacity', 65)
+  })
+
+  it('ignores durable echoes while local writes are pending, then re-adopts', async () => {
+    const { theme, host } = make()
+    theme.setGlassOpacity(45)
+    // Stale echo mid-drag: must not snap the slider back.
+    host.publish({ status: 'ready', value: { glassOpacity: 80 } as ThemeSettings, revision: 1, writable: true })
+    expect(theme.getTheme().glassOpacity).toBe(45)
+    flushWrites()
+    // The scope publishes the accepted write before the set() settlement.
+    host.publish({ value: { glassOpacity: 45 } as ThemeSettings, revision: 2 })
+    await vi.runAllTimersAsync()
+    expect(theme.getTheme().glassOpacity).toBe(45)
+    // Once idle, a genuine external change is adopted normally.
+    host.publish({ value: { glassOpacity: 90 } as ThemeSettings, revision: 3 })
+    expect(theme.getTheme().glassOpacity).toBe(90)
+  })
+
+  it('replaces wallpaperSources and queues the new field', () => {
+    const { theme, host } = make()
+    expect(theme.getTheme().wallpaperSources.map(source => source.id)).toEqual(['bing', 'wallhaven'])
+    theme.setWallpaperSources({ wallpaperSources: [] })
+    expect(theme.getTheme().wallpaperSources).toEqual([])
+    flushWrites()
+    expect(host.set).toHaveBeenCalledWith('wallpaperSources', [])
+  })
+
+  it('keeps the bing and catalog-url patch on setWallpaperSources', () => {
+    const { theme, host } = make()
+    theme.setWallpaperSources({
+      wallpaperBingEnabled: true,
+      wallpaperCatalogUrls: ['https://example.com/a.json'],
+    })
+    expect(theme.getTheme().wallpaperBingEnabled).toBe(true)
+    expect(theme.getTheme().wallpaperCatalogUrls).toEqual(['https://example.com/a.json'])
+    flushWrites()
+    expect(host.set).toHaveBeenCalledWith('wallpaperBingEnabled', true)
+    expect(host.set).toHaveBeenCalledWith('wallpaperCatalogUrls', ['https://example.com/a.json'])
+  })
+
+  it('replaces wallpaperFavorites and queues the new field', () => {
+    const { theme, host } = make()
+    const favorite = {
+      id: 'bing-2026-08-19',
+      sourceId: 'bing',
+      title: 'Lake',
+      thumbUrl: 'https://example.com/t.jpg',
+      imageUrl: 'https://example.com/i.jpg',
+    }
+    theme.setWallpaperFavorites({ wallpaperFavorites: [favorite] })
+    expect(theme.getTheme().wallpaperFavorites).toEqual([favorite])
+    flushWrites()
+    expect(host.set).toHaveBeenCalledWith('wallpaperFavorites', [favorite])
+  })
+})
+
+describe('resolveThemeSettings wallpaper sources', () => {
+  it('seeds bing and wallhaven when wallpaperSources is omitted', () => {
+    const parsed = ThemeSettingsSchema({} as never)
+    expect(parsed.wallpaperSources).toBeUndefined()
+    const resolved = resolveThemeSettings({
+      ...DEFAULT_THEME_SETTINGS,
+      wallpaperSources: undefined as never,
+    } as ThemeSettings)
+    expect(resolved.wallpaperSources.map(source => source.id)).toEqual(['bing', 'wallhaven'])
+    expect(resolved.wallpaperSources[0]).toMatchObject({ kind: 'bing', name: '必应' })
+    expect(resolved.wallpaperSources[1]).toMatchObject({ kind: 'wallhaven', name: 'Wallhaven' })
+    expect(resolveThemeSettings(undefined).wallpaperSources).toEqual(DEFAULT_WALLPAPER_SOURCES)
+  })
+
+  it('keeps an empty wallpaperSources array without re-seeding', () => {
+    const parsed = ThemeSettingsSchema({ wallpaperSources: [] } as never)
+    expect(resolveThemeSettings(parsed as ThemeSettings).wallpaperSources).toEqual([])
+    expect(resolveThemeSettings({
+      ...DEFAULT_THEME_SETTINGS,
+      wallpaperSources: [],
+    }).wallpaperSources).toEqual([])
+  })
+
+  it('migrates old catalog URLs when wallpaperSources is omitted', () => {
+    const resolved = resolveThemeSettings({
+      ...DEFAULT_THEME_SETTINGS,
+      wallpaperSources: undefined as never,
+      wallpaperCatalogUrls: ['https://example.com/a.json'],
+    } as ThemeSettings)
+    expect(resolved.wallpaperSources).toHaveLength(3)
+    expect(resolved.wallpaperSources[2]).toMatchObject({
+      kind: 'catalog',
+      url: 'https://example.com/a.json',
+      name: 'example.com',
+    })
+    expect(resolved.wallpaperSources[2]!.id.startsWith('catalog-')).toBe(true)
+  })
+
+  it('does not migrate a catalog URL longer than 500 characters', () => {
+    const longUrl = `https://example.com/${'a'.repeat(480)}.json`
+    expect(longUrl.length).toBeGreaterThan(500)
+    const resolved = resolveThemeSettings({
+      ...DEFAULT_THEME_SETTINGS,
+      wallpaperSources: undefined as never,
+      wallpaperCatalogUrls: [longUrl],
+    } as ThemeSettings)
+    expect(resolved.wallpaperSources.map(source => source.id)).toEqual(['bing', 'wallhaven'])
+    expect(resolved.wallpaperSources.some(source => source.kind === 'catalog')).toBe(false)
+  })
+
+  it('keeps one bing row when two bing rows are present', () => {
+    expect(sanitizeWallpaperSources([
+      { id: 'bing', kind: 'bing', name: '必应' },
+      { id: 'bing', kind: 'bing', name: 'Bing 2' },
+    ]).map(source => source.id)).toEqual(['bing'])
+  })
+
+  it('drops a sixth catalog source', () => {
+    const catalogs = Array.from({ length: 6 }, (_, index) => ({
+      kind: 'catalog' as const,
+      name: `Catalog ${index}`,
+      url: `https://example.com/${index}.json`,
+    }))
+    expect(
+      sanitizeWallpaperSources([...DEFAULT_WALLPAPER_SOURCES, ...catalogs])
+        .filter(source => source.kind === 'catalog'),
+    ).toHaveLength(5)
+  })
+
+  it('caps favorites at 100', () => {
+    const favorites = Array.from({ length: 101 }, (_, index) => ({
+      id: `item-${index}`,
+      sourceId: 'bing',
+      title: `Title ${index}`,
+      thumbUrl: `https://example.com/t${index}.jpg`,
+      imageUrl: `https://example.com/i${index}.jpg`,
+    }))
+    expect(sanitizeWallpaperFavorites(favorites)).toHaveLength(100)
+  })
+
+  it('drops a catalog without an https url', () => {
+    expect(sanitizeWallpaperSources([
+      { kind: 'catalog', name: 'Http', url: 'http://example.com/a.json' },
+      { kind: 'catalog', name: 'Missing' },
+    ])).toEqual([])
+  })
+
+  it('reuses a stable catalog id for the same URL', () => {
+    const row = { kind: 'catalog' as const, name: 'A', url: 'https://example.com/a.json' }
+    const first = sanitizeWallpaperSources([row])
+    const second = sanitizeWallpaperSources([row])
+    expect(first[0]?.id).toBe(second[0]?.id)
+    expect(first[0]?.id.startsWith('catalog-')).toBe(true)
+  })
+
+  it('returns an empty list when wallpaper sources are not an array', () => {
+    expect(sanitizeWallpaperSources(undefined)).toEqual([])
+    expect(sanitizeWallpaperSources({ kind: 'bing' })).toEqual([])
+  })
+
+  it('returns an empty list when wallpaper favorites are not an array', () => {
+    expect(sanitizeWallpaperFavorites(undefined)).toEqual([])
+    expect(sanitizeWallpaperFavorites({ id: 'x' })).toEqual([])
+  })
+
+  it('drops a catalog URL longer than 500 characters', () => {
+    const longUrl = `https://example.com/${'a'.repeat(480)}.json`
+    expect(longUrl.length).toBeGreaterThan(500)
+    expect(sanitizeWallpaperSources([
+      { kind: 'catalog', name: 'Long', url: longUrl },
+    ])).toEqual([])
+  })
+
+  it('drops a catalog with an invalid URL', () => {
+    expect(sanitizeWallpaperSources([
+      { kind: 'catalog', name: 'Broken', url: 'not-a-url' },
+    ])).toEqual([])
+  })
+
+  it('keeps the first of two catalogs with the same URL', () => {
+    expect(sanitizeWallpaperSources([
+      { kind: 'catalog', name: 'First', url: 'https://example.com/a.json' },
+      { kind: 'catalog', name: 'Second', url: 'https://example.com/a.json' },
+    ])).toEqual([
+      expect.objectContaining({ name: 'First', url: 'https://example.com/a.json' }),
+    ])
+  })
+
+  it('keeps an existing catalog-[0-9a-z]+ id', () => {
+    expect(sanitizeWallpaperSources([
+      {
+        id: 'catalog-abc123',
+        kind: 'catalog',
+        name: 'Mine',
+        url: 'https://example.com/a.json',
+      },
+    ])[0]?.id).toBe('catalog-abc123')
+  })
+
+  it('suffixes a generated catalog id when that id is already used', () => {
+    const url = 'https://b.example/catalog.json'
+    const occupied = sanitizeWallpaperSources([
+      { kind: 'catalog', name: 'Probe', url },
+    ])[0]!.id
+    const result = sanitizeWallpaperSources([
+      { kind: 'catalog', id: occupied, name: 'A', url: 'https://a.example/a.json' },
+      { kind: 'catalog', name: 'B', url },
+    ])
+    expect(result.map(source => source.id)).toEqual([occupied, `${occupied}-2`])
+    expect(result[1]).toMatchObject({ name: 'B', url })
+  })
+
+  it('names a catalog from its hostname when the name is missing', () => {
+    expect(sanitizeWallpaperSources([
+      { kind: 'catalog', url: 'https://gallery.example/feed.json' },
+    ])[0]).toMatchObject({
+      name: 'gallery.example',
+      url: 'https://gallery.example/feed.json',
     })
   })
 })

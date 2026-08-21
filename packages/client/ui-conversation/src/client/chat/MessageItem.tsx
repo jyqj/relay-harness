@@ -3,12 +3,13 @@
 // assistant answers), pending steering (copy only), context injection,
 // compaction marker, retry disclosure, and unknown-surface JSON rows.
 
-import { memo, useEffect, useMemo, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import type {
   ModelRetryNode, TurnErrorNode, UserMessageNode,
 } from '@deepseek-ai/dsh-client-runtime/client'
 import { JsonBlock, MessageText, StateDot } from '@deepseek-ai/dsh-client-ui-primitives'
+import type { PropsRenderSlots } from '@deepseek-ai/dsh-client-ui-slots'
 import type { ChatNodeOwnerProps, ChatNodeViewProps, ChatViewSlotProps } from '../contract/slots.ts'
 import { ReferenceIcon } from '../reference/ReferenceIcon.tsx'
 import { CompactionItem } from './CompactionItem.tsx'
@@ -277,10 +278,53 @@ export function PendingSteeringBubble({ content, renderMessageImages, t }: {
   )
 }
 
-/** User and admitted-steering keyed Chat renderer. */
+/** User keyed Chat renderer. */
 export const UserMessageNodeView = memo(function UserMessageNodeView({
+  node, renderMessageImages, renderSlot, t,
+}: ChatNodeViewProps<'user'> & PropsRenderSlots<'conversation.chat.user-actions' | 'conversation.chat.user-editor'>) {
+  const data = node.data
+  const [editing, setEditing] = useState(false)
+  const startEdit = useCallback(() => { setEditing(true) }, [])
+  const cancelEdit = useCallback(() => { setEditing(false) }, [])
+  if (editing) {
+    return renderSlot('conversation.chat.user-editor', {
+      seq: data.seq,
+      content: data.content,
+      cancelEdit,
+    })
+  }
+  const userActions = renderSlot('conversation.chat.user-actions', {
+    seq: data.seq,
+    content: data.content,
+    startEdit,
+  })
+  return (
+    <UserStyleBubble
+      content={data.content}
+      renderMessageImages={renderMessageImages}
+      {...data.referenceLabels === undefined ? {} : { referenceLabels: data.referenceLabels }}
+      t={t}
+      actions={text => (
+        <MessageIconActions
+          text={text}
+          time={data.time}
+          clock="start"
+          className={css.actions}
+          extraActions={userActions}
+          t={t}
+        />
+      )}
+    />
+  )
+})
+
+/**
+ * Admitted-steering keyed Chat renderer: same bubble chrome without the
+ * user-actions seat.
+ */
+export const SteeringMessageNodeView = memo(function SteeringMessageNodeView({
   node, renderMessageImages, t,
-}: ChatNodeViewProps<'user' | 'steering'>) {
+}: ChatNodeViewProps<'steering'>) {
   const data = node.data
   return (
     <UserStyleBubble
@@ -302,7 +346,11 @@ export const UserMessageNodeView = memo(function UserMessageNodeView({
 })
 
 /** Injected-context keyed Chat renderer. */
-export const ContextMessageNodeView = memo(function ContextMessageNodeView({ node, t }: ChatNodeViewProps<'context'>) {
+export const ContextMessageNodeView = memo(function ContextMessageNodeView({
+  node, t, useSessions, sessionId,
+}: ChatNodeViewProps<'context'>) {
+  const hide = useSessions(s => s.byId[sessionId]?.agentPreset === 'dshbot-room')
+  if (hide) return null
   const data = node.data
   return (
     <ContextInjectionRow

@@ -11,6 +11,7 @@ import type {} from '@deepseek-ai/dsh-fs'
 import type {} from '@deepseek-ai/dsh-system-prompt'
 import { buildWindow, formatReadOutput, langFromPath, readMetaFromMeta } from './read-render.ts'
 import { resolveRegularReadTarget } from './read-target.ts'
+import { fileResourceIntent } from './resource.ts'
 
 /** Default and maximum number of lines returned by one `read` call (the `readLimit` config). */
 export const READ_LIMIT = 2000
@@ -131,8 +132,10 @@ export function applyReadTool(ctx: Context, caps: ReadToolCaps): void {
         }
       },
     },
-    // Observation races fail closed because guarded mutations re-check the version in-lock.
-    isConcurrencySafe: () => true,
+    resourceIntents: async (args, exec) => {
+      const input = parseReadArgs(args, caps.limit)
+      return [await fileResourceIntent(ctx, exec, input.filePath, 'read')]
+    },
     async execute(args, exec) {
       const input = parseReadArgs(args, caps.limit)
       // One stat: absence observation OR type check + size routing + present version.

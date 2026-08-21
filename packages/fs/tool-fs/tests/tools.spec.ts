@@ -156,14 +156,39 @@ describe('registration', () => {
     expect(ctx.tools.schemas().map(s => s.name).sort()).toEqual(['edit', 'read', 'write'])
   })
 
-  it('declares read parallel-safe while write/edit remain exclusive', async () => {
+  it('declares read/write/edit parallel-capable under canonical resource locks', async () => {
     const { ctx } = await setup()
     expect(ctx.tools.executionMode({ signal: testToolSignal, callId: CallId('read-safe'), name: 'read', arguments: { file_path: 'a.txt' } }))
       .toEqual({ kind: 'parallel' })
-    expect(ctx.tools.executionMode({ signal: testToolSignal, callId: CallId('write-exclusive'), name: 'write', arguments: { file_path: 'a.txt', content: 'x' } }))
-      .toEqual({ kind: 'exclusive' })
-    expect(ctx.tools.executionMode({ signal: testToolSignal, callId: CallId('edit-exclusive'), name: 'edit', arguments: { file_path: 'a.txt', old_string: 'x', new_string: 'y' } }))
-      .toEqual({ kind: 'exclusive' })
+    expect(ctx.tools.executionMode({ signal: testToolSignal, callId: CallId('write-locked'), name: 'write', arguments: { file_path: 'a.txt', content: 'x' } }))
+      .toEqual({ kind: 'parallel' })
+    expect(ctx.tools.executionMode({ signal: testToolSignal, callId: CallId('edit-locked'), name: 'edit', arguments: { file_path: 'a.txt', old_string: 'x', new_string: 'y' } }))
+      .toEqual({ kind: 'parallel' })
+  })
+
+  it('serializes same-target read after write through the provider target key', async () => {
+    const { ctx, fs } = await setup()
+    fs.files.set('key:a.txt', 'before')
+    await call(ctx, 'read', { file_path: 'a.txt' })
+    const writeStarted = Promise.withResolvers<undefined>()
+    const releaseWrite = Promise.withResolvers<undefined>()
+    const writeText = fs.writeText.bind(fs)
+    vi.spyOn(fs, 'writeText').mockImplementation(async (...args) => {
+      writeStarted.resolve(undefined)
+      await releaseWrite.promise
+      return writeText(...args)
+    })
+    const writing = call(ctx, 'write', { file_path: 'a.txt', content: 'after' })
+    await writeStarted.promise
+    const readSpy = vi.spyOn(fs, 'readText')
+    const reading = call(ctx, 'read', { file_path: 'a.txt' })
+    await new Promise(resolve => setTimeout(resolve, 5))
+
+    expect(readSpy).not.toHaveBeenCalled()
+    releaseWrite.resolve(undefined)
+    await writing
+    const result = await reading
+    expect(text(result)).toContain('after')
   })
 
   it('registers prompt sections for each tool', async () => {

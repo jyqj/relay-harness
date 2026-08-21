@@ -3,7 +3,7 @@
 
 # Tool Execution Pipeline
 
-This graph shows where policy, hooks, sandboxing, filesystem guards, result rewriting, final-outcome observation, and UI rendering run without changing the loop. The `tools/pre-execute` waterfall runs first, monotonic guards run next, and the `tools/execute` and `tools/post-execute` waterfalls follow; the three waterfalls may transform a call. Definition-owned `finalizeContent` and `tools/result` run afterward.
+This graph shows where policy, hooks, sandboxing, resource coordination, filesystem guards, result rewriting, final-outcome observation, and UI rendering run without changing the loop. The `tools/pre-execute` waterfall and monotonic guards run first, `ToolDefinition.resourceIntents` resolves canonical claims, and the `tools/execute` and `tools/post-execute` waterfalls follow. Definition-owned `finalizeContent` and `tools/result` run afterward.
 
 ```mermaid
 flowchart TD
@@ -12,9 +12,11 @@ flowchart TD
   presentCall["UI pending card<br/>presentCall(args)"]
   pre["<code>tools/pre-execute</code> waterfall<br/>hooks, permission, sandbox"]
   guards["Registered monotonic guards<br/>deny or abstain; identity protected"]
+  resources["ToolDefinition.resourceIntents<br/>canonical read/write claims"]
   denied["denied or approval refused<br/>tool body skipped"]
   approval["<code>ctx.approval</code> one-shot prompt<br/>absent or unanswerable: deny"]
   around["<code>tools/execute</code> waterfall<br/>timeout, retry, metrics (around dispatch)"]
+  locks["Fair resource locks<br/>same-key conflicts serialize"]
   toolBody["Registered tool execute() body"]
   fsGate["<code>fs/write-intent</code> or <code>fs/edit-intent</code><br/>tool-fs mutations only"]
   owned["Tool-owned session events<br/><code>todo/write</code>, <code>fs/observed</code>, <code>hook/invoked</code>, <code>hook/result</code>, <code>tool/code-dispatch</code>"]
@@ -30,10 +32,13 @@ flowchart TD
   toolCall --> presentCall
   toolCall --> pre
   pre -->|allow| guards
-  guards -->|allow| around
+  guards -->|allow| resources
   guards -->|deny| denied
   guards -.->|throw| normalized
-  around --> toolBody
+  resources --> around
+  resources -.->|throw| post
+  around --> locks
+  locks --> toolBody
   pre -->|deny| denied
   pre -->|ask| approval
   approval -->|allowed-once| guards
@@ -57,6 +62,6 @@ flowchart TD
   allResults --> context
 ```
 
-Filesystem read-before-edit checks stay below `tool-fs` on `fs/*` events. Generic pre/post waterfalls host hooks and approval policy; `ctx.approval` resolves asks before monotonic guards, and owner policy that must not be reordered remains a registered guard. Around-dispatch concerns such as timeouts wrap `tools/execute`. The registry losslessly snapshots the candidate result and normalizes a snapshot failure before the visible definition's snapshotted `finalizeContent` callback enforces its synchronous content-only invariant. `tools/result` then observes the immutable, lossless-JSON outcome. This lets hooks span tool families without coupling the tools to one policy service. Code Mode sends both the reserved `run_code` transport and its serialized sub-calls through the pipeline; sub-calls carry the parent token, log `tool/code-dispatch`, return denials as binding rejections, and omit `additionalContexts` to preserve call/result adjacency.
+Filesystem read-before-edit checks stay below `tool-fs` on `fs/*` events. Generic pre/post waterfalls host hooks and approval policy; `ctx.approval` resolves asks before monotonic guards, and owner policy that must not be reordered remains a registered guard. Resource resolvers perform identity lookup after policy; acquisition occurs inside the overlapping dispatch stage immediately before the body, so a blocked key does not occupy the ordered prepare lane. Around-dispatch concerns such as timeouts wrap both lock waiting and the body through `tools/execute`. The registry losslessly snapshots the candidate result and normalizes a snapshot failure before the visible definition's snapshotted `finalizeContent` callback enforces its synchronous content-only invariant. `tools/result` then observes the immutable, lossless-JSON outcome. Code Mode sends both the reserved `run_code` transport and its sub-calls through the same snapshot, locks, and pipeline.
 
 Maintenance mode: curated Mermaid flow; exact tool schemas and event signatures live in generated catalogs.

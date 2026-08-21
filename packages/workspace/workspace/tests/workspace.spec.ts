@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { mkdir, mkdtemp, realpath, rm, symlink, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, realpath, rm, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { basename, join } from 'node:path'
 import { Context } from '@deepseek-ai/cordis'
@@ -845,6 +845,17 @@ describe('header-validated membership projection', () => {
 })
 
 describe('workspace mutation and status', () => {
+  it('exposes checkpoint and rewind through the public Workspace entity', async () => {
+    const dir = await makeDir('entity-checkpoint')
+    const result = await harness()
+    const workspace = await result.registry.create(dir)
+    await writeFile(join(dir, 'file.txt'), 'before')
+    const checkpoint = await workspace.checkpoint(['file.txt'])
+    await writeFile(join(dir, 'file.txt'), 'after')
+    await workspace.rewind(checkpoint.id)
+    expect(await readFile(join(dir, 'file.txt'), 'utf8')).toBe('before')
+  })
+
   it('keeps createdAt stable, advances updatedAt, and preserves snapshot on write failure', async () => {
     const dir = await makeDir('timestamps')
     const result = await harness()

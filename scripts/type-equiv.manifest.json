@@ -717,6 +717,11 @@
     },
     {
       "doc": "docs/subsystems/tools.md",
+      "symbol": "ToolResourceIntent",
+      "source": "packages/core/tools/src/index.ts"
+    },
+    {
+      "doc": "docs/subsystems/tools.md",
       "symbol": "ToolDefinition",
       "source": "packages/core/tools/src/index.ts"
     },
@@ -1733,6 +1738,16 @@
     {
       "doc": "docs/subsystems/workspace.md",
       "symbol": "WorkspaceId",
+      "source": "packages/workspace/workspace/src/types.ts"
+    },
+    {
+      "doc": "docs/subsystems/workspace.md",
+      "symbol": "WorkspaceCheckpointId",
+      "source": "packages/workspace/workspace/src/types.ts"
+    },
+    {
+      "doc": "docs/subsystems/workspace.md",
+      "symbol": "WorkspaceCheckpoint",
       "source": "packages/workspace/workspace/src/types.ts"
     },
     {

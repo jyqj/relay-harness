@@ -13,10 +13,17 @@ import type { ObservableSnapshot } from './store.ts'
 /** Session-list row facts sibling domains read: recency, blank-reuse eligibility, and its cwd canon. */
 export interface SessionsPortSummary {
   id: SessionId
-  /** Empty-log bit (blank sessions are reused by New Session instead of minting another). */
+  /**
+   * Empty-log bit. New Session reuses a blank coding session targeting the
+   * same workspace. `origin: 'dshbot'` and `origin: 'subagent'` rows stay
+   * ineligible even while blank: they are contacts or hidden children, not
+   * New Session drafts.
+   */
   blank: boolean
   cwd?: string
   updatedAt: number
+  /** Coarse durable origin; absent on ordinary coding sessions. */
+  origin?: 'subagent' | 'dshbot'
 }
 
 /** Session-list facts sibling domains read: readiness, selection, and the row map. */
@@ -33,10 +40,11 @@ export interface SessionsPort {
   readonly list: ObservableSnapshot<SessionsPortList>
   /**
    * Create a session on the host.
-   * @param opts - target workspace.
+   * @param opts - target workspace, or an explicit cwd for a Session that
+   *   is not a Workspace member.
    * @returns the new session id.
    */
-  create(opts: { workspaceId: WorkspaceId }): Promise<SessionId>
+  create(opts: { workspaceId: WorkspaceId } | { cwd: string }): Promise<SessionId>
   /**
    * Select a session as current.
    * @param id - session id (must exist in the list store).

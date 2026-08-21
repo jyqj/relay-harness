@@ -7,7 +7,7 @@
 import type { MessageId } from '@deepseek-ai/dsh-llm/brand'
 import type { AttachmentIdType, ImageAttachmentLimits, ImageAttachmentRef, ImageMediaType } from '@deepseek-ai/dsh-attachment'
 import type { ContentBlock } from '@deepseek-ai/dsh-llm/types'
-import type { SessionEvent, SessionId } from '@deepseek-ai/dsh-session/types'
+import type { SessionEvent, SessionId, SessionOrigin } from '@deepseek-ai/dsh-session/types'
 // The pure-type outlet: api/ is browser-importable, and the package root's
 // cordis Context merge (via dsh-agent) must not enter client aggregates.
 import type { SessionProjectionMap } from '@deepseek-ai/dsh-session-projection/types'
@@ -124,6 +124,11 @@ export interface ModelCatalogModel {
   name: string
   /** Optional provider-supplied description. */
   description?: string
+  /**
+   * Request modalities the adapter advertised for this listing (`text`, `image`).
+   * Omitted when the listing did not declare any.
+   */
+  inputModalities?: readonly ('text' | 'image')[]
   /** Exact-route reasoning metadata when the adapter exposes it. */
   reasoning?: ModelReasoning
 }
@@ -197,7 +202,7 @@ export interface SessionSummary {
   /** fork/spawn lineage (session.header.parentSession passthrough); absent for root sessions. */
   parentSessionId?: SessionId
   /** Coarse durable origin used by navigation surfaces; never proves resumability. */
-  origin?: 'subagent'
+  origin?: SessionOrigin
   /** Session working directory (header.cwd passthrough); absent when unrecorded. */
   cwd?: string
   /**
@@ -257,8 +262,18 @@ export interface SessionsApi {
    * the session header, so a later resume rebuilds the same agent. An unknown
    * id fails with `agent-preset-not-found`, and a preset whose composition
    * cannot be mounted fails with `agent-preset-invalid`.
+   *
+   * `origin: 'dshbot'` stamps a desktop-plugin contact or room parent so the
+   * workspace browser hides the row. Ordinary sessions omit it. Callers cannot
+   * stamp `subagent`; that origin is owned by subagent start.
    */
-  create(request: RpcRequest<{ workspaceId?: WorkspaceId; cwd?: string; sessionId?: SessionId; agentPreset?: string }>):
+  create(request: RpcRequest<{
+    workspaceId?: WorkspaceId
+    cwd?: string
+    sessionId?: SessionId
+    agentPreset?: string
+    origin?: 'dshbot'
+  }>):
   Promise<RpcResponse<{ sessionId: SessionId; agentPreset?: string }>>
 
   /**
@@ -292,12 +307,15 @@ export interface SessionsApi {
    * Selects the complete model selection for this session. Exact model metadata
    * validates an optional reasoning effort, while catalog membership remains
    * advisory. Session-backed subagents reject with `agent-busy`.
+   * `persistDefault` defaults to true and writes the accepted selection as the
+   * user's default; pass false to keep the switch on this session only.
    */
   selectModel(request: RpcRequest<{
     sessionId: SessionId
     provider: string
     model: string
     reasoningEffort?: string
+    persistDefault?: boolean
   }>):
   Promise<RpcResponse<{ selected: ModelSelection }>>
 
@@ -321,21 +339,34 @@ export interface SessionsApi {
    * RPC error with code command-error; an unrecognized name is an RPC error with code unknown-command.
    */
   /**
-   * Forks a new session from a completed-turn prefix of the source. `atSeq`
-   * anchors the cut: the boundary is the first `turn/end` at or after it
+   * Forks a new session from a prefix of the source. `atSeq` anchors a
+   * completed-turn cut: the boundary is the first `turn/end` at or after it
    * (a message's fork button passes the message seq, so the fork includes
    * that whole turn); a boundary past the log end, or an omitted `atSeq`,
    * falls back to the source's last completed turn. An in-log anchor whose
    * turn is still open fails with `fork-unavailable` instead of clipping to
-   * an earlier turn. The child inherits the source cwd, latest logged model
-   * target and `parentSessionId` lineage; the seed prefix carries the source
-   * title. Reading the source uses attached state or persistence inspection
-   * without acquiring an Agent. Workspace attachment follows the source
-   * directly, or the nearest workspace-owning ancestor when the source is a
-   * subagent.
+   * an earlier turn.
+   *
+   * `beforeSeq` is the mutually exclusive complement: it cuts BEFORE the
+   * `turn/start` of the turn containing the anchored event, so that turn is
+   * excluded whole and may still be open. An anchor before the first
+   * `turn/start` forks an empty (blank) child; an anchor that is not an
+   * in-log contiguous seq, or that names a between-turn out-of-band event
+   * no turn owns, fails with `fork-unavailable`. Supplying both anchors
+   * together is rejected by the wire schema (bad-request).
+   *
+   * The child inherits the source cwd, latest logged model target and
+   * `parentSessionId` lineage; the seed prefix carries the source title.
+   * `blank` reports whether the seed contains no `turn/start` (an empty
+   * beforeSeq cut). Reading the source uses attached state or persistence
+   * inspection without acquiring an Agent. Workspace attachment follows the
+   * source directly, or the nearest workspace-owning ancestor when the
+   * source is a subagent; a failed attachment returns
+   * `workspace-attach-failed` with the already-published child id and its
+   * `blank` bit.
    */
-  fork(request: RpcRequest<{ sessionId: SessionId; atSeq?: number }>):
-  Promise<RpcResponse<{ sessionId: SessionId }>>
+  fork(request: RpcRequest<{ sessionId: SessionId; atSeq?: number; beforeSeq?: number }>):
+  Promise<RpcResponse<{ sessionId: SessionId; blank: boolean }>>
 
   /**
    * Sends text and temporary image bytes to an ordinary session Agent after durable host admission.

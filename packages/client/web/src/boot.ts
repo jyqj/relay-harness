@@ -14,6 +14,7 @@ import { BootPage } from './boot-page.ts'
 import { getStaticModules } from './seed.ts'
 import { STATE_LABELS } from './loader-status.ts'
 import './base.css'
+import '@xterm/xterm/css/xterm.css'
 
 /** Module transport hook replaced by jsdom tests. */
 export type BootSeams = Pick<ClientModuleCreateOptions, 'loadBundle'>
@@ -44,6 +45,14 @@ export class AppWebEntry {
    * @returns Resolves after application mount or failure rendering.
    */
   async run(): Promise<void> {
+    // __DSH_BOOT_GATE__ holds the connection stream loop until every client
+    // factory is registered (cross-package synchronous require edges need the
+    // full immediately tier before any materialization); it releases even
+    // when the sweep fails so the failure stays observable.
+    let releaseBootGate = (): void => {}
+    ;(globalThis as DshWindow).__DSH_BOOT_GATE__ = new Promise<void>((resolve) => {
+      releaseBootGate = resolve
+    })
     try {
       const win = globalThis as DshWindow
       const moduleLoader = win.__ModuleLoader__
@@ -55,6 +64,8 @@ export class AppWebEntry {
         staticModules: getStaticModules(),
         ...this.seams,
       })
+      // Desktop shell probe handle (see DshWindow.__DSH_MODULES__).
+      ;(globalThis as DshWindow).__DSH_MODULES__ = this.modules
       this.manifest = this.modules.manifest
 
       const prefetching = this.prefetchImmediateTier()
@@ -65,6 +76,8 @@ export class AppWebEntry {
     } catch (reason) {
       console.error(reason)
       this.page.fail(reason instanceof Error ? reason.message : String(reason))
+    } finally {
+      releaseBootGate()
     }
   }
 

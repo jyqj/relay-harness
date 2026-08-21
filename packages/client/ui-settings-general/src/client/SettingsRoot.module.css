@@ -4,7 +4,33 @@
    panel is a two-column layout — 188px nav rail + content column with a
    54px header and the 24px-padded options area. */
 
-/* Trigger row: the 42px foot-row box shared with the Cordis footer action. */
+/* Trigger + update-entry row: the trigger keeps its full-width rhythm and the
+   green update badge (when a newer release exists) docks at its right edge. */
+.triggerRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Rail: stack the circle controls, update badge above the settings circle. */
+.triggerRowRail {
+  flex-direction: column-reverse;
+  align-items: center;
+}
+
+.triggerRow .trigger {
+  flex: 1 1 auto;
+  min-width: 0;
+  width: auto;
+  margin-right: 0;
+}
+
+.triggerRowRail .trigger {
+  flex: none;
+  width: 36px;
+}
+
+/* Trigger row: match the other wide sidebar controls' compact vertical rhythm. */
 .trigger {
   flex: none;
   display: flex;
@@ -50,6 +76,7 @@
    Modal primitive (--dsw-alias-bg-mask-1 + --dsw-mask-blur). */
 .overlay {
   position: fixed;
+  -webkit-app-region: no-drag;
   inset: 0;
   z-index: 1000;
   display: flex;
@@ -79,7 +106,7 @@
   max-width: calc(100vw - 48px);
   border-radius: 24px;
   overflow: hidden;
-  background: var(--dsw-alias-bg-layer-2);
+  background: color-mix(in srgb, var(--dsw-alias-bg-layer-2) var(--dsw-alias-glass-opacity, 80%), transparent);
   box-shadow: var(--dsw-shadow-lv3);
   /* Elevated surface: the scrollbar thumb takes the l2 elevation tokens.
      Declared on the panel rather than the scrolling `.options` child so the
@@ -144,7 +171,7 @@
 }
 
 .navCell.active {
-  background: var(--dsw-specific-sidebar-nav-item-active);
+  background: var(--dsw-specific-sidebar-nav-item-active-accent);
 }
 
 .navIcon {
@@ -205,6 +232,37 @@
 
 .close:hover {
   background: var(--dsw-alias-interactive-bg-hover);
+}
+
+@media (max-width: 767px) {
+  .panel {
+    width: 100%;
+    height: 100%;
+    max-width: none;
+    border-radius: 0;
+    flex-direction: column;
+  }
+
+  .nav {
+    width: 100%;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    padding: max(12px, env(safe-area-inset-top, 0px)) 12px 0;
+    overflow-x: auto;
+  }
+
+  .navList {
+    flex-direction: row;
+  }
+
+  .content {
+    min-height: 0;
+  }
+
+  .options {
+    padding-bottom: max(24px, env(safe-area-inset-bottom, 0px));
+  }
 }
 
 /* Options area (figma Options 501:29983): pad (24,0,24,24), scrolls. */

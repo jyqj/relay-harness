@@ -44,6 +44,12 @@ export interface DshBundleManifest {
   patch: string
 }
 
+/** The compatibility half of the `dsh` manifest section: what host features a package requires. */
+export interface DshCompatibilityManifest {
+  /** Host feature ids this package requires; the host refuses to activate it without all of them. */
+  features?: string[]
+}
+
 /** The profile half of the `dsh` manifest section: what a profile directory composes. */
 export interface DshProfileManifest {
   /** Ordered bundle layer list (package names). */
@@ -59,6 +65,8 @@ export interface DshManifestSection {
   bundle?: DshBundleManifest
   /** Profile metadata consumed by the profile launcher. */
   profile?: DshProfileManifest
+  /** Host-feature requirements consumed by the install and boot gates. */
+  compatibility?: DshCompatibilityManifest
 }
 
 /** The slice of package.json both profiles and bundles use. */
@@ -370,7 +378,7 @@ export function resolveBundleDir(
  */
 export function loadProfile(
   binName: string, name: string, installAnchor: string, home: string = resolveDshHome(),
-  options: { userLayer?: boolean } = {},
+  options: { userLayer?: boolean; bundles?: 'manifest' | 'template' } = {},
 ): Profile {
   const dir = resolveProfileDir(name, home)
   if (!existsSync(join(dir, 'package.json'))) {
@@ -382,9 +390,14 @@ export function loadProfile(
     }
     initProfile(dir, template)
   }
-  const manifest = normalizeShippedProfile(name, dir, readProfileManifest(binName, dir))
+  const recorded = readProfileManifest(binName, dir)
+  const manifest = options.bundles === 'template'
+    ? recorded
+    : normalizeShippedProfile(name, dir, recorded)
   // A hand-written profile manifest may omit the dsh section entirely.
-  const bundles = manifest.dsh?.profile?.bundles ?? []
+  const bundles = options.bundles === 'template'
+    ? [...(PROFILE_TEMPLATES[name] ?? DEFAULT_PROFILE_BUNDLES)]
+    : (manifest.dsh?.profile?.bundles ?? [])
   const layers = bundles.map((packageName): ProfileLayer => {
     const packageDir = resolveBundleDir(binName, packageName, installAnchor, dir)
     const bundleManifest = JSON.parse(readFileSync(join(packageDir, 'package.json'), 'utf8')) as ProfileManifest

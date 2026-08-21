@@ -17,6 +17,8 @@ DeepSeek Harness 的 Workspace 实体注册表（`ctx.workspaceRegistry`）：�
 - `ctx.workspaceRegistry.archiveSession(id)`/`archivedSessionIds`：覆盖在 workspace 记账之上的注册表级全局归档集合：被归档的会话从各分组视图中消失，但其会话日志和 `sessionIds` 席位保持不变，未来取消归档时可恢复原位置。归档接受任何实时或已持久化的会话（无论已记账还是 Ungrouped），对已归档的 id 直接完成而不写入，并拒绝未知 id。在该字段出现之前写入的状态解析为一个空集合。
 - `Workspace.sessionIds`：按持久候选顺序提供同步 id 加规范 cwd 成员投影。缺失头部、无效 cwd 值和不匹配情况都被过滤；下一次 workspace 变更会剪除它们。如果同一存储介质将一个会话索引到两个 workspace 下、用两条记录声明同一路径，或偏离持久 workspace 顺序，启动会被拒绝。
 - `Workspace.status()`：未缓存的目录检查，返回 `'ok' | 'missing-dir'`；目录缺失绝不会改动记录。
+- `Workspace.checkpoint(paths)`：把显式选中的 workspace-relative 普通文件与确认缺失状态快照到 owner-only、gitignored 的 `.dsh/rewind-checkpoints` storage。路径会排序并去重；escape、symlink、目录、超过 4096 个路径和超过 64 MiB 都会拒绝。
+- `Workspace.rewind(checkpointId)`：预检 checkpoint 的每个路径，以事务方式恢复 bytes／mode 或缺失状态，在后续写入失败时回滚已应用 sibling，然后移除所选 checkpoint 与更新的本地 checkpoint。它绝不会自动回滚对话历史。
 
 `storageDomain` 和 `sessionPersistence` 是启动必需依赖。任一依赖服务不可用时，插件保持待处理，且不能提交空的已初始化标记。首次成功启动时，注册表调用 `SessionPersistence.list()`，仅使用头部 `id`、`cwd` 和 `createdAt` 对有效历史目录分组并持久化初始顺序；它绝不读取事件正文。已初始化标记最后写入，因此重启后可安全复用引导初始化期间的部分写入。后续仅能通过 cwd 识别的会话仍属于 Ungrouped。
 
@@ -28,7 +30,7 @@ DeepSeek Harness 的 Workspace 实体注册表（`ctx.workspaceRegistry`）：�
 
 #### 模型看到的内容
 
-没有。`ctx.workspaceRegistry` 只向宿主侧消费方提供 workspace 记录：此包不注册工具、不注入提示词、不写入会话事件，因此没有请求字段会携带此包数据。
+没有。`ctx.workspaceRegistry` 只向宿主侧消费方提供 workspace 记录与显式 checkpoint 操作：此包不注册工具、不注入提示词、不写入会话事件，因此没有请求字段会携带此包数据。
 
 #### Token 影响
 
@@ -42,3 +44,4 @@ DeepSeek Harness 的 Workspace 实体注册表（`ctx.workspaceRegistry`）：�
 
 - 会话删除与破坏性的文件夹移除是彼此独立且尚未提供的功能；删除 Workspace 注册记录绝不能替代二者（参见[决策记录](../../../.agents/notes/implemented/feature/2026-07-27-workspace-registration-deletion.md)）。
 - 头部索引会在启动时刷新，也会在 attach 必须解析未缓存持久 id 时刷新；另一进程执行的删除或造成的 cwd 损坏会在下次刷新或重启后被发现。
+- 文件系统 checkpoint 是本地单进程 artifact，不是 storage-domain record。它只 snapshot 显式命名的普通文件或缺失状态；目录树、symlink、对话 rewind、跨进程 lease，以及外部写入到 checkpoint fsync 这一 crash window 的 exactly-once 恢复均不存在。

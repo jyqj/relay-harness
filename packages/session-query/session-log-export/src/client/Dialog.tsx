@@ -1,29 +1,36 @@
-import type { ObservableSnapshot, SessionId } from '@deepseek-ai/dsh-client-runtime/client'
+import type { ObservableSnapshot, SessionId, SnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
 import { Button, Modal } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import type { SessionLogDownloadState } from './controller.ts'
 import { NS } from './locales.ts'
 
-/** Browser operations and state injected into the Session Header contribution. */
+/** Browser operations and state injected into the titlebar trailing contribution. */
 export interface SessionLogDownloadDialogInjected {
-  hooks: { sessionLogDownload: ObservableSnapshot<SessionLogDownloadState> }
+  hooks: {
+    sessionLogDownload: ObservableSnapshot<SessionLogDownloadState>
+    /** Persisted titlebar Session-log visibility bound as useTitlebarAction. */
+    titlebarAction: SnapshotStore<boolean>
+  }
   request: (sessionId: SessionId) => Promise<void>
   dismiss: (sessionId: SessionId) => void
 }
 
 export type SessionLogDownloadDialogProps =
-  PropsRuntime<'conversation.session.header.utilities'>
+  PropsRuntime<'shell.titlebar.trailing'>
   & PropsLocale<typeof NS>
   & InjectFace<SessionLogDownloadDialogInjected>
 
+/** Resolved session id plus the titlebar trailing runtime seats. */
+export type SessionLogDownloadDialogRenderProps = SessionLogDownloadDialogProps & { sessionId: SessionId }
+
 /**
- * Modal shared by the Session Header button and this browser's `/export` command.
- * @param props - Session runtime, bound controller state, actions, and localized copy.
+ * Modal shared by the titlebar Session log button and this browser's `/export` command.
+ * @param props - Current session, bound controller state, actions, and localized copy.
  * @returns the modal portal contribution.
  */
 export function SessionLogDownloadDialog({
   sessionId, useSessionLogDownload, dismiss, t,
-}: SessionLogDownloadDialogProps) {
+}: SessionLogDownloadDialogRenderProps) {
   const entry = useSessionLogDownload(state => state.bySession[String(sessionId)])
 
   const status = entry?.status

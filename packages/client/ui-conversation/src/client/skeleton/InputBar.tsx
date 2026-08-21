@@ -2,9 +2,9 @@
  * Machine state arrives through the standard provide channel
  * (useInput + inputActions); the keyboard/DOM command face and stop arrive
  * through this entry's own inject, whose hooks compartment binds
- * useNotices/useLexicon; layout-phase inputs (variant, placeholder,
- * region-slot content) ride the owner props. Session facts
- * (running/removed/promptError) are self-selected via useSession. */
+ * useNotices/useLexicon/useComposerBeam/useComposerResize; layout-phase inputs
+ * (variant, placeholder, region-slot content) ride the owner props. Session
+ * facts (running/removed/promptError) are self-selected via useSession. */
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { ChangeEvent, KeyboardEvent, MouseEvent, ReactNode } from 'react'
@@ -29,17 +29,22 @@ import { ReferenceIcon } from '../reference/ReferenceIcon.tsx'
 import { ContextMeter } from './ContextMeter.tsx'
 import { PermissionSelect } from './PermissionSelect.tsx'
 import { isSafariBrowser, repairSafariTextareaLayout } from './safari.ts'
+import { ComposerResizeHandles, useComposerResizeDrag } from './ComposerResizeHandles.tsx'
 import css from './InputBar.module.css'
 
 /** Decoration product of the no-session state (no machine, empty draft). */
 const INERT_DECORATIONS: DraftDecorations = { token: null, chips: [], textRefs: [], hint: null }
 
+/** File-tree drag payload; kept local so this plugin does not import ui-files. */
+const COMPOSER_MENTION_DRAG_TYPE = 'application/x-dshd-composer-mention'
+
 export type InputBarProps = ComposerBarProps
 
 export function InputBar({
-  useSession, useInput, inputActions, keyboard, addImages, removeImage, draftImages,
+  useSession, useSessions, useInput, inputActions, keyboard, addImages, removeImage, draftImages,
   resolveSubmitMode, toggleCommandMenu, stop, command, t,
-  renderSlot, useNotices, useLexicon, useMenuLauncher,
+  renderSlot, useNotices, useLexicon, useMenuLauncher, useComposerBeam, useComposerResize,
+  useComposerResizeHeight, useComposerResizeWidth, setComposerResizeSize,
   useProjection, sessionId, variant, disabled: inert = false, blocked,
   workspacePickerOpen = false, onRequestWorkspace,
   placeholder, accessory, overlay, leftItems, rightItems, footer,
@@ -48,10 +53,17 @@ export function InputBar({
   const notice = useNotices(s => s)
   const lexicon = useLexicon(s => s)
   const commandMenuOpen = useMenuLauncher(source => source === 'command')
+  const composerBeam = useComposerBeam(value => value)
+  const composerResize = useComposerResize(value => value)
+  const composerResizeHeight = useComposerResizeHeight(value => value)
+  const composerResizeWidth = useComposerResizeWidth(value => value)
   const promptError = useSession(s => s.promptError) ?? null
   const running = useSession(s => s.running) ?? false
   const subagent = useSession(s => s.subagent) ?? null
   const removed = useSession(s => s.removed) ?? false
+  const sessionRow = useSessions(s => (sessionId === undefined ? undefined : s.byId[sessionId]))
+  const hideModelSeat = sessionRow?.origin === 'dshbot' || sessionRow?.agentPreset === 'dshbot-room'
+  const hideRoomChrome = sessionRow?.agentPreset === 'dshbot-room'
   // Plan mode swaps the textarea placeholder (the projection is the folded
   // host value; owner-prop placeholders — hero, session-unavailable — win).
   const planActive = useProjection('plan', plan => plan !== undefined && (plan.pending ? !plan.active : plan.active))
@@ -98,6 +110,14 @@ export function InputBar({
   const inputRef = useRef<HTMLTextAreaElement | null>(null)
   const cardRef = useRef<HTMLDivElement | null>(null)
   const scrollRef = useRef<HTMLDivElement | null>(null)
+  const { onResizePointerDown, onResizePointerMove, onResizePointerUp }
+    = useComposerResizeDrag(
+      composerResize,
+      cardRef,
+      scrollRef,
+      { height: composerResizeHeight, width: composerResizeWidth },
+      setComposerResizeSize,
+    )
   const mirrorRef = useRef<HTMLDivElement | null>(null)
   const safari = useMemo(() => isSafariBrowser(navigator), [])
   const safariNativeShrinkRef = useRef(false)
@@ -139,6 +159,9 @@ export function InputBar({
   // and keyboard users can reach the recovery action.
   const workspaceTrigger = inert && !removed && onRequestWorkspace !== undefined
   const textareaDisabled = removed || (locked && !workspaceTrigger)
+  // Traveling border beam while a turn is in flight: send, think, and stream.
+  const beamLive = !workspaceTrigger && (machineBusy || running)
+  const showBeam = beamLive && composerBeam
   const canSteerQueue = !locked && !machineBusy && !commandMenuOpen && empty && running && subagent === null
     && input.queue.some(row => row.placement === 'queued')
 
@@ -375,7 +398,8 @@ export function InputBar({
     keyboard.setDraft(next)
     // selectionStart is number|null in lib.dom; the type-aware lint program narrows it.
     // oxlint-disable-next-line typescript/no-unnecessary-condition
-    keyboard.track(next, e.target.selectionStart ?? next.length)
+    const caret = e.target.selectionStart ?? next.length
+    keyboard.track(next, caret)
   }
 
   const onCopyOrCut = (e: React.ClipboardEvent<HTMLTextAreaElement>, cut: boolean): void => {
@@ -465,6 +489,32 @@ export function InputBar({
   }, [addImages, attachments, imageLimits, showToast, t])
 
   const canAcceptDrop = !locked && !machineBusy && addImages !== undefined
+
+  // File-image drops live on `conversation.input.attachments`. Mention payloads
+  // (`application/x-dshd-composer-mention`) are claimed here so a file-tree
+  // drag inserts into the draft instead of falling through as native text.
+  useEffect(() => {
+    const hasMention = (event: globalThis.DragEvent): boolean =>
+      event.dataTransfer?.types.includes(COMPOSER_MENTION_DRAG_TYPE) ?? false
+    const onDragOver = (event: globalThis.DragEvent): void => {
+      if (!hasMention(event)) return
+      event.preventDefault()
+    }
+    const onDrop = (event: globalThis.DragEvent): void => {
+      if (!hasMention(event)) return
+      event.preventDefault()
+      const mention = event.dataTransfer?.getData(COMPOSER_MENTION_DRAG_TYPE) ?? ''
+      if (mention.length === 0 || keyboard === undefined) return
+      const current = keyboard.snapshot.draft
+      keyboard.setDraft(current.length === 0 ? mention : `${current} ${mention}`)
+    }
+    document.addEventListener('dragover', onDragOver)
+    document.addEventListener('drop', onDrop)
+    return () => {
+      document.removeEventListener('dragover', onDragOver)
+      document.removeEventListener('drop', onDrop)
+    }
+  }, [keyboard])
 
   const onSelect = (e: React.SyntheticEvent<HTMLTextAreaElement>): void => {
     // Any caret/selection gesture ends a live paste attempt (the machine
@@ -625,12 +675,32 @@ export function InputBar({
           click's reopen (close-then-open flickers the chip's open echo). */}
       <div
         ref={cardRef}
-        className={clsx(css.card, workspaceTrigger && css.cardWorkspaceTrigger)}
+        className={clsx(
+          css.card,
+          workspaceTrigger && css.cardWorkspaceTrigger,
+          showBeam && css.cardBeam,
+        )}
         data-composer-card
+        data-beam={showBeam || undefined}
         onClick={workspaceTrigger ? onRequestWorkspace : undefined}
         onPointerDown={workspaceTrigger ? (e) => { e.stopPropagation() } : undefined}
       >
-        {overlay !== undefined && <div className={css.overlayAnchor}>{overlay}</div>}
+        {composerResize && !workspaceTrigger && (
+          <ComposerResizeHandles
+            t={t}
+            onPointerDown={onResizePointerDown}
+            onPointerMove={onResizePointerMove}
+            onPointerUp={onResizePointerUp}
+          />
+        )}
+        <span className={css.beamInner} aria-hidden />
+        <span className={css.beamStroke} aria-hidden />
+        <span className={css.beamBloom} aria-hidden />
+        {(overlay !== undefined) && (
+          <div className={css.overlayAnchor}>
+            {overlay}
+          </div>
+        )}
         {accessory !== undefined && <div className={css.accessory}>{accessory}</div>}
         {renderSlot('conversation.input.attachments', {
           attachments,
@@ -694,30 +764,32 @@ export function InputBar({
         </div>
         <div className={css.row}>
           <div className={css.tools}>
-            <Tooltip label={t('input.commands')} side="top" delayMs={500}>
-              <button
-                type="button"
-                className={css.add}
-                aria-label={t('input.commands')}
-                aria-haspopup="listbox"
-                aria-expanded={commandMenuOpen}
-                disabled={locked || toggleCommandMenu === undefined}
-                onMouseDown={keepFocus}
-                onClick={onToggleCommandMenu}
-              >
-                <IconPlusOutline16 size={14} />
-              </button>
-            </Tooltip>
+            {!hideRoomChrome && (
+              <Tooltip label={t('input.commands')} side="top" delayMs={500}>
+                <button
+                  type="button"
+                  className={css.add}
+                  aria-label={t('input.commands')}
+                  aria-haspopup="listbox"
+                  aria-expanded={commandMenuOpen}
+                  disabled={locked || toggleCommandMenu === undefined}
+                  onMouseDown={keepFocus}
+                  onClick={onToggleCommandMenu}
+                >
+                  <IconPlusOutline16 size={14} />
+                </button>
+              </Tooltip>
+            )}
             <div className={css.modes}>
               {accessSelect}
-              {renderSlot('conversation.input.plan', { locked })}
+              {!hideRoomChrome && renderSlot('conversation.input.plan', { locked })}
             </div>
             {leftItems}
           </div>
           <div className={css.trailing}>
             {rightItems}
-            {renderSlot('conversation.input.model', { locked: modelSeatLocked })}
-            <ContextMeter useProjection={useProjection} t={t} />
+            {!hideModelSeat && renderSlot('conversation.input.model', { locked: modelSeatLocked })}
+            {!hideRoomChrome && <ContextMeter useProjection={useProjection} t={t} />}
             {interruptible && (
               <Tooltip label={t('input.stop')} side="top" delayMs={500}>
                 <button

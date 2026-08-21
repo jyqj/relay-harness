@@ -37,6 +37,8 @@ interface DiscoveredInstructionFile extends InstructionFile {
   target?: FsTarget
   size?: number
   version?: FsVersion
+  /** Root-chain precedence; larger values are more specific, user-global is -1. */
+  priority: number
 }
 
 /** Provider metadata for a probed scope candidate before its content is read. */
@@ -59,13 +61,14 @@ interface DiscoverOptions {
 interface LoadOptions extends DiscoverOptions {
   maxBytes: number
   maxSourceBytes?: number
+  maxTotalSourceBytes?: number
   replacePreviousBaseline?: boolean
 }
 
 /** Rendered baseline plus the successfully read and byte-budget-retained files. */
 export interface RenderedInstructionSet {
   rendered: RenderedWorkspaceContext
-  /** Successfully read candidates before content deduplication and byte budgeting. */
+  /** Successfully read candidates under the source budget, before content deduplication and render budgeting. */
   observed: LoadedInstructionFile[]
   /** Candidates retained by content deduplication and byte budgeting. */
   included: LoadedInstructionFile[]
@@ -86,6 +89,33 @@ type StatFileProbe =
   | { kind: 'present'; info: StatFileInfo }
   | { kind: 'absent' }
   | { kind: 'unavailable' }
+
+type RootMarkerProbe =
+  | { kind: 'present' }
+  | { kind: 'absent' }
+  | { kind: 'unavailable'; cause: unknown }
+
+/** A configured project-root marker could not be classified as present or absent. */
+export class ProjectRootMarkerUnavailableError extends Error {
+  constructor(readonly markerPath: string, cause: unknown) {
+    super(`project root marker is unavailable: ${markerPath}`, { cause })
+    this.name = 'ProjectRootMarkerUnavailableError'
+  }
+}
+
+/** Mutable UTF-8 source allowance shared by one baseline or reconciliation batch. */
+export interface InstructionReadBudget {
+  remainingBytes: number
+}
+
+/**
+ * Create the source-read allowance for one rendered batch.
+ * @param maxTotalSourceBytes - complete source byte cap for the operation.
+ * @returns a mutable operation-local allowance consumed by bounded reads.
+ */
+export function createInstructionReadBudget(maxTotalSourceBytes: number): InstructionReadBudget {
+  return { remainingBytes: Math.max(0, Math.floor(maxTotalSourceBytes)) }
+}
 
 function signalOptions(signal?: AbortSignal): { signal: AbortSignal } | undefined {
   return signal === undefined ? undefined : { signal }
@@ -142,26 +172,33 @@ async function statFile(
   return fileSystem === undefined ? nodeStatFile(path, signal) : fsStatFile(path, fileSystem, signal)
 }
 
-async function existsAsMarker(path: string, fileSystem?: FileSystem, signal?: AbortSignal): Promise<boolean> {
+async function probeRootMarker(
+  path: string,
+  fileSystem?: FileSystem,
+  signal?: AbortSignal,
+): Promise<RootMarkerProbe> {
   if (fileSystem !== undefined) {
     try {
       const target = await fileSystem.resolve(path, signalOptions(signal))
-      return await fileSystem.stat(target, signal) !== undefined
-    } catch {
       signal?.throwIfAborted()
-      // TODO(root-marker-unavailable): preserve provider failure separately from
-      // absence and stop discovery; continuing upward can cross into an ancestor project.
-      return false
+      const info = await fileSystem.stat(target, signal)
+      signal?.throwIfAborted()
+      return info === undefined ? { kind: 'absent' } : { kind: 'present' }
+    } catch (error: unknown) {
+      signal?.throwIfAborted()
+      return { kind: 'unavailable', cause: error }
     }
   }
   try {
     signal?.throwIfAborted()
     await stat(path)
     signal?.throwIfAborted()
-    return true
-  } catch {
+    return { kind: 'present' }
+  } catch (error: unknown) {
     signal?.throwIfAborted()
-    return false
+    return isMissingPathError(error)
+      ? { kind: 'absent' }
+      : { kind: 'unavailable', cause: error }
   }
 }
 
@@ -172,6 +209,7 @@ async function existsAsMarker(path: string, fileSystem?: FileSystem, signal?: Ab
  * @param fileSystem - optional provider used instead of host filesystem probes.
  * @param signal - cancellation for provider and host probes.
  * @returns the discovered project root, or `cwd` when no marker exists.
+ * @throws {@link ProjectRootMarkerUnavailableError} when a marker cannot be classified without crossing it.
  */
 export async function findProjectRoot(
   cwd: string,
@@ -182,7 +220,15 @@ export async function findProjectRoot(
   let current = resolve(cwd)
   for (;;) {
     for (const marker of markers) {
-      if (await existsAsMarker(join(current, marker), fileSystem, signal)) return current
+      const markerPath = join(current, marker)
+      const probe = await probeRootMarker(markerPath, fileSystem, signal)
+      switch (probe.kind) {
+        case 'present': return current
+        case 'absent': break
+        case 'unavailable': throw new ProjectRootMarkerUnavailableError(markerPath, probe.cause)
+        /* v8 ignore next 2 -- RootMarkerProbe is closed; this arm only makes adding a kind a compile error. */
+        default: assertNever(probe, 'RootMarkerProbe')
+      }
     }
     const parent = dirname(current)
     if (parent === current) return resolve(cwd)
@@ -239,6 +285,7 @@ export function relativeDisplay(root: string, path: string): string {
 async function allExistingInstructionFiles(
   dir: string,
   root: string,
+  priority: number,
   instructionFileCandidates: readonly string[],
   fileSystem?: FileSystem,
   signal?: AbortSignal,
@@ -249,7 +296,7 @@ async function allExistingInstructionFiles(
     const probe = await statFile(path, fileSystem, signal)
     switch (probe.kind) {
       case 'present':
-        found.push({ absolutePath: path, displayPath: relativeDisplay(root, path), ...probe.info })
+        found.push({ absolutePath: path, displayPath: relativeDisplay(root, path), priority, ...probe.info })
         continue
       // A missing candidate is skipped; a transient provider failure skips only
       // that candidate so the remaining independent candidates still load.
@@ -284,6 +331,7 @@ async function discoverInstructionFiles(
       addFile({
         absolutePath: userGlobal,
         displayPath: userGlobalDisplayPath(config.dshHome),
+        priority: -1,
         ...userGlobalProbe.info,
       })
       break
@@ -298,9 +346,9 @@ async function discoverInstructionFiles(
   const cwd = resolve(options.cwd)
   const projectRoot = options.projectRoot
     ?? await findProjectRoot(cwd, config.projectRootMarkers, fileSystem, options.signal)
-  for (const dir of ancestorChain(projectRoot, cwd)) {
+  for (const [priority, dir] of ancestorChain(projectRoot, cwd).entries()) {
     for (const candidates of [config.instructionFileCandidates, config.localInstructionFileCandidates]) {
-      for (const file of await allExistingInstructionFiles(dir, projectRoot, candidates, fileSystem, options.signal)) {
+      for (const file of await allExistingInstructionFiles(dir, projectRoot, priority, candidates, fileSystem, options.signal)) {
         addFile(file)
       }
     }
@@ -327,14 +375,13 @@ async function* nodeTextChunks(path: string, signal?: AbortSignal): AsyncIterabl
 async function readBounded(
   file: { absolutePath: string; target?: FsTarget; size?: number },
   maxSourceBytes: number,
+  budget: InstructionReadBudget,
   fileSystem?: FileSystem,
   signal?: AbortSignal,
 ): Promise<string | undefined> {
-  // TODO(total-instruction-read-bound): enforce an aggregate source budget
-  // across a complete baseline or reconciliation batch; the render budget is
-  // applied only after every accepted file has been read under this per-file cap.
   signal?.throwIfAborted()
-  if (file.size !== undefined && file.size > maxSourceBytes) return undefined
+  if (budget.remainingBytes <= 0) return undefined
+  if (file.size !== undefined && (file.size > maxSourceBytes || file.size > budget.remainingBytes)) return undefined
   try {
     const chunks = fileSystem === undefined || file.target === undefined
       ? nodeTextChunks(file.absolutePath, signal)
@@ -343,7 +390,13 @@ async function readBounded(
     let bytes = 0
     for await (const chunk of chunks) {
       signal?.throwIfAborted()
-      bytes += Buffer.byteLength(chunk, 'utf8')
+      const chunkBytes = Buffer.byteLength(chunk, 'utf8')
+      bytes += chunkBytes
+      if (chunkBytes > budget.remainingBytes) {
+        budget.remainingBytes = 0
+        return undefined
+      }
+      budget.remainingBytes -= chunkBytes
       if (bytes > maxSourceBytes) return undefined
       parts.push(chunk)
     }
@@ -409,19 +462,24 @@ export async function loadBaselineInstructionSet(
   const config = resolveConfig(options)
   if (config.maxBytes <= 0 || !Number.isFinite(config.maxBytes)) return undefined
   if (config.maxSourceBytes <= 0 || !Number.isFinite(config.maxSourceBytes)) return undefined
+  if (config.maxTotalSourceBytes <= 0 || !Number.isFinite(config.maxTotalSourceBytes)) return undefined
   const discovered = await discoverInstructionFiles(options, fileSystem)
-  const loaded: LoadedInstructionFile[] = []
-  for (const file of discovered) {
-    const content = await readBounded(file, config.maxSourceBytes, fileSystem, options.signal)
+  const budget = createInstructionReadBudget(config.maxTotalSourceBytes)
+  const loadedByIndex: (LoadedInstructionFile | undefined)[] = discovered.map(() => undefined)
+  const readOrder = discovered.map((file, index) => ({ file, index }))
+    .sort((left, right) => right.file.priority - left.file.priority || left.index - right.index)
+  for (const { file, index } of readOrder) {
+    const content = await readBounded(file, config.maxSourceBytes, budget, fileSystem, options.signal)
     if (content !== undefined) {
-      loaded.push({
+      loadedByIndex[index] = {
         absolutePath: file.absolutePath,
         displayPath: file.displayPath,
         content,
         ...file.version === undefined ? {} : { version: file.version },
-      })
+      }
     }
   }
+  const loaded = loadedByIndex.filter((file): file is LoadedInstructionFile => file !== undefined)
   const deduped = dedupInstructionFilesByDirectory(loaded)
   if (deduped.length === 0) {
     if (options.replacePreviousBaseline !== true) return undefined
@@ -496,6 +554,7 @@ export async function probeScopeInstruction(
  * Read one already-probed scope candidate under the configured source cap.
  * @param file - winning provider candidate and its metadata snapshot.
  * @param maxSourceBytes - maximum UTF-8 bytes accepted from the source.
+ * @param budget - aggregate source allowance shared by the current batch.
  * @param fileSystem - provider used for the streaming read.
  * @param signal - cancellation for provider streaming.
  * @returns loaded content with the probed version, or undefined when unavailable.
@@ -503,10 +562,11 @@ export async function probeScopeInstruction(
 export async function readScopeInstruction(
   file: ProbedInstructionFile,
   maxSourceBytes: number,
+  budget: InstructionReadBudget,
   fileSystem: FileSystem,
   signal?: AbortSignal,
 ): Promise<LoadedInstructionFile | undefined> {
-  const content = await readBounded(file, maxSourceBytes, fileSystem, signal)
+  const content = await readBounded(file, maxSourceBytes, budget, fileSystem, signal)
   if (content === undefined) return undefined
   return {
     absolutePath: file.absolutePath,

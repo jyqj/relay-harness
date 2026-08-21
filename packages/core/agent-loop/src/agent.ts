@@ -28,9 +28,10 @@ import {
 import type { Scope } from '@deepseek-ai/dsh-scope'
 import { createScope } from '@deepseek-ai/dsh-scope'
 import type { EpochHeader, RequestContext, Session, SessionId, TurnEndReason, UserMessage } from '@deepseek-ai/dsh-session'
-import { canonicalHeader, headerEquals } from '@deepseek-ai/dsh-session'
+import { assertToolTranscriptValid, canonicalHeader, headerEquals } from '@deepseek-ai/dsh-session'
 import { joinContextSections, renderContextSections, renderPrompt } from '@deepseek-ai/dsh-system-prompt'
 import type { PromptAssembly } from '@deepseek-ai/dsh-system-prompt'
+import { TOOL_REQUEST_SNAPSHOT, TOOL_RUNTIME_REQUESTS, type ToolRequestSnapshot } from '@deepseek-ai/dsh-tools'
 import type { Context } from '@deepseek-ai/cordis'
 import { RuntimeContextProjection } from './runtime-context.ts'
 import { executeToolCalls } from './tool-calls.ts'
@@ -49,7 +50,22 @@ type StepEndReason = Extract<TurnEndReason, { kind: 'completed' | 'max-tokens' }
 
 type PreparedStep =
   | { kind: 'reject' }
-  | { kind: 'enter'; messages: UserMessage[]; assembly: PromptAssembly }
+  | { kind: 'enter'; messages: UserMessage[]; assembly: PromptAssembly; toolSnapshot: ToolRequestSnapshot }
+
+/**
+ * Structural face of the optional `visionFallback` service
+ * (`@deepseek-ai/dsh-llm-vision-fallback`): rewrites derived messages for a
+ * text-only route by substituting image blocks with logged description text.
+ * Declared structurally so the loop takes no dependency on the plugin package.
+ */
+interface VisionMessageRewriter {
+  rewriteMessages(
+    session: Session,
+    route: { provider: string; model: string },
+    messages: Message[],
+    signal: AbortSignal,
+  ): Promise<Message[]>
+}
 
 /** Remove adapter-derived values before plugins propose the next request config. */
 function requestProposal(header: EpochHeader): LlmCallConfig {
@@ -227,19 +243,33 @@ export class ReactLoopAgent implements Agent {
     if (this.phase.kind !== 'running') throw new Error(`agent "${this.id}": pre-step outside running phase`)
     const signal = this.phase.abort.signal
     const claimed = this.inbox.claim(target, position.turn)
-    const assembly = await this.loopCtx.systemPrompt.assemble(assembleContextFor(this, signal))
-    signal.throwIfAborted()
-    const sections = renderContextSections(assembly)
-    const context = this.runtimeContext.project(joinContextSections(sections), sections)
-    const decision = await this.dispatch.waterfall(
-      'agent/pre-step', { messages: claimed, ...position, signal },
-      (): Promise<PreStepDecision> => Promise.resolve<PreStepDecision>({
-        kind: 'enter',
-        messages: context === undefined ? claimed : [...claimed, context],
-      }),
-    )
-    signal.throwIfAborted()
-    return decision.kind === 'reject' ? decision : { ...decision, assembly }
+    const toolSnapshot = this.loopCtx.tools[TOOL_RUNTIME_REQUESTS].capture(this)
+    try {
+      const assembly = await this.loopCtx.systemPrompt.assemble({
+        ...assembleContextFor(this, signal),
+        [TOOL_REQUEST_SNAPSHOT]: toolSnapshot,
+      })
+      toolSnapshot.bindAdvertised(assembly.tools)
+      signal.throwIfAborted()
+      const sections = renderContextSections(assembly)
+      const context = this.runtimeContext.project(joinContextSections(sections), sections)
+      const decision = await this.dispatch.waterfall(
+        'agent/pre-step', { messages: claimed, ...position, signal },
+        (): Promise<PreStepDecision> => Promise.resolve<PreStepDecision>({
+          kind: 'enter',
+          messages: context === undefined ? claimed : [...claimed, context],
+        }),
+      )
+      signal.throwIfAborted()
+      if (decision.kind === 'reject') {
+        toolSnapshot.release()
+        return decision
+      }
+      return { ...decision, assembly, toolSnapshot }
+    } catch (error: unknown) {
+      toolSnapshot.release()
+      throw error
+    }
   }
 
   /** Open one turn before claiming its first proposed step. */
@@ -268,28 +298,33 @@ export class ReactLoopAgent implements Agent {
           turnEnds = { kind: 'blocked' }
           return false
         }
-        if (turnEnds && decision.messages.length === 0) break
-        // A removed waking message or an enter decision rewritten to empty
-        // still owns the initial turn boundary, but it spends no model call.
-        if (phase.step === 0 && decision.messages.length === 0) {
-          turnEnds = { kind: 'completed' }
-          return false
-        }
-        signal.throwIfAborted()
-        this.session.append('step/start', { turn, step })
-        phase.step = step
+        let stepStarted = false
+        let stepOwnsSnapshot = false
         try {
+          if (turnEnds && decision.messages.length === 0) break
+          // A removed waking message or an enter decision rewritten to empty
+          // still owns the initial turn boundary, but it spends no model call.
+          if (phase.step === 0 && decision.messages.length === 0) {
+            turnEnds = { kind: 'completed' }
+            return false
+          }
+          signal.throwIfAborted()
+          this.session.append('step/start', { turn, step })
+          stepStarted = true
+          phase.step = step
           for (const message of decision.messages) {
             this.session.append('user/message', message, { surfaceOp: 'append' })
           }
           // max-tokens is sticky: once any step hits the ceiling, later steps
           // that complete normally must not downgrade the turn outcome.
-          const stepEnd = await this.step(decision.assembly)
+          stepOwnsSnapshot = true
+          const stepEnd = await this.step(decision.assembly, decision.toolSnapshot)
           // max-tokens stays sticky: a later completed step must not
           // downgrade the turn outcome.
           if (turnEnds === null || turnEnds.kind !== 'max-tokens') turnEnds = stepEnd
         } finally {
-          this.session.append('step/end', { turn, step })
+          if (!stepOwnsSnapshot) decision.toolSnapshot.release()
+          if (stepStarted) this.session.append('step/end', { turn, step })
         }
         signal.throwIfAborted()
         if (turnEnds && this.inbox.nextStep.length === 0) {
@@ -329,93 +364,100 @@ export class ReactLoopAgent implements Agent {
     return true
   }
 
-  private async step(assembly: PromptAssembly): Promise<StepEndReason | null> {
-    /* v8 ignore next -- private callers establish the running phase before executing a step */
-    if (this.phase.kind !== 'running') throw new Error(`agent "${this.id}": step outside running phase`)
-    const { turn, step, abort: { signal } } = this.phase
-    signal.throwIfAborted()
-    const system = renderPrompt(assembly)
+  private async step(
+    assembly: PromptAssembly,
+    toolSnapshot: ToolRequestSnapshot,
+  ): Promise<StepEndReason | null> {
+    try {
+      /* v8 ignore next -- private callers establish the running phase before executing a step */
+      if (this.phase.kind !== 'running') throw new Error(`agent "${this.id}": step outside running phase`)
+      const { turn, step, abort: { signal } } = this.phase
+      signal.throwIfAborted()
+      const system = renderPrompt(assembly)
 
-    while (true) {
-      const { request, preparedCall } = await this.buildRequest(
-        turn, step, assembly.tools, system, this.session.deriveMessages(), signal,
-      )
-      const assembler = new BlockAssembler()
-      const chunkSeqs: number[] = []
-      try {
-        const stream = preparedCall?.stream(request) ?? this.loopCtx.llm.stream(request)
-        signal.throwIfAborted()
-        for await (const chunk of stream) {
+      while (true) {
+        const { request, preparedCall } = await this.buildRequest(
+          turn, step, assembly.tools, system, this.session.deriveMessages(), signal,
+        )
+        const assembler = new BlockAssembler()
+        const chunkSeqs: number[] = []
+        try {
+          const stream = preparedCall?.stream(request) ?? this.loopCtx.llm.stream(request)
           signal.throwIfAborted()
-          chunkSeqs.push(this.session.append('assistant/chunk', { turn, step, chunk }).seq)
-          assembler.push(chunk)
+          for await (const chunk of stream) {
+            signal.throwIfAborted()
+            chunkSeqs.push(this.session.append('assistant/chunk', { turn, step, chunk }).seq)
+            assembler.push(chunk)
+          }
+          signal.throwIfAborted()
+        } catch (error: unknown) {
+          if (signal.aborted) {
+            const content = assembler.interruptedBlocks()
+            if (content.length > 0) {
+              this.session.append('assistant/message', {
+                turn,
+                step,
+                message: createAssistantMessage({
+                  content,
+                  source: { provider: request.provider, model: request.model },
+                }),
+                interrupted: true,
+                ...assembler.usage === undefined ? {} : { usage: assembler.usage },
+              }, { surfaceOp: 'append', sourceEventSeqs: chunkSeqs })
+            }
+          }
+          throw error
         }
-        signal.throwIfAborted()
-      } catch (error: unknown) {
-        if (signal.aborted) {
-          const content = assembler.interruptedBlocks()
-          if (content.length > 0) {
-            this.session.append('assistant/message', {
+        const finish = assembler.finish
+        if (finish.kind === 'error' || finish.kind === 'aborted') {
+          const action = await this.dispatch.waterfall(
+            'agent/request-error', {
               turn,
               step,
-              message: createAssistantMessage({
-                content,
-                source: { provider: request.provider, model: request.model },
-              }),
-              interrupted: true,
-              ...assembler.usage === undefined ? {} : { usage: assembler.usage },
-            }, { surfaceOp: 'append', sourceEventSeqs: chunkSeqs })
+              provider: request.provider,
+              failure: finish.failure,
+              retryPolicy: preparedCall?.retryPolicy,
+              signal,
+            },
+            () => Promise.resolve<RequestErrorAction>(undefined),
+          )
+          signal.throwIfAborted()
+          if (action?.kind !== 'retry') {
+            throw new LlmError(finish.failure.message, finish.failure.code, finish.failure)
           }
+          continue
         }
-        throw error
-      }
-      const finish = assembler.finish
-      if (finish.kind === 'error' || finish.kind === 'aborted') {
-        const action = await this.dispatch.waterfall(
-          'agent/request-error', {
+
+        const message = createAssistantMessage({
+          content: assembler.blocks(),
+          source: {
+            provider: request.provider,
+            model: request.model,
+            ...assembler.replayState !== undefined ? { replayState: assembler.replayState } : {},
+          },
+        })
+        this.session.append(
+          'assistant/message',
+          {
             turn,
             step,
-            provider: request.provider,
-            failure: finish.failure,
-            retryPolicy: preparedCall?.retryPolicy,
-            signal,
+            message,
+            ...assembler.usage === undefined ? {} : { usage: assembler.usage },
           },
-          () => Promise.resolve<RequestErrorAction>(undefined),
+          { surfaceOp: 'append', sourceEventSeqs: chunkSeqs },
         )
-        signal.throwIfAborted()
-        if (action?.kind !== 'retry') {
-          throw new LlmError(finish.failure.message, finish.failure.code, finish.failure)
-        }
-        continue
+        if (finish.kind === 'max-tokens') return { kind: 'max-tokens' }
+
+        const toolCalls = message.content.filter(block => block.type === 'tool-call')
+        if (toolCalls.length === 0) return { kind: 'completed' }
+        const { concluded } = await executeToolCalls(
+          this.loopCtx, toolSnapshot, turn, step, toolCalls, signal,
+          context => this.inbox.splice('next-step', this.inbox.nextStep.length, 0, [context]),
+        )
+        return concluded ? { kind: 'completed' } : null
       }
-
-      const message = createAssistantMessage({
-        content: assembler.blocks(),
-        source: {
-          provider: request.provider,
-          model: request.model,
-          ...assembler.replayState !== undefined ? { replayState: assembler.replayState } : {},
-        },
-      })
-      this.session.append(
-        'assistant/message',
-        {
-          turn,
-          step,
-          message,
-          ...assembler.usage === undefined ? {} : { usage: assembler.usage },
-        },
-        { surfaceOp: 'append', sourceEventSeqs: chunkSeqs },
-      )
-      if (finish.kind === 'max-tokens') return { kind: 'max-tokens' }
-
-      const toolCalls = message.content.filter(block => block.type === 'tool-call')
-      if (toolCalls.length === 0) return { kind: 'completed' }
-      const { concluded } = await executeToolCalls(
-        this.loopCtx, turn, step, toolCalls, signal,
-        context => this.inbox.splice('next-step', this.inbox.nextStep.length, 0, [context]),
-      )
-      return concluded ? { kind: 'completed' } : null
+    } finally {
+      toolSnapshot.release()
     }
   }
 
@@ -502,9 +544,28 @@ export class ReactLoopAgent implements Agent {
     }
     signal.throwIfAborted()
 
+    // The vision fallback substitutes image blocks with logged description
+    // text for a route that declares no image support; the rewrite appends
+    // any newly generated description to the log before returning, so the
+    // dispatched messages stay a pure function of the session log.
+    const visionFallback = this.loopCtx.get('visionFallback') as VisionMessageRewriter | undefined
+    const requestMessages = visionFallback === undefined
+      ? boundaryMessages
+      : await visionFallback.rewriteMessages(
+        this.session,
+        { provider: config.provider, model: config.model },
+        boundaryMessages,
+        signal,
+      )
+    signal.throwIfAborted()
+    // Provider-validity gate: `deriveMessages` canonicalizes the history, so a
+    // known-invalid tool-call pairing here is a bug worth failing loud over
+    // instead of delivering a payload the provider must reject.
+    assertToolTranscriptValid(requestMessages)
+
     const request = markAgentLoopRequest(deepFreeze({
       ...header.config,
-      messages: boundaryMessages,
+      messages: requestMessages,
       ...header.system !== undefined ? { system: header.system } : {},
       ...header.tools !== undefined ? { tools: header.tools } : {},
       sessionId: this.session.id,

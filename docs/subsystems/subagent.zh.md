@@ -6,7 +6,13 @@ subagent seam 让一个 agent（智能体）将工作委派给子 agent。与 [b
 
 Service Definition：[dsh-subagent](../../packages/subagent/subagent)（`ctx.subagents` + 下文词汇）。Service Provider 是六个兄弟包：`dsh-subagent-spawn-in-process`、`-fork`、`-acp`、`-codex`、`-claude-code`、`-dsh-sdk`；面向模型的 Consumer 包括 [dsh-tool-subagent](../../packages/subagent/tool-subagent)（按提供方委派）、[dsh-tool-subagent-control](../../packages/subagent/tool-subagent-control)（可选的全局 `send_message`、`interrupt_agent` 与 `list_agents` 控制工具）和 [dsh-tool-subagent-report](../../packages/subagent/tool-subagent-report)（可选的 child 作用域 `report` 返回通道）。同一个 `ctx.subagents` 服务通过内部激活管理器负责可继续子 agent 编排，并直接基于会话存储和可选的会话持久化提供只读的 child 与后代发现。产品提供方设计理由见 [Codex 与 Claude Code Agent Note](../../.agents/notes/implemented/feature/2026-08-04-claude-code-and-codex-subagent-backends.md)；通用 seam 的设计理由见 [subagent Agent Note](../../.agents/notes/implemented/feature/2026-06-21-subagent-capability-seam.md)、[可继续 subagent Agent Note](../../.agents/notes/implemented/feature/2026-07-28-continuable-subagent-conversations.md)、[report 工具 Agent Note](../../.agents/notes/implemented/feature/2026-07-30-continuable-subagent-report-tool.md)、[持久化目录 Agent Note](../../.agents/notes/implemented/feature/2026-07-22-durable-subagent-catalog-and-list-agents.md)、[列表身份投影 Agent Note](../../.agents/notes/implemented/architecture/2026-08-06-subagent-list-identity-projection.md)和[服务合并 Agent Note](../../.agents/notes/implemented/simplification/2026-07-26-merge-subagent-control-service.md)。
 
-源码：[`packages/subagent/subagent/src/types.ts`](../../packages/subagent/subagent/src/types.ts)、[`packages/subagent/subagent/src/index.ts`](../../packages/subagent/subagent/src/index.ts)和 [`packages/subagent/subagent/src/continuation.ts`](../../packages/subagent/subagent/src/continuation.ts)
+源码：[`packages/subagent/subagent/src/types.ts`](../../packages/subagent/subagent/src/types.ts)、[`packages/subagent/subagent/src/index.ts`](../../packages/subagent/subagent/src/index.ts)、[`packages/subagent/subagent/src/admission.ts`](../../packages/subagent/subagent/src/admission.ts)和 [`packages/subagent/subagent/src/continuation.ts`](../../packages/subagent/subagent/src/continuation.ts)
+
+## 共享根会话树容量
+
+`SubagentRuntime` 会在分派任何提供方或物化任何 Activation 前应用一项可选容量策略。`maxActivePerRoot` 把每个后代计入最高 live 持久会话祖先；`maxActivePerParent` 还可限制直属 sibling。一次性委派、可继续 child、workflow 与 team 都经过同一服务，因此面向特定 consumer 的 adapter 无法绕过上限。不同 root 使用不同计数器。基础 bundle 对每个 root 使用四个活跃 child 生命周期并立即以 `CAPACITY_EXCEEDED` 拒绝；直接组合若未配置则保持无界。
+
+一次性 lease 只会在返回的 run 到达 holder 所有的 `dispose()` 时结束。可继续 lease 属于一个 Activation epoch，并在其 `AgentHandle` 达到静默并完成 disposal 后结束，包括回滚路径。`overflow: queue` 是可选项：其 root 局部队列会移除已取消 waiter，并提升当前符合条件的最早 parent；runtime teardown 会拒绝待处理与未来获取，但不会撤销已发布 child。所有权与默认值理由记录在[根会话树准入 Agent Note](../../.agents/notes/implemented/architecture/2026-08-21-root-tree-subagent-admission.md)中。
 
 ## 两类能力，两种发现方式
 
@@ -667,7 +673,7 @@ async start(name: string, request: SubagentStartRequest): Promise<SubagentRun>
 
 Types: [Agent](core.md) · [ContentBlock](llm-streaming.md) · [MessageId](llm-streaming.md) · [SessionId](core.md)
 
-Source: [`packages/subagent/subagent/src/index.ts:171`](../../packages/subagent/subagent/src/index.ts)
+Source: [`packages/subagent/subagent/src/index.ts:218`](../../packages/subagent/subagent/src/index.ts)
 
 <a id="subagent-events"></a>
 
@@ -693,7 +699,7 @@ A published child settled. Scope-filtered dispatch uses the same delegating pare
 
 Types: [Scoped](scope.md)
 
-Source: [`packages/subagent/subagent/src/index.ts:166`](../../packages/subagent/subagent/src/index.ts)
+Source: [`packages/subagent/subagent/src/index.ts:213`](../../packages/subagent/subagent/src/index.ts)
 
 <a id="subagentprovider-added--emit"></a>
 
@@ -710,7 +716,7 @@ A provider became resolvable in the registry.
 'subagent/provider-added'(provider: SubagentProvider): void
 ```
 
-Source: [`packages/subagent/subagent/src/index.ts:140`](../../packages/subagent/subagent/src/index.ts)
+Source: [`packages/subagent/subagent/src/index.ts:187`](../../packages/subagent/subagent/src/index.ts)
 
 <a id="subagentprovider-removed--emit"></a>
 
@@ -727,7 +733,7 @@ A provider left the registry. Accepted runs remain holder-owned.
 'subagent/provider-removed'(name: string): void
 ```
 
-Source: [`packages/subagent/subagent/src/index.ts:146`](../../packages/subagent/subagent/src/index.ts)
+Source: [`packages/subagent/subagent/src/index.ts:193`](../../packages/subagent/subagent/src/index.ts)
 
 <a id="subagentstart--emit"></a>
 
@@ -751,5 +757,5 @@ A provider established a published child. For in-process providers, `ctx.agents.
 
 Types: [Scoped](scope.md)
 
-Source: [`packages/subagent/subagent/src/index.ts:157`](../../packages/subagent/subagent/src/index.ts)
+Source: [`packages/subagent/subagent/src/index.ts:204`](../../packages/subagent/subagent/src/index.ts)
 <!-- END GENERATED cordis-surface -->

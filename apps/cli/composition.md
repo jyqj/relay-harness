@@ -36,6 +36,8 @@ flowchart LR
   cfg --> plugin_dsh_base_jobs
   plugin_dsh_base_llm_retry["llm-retry<br/>@deepseek-ai/dsh-llm-retry"]
   cfg --> plugin_dsh_base_llm_retry
+  plugin_dsh_base_llm_vision_fallback["llm-vision-fallback<br/>@deepseek-ai/dsh-llm-vision-fallback"]
+  cfg --> plugin_dsh_base_llm_vision_fallback
   plugin_dsh_base_settings["settings<br/>@deepseek-ai/dsh-settings-file"]
   cfg --> plugin_dsh_base_settings
   plugin_dsh_base_credentials["credentials<br/>@deepseek-ai/dsh-credentials-local"]
@@ -82,6 +84,8 @@ flowchart LR
   cfg --> plugin_dsh_base_tool_fs_search
   plugin_dsh_base_agent_instructions["agent-instructions<br/>@deepseek-ai/dsh-agent-instructions"]
   cfg --> plugin_dsh_base_agent_instructions
+  plugin_dsh_base_mcp_servers_file["mcp-servers-file<br/>@deepseek-ai/dsh-mcp-servers-file"]
+  cfg --> plugin_dsh_base_mcp_servers_file
   plugin_dsh_base_skill["skill<br/>@deepseek-ai/dsh-skill"]
   cfg --> plugin_dsh_base_skill
   plugin_dsh_base_skill_filesystem["skill-filesystem<br/>@deepseek-ai/dsh-skill-filesystem"]
@@ -148,6 +152,10 @@ flowchart LR
   cfg --> plugin_dsh_base_tool_str_replace_editor
   plugin_dsh_base_repeat_tool_reminder["repeat-tool-reminder<br/>@deepseek-ai/dsh-repeat-tool-reminder"]
   cfg --> plugin_dsh_base_repeat_tool_reminder
+  plugin_dsh_base_behavior_correction["behavior-correction<br/>@deepseek-ai/dsh-behavior-correction"]
+  cfg --> plugin_dsh_base_behavior_correction
+  plugin_dsh_base_token_budget_controller["token-budget-controller<br/>@deepseek-ai/dsh-token-budget-controller"]
+  cfg --> plugin_dsh_base_token_budget_controller
   plugin_dsh_base_web["web<br/>@deepseek-ai/dsh-web"]
   cfg --> plugin_dsh_base_web
   plugin_dsh_base_web_search_deepseek["web-search-deepseek<br/>@deepseek-ai/dsh-web-search-deepseek"]
@@ -182,6 +190,7 @@ flowchart LR
 | `agent-default-model` | `@deepseek-ai/dsh-agent-default-model` |
 | `jobs` | `@deepseek-ai/dsh-jobs-local` |
 | `llm-retry` | `@deepseek-ai/dsh-llm-retry` |
+| `llm-vision-fallback` | `@deepseek-ai/dsh-llm-vision-fallback` |
 | `settings` | `@deepseek-ai/dsh-settings-file` |
 | `credentials` | `@deepseek-ai/dsh-credentials-local` |
 | `llm-pi-ai` | `@deepseek-ai/dsh-llm-pi-ai` |
@@ -205,6 +214,7 @@ flowchart LR
 | `tool-fs` | `@deepseek-ai/dsh-tool-fs` |
 | `tool-fs-search` | `@deepseek-ai/dsh-tool-fs-search` |
 | `agent-instructions` | `@deepseek-ai/dsh-agent-instructions` |
+| `mcp-servers-file` | `@deepseek-ai/dsh-mcp-servers-file` |
 | `skill` | `@deepseek-ai/dsh-skill` |
 | `skill-filesystem` | `@deepseek-ai/dsh-skill-filesystem` |
 | `skill-badge` | `@deepseek-ai/dsh-skill-badge` |
@@ -238,6 +248,8 @@ flowchart LR
 | `tool-ralph` | `@deepseek-ai/dsh-tool-ralph` |
 | `tool-str-replace-editor` | `@deepseek-ai/dsh-tool-str-replace-editor` |
 | `repeat-tool-reminder` | `@deepseek-ai/dsh-repeat-tool-reminder` |
+| `behavior-correction` | `@deepseek-ai/dsh-behavior-correction` |
+| `token-budget-controller` | `@deepseek-ai/dsh-token-budget-controller` |
 | `web` | `@deepseek-ai/dsh-web` |
 | `web-search-deepseek` | `@deepseek-ai/dsh-web-search-deepseek` |
 | `tool-web` | `@deepseek-ai/dsh-tool-web` |

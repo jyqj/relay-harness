@@ -12,7 +12,8 @@
 // Each dialect bridge keeps its complete dependency list visible at the entry
 // point; a cross-package facade for imports alone would add indirection.
 /* jscpd:ignore-start */
-import { readFileSync } from 'node:fs'
+import { readFileSync, statSync } from 'node:fs'
+import { dirname, isAbsolute, join, resolve } from 'node:path'
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import type { Agent, PreStepDecision } from '@deepseek-ai/dsh-agent'
@@ -43,10 +44,9 @@ export const inject = ['shell']
 /** Plugin config: where the Codex hooks.json lives + the model name for payloads. */
 export interface Config {
   /**
-   * Path to a Codex `hooks.json`. Process-level: read once at load, a relative
-   * path resolves against the process launch cwd.
-   * TODO(per-session-hook-config): per-session project-local discovery from each
-   * `session/new.cwd`.
+   * Path to a Codex `hooks.json`. An absolute path names one shared file. A
+   * relative path is discovered per session from its cwd upward through the
+   * nearest `.git` root; agent-less calls use the process cwd.
    */
   configPath: string
   /** The model name stamped on every payload (Codex includes `model` on each event). */
@@ -78,31 +78,93 @@ function assertPositiveInteger(name: string, value: number): void {
   }
 }
 
+interface LocatedHookConfig {
+  path: string
+  version: string
+}
+
+/** Stat one config candidate and return a change token, or undefined when absent. */
+function hookConfigAt(path: string): LocatedHookConfig | undefined {
+  const info = statSync(path, { bigint: true, throwIfNoEntry: false })
+  if (info === undefined) return undefined
+  if (!info.isFile()) throw new Error(`hook config is not a regular file: ${path}`)
+  return {
+    path,
+    version: [info.dev, info.ino, info.size, info.mtimeNs, info.ctimeNs].join(':'),
+  }
+}
+
+/** Discover one absolute or project-relative config without crossing a Git root. */
+function locateHookConfig(configPath: string, cwd: string): LocatedHookConfig | undefined {
+  if (isAbsolute(configPath)) return hookConfigAt(configPath)
+  let current = resolve(cwd)
+  for (;;) {
+    const located = hookConfigAt(resolve(current, configPath))
+    if (located !== undefined) return located
+    const marker = statSync(join(current, '.git'), { throwIfNoEntry: false })
+    if (marker !== undefined) return undefined
+    const parent = dirname(current)
+    if (parent === current) return undefined
+    current = parent
+  }
+}
+
 export function apply(ctx: Context, config: Config): void {
   // Validate before config parsing so a bad value cannot be hidden by its early return.
   const stderrSummaryMaxChars = config.stderrSummaryMaxChars ?? DEFAULT_STDERR_SUMMARY_MAX_CHARS
   assertPositiveInteger('stderrSummaryMaxChars', stderrSummaryMaxChars)
   const defaultTimeoutMs = config.defaultTimeoutMs ?? DEFAULT_HOOK_TIMEOUT_MS
-  let parsed: CodexHookConfig = {}
-  try {
-    const raw: unknown = JSON.parse(readFileSync(config.configPath, 'utf8'))
-    const result = parseCodexConfig(raw)
-    parsed = result.config
-    for (const s of result.skipped) {
-      ctx.logger.warn(`hooks-codex: skipping ${s.reason} on ${s.event} (only sync command hooks run)`)
+  const configPath = config.configPath.trim()
+  if (configPath.length === 0) throw new Error('hooks-codex: configPath must be non-empty')
+  if (!isAbsolute(configPath) && configPath.split(/[\\/]+/).includes('..')) {
+    throw new Error('hooks-codex: relative configPath must not contain ".." segments')
+  }
+  const model = config.model ?? ''
+  const configCache = new Map<string, { version: string; config: CodexHookConfig }>()
+  const reportedFailures = new Map<string, string>()
+
+  /** Resolve, version, and parse the config applicable to one agent. */
+  function hookConfig(agent?: Agent): CodexHookConfig {
+    const cwd = agent?.session.header.cwd ?? process.cwd()
+    let located: LocatedHookConfig | undefined
+    try {
+      located = locateHookConfig(configPath, cwd)
+    } catch (error: unknown) {
+      const failure = String(error)
+      const key = `${cwd}\0${configPath}`
+      if (reportedFailures.get(key) !== failure) {
+        reportedFailures.set(key, failure)
+        ctx.logger.warn(`hooks-codex: could not discover hook config "${configPath}" for "${cwd}": ${failure} — no hooks registered`)
+      }
+      return {}
     }
-  } catch (error: unknown) {
-    ctx.logger.warn(`hooks-codex: could not load hook config "${config.configPath}": ${String(error)} — no hooks registered`)
-    return
+    if (located === undefined) return {}
+    const cached = configCache.get(located.path)
+    if (cached?.version === located.version) return cached.config
+    try {
+      const raw: unknown = JSON.parse(readFileSync(located.path, 'utf8'))
+      const result = parseCodexConfig(raw)
+      configCache.set(located.path, { version: located.version, config: result.config })
+      reportedFailures.delete(located.path)
+      for (const s of result.skipped) {
+        ctx.logger.warn(`hooks-codex: skipping ${s.reason} on ${s.event} from "${located.path}" (only sync command hooks run)`)
+      }
+      return result.config
+    } catch (error: unknown) {
+      const failure = String(error)
+      reportedFailures.set(located.path, `${located.version}:${failure}`)
+      ctx.logger.warn(`hooks-codex: could not load hook config "${located.path}": ${failure} — no hooks registered`)
+      configCache.set(located.path, { version: located.version, config: {} })
+      return {}
+    }
   }
 
-  const model = config.model ?? ''
-
-  // SessionStart is the one emit-shaped (detached) point Codex has: track its
-  // run chains so disposal aborts a still-running hook process and drains the
-  // continuation (docs/defensive-patterns.md: dispose must reach quiescence).
+  // Every hook run is tracked so bridge disposal aborts its process and waits
+  // for the complete listener continuation to settle.
   const detached = createDetachedRuns()
   ctx.effect(() => () => detached.drain(), 'hooks-codex: drain detached hook runs')
+  const sessionStarts = new WeakMap<Agent, string>()
+  const stopHookTurns = new WeakMap<Agent, number>()
 
   /**
    * Run and fold one configured Codex hook point.
@@ -121,7 +183,7 @@ export function apply(ctx: Context, config: Config): void {
       plainStdoutAsContext?: boolean
     },
   ): Promise<MergedHookOutcome> {
-    const groups: MatcherGroup[] = parsed[point] ?? []
+    const groups: MatcherGroup[] = hookConfig(opts.agent)[point] ?? []
     const outputs: HookOutput[] = []
     // Run hooks in the agent's session workspace so relative paths address the
     // user's project rather than the server launch directory.
@@ -169,6 +231,26 @@ export function apply(ctx: Context, config: Config): void {
     return mergeHookOutputs(outputs)
   }
 
+  /** Run one point under both caller and bridge lifetimes, and track it for teardown. */
+  function trackedRunPoint(
+    point: string,
+    matchQuery: string,
+    payload: unknown,
+    opts: {
+      agent?: Agent
+      turn?: number
+      readonly signal: AbortSignal
+      plainStdoutAsContext?: boolean
+    },
+  ): Promise<MergedHookOutcome> {
+    const run = runPoint(point, matchQuery, payload, {
+      ...opts,
+      signal: AbortSignal.any([opts.signal, detached.signal]),
+    })
+    detached.track(run)
+    return run
+  }
+
   // TODO(hook-continue-false): `merged.stop` is logged but needs a run-level halt mechanism.
 
   function contextFrom(merged: MergedHookOutcome): UserMessage | undefined {
@@ -182,49 +264,60 @@ export function apply(ctx: Context, config: Config): void {
     return [ours, ...theirs ?? []]
   }
 
-  // SessionStart injects plain stdout when its detached hook resolves; a slow
-  // hook may miss the first request.
-  // TODO(session-start-gating): add a startup gate before promising first-turn delivery.
+  // The emit records source only. The first nonempty pre-step awaits the hook,
+  // so startup context cannot miss the first sampling request.
   ctx.on('agent/session-start', ({ agent, source }) => {
-    detached.track(runPoint('SessionStart', source, { ...base(ctx, agent, 'SessionStart', model), source }, { agent, plainStdoutAsContext: true, signal: detached.signal })
-      .then((merged) => {
-        const context = contextFrom(merged)
-        if (context) agent.inject(context)
-      })
-      .catch((error: unknown) => { ctx.logger.warn(`hooks-codex: SessionStart hook failed: ${String(error)}`) }))
-    /* jscpd:ignore-end */
+    sessionStarts.set(agent, source)
   })
 
   // UserPromptSubmit → PreStepDecision. Codex supports reject, not rewrite or ask.
   ctx.on('agent/pre-step', async ({ agent, messages, turn, signal }, next): Promise<PreStepDecision> => {
     if (messages.length === 0) return next()
+    let startupContext: UserMessage | undefined
+    const startupSource = sessionStarts.get(agent)
+    if (startupSource !== undefined) {
+      sessionStarts.delete(agent)
+      const startup = await trackedRunPoint(
+        'SessionStart',
+        startupSource,
+        { ...base(ctx, agent, 'SessionStart', model), source: startupSource },
+        { agent, turn, plainStdoutAsContext: true, signal },
+      )
+      startupContext = contextFrom(startup)
+    }
     const payload = {
       ...base(ctx, agent, 'UserPromptSubmit', model),
       turn_id: String(turn),
       prompt: blocksToText(messages.flatMap(message => message.content)),
     }
-    const merged = await runPoint('UserPromptSubmit', '', payload, {
+    const merged = await trackedRunPoint('UserPromptSubmit', '', payload, {
       agent, turn, plainStdoutAsContext: true, signal,
     })
     /* jscpd:ignore-start */
     if (merged.decision === 'deny') {
+      if (startupContext !== undefined) agent.inject(startupContext)
       return { kind: 'reject' }
     }
     // Context alone is not a veto: DELEGATE so a later pre-step listener can
     // still reject/rewrite, then fold our context onto its decision.
     const downstream = await next()
     const ours = contextFrom(merged)
-    if (!ours || downstream.kind !== 'enter') return downstream
+    if (downstream.kind !== 'enter') {
+      if (startupContext !== undefined) agent.inject(startupContext)
+      return downstream
+    }
+    const contexts = [startupContext, ours].filter((message): message is UserMessage => message !== undefined)
+    if (contexts.length === 0) return downstream
     return {
       kind: 'enter',
-      messages: [...downstream.messages, ours],
+      messages: [...downstream.messages, ...contexts],
     }
   })
 
   // PreToolUse → PreToolDecision. Codex blocks only (no allow/ask honored).
   ctx.on('tools/pre-execute', async (exec, next): Promise<PreToolDecision> => {
     const turn = lastTurn(exec.agent)
-    const merged = await runPoint('PreToolUse', exec.name, preToolPayload(ctx, exec, model), { ...exec.agent ? { agent: exec.agent } : {}, turn, signal: exec.signal })
+    const merged = await trackedRunPoint('PreToolUse', exec.name, preToolPayload(ctx, exec, model), { ...exec.agent ? { agent: exec.agent } : {}, turn, signal: exec.signal })
     /* jscpd:ignore-end */
     if (merged.decision === 'deny') return { kind: 'deny', reason: merged.reason ?? 'blocked by PreToolUse hook' }
     return next()
@@ -234,7 +327,7 @@ export function apply(ctx: Context, config: Config): void {
   ctx.on('tools/post-execute', async (exec, result, next): Promise<PostToolDecision> => {
     const turn = lastTurn(exec.agent)
     /* jscpd:ignore-start */
-    const merged = await runPoint('PostToolUse', exec.name, postToolPayload(ctx, exec, result, model), { ...exec.agent ? { agent: exec.agent } : {}, turn, signal: exec.signal })
+    const merged = await trackedRunPoint('PostToolUse', exec.name, postToolPayload(ctx, exec, result, model), { ...exec.agent ? { agent: exec.agent } : {}, turn, signal: exec.signal })
     const context = contextFrom(merged)
     if (merged.decision === 'deny') {
       return { kind: 'block', feedback: [{ type: 'text', text: merged.reason ?? 'blocked by PostToolUse hook' }], ...context ? { additionalContexts: [context] } : {} }
@@ -252,19 +345,22 @@ export function apply(ctx: Context, config: Config): void {
     }
   })
 
-  // A blocking Stop hook steers at the stopping boundary, which makes the
-  // machine observe pending input and run another step.
-  // TODO(stop-loop-guard): Codex supplies `stop_hook_active` so a Stop hook can
-  // avoid continuing the same turn indefinitely. It is always false here, so an
-  // unconditionally blocking hook force-continues every step until it self-limits.
+  // A blocking Stop hook may steer once per turn. Later stop checks receive
+  // stop_hook_active=true and cannot force an unbounded continuation loop.
   ctx.on('agent/turn-stopping', async ({ agent, turn, signal }): Promise<void> => {
-    const merged = await runPoint('Stop', '', { ...turnBase(ctx, agent, 'Stop', model), stop_hook_active: false, last_assistant_message: null }, { agent, turn, signal })
+    const stopHookActive = stopHookTurns.get(agent) === turn
+    const merged = await trackedRunPoint('Stop', '', { ...turnBase(ctx, agent, 'Stop', model), stop_hook_active: stopHookActive, last_assistant_message: null }, { agent, turn, signal })
     /* jscpd:ignore-end */
     if (merged.decision === 'deny') {
+      if (stopHookActive) {
+        ctx.logger.warn(`hooks-codex: Stop hook remained blocking after its continuation in turn ${turn}; closing the turn`)
+        return
+      }
       // A blocking Stop hook forces continuation; a block with no reason (exit 2,
       // empty stderr) still forces it — fall back to a generic steering line
       // rather than letting the turn stop.
       const text = merged.reason ?? 'continue: blocked by Stop hook'
+      stopHookTurns.set(agent, turn)
       agent.steer(createUserMessage({ content: [{ type: 'text', text }], source: PLUGIN_SOURCE }))
     }
   })

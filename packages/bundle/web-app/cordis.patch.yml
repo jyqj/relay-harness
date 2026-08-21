@@ -90,15 +90,22 @@
     - id: session-stats
       name: '@deepseek-ai/dsh-session-stats'
 
-    # Resolve bind host, SSH launch, and display once at boot, then mount the
-    # matching dual-face directory picker. Mount -native or -browse directly in
-    # an overlay to pin the interaction.
+    # Phone remote shares this Host and cannot see a native OS chooser on the
+    # desktop display. Pin the browse pair so every client gets the in-app
+    # directory dialog; compose -native instead only on a display-local-only
+    # deployment.
     - id: directory-picker
-      name: '@deepseek-ai/dsh-host-directory-picker-auto'
+      name: '@deepseek-ai/dsh-host-directory-picker-browse'
 
     # Read-only projection of current Loader entries for trusted client RPCs.
     - id: plugin-inventory
       name: '@deepseek-ai/dsh-host-plugin-inventory'
+
+    - id: mcp-servers
+      name: '@deepseek-ai/dsh-host-mcp-servers'
+
+    - id: skill-inventory
+      name: '@deepseek-ai/dsh-host-skill-inventory'
 
     # The API gateway: the transport-agnostic dispatch face every client shape
     # shares. The base layer's agent-default-model service owns the default model.
@@ -194,6 +201,30 @@
     - id: ui-sidebar
       name: '@deepseek-ai/dsh-client-ui-sidebar'
 
+    - id: ui-titlebar
+      name: '@deepseek-ai/dsh-client-ui-titlebar'
+
+    - id: ui-git
+      name: '@deepseek-ai/dsh-client-ui-git'
+
+    - id: ui-user-terminal
+      name: '@deepseek-ai/dsh-client-ui-user-terminal'
+
+    - id: ui-surfaces
+      name: '@deepseek-ai/dsh-client-ui-surfaces'
+
+    - id: ui-files
+      name: '@deepseek-ai/dsh-client-ui-files'
+
+    - id: ui-diff
+      name: '@deepseek-ai/dsh-client-ui-diff'
+
+    - id: ui-preview
+      name: '@deepseek-ai/dsh-client-ui-preview'
+
+    - id: ui-agents-panel
+      name: '@deepseek-ai/dsh-client-ui-agents-panel'
+
     - id: ui-settings
       name: '@deepseek-ai/dsh-client-ui-settings'
 
@@ -206,8 +237,23 @@
     - id: ui-settings-plugin-inventory
       name: '@deepseek-ai/dsh-client-ui-settings-plugin-inventory'
 
+    # Phone-remote UI is hidden for this release; re-enable in the next one.
+    # The plugin stays built and tested, only the composition row is gated.
+    # - id: ui-settings-remote
+    #   name: '@deepseek-ai/dsh-client-ui-settings-remote'
+
+    - id: ui-settings-mcp
+      name: '@deepseek-ai/dsh-client-ui-settings-mcp'
+
+    - id: ui-settings-skills
+      name: '@deepseek-ai/dsh-client-ui-settings-skills'
+
     - id: ui-conversation
       name: '@deepseek-ai/dsh-client-ui-conversation'
+
+    # Latest-user-message inline edit: pencil enters the bubble editor; confirm forks.
+    - id: ui-message-edit
+      name: '@deepseek-ai/dsh-client-ui-message-edit'
 
     # Official occupants for the generic sidebar and conversation brand slots.
     - id: ui-brand-official
@@ -236,6 +282,9 @@
 
     - id: ui-workspace
       name: '@deepseek-ai/dsh-client-ui-workspace'
+
+    - id: ui-directory-picker-browse
+      name: '@deepseek-ai/dsh-client-ui-directory-picker-browse'
 
     # Input triggers: the '/' | '@' pipeline (ui-input-trigger), the command surface over
     # it (ui-commands), and the reference sources (ui-skill / ui-reference).

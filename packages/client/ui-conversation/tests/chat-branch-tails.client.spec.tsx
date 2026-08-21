@@ -10,15 +10,16 @@ import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { bindSnapshotSelector } from '@deepseek-ai/dsh-client-test-runtime'
 import { makeTranslate } from '@deepseek-ai/dsh-client-test-runtime'
 import { zh as commonZh } from '@deepseek-ai/dsh-client-locale/src/locales/zh.ts'
+import { createSnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
 import type {
-  ChatConversationViewNode, ConversationNode,
+  ChatConversationViewNode, ConversationNode, SessionId,
 } from '@deepseek-ai/dsh-client-runtime/client'
 import type { ChatNodeViewProps } from '../src/client/contract/slots.ts'
 import {
   formatMessageClock, msUntilNextLocalMidnight, startOfLocalDay,
 } from '../src/client/chat/message-chrome.ts'
 import {
-  CompactionNodeView, ContextMessageNodeView, RetryNodeView, UnknownNodeView,
+  CompactionNodeView, ContextMessageNodeView, RetryNodeView, SteeringMessageNodeView, UnknownNodeView,
   UserMessageNodeView,
 } from '../src/client/chat/MessageItem.tsx'
 import { AssistantMarkdown, type AssistantMarkdownProps } from '../src/client/chat/AssistantMarkdown.tsx'
@@ -49,10 +50,11 @@ interface MessageItemProps {
   readonly node: ConversationNode
   readonly t: ChatNodeViewProps['t']
   readonly referenceLabels?: readonly string[]
+  readonly agentPreset?: string
 }
 
 /** Legacy-node fixture adapter for the independently registered renderers. */
-function MessageItem({ node, t: translate, referenceLabels }: MessageItemProps) {
+function MessageItem({ node, t: translate, referenceLabels, agentPreset }: MessageItemProps) {
   const kind = node.kind === 'assistant' ? 'assistant-step' : node.kind
   const viewNode: ChatConversationViewNode = {
     key: `fixture:${node.kind}:${node.seq}`,
@@ -68,19 +70,43 @@ function MessageItem({ node, t: translate, referenceLabels }: MessageItemProps) 
         ? { ...node, referenceLabels }
         : node,
   }
-  const props = { node: viewNode, t: translate, renderMessageImages } as ChatNodeViewProps
+  const sessionId = 's1' as SessionId
+  const useSessions = bindSnapshotSelector(createSnapshotStore({
+    ids: [sessionId],
+    byId: {
+      [sessionId]: {
+        id: sessionId, displayTitle: 'room', running: false, blank: false, updatedAt: 0,
+        ...(agentPreset === undefined ? {} : { agentPreset }),
+      },
+    },
+    current: undefined, phase: 'ready',
+    subagentsByParent: {}, jobsBySession: {}, currentAddress: undefined,
+  }))
+  const nodeProps = {
+    node: viewNode,
+    t: translate,
+    renderMessageImages,
+    openFile: () => {},
+    inspectCall: () => {},
+    forkAt: () => {},
+    fileMentions: () => undefined,
+    renderSlot: () => null,
+    sessionId,
+    useSessions,
+  }
   switch (node.kind) {
     case 'user':
+      return <UserMessageNodeView {...nodeProps as unknown as Parameters<typeof UserMessageNodeView>[0]} />
     case 'steering':
-      return <UserMessageNodeView {...props as ChatNodeViewProps<'user' | 'steering'>} />
+      return <SteeringMessageNodeView {...nodeProps as unknown as ChatNodeViewProps<'steering'>} />
     case 'context':
-      return <ContextMessageNodeView {...props as ChatNodeViewProps<'context'>} />
+      return <ContextMessageNodeView {...nodeProps as unknown as ChatNodeViewProps<'context'>} />
     case 'compaction':
-      return <CompactionNodeView {...props as ChatNodeViewProps<'compaction'>} />
+      return <CompactionNodeView {...nodeProps as unknown as ChatNodeViewProps<'compaction'>} />
     case 'model-retry':
-      return <RetryNodeView {...props as ChatNodeViewProps<'model-retry'>} />
+      return <RetryNodeView {...nodeProps as unknown as ChatNodeViewProps<'model-retry'>} />
     case 'unknown':
-      return <UnknownNodeView {...props as ChatNodeViewProps<'unknown'>} />
+      return <UnknownNodeView {...nodeProps as unknown as ChatNodeViewProps<'unknown'>} />
     default:
       throw new Error(`unsupported MessageItem fixture kind: ${node.kind}`)
   }
@@ -1034,6 +1060,7 @@ describe('small branch tails', () => {
       <StatsLine
         t={t}
         useSession={bindSnapshotSelector(source) as unknown as StatsLineProps['useSession']}
+        useStatsLine={bindSnapshotSelector(createSnapshotStore(true))}
         useProjection={(key: string) => key === 'tokenUsage'
           ? { uncachedInputTokens: 0, outputTokens: 10, cacheReadTokens: 0, cacheWriteTokens: 0 }
           : undefined}
@@ -1041,4 +1068,20 @@ describe('small branch tails', () => {
     )
     expect(view.container.textContent).toBe('1 轮 · 1 步| 输入 0 tok · 输出 10 tok')
   })
+
+  it('renders no context injection row in a dshbot-room session', () => {
+    const view = render(
+      <MessageItem t={t} agentPreset="dshbot-room" node={{
+        kind: 'context',
+        seq: 3,
+        content: [{ type: 'text', text: 'line one' }],
+        source: { kind: 'plugin', plugin: 'fixture', empty: {}, list: [] },
+        provenance: { role: 'inject', label: 'fixture' },
+        form: null,
+      } as never}
+      />,
+    )
+    expect(view.queryByRole('button', { name: /上下文注入/ })).toBeNull()
+  })
+
 })

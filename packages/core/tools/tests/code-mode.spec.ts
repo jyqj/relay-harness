@@ -967,6 +967,34 @@ describe('the run_code dispatch bridge', () => {
     expect(settle?.data).toMatchObject({ name: 'echo', isError: false, content: [{ type: 'text', text: 'echo:x' }] })
   })
 
+  it('backpressures ordered commits when pending dispatch-log work exceeds the sub-call cap', async () => {
+    const { ctx, runtime } = await setup({ mode: 'code', maxParallelSubCalls: 1 })
+    registerEcho(ctx)
+    const { agent } = fakeAgent()
+    const releaseLogs = Promise.withResolvers<undefined>()
+    let logCalls = 0
+    ctx.on('tools/code-dispatch-log', async (_dispatch, next) => {
+      const content = await next()
+      logCalls += 1
+      await releaseLogs.promise
+      return content
+    })
+    runtime.behavior = async (request) => {
+      const tools = request.bindings[0]!.functions
+      await tools.echo!({ value: 'x' })
+      await tools.echo!({ value: 'y' })
+      return { logs: [] }
+    }
+
+    const running = runCode(ctx, 'program', { agent })
+    for (let attempt = 0; attempt < 1000 && logCalls < 2; attempt += 1) {
+      await new Promise(resolve => setTimeout(resolve, 0))
+    }
+    expect(logCalls).toBe(2)
+    releaseLogs.resolve(undefined)
+    await expect(running).resolves.toMatchObject({ isError: false })
+  })
+
   it('a throwing tools/pre-execute listener settles the sub-call without post-execute', async () => {
     const { ctx, runtime } = await setup({ mode: 'code' })
     const calls = registerEcho(ctx)

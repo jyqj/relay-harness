@@ -3,10 +3,11 @@
  * the host Loader's entries for packages declaring `dsh.client`, composes the
  * `window.__DSH_BOOT__` entry graph (wire single source: {@link WebBootEntry}
  * in `./client/manifest.ts`) in module-graph order, serves
- * `/plugins/<id>/client.js` and its source map, taps the index render to
- * inject the boot manifest plus the parser-blocking bootstrap preloads, and
- * provides the `clientModuleHost` service (the HMR node half's
- * registration/notification face).
+ * `/plugins/<id>/client.js` and its source map plus `/plugins/<id>/assets/*`
+ * sibling files (Ghostty wasm/font), taps the index render to inject the boot
+ * manifest plus the parser-blocking bootstrap preloads, and provides the
+ * `clientModuleHost` service (the HMR node half's registration/notification
+ * face).
  *
  * Scanning is incremental per package — there is no full-rescan code path.
  * Every cordis `internal/plugin` emission (fiber construction/disposal) marks
@@ -31,6 +32,7 @@ import { Service } from '@deepseek-ai/cordis'
 import type { Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/cordis-plugin-loader'
 import type {} from '@deepseek-ai/dsh-host-webserver'
+import { missingHostFeatures, parseCompatibilityFeatures } from '@deepseek-ai/dsh-app-boot/features'
 import { optionalStringArray, stripClientSuffix } from './client/manifest.ts'
 import type { WebBootEntry, WebBootGraph } from './client/manifest.ts'
 
@@ -92,6 +94,21 @@ class MissingClientBundleError extends Error {
         `  path: ${clientPath}`,
       ].join('\n'),
       { cause },
+    )
+  }
+}
+
+/** Host-feature gate failure: the package requires features this host does not support. */
+class ClientCompatibilityError extends Error {
+  constructor(
+    readonly packageName: string,
+    readonly missing: readonly string[],
+  ) {
+    super(
+      [
+        `client-modules: ${packageName} requires host features this dsh host does not support: ${missing.join(', ')}`,
+        '  the package is not part of the boot graph — update dsh to a host that provides them, or remove the plugin',
+      ].join('\n'),
     )
   }
 }
@@ -462,6 +479,19 @@ export class ClientModuleRegistry extends Service {
       this.pkgMeta.set(pkgName, null)
       return null
     }
+    // Host-feature gate before the package enters the boot graph: a
+    // malformed dsh.compatibility declaration (parseCompatibilityFeatures
+    // names the package) or unsupported required features reject the package
+    // before any bundle is read or served. The activation pass aggregates
+    // these throws into ClientPackageCompositionError.
+    const dshCompatibility = dsh !== null && typeof dsh === 'object'
+      ? (dsh as Record<string, unknown>).compatibility
+      : undefined
+    const required = parseCompatibilityFeatures(pkgName, dshCompatibility)
+    if (required !== undefined) {
+      const missing = missingHostFeatures(required)
+      if (missing.length > 0) throw new ClientCompatibilityError(pkgName, missing)
+    }
     const clientRel = clientExportOf(pkgName, pkg.exports)
     if (clientRel === undefined) {
       throw new Error(`client-modules: ${pkgName} declares dsh.client but exports no "./client" bundle`)
@@ -553,12 +583,22 @@ export class ClientModuleRegistry extends Service {
     const prefix = '/plugins/'
     const mapSuffix = '/client.js.map'
     const bundleSuffix = '/client.js'
+    const assetsMarker = '/assets/'
     const isSourceMap = pathname.startsWith(prefix) && pathname.endsWith(mapSuffix)
     const suffix = isSourceMap ? mapSuffix : bundleSuffix
+    const rest = pathname.startsWith(prefix) ? pathname.slice(prefix.length) : ''
+    const assetAt = rest.indexOf(assetsMarker)
+    const assetName = assetAt >= 0 ? rest.slice(assetAt + assetsMarker.length) : ''
+    const assetId = assetAt >= 0 ? rest.slice(0, assetAt) : ''
+    const assetClient = assetAt >= 0 && /^[A-Za-z0-9._-]+$/.test(assetName)
+      ? this.clientPath(assetId)
+      : undefined
     const clientPath = pathname.startsWith(prefix) && pathname.endsWith(suffix)
       ? this.clientPath(pathname.slice(prefix.length, -suffix.length))
       : undefined
-    const path = clientPath === undefined ? undefined : `${clientPath}${isSourceMap ? '.map' : ''}`
+    const path = assetClient !== undefined
+      ? join(dirname(assetClient), 'assets', assetName)
+      : clientPath === undefined ? undefined : `${clientPath}${isSourceMap ? '.map' : ''}`
     if (path === undefined) {
       res.writeHead(404)
       res.end()
@@ -566,8 +606,13 @@ export class ClientModuleRegistry extends Service {
     }
     try {
       const body = await readFile(path)
+      const type = assetClient !== undefined
+        ? (assetName.endsWith('.wasm') ? 'application/wasm'
+          : assetName.endsWith('.woff2') ? 'font/woff2'
+            : 'application/octet-stream')
+        : isSourceMap ? 'application/json; charset=utf-8' : 'text/javascript; charset=utf-8'
       res.writeHead(200, {
-        'content-type': isSourceMap ? 'application/json; charset=utf-8' : 'text/javascript; charset=utf-8',
+        'content-type': type,
         'cache-control': 'no-cache',
       })
       res.end(body)

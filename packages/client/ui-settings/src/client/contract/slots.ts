@@ -75,7 +75,7 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
      * One preference row inside the General section — the additive seat for a
      * single setting that needs no page of its own (a whole page is
      * `settings.section`), contributed by the feature plugin that owns the
-     * preference (locale → Language, ui-theme → Appearance, ui-conversation →
+     * preference (locale → Language, ui-conversation →
      * Composer Enter). Options: `id` (row key), `order` (row position). The
      * section column only stacks rows, so a row draws its own internals,
      * including its label: nothing projects a `label` here and the owner passes
@@ -86,6 +86,23 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
      * layer and every registrant already depends on it for `ctx.settingsScope`.
      */
     'settings.general.item': { kind: 'list'; scope: 'root'; owner: SettingsGeneralItemOwnerProps }
+    /**
+     * One preference row inside the Interface section — the additive seat for a
+     * titlebar-chrome or composer-beam setting that needs no page of its own
+     * (a whole page is `settings.section`), contributed by the feature plugin
+     * that owns the chrome (session-log-export → Session log, ui-git → Git
+     * cluster, ui-titlebar → panel toggles, ui-conversation → composer beam).
+     * Options: `id` (row key), `order` (row position). The section column only
+     * stacks rows, so a row draws its own internals, including its label:
+     * nothing projects a `label` here and the owner passes no props at all —
+     * copy, current value, and the write path are all yours, through your own
+     * inject face and `host.call`. Declared at runtime by
+     * ui-settings-general's Interface entry; the type lives here with every
+     * other settings slot type, because this package is the settings domain's
+     * base layer and every registrant already depends on it for
+     * `ctx.settingsScope`.
+     */
+    'settings.interface.item': { kind: 'list'; scope: 'root'; owner: SettingsInterfaceItemOwnerProps }
   }
 }
 /** Owner share of a General preference row (the section supplies nothing). */
@@ -94,10 +111,19 @@ export interface SettingsGeneralItemOwnerProps {
   children?: never
 }
 
-/** Owner share of a Plugins tab (the section supplies nothing). */
-export interface SettingsPluginsTabOwnerProps {
-  /** Marker field: tab owner props are intentionally empty. */
+/** Owner share of an Interface preference row (the section supplies nothing). */
+export interface SettingsInterfaceItemOwnerProps {
+  /** Marker field: item owner props are intentionally empty. */
   children?: never
+}
+
+/**
+ * Owner share of a Plugins tab. The section forwards the settings shell's
+ * `close`, so a tab can leave Settings and open a session the way a section can.
+ */
+export interface SettingsPluginsTabOwnerProps {
+  /** Close the settings panel (the shell owns the open state). */
+  close: () => void
 }
 
 /** Owner share of the trigger content seat: the sidebar column state. */

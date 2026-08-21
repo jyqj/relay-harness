@@ -695,7 +695,7 @@ Source: [`packages/fs/tool-fs/src/index.ts`](../packages/fs/tool-fs/src/index.ts
 
 ### `read_image`
 
-Read a PNG/JPEG/WebP/GIF file and return the image itself. Requires the current model to accept image input.
+Read a PNG/JPEG/WebP/GIF file and return the image itself. Requires the current model to accept image input; when a vision fallback model is designated, text-only models receive a generated description of the image instead.
 
 ```json
 {
@@ -2158,6 +2158,10 @@ Constraints: concurrency and total-agent caps apply; no filesystem, network, tim
       "type": "object",
       "description": "Optional JSON input exposed to the script as the `args` global (wrap a bare list as a field, e.g. {\"files\": [...]}).",
       "additionalProperties": true
+    },
+    "resumeRunId": {
+      "type": "string",
+      "description": "Optional prior workflow run id to resume by deterministic journal replay. Requires an engine configured with journalRoot; use the exact same script, meta, args, provider, and limits."
     }
   },
   "required": [

@@ -8,7 +8,7 @@ Source: [`packages/core/tools/src/index.ts`](../../packages/core/tools/src/index
 
 ## `ToolDefinition` — a registered tool
 
-A `ToolSchema` (the model-facing fields) plus a mandatory canonical output declaration, the `execute` function, host-only scheduler metadata, an optional final-content callback, and optional UI presenters. The registry holds these; the loop dispatches calls through them. The registry's `schemas()` builds the model-facing `ToolSchema[]` by an explicit allowlist — `output`/`execute`/`finalizeContent`/`timeoutMs`/`isConcurrencySafe`/`presentCall`/`presentResult` must never leak into a model request.
+A `ToolSchema` (the model-facing fields) plus a mandatory canonical output declaration, the `execute` function, host-only scheduler and resource metadata, an optional final-content callback, and optional UI presenters. The registry holds these; the loop dispatches calls through them. The registry's `schemas()` builds the model-facing `ToolSchema[]` by an explicit allowlist — `output`/`execute`/`finalizeContent`/`timeoutMs`/`isConcurrencySafe`/`resourceIntents`/`presentCall`/`presentResult` must never leak into a model request.
 
 ```ts type-equiv
 /** Tool-owned canonical output contract used after the body returns a JSON value. */
@@ -19,6 +19,16 @@ interface ToolOutputDefinition {
   render(args: unknown, value: JsonValue): ContentBlock[]
   /** Pure replayable presentation projection, computed only for top-level calls. */
   presentationMeta?(args: unknown, value: JsonValue): JsonValue
+}
+```
+
+```ts type-equiv
+/** One canonical resource claim used to coordinate otherwise parallel calls. */
+interface ToolResourceIntent {
+  /** Stable namespaced identity; equal keys participate in the same lock. */
+  readonly key: string
+  /** Reads may overlap; a write excludes every reader and writer for the key. */
+  readonly access: 'read' | 'write'
 }
 ```
 
@@ -73,6 +83,19 @@ interface ToolDefinition extends ToolSchema {
    */
   isConcurrencySafe?(args: unknown): boolean
   /**
+   * Resolve canonical resources after pre-execute policy and before dispatch.
+   * Declaring this opts the call into the parallel pool; the runtime acquires
+   * fair read/write locks before invoking the body. Different keys may overlap.
+   * The resolver may perform identity lookup but must not mutate the resource.
+   * @param args - snapshotted, frozen arguments.
+   * @param exec - immutable execution identity and cancellation signal.
+   * @returns canonical namespaced resource claims for this call.
+   */
+  resourceIntents?(
+    args: unknown,
+    exec: Readonly<ToolExecution>,
+  ): readonly ToolResourceIntent[] | Promise<readonly ToolResourceIntent[]>
+  /**
    * Optional: how to present the PENDING state of one call in a UI, derived from
    * the call's `args` (parsed arguments, `unknown` — the tool validates/narrows
    * its own input). Returns a {@link ToolCallView} (a `card`-tagged render intent),
@@ -94,6 +117,12 @@ interface ToolDefinition extends ToolSchema {
 ```
 
 `execute` receives `args: unknown` — a raw `ToolDefinition` validates its own input. First-party tools don't write that by hand; they use `defineTool`, which validates and narrows the arguments, infers the body return from `output.schema`, and types both output projectors. `finalizeContent` deliberately receives the immutable execution instead of typed arguments because invalid-input and outer pipeline failures reach it too; it may enforce a tool-owned content bound while preserving `isError`, canonical value, structured error identity, deferred contexts, and presentation metadata.
+
+## Request-scoped definition identity
+
+The default loop captures the effective definitions, presentation mode, detached schemas, Code Mode SDK projection, and code backend before one sampling request is assembled. `system-prompt/assemble` receives those schemas and remains authoritative: after the waterfall, the snapshot admits model-direct calls only for final tool names that also have captured definitions. Every staged execution records its captured definition, which owns body dispatch, output validation and rendering, post-policy value replacement, wrapper-success normalization, and final content. Live hooks, approval, guards, and execution wrappers are deliberately not frozen. Code Mode inherits the outer snapshot for its binding catalog, backend, classifiers, and nested scheduler. The step releases the snapshot on every terminal path; HMR affects the next capture.
+
+`resourceIntents` is the relational concurrency path. Its resolver runs after pre-execute policy, and the call joins the parallel pool; immediately before the body, the runtime normalizes claims, acquires every key in lexical order, and applies a fair writer-preferred read/write lock. Duplicate keys collapse with write dominance. Cancellation removes a queued waiter and releases earlier multi-key leases. The callback owns canonical identity: first-party filesystem tools derive `fs:<FsTargetKey>` rather than locking raw path strings.
 
 ## The unified JSON-value schema DSL
 
@@ -571,7 +600,7 @@ async execute(exec: ToolExecutionInput): Promise<ToolExecutionResult>
 
 Types: [ScopeKey](scope.md)
 
-Source: [`packages/core/tools/src/index.ts:787`](../../packages/core/tools/src/index.ts)
+Source: [`packages/core/tools/src/index.ts:863`](../../packages/core/tools/src/index.ts)
 
 <a id="tools-events"></a>
 
@@ -596,7 +625,7 @@ A tool was registered or unregistered, or a scoped restriction changed (the avai
 'tools/change'(): void
 ```
 
-Source: [`packages/core/tools/src/index.ts:207`](../../packages/core/tools/src/index.ts)
+Source: [`packages/core/tools/src/index.ts:209`](../../packages/core/tools/src/index.ts)
 
 <a id="toolscode-dispatch-log--waterfall"></a>
 
@@ -623,7 +652,7 @@ Allow a listener to replace content in the DURABLE LOG COPY of one `run_code` su
 
 Types: [ContentBlock](llm-streaming.md) · [Scoped](scope.md)
 
-Source: [`packages/core/tools/src/index.ts:189`](../../packages/core/tools/src/index.ts)
+Source: [`packages/core/tools/src/index.ts:191`](../../packages/core/tools/src/index.ts)
 
 <a id="toolsexecute--waterfall"></a>
 
@@ -647,7 +676,7 @@ Around-dispatch waterfall for timeout, retry, or metrics. `next()` returns a nor
 
 Types: [Scoped](scope.md)
 
-Source: [`packages/core/tools/src/index.ts:163`](../../packages/core/tools/src/index.ts)
+Source: [`packages/core/tools/src/index.ts:165`](../../packages/core/tools/src/index.ts)
 
 <a id="toolspost-execute--waterfall"></a>
 
@@ -672,7 +701,7 @@ Accept, replace, enrich, or block a normalized dispatch result. `next()` accepts
 
 Types: [Scoped](scope.md)
 
-Source: [`packages/core/tools/src/index.ts:175`](../../packages/core/tools/src/index.ts)
+Source: [`packages/core/tools/src/index.ts:177`](../../packages/core/tools/src/index.ts)
 
 <a id="toolspre-execute--waterfall"></a>
 
@@ -695,7 +724,7 @@ Allow, deny, or ask before dispatch. `next()` delegates to allow; missing approv
 
 Types: [Scoped](scope.md)
 
-Source: [`packages/core/tools/src/index.ts:152`](../../packages/core/tools/src/index.ts)
+Source: [`packages/core/tools/src/index.ts:154`](../../packages/core/tools/src/index.ts)
 
 <a id="toolsresult--emit"></a>
 
@@ -716,5 +745,5 @@ Observe the frozen, lossless-JSON final outcome. Listener failures are contained
 
 Types: [Scoped](scope.md)
 
-Source: [`packages/core/tools/src/index.ts:197`](../../packages/core/tools/src/index.ts)
+Source: [`packages/core/tools/src/index.ts:199`](../../packages/core/tools/src/index.ts)
 <!-- END GENERATED cordis-surface -->

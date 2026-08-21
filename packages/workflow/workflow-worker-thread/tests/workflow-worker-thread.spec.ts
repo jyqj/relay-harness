@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { tmpdir } from 'node:os'
+import { mkdirSync, mkdtempSync, rmSync } from 'node:fs'
+import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import type { Worker } from 'node:worker_threads'
 import { Context } from '@deepseek-ai/cordis'
@@ -12,6 +14,7 @@ import * as workerEngineModule from '../src/index.ts'
 import WorkerThreadWorkflowEngine, { type Config } from '../src/index.ts'
 import { workerSpawnEnv } from '../src/host.ts'
 import { HostToWorkerType, WorkerToHostType } from '../src/protocol.ts'
+import { workflowRequestHash } from '../src/journal.ts'
 import { SessionId } from '@deepseek-ai/dsh-session'
 
 /** A minimal parent stand-in: the engine only threads it through to the provider. */
@@ -175,8 +178,206 @@ async function run(ctx: Context, parent: Agent, source: { script: string; meta: 
   }
 }
 
+/** Assert a workflow error result without unsafe asymmetric matchers. */
+function expectWorkflowError(result: WorkflowResult, fragment: string): void {
+  expect(result.stopReason).toBe('error')
+  expect(result.error).toContain(fragment)
+}
+
 describe('dsh-workflow-worker-thread', () => {
   describe('script execution over a real worker thread', () => {
+    it('replays completed agent calls on resume and rejects an edited script fingerprint', async () => {
+      const journalRoot = mkdtempSync(join(tmpdir(), 'dsh-workflow-resume-'))
+      try {
+        const { ctx, parent, provider } = await setup({
+          config: { journalRoot },
+          reply: (_request, index) => text(`answer-${index}`),
+        })
+        const source = scripted("return [await agent('one'), await agent('two')]")
+        const first = ctx.workflowEngine.start({ ...source, parent })
+        const firstResult = await first.result
+        await first.dispose()
+        expect(firstResult).toMatchObject({
+          stopReason: 'completed',
+          value: ['answer-0', 'answer-1'],
+          agentsStarted: 2,
+        })
+        expect(provider.runs).toHaveLength(2)
+
+        const resumed = ctx.workflowEngine.start({ ...source, parent, resumeRunId: first.id })
+        const resumedResult = await resumed.result
+        await resumed.dispose()
+        expect(resumed.id).toBe(first.id)
+        expect(resumedResult).toEqual(firstResult)
+        expect(provider.runs).toHaveLength(2)
+
+        expect(() => ctx.workflowEngine.start({
+          ...scripted("return [await agent('edited')]") ,
+          parent,
+          resumeRunId: first.id,
+        })).toThrow(expect.objectContaining({ code: 'JOURNAL_DIVERGENCE' }))
+      } finally {
+        rmSync(journalRoot, { recursive: true, force: true })
+      }
+    })
+
+    it('rejects resume without a configured journal root', async () => {
+      const { ctx, parent } = await setup()
+      expect(() => ctx.workflowEngine.start({
+        ...scripted('return 1'),
+        parent,
+        resumeRunId: 'missing' as never,
+      })).toThrow(expect.objectContaining({ code: 'JOURNAL_UNAVAILABLE' }))
+    })
+
+    it('rejects a relative journal root before worker creation', async () => {
+      const { ctx, parent } = await setup({ config: { journalRoot: 'relative/journals' } })
+      expect(() => ctx.workflowEngine.start({ ...scripted('return 1'), parent }))
+        .toThrow(expect.objectContaining({ code: 'JOURNAL_INVALID' }))
+    })
+
+    it('replays recorded start and result failures without repeating provider work', async () => {
+      const journalRoot = mkdtempSync(join(tmpdir(), 'dsh-workflow-failure-resume-'))
+      try {
+        const startFailure = await setup({ manual: true, deferStart: true, config: { journalRoot } })
+        const source = scripted("return await agent('fails to start')")
+        const first = startFailure.ctx.workflowEngine.start({ ...source, parent: startFailure.parent })
+        await waitFor(() => { expect(startFailure.provider.runs).toHaveLength(1) })
+        startFailure.provider.runs[0]!.rejectStart(new Error('no capacity'))
+        const firstResult = await first.result
+        await first.dispose()
+        expectWorkflowError(firstResult, 'no capacity')
+        const replayed = startFailure.ctx.workflowEngine.start({
+          ...source,
+          parent: startFailure.parent,
+          resumeRunId: first.id,
+        })
+        expect(await replayed.result).toEqual(firstResult)
+        await replayed.dispose()
+        expect(startFailure.provider.runs).toHaveLength(1)
+
+        const resultFailure = await setup({ manual: true, config: { journalRoot } })
+        const resultSource = scripted("return await agent('result rejects')", { name: 'result-failure' })
+        const resultRun = resultFailure.ctx.workflowEngine.start({ ...resultSource, parent: resultFailure.parent })
+        await waitFor(() => { expect(resultFailure.provider.runs).toHaveLength(1) })
+        resultFailure.provider.runs[0]!.rejectResult(new Error('transport broke'))
+        const rejected = await resultRun.result
+        await resultRun.dispose()
+        const replayedRejection = resultFailure.ctx.workflowEngine.start({
+          ...resultSource,
+          parent: resultFailure.parent,
+          resumeRunId: resultRun.id,
+        })
+        expect(await replayedRejection.result).toEqual(rejected)
+        await replayedRejection.dispose()
+        expect(resultFailure.provider.runs).toHaveLength(1)
+      } finally {
+        rmSync(journalRoot, { recursive: true, force: true })
+      }
+    })
+
+    it('fails a nondeterministic replay when the same script issues a different request', async () => {
+      const journalRoot = mkdtempSync(join(tmpdir(), 'dsh-workflow-divergence-'))
+      try {
+        const { ctx, parent, provider } = await setup({ config: { journalRoot } })
+        const source = scripted('return await agent(String(Math.random()))')
+        const first = ctx.workflowEngine.start({ ...source, parent })
+        await first.result
+        await first.dispose()
+        const replayed = ctx.workflowEngine.start({ ...source, parent, resumeRunId: first.id })
+        const result = await replayed.result
+        await replayed.dispose()
+        expectWorkflowError(result, 'replay divergence')
+        expect(provider.runs).toHaveLength(1)
+      } finally {
+        rmSync(journalRoot, { recursive: true, force: true })
+      }
+    })
+
+    it('surfaces journal append failure before publishing a child result', async () => {
+      const journalRoot = mkdtempSync(join(tmpdir(), 'dsh-workflow-journal-failure-'))
+      try {
+        const { ctx, parent, provider } = await setup({ manual: true, config: { journalRoot } })
+        const source = scripted("return await agent('write result')")
+        const handle = ctx.workflowEngine.start({ ...source, parent })
+        await waitFor(() => { expect(provider.runs).toHaveLength(1) })
+        const journalPath = join(journalRoot, workflowRequestHash('run-id', handle.id), 'journal.jsonl')
+        rmSync(journalPath)
+        mkdirSync(journalPath)
+        provider.runs[0]!.settle(text('done'))
+        const result = await handle.result
+        await handle.dispose()
+        expectWorkflowError(result, 'journal append failed')
+
+        const startFailure = await setup({
+          manual: true,
+          deferStart: true,
+          config: { journalRoot },
+        })
+        const failedStart = startFailure.ctx.workflowEngine.start({
+          ...scripted("return await agent('write start failure')", { name: 'write-start-failure' }),
+          parent: startFailure.parent,
+        })
+        await waitFor(() => { expect(startFailure.provider.runs).toHaveLength(1) })
+        const startJournalPath = join(
+          journalRoot,
+          workflowRequestHash('run-id', failedStart.id),
+          'journal.jsonl',
+        )
+        rmSync(startJournalPath)
+        mkdirSync(startJournalPath)
+        startFailure.provider.runs[0]!.rejectStart(new Error('provider start failed'))
+        expectWorkflowError(await failedStart.result, 'journal append failed')
+        await failedStart.dispose()
+      } finally {
+        rmSync(journalRoot, { recursive: true, force: true })
+      }
+    })
+
+    it('journals an unserializable child result as a replayable infrastructure failure', async () => {
+      const journalRoot = mkdtempSync(join(tmpdir(), 'dsh-workflow-invalid-result-'))
+      try {
+        const { ctx, parent, provider } = await setup({ manual: true, config: { journalRoot } })
+        const source = scripted("return await agent('invalid result')")
+        const handle = ctx.workflowEngine.start({ ...source, parent })
+        await waitFor(() => { expect(provider.runs).toHaveLength(1) })
+        provider.runs[0]!.settle({
+          output: [{ type: 'text', text: Symbol('bad') } as never],
+          stopReason: 'completed',
+        })
+        const result = await handle.result
+        await handle.dispose()
+        expectWorkflowError(result, 'could not cross')
+        const replayed = ctx.workflowEngine.start({ ...source, parent, resumeRunId: handle.id })
+        expect(await replayed.result).toEqual(result)
+        await replayed.dispose()
+        expect(provider.runs).toHaveLength(1)
+      } finally {
+        rmSync(journalRoot, { recursive: true, force: true })
+      }
+    })
+
+    it('does not journal a cancelled live suffix call, so resume retries it', async () => {
+      const journalRoot = mkdtempSync(join(tmpdir(), 'dsh-workflow-cancel-resume-'))
+      try {
+        const { ctx, parent, provider } = await setup({ manual: true, config: { journalRoot } })
+        const source = scripted("return await agent('retry after cancel')")
+        const first = ctx.workflowEngine.start({ ...source, parent })
+        await waitFor(() => { expect(provider.runs).toHaveLength(1) })
+        first.cancel('pause')
+        expect(await first.result).toMatchObject({ stopReason: 'cancelled' })
+        await first.dispose()
+
+        const resumed = ctx.workflowEngine.start({ ...source, parent, resumeRunId: first.id })
+        await waitFor(() => { expect(provider.runs).toHaveLength(2) })
+        provider.runs[1]!.settle(text('retried'))
+        expect(await resumed.result).toMatchObject({ stopReason: 'completed', value: 'retried' })
+        await resumed.dispose()
+      } finally {
+        rmSync(journalRoot, { recursive: true, force: true })
+      }
+    })
+
     it('runs a script end-to-end: agent() text results, phases, log, args, return value, events', async () => {
       const { ctx, parent, provider } = await setup({ reply: (_request, index) => text(`answer-${index}`) })
       const events: [string, unknown[]][] = []

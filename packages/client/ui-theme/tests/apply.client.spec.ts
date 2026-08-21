@@ -8,16 +8,16 @@ import { LocaleRuntime } from '@deepseek-ai/dsh-client-locale/client'
 import { TestRemote } from '@deepseek-ai/dsh-client-test-runtime'
 import { apply as settingsApply, inject as settingsInject } from '@deepseek-ai/dsh-client-ui-settings/client'
 import { apply, inject, SETTINGS_NS } from '@deepseek-ai/dsh-client-ui-theme/client'
-import type { AppearanceRowInjected, ThemeRuntime } from '@deepseek-ai/dsh-client-ui-theme/client'
+import type { AppearanceSectionInjected, ThemeRuntime } from '@deepseek-ai/dsh-client-ui-theme/client'
 import { THEME_SETTINGS_NAMESPACE, ThemeSettingsSchema } from '../src/theme-settings.ts'
-import { AppearanceRow } from '../src/client/AppearanceRow.tsx'
+import { AppearanceSection } from '../src/client/AppearanceSection.tsx'
 import type { createAppearanceRowStore } from '../src/client/settings-store.ts'
 
 // These specs assert the shipped Chinese copy. The lane has no jsdom `window`,
 // so browser-language detection never runs and a fresh LocaleRuntime opens on
 // FALLBACK_LOCALE (en); bench stages zh explicitly on the locale instead.
 
-const SLOT = 'settings.general.item'
+const SLOT = 'settings.section'
 
 function deferred<T>() {
   let resolve!: (value: T) => void
@@ -75,10 +75,10 @@ function declareItems(slots: SlotRegistry): () => void {
 /** Mirror the framework's inject choreography: bake a real instance from the
  * declared handle and hand its actions to the entry's inject factory. */
 function faceOf(slots: SlotRegistry) {
-  const entry = slots.entries(SLOT).find(e => e.component === AppearanceRow)!
+  const entry = slots.entries(SLOT).find(e => e.component === AppearanceSection)!
   const handle = entry.store as ReturnType<typeof createAppearanceRowStore>
   const instance = handle.create()
-  const face = (entry.inject as unknown as (a: typeof instance.actions) => AppearanceRowInjected)(instance.actions)
+  const face = (entry.inject as unknown as (a: typeof instance.actions) => AppearanceSectionInjected)(instance.actions)
   return { entry, instance, face }
 }
 
@@ -94,8 +94,8 @@ describe('ui-theme apply', () => {
     expect(before.locale.bind(SETTINGS_NS)('appearance.title')).toBe('外观')
     before.locale.setLocale('en')
     expect(before.locale.bind(SETTINGS_NS)('appearance.title')).toBe('Appearance')
-    const entry = before.slots.entries(SLOT).find(e => e.component === AppearanceRow)!
-    expect(entry.options).toMatchObject({ id: 'appearance', order: 10 })
+    const entry = before.slots.entries(SLOT).find(e => e.component === AppearanceSection)!
+    expect(entry.options).toMatchObject({ id: 'appearance', order: 5 })
 
     const after = await bench()
     const fiber = after.ctx.plugin({ inject: [...inject], apply })
@@ -103,7 +103,7 @@ describe('ui-theme apply', () => {
     expect(after.slots.entries(SLOT)).toHaveLength(0)
     declareItems(after.slots)
     await Promise.resolve()
-    expect(after.slots.entries(SLOT).some(e => e.component === AppearanceRow)).toBe(true)
+    expect(after.slots.entries(SLOT).some(e => e.component === AppearanceSection)).toBe(true)
   })
 
   it('projects service snapshots into the row store and routes face writes back', async () => {
@@ -118,7 +118,7 @@ describe('ui-theme apply', () => {
     // The inject-time re-sync sealed the init window: the mirror is current.
     expect(instance.getSnapshot().preference).toBe('dark')
     // Copy rides the standard locale seat: the entry declares the namespace.
-    expect(b.slots.entries(SLOT).find(e => e.component === AppearanceRow)!.locale).toBe(SETTINGS_NS)
+    expect(b.slots.entries(SLOT).find(e => e.component === AppearanceSection)!.locale).toBe(SETTINGS_NS)
 
     face.setTheme('system')
     expect(theme.getTheme().preference).toBe('system')
@@ -199,7 +199,7 @@ describe('ui-theme apply', () => {
 
     declareItems(b.slots)
     await Promise.resolve()
-    expect(b.slots.entries(SLOT).some(e => e.component === AppearanceRow)).toBe(true)
+    expect(b.slots.entries(SLOT).some(e => e.component === AppearanceSection)).toBe(true)
   })
 
   it('teardown removes the row and the dictionaries; teardown without a declaration is quiet', async () => {

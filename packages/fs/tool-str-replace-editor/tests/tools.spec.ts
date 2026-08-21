@@ -96,6 +96,12 @@ describe('tool-str-replace-editor', () => {
     expect(properties).not.toHaveProperty('replace_all')
     expect(properties.insert_line?.type).toBe('integer')
     expect(properties.view_range?.items?.type).toBe('integer')
+    expect(ctx.tools.executionMode({
+      signal: new AbortController().signal,
+      callId: CallId('str-replace-resource-lock'),
+      name: 'str_replace_editor',
+      arguments: { command: 'str_replace', path: '/workspace/a.txt', old_str: 'a', new_str: 'b' },
+    })).toEqual({ kind: 'parallel' })
     expect(ctx.tools.get('str_replace_editor')?.presentCall?.({
       command: 'view',
       path: '/workspace/a.txt',

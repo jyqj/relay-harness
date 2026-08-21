@@ -68,6 +68,7 @@ function mount(overrides: Partial<WorkspaceBrowserProps> = {}) {
     useStore: bindSnapshotSelector(store),
     actions: store.actions,
     startSession: vi.fn(),
+    connectNoDirectory: vi.fn(),
     open: vi.fn(),
     searchSessions: vi.fn(async () => ({ items: [], hasMore: false })),
     searchResultLimit: 20,
@@ -106,7 +107,7 @@ describe('WorkspaceBrowser', () => {
           title: 'Project',
         }])),
         useHostDescription: selector => selector({
-          version: '0', cwd: '/tmp', attachedSessions: 0, home: '/home/u', canOpenPath: false,
+          version: '0', cwd: '/tmp', attachedSessions: 0, home: '/home/u', canOpenPath: false, scratchCwd: '/scratch',
         }),
       })
       fireEvent.pointerEnter(screen.getByRole('treeitem').parentElement as HTMLElement)
@@ -145,7 +146,7 @@ describe('WorkspaceBrowser', () => {
       useSessions: hook(sessions),
       useWorkspaces: hook(workspaceState([workspace('alpha', ['alpha-s']), workspace('beta', ['beta-s'])])),
     })
-    expect(screen.getByText('工作区')).toBeTruthy()
+    expect(screen.getByText('项目')).toBeTruthy()
     expect(screen.getByText('alpha')).toBeTruthy()
     // Sessions hidden while their group is folded.
     expect(screen.queryByText('alpha-s')).toBeNull()
@@ -171,7 +172,7 @@ describe('WorkspaceBrowser', () => {
     expect(screen.getByRole('menuitem', { name: '手动排序' }).hasAttribute('disabled')).toBe(false)
     fireEvent.click(screen.getByRole('menuitem', { name: '按工作区' }))
     expect(b.store.getSnapshot().groupBy).toBe('workspace')
-    expect(screen.getByText('工作区')).toBeTruthy()
+    expect(screen.getByText('项目')).toBeTruthy()
 
     // Escape closes the menu without picking.
     fireEvent.click(screen.getByRole('button', { name: '视图选项' }))
@@ -244,9 +245,9 @@ describe('WorkspaceBrowser', () => {
     fireEvent.click(screen.getByText('alpha'))
     fireEvent.click(screen.getByText('alpha-s'))
     expect(open).toHaveBeenCalledWith(sid('alpha-s'))
-    // Collapse hides the row again.
+    // Collapse keeps the row mounted through the fade exit (`aria-hidden`).
     fireEvent.click(screen.getByText('alpha'))
-    expect(screen.queryByText('alpha-s')).toBeNull()
+    expect(screen.getByText('alpha-s').closest('[data-dsh-motion]')?.getAttribute('aria-hidden')).toBe('true')
   })
 
   it('shows five sessions by default and clears transient show-all when the Workspace collapses', () => {
@@ -409,18 +410,32 @@ describe('WorkspaceBrowser', () => {
     expect(startSession).toHaveBeenCalledWith(wid('alpha'))
   })
 
-  it('auto-expands the Ungrouped bucket for a loose current session; its header has no menu and its ＋ is inert', () => {
+  it('auto-expands the Tasks section for a loose current session; its header has no menu and its ＋ mints a no-directory session', () => {
     const startSession = vi.fn()
+    const connectNoDirectory = vi.fn()
     mount({
       useSessions: hook(sessionState([summary('loose', 1)], { current: sid('loose') })),
       useWorkspaces: hook(workspaceState([workspace('alpha', [])])),
       startSession,
+      connectNoDirectory,
     })
-    // The loose session's group is UNGROUPED_KEY: expanded by the effect.
     expect(screen.getByText('loose')).toBeTruthy()
-    expect(screen.queryByRole('button', { name: '工作区“未分组”的操作' })).toBeNull()
-    fireEvent.click(screen.getByRole('button', { name: '在“未分组”中新建会话' }))
+    expect(screen.getByText('任务')).toBeTruthy()
+    expect(screen.queryByText('未分组')).toBeNull()
+    expect(screen.queryByRole('button', { name: '工作区“任务”的操作' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: '在“任务”中新建会话' }))
     expect(startSession).not.toHaveBeenCalled()
+    expect(connectNoDirectory).toHaveBeenCalledTimes(1)
+  })
+
+  it('hides the Tasks section when every session belongs to a project Workspace', () => {
+    mount({
+      useSessions: hook(sessionState([summary('alpha-s', 1)])),
+      useWorkspaces: hook(workspaceState([workspace('alpha', ['alpha-s'])])),
+    })
+    fireEvent.click(screen.getByText('alpha'))
+    expect(screen.getByText('alpha-s')).toBeTruthy()
+    expect(screen.queryByText('任务')).toBeNull()
   })
 
   it('keeps an already-expanded group when the selection moves within it', () => {
@@ -435,7 +450,7 @@ describe('WorkspaceBrowser', () => {
     rerender(b, { useSessions: hook({ ...first, current: sid('b') }) })
     expect(screen.getByText('b')).toBeTruthy()
     fireEvent.click(screen.getByText('alpha'))
-    expect(screen.queryByText('b')).toBeNull()
+    expect(screen.getByText('b').closest('[data-dsh-motion]')?.getAttribute('aria-hidden')).toBe('true')
   })
 
   it('shows only the current blank session as the localized New Session, excluded from search', () => {
@@ -707,7 +722,7 @@ describe('WorkspaceBrowser', () => {
       const expandSidebar = vi.fn()
       const b = mount({ wide: false, expandSidebar })
       // No wide chrome in rail state.
-      expect(screen.queryByText('工作区')).toBeNull()
+      expect(screen.queryByText('项目')).toBeNull()
       expect(screen.queryByPlaceholderText('搜索会话…')).toBeNull()
       fireEvent.click(screen.getByRole('button', { name: '搜索会话' }))
       expect(expandSidebar).toHaveBeenCalledTimes(1)
@@ -889,7 +904,7 @@ describe('WorkspaceBrowser', () => {
       useWorkspaces: hook(workspaceState([])),
       insertSessionBefore,
     })
-    fireEvent.click(screen.getByText('未分组'))
+    fireEvent.click(screen.getByText('任务'))
 
     const dragAfter = (sourceTitle: string, targetTitle: string): void => {
       const source = screen.getByText(sourceTitle).closest('[role="treeitem"]') as HTMLElement
@@ -1104,7 +1119,7 @@ describe('WorkspaceBrowser', () => {
     const dialog = screen.getByRole('dialog', { name: '删除工作区' })
     expect(dialog.textContent).toContain('将把“Alpha”从工作区列表中移除')
     expect(dialog.textContent).toContain('文件夹与会话记录会保留')
-    expect(dialog.textContent).toContain('其会话将显示在“未分组”下')
+    expect(dialog.textContent).toContain('其会话将显示在“任务”下')
 
     const confirm = screen.getByRole<HTMLButtonElement>('button', { name: '删除工作区' })
     fireEvent.click(confirm)

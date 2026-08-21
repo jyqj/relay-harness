@@ -21,6 +21,7 @@ import SubagentRuntime, {
   SUBAGENT_DESCRIPTOR_VERSION,
 } from '../src/index.ts'
 import type { SubagentRunEndInfo, SubagentRunInfo } from '../src/index.ts'
+import type { Config as SubagentConfig } from '../src/index.ts'
 import * as SubagentInvariant from '../src/invariant.ts'
 
 type Script = ConstructorParameters<typeof MockAdapter>[0]
@@ -57,7 +58,10 @@ afterEach(() => {
 })
 
 /** Boot the full continuable stack: loop, persistence, providers, and subagents. */
-async function setupWith(adapter: LlmAdapter, options: { persistence?: boolean } = {}) {
+async function setupWith(
+  adapter: LlmAdapter,
+  options: { persistence?: boolean; subagents?: SubagentConfig } = {},
+) {
   const ctx = new Context()
   await mountAgentLoopTestDependencies(ctx)
   let disposePersistence: (() => Promise<void>) | undefined
@@ -69,7 +73,7 @@ async function setupWith(adapter: LlmAdapter, options: { persistence?: boolean }
     disposePersistence = () => persistenceFiber.dispose()
   }
   await ctx.plugin(AgentLoop, { agents: [] })
-  await ctx.plugin(SubagentRuntime)
+  await ctx.plugin(SubagentRuntime, options.subagents)
   await ctx.plugin(SubagentSpawn, { providerName: 'spawn' })
   await ctx.plugin(SubagentFork, { providerName: 'fork' })
   ctx.llm.registerAdapter(['mock'], adapter)
@@ -77,7 +81,7 @@ async function setupWith(adapter: LlmAdapter, options: { persistence?: boolean }
   return { ctx, parent, disposePersistence, root }
 }
 
-async function setup(script: Script, options: { persistence?: boolean } = {}) {
+async function setup(script: Script, options: { persistence?: boolean; subagents?: SubagentConfig } = {}) {
   const adapter = new MockAdapter(script)
   const booted = await setupWith(adapter, options)
   return { ...booted, adapter }
@@ -716,6 +720,27 @@ describe('continuable child ownership', () => {
 })
 
 describe('continuable durability and teardown', () => {
+  it('holds root capacity through Activation quiescence and releases it after disposal', async () => {
+    const releaseFirst = Promise.withResolvers<undefined>()
+    const adapter = new GatedAdapter([
+      { chunks: textResponse('first'), gate: releaseFirst.promise },
+      { chunks: textResponse('replacement') },
+    ])
+    const { ctx, parent } = await setupWith(adapter, {
+      subagents: { maxActivePerRoot: 1, overflow: 'reject' },
+    })
+    parkParent(ctx, parent)
+    const first = await ctx.subagents.startContinuable(startSpec(parent))
+    await vi.waitFor(() => { expect(adapter.requests).toHaveLength(1) })
+    await expect(ctx.subagents.startContinuable(startSpec(parent)))
+      .rejects.toMatchObject({ code: 'CAPACITY_EXCEEDED' })
+
+    releaseFirst.resolve(undefined)
+    await waitNoActivation(ctx, first.childId)
+    const replacement = await ctx.subagents.startContinuable(startSpec(parent))
+    await waitNoActivation(ctx, replacement.childId)
+  })
+
   it('settles when the best-effort final flush has no listeners', async () => {
     const releaseResponse = Promise.withResolvers<undefined>()
     const adapter = new GatedAdapter([

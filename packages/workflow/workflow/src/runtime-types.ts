@@ -27,6 +27,8 @@ export interface WorkflowStartRequest {
   subagentProvider?: string
   /** Optional per-run total-child ceiling. */
   maxTotalAgents?: number
+  /** Existing durable run id whose journal is replayed before live suffix calls. */
+  resumeRunId?: WorkflowRunId
   /** The agent on whose behalf the run executes (parent of every child). */
   parent: Agent
   /** Cancels the run when aborted. */

@@ -14,8 +14,10 @@ describe('provider retry policy', () => {
       mode: 'normal',
       maxRetries: 5,
       retryableCodes: ['EMPTY_RESPONSE', 'RATE_LIMIT', 'SERVER', 'TIMEOUT', 'TRANSPORT'],
+      scheduledCodes: [],
       initialDelayMs: 500,
       maxDelayMs: 10_000,
+      maxProviderDelayMs: 60_000,
       jitterRatio: 0.1,
     })
     expect(Object.isFrozen(policy)).toBe(true)
@@ -43,8 +45,10 @@ describe('provider retry policy', () => {
       mode: 'normal',
       maxRetries: 4,
       retryableCodes: ['BUSY'],
+      scheduledCodes: [],
       initialDelayMs: 25,
       maxDelayMs: 100,
+      maxProviderDelayMs: 60_000,
       jitterRatio: 0,
     })
   })
@@ -54,6 +58,7 @@ describe('provider retry policy', () => {
       mode: 'always',
       initialDelayMs: 500,
       maxDelayMs: 10_000,
+      maxProviderDelayMs: 60_000,
       jitterRatio: 0.1,
     })
     expect(RetryPolicySchema).toBeDefined()
@@ -70,6 +75,7 @@ describe('provider retry policy', () => {
       mode: 'always',
       initialDelayMs: 500,
       maxDelayMs: 10_000,
+      maxProviderDelayMs: 60_000,
       jitterRatio: 0.1,
     })
   })
@@ -91,9 +97,36 @@ describe('provider retry policy', () => {
     [{ mode: 'normal', maxRetires: 1 }, /unknown key "maxRetires"/],
     [{ mode: 'always', backoff: { initialDelay: 1 } }, /unknown key "initialDelay"/],
     [{ mode: 'sometimes' }, /mode must be "normal" or "always"/],
+    [{ mode: 'normal', backoff: { maxProviderDelayMs: 0 } }, /maxProviderDelayMs/],
+    [{ mode: 'normal', backoff: { maxProviderDelayMs: MAX_TIMER_DELAY_MS + 1 } }, /maxProviderDelayMs/],
+    [{ mode: 'normal', backoff: { maxDelayMs: 10_000, maxProviderDelayMs: 5_000 } }, /greater than or equal to maxDelayMs/],
+    [{ mode: 'normal', scheduledCodes: ['QUOTA', 'QUOTA'] }, /duplicates/],
+    [{ mode: 'normal', scheduledCodes: [''] }, /non-empty strings/],
+    [{ mode: 'normal', scheduledCodes: [402] }, /non-empty strings/],
   ] as const)('rejects invalid policy %#', (config, message) => {
     expect(() => {
       resolveRetryPolicy(config as unknown as RetryPolicyConfig, 'provider.retryPolicy')
     }).toThrow(message)
+  })})
+
+describe('provider-scheduled recovery policy', () => {
+  it('resolves scheduledCodes detached and frozen', () => {
+    const scheduledCodes = ['QUOTA']
+    const config: RetryPolicyConfig = { mode: 'normal', scheduledCodes }
+
+    const policy = resolveRetryPolicy(config, 'provider.retryPolicy')
+    scheduledCodes.push('LATE')
+
+    expect(policy).toMatchObject({ scheduledCodes: ['QUOTA'] })
+    if (policy.mode !== 'normal') throw new Error('expected normal policy')
+    expect(Object.isFrozen(policy.scheduledCodes)).toBe(true)
+  })
+
+  it('resolves a configured maxProviderDelayMs', () => {
+    const policy = resolveRetryPolicy(
+      { mode: 'normal', backoff: { maxProviderDelayMs: 120_000 } },
+      'provider.retryPolicy',
+    )
+    expect(policy).toMatchObject({ maxDelayMs: 10_000, maxProviderDelayMs: 120_000 })
   })
 })

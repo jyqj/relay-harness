@@ -1,0 +1,115 @@
+{
+  "name": "deepseek-harness-desktop",
+  "productName": "Deepseek-Harness-Desktop",
+  "version": "0.2.6",
+  "description": "Electron desktop shell for DeepSeek Harness Web UI",
+  "author": "Chisa",
+  "license": "MIT",
+  "main": "src/main/index.js",
+  "private": true,
+  "scripts": {
+    "start": "node scripts/run-electron.js",
+    "icon": "node scripts/run-render-icon.js",
+    "test": "node --test \"src/**/*.test.js\" \"mobile/web/**/*.test.js\"",
+    "setup:harness": "pnpm --dir ../.. run build",
+    "pack": "node scripts/run-electron-builder.cjs --dir --publish never",
+    "smoke:source": "node scripts/run-source-smoke.mjs",
+    "qa:source": "node scripts/run-source-qa.mjs",
+    "qa:composer": "node scripts/run-composer-official-qa.mjs",
+    "smoke:packaged": "node scripts/run-packaged-smoke.mjs",
+    "check:release-version": "node scripts/check-release-version.mjs",
+    "dist": "node scripts/run-electron-builder.cjs --win --publish never",
+    "dist:mac": "node scripts/run-electron-builder.cjs --mac --publish never"
+  },
+  "engines": {
+    "node": "^22.19.0 || >=24.0.0"
+  },
+  "optionalDependencies": {
+    "node-pty": "1.2.0-beta.15"
+  },
+  "devDependencies": {
+    "@types/ws": "^8.18.1",
+    "electron": "^43.4.0",
+    "electron-builder": "^26.15.3",
+    "pnpm": "11.8.0"
+  },
+  "build": {
+    "appId": "ai.deepseek.harness.gui",
+    "productName": "Deepseek-Harness-Desktop",
+    "copyright": "MIT",
+    "npmRebuild": false,
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "src/**/*",
+      "!**/*.test.js",
+      "mobile/web/**/*",
+      "!mobile/web/**/*.test.js",
+      "assets/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "vendor",
+        "to": "vendor",
+        "filter": [
+          "dshmarket/**"
+        ]
+      },
+      {
+        "from": "vendor/dshbot",
+        "to": "vendor/dshbot"
+      }
+    ],
+    "extraMetadata": {
+      "main": "src/main/index.js"
+    },
+    "electronDist": "node_modules/electron/dist",
+    "compression": "maximum",
+    "electronLanguages": [
+      "en-US",
+      "zh-CN"
+    ],
+    "afterPack": "./scripts/after-pack.js",
+    "publish": null,
+    "win": {
+      "icon": "assets/icon.ico",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Deepseek-Harness-Desktop",
+      "artifactName": "Deepseek-Harness-Desktop-Setup-${version}.${ext}"
+    },
+    "mac": {
+      "icon": "assets/icon.png",
+      "category": "public.app-category.developer-tools",
+      "identity": null,
+      "hardenedRuntime": false,
+      "gatekeeperAssess": false,
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64"
+          ]
+        }
+      ],
+      "artifactName": "Deepseek-Harness-Desktop-${version}-mac-${arch}.${ext}"
+    },
+    "dmg": {
+      "artifactName": "Deepseek-Harness-Desktop-${version}-mac-${arch}.${ext}"
+    }
+  }
+}

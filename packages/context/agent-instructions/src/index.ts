@@ -16,7 +16,11 @@ import { createUserMessage } from '@deepseek-ai/dsh-llm'
 import type { Session, UserMessage } from '@deepseek-ai/dsh-session'
 import type { ToolExecution, ToolExecutionResult, ToolExecutionToken } from '@deepseek-ai/dsh-tools'
 import { Config, resolveConfig, workspaceBaselineIdentity, type ResolvedConfig } from './config.ts'
-import { findProjectRoot, loadBaselineInstructionSet } from './files.ts'
+import {
+  findProjectRoot,
+  loadBaselineInstructionSet,
+  ProjectRootMarkerUnavailableError,
+} from './files.ts'
 import {
   applyInstructionVersionUpdates,
   baselineInstructionState,
@@ -120,11 +124,18 @@ export function apply(ctx: Context, config: Config): void {
     const changes: AgentInstructionChange[] = []
     let desiredBaseline = false
     const authorityMessages = [...claimed]
+    const visibleBaseline = visibleBaselineSource(agent, authorityMessages)
     /* v8 ignore next -- normal agents carry an absolute session cwd. */
     const cwd = agent.session.header.cwd ?? process.cwd()
-    const projectRoot = await findProjectRoot(cwd, resolved.projectRootMarkers, fileSystem, signal)
+    let projectRoot: string
+    try {
+      projectRoot = await findProjectRoot(cwd, resolved.projectRootMarkers, fileSystem, signal)
+    } catch (error: unknown) {
+      if (!(error instanceof ProjectRootMarkerUnavailableError) || visibleBaseline === undefined) throw error
+      ctx.logger.warn('agent-instructions: retaining the visible baseline because project-root discovery failed: %s', error.message)
+      return undefined
+    }
     const identity = workspaceBaselineIdentity(resolved, cwd, projectRoot)
-    const visibleBaseline = visibleBaselineSource(agent, authorityMessages)
     const baselinePresent = visibleBaseline !== undefined
     const keepVisibleBaseline = visibleBaseline?.baselineIdentity === identity
     const prepared = baselinePreparations.get(agent.session)
@@ -140,6 +151,7 @@ export function apply(ctx: Context, config: Config): void {
         projectRootMarkers: resolved.projectRootMarkers,
         maxBytes: resolved.maxBytes,
         maxSourceBytes: resolved.maxSourceBytes,
+        maxTotalSourceBytes: resolved.maxTotalSourceBytes,
         instructionFileCandidates: resolved.instructionFileCandidates,
         localInstructionFileCandidates: resolved.localInstructionFileCandidates,
         projectRoot,

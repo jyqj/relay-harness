@@ -117,6 +117,8 @@ export interface Config {
   maxBytes: number
   /** Maximum UTF-8 bytes read from one instruction file; larger files are ignored. */
   maxSourceBytes?: number
+  /** Maximum UTF-8 source bytes read across one baseline or reconciliation batch; defaults to `maxSourceBytes`. */
+  maxTotalSourceBytes?: number
   /**
    * Ordered same-directory project candidates; every existing file loads, with
    * per-directory trimmed-content duplicates collapsed to the earliest candidate.
@@ -388,6 +390,40 @@ export type Config = LocalConfig
 Depends on: [`LocalConfig`](#deepseek-aidsh-bash-local)
 
 Source: [`packages/shell/bash-sandbox/src/index.ts:35`](../packages/shell/bash-sandbox/src/index.ts)
+
+<a id="deepseek-aidsh-behavior-correction"></a>
+
+## `@deepseek-ai/dsh-behavior-correction`
+
+```ts config-catalog
+/**
+ * Plugin config, validated by the same-named schemastery schema plus the
+ * load-time checks in `apply` (misconfiguration fails loud: a non-integer
+ * cap, a zero, or an uncompilable `completionPatterns` entry throws at plugin
+ * load, never a silent fall-back). Detector toggles default on; every cap
+ * defaults to the smallest useful bound.
+ */
+export interface Config {
+  /** Corrective messages allowed per turn across all detectors (default 1). */
+  maxCorrectionsPerTurn?: number
+  /** Consecutive empty closing answers tolerated before the guard gives up (default 3). */
+  maxConsecutiveEmpty?: number
+  /** Detect a closing answer that is entirely whitespace (default true). */
+  emptyAnswer?: boolean
+  /** Detect a closing answer carrying a fenced code block in a turn with no tool calls (default true). */
+  unexecutedCode?: boolean
+  /** Detect a completion claim in a tool-free turn of a session that used tools earlier (default true). */
+  unverifiedCompletion?: boolean
+  /**
+   * Regex sources naming a completion claim in the closing answer (default
+   * English and Chinese claim phrases, matched case-insensitively). Each
+   * entry must compile as a RegExp.
+   */
+  completionPatterns?: string[]
+}
+```
+
+Source: [`packages/guard/behavior-correction/src/index.ts:28`](../packages/guard/behavior-correction/src/index.ts)
 
 <a id="deepseek-aidsh-client-connection"></a>
 
@@ -768,10 +804,9 @@ Requires: `shell`
 /** Plugin config: where the Codex hooks.json lives + the model name for payloads. */
 export interface Config {
   /**
-   * Path to a Codex `hooks.json`. Process-level: read once at load, a relative
-   * path resolves against the process launch cwd.
-   * TODO(per-session-hook-config): per-session project-local discovery from each
-   * `session/new.cwd`.
+   * Path to a Codex `hooks.json`. An absolute path names one shared file. A
+   * relative path is discovered per session from its cwd upward through the
+   * nearest `.git` root; agent-less calls use the process cwd.
    */
   configPath: string
   /** The model name stamped on every payload (Codex includes `model` on each event). */
@@ -783,7 +818,7 @@ export interface Config {
 }
 ```
 
-Source: [`packages/hooks/hooks-codex/src/index.ts:44`](../packages/hooks/hooks-codex/src/index.ts)
+Source: [`packages/hooks/hooks-codex/src/index.ts:45`](../packages/hooks/hooks-codex/src/index.ts)
 
 <a id="deepseek-aidsh-host-apiproxy"></a>
 
@@ -899,6 +934,32 @@ export interface Config {
 ```
 
 Source: [`packages/jobs/jobs-local/src/index.ts:31`](../packages/jobs/jobs-local/src/index.ts)
+
+<a id="deepseek-aidsh-llm-circuit-breaker"></a>
+
+## `@deepseek-ai/dsh-llm-circuit-breaker`
+
+Requires: `agents` · `sessions`
+
+```ts config-catalog
+/** Provider-local breaker configuration, based on the imported client preset. */
+export interface Config {
+  /** Sliding outcome window in milliseconds (default 60000). */
+  windowMs?: number
+  /** Samples required before tripping (default 5). */
+  minSamples?: number
+  /** Failure ratio that trips after `minSamples` (default 0.5). */
+  errorRateThreshold?: number
+  /** Open cool-down and abandoned-probe lease in milliseconds (default 60000). */
+  openMs?: number
+  /** Concurrent half-open probes (default 1). */
+  halfOpenMaxProbes?: number
+  /** LLM failure codes counted as breaker failures. */
+  failureCodes?: string[]
+}
+```
+
+Source: [`packages/guard/llm-circuit-breaker/src/index.ts:21`](../packages/guard/llm-circuit-breaker/src/index.ts)
 
 <a id="deepseek-aidsh-llm-deepseek"></a>
 
@@ -1288,7 +1349,7 @@ Requires: `agents`
 export type Config = Readonly<Record<string, never>>
 ```
 
-Source: [`packages/llm/llm-retry/src/index.ts:24`](../packages/llm/llm-retry/src/index.ts)
+Source: [`packages/llm/llm-retry/src/index.ts:25`](../packages/llm/llm-retry/src/index.ts)
 
 <a id="deepseek-aidsh-lsp-stdio"></a>
 
@@ -1588,6 +1649,28 @@ export interface Config {
 ```
 
 Source: [`packages/guard/repeat-tool-reminder/src/index.ts:28`](../packages/guard/repeat-tool-reminder/src/index.ts)
+
+<a id="deepseek-aidsh-rollout-budget-controller"></a>
+
+## `@deepseek-ai/dsh-rollout-budget-controller`
+
+Requires: `agents` · `sessions` · `tools`
+
+```ts config-catalog
+/** Required shared-budget limit plus reminder and weighting policy. */
+export interface Config {
+  /** Positive safe-integer weighted-token ceiling for one root session tree. */
+  limitTokens: number
+  /** Positive reminder thresholds, each strictly below `limitTokens`. */
+  reminderAtRemainingTokens: number[]
+  /** Weight applied to model output tokens (default 1). */
+  samplingTokenWeight?: number
+  /** Weight applied to uncached input tokens (default 1). */
+  prefillTokenWeight?: number
+}
+```
+
+Source: [`packages/guard/rollout-budget-controller/src/index.ts:21`](../packages/guard/rollout-budget-controller/src/index.ts)
 
 <a id="deepseek-aidsh-sandbox-local"></a>
 
@@ -2131,6 +2214,24 @@ export type JournalMode = 'wal' | 'delete' | 'truncate' | 'persist'
 
 Source: [`packages/storage/storage-sqlite/src/index.ts:24`](../packages/storage/storage-sqlite/src/index.ts)
 
+<a id="deepseek-aidsh-subagent"></a>
+
+## `@deepseek-ai/dsh-subagent`
+
+```ts config-catalog
+/** Deployment capacity shared by every subagent provider and consumer. */
+export interface Config {
+  /** Concurrent child lifetimes below one root session; omission leaves this scope unbounded. */
+  maxActivePerRoot?: number
+  /** Concurrent direct children below one parent Agent; omission leaves this scope unbounded. */
+  maxActivePerParent?: number
+  /** Saturation behavior: reject immediately (default) or wait in a root-local queue. */
+  overflow?: 'reject' | 'queue'
+}
+```
+
+Source: [`packages/subagent/subagent/src/index.ts:131`](../packages/subagent/subagent/src/index.ts)
+
 <a id="deepseek-aidsh-subagent-acp"></a>
 
 ## `@deepseek-ai/dsh-subagent-acp`
@@ -2460,6 +2561,32 @@ export interface Config {
 
 Source: [`packages/context/tmux-context/src/index.ts:34`](../packages/context/tmux-context/src/index.ts)
 
+<a id="deepseek-aidsh-token-budget-controller"></a>
+
+## `@deepseek-ai/dsh-token-budget-controller`
+
+```ts config-catalog
+/**
+ * Plugin config, validated by the same-named schemastery schema plus the
+ * load-time checks in `apply` (misconfiguration fails loud: a non-integer or
+ * sub-minimum value throws at plugin load, never a silent fall-back).
+ */
+export interface Config {
+  /** Continue nudges allowed per turn (default 8). */
+  maxContinuations?: number
+  /**
+   * Output tokens below which one continuation counts as unproductive
+   * (default 500). A continuation whose usage is unreported counts as
+   * productive — the cap alone bounds those.
+   */
+  minUsefulDeltaTokens?: number
+  /** Consecutive unproductive continuations that stop the steering (default 2). */
+  maxLowDeltaStreak?: number
+}
+```
+
+Source: [`packages/guard/token-budget-controller/src/index.ts:25`](../packages/guard/token-budget-controller/src/index.ts)
+
 <a id="deepseek-aidsh-token-meter"></a>
 
 ## `@deepseek-ai/dsh-token-meter`
@@ -2746,7 +2873,7 @@ export interface Config {
 }
 ```
 
-Source: [`packages/fs/tool-str-replace-editor/src/index.ts:497`](../packages/fs/tool-str-replace-editor/src/index.ts)
+Source: [`packages/fs/tool-str-replace-editor/src/index.ts:504`](../packages/fs/tool-str-replace-editor/src/index.ts)
 
 <a id="deepseek-aidsh-tool-subagent"></a>
 
@@ -2919,7 +3046,7 @@ export interface Config {
 }
 ```
 
-Source: [`packages/workflow/tool-workflow/src/index.ts:33`](../packages/workflow/tool-workflow/src/index.ts)
+Source: [`packages/workflow/tool-workflow/src/index.ts:34`](../packages/workflow/tool-workflow/src/index.ts)
 
 <a id="deepseek-aidsh-tools"></a>
 
@@ -2955,7 +3082,7 @@ export interface Config {
 export type ToolPresentationMode = 'native' | 'code' | 'both'
 ```
 
-Source: [`packages/core/tools/src/index.ts:654`](../packages/core/tools/src/index.ts)
+Source: [`packages/core/tools/src/index.ts:719`](../packages/core/tools/src/index.ts)
 
 <a id="deepseek-aidsh-typert-loader"></a>
 
@@ -3179,10 +3306,12 @@ export interface Config {
    * 5000 ms); also bounds `dispose()`.
    */
   disposeGraceMs?: number
+  /** Absolute directory for durable per-run journals; omission disables resume. */
+  journalRoot?: string
 }
 ```
 
-Source: [`packages/workflow/workflow-worker-thread/src/index.ts:32`](../packages/workflow/workflow-worker-thread/src/index.ts)
+Source: [`packages/workflow/workflow-worker-thread/src/index.ts:38`](../packages/workflow/workflow-worker-thread/src/index.ts)
 
 ## Loadable plugins with no config
 
@@ -3248,7 +3377,6 @@ These load from a `cordis.yml` entry with no `config:` block; they declare no co
 - `@deepseek-ai/dsh-session-stats` — requires `sessionProjections` ([`packages/session/session-stats/src/index.ts`](../packages/session/session-stats/src/index.ts))
 - `@deepseek-ai/dsh-skill-badge` — requires `skills` ([`packages/skill/skill-badge/src/index.ts`](../packages/skill/skill-badge/src/index.ts))
 - `@deepseek-ai/dsh-storage` ([`packages/storage/storage/src/index.ts`](../packages/storage/storage/src/index.ts))
-- `@deepseek-ai/dsh-subagent` ([`packages/subagent/subagent/src/index.ts`](../packages/subagent/subagent/src/index.ts))
 - `@deepseek-ai/dsh-subprocess-local` ([`packages/subprocess/subprocess-local/src/index.ts`](../packages/subprocess/subprocess-local/src/index.ts))
 - `@deepseek-ai/dsh-terminal` ([`packages/terminal/terminal/src/index.ts`](../packages/terminal/terminal/src/index.ts))
 - `@deepseek-ai/dsh-tool-ask-user` — requires `tools` · `userQuestions` ([`packages/interaction/tool-ask-user/src/index.ts`](../packages/interaction/tool-ask-user/src/index.ts))

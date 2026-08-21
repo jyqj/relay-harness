@@ -12,8 +12,10 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import clsx from 'clsx'
-import { IconCheckOutline16 } from './icons/index.tsx'
+import { IconCheckOutline16, IconSearchOutline16 } from './icons/index.tsx'
 import { usePointerGrace } from './pointer-grace.ts'
+import { usePresence } from './usePresence.ts'
+import { Tooltip } from './Tooltip.tsx'
 import css from './Menu.module.css'
 
 /** Selectable row (optionally with a nested submenu). */
@@ -25,6 +27,8 @@ export interface MenuItem {
   icon?: ReactNode
   /** Destructive row: error-colored text/icon and danger hover fill. */
   danger?: boolean
+  /** Hover/focus reason when the row is disabled; omitted while the row is enabled. */
+  hint?: string
   /** Nested card opened to the right on hover/focus. */
   submenu?: readonly MenuItem[]
 }
@@ -44,6 +48,15 @@ export interface MenuLabel {
 
 /** One primary-menu entry: a row, a separator, or a heading label. */
 export type MenuEntry = MenuItem | MenuSeparator | MenuLabel
+
+/** Optional filter field pinned above the scrolling items. */
+export interface MenuFilter {
+  value: string
+  placeholder: string
+  /** Accessible name of the filter field. */
+  label: string
+  onChange: (value: string) => void
+}
 
 function isSeparator(entry: MenuEntry): entry is MenuSeparator {
   return 'type' in entry && entry.type === 'separator'
@@ -83,14 +96,16 @@ const MEASURE_STYLE: CSSProperties = { visibility: 'hidden', left: 0, top: 0 }
  * the trigger (render-prop anchors, effect-positioned proxies — measuring the
  * wrapper there races the host's layout effects). Called on open and on every
  * scroll/resize; return null to skip placement for that frame.
- * @param props.footer - rows pinned below the scrolling items area, separated
- * by a hairline; they stay visible while the items above scroll.
+ * @param props.filter - optional search field pinned above the scrolling items.
+ * @param props.footer - rows pinned below the scrolling items area; they stay
+ * visible while the items above scroll.
  * @returns anchor wrapper with the conditional list.
  */
-export function Menu({ open, anchor, items, selectedId, selectedIds, onSelect, onClose, align = 'start', side = 'bottom', portal = false, closeOnPointerLeave = false, dense = false, compact = false, getAnchorRect, footer, className }: {
+export function Menu({ open, anchor, items, selectedId, selectedIds, onSelect, onClose, align = 'start', side = 'bottom', portal = false, closeOnPointerLeave = false, dense = false, compact = false, getAnchorRect, filter, footer, className }: {
   open: boolean
   anchor: ReactNode
   items: readonly MenuEntry[]
+  filter?: MenuFilter
   footer?: readonly MenuEntry[]
   selectedId?: string | undefined
   selectedIds?: readonly string[] | undefined
@@ -103,13 +118,14 @@ export function Menu({ open, anchor, items, selectedId, selectedIds, onSelect, o
   dense?: boolean
   compact?: boolean
   getAnchorRect?: () => DOMRect | null
-  className?: string
+  className?: string | undefined
 }) {
   const rootRef = useRef<HTMLSpanElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
   const [openSubmenuId, setOpenSubmenuId] = useState<string | null>(null)
   const [fixedPos, setFixedPos] = useState<CSSProperties | null>(null)
   const { arm: armClose, cancel: cancelClose } = usePointerGrace(onClose)
+  const { mounted, state } = usePresence(open)
 
   // Portal mode: fixed-position the list from the anchor rect before paint;
   // track the anchor while open (capture-phase scroll catches nested panes).
@@ -117,7 +133,7 @@ export function Menu({ open, anchor, items, selectedId, selectedIds, onSelect, o
   // runs before the parent's, so a wrapper the host positions in its own
   // effect measures stale here — the host callback owns the truth instead.
   useLayoutEffect(() => {
-    if (!open || !portal) { setFixedPos(null); return }
+    if (!mounted || !portal) { setFixedPos(null); return }
     const place = () => {
       let r: DOMRect | null
       if (getAnchorRect !== undefined) {
@@ -162,7 +178,7 @@ export function Menu({ open, anchor, items, selectedId, selectedIds, onSelect, o
       window.removeEventListener('scroll', place, true)
       window.removeEventListener('resize', place)
     }
-  }, [open, portal, align, side, getAnchorRect])
+  }, [mounted, portal, align, side, getAnchorRect])
 
   useEffect(() => {
     if (!open) {
@@ -209,6 +225,29 @@ export function Menu({ open, anchor, items, selectedId, selectedIds, onSelect, o
     const hasSub = entry.submenu !== undefined && entry.submenu.length > 0
     const subOpen = hasSub && openSubmenuId === entry.id
     const selected = entry.id === selectedId || selectedIds?.includes(entry.id) === true
+    const row = (
+      <button
+        type="button"
+        role="menuitem"
+        className={clsx(css.item, selected && css.selected, entry.danger === true && css.danger)}
+        disabled={entry.disabled}
+        aria-haspopup={hasSub ? 'menu' : undefined}
+        aria-expanded={hasSub ? subOpen : undefined}
+        onFocus={() => { setOpenSubmenuId(hasSub ? entry.id : null) }}
+        onClick={() => {
+          if (hasSub) {
+            setOpenSubmenuId(entry.id)
+            return
+          }
+          onSelect(entry.id)
+        }}
+      >
+        {entry.icon !== undefined && <span className={css.itemIcon}>{entry.icon}</span>}
+        <span className={css.itemLabel}>{entry.label}</span>
+        {/* Selection marker is a trailing check (figma .Menu_cell), not a fill. */}
+        {selected && <IconCheckOutline16 className={css.check} />}
+      </button>
+    )
     return (
       <div
         key={entry.id}
@@ -216,27 +255,13 @@ export function Menu({ open, anchor, items, selectedId, selectedIds, onSelect, o
         onMouseEnter={() => { setOpenSubmenuId(hasSub ? entry.id : null) }}
         onMouseLeave={() => { setOpenSubmenuId(null) }}
       >
-        <button
-          type="button"
-          role="menuitem"
-          className={clsx(css.item, selected && css.selected, entry.danger === true && css.danger)}
-          disabled={entry.disabled}
-          aria-haspopup={hasSub ? 'menu' : undefined}
-          aria-expanded={hasSub ? subOpen : undefined}
-          onFocus={() => { setOpenSubmenuId(hasSub ? entry.id : null) }}
-          onClick={() => {
-            if (hasSub) {
-              setOpenSubmenuId(entry.id)
-              return
-            }
-            onSelect(entry.id)
-          }}
-        >
-          {entry.icon !== undefined && <span className={css.itemIcon}>{entry.icon}</span>}
-          <span className={css.itemLabel}>{entry.label}</span>
-          {/* Selection marker is a trailing check (figma .Menu_cell), not a fill. */}
-          {selected && <IconCheckOutline16 className={css.check} />}
-        </button>
+        {entry.disabled === true && entry.hint !== undefined && entry.hint !== ''
+          ? (
+            <Tooltip label={entry.hint} side="left">
+              <span className={css.hintWrap}>{row}</span>
+            </Tooltip>
+          )
+          : row}
         {subOpen && entry.submenu !== undefined && (
           <div className={clsx(css.submenu, compact && css.compactList)} role="menu">
             {entry.submenu.map(sub => (
@@ -262,17 +287,39 @@ export function Menu({ open, anchor, items, selectedId, selectedIds, onSelect, o
   // this pre-render in the same commit, so the first painted frame is
   // already at the final position (with getAnchorRect returning null the
   // list simply stays hidden).
-  const list = open && (
+  const list = mounted && (
     <div
       ref={listRef}
       className={clsx(css.list, dense && css.denseList, compact && css.compactList, scrollable && css.scrollable, portal && css.portal, side === 'top' && !portal && css.sideTop, align === 'end' && !portal && css.alignEnd)}
       style={portal ? fixedPos ?? MEASURE_STYLE : undefined}
+      data-dsh-motion="popover"
+      data-state={state}
+      aria-hidden={open ? undefined : true}
       role="menu"
       // React portals bubble synthetic events through the REACT tree: without
       // this stop, an item click re-fires the anchor row's own onClick
       // (open/toggle) after onSelect.
       onClick={(e) => { e.stopPropagation() }}
     >
+      {filter !== undefined && (
+        <div className={css.header} role="presentation">
+          <label className={css.filter}>
+            <span className={css.itemIcon} aria-hidden="true">
+              <IconSearchOutline16 size={16} />
+            </span>
+            <input
+              className={css.filterInput}
+              type="search"
+              value={filter.value}
+              placeholder={filter.placeholder}
+              aria-label={filter.label}
+              data-menu-filter=""
+              onChange={(event) => { filter.onChange(event.target.value) }}
+              onKeyDown={(event) => { event.stopPropagation() }}
+            />
+          </label>
+        </div>
+      )}
       <div className={css.viewport} role="presentation">
         {items.map(renderEntry)}
       </div>

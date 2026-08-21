@@ -38,6 +38,8 @@ Unknown options, malformed arguments, unsupported schemas, tripped caps, provide
 
 `start()` validates meta, parses the body, resolves a registered normalized provider route, and resolves any per-run total-child cap before creating a worker or publishing `workflow/start`. A requested `maxTotalAgents` must be a positive safe integer no greater than the engine's configured deployment ceiling. Source mode installs TypeScript transforms through a data-URL bootstrap; built mode passes sibling `lib/worker.cjs` as a filesystem path because pkg's VFS hook expects CommonJS. Both work under ordinary Node. A ready/go handshake prevents a start-signal cancellation racing worker boot from executing the script's initial synchronous slice.
 
+With absolute `journalRoot` configured, a fresh run exclusively creates `<journalRoot>/<sha256(runId)>/journal.jsonl` before worker publication. The header fingerprints script, validated meta, args, resolved provider, and total-child cap. Each terminal `agent()` host call appends a bounded, fsynced JSON line carrying its sequence, canonical request hash, child id, and result or stable failure. `resumeRunId` loads that exact journal, rejects an edited configuration at the header, restarts the script from the beginning, and replays matching completed calls without provider work. A changed call at the same sequence fails with replay divergence; cancellation is not recorded for an unfinished suffix, so a later resume retries that call. A torn final line is truncated, while malformed complete rows, symlinks, non-regular files, duplicate sequences, and journals over 64 MiB fail closed.
+
 For each `agent()` call:
 
 1. The worker sends `child-start` with a plain-data prompt and options.
@@ -82,8 +84,9 @@ The host keeps a ledger of forwarded child starts. A graceful worker supplies th
 | `maxItemsPerCall` | `4096` | Items accepted by one `parallel()` or `pipeline()` call. |
 | `syncTimeoutMs` | `5000` | VM timeout for the script's initial synchronous slice. |
 | `disposeGraceMs` | `5000` | Bound before force-settlement/termination and for public disposal. |
+| `journalRoot` | omitted | Absolute directory enabling durable per-run JSONL and `resumeRunId`. |
 
-An owning consumer may set `WorkflowStartRequest.subagentProvider` and `WorkflowStartRequest.maxTotalAgents` for one run. These are engine-level policy, not script hooks or model-facing options; the ordinary `workflow` tool leaves both unset. A per-run total-child cap may lower but never raise the configured `maxTotalAgents` ceiling.
+An owning consumer may set `WorkflowStartRequest.subagentProvider`, `WorkflowStartRequest.maxTotalAgents`, and `WorkflowStartRequest.resumeRunId` for one run. These are engine-level policy, not script hooks. A per-run total-child cap may lower but never raise the configured `maxTotalAgents` ceiling. The ordinary `workflow` tool exposes only `resumeRunId`; provider and cap remain deployment-owned.
 
 ## Model Experience
 
@@ -122,3 +125,5 @@ Append-only; newly visible content follows the reusable request prefix and does 
 - **No ambient timers, filesystem, or network are injected, but escaped code can still reach Node** — the missing globals are portability API, not containment.
 - **Termination can only report host-observed starts** — `agentsStarted` excludes worker-side calls still queued behind concurrency when a forced termination makes them unknowable.
 - **Cross-realm errors fail `instanceof Error` inside scripts** — workflow authors must branch on stable fields such as `name` and `code`.
+- **The journal is single-process/single-writer** — file creation and append are fail-closed, but no cross-process lease coordinates two hosts resuming the same run concurrently.
+- **Only completed host calls replay** — arbitrary JavaScript heap state, phase/log narration, and child side effects that completed before a crash but not before journal fsync are not checkpointed.

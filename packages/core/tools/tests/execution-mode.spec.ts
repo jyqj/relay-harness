@@ -6,6 +6,7 @@ import { CallId } from '@deepseek-ai/dsh-llm'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import ToolRuntime, {
   defineContentToolFixture,
+  TOOL_RUNTIME_REQUESTS,
   type ToolDefinition,
   type ToolExecutionInput,
   type ToolExecutionMode,
@@ -119,6 +120,48 @@ describe('ToolRuntime.executionMode', () => {
     })
     expect(ctx.tools.executionMode(exec('raw-safe', { anything: 1 }))).toEqual({ kind: 'parallel' })
     expect(seen).toEqual({ anything: 1 })
+  })
+
+  it('keeps fail-closed classification inside a request snapshot and rejects use after release', async () => {
+    const ctx = await setup()
+    ctx.tools.register({
+      name: 'raw',
+      description: 'snapshot classifier',
+      parameters: { type: 'object', properties: {} },
+      output: { schema: { type: 'null' }, render: () => [] },
+      isConcurrencySafe(args) {
+        if (args === 'throw') throw new Error('classifier failed')
+        return args === 'parallel'
+      },
+      async execute() { return null },
+    })
+    const snapshot = ctx.tools[TOOL_RUNTIME_REQUESTS].capture()
+    snapshot.bindAdvertised(snapshot.provider.schemas)
+
+    expect(snapshot.executionMode(exec('raw', 'parallel'))).toEqual({ kind: 'parallel' })
+    expect(snapshot.executionMode(exec('raw', 'exclusive'))).toEqual({ kind: 'exclusive' })
+    expect(snapshot.executionMode(exec('raw', 'throw'))).toEqual({ kind: 'exclusive' })
+    expect(snapshot.executionMode(exec('missing', {}))).toEqual({ kind: 'exclusive' })
+
+    snapshot.release()
+    snapshot.release()
+    expect(() => snapshot.executionMode(exec('raw', 'parallel'))).toThrow('tool request snapshot is no longer active')
+  })
+
+  it('classifies a request-captured resource-intent tool as parallel-capable', async () => {
+    const ctx = await setup()
+    ctx.tools.register(defineContentToolFixture({
+      name: 'locked',
+      description: 'resource locked',
+      parameters: {},
+      resourceIntents: () => [{ key: 'file:a', access: 'write' }],
+      async execute() { return [] },
+    }))
+    const snapshot = ctx.tools[TOOL_RUNTIME_REQUESTS].capture()
+    snapshot.bindAdvertised(snapshot.provider.schemas)
+
+    expect(snapshot.executionMode(exec('locked', {}))).toEqual({ kind: 'parallel' })
+    snapshot.release()
   })
 
   it('isConcurrencySafe never reaches the model-facing schemas() projection', async () => {

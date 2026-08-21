@@ -32,6 +32,7 @@
  */
 
 import { Context, Service } from '@deepseek-ai/cordis'
+import z from '@deepseek-ai/schemastery'
 import { scopeTarget } from '@deepseek-ai/dsh-scope'
 import type { Scoped } from '@deepseek-ai/dsh-scope'
 import { assertObjectJsonSchema } from '@deepseek-ai/dsh-tools'
@@ -67,6 +68,8 @@ import { listChildren as listSubagentChildren, listDescendants as listSubagentDe
 import type { SubagentDescendantListEntry, SubagentListEntry } from './list-children.ts'
 import { snapshotSubagentDescriptor } from './descriptor.ts'
 import { subagentIdentityProjectionDefinition, subagentTimingProjectionDefinition } from './projection.ts'
+import { SubagentAdmissionController } from './admission.ts'
+import type { SubagentAdmissionLease, SubagentAdmissionPolicy } from './admission.ts'
 
 export * from './out-of-process.ts'
 export { AssistantOutputFold, finalAssistantOutput } from './assistant-output.ts'
@@ -123,6 +126,50 @@ export type {
 } from './continuation.ts'
 export type { ContinuableSetupContribution } from './activation-setup-registry.ts'
 export type { SubagentDescendantListEntry, SubagentListEntry } from './list-children.ts'
+
+/** Deployment capacity shared by every subagent provider and consumer. */
+export interface Config {
+  /** Concurrent child lifetimes below one root session; omission leaves this scope unbounded. */
+  maxActivePerRoot?: number
+  /** Concurrent direct children below one parent Agent; omission leaves this scope unbounded. */
+  maxActivePerParent?: number
+  /** Saturation behavior: reject immediately (default) or wait in a root-local queue. */
+  overflow?: 'reject' | 'queue'
+}
+
+/** Wrap one published run so capacity follows its holder-owned disposal. */
+function withAdmissionLease(run: SubagentRun, lease: SubagentAdmissionLease): SubagentRun {
+  let disposal: Promise<void> | undefined
+  return {
+    id: run.id,
+    localAgent: run.localAgent,
+    result: run.result,
+    dispose() {
+      return (disposal ??= (async () => {
+        try {
+          await run.dispose()
+        } finally {
+          lease.release()
+        }
+      })())
+    },
+  }
+}
+
+/** Resolve the highest currently live durable ancestor of one parent Agent. */
+function rootSessionId(ctx: Context, parent: Agent): SessionId {
+  let root = parent.id
+  const seen = new Set<SessionId>([root])
+  let parentId = (parent as Partial<Agent>).session?.header.parentSession
+  while (parentId !== undefined && !seen.has(parentId)) {
+    root = parentId
+    seen.add(parentId)
+    const session = ctx.get('sessions')?.get(parentId)
+    if (session === undefined) break
+    parentId = session.header.parentSession
+  }
+  return root
+}
 export type { SubagentRunEndInfo, SubagentRunInfo } from './types.ts'
 export type { SubagentIdentityProjection, SubagentTimingProjection } from './projection-types.ts'
 
@@ -169,6 +216,12 @@ declare module '@deepseek-ai/cordis' {
 
 /** Named provider registry with one-shot runs, durable discovery, and continuable-child operations. */
 export class SubagentRuntime extends Service {
+  static Config: z<Config> = z.object({
+    maxActivePerRoot: z.natural().min(1),
+    maxActivePerParent: z.natural().min(1),
+    overflow: z.union(['reject', 'queue'] as const).default('reject'),
+  })
+
   private providers = new Map<string, SubagentProvider>()
   private continuations: SubagentContinuationManager | undefined
   /** Deployment contributions composed into unpublished continuable children. */
@@ -179,14 +232,24 @@ export class SubagentRuntime extends Service {
    * composes into the carrier.
    */
   private readonly emitLifecycle: LifecycleEmitter
+  /** Root-tree capacity shared by one-shot runs and continuable Activations. */
+  private readonly admission: SubagentAdmissionController
 
-  constructor(ctx: Context) {
+  constructor(ctx: Context, config: Config = {}) {
     super(ctx, 'subagents')
+    const policy: SubagentAdmissionPolicy = {
+      ...config.maxActivePerRoot === undefined ? {} : { maxActivePerRoot: config.maxActivePerRoot },
+      ...config.maxActivePerParent === undefined ? {} : { maxActivePerParent: config.maxActivePerParent },
+      overflow: config.overflow ?? 'reject',
+    }
+    this.admission = new SubagentAdmissionController(policy, parent => rootSessionId(this.ctx, parent))
+    ctx.effect(() => () => { this.admission.close() }, 'subagents.admission()')
     this.emitLifecycle = createLifecycleEmitter(this.ctx, parent => scopeTarget(this, parent))
     ctx.inject(['agents'], (childCtx: Context) => {
       const manager = new SubagentContinuationManager(childCtx, {
         prepareContinuable: (name, request) => this.prepareContinuable(name, request),
         observeActivation: (provider, childId, parent) => this.observeActivation(provider, childId, parent),
+        acquireAdmission: (parent, signal) => this.admission.acquire(parent, signal),
       }, this.setupRegistry)
       this.continuations = manager
       childCtx.effect(() => () => {
@@ -438,7 +501,14 @@ export class SubagentRuntime extends Service {
       ...request.label !== undefined ? { label: request.label } : {},
     })
     const resolved: ResolvedSubagentStartRequest = { ...request, descriptor }
-    return observeRun(this.emitLifecycle, name, request.parent, await provider.start(resolved))
+    const lease = await this.admission.acquire(request.parent, request.signal)
+    try {
+      const run = observeRun(this.emitLifecycle, name, request.parent, await provider.start(resolved))
+      return withAdmissionLease(run, lease)
+    } catch (error: unknown) {
+      lease.release()
+      throw error
+    }
   }
 
   /**

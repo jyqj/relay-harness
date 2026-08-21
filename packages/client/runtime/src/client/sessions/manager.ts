@@ -530,14 +530,25 @@ export class SessionManager {
    * Contract session.create; on success merge into summaries immediately (no
    * wait for the next refresh). A created session is blank by definition
    * (entity birth precedes the first message).
-   * @param opts - target workspace or working directory, plus an optional caller-owned id.
+   * @param opts - target workspace or working directory, plus an optional
+   *   caller-owned id, desktop-plugin origin, and agent preset.
    * @returns the create result.
    */
   async create(
-    opts: { workspaceId?: WorkspaceId; cwd?: string; sessionId?: SessionId } = {},
+    opts: {
+      workspaceId?: WorkspaceId
+      cwd?: string
+      sessionId?: SessionId
+      origin?: 'dshbot'
+      agentPreset?: string
+    } = {},
   ): Promise<RpcResult<{ sessionId: SessionId }>> {
     try {
-      const shared = opts.sessionId === undefined ? {} : { sessionId: opts.sessionId }
+      const shared = {
+        ...(opts.sessionId === undefined ? {} : { sessionId: opts.sessionId }),
+        ...(opts.origin === undefined ? {} : { origin: opts.origin }),
+        ...(opts.agentPreset === undefined ? {} : { agentPreset: opts.agentPreset }),
+      }
       const payload = opts.workspaceId !== undefined
         ? { workspaceId: opts.workspaceId, ...shared }
         : { ...(opts.cwd === undefined ? {} : { cwd: opts.cwd }), ...shared }
@@ -546,7 +557,10 @@ export class SessionManager {
         this.recordMutation({ kind: 'upsert', summary: {
           sessionId: result.value.sessionId, updatedAt: Date.now(), running: false, blank: true,
           ...(opts.cwd !== undefined ? { cwd: opts.cwd } : {}),
-          ...(result.value.agentPreset !== undefined ? { agentPreset: result.value.agentPreset } : {}),
+          ...(opts.origin !== undefined ? { origin: opts.origin } : {}),
+          ...(result.value.agentPreset !== undefined
+            ? { agentPreset: result.value.agentPreset }
+            : opts.agentPreset !== undefined ? { agentPreset: opts.agentPreset } : {}),
         } })
       } else {
         const publishedSessionId = workspaceAttachSessionId(result.error)
@@ -571,27 +585,38 @@ export class SessionManager {
   /**
    * Contract session.fork; on success merge the child into summaries
    * immediately (same synchronous-addressability guarantee as create). The
-   * child carries the source's history, so it is never blank; lineage rides
-   * parentSessionId so the list nests it under its source. A child published
-   * before Workspace attachment fails is also reconciled into the list.
-   * @param opts - source session and the optional seq anchoring the cut.
-   * @returns the fork result (the child session id).
+   * child's empty-log bit comes from the host response (an atSeq cut always
+   * carries history; a beforeSeq cut before the first turn forks a blank
+   * child); lineage rides parentSessionId so the list nests it under its
+   * source. A child published before Workspace attachment fails is also
+   * reconciled into the list, using the error's `blank` detail when the host
+   * reported one.
+   * @param opts - source session and the optional cut anchor (atSeq or
+   *   beforeSeq, mutually exclusive on the wire).
+   * @returns the fork result (the child session id and its empty-log bit).
    */
   async fork(
-    opts: { sessionId: SessionId; atSeq?: number },
-  ): Promise<RpcResult<{ sessionId: SessionId }>> {
+    opts: { sessionId: SessionId; atSeq?: number; beforeSeq?: number },
+  ): Promise<RpcResult<{ sessionId: SessionId; blank: boolean }>> {
     try {
       const source = this.summaries.find(s => s.sessionId === opts.sessionId)
       const { result } = await this.api.sessions.fork({
         sessionId: opts.sessionId,
         ...opts.atSeq === undefined ? {} : { atSeq: opts.atSeq },
+        ...opts.beforeSeq === undefined ? {} : { beforeSeq: opts.beforeSeq },
       })
       const childId = result.ok
         ? result.value.sessionId
         : workspaceAttachSessionId(result.error)
       if (childId !== undefined) {
+        const blank = result.ok
+          ? result.value.blank
+          // The host reports the published child's blank bit only on the
+          // fork's own attach failure; absent (older host), keep the
+          // pre-beforeSeq default: a fork child carried history.
+          : workspaceAttachBlank(result.error)
         this.recordMutation({ kind: 'upsert', summary: {
-          sessionId: childId, updatedAt: Date.now(), running: false, blank: false,
+          sessionId: childId, updatedAt: Date.now(), running: false, blank,
           parentSessionId: opts.sessionId,
           ...(source?.cwd !== undefined ? { cwd: source.cwd } : {}),
         } })
@@ -898,14 +923,17 @@ export class SessionManager {
     }
   }
 
-  /** After each connection generation: refresh the session baseline and rebuild opened windows. */
-  handleConnected(): void {
-    void this.refreshList()
+  /** After each connection generation: refresh the session baseline and rebuild opened windows.
+   * @returns once the list refresh and opened-window resync have settled. */
+  async handleConnected(): Promise<void> {
+    await this.refreshList()
+    const tasks: Promise<void>[] = []
     const selectedAddress = this.selected === undefined ? undefined : this.addresses.get(this.selected)
-    if (selectedAddress !== undefined) void this.refreshSubagents(selectedAddress.parentSessionId)
-    if (this.selected !== undefined) void this.refreshSubagents(this.selected)
-    for (const parentSessionId of this.openCatalogs) void this.refreshSubagents(parentSessionId)
-    for (const session of this.sessions.values()) void session.resync()
+    if (selectedAddress !== undefined) tasks.push(this.refreshSubagents(selectedAddress.parentSessionId))
+    if (this.selected !== undefined) tasks.push(this.refreshSubagents(this.selected))
+    for (const parentSessionId of this.openCatalogs) tasks.push(this.refreshSubagents(parentSessionId))
+    for (const session of this.sessions.values()) tasks.push(session.resync())
+    await Promise.all(tasks)
   }
 
   /** Debounce membership refetches while one parent catalog is selected or open. */
@@ -1128,4 +1156,13 @@ function applyMutation(summaries: readonly SessionSummary[], mutation: SessionLi
 function workspaceAttachSessionId(error: RpcError): SessionId | undefined {
   const candidate = error as unknown as { code: string; details: { sessionId?: SessionId } }
   return candidate.code === 'workspace-attach-failed' ? candidate.details.sessionId : undefined
+}
+
+/**
+ * The published child's empty-log bit on a fork's `workspace-attach-failed`
+ * (the details type now carries it; see the RpcErrorDetailsMap row). Absent
+ * on any other error — and on older hosts — so callers keep their defaults.
+ */
+function workspaceAttachBlank(error: RpcError): boolean {
+  return error.code === 'workspace-attach-failed' && error.details.blank === true
 }

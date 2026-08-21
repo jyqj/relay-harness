@@ -25,7 +25,7 @@
 import { existsSync, readFileSync } from 'node:fs'
 import { mkdir, mkdtemp, readFile, readdir, realpath, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { basename, join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import type { Page } from 'playwright'
 import { expect } from 'vitest'
@@ -290,6 +290,8 @@ export interface LaunchOptions {
   remoteAuthority?: string
   /** Reuse an existing harness home so a second Host can verify user settings across origins. */
   harnessHome?: string
+  /** Bundled Skill Markdown seeded inside the temp world before skill discovery starts. */
+  bundledSkills?: readonly { name: string; markdown: string }[]
 }
 
 /** Dispose the booted tree and remove both owned temp roots, reporting every independent cleanup failure. */
@@ -367,6 +369,14 @@ export async function launchWebScaffold(options: LaunchOptions = {}): Promise<We
   Object.assign(process.env, skillRootEnvironment)
   let persistenceRoot: string
   try {
+    for (const skill of options.bundledSkills ?? []) {
+      if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(skill.name)) {
+        throw new Error(`web scaffold bundled Skill name must be kebab-case; got ${JSON.stringify(skill.name)}`)
+      }
+      const skillDir = join(skillRootEnvironment.DSH_BUNDLED_SKILL_DIR, skill.name)
+      await mkdir(skillDir, { recursive: true })
+      await writeFile(join(skillDir, 'SKILL.md'), skill.markdown)
+    }
     persistenceRoot = await mkdtemp(join(tmpdir(), 'dsh-web-e2e-sessions-'))
   } catch (error) {
     const failures: unknown[] = [error]
@@ -468,16 +478,14 @@ export async function launchWebScaffold(options: LaunchOptions = {}): Promise<We
       : [{ id: 'connection', config: { trustedHosts: [options.remoteAuthority] } }],
     { id: 'settings', config: { dshHome: harnessHome } },
     { id: 'credentials', config: { dshHome: harnessHome } },
-    // The shipped directory-picker row is the -auto chooser, which resolves
-    // the interaction from the RUNNING host (display, SSH launch, bind). The
-    // lane's goldens are interaction-specific (workspace-management drives
-    // the in-app browse dialog), so pin -browse deterministically on every
-    // host: patch `name` is an assertion, not an override, hence the
-    // disable+insert pair.
+    // The shipped directory-picker row is already the browse host. Disable it
+    // and insert a scenario-owned host id so a later revert to -auto cannot
+    // put a native OS chooser under Playwright. The client surface is the
+    // web-app roster row (`ui-directory-picker-browse`); inserting it here
+    // would duplicate the `single` directory-flow occupant.
     { id: 'directory-picker', disabled: true },
     { insert: [
       { id: 'directory-picker-browse', name: '@deepseek-ai/dsh-host-directory-picker-browse' },
-      { id: 'ui-directory-picker-browse', name: '@deepseek-ai/dsh-client-ui-directory-picker-browse' },
     ] },
     ...options.agentPresets === undefined
       ? []
@@ -750,13 +758,18 @@ export function fixtureUserPrompts(fixtureText: string): string[] {
  * @returns the realized fixture text.
  */
 export function realizeSeedFixture(scaffold: WebScaffold, fixtureText: string, id: string): string {
+  // A Windows workspace path must reach the fixture's JSON lines with its
+  // backslashes escaped; the parse below would otherwise reject `\U`-style
+  // escapes. POSIX paths are unaffected (no backslashes to escape).
+  const escapedWorkspace = scaffold.workspaceCwd.replace(/\\/g, '\\\\')
   const realized = fixtureText
     .split('{{sessionId}}').join(id)
-    .split('{{cwd}}').join(scaffold.workspaceCwd)
+    .split('{{cwd}}').join(escapedWorkspace)
   const fixtureCwd = (JSON.parse(realized.split('\n', 1)[0]!) as { cwd?: string }).cwd
-  return fixtureCwd === undefined
-    ? realized
-    : realized.split(fixtureCwd).join(scaffold.workspaceCwd)
+  if (fixtureCwd === undefined) return realized
+  // The recorded cwd (fixture text) is also escaped, so the rewrite must
+  // match in the escaped text domain to stay correct on Windows.
+  return realized.split(fixtureCwd.replace(/\\/g, '\\\\')).join(escapedWorkspace)
 }
 
 export async function seedSession(
@@ -837,10 +850,15 @@ async function persistSeedSession(
  */
 function normalizeAria(snapshot: string, workspaceCwd: string): string {
   // The session heading renders the workspace's basename, not the full
-  // path, so both spellings must collapse to the token.
-  const base = workspaceCwd.split('/').pop()!
+  // path, so both spellings must collapse to the token. Aria dumps on
+  // Windows also escape backslashes, and basename() is the portable folder name.
+  const base = basename(workspaceCwd)
+  const escaped = workspaceCwd.replace(/\\/g, '\\\\')
+  const posix = workspaceCwd.replace(/\\/g, '/')
   return snapshot
     .split(workspaceCwd).join('{{cwd}}')
+    .split(escaped).join('{{cwd}}')
+    .split(posix).join('{{cwd}}')
     .split(base).join('{{workspace}}')
     .replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, '{{uuid}}')
     // The optional space in `\d+m ?\d+s` covers both minute spellings: the

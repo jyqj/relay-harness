@@ -3,7 +3,7 @@
 import { HarnessError } from '@deepseek-ai/dsh-llm'
 import type { ContentBlock } from '@deepseek-ai/dsh-llm'
 import type { JsonValue } from '@deepseek-ai/dsh-session'
-import type { ToolDefinition, ToolExecution, ToolExecutionResult, ToolRunContext, ToolResult } from './index.ts'
+import type { ToolDefinition, ToolExecution, ToolExecutionResult, ToolResourceIntent, ToolRunContext, ToolResult } from './index.ts'
 import { assertSupportedJsonSchema, isJsonSchemaRecord, isPlainJsonArray, JsonSchemaError, validateJsonSchemaValue } from './json-schema.ts'
 import type { JsonSchemaNode, JsonSchemaScalar, ObjectJsonSchema } from './json-schema.ts'
 import type { ToolCallView, ToolResultView } from './presentation.ts'
@@ -505,6 +505,16 @@ export interface DefineToolOptions<S extends ParameterSchemaSpec, O extends Valu
    */
   isConcurrencySafe?(args: InferArgs<S>): boolean
   /**
+   * Resolve canonical resources coordinated around the tool body.
+   * @param args - typed validated arguments.
+   * @param exec - immutable execution identity and cancellation signal.
+   * @returns read/write claims; equal keys share one fair lock.
+   */
+  resourceIntents?(
+    args: InferArgs<S>,
+    exec: Readonly<ToolExecution>,
+  ): readonly ToolResourceIntent[] | Promise<readonly ToolResourceIntent[]>
+  /**
    * Execute the tool after argument validation.
    * @param args - typed validated arguments.
    * @param exec - execution identity, caller, cancellation, and nesting data.
@@ -560,6 +570,8 @@ export function defineTool<const S extends ParameterSchemaSpec, const O extends 
   const userPresentResult = options.presentResult
   // oxlint-disable-next-line typescript/unbound-method
   const userIsConcurrencySafe = options.isConcurrencySafe
+  // oxlint-disable-next-line typescript/unbound-method
+  const userResourceIntents = options.resourceIntents
   if (options.timeoutMs !== undefined && (!Number.isFinite(options.timeoutMs) || options.timeoutMs <= 0)) {
     throw new Error(`defineTool(${options.name}): timeoutMs must be a positive finite number`)
   }
@@ -611,6 +623,13 @@ export function defineTool<const S extends ParameterSchemaSpec, const O extends 
     tool.isConcurrencySafe = (args: unknown): boolean => {
       if (validate(args).length > 0) return false
       return userIsConcurrencySafe(args as InferArgs<S>)
+    }
+  }
+  if (userResourceIntents) {
+    tool.resourceIntents = (args: unknown, exec: Readonly<ToolExecution>) => {
+      const violations = validate(args)
+      if (violations.length > 0) throw new ToolArgsError(violations)
+      return userResourceIntents(args as InferArgs<S>, exec)
     }
   }
   return tool

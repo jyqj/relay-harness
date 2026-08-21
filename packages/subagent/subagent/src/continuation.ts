@@ -53,6 +53,7 @@ import type { ContinuableCreateRequest, ContinuableCreateSpec, SubagentResult, S
 import type { ActivationObserver, ActivationTerminal } from './lifecycle.ts'
 import { SubagentError } from './error.ts'
 import type SubagentActivationSetupRegistry from './activation-setup-registry.ts'
+import type { SubagentAdmissionLease } from './admission.ts'
 
 /** Attribution for a model coordinator's follow-up to one of its children. */
 export interface CoordinatorMessageSource {
@@ -172,6 +173,13 @@ type ActivationState = 'running' | 'waiting' | 'settled'
  */
 interface ContinuationHost {
   /**
+   * Acquire shared root-tree capacity before provider or Agent work begins.
+   * @param parent - direct parent charged by the admission policy.
+   * @param signal - caller cancellation while an optional queue is pending.
+   * @returns the lifetime lease transferred to a published Activation.
+   */
+  acquireAdmission(parent: Agent, signal: AbortSignal): Promise<SubagentAdmissionLease>
+  /**
    * Resolve one provider's continuable-creation contribution, or reject when
    * the provider is unknown or lacks the capability.
    * @param name - the configured provider name.
@@ -222,6 +230,8 @@ interface Activation {
   readonly ownedChildren: Set<SessionId>
   /** The lifecycle observer that emits this epoch's start and terminal edges. */
   readonly observer: ActivationObserver
+  /** Shared root-tree capacity retained until this Activation is quiescent. */
+  readonly admission: SubagentAdmissionLease
   /**
    * The memoized disposal transaction. Presence IS the admission cutoff: it is
    * assigned synchronously when disposal begins, so no delivery can join a
@@ -264,6 +274,8 @@ interface MaterializeInputs {
   agentOptions: AgentOptions
   composition: { persona?: string | undefined; toolFilter?: ToolRestriction | undefined }
   signal: AbortSignal
+  /** Capacity already acquired by the operation and transferred on publication. */
+  admission: SubagentAdmissionLease
 }
 
 /**
@@ -431,48 +443,55 @@ export class SubagentContinuationManager {
     // Capture before the first await: a later parent switch belongs to the
     // parent's future, not to this child.
     const delegatedPolicies = captureDelegatedPolicyOverrides(parent)
-
-    const prepared = await this.host.prepareContinuable(spec.provider, {
-      sessionId: childId,
-      parent,
-      signal: spec.signal,
-    })
-    spec.signal.throwIfAborted()
-    this.assertAdmitting(parent)
-
-    const lineageSeedLength = prepared.seed?.length ?? 0
-    const seed = seedDescriptorTurn(childId, prepared.seed, descriptor)
-    const messageId = await this.locks.run(childId, async () => {
+    const admission = await this.host.acquireAdmission(parent, spec.signal)
+    const ownership = { transferred: false }
+    try {
+      const prepared = await this.host.prepareContinuable(spec.provider, {
+        sessionId: childId,
+        parent,
+        signal: spec.signal,
+      })
       spec.signal.throwIfAborted()
       this.assertAdmitting(parent)
-      this.assertChildIdAvailable(childId)
-      if (spec.childId !== undefined) {
-        const persisted = await persistence.listSnapshots(spec.signal)
+
+      const lineageSeedLength = prepared.seed?.length ?? 0
+      const seed = seedDescriptorTurn(childId, prepared.seed, descriptor)
+      const messageId = await this.locks.run(childId, async () => {
         spec.signal.throwIfAborted()
         this.assertAdmitting(parent)
         this.assertChildIdAvailable(childId)
-        if (persisted.some(snapshot => snapshot.header.id === childId)) {
-          throw new SubagentError(`subagent "${childId}" already exists`, 'DUPLICATE_CHILD')
+        if (spec.childId !== undefined) {
+          const persisted = await persistence.listSnapshots(spec.signal)
+          spec.signal.throwIfAborted()
+          this.assertAdmitting(parent)
+          this.assertChildIdAvailable(childId)
+          if (persisted.some(snapshot => snapshot.header.id === childId)) {
+            throw new SubagentError(`subagent "${childId}" already exists`, 'DUPLICATE_CHILD')
+          }
         }
-      }
-      const activation = await this.materialize({
-        childId,
-        provider: spec.provider,
-        parent,
-        create: { seed, meta: childSessionMeta(parent, childDepth, lineageSeedLength), delegatedPolicies },
-        agentOptions: resolveChildAgentOptions(parent, request.agentOptions, childDepth),
-        composition: { persona: request.persona, toolFilter: request.toolFilter },
-        signal: spec.signal,
+        const activation = await this.materialize({
+          childId,
+          provider: spec.provider,
+          parent,
+          create: { seed, meta: childSessionMeta(parent, childDepth, lineageSeedLength), delegatedPolicies },
+          agentOptions: resolveChildAgentOptions(parent, request.agentOptions, childDepth),
+          composition: { persona: request.persona, toolFilter: request.toolFilter },
+          signal: spec.signal,
+          admission,
+        })
+        ownership.transferred = true
+        return this.submitMaterialized(
+          activation,
+          request.prompt,
+          { kind: 'user' },
+          parent,
+          spec.signal,
+        )
       })
-      return this.submitMaterialized(
-        activation,
-        request.prompt,
-        { kind: 'user' },
-        parent,
-        spec.signal,
-      )
-    })
-    return { childId, messageId }
+      return { childId, messageId }
+    } finally {
+      if (!ownership.transferred) admission.release()
+    }
   }
 
   /** Reject one child identity already owned by a live Agent or Session. */
@@ -972,6 +991,8 @@ export class SubagentContinuationManager {
         'NOT_RESUMABLE',
       )
     }
+    const admission = await this.host.acquireAdmission(parent, options.signal)
+    let transferred = false
     let activation: Activation
     try {
       activation = await this.materialize({
@@ -984,11 +1005,15 @@ export class SubagentContinuationManager {
         },
         composition: { persona: descriptor.persona, toolFilter: descriptor.toolFilter },
         signal: options.signal,
+        admission,
       })
+      transferred = true
     } catch (error: unknown) {
       options.signal.throwIfAborted()
       if (error instanceof SubagentError) throw error
       throw new SubagentError(`subagent "${childId}" is unavailable`, 'NOT_RESUMABLE', { cause: error })
+    } finally {
+      if (!transferred) admission.release()
     }
     return this.submitMaterialized(activation, content, options.source, parent, options.signal)
   }
@@ -1095,6 +1120,7 @@ export class SubagentContinuationManager {
       ancestry: new WeakSet([handle.agent, ...parentLineage]),
       ownedChildren: new Set(),
       observer,
+      admission: inputs.admission,
       disposal: undefined,
       accepted: new Set(),
       announced: false,
@@ -1149,6 +1175,7 @@ export class SubagentContinuationManager {
       } finally {
         this.activations.delete(activation.childId)
         this.releaseOwnership(activation.childId)
+        activation.admission.release()
       }
     })())
   }
@@ -1410,6 +1437,7 @@ export class SubagentContinuationManager {
         { cause: error },
       ))
     }
+    activation.admission.release()
 
     let failure: SubagentError | undefined
     if (failures.length === 1) {

@@ -24,6 +24,8 @@ export interface Config {
   maxBytes: number
   /** Maximum UTF-8 bytes read from one instruction file; larger files are ignored. */
   maxSourceBytes?: number
+  /** Maximum UTF-8 source bytes read across one baseline or reconciliation batch; defaults to `maxSourceBytes`. */
+  maxTotalSourceBytes?: number
   /**
    * Ordered same-directory project candidates; every existing file loads, with
    * per-directory trimmed-content duplicates collapsed to the earliest candidate.
@@ -41,6 +43,7 @@ export const Config: z<Config> = z.object({
   projectRootMarkers: z.array(z.string()).default([...DEFAULT_PROJECT_ROOT_MARKERS]),
   maxBytes: z.number().required(),
   maxSourceBytes: z.number().step(1).min(1).default(DEFAULT_MAX_SOURCE_BYTES),
+  maxTotalSourceBytes: z.number().step(1).min(1),
   instructionFileCandidates: z.array(z.string()).default([...DEFAULT_INSTRUCTION_FILE_CANDIDATES]),
   localInstructionFileCandidates: z.array(z.string()).default([...DEFAULT_LOCAL_INSTRUCTION_FILE_CANDIDATES]),
 })
@@ -57,6 +60,7 @@ export interface ResolvedDiscoveryConfig {
 export interface ResolvedConfig extends ResolvedDiscoveryConfig {
   maxBytes: number
   maxSourceBytes: number
+  maxTotalSourceBytes: number
 }
 
 /**
@@ -76,6 +80,7 @@ export function workspaceBaselineIdentity(
     projectRootMarkers: config.projectRootMarkers,
     maxBytes: config.maxBytes,
     maxSourceBytes: config.maxSourceBytes,
+    maxTotalSourceBytes: config.maxTotalSourceBytes,
     instructionFileCandidates: config.instructionFileCandidates,
     localInstructionFileCandidates: config.localInstructionFileCandidates,
   })
@@ -87,10 +92,12 @@ export function workspaceBaselineIdentity(
  * @returns normalized runtime configuration.
  */
 export function resolveConfig(config: Config): ResolvedConfig {
+  const maxSourceBytes = config.maxSourceBytes ?? DEFAULT_MAX_SOURCE_BYTES
   return {
     ...resolveDiscoveryConfig(config),
     maxBytes: config.maxBytes,
-    maxSourceBytes: config.maxSourceBytes ?? DEFAULT_MAX_SOURCE_BYTES,
+    maxSourceBytes,
+    maxTotalSourceBytes: config.maxTotalSourceBytes ?? maxSourceBytes,
   }
 }
 

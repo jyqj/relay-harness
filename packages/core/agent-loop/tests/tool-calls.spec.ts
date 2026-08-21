@@ -3,13 +3,13 @@
  * ACP expected outputs own transcript-facing coverage.
  */
 
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import { createUserMessage, CallId, StreamChunk  } from '@deepseek-ai/dsh-llm'
-import SessionStore, { SessionEvent, SessionId } from '@deepseek-ai/dsh-session'
+import SessionStore, { SessionEvent, SessionId, TOOL_NOT_STARTED, TOOL_OUTCOME_UNKNOWN, assertToolTranscriptValid } from '@deepseek-ai/dsh-session'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import LlmRuntime from '@deepseek-ai/dsh-llm'
-import ToolRuntime, { defineContentToolFixture, TOOL_ABORTED_BEFORE_DISPATCH, TOOL_RUNTIME_SCHEDULER, type PostToolDecision, type PreToolDecision } from '@deepseek-ai/dsh-tools'
+import ToolRuntime, { defineContentToolFixture, TOOL_ABORTED_BEFORE_DISPATCH, TOOL_RUNTIME_REQUESTS, type PostToolDecision, type PreToolDecision, type ToolExecutionResult, type ToolRequestSnapshot, type ToolRunContext } from '@deepseek-ai/dsh-tools'
 import AgentRegistry, { type Agent } from '@deepseek-ai/dsh-agent'
 import AgentLoop, { DEFAULT_MAX_PARALLEL_TOOL_CALLS } from '@deepseek-ai/dsh-agent-loop'
 import { MockAdapter, textResponse } from './mock-adapter.ts'
@@ -96,6 +96,18 @@ async function until(predicate: () => boolean): Promise<void> {
   if (!predicate()) throw new Error('until: condition never held')
 }
 
+/** Mutate only the next request-bound scheduler, then restore normal capture. */
+function mutateNextToolSnapshot(ctx: Context, mutate: (snapshot: ToolRequestSnapshot) => void): void {
+  const requests = ctx.tools[TOOL_RUNTIME_REQUESTS]
+  const capture = requests.capture.bind(requests)
+  requests.capture = (scope) => {
+    requests.capture = capture
+    const snapshot = capture(scope)
+    mutate(snapshot)
+    return snapshot
+  }
+}
+
 describe('tool-call scheduler: grouping and barriers', () => {
   it('runs parallel-safe siblings concurrently (all start before any completes)', async () => {
     const adapter = new MockAdapter([
@@ -141,7 +153,7 @@ describe('tool-call scheduler: grouping and barriers', () => {
     expect(order).toEqual(['r-start-A1', 'r-end-A1', 'w-A2', 'r-start-A3', 'r-end-A3'])
   })
 
-  it('reclassifies pending calls after an exclusive barrier replaces their tool', async () => {
+  it('keeps request-captured definitions after an exclusive barrier replaces the live registry', async () => {
     const adapter = new MockAdapter([
       multiCall([
         { id: 'c1', name: 'replace', args: { id: '0' } },
@@ -152,12 +164,16 @@ describe('tool-call scheduler: grouping and barriers', () => {
     ])
     const ctx = await harness(adapter)
     const replacement = gatedExclusiveTool('x')
+    const initialCalls: string[] = []
     const disposeSafe = ctx.tools.register(defineContentToolFixture({
       name: 'x',
       description: 'initially safe',
       parameters: { id: { type: 'string', required: true } },
       isConcurrencySafe: () => true,
-      async execute(args) { return [{ type: 'text', text: `old-${args.id}` }] },
+      async execute(args) {
+        initialCalls.push(args.id)
+        return [{ type: 'text', text: `old-${args.id}` }]
+      },
     }))
     ctx.tools.register(defineContentToolFixture({
       name: 'replace',
@@ -172,17 +188,13 @@ describe('tool-call scheduler: grouping and barriers', () => {
     const agent = ctx.agentLoop.create(SessionId('a1'), { provider: 'mock', model: 'mock' })
 
     agent.followup(createUserMessage({ content: [{ type: 'text', text: 'go' }], source: { kind: 'user' } }))
-    await until(() => replacement.started.length === 1)
-    await new Promise(r => setTimeout(r, 5))
-    expect(replacement.started).toEqual(['1'])
-    replacement.release('1')
-    await until(() => replacement.started.length === 2)
-    expect(replacement.started).toEqual(['1', '2'])
-    replacement.release('2')
     await waitForIdle(ctx, agent)
+
+    expect(initialCalls).toEqual(['1', '2'])
+    expect(replacement.started).toEqual([])
   })
 
-  it('stops replenishing when a result observer makes the next call exclusive', async () => {
+  it('keeps request-captured parallel classification when a result observer replaces the live registry', async () => {
     const adapter = new MockAdapter([
       multiCall([
         { id: 'c1', name: 'x', args: { id: '1' } },
@@ -207,13 +219,88 @@ describe('tool-call scheduler: grouping and barriers', () => {
     initial.release('1')
     await until(() => events(agent).some(event =>
       event.type === 'tool/result' && event.data.message.source.callId === CallId('c1')))
-    await new Promise(r => setTimeout(r, 5))
+    await until(() => initial.started.length === 3)
     expect(replacement.started).toEqual([])
-    initial.release('2')
-    await until(() => replacement.started.length === 1)
-    expect(replacement.started).toEqual(['3'])
-    replacement.release('3')
+    expect(initial.started).toEqual(['1', '2', '3'])
+    initial.release('2'); initial.release('3')
     await waitForIdle(ctx, agent)
+  })
+
+  it('executes the definition captured for the advertised schema when assembly replaces the live registry', async () => {
+    const adapter = new MockAdapter([
+      multiCall([{ id: 'c1', name: 'x', args: { id: '1' } }]),
+      textResponse('done'),
+    ])
+    const ctx = await harness(adapter)
+    const initialCalls: string[] = []
+    const replacementCalls: string[] = []
+    const disposeInitial = ctx.tools.register(defineContentToolFixture({
+      name: 'x',
+      description: 'request-captured x',
+      parameters: { id: { type: 'string', required: true } },
+      async execute(args) {
+        initialCalls.push(args.id)
+        return [{ type: 'text', text: 'initial' }]
+      },
+    }))
+    let replaced = false
+    ctx.on('system-prompt/assemble', async (_assembly, _context, next) => {
+      const result = await next()
+      if (!replaced) {
+        replaced = true
+        disposeInitial()
+        ctx.tools.register(defineContentToolFixture({
+          name: 'x',
+          description: 'replacement x',
+          parameters: { id: { type: 'string', required: true } },
+          async execute(args) {
+            replacementCalls.push(args.id)
+            return [{ type: 'text', text: 'replacement' }]
+          },
+        }))
+      }
+      return result
+    })
+    const agent = ctx.agentLoop.create(SessionId('a1'), { provider: 'mock', model: 'mock' })
+
+    agent.followup(createUserMessage({ content: [{ type: 'text', text: 'go' }], source: { kind: 'user' } }))
+    await waitForIdle(ctx, agent)
+
+    expect(adapter.requests[0]?.tools).toMatchObject([{ name: 'x', description: 'request-captured x' }])
+    expect(initialCalls).toEqual(['1'])
+    expect(replacementCalls).toEqual([])
+  })
+
+  it('refuses a captured definition removed from the final authoritative assembly', async () => {
+    const adapter = new MockAdapter([
+      multiCall([{ id: 'c1', name: 'x', args: { id: '1' } }]),
+    ])
+    const ctx = await harness(adapter)
+    let invoked = false
+    ctx.tools.register(defineContentToolFixture({
+      name: 'x',
+      description: 'removed x',
+      parameters: { id: { type: 'string', required: true } },
+      async execute() {
+        invoked = true
+        return [{ type: 'text', text: 'unexpected' }]
+      },
+    }))
+    ctx.on('system-prompt/assemble', async (_assembly, _context, next) => ({
+      ...await next(),
+      tools: [],
+    }))
+    const agent = ctx.agentLoop.create(SessionId('assembly-removes-tool'), { provider: 'mock', model: 'mock' })
+
+    agent.followup(createUserMessage({ content: [{ type: 'text', text: 'go' }], source: { kind: 'user' } }))
+    await waitForIdle(ctx, agent)
+
+    expect(adapter.requests[0]?.tools).toBeUndefined()
+    expect(invoked).toBe(false)
+    expect(events(agent).find(event => event.type === 'tool/result')?.data.error).toMatchObject({
+      name: 'ToolNotFoundError',
+      code: 'UNKNOWN_TOOL',
+    })
   })
 })
 
@@ -644,25 +731,31 @@ describe('tool-call scheduler: failure quiescence', () => {
     ctx.tools.register(gated.tool)
     // The registry contains expected failures as results; replace its internal
     // view only to inject the invariant violation this boundary must contain.
-    const scheduler = ctx.tools[TOOL_RUNTIME_SCHEDULER]
-    const prepare = scheduler.prepare.bind(scheduler)
-    const dispatch = scheduler.dispatch.bind(scheduler)
     const prepareGate = Promise.withResolvers<undefined>()
     let thirdPrepareEntered = false
-    scheduler.prepare = async (exec) => {
-      const prepared = await prepare(exec)
-      if (exec.callId === CallId('c3')) {
-        thirdPrepareEntered = true
-        await prepareGate.promise
-      }
-      return prepared
-    }
     const schedulerError = new Error('scheduler exploded')
     const drainedError = new Error('sibling failed while draining')
     let rejectFirst: ((error: Error) => void) | undefined
-    scheduler.dispatch = exec => exec.callId === CallId('c1')
-      ? new Promise((_resolve, reject) => { rejectFirst = reject })
-      : dispatch(exec).then(() => { throw drainedError })
+    const requests = ctx.tools[TOOL_RUNTIME_REQUESTS]
+    const capture = requests.capture.bind(requests)
+    requests.capture = (scope) => {
+      const snapshot = capture(scope)
+      const { scheduler } = snapshot
+      const prepare = scheduler.prepare.bind(scheduler)
+      const dispatch = scheduler.dispatch.bind(scheduler)
+      scheduler.prepare = async (exec) => {
+        const prepared = await prepare(exec)
+        if (exec.callId === CallId('c3')) {
+          thirdPrepareEntered = true
+          await prepareGate.promise
+        }
+        return prepared
+      }
+      scheduler.dispatch = exec => exec.callId === CallId('c1')
+        ? new Promise((_resolve, reject) => { rejectFirst = reject })
+        : dispatch(exec).then(() => { throw drainedError })
+      return snapshot
+    }
     const agent = ctx.agentLoop.create(SessionId('scheduler-failure'), { provider: 'mock', model: 'mock' })
     let idle = false
     const idlePromise = waitForIdle(ctx, agent).then(() => { idle = true })
@@ -687,16 +780,315 @@ describe('tool-call scheduler: failure quiescence', () => {
     expect(events(agent).findLast(event => event.type === 'turn/end')).toMatchObject({
       data: { reason: { kind: 'error', error: { message: schedulerError.message, code: 'UNKNOWN' } } },
     })
+    // The failure leaves a provider-valid log: every recorded call pairs with
+    // exactly one model-order result, all before step/end, and no dispatch
+    // produced a committed result (the wrapper rejected every dispatch).
+    const calls = events(agent).filter(event => event.type === 'tool/call')
+    const results = events(agent).filter(event => event.type === 'tool/result')
+    const stepEnd = events(agent).find(event => event.type === 'step/end')
+    expect(calls.map(event => event.data.callId)).toEqual([CallId('c1'), CallId('c2'), CallId('c3')])
+    expect(results.map(event => event.data.message.source.callId)).toEqual([CallId('c1'), CallId('c2'), CallId('c3')])
+    for (const event of results) {
+      expect(event.data.error).toMatchObject({ code: TOOL_OUTCOME_UNKNOWN })
+      expect(stepEnd?.seq).toBeGreaterThan(event.seq)
+      expect(event.data.message.content[0]).toMatchObject({ isError: true })
+    }
+  })
+
+  it('synthesizes outcome-unknown for a failed start and not-started for the rest', async () => {
+    const adapter = new MockAdapter([
+      multiCall([
+        { id: 'c1', name: 'p', args: { id: '1' } },
+        { id: 'c2', name: 'p', args: { id: '2' } },
+        { id: 'c3', name: 'p', args: { id: '3' } },
+      ]),
+    ])
+    const ctx = await harness(adapter, 3)
+    const gated = gatedParallelTool('p')
+    ctx.tools.register(gated.tool)
+    const prepareError = new Error('prepare exploded')
+    mutateNextToolSnapshot(ctx, ({ scheduler }) => {
+      const prepare = scheduler.prepare.bind(scheduler)
+      scheduler.prepare = async (exec) => {
+        if (exec.callId === CallId('c1')) throw prepareError
+        return prepare(exec)
+      }
+    })
+    const agent = ctx.agentLoop.create(SessionId('prepare-failure'), { provider: 'mock', model: 'mock' })
+
+    agent.followup(createUserMessage({ content: [{ type: 'text', text: 'go' }], source: { kind: 'user' } }))
+    await waitForIdle(ctx, agent)
+
+    expect(events(agent).findLast(event => event.type === 'turn/end')).toMatchObject({
+      data: { reason: { kind: 'error', error: { message: prepareError.message, code: 'UNKNOWN' } } },
+    })
+    const calls = events(agent).filter(event => event.type === 'tool/call')
+    const results = events(agent).filter(event => event.type === 'tool/result')
+    expect(calls.map(event => event.data.callId)).toEqual([CallId('c1'), CallId('c2'), CallId('c3')])
+    expect(results.map(event => event.data.message.source.callId)).toEqual([CallId('c1'), CallId('c2'), CallId('c3')])
+    const codes = new Map(results.map(event => [event.data.message.source.callId, event.data.error?.code]))
+    expect(codes.get(CallId('c1'))).toBe(TOOL_OUTCOME_UNKNOWN)
+    expect(codes.get(CallId('c2'))).toBe(TOOL_NOT_STARTED)
+    expect(codes.get(CallId('c3'))).toBe(TOOL_NOT_STARTED)
+    expect(gated.started).toEqual([])
+  })
+
+  it('synthesizes outcome-unknown when finalize fails after a settled dispatch, and commits the sibling result', async () => {
+    const adapter = new MockAdapter([
+      multiCall([{ id: 'c1', name: 'p', args: { id: '1' } }, { id: 'c2', name: 'p', args: { id: '2' } }]),
+    ])
+    const ctx = await harness(adapter, 2)
+    const gated = gatedParallelTool('p')
+    ctx.tools.register(gated.tool)
+    const finalizeError = new Error('finalize exploded')
+    mutateNextToolSnapshot(ctx, ({ scheduler }) => {
+      const finalize = scheduler.finalize.bind(scheduler)
+      scheduler.finalize = async (exec, result) => {
+        if (exec.callId === CallId('c1')) throw finalizeError
+        return finalize(exec, result)
+      }
+    })
+    const agent = ctx.agentLoop.create(SessionId('finalize-failure'), { provider: 'mock', model: 'mock' })
+
+    agent.followup(createUserMessage({ content: [{ type: 'text', text: 'go' }], source: { kind: 'user' } }))
+    await until(() => gated.started.length === 2)
+    gated.release('1')
+    gated.release('2')
+    await waitForIdle(ctx, agent)
+
+    expect(events(agent).findLast(event => event.type === 'turn/end')).toMatchObject({
+      data: { reason: { kind: 'error', error: { message: finalizeError.message, code: 'UNKNOWN' } } },
+    })
+    const results = events(agent).filter(event => event.type === 'tool/result')
+    expect(results.map(event => event.data.message.source.callId)).toEqual([CallId('c1'), CallId('c2')])
+    expect(results[0]!.data.error).toMatchObject({ code: TOOL_OUTCOME_UNKNOWN })
+    // The sibling's settled result still commits as a real (non-error) result.
+    expect(results[1]!.data.error).toBeUndefined()
+    expect(results[1]!.data.message.content[0]).toMatchObject({ type: 'tool-result', isError: false })
+  })
+
+  it('keeps the transcript provider-valid for the next turn after a scheduler failure', async () => {
+    const adapter = new MockAdapter([
+      multiCall([{ id: 'c1', name: 'p', args: { id: '1' } }]),
+      textResponse('recovered'),
+    ])
+    const ctx = await harness(adapter, 1)
+    const gated = gatedParallelTool('p')
+    ctx.tools.register(gated.tool)
+    mutateNextToolSnapshot(ctx, ({ scheduler }) => {
+      scheduler.prepare = () => { throw new Error('scheduler exploded') }
+    })
+    const agent = ctx.agentLoop.create(SessionId('failure-followup'), { provider: 'mock', model: 'mock' })
+
+    agent.followup(createUserMessage({ content: [{ type: 'text', text: 'go' }], source: { kind: 'user' } }))
+    await waitForIdle(ctx, agent)
+    const results = events(agent).filter(event => event.type === 'tool/result')
+    expect(results.map(event => event.data.message.source.callId)).toEqual([CallId('c1')])
+    expect(results[0]!.data.error).toMatchObject({ code: TOOL_OUTCOME_UNKNOWN })
+
+    // A followup derives a provider-valid transcript: the synthetic result
+    // sits between the failed assistant message and the new user message.
+    agent.followup(createUserMessage({ content: [{ type: 'text', text: 'again' }], source: { kind: 'user' } }))
+    await waitForIdle(ctx, agent)
+    expect(adapter.requests).toHaveLength(2)
+    assertToolTranscriptValid(adapter.requests[1]!.messages)
+    const assistantWithCalls = adapter.requests[1]!.messages.find(
+      message => message.role === 'assistant' && message.content.some(block => block.type === 'tool-call'),
+    )
+    const assistantIndex = adapter.requests[1]!.messages.indexOf(assistantWithCalls!)
+    expect(adapter.requests[1]!.messages[assistantIndex + 1]).toMatchObject({
+      role: 'user',
+      source: { kind: 'tool', callId: CallId('c1') },
+      content: [{ type: 'tool-result', isError: true }],
+    })
+  })
+
+  it('commits an uncommitted final-result slot through the failure completion when an earlier sibling fails', async () => {
+    const adapter = new MockAdapter([
+      multiCall([{ id: 'c1', name: 'p', args: { id: '1' } }, { id: 'c2', name: 'p', args: { id: '2' } }]),
+    ])
+    const ctx = await harness(adapter, 2)
+    const gated = gatedParallelTool('p')
+    ctx.tools.register(gated.tool)
+    let rejectFirst: ((error: Error) => void) | undefined
+    let c2Prepared = false
+    mutateNextToolSnapshot(ctx, ({ scheduler }) => {
+      const prepare = scheduler.prepare.bind(scheduler)
+      const dispatch = scheduler.dispatch.bind(scheduler)
+      scheduler.prepare = async (exec) => {
+        if (exec.callId === CallId('c2')) {
+          // A preparation that resolves immediately (no dispatch) — its slot is
+          // set before the sibling's failure surfaces.
+          c2Prepared = true
+          const result: ToolExecutionResult = {
+            content: [{ type: 'text', text: 'immediate' }],
+            isError: false,
+            value: 'immediate',
+          }
+          return { kind: 'final-result', exec: exec as unknown as ToolRunContext, result }
+        }
+        return prepare(exec)
+      }
+      scheduler.dispatch = (exec) => {
+        if (exec.callId === CallId('c1')) return new Promise((_resolve, reject) => { rejectFirst = reject })
+        return dispatch(exec)
+      }
+      scheduler.finish = (_exec, result) => ({
+        ...result,
+        additionalContexts: [createUserMessage({ content: [{ type: 'text', text: 'ctx' }], source: { kind: 'user' } })],
+      })
+    })
+    const agent = ctx.agentLoop.create(SessionId('final-result-completion'), { provider: 'mock', model: 'mock' })
+
+    agent.followup(createUserMessage({ content: [{ type: 'text', text: 'go' }], source: { kind: 'user' } }))
+    await until(() => c2Prepared)
+    rejectFirst?.(new Error('dispatch exploded'))
+    await waitForIdle(ctx, agent)
+
+    expect(events(agent).findLast(event => event.type === 'turn/end')).toMatchObject({
+      data: { reason: { kind: 'error', error: { message: 'dispatch exploded', code: 'UNKNOWN' } } },
+    })
+    const results = events(agent).filter(event => event.type === 'tool/result')
+    expect(results.map(event => event.data.message.source.callId)).toEqual([CallId('c1'), CallId('c2')])
+    expect(results[0]!.data.error).toMatchObject({ code: TOOL_OUTCOME_UNKNOWN })
+    // The final-result slot committed through the failure completion.
+    expect(results[1]!.data.error).toBeUndefined()
+    expect(results[1]!.data.message.content[0]).toMatchObject({ isError: false })
+  })
+
+  it('logs and preserves the first failure when failure completion itself fails', async () => {
+    const adapter = new MockAdapter([
+      multiCall([{ id: 'c1', name: 'p', args: { id: '1' } }]),
+    ])
+    const ctx = await harness(adapter, 1)
+    const gated = gatedParallelTool('p')
+    ctx.tools.register(gated.tool)
+    const prepareError = new Error('prepare exploded')
+    mutateNextToolSnapshot(ctx, ({ scheduler }) => {
+      scheduler.prepare = () => { throw prepareError }
+    })
+    const agent = ctx.agentLoop.create(SessionId('completion-failure'), { provider: 'mock', model: 'mock' })
+    // The synthetic result append fails, so the failure completion aborts; the
+    // original scheduler failure must still end the turn.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- the generic append signature is not spy-able without widening
+    const append = agent.session.append.bind(agent.session) as (...args: any[]) => ReturnType<typeof agent.session.append>
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- the generic append signature is not spy-able without widening
+    vi.spyOn(agent.session, 'append').mockImplementation(((...args: any[]) => {
+      if (args[0] === 'tool/result') throw new Error('append failed')
+      return append(...args)
+    }) as never)
+
+    agent.followup(createUserMessage({ content: [{ type: 'text', text: 'go' }], source: { kind: 'user' } }))
+    await waitForIdle(ctx, agent)
+
+    expect(events(agent).findLast(event => event.type === 'turn/end')).toMatchObject({
+      data: { reason: { kind: 'error', error: { message: prepareError.message, code: 'UNKNOWN' } } },
+    })
+    expect(gated.started).toEqual([])
+  })
+
+  it('synthesizes outcome-unknown when finalize fails inside the failure completion (an earlier sibling left no slot)', async () => {
+    const adapter = new MockAdapter([
+      multiCall([{ id: 'c1', name: 'p', args: { id: '1' } }, { id: 'c2', name: 'p', args: { id: '2' } }]),
+    ])
+    const ctx = await harness(adapter, 2)
+    const gated = gatedParallelTool('p')
+    ctx.tools.register(gated.tool)
+    const finalizeError = new Error('finalize exploded')
+    let rejectFirst: ((error: Error) => void) | undefined
+    mutateNextToolSnapshot(ctx, ({ scheduler }) => {
+      const dispatch = scheduler.dispatch.bind(scheduler)
+      const finalize = scheduler.finalize.bind(scheduler)
+      scheduler.dispatch = (exec) => {
+        if (exec.callId === CallId('c1')) return new Promise((_resolve, reject) => { rejectFirst = reject })
+        return dispatch(exec)
+      }
+      scheduler.finalize = async (exec, result) => {
+        if (exec.callId === CallId('c2')) throw finalizeError
+        return finalize(exec, result)
+      }
+    })
+    const agent = ctx.agentLoop.create(SessionId('completion-finalize-failure'), { provider: 'mock', model: 'mock' })
+
+    agent.followup(createUserMessage({ content: [{ type: 'text', text: 'go' }], source: { kind: 'user' } }))
+    await until(() => gated.started.includes('2') && rejectFirst !== undefined)
+    rejectFirst?.(new Error('dispatch exploded'))
+    gated.release('2')
+    await waitForIdle(ctx, agent)
+
+    expect(events(agent).findLast(event => event.type === 'turn/end')).toMatchObject({
+      data: { reason: { kind: 'error', error: { message: 'dispatch exploded', code: 'UNKNOWN' } } },
+    })
+    const results = events(agent).filter(event => event.type === 'tool/result')
+    expect(results.map(event => event.data.message.source.callId)).toEqual([CallId('c1'), CallId('c2')])
+    // c1 never produced a slot; c2's settled result failed its completion
+    // finalize — both surface as outcome-unknown, in model order.
+    for (const event of results) {
+      expect(event.data.error).toMatchObject({ code: TOOL_OUTCOME_UNKNOWN })
+    }
+  })
+
+  it('records not-started results for calls in later groups when an earlier exclusive group fails', async () => {
+    const adapter = new MockAdapter([
+      multiCall([{ id: 'c1', name: 'x', args: { id: '1' } }, { id: 'c2', name: 'x', args: { id: '2' } }]),
+    ])
+    const ctx = await harness(adapter, 2)
+    const gated = gatedExclusiveTool('x')
+    ctx.tools.register(gated.tool)
+    const prepareError = new Error('prepare exploded')
+    mutateNextToolSnapshot(ctx, ({ scheduler }) => {
+      const prepare = scheduler.prepare.bind(scheduler)
+      scheduler.prepare = async (exec) => {
+        if (exec.callId === CallId('c1')) throw prepareError
+        return prepare(exec)
+      }
+    })
+    const agent = ctx.agentLoop.create(SessionId('later-group-failure'), { provider: 'mock', model: 'mock' })
+
+    agent.followup(createUserMessage({ content: [{ type: 'text', text: 'go' }], source: { kind: 'user' } }))
+    await waitForIdle(ctx, agent)
+
+    expect(events(agent).findLast(event => event.type === 'turn/end')).toMatchObject({
+      data: { reason: { kind: 'error', error: { message: prepareError.message, code: 'UNKNOWN' } } },
+    })
+    const results = events(agent).filter(event => event.type === 'tool/result')
+    expect(results.map(event => event.data.message.source.callId)).toEqual([CallId('c1'), CallId('c2')])
+    expect(results[0]!.data.error).toMatchObject({ code: TOOL_OUTCOME_UNKNOWN })
+    // The later group never began and still pairs with a not-started result.
+    expect(results[1]!.data.error).toMatchObject({ code: TOOL_NOT_STARTED })
+    expect(gated.started).toEqual([])
+  })
+
+  it('records aborted results for calls in later groups when an exclusive group aborts', async () => {
+    const adapter = new MockAdapter([
+      multiCall([{ id: 'c1', name: 'x', args: { id: '1' } }, { id: 'c2', name: 'x', args: { id: '2' } }]),
+    ])
+    const ctx = await harness(adapter, 2)
+    const gated = gatedExclusiveTool('x')
+    ctx.tools.register(gated.tool)
+    const agent = ctx.agentLoop.create(SessionId('abort-later-groups'), { provider: 'mock', model: 'mock' })
+
+    agent.followup(createUserMessage({ content: [{ type: 'text', text: 'go' }], source: { kind: 'user' } }))
+    await until(() => gated.started.includes('1'))
+    agent.cancel({ kind: 'user' })
+    gated.release('1')
+    await waitForIdle(ctx, agent)
+
+    const results = events(agent).filter(event => event.type === 'tool/result')
+    expect(results.map(event => event.data.message.source.callId)).toEqual([CallId('c1'), CallId('c2')])
+    // c1's started dispatch committed its real result; c2 never began.
+    expect(results[1]!.data.error).toMatchObject({ code: TOOL_ABORTED_BEFORE_DISPATCH })
   })
 })
 
 describe('code-mode native-tool denial through the agent loop', () => {
-  /** A minimal in-process code runtime for test purposes — never actually runs. */
+  /** A scriptable in-process code runtime for request-snapshot coverage. */
   class FakeCodeRuntime extends CodeRuntime {
     readonly language = 'typescript'
     readonly isolation = 'fake' as const
-    async run(_request: CodeRunRequest): Promise<CodeRunResult> {
-      return { logs: [] }
+    behavior: (request: CodeRunRequest) => Promise<CodeRunResult> = () => Promise.resolve({ logs: [] })
+    async run(request: CodeRunRequest): Promise<CodeRunResult> {
+      return this.behavior(request)
     }
   }
 
@@ -758,5 +1150,59 @@ describe('code-mode native-tool denial through the agent loop', () => {
       name: 'ToolNotFoundError',
       code: 'UNKNOWN_TOOL',
     })
+  })
+
+  it('keeps Code Mode backend and nested definitions from the request snapshot after assembly HMR', async () => {
+    const adapter = new MockAdapter([
+      multiCall([{
+        id: 'call-1',
+        name: 'run_code',
+        args: { code: 'tools.x({ id: "1" })', description: 'call x' },
+      }]),
+      textResponse('done'),
+    ])
+    const ctx = await codeModeHarness(adapter)
+    const runtime = ctx.codeRuntime as FakeCodeRuntime
+    const initialCalls: string[] = []
+    const replacementCalls: string[] = []
+    const disposeInitial = ctx.tools.register(defineContentToolFixture({
+      name: 'x',
+      description: 'captured x',
+      parameters: { id: { type: 'string', required: true } },
+      async execute(args) {
+        initialCalls.push(args.id)
+        return [{ type: 'text', text: `initial-${args.id}` }]
+      },
+    }))
+    runtime.behavior = async request => ({
+      logs: [],
+      value: await request.bindings[0]!.functions.x!({ id: '1' }),
+    })
+    let replaced = false
+    ctx.on('system-prompt/assemble', async (_assembly, _context, next) => {
+      const result = await next()
+      if (!replaced) {
+        replaced = true
+        disposeInitial()
+        ctx.tools.register(defineContentToolFixture({
+          name: 'x',
+          description: 'replacement x',
+          parameters: { id: { type: 'string', required: true } },
+          async execute(args) {
+            replacementCalls.push(args.id)
+            return [{ type: 'text', text: `replacement-${args.id}` }]
+          },
+        }))
+      }
+      return result
+    })
+    const agent = ctx.agentLoop.create(SessionId('code-snapshot'), { provider: 'mock', model: 'mock' })
+
+    agent.followup(createUserMessage({ content: [{ type: 'text', text: 'call x' }], source: { kind: 'user' } }))
+    await waitForIdle(ctx, agent)
+
+    expect(initialCalls).toEqual(['1'])
+    expect(replacementCalls).toEqual([])
+    expect(events(agent).find(event => event.type === 'tool/code-dispatch')?.data.name).toBe('x')
   })
 })

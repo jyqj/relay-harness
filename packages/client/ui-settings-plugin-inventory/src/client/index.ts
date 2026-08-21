@@ -1,4 +1,4 @@
-/** Read-only Host plugin inventory registered into Web Settings. */
+/** Host plugin inventory Settings tab. */
 
 import type {} from '@deepseek-ai/dsh-client-locale/client'
 import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
@@ -11,7 +11,7 @@ export type { PluginInventoryLocaleKey } from './locales.ts'
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {
   interface LocaleNamespaceMap {
-    /** Read-only Host plugin inventory copy. */
+    /** Plugin inventory copy. */
     'settings.pluginInventory': PluginInventoryLocaleKey
   }
 }

@@ -101,6 +101,31 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         description: 'Close the details panel.',
         parameters: [],
       },
+      {
+        signature: 'toggleSurfaces(): void',
+        description: 'Toggle the surfaces column (closed ⟷ contract default width).',
+        parameters: [],
+      },
+      {
+        signature: 'openSurfaces(): void',
+        description: 'Open the surfaces column (no-op when already open).',
+        parameters: [],
+      },
+      {
+        signature: 'closeSurfaces(): void',
+        description: 'Close the surfaces column.',
+        parameters: [],
+      },
+      {
+        signature: 'toggleTerminalDrawer(): void',
+        description: 'Toggle the terminal drawer (closed ⟷ contract default height).',
+        parameters: [],
+      },
+      {
+        signature: 'setTerminalDrawer(px: number): void',
+        description: 'Set the terminal drawer height in px. Clamps to the contract floor and never writes closed; use toggleTerminalDrawer to close.',
+        parameters: [{ name: 'px', description: 'requested height.' }],
+      },
     ],
   },
   {
@@ -305,6 +330,12 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         signature: 'connectWorkspace(workspaceId: WorkspaceId): Promise<SessionId>',
         description: 'Connect a Workspace to its reusable or freshly created blank session.',
         parameters: [{ name: 'workspaceId', description: 'target workspace.' }],
+        returns: 'the connected session id.',
+      },
+      {
+        signature: 'connectNoDirectory(): Promise<SessionId>',
+        description: 'Connect a Session that is not a Workspace member: reuse a blank Session whose cwd is the Host scratch directory and whose id is in no Workspace index, else create one with that cwd.',
+        parameters: [],
         returns: 'the connected session id.',
       },
       {

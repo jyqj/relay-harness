@@ -6,7 +6,13 @@ The subagent seam lets an agent delegate work to a child agent. Like [bash](shel
 
 Service Definition: [dsh-subagent](../../packages/subagent/subagent) (`ctx.subagents` + the vocabulary below). Service Providers are sibling packages (`dsh-subagent-spawn-in-process`, `-fork`, `-acp`, `-codex`, `-claude-code`, `-dsh-sdk`); the model-facing Consumers are [dsh-tool-subagent](../../packages/subagent/tool-subagent) (per-provider delegation), [dsh-tool-subagent-control](../../packages/subagent/tool-subagent-control) (the optional global `send_message`, `interrupt_agent`, and `list_agents` controls), and [dsh-tool-subagent-report](../../packages/subagent/tool-subagent-report) (the optional child-scoped `report` return channel). The same `ctx.subagents` service owns continuable-child orchestration through an internal activation manager and read-only child and descendant discovery straight from the session store and optional session persistence. Product-provider rationale lives in [the Codex and Claude Code Agent Note](../../.agents/notes/implemented/feature/2026-08-04-claude-code-and-codex-subagent-backends.md); common-seam rationale lives in [the subagent Agent Note](../../.agents/notes/implemented/feature/2026-06-21-subagent-capability-seam.md), [the continuable subagents Agent Note](../../.agents/notes/implemented/feature/2026-07-28-continuable-subagent-conversations.md), [the report-tool Agent Note](../../.agents/notes/implemented/feature/2026-07-30-continuable-subagent-report-tool.md), [the durable catalog Agent Note](../../.agents/notes/implemented/feature/2026-07-22-durable-subagent-catalog-and-list-agents.md), [the list-identity-projection Agent Note](../../.agents/notes/implemented/architecture/2026-08-06-subagent-list-identity-projection.md), and [the merged-service Agent Note](../../.agents/notes/implemented/simplification/2026-07-26-merge-subagent-control-service.md).
 
-Sources: [`packages/subagent/subagent/src/types.ts`](../../packages/subagent/subagent/src/types.ts), [`packages/subagent/subagent/src/index.ts`](../../packages/subagent/subagent/src/index.ts), and [`packages/subagent/subagent/src/continuation.ts`](../../packages/subagent/subagent/src/continuation.ts)
+Sources: [`packages/subagent/subagent/src/types.ts`](../../packages/subagent/subagent/src/types.ts), [`packages/subagent/subagent/src/index.ts`](../../packages/subagent/subagent/src/index.ts), [`packages/subagent/subagent/src/admission.ts`](../../packages/subagent/subagent/src/admission.ts), and [`packages/subagent/subagent/src/continuation.ts`](../../packages/subagent/subagent/src/continuation.ts)
+
+## Shared root-tree capacity
+
+`SubagentRuntime` applies one optional capacity policy before dispatching any provider or materializing any Activation. `maxActivePerRoot` charges every descendant to the highest live durable session ancestor; `maxActivePerParent` can also cap direct siblings. One-shot delegation, continuable children, workflows, and teams all pass through the same service, so no consumer-specific adapter can bypass the limit. Separate roots have separate counters. The base bundle uses four active child lifetimes per root and immediate `CAPACITY_EXCEEDED` rejection; direct compositions remain unbounded unless configured.
+
+A one-shot lease ends only when the returned run reaches holder-owned `dispose()`. A continuable lease belongs to one Activation epoch and ends after its `AgentHandle` reaches quiescence and disposal, including rollback paths. `overflow: queue` is optional: its root-local queue removes cancelled waiters and promotes the oldest currently eligible parent; runtime teardown rejects pending and future acquisitions without revoking published children. The ownership and default rationale is recorded in the [root-tree admission Agent Note](../../.agents/notes/implemented/architecture/2026-08-21-root-tree-subagent-admission.md).
 
 ## Two kinds of capability, discovered two ways
 
@@ -665,7 +671,7 @@ async start(name: string, request: SubagentStartRequest): Promise<SubagentRun>
 
 Types: [Agent](core.md) · [ContentBlock](llm-streaming.md) · [MessageId](llm-streaming.md) · [SessionId](core.md)
 
-Source: [`packages/subagent/subagent/src/index.ts:171`](../../packages/subagent/subagent/src/index.ts)
+Source: [`packages/subagent/subagent/src/index.ts:218`](../../packages/subagent/subagent/src/index.ts)
 
 <a id="subagent-events"></a>
 
@@ -691,7 +697,7 @@ A published child settled. Scope-filtered dispatch uses the same delegating pare
 
 Types: [Scoped](scope.md)
 
-Source: [`packages/subagent/subagent/src/index.ts:166`](../../packages/subagent/subagent/src/index.ts)
+Source: [`packages/subagent/subagent/src/index.ts:213`](../../packages/subagent/subagent/src/index.ts)
 
 <a id="subagentprovider-added--emit"></a>
 
@@ -708,7 +714,7 @@ A provider became resolvable in the registry.
 'subagent/provider-added'(provider: SubagentProvider): void
 ```
 
-Source: [`packages/subagent/subagent/src/index.ts:140`](../../packages/subagent/subagent/src/index.ts)
+Source: [`packages/subagent/subagent/src/index.ts:187`](../../packages/subagent/subagent/src/index.ts)
 
 <a id="subagentprovider-removed--emit"></a>
 
@@ -725,7 +731,7 @@ A provider left the registry. Accepted runs remain holder-owned.
 'subagent/provider-removed'(name: string): void
 ```
 
-Source: [`packages/subagent/subagent/src/index.ts:146`](../../packages/subagent/subagent/src/index.ts)
+Source: [`packages/subagent/subagent/src/index.ts:193`](../../packages/subagent/subagent/src/index.ts)
 
 <a id="subagentstart--emit"></a>
 
@@ -749,5 +755,5 @@ A provider established a published child. For in-process providers, `ctx.agents.
 
 Types: [Scoped](scope.md)
 
-Source: [`packages/subagent/subagent/src/index.ts:157`](../../packages/subagent/subagent/src/index.ts)
+Source: [`packages/subagent/subagent/src/index.ts:204`](../../packages/subagent/subagent/src/index.ts)
 <!-- END GENERATED cordis-surface -->

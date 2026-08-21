@@ -27,7 +27,7 @@ import { zh } from '../src/client/locales.ts'
 import { AssistantNodeView } from '../src/client/chat/AssistantNodeView.tsx'
 import { CommandNodeView, ManualCompactionNodeView } from '../src/client/chat/CommandNodeView.tsx'
 import {
-  CompactionNodeView, ContextMessageNodeView, RetryNodeView, TurnErrorNodeView,
+  CompactionNodeView, ContextMessageNodeView, RetryNodeView, SteeringMessageNodeView, TurnErrorNodeView,
   TurnMaxTokensNodeView, UnknownNodeView, UserMessageNodeView,
 } from '../src/client/chat/MessageItem.tsx'
 import { TurnTailNodeView } from '../src/client/chat/TurnTailNodeView.tsx'
@@ -149,7 +149,7 @@ function emptyWorkspaces() {
   return bindSnapshotSelector(store)
 }
 
-function makeHarness(init?: Partial<ConversationSnapshot>) {
+function makeHarness(init?: Partial<ConversationSnapshot>, sessionRow?: { agentPreset?: string }) {
   const { set, source } = makeSource(init)
   const openDetails = vi.fn<(t: SelectionTarget) => void>()
   const openFile = vi.fn<(path: string) => Promise<void>>().mockResolvedValue(undefined)
@@ -176,6 +176,8 @@ function makeHarness(init?: Partial<ConversationSnapshot>) {
   }> = []
   const renderCommandSlot = ((_key: string, _owner: object, opts?: { fallback?: React.ReactNode }) =>
     opts?.fallback ?? null) as unknown as React.ComponentProps<typeof CommandNodeView>['renderSlot']
+  const renderUserActions = (() => null) as unknown as
+    React.ComponentProps<typeof UserMessageNodeView>['renderSlot']
   const renderTurnTail = ((_key: string, _owner: object) => null) as unknown as
     React.ComponentProps<typeof TurnTailNodeView>['renderSlotChain']
   const renderTurnTailSlot = (() => null) as unknown as
@@ -198,8 +200,15 @@ function makeHarness(init?: Partial<ConversationSnapshot>) {
     )
     switch (nodeOwner.node.kind) {
       case 'user':
+        return (
+          <UserMessageNodeView
+            {...nodeProps<'user'>()}
+            renderSlot={renderUserActions}
+            SessionProvider={props.SessionProvider}
+          />
+        )
       case 'steering':
-        return <UserMessageNodeView {...nodeProps<'user' | 'steering'>()} />
+        return <SteeringMessageNodeView {...nodeProps<'steering'>()} />
       case 'context':
         return <ContextMessageNodeView {...nodeProps<'context'>()} />
       case 'assistant-step':
@@ -265,7 +274,19 @@ function makeHarness(init?: Partial<ConversationSnapshot>) {
   const props: ChatViewSlotProps = {
     sessionId: SID,
     useSession: bindSnapshotSelector(source),
-    useSessions: emptySessions(),
+    useSessions: sessionRow?.agentPreset === undefined
+      ? emptySessions()
+      : bindSnapshotSelector(createSnapshotStore({
+        ids: [SID],
+        byId: {
+          [SID]: {
+            id: SID, displayTitle: 'room', running: false, blank: false, updatedAt: 0,
+            agentPreset: sessionRow.agentPreset,
+          },
+        },
+        current: undefined, phase: 'ready',
+        subagentsByParent: {}, jobsBySession: {}, currentAddress: undefined,
+      })),
     useWorkspaces: emptyWorkspaces(),
     useProjection: (() => undefined),
     useInput: (() => { throw new Error('unused') }),
@@ -384,6 +405,31 @@ describe('ChatView', () => {
     const view = render(<h.ChatView {...h.props} />)
     expect(view.getByTestId('tool-seat-w1')).toBeTruthy()
     expect(h.toolOwners[0]).toMatchObject({ callId: 'w1', toolName: '' })
+  })
+
+  it('offers the empty-transcript list slot when the flow has no nodes', () => {
+    const slotCalls: string[] = []
+    const h = makeHarness({ nodes: [] })
+    const inner = h.props.renderSlot
+    h.props.renderSlot = ((key: string, owner: object) => {
+      slotCalls.push(key)
+      return inner(key as never, owner as never)
+    }) as typeof inner
+    const view = render(<h.ChatView {...h.props} />)
+    expect(slotCalls).toContain('conversation.chat.empty')
+    expect(view.container.querySelector('[data-chat-empty]')).not.toBeNull()
+  })
+
+  it('withholds the empty-transcript slot once a node exists', () => {
+    const slotCalls: string[] = []
+    const h = makeHarness({ nodes: [user(1, 'hello')] })
+    const inner = h.props.renderSlot
+    h.props.renderSlot = ((key: string, owner: object) => {
+      slotCalls.push(key)
+      return inner(key as never, owner as never)
+    }) as typeof inner
+    render(<h.ChatView {...h.props} />)
+    expect(slotCalls).not.toContain('conversation.chat.empty')
   })
 
   it('prepend keeps the reader\'s latest pending-request scroll position anchored', () => {
@@ -876,6 +922,40 @@ describe('ChatView', () => {
     expect(view.getByTestId('tool-seat-r1')).toBeTruthy()
     expect(h.toolOwners[0]?.block).toMatchObject({ callId: 'r1', argsRaw: '{"command":"cmd-r1"}' })
     expect(view.getByRole('status').textContent).toBe('Deep diving...')
+  })
+
+  it('skips Deep diving status in a dshbot-room session', () => {
+    const h = makeHarness({ runningCalls: [runningCall('r1')], running: true }, { agentPreset: 'dshbot-room' })
+    const view = render(<h.ChatView {...h.props} />)
+    expect(view.queryByRole('status')).toBeNull()
+  })
+
+  it('hides context injection rows in a dshbot-room session', () => {
+    const h = makeHarness({
+      nodes: [{
+        kind: 'context', seq: 1, time: 1_000, content: [], source: null,
+        provenance: { role: 'inject', label: 'fixture' },
+        form: null,
+      } as ConversationNode],
+    }, { agentPreset: 'dshbot-room' })
+    const view = render(<h.ChatView {...h.props} />)
+    expect(view.queryByRole('button', { name: /上下文注入/ })).toBeNull()
+  })
+
+  it('hides turn-tail chrome in a dshbot-room session', () => {
+    const h = makeHarness({
+      nodes: [
+        user(1, 'hi'),
+        assistant(2, 'mid-turn text'),
+        assistant(16, 'final answer'),
+        toolResult(18, 'trailing'),
+      ],
+      turnTimings: new Map([[1, { startTime: 1_000, endTime: 20_000 }]]),
+      turnEnds: new Map([[1, 20]]),
+    }, { agentPreset: 'dshbot-room' })
+    const view = render(<h.ChatView {...h.props} />)
+    expect(view.queryByText(/用时/)).toBeNull()
+    expect(view.queryByRole('button', { name: '在新对话中分支' })).toBeNull()
   })
 
   it('keeps the Tool renderer mounted when a running call settles into log order', () => {

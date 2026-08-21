@@ -1,6 +1,6 @@
 import { createUserMessage } from '@deepseek-ai/dsh-llm'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { Context } from '@deepseek-ai/cordis'
@@ -39,16 +39,20 @@ function writeHooks(dir: string, hooks: unknown): void {
   writeFileSync(join(dir, 'hooks.json'), JSON.stringify({ hooks }))
 }
 
-async function harness(dir: string, adapter: MockAdapter, beforeHooks?: (ctx: Context) => void): Promise<Context> {
+async function harnessWithConfig(configPath: string, adapter: MockAdapter, beforeHooks?: (ctx: Context) => void): Promise<Context> {
   const ctx = new Context()
   await mountAgentLoopTestDependencies(ctx)
   await ctx.plugin(AgentLoop, { agents: [] })
   await ctx.plugin(LocalSubprocessRuntime)
   await ctx.plugin(LocalBashExecutor, { timeoutMs: 10_000 })
   beforeHooks?.(ctx)
-  await ctx.plugin(HooksCodex, { configPath: join(dir, 'hooks.json'), model: 'test-model' })
+  await ctx.plugin(HooksCodex, { configPath, model: 'test-model' })
   ctx.llm.registerAdapter(['mock'], adapter)
   return ctx
+}
+
+async function harness(dir: string, adapter: MockAdapter, beforeHooks?: (ctx: Context) => void): Promise<Context> {
+  return harnessWithConfig(join(dir, 'hooks.json'), adapter, beforeHooks)
 }
 
 function waitForIdle(_ctx: Context, agent: Agent): Promise<void> {
@@ -89,21 +93,39 @@ describe('hooks-codex bridge', () => {
 
   it('a Stop hook (exit 2) forces the turn to continue with the reason as steering', async () => {
     const dir = configDir()
-    // Stop ignores its malformed matcher field. Block once with a marker;
-    // until the loop guard lands, an always-blocking hook would never finish.
-    const marker = join(dir, 'fired')
-    const cont = script(dir, 'cont.sh', `#!/usr/bin/env bash\nif [ -e "${marker}" ]; then exit 0; fi\ntouch "${marker}"\necho "keep going: address the goal" >&2\nexit 2\n`)
+    // Stop ignores its malformed matcher field. This hook always blocks; the
+    // bridge must permit exactly one continuation and then close the turn.
+    const cont = script(dir, 'cont.sh', '#!/usr/bin/env bash\necho "keep going: address the goal" >&2\nexit 2\n')
     writeHooks(dir, { Stop: [{ matcher: '[', hooks: [{ type: 'command', command: cont }] }] })
 
     const adapter = new MockAdapter([textResponse('first answer'), textResponse('second answer after goal')])
-    const ctx = await harness(dir, adapter)
+    const warn = vi.fn()
+    const ctx = await harness(dir, adapter, (ctx) => { ctx.logger.warn = warn as never })
     const agent = ctx.agentLoop.create(SessionId('a1'), { provider: 'mock', model: 'mock' })
     agent.followup(createUserMessage({ content: [{ type: 'text', text: 'go' }], source: { kind: 'user' } }))
     await waitForIdle(ctx, agent)
 
     expect(adapter.requests).toHaveLength(2)
     expect(JSON.stringify(adapter.requests[1]!.messages)).toContain('keep going: address the goal')
+    expect(events(agent).filter(event => event.type === 'hook/invoked' && event.data.point === 'Stop')).toHaveLength(2)
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('Stop hook remained blocking'))
   }, 15_000) // Two real hook subprocesses and agent steps need startup and teardown headroom under load.
+
+  it('awaits SessionStart context before the first sampling request', async () => {
+    const dir = configDir()
+    const startup = script(dir, 'startup.sh', '#!/usr/bin/env bash\nsleep 0.2\necho "startup context ready"\n')
+    writeHooks(dir, { SessionStart: [{ hooks: [{ type: 'command', command: startup }] }] })
+    const adapter = new MockAdapter([textResponse('done')])
+    const ctx = await harness(dir, adapter)
+    const agent = ctx.agentLoop.create(SessionId('session-start-gate'), { provider: 'mock', model: 'mock' })
+
+    agent.followup(createUserMessage({ content: [{ type: 'text', text: 'go immediately' }], source: { kind: 'user' } }))
+    await waitForIdle(ctx, agent)
+
+    expect(adapter.requests).toHaveLength(1)
+    expect(JSON.stringify(adapter.requests[0]!.messages)).toContain('startup context ready')
+    expect(events(agent).some(event => event.type === 'hook/invoked' && event.data.point === 'SessionStart')).toBe(true)
+  })
 
   it('turn cancellation aborts and reaps a running UserPromptSubmit hook before idle', async () => {
     const dir = configDir()
@@ -151,6 +173,125 @@ describe('hooks-codex bridge', () => {
     agent.followup(createUserMessage({ content: [{ type: 'text', text: 'go' }], source: { kind: 'user' } }))
     await waitForIdle(ctx, agent)
     expect(adapter.requests).toHaveLength(1)
+  })
+
+  it('walks a missing relative config to the filesystem root without failing the turn', async () => {
+    const dir = configDir()
+    const adapter = new MockAdapter([textResponse('ok')])
+    const ctx = await harnessWithConfig('missing-hooks.json', adapter)
+    const agent = ctx.agentLoop.create(SessionId('missing-relative'), { provider: 'mock', model: 'mock' }, { cwd: dir })
+
+    agent.followup(createUserMessage({ content: [{ type: 'text', text: 'go' }], source: { kind: 'user' } }))
+    await waitForIdle(ctx, agent)
+
+    expect(adapter.requests).toHaveLength(1)
+  })
+
+  it('contains and deduplicates discovery failures for a non-file config path', async () => {
+    const dir = configDir()
+    const adapter = new MockAdapter([textResponse('one'), textResponse('two')])
+    const warn = vi.fn()
+    const ctx = await harnessWithConfig(dir, adapter, (ctx) => { ctx.logger.warn = warn as never })
+    const agent = ctx.agentLoop.create(SessionId('config-directory'), { provider: 'mock', model: 'mock' })
+
+    agent.followup(createUserMessage({ content: [{ type: 'text', text: 'one' }], source: { kind: 'user' } }))
+    await waitForIdle(ctx, agent)
+    agent.followup(createUserMessage({ content: [{ type: 'text', text: 'two' }], source: { kind: 'user' } }))
+    await waitForIdle(ctx, agent)
+
+    expect(warn.mock.calls.filter(call => String(call[0]).includes('could not discover hook config'))).toHaveLength(1)
+    expect(adapter.requests).toHaveLength(2)
+  })
+
+  it('rejects empty and parent-traversing config paths at plugin load', () => {
+    expect(() => { HooksCodex.apply(new Context(), { configPath: ' ' }) }).toThrow('configPath must be non-empty')
+    expect(() => { HooksCodex.apply(new Context(), { configPath: '../hooks.json' }) }).toThrow('must not contain ".." segments')
+  })
+
+  it('caches one malformed config failure until the file version changes', async () => {
+    const dir = configDir()
+    const configPath = join(dir, 'hooks.json')
+    writeFileSync(configPath, '{ malformed')
+    const adapter = new MockAdapter([textResponse('one'), textResponse('two')])
+    const warn = vi.fn()
+    const ctx = await harnessWithConfig(configPath, adapter, (ctx) => { ctx.logger.warn = warn as never })
+    const agent = ctx.agentLoop.create(SessionId('malformed-cache'), { provider: 'mock', model: 'mock' })
+
+    agent.followup(createUserMessage({ content: [{ type: 'text', text: 'one' }], source: { kind: 'user' } }))
+    await waitForIdle(ctx, agent)
+    agent.followup(createUserMessage({ content: [{ type: 'text', text: 'two' }], source: { kind: 'user' } }))
+    await waitForIdle(ctx, agent)
+
+    expect(warn.mock.calls.filter(call => String(call[0]).includes('could not load hook config'))).toHaveLength(1)
+    expect(adapter.requests).toHaveLength(2)
+  })
+
+  it('discovers one relative config per session without leaking between workspaces', async () => {
+    const repoA = configDir()
+    const repoB = configDir()
+    for (const repo of [repoA, repoB]) {
+      mkdirSync(join(repo, '.git'), { recursive: true })
+      mkdirSync(join(repo, '.codex'), { recursive: true })
+      mkdirSync(join(repo, 'pkg'), { recursive: true })
+    }
+    const hookA = script(repoA, 'a.sh', '#!/usr/bin/env bash\necho "context-from-a"\n')
+    const hookB = script(repoB, 'b.sh', '#!/usr/bin/env bash\necho "context-from-b"\n')
+    writeFileSync(join(repoA, '.codex/hooks.json'), JSON.stringify({ hooks: { UserPromptSubmit: [{ hooks: [{ command: hookA }] }] } }))
+    writeFileSync(join(repoB, '.codex/hooks.json'), JSON.stringify({ hooks: { UserPromptSubmit: [{ hooks: [{ command: hookB }] }] } }))
+    const adapter = new MockAdapter([textResponse('a done'), textResponse('b done')])
+    const ctx = await harnessWithConfig('.codex/hooks.json', adapter)
+
+    const agentA = ctx.agentLoop.create(SessionId('repo-a'), { provider: 'mock', model: 'mock' }, { cwd: join(repoA, 'pkg') })
+    agentA.followup(createUserMessage({ content: [{ type: 'text', text: 'run a' }], source: { kind: 'user' } }))
+    await waitForIdle(ctx, agentA)
+    const agentB = ctx.agentLoop.create(SessionId('repo-b'), { provider: 'mock', model: 'mock' }, { cwd: join(repoB, 'pkg') })
+    agentB.followup(createUserMessage({ content: [{ type: 'text', text: 'run b' }], source: { kind: 'user' } }))
+    await waitForIdle(ctx, agentB)
+
+    expect(JSON.stringify(adapter.requests[0]!.messages)).toContain('context-from-a')
+    expect(JSON.stringify(adapter.requests[0]!.messages)).not.toContain('context-from-b')
+    expect(JSON.stringify(adapter.requests[1]!.messages)).toContain('context-from-b')
+    expect(JSON.stringify(adapter.requests[1]!.messages)).not.toContain('context-from-a')
+  })
+
+  it('stops relative discovery at the nearest Git root', async () => {
+    const outer = configDir()
+    const inner = join(outer, 'inner')
+    mkdirSync(join(outer, '.codex'), { recursive: true })
+    mkdirSync(join(inner, '.git'), { recursive: true })
+    mkdirSync(join(inner, 'pkg'), { recursive: true })
+    const ancestorHook = script(outer, 'ancestor.sh', '#!/usr/bin/env bash\necho "ancestor-context"\n')
+    writeFileSync(join(outer, '.codex/hooks.json'), JSON.stringify({ hooks: { UserPromptSubmit: [{ hooks: [{ command: ancestorHook }] }] } }))
+    const adapter = new MockAdapter([textResponse('done')])
+    const ctx = await harnessWithConfig('.codex/hooks.json', adapter)
+    const agent = ctx.agentLoop.create(SessionId('inner'), { provider: 'mock', model: 'mock' }, { cwd: join(inner, 'pkg') })
+
+    agent.followup(createUserMessage({ content: [{ type: 'text', text: 'go' }], source: { kind: 'user' } }))
+    await waitForIdle(ctx, agent)
+
+    expect(JSON.stringify(adapter.requests[0]!.messages)).not.toContain('ancestor-context')
+  })
+
+  it('reloads a session config when its file version changes', async () => {
+    const repo = configDir()
+    mkdirSync(join(repo, '.git'), { recursive: true })
+    mkdirSync(join(repo, '.codex'), { recursive: true })
+    const first = script(repo, 'first.sh', '#!/usr/bin/env bash\necho "config-version-one"\n')
+    const second = script(repo, 'second.sh', '#!/usr/bin/env bash\necho "config-version-two-expanded"\n')
+    const configPath = join(repo, '.codex/hooks.json')
+    writeFileSync(configPath, JSON.stringify({ hooks: { UserPromptSubmit: [{ hooks: [{ command: first }] }] } }))
+    const adapter = new MockAdapter([textResponse('first'), textResponse('second')])
+    const ctx = await harnessWithConfig('.codex/hooks.json', adapter)
+    const agent = ctx.agentLoop.create(SessionId('reload'), { provider: 'mock', model: 'mock' }, { cwd: repo })
+
+    agent.followup(createUserMessage({ content: [{ type: 'text', text: 'one' }], source: { kind: 'user' } }))
+    await waitForIdle(ctx, agent)
+    writeFileSync(configPath, JSON.stringify({ hooks: { UserPromptSubmit: [{ hooks: [{ command: second }] }] } }))
+    agent.followup(createUserMessage({ content: [{ type: 'text', text: 'two' }], source: { kind: 'user' } }))
+    await waitForIdle(ctx, agent)
+
+    expect(JSON.stringify(adapter.requests[0]!.messages)).toContain('config-version-one')
+    expect(JSON.stringify(adapter.requests[1]!.messages)).toContain('config-version-two-expanded')
   })
 
   it('an invalid regex matcher is reported and registers no hooks', async () => {
@@ -209,16 +350,18 @@ describe('hooks-codex bridge', () => {
     await ctx.plugin(LocalSubprocessRuntime)
     await ctx.plugin(LocalBashExecutor, { timeoutMs: 10_000 })
     const fiber = await ctx.plugin(HooksCodex, { configPath: join(dir, 'hooks.json'), model: 'm' })
-    ctx.llm.registerAdapter(['mock'], new MockAdapter([]))
+    ctx.llm.registerAdapter(['mock'], new MockAdapter([textResponse('done')]))
     const warn = vi.fn()
     ctx.logger.warn = warn as never
-    ctx.agentLoop.create(SessionId('a1'), { provider: 'mock', model: 'mock' }) // fires agent/session-start
+    const agent = ctx.agentLoop.create(SessionId('a1'), { provider: 'mock', model: 'mock' })
+    agent.followup(createUserMessage({ content: [{ type: 'text', text: 'start hook' }], source: { kind: 'user' } }))
     await waitFor(() => existsSync(marker))
     const pid = Number(readFileSync(pidFile, 'utf8').trim())
     await fiber.dispose()
     // Disposal reaches quiescence only after the aborted run settles and the process is reaped, so
     // `kill(pid, 0)` must report ESRCH. Untracked fire-and-forget work would remain.
     expect(() => process.kill(pid, 0)).toThrow()
+    await agent.whenIdle()
     // runHook resolves an aborted run as a non-blocking error, so draining must
     // not log a rejected continuation.
     expect(warn).not.toHaveBeenCalledWith(expect.stringContaining('SessionStart hook failed'))

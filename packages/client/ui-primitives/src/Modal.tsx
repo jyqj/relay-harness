@@ -8,6 +8,7 @@ import type { ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import clsx from 'clsx'
 import { IconCloseOutline16 } from './icons/index.tsx'
+import { usePresence } from './usePresence.ts'
 import css from './Modal.module.css'
 
 /**
@@ -19,16 +20,18 @@ import css from './Modal.module.css'
  * @param props.description - optional supporting sentence under the title.
  * @param props.children - body (inputs, etc.).
  * @param props.footer - action row (Cancel / Create).
+ * @param props.headerActions - optional controls placed before the close button.
  * @param props.contentClassName - optional class for a scrollable content region.
  * @param props.headless - render children directly in the card (no default
  * header/close/body chrome) for dialogs whose figma frame owns its own
  * header structure; mask, card, Escape, and aria-label remain.
  * @param props.closeLabel - close-button aria label; the owner passes
  * localized copy (this package is cordis-free, so copy arrives via props).
- * @returns null when closed; otherwise the overlay tree.
+ * @returns null when unmounted; otherwise the overlay tree (including the exit frame).
  */
 export function Modal({
-  open, onClose, title, closeLabel = 'Close', description, children, footer, className, contentClassName, headless = false,
+  open, onClose, title, closeLabel = 'Close', description, children, footer, headerActions,
+  className, contentClassName, headless = false,
 }: {
   open: boolean
   onClose: () => void
@@ -37,10 +40,13 @@ export function Modal({
   description?: string
   children?: ReactNode
   footer?: ReactNode
-  className?: string
+  headerActions?: ReactNode
+  className?: string | undefined
   contentClassName?: string
   headless?: boolean
 }) {
+  const { mounted, state } = usePresence(open)
+
   useEffect(() => {
     if (!open) return
     const onKeyDown = (e: KeyboardEvent) => {
@@ -50,13 +56,20 @@ export function Modal({
     return () => { document.removeEventListener('keydown', onKeyDown) }
   }, [open, onClose])
 
-  if (!open) return null
+  if (!mounted) return null
 
   return createPortal((
-    <div className={css.root} role="presentation">
-      <div className={css.mask} aria-hidden="true" onClick={onClose} />
+    <div
+      className={css.root}
+      role="presentation"
+      data-dsh-motion="overlay"
+      data-state={state}
+      aria-hidden={open ? undefined : true}
+    >
+      <div className={css.mask} data-dsh-motion-part="mask" aria-hidden="true" onClick={onClose} />
       <div
         className={clsx(css.dialog, className)}
+        data-dsh-motion-part="panel"
         role="dialog"
         aria-modal="true"
         aria-label={title}
@@ -68,9 +81,12 @@ export function Modal({
               <div className={clsx(css.content, contentClassName)}>
                 <div className={css.header}>
                   <h2 className={css.title}>{title}</h2>
-                  <button type="button" className={css.close} aria-label={closeLabel} onClick={onClose}>
-                    <IconCloseOutline16 size={14} />
-                  </button>
+                  <div className={css.headerEnd}>
+                    {headerActions}
+                    <button type="button" className={css.close} aria-label={closeLabel} onClick={onClose}>
+                      <IconCloseOutline16 size={14} />
+                    </button>
+                  </div>
                 </div>
                 {description !== undefined && description !== '' && (
                   <p className={css.description}>{description}</p>

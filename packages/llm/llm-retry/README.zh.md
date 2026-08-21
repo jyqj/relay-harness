@@ -6,7 +6,7 @@
 
 每个提供方适配器都拥有可选的嵌套 `retryPolicy`；路由在 `ctx.llm` 上注册时会捕获该策略，任何到达该注册最终适配器边界的调用都会携带它。如果之后释放或替换路由，进行中的失败仍会保留当时为其提供服务的策略；在选中任何最终适配器前发生的失败没有提供方策略，会继续委托。省略策略时使用 normal mode：为 `EMPTY_RESPONSE`、`RATE_LIMIT`、`SERVER`、`TIMEOUT` 和 `TRANSPORT` 重试五次，并采用从 500 ms 到 10 秒的有界指数退避与 10% jitter。`EMPTY_RESPONSE` 是适配器对未产生任何持久内容的退化提供方完成所作的分类，因此可安全重复。normal 策略可以更改其有限预算、符合条件的 code 和退避配置。always mode 会先请求下游恢复，再无次数上限地重试每个模型请求失败；成功、取消或插件 dispose（资源释放）会在活跃的委托恢复完全停稳后终止它。
 
-两种 mode 都使用带对称 jitter 的有界指数退避。有效 `providerRetryAfterMs` 不超过 `maxDelayMs` 时会替换本地退避，并且不加 jitter。超出上限的提供方延迟会使 normal mode 继续委托；always mode 则改用已配置的本地退避，避免该指令终止重试。
+两种 mode 都使用带对称 jitter 的有界指数退避。有效 `providerRetryAfterMs` 不超过 `maxProviderDelayMs`（默认 60 秒，校验不得小于 `maxDelayMs`）时会替换本地退避，并且不加 jitter，因此提供方给出的分钟级重置时间会被完整等待，而不是直接放弃。超出该上限的提供方延迟会使 normal mode 继续委托；always mode 则改用已配置的本地退避，避免该指令终止重试。失败分类统一走 `dsh-llm` 的 `classifyLlmFailure`：带命名恢复时间的失败优先于错误码分类，normal policy 的可选 `scheduledCodes`（默认为空）借此让周期性配额重置（携带 `providerRetryAfterMs` 的 `QUOTA`）可按等待恢复，而没有命名重置时间的余额耗尽仍然直接委托。
 
 等待前，插件会追加一条不进入表层的 `llm/retry` 事件，其中包含共享 `retryId`、提供方、mode、已解析策略的规范 key、失败和计划延迟。该载荷由可安全用于浏览器的 `@deepseek-ai/dsh-llm-retry/types` 子路径导出，因此远程渲染器无需加载策略运行时即可使用该持久状态。该 key 包含所有影响行为的字段，并对 normal mode 的 code 排序，因为合格性采用集合成员关系判断。只有提供方与完整策略 key 都相同的事件才会延续重试编号；因此，用限制、code 成员关系或退避不同的路由替换后，会开始自己的历史。normal 事件包含有限上限；always 事件省略该上限，UI 会渲染 `∞`。等待完成时，插件会在返回 `{ kind: 'retry' }` 前立即追加 `llm/retry-started`，其中带有相同的 `retryId`、轮次、步骤与重试编号；退避期间取消则不会写入 started 事件。随后循环关闭失败轮次，并在同一持久历史上开启重试轮次。取消与插件 dispose 会中止活跃退避，在应用中止前等待活跃的委托恢复结算，并使 dispose 前捕获的 callback 只能以失败结束。
 

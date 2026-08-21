@@ -21,6 +21,13 @@ export interface IWorkspaces {
    */
   connectWorkspace(workspaceId: WorkspaceId): Promise<SessionId>
   /**
+   * Connect a Session that is not a Workspace member: reuse a blank Session
+   * whose cwd is the Host scratch directory and whose id is in no Workspace
+   * index, else create one with that cwd.
+   * @returns the connected session id.
+   */
+  connectNoDirectory(): Promise<SessionId>
+  /**
    * The New Session flow: connect the explicit, current-Session, or recent
    * Workspace and open the resulting session; failures surface on the session
    * list state.
@@ -56,8 +63,9 @@ export interface IWorkspaces {
   /**
    * Open a filesystem path with the Host operating system's default application.
    * @param path - absolute or host-resolvable path.
+   * @param options - optional jump-to-line; desktop surfaces intercept consumes it and the Host RPC ignores it.
    */
-  openPath(path: string): Promise<void>
+  openPath(path: string, options?: { line?: number }): Promise<void>
   /**
    * Rename a Workspace.
    * @param workspaceId - target workspace.

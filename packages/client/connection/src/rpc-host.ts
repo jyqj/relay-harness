@@ -66,15 +66,20 @@ export class HostConnectionService extends Service implements HostConnectionHand
    * Compose one shared-channel Fetch handler from its interceptor and fallback.
    * @param channel - shared channel mounted by Connection.
    * @param fallback - handler for endpoints not claimed by the interceptor.
+   * @param loopbackOnly - matcher for endpoints that must stay on loopback.
    * @returns Fetch handler that selects exactly one target for each request.
    */
   createSharedFetchHandler(
     channel: '/api',
     fallback: FetchHandler,
+    loopbackOnly: ConnectionRpcEndpointMatcher,
   ): FetchHandler {
     return {
       fetch: (request) => {
         const endpoint = endpointFromPath(channel, new URL(request.url).pathname)
+        if (endpoint !== undefined && loopbackOnly(endpoint) && !isTrustedApiRequest(request, [])) {
+          return Promise.resolve(new Response('forbidden', { status: 403 }))
+        }
         const interceptor = this.interceptors.get(channel)
         if (endpoint === undefined || interceptor === undefined || !interceptor.matches(endpoint)) {
           return fallback.fetch(request)

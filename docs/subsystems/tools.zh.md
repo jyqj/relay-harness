@@ -8,7 +8,7 @@
 
 ## `ToolDefinition` — 一个已注册的工具
 
-由一个 `ToolSchema`（面向模型的字段）、必需的规范输出声明、`execute` 函数、仅供宿主使用的调度器元数据、可选的最终内容回调和可选 UI 展示函数组成。注册表持有这些定义，循环通过它们分派调用。注册表的 `schemas()` 通过显式允许列表构建面向模型的 `ToolSchema[]`；`output`/`execute`/`finalizeContent`/`timeoutMs`/`isConcurrencySafe`/`presentCall`/`presentResult` 绝不能泄漏到模型请求中。
+由一个 `ToolSchema`（面向模型的字段）、必需的规范输出声明、`execute` 函数、仅供宿主使用的调度器与资源元数据、可选的最终内容回调和可选 UI 展示函数组成。注册表持有这些定义，循环通过它们分派调用。注册表的 `schemas()` 通过显式允许列表构建面向模型的 `ToolSchema[]`；`output`/`execute`/`finalizeContent`/`timeoutMs`/`isConcurrencySafe`/`resourceIntents`/`presentCall`/`presentResult` 绝不能泄漏到模型请求中。
 
 ```ts type-equiv
 /** Tool-owned canonical output contract used after the body returns a JSON value. */
@@ -19,6 +19,16 @@ interface ToolOutputDefinition {
   render(args: unknown, value: JsonValue): ContentBlock[]
   /** Pure replayable presentation projection, computed only for top-level calls. */
   presentationMeta?(args: unknown, value: JsonValue): JsonValue
+}
+```
+
+```ts type-equiv
+/** One canonical resource claim used to coordinate otherwise parallel calls. */
+interface ToolResourceIntent {
+  /** Stable namespaced identity; equal keys participate in the same lock. */
+  readonly key: string
+  /** Reads may overlap; a write excludes every reader and writer for the key. */
+  readonly access: 'read' | 'write'
 }
 ```
 
@@ -73,6 +83,19 @@ interface ToolDefinition extends ToolSchema {
    */
   isConcurrencySafe?(args: unknown): boolean
   /**
+   * Resolve canonical resources after pre-execute policy and before dispatch.
+   * Declaring this opts the call into the parallel pool; the runtime acquires
+   * fair read/write locks before invoking the body. Different keys may overlap.
+   * The resolver may perform identity lookup but must not mutate the resource.
+   * @param args - snapshotted, frozen arguments.
+   * @param exec - immutable execution identity and cancellation signal.
+   * @returns canonical namespaced resource claims for this call.
+   */
+  resourceIntents?(
+    args: unknown,
+    exec: Readonly<ToolExecution>,
+  ): readonly ToolResourceIntent[] | Promise<readonly ToolResourceIntent[]>
+  /**
    * Optional: how to present the PENDING state of one call in a UI, derived from
    * the call's `args` (parsed arguments, `unknown` — the tool validates/narrows
    * its own input). Returns a {@link ToolCallView} (a `card`-tagged render intent),
@@ -94,6 +117,12 @@ interface ToolDefinition extends ToolSchema {
 ```
 
 `execute` 接收 `args: unknown`——原始的 `ToolDefinition` 自行校验输入。第一方工具不需要手写校验；它们使用 `defineTool`，由后者代为校验并收窄参数类型、根据 `output.schema` 推导函数体返回类型，并为两个输出投影器提供类型约束。`finalizeContent` 特意接收不可变的执行对象而非类型化参数，因为无效输入和外层流水线失败也会到达该回调；它可以施加工具自有的内容限制，同时保留 `isError`、规范值、结构化错误身份、延迟上下文与展示元数据。
+
+## 请求级定义身份
+
+默认循环会在组装一次模型请求前捕获生效的定义、呈现模式、已分离 schema、Code Mode SDK 投影与代码后端。`system-prompt/assemble` 接收这些 schema 并保持权威：waterfall 结束后，只有最终工具名称同时具有捕获定义，快照才允许模型直接调用。每项 staged execution 都会记录其捕获定义，该定义负责主体分派、输出校验与渲染、post-policy 值替换、wrapper 成功结果规范化和最终内容。实时 hook、审批、guard 与执行 wrapper 刻意不被冻结。Code Mode 会为 binding 目录、后端、分类器与嵌套 scheduler 继承外层快照。步骤会在每条终态路径释放快照；HMR 从下一次捕获起生效。
+
+`resourceIntents` 是关系并发路径。其 resolver 在 pre-execute policy 之后运行，调用会进入并行池；紧邻主体之前，runtime 会规范化 claim，按词法顺序获取每个 key，并应用公平、writer 优先的读写锁。重复 key 以 write 覆盖 read 的规则折叠。取消会移除排队 waiter，并释放较早获取的多 key lease。回调负责规范身份：第一方文件系统工具派生 `fs:<FsTargetKey>`，而不是锁定原始路径字符串。
 
 ## 统一的 JSON 值 schema DSL
 
@@ -571,7 +600,7 @@ async execute(exec: ToolExecutionInput): Promise<ToolExecutionResult>
 
 Types: [ScopeKey](scope.md)
 
-Source: [`packages/core/tools/src/index.ts:787`](../../packages/core/tools/src/index.ts)
+Source: [`packages/core/tools/src/index.ts:863`](../../packages/core/tools/src/index.ts)
 
 <a id="tools-events"></a>
 
@@ -596,7 +625,7 @@ A tool was registered or unregistered, or a scoped restriction changed (the avai
 'tools/change'(): void
 ```
 
-Source: [`packages/core/tools/src/index.ts:207`](../../packages/core/tools/src/index.ts)
+Source: [`packages/core/tools/src/index.ts:209`](../../packages/core/tools/src/index.ts)
 
 <a id="toolscode-dispatch-log--waterfall"></a>
 
@@ -623,7 +652,7 @@ Allow a listener to replace content in the DURABLE LOG COPY of one `run_code` su
 
 Types: [ContentBlock](llm-streaming.md) · [Scoped](scope.md)
 
-Source: [`packages/core/tools/src/index.ts:189`](../../packages/core/tools/src/index.ts)
+Source: [`packages/core/tools/src/index.ts:191`](../../packages/core/tools/src/index.ts)
 
 <a id="toolsexecute--waterfall"></a>
 
@@ -647,7 +676,7 @@ Around-dispatch waterfall for timeout, retry, or metrics. `next()` returns a nor
 
 Types: [Scoped](scope.md)
 
-Source: [`packages/core/tools/src/index.ts:163`](../../packages/core/tools/src/index.ts)
+Source: [`packages/core/tools/src/index.ts:165`](../../packages/core/tools/src/index.ts)
 
 <a id="toolspost-execute--waterfall"></a>
 
@@ -672,7 +701,7 @@ Accept, replace, enrich, or block a normalized dispatch result. `next()` accepts
 
 Types: [Scoped](scope.md)
 
-Source: [`packages/core/tools/src/index.ts:175`](../../packages/core/tools/src/index.ts)
+Source: [`packages/core/tools/src/index.ts:177`](../../packages/core/tools/src/index.ts)
 
 <a id="toolspre-execute--waterfall"></a>
 
@@ -695,7 +724,7 @@ Allow, deny, or ask before dispatch. `next()` delegates to allow; missing approv
 
 Types: [Scoped](scope.md)
 
-Source: [`packages/core/tools/src/index.ts:152`](../../packages/core/tools/src/index.ts)
+Source: [`packages/core/tools/src/index.ts:154`](../../packages/core/tools/src/index.ts)
 
 <a id="toolsresult--emit"></a>
 
@@ -716,5 +745,5 @@ Observe the frozen, lossless-JSON final outcome. Listener failures are contained
 
 Types: [Scoped](scope.md)
 
-Source: [`packages/core/tools/src/index.ts:197`](../../packages/core/tools/src/index.ts)
+Source: [`packages/core/tools/src/index.ts:199`](../../packages/core/tools/src/index.ts)
 <!-- END GENERATED cordis-surface -->

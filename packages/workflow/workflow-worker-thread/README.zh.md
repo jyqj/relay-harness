@@ -38,6 +38,8 @@ worker 仍提供实用的隔离：
 
 `start()` 会校验 meta、解析脚本正文、解析一个已注册且规范化的提供方路由，并解析每次运行的子 agent 总数上限，然后才创建 worker 或发布 `workflow/start`。请求的 `maxTotalAgents` 必须是正安全整数，且不能超过引擎配置的部署上限。源代码模式通过 data URL bootstrap 安装 TypeScript 转换；构建模式把同级 `lib/worker.cjs` 作为文件系统路径传入，因为 pkg 的虚拟文件系统（VFS）钩子要求 CommonJS。两者都能在普通 Node 下运行。ready/go 握手可以避免启动信号取消与 worker 启动发生竞态，导致脚本最初的同步片段被执行。
 
+配置绝对 `journalRoot` 后，新 run 会在 worker 发布前以 exclusive create 建立 `<journalRoot>/<sha256(runId)>/journal.jsonl`。header 会 fingerprint 脚本、已验证 meta、args、解析后的提供方与子 agent 总数上限。每个 terminal `agent()` host call 都会追加一条有界且 fsync 的 JSON line，包含其序号、规范 request hash、child id，以及结果或稳定 failure。`resumeRunId` 会加载该确切 journal，在 header 处拒绝已编辑配置，从头重启脚本，并在不执行提供方工作的情况下 replay 匹配的已完成调用。同一序号出现不同调用时会以 replay divergence 失败；取消不会记录未完成 suffix，因此后续 resume 会重试该调用。撕裂的最终行会被截断，而格式错误的完整行、symlink、非普通文件、重复序号和超过 64 MiB 的 journal 都会 fail closed。
+
 对于每次 `agent()` 调用：
 
 1. worker 发送 `child-start`，其中包含普通数据提示词和选项。
@@ -82,8 +84,9 @@ worker 错误、消息失败或提前退出会在清理前关闭消息接纳，�
 | `maxItemsPerCall` | `4096` | 一次 `parallel()` 或 `pipeline()` 调用接受的条目数。 |
 | `syncTimeoutMs` | `5000` | 脚本最初同步片段的 VM 超时时间。 |
 | `disposeGraceMs` | `5000` | 强制结算/终止之前的期限，也是公开 dispose 的期限。 |
+| `journalRoot` | 省略 | 启用持久逐 run JSONL 与 `resumeRunId` 的绝对目录。 |
 
-负责该引擎的消费方可以为一次运行设置 `WorkflowStartRequest.subagentProvider` 和 `WorkflowStartRequest.maxTotalAgents`。它们属于引擎级策略，不是脚本钩子或面向模型的选项；普通 `workflow` 工具不会设置两者。每次运行的子 agent 总数上限可以降低、但绝不能提高已配置的 `maxTotalAgents` 上限。
+负责该引擎的消费方可以为一次运行设置 `WorkflowStartRequest.subagentProvider`、`WorkflowStartRequest.maxTotalAgents` 与 `WorkflowStartRequest.resumeRunId`。它们属于引擎级策略，不是脚本 hook。每次运行的子 agent 总数上限可以降低、但绝不能提高已配置的 `maxTotalAgents` 上限。普通 `workflow` 工具只公开 `resumeRunId`；提供方与上限仍由部署拥有。
 
 ## 模型体验
 
@@ -122,3 +125,5 @@ worker 错误、消息失败或提前退出会在清理前关闭消息接纳，�
 - **不注入默认可用的定时器、文件系统或网络，但逃逸代码仍可访问 Node**：这些缺失的全局变量属于可移植性 API 设计，而非隔离措施。
 - **终止只能报告宿主观察到的启动**：`agentsStarted` 不包括因并发限制仍在 worker 侧排队、且在强制终止后无法得知的调用。
 - **跨 realm 错误在脚本内无法通过 `instanceof Error`**：工作流作者必须根据 `name` 和 `code` 等稳定字段分支。
+- **journal 是单进程／单 writer**：文件创建与追加会 fail closed，但没有跨进程 lease 协调两个 host 并发恢复同一 run。
+- **只 replay 已完成 host call**：任意 JavaScript heap 状态、phase／log narration，以及 crash 前已完成但 journal fsync 前尚未记录的 child effect 都不会 checkpoint。

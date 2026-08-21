@@ -198,7 +198,7 @@ describe('provider-routed retry policy', () => {
       step: 1,
       provider: 'mock',
       mode: 'normal',
-      policyKey: '["normal",2,["RATE_LIMIT","SERVER"],500,10000,0]',
+      policyKey: '["normal",2,["RATE_LIMIT","SERVER"],[],500,10000,60000,0]',
       retry: 1,
       maxRetries: 2,
       delayMs: 500,
@@ -384,7 +384,7 @@ describe('provider-routed retry policy', () => {
 
     await context.fiber.dispose()
     const rejected = new ScriptedAdapter([
-      new LlmError('wait too long', 'RATE_LIMIT', { providerRetryAfterMs: 10_001 }),
+      new LlmError('wait too long', 'RATE_LIMIT', { providerRetryAfterMs: 60_001 }),
     ])
     ;({ ctx: context } = await harness(rejected))
     const rejectedAgent = context.agentLoop.create(SessionId('retry-after-rejected'), { provider: 'mock', model: 'mock' })
@@ -393,6 +393,52 @@ describe('provider-routed retry policy', () => {
     await rejectedIdle
     expect(rejected.requests).toHaveLength(1)
     expect(rejectedAgent.session.events.some(event => event.type === 'llm/retry')).toBe(false)
+  })
+
+  it('honors a provider Retry-After beyond maxDelayMs but within maxProviderDelayMs', async () => {
+    vi.useFakeTimers()
+    const adapter = new ScriptedAdapter([
+      new LlmError('minute reset', 'RATE_LIMIT', { providerRetryAfterMs: 30_000 }),
+      textResponse('done'),
+    ])
+    ;({ ctx: context } = await harness(adapter))
+    const agent = context.agentLoop.create(SessionId('retry-extended-after'), { provider: 'mock', model: 'mock' })
+    const scheduled = waitForRetry(context, agent, 1)
+    agent.followup(createUserMessage({ content: [{ type: 'text', text: 'go' }], source: { kind: 'user' } }))
+    expect((await scheduled).data.delayMs).toBe(30_000)
+    const idle = waitForIdle(context, agent)
+    await vi.advanceTimersByTimeAsync(30_000)
+    await idle
+    expect(adapter.requests).toHaveLength(2)
+  })
+
+  it('retries a scheduled code only when the provider names a resume delay', async () => {
+    vi.useFakeTimers()
+    const periodic = new ScriptedAdapter([
+      new LlmError('monthly reset', 'QUOTA', { providerRetryAfterMs: 5_000 }),
+      textResponse('done'),
+    ])
+    ;({ ctx: context } = await harness(periodic, { mock: normalConfig({ scheduledCodes: ['QUOTA'] }) }))
+    const periodicAgent = context.agentLoop.create(SessionId('retry-quota-periodic'), { provider: 'mock', model: 'mock' })
+    const scheduled = waitForRetry(context, periodicAgent, 1)
+    periodicAgent.followup(createUserMessage({ content: [{ type: 'text', text: 'go' }], source: { kind: 'user' } }))
+    expect((await scheduled).data.delayMs).toBe(5_000)
+    const periodicIdle = waitForIdle(context, periodicAgent)
+    await vi.advanceTimersByTimeAsync(5_000)
+    await periodicIdle
+    expect(periodic.requests).toHaveLength(2)
+
+    await context.fiber.dispose()
+    const terminal = new ScriptedAdapter([
+      new LlmError('balance empty', 'QUOTA'),
+    ])
+    ;({ ctx: context } = await harness(terminal, { mock: normalConfig({ scheduledCodes: ['QUOTA'] }) }))
+    const terminalAgent = context.agentLoop.create(SessionId('retry-quota-terminal'), { provider: 'mock', model: 'mock' })
+    const terminalIdle = waitForIdle(context, terminalAgent)
+    terminalAgent.followup(createUserMessage({ content: [{ type: 'text', text: 'go' }], source: { kind: 'user' } }))
+    await terminalIdle
+    expect(terminal.requests).toHaveLength(1)
+    expect(terminalAgent.session.events.some(event => event.type === 'llm/retry')).toBe(false)
   })
 
   it('uses local jittered backoff when always mode receives an over-cap Retry-After', async () => {
@@ -404,6 +450,7 @@ describe('provider-routed retry policy', () => {
     ;({ ctx: context } = await harness(adapter, { mock: alwaysConfig({
       initialDelayMs: 2,
       maxDelayMs: 4,
+      maxProviderDelayMs: 4,
       jitterRatio: 0.5,
     }) }, undefined, { random: () => 1 }))
     const agent = context.agentLoop.create(SessionId('retry-always-over-cap'), {

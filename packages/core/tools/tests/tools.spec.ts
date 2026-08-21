@@ -6,7 +6,7 @@ import type { Agent } from '@deepseek-ai/dsh-agent'
 import ApprovalService, { type ApprovalOutcome, type ApprovalRequest } from '@deepseek-ai/dsh-user-approval'
 import ToolRuntime, {
   defineContentToolFixture, defineTool, JsonSchemaError, parameterSchemaSpecToJsonSchema, validateArgs, ToolArgsError, ToolNotFoundError,
-  TOOL_ABORTED, TOOL_ABORTED_BEFORE_DISPATCH,
+  TOOL_ABORTED, TOOL_ABORTED_BEFORE_DISPATCH, TOOL_RUNTIME_SCHEDULER,
   type InferArgs, type JsonValue, type ParameterSchemaSpec, type PreToolDecision, type PostToolDecision,
   type JsonSchemaNode, type ToolDefinition, type ToolDispatchExecution, type ToolExecutionResult, type ToolExecutionToken,
 } from '@deepseek-ai/dsh-tools'
@@ -51,6 +51,18 @@ describe('ToolRuntime', () => {
     expect(assembly.tools.map(t => t.name)).toEqual(['echo'])
   })
 
+  it('registers the scheduler key through the global symbol registry so duplicate module copies share identity', async () => {
+    const ctx = await setup()
+    // A second copy of this package (a duplicated install or a different build
+    // entry) evaluates its own module scope, so a plain Symbol() would produce
+    // a different key and break the consumer's lookup. The global registry
+    // keeps the identity stable across copies within one Node realm.
+    expect(TOOL_RUNTIME_SCHEDULER).toBe(Symbol.for('@deepseek-ai/dsh-tools.scheduler'))
+    const readBack = (ctx.tools as unknown as Record<symbol, unknown>)[TOOL_RUNTIME_SCHEDULER]
+    expect(typeof readBack).toBe('object')
+    expect(typeof (readBack as { prepare: unknown }).prepare).toBe('function')
+  })
+
   it('schemas() drops host callbacks — they must never reach the model', async () => {
     const ctx = await setup()
     // Tool definitions contain output, finalization, execution, and presentation
@@ -61,6 +73,7 @@ describe('ToolRuntime', () => {
       parameters: { x: { type: 'string', required: true } },
       async execute() { return [] },
       finalizeContent: (_exec, result) => result.content,
+      resourceIntents: () => [{ key: 'test:present', access: 'read' }],
       presentCall: args => ({ card: 'generic', title: args.x }),
       presentResult: (args, result) => ({ card: 'generic', title: args.x, content: result.content }),
     }))
@@ -489,7 +502,7 @@ describe('ToolRuntime', () => {
     expect(result.error?.message).toBe('tools/post-execute cannot replace the value of a failed result')
   })
 
-  it('fails value replacement when the owning tool disappears before post-policy resolves', async () => {
+  it('normalizes value replacement with the definition captured before post-policy unregisters it', async () => {
     const ctx = await setup()
     const dispose = ctx.tools.register(echoTool)
     ctx.on('tools/post-execute', async () => {
@@ -498,9 +511,10 @@ describe('ToolRuntime', () => {
     })
 
     const result = await ctx.tools.execute({ signal: testToolSignal, callId: CallId('post-disposed'), name: 'echo', arguments: {} })
-    expect(result.error).toEqual({
-      message: 'unknown tool "echo"',
-      info: { name: 'ToolNotFoundError', code: 'UNKNOWN_TOOL' },
+    expect(result).toEqual({
+      isError: false,
+      value: 'replacement',
+      content: [{ type: 'text', text: 'replacement' }],
     })
   })
 
@@ -532,7 +546,7 @@ describe('ToolRuntime', () => {
     })
   })
 
-  it('fails wrapper-authored success normalization when the owning tool disappears', async () => {
+  it('normalizes wrapper-authored success with the definition captured before unregister', async () => {
     const ctx = await setup()
     const dispose = ctx.tools.register(echoTool)
     ctx.on('tools/execute', async () => {
@@ -541,8 +555,26 @@ describe('ToolRuntime', () => {
     })
 
     const result = await ctx.tools.execute({ signal: testToolSignal, callId: CallId('wrapper-disposed'), name: 'echo', arguments: {} })
+    expect(result).toEqual({
+      isError: false,
+      value: 'replacement',
+      content: [{ type: 'text', text: 'replacement' }],
+    })
+  })
+
+  it('rejects wrapper-authored success for a tool absent when the execution was captured', async () => {
+    const ctx = await setup()
+    ctx.on('tools/execute', async () => ({ isError: false, value: 'replacement', content: [] }))
+
+    const result = await ctx.tools.execute({
+      signal: testToolSignal,
+      callId: CallId('wrapper-unknown'),
+      name: 'unknown',
+      arguments: {},
+    })
+
     expect(result.error).toEqual({
-      message: 'unknown tool "echo"',
+      message: 'unknown tool "unknown"',
       info: { name: 'ToolNotFoundError', code: 'UNKNOWN_TOOL' },
     })
   })

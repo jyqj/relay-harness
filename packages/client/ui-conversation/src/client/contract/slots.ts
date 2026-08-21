@@ -8,7 +8,7 @@ import type {
 import type {
   CommandNode, CompactionSummaryNode, ConversationSnapshot, ConversationTurnDataMap,
   ObservableSnapshot, PendingInteraction, PendingWait, SessionId, ToolCallBlock,
-  TurnLocation, WorkspaceId,
+  TurnLocation, UserMessageNode, WorkspaceId,
 } from '@deepseek-ai/dsh-client-runtime/client'
 import type { MarkdownFileMentions } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { MessageId } from '@deepseek-ai/dsh-client-connection/client'
@@ -101,7 +101,23 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
      * conversation snapshot through the standard kit.
      */
     'conversation.view': { kind: 'list'; scope: 'session'; owner: ConvViewOwnerProps }
-    /** Final business node renderer, dispatched by `ChatConversationViewNode.kind`. */
+    /**
+     * Optional empty-transcript occupancy: ChatView renders this list only
+     * while the ordered flow has no Nodes and the session is not running.
+     * Zero entries leave the transcript blank (ordinary New Session / coding
+     * chats). A desktop plugin can fill a contact roster without replacing
+     * the view.
+     */
+    'conversation.chat.empty': { kind: 'list'; scope: 'session' }
+    /**
+     * One Chat Node row in the transcript, keyed on `ChatNode.kind`. ChatView
+     * is the render site: it passes `ChatNodeOwnerProps` plus that Node, the
+     * Context key as `hookContext`, and a JsonBlock `fallback` for unknown
+     * kinds. A registrant occupies one kind (`key: 'user'`, `'tool-call'`,
+     * `'workflow-run'`, …) and receives that kind's `node` plus the injected
+     * turn-data hook. Registering the same key replaces that kind's renderer.
+     * No registration for a kind keeps the JsonBlock fallback.
+     */
     'conversation.chat.node': {
       kind: 'keyed'
       scope: 'session'
@@ -139,6 +155,34 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
       kind: 'list'
       scope: 'session'
       owner: AssistantActionOwnerProps
+    }
+    /**
+     * Action strip attached to one finalized USER message, rendered inside
+     * that message's IconActions row (after copy, before branch — the same
+     * `extraActions` seat the assistant strip uses). The user node renderer
+     * owns the render site and passes the message's durable seq, frozen
+     * content, and `startEdit`; contributors add per-message actions without
+     * importing the conversation implementation. Entries render by ascending
+     * `order`. Only the `user` node declares this seat — steering bubbles and
+     * pending steering projections carry no user action strip.
+     */
+    'conversation.chat.user-actions': {
+      kind: 'list'
+      scope: 'session'
+      owner: UserActionOwnerProps
+    }
+    /**
+     * Replacement body for one finalized user message while it is in
+     * inline-edit mode. The user node renderer owns the render site and
+     * swaps the static bubble plus IconActions for this seat after
+     * `startEdit`; `cancelEdit` restores them. One occupant: taking it means
+     * rendering the editor chrome for every user message that enters edit
+     * mode. Only the `user` node declares this seat.
+     */
+    'conversation.chat.user-editor': {
+      kind: 'single'
+      scope: 'session'
+      owner: UserEditorOwnerProps
     }
     /**
      * The body of the details panel for the tool call the user selected —
@@ -380,6 +424,43 @@ export interface AssistantActionOwnerProps {
   messageId: MessageId
 }
 
+/**
+ * Content-block currency of one addressed user message — the runtime's
+ * `ContentBlock` (indexed off {@link UserMessageNode} so this contract adds no
+ * dependency on the llm package for one alias).
+ */
+export type UserActionContentBlock = UserMessageNode['content'][number]
+
+/**
+ * Owner currency of the user-message action strip: the durable seq and the
+ * frozen content blocks of the one user message the contributed actions
+ * address (the same node payload reference the bubble renders — a
+ * content-sensitive action can diff against what the user actually sent),
+ * plus the callback that replaces this bubble with the user-editor seat.
+ */
+export interface UserActionOwnerProps {
+  /** Durable `user/message` event seq the contributed actions address. */
+  seq: number
+  /** The user message's content blocks (frozen node payload). */
+  content: readonly UserActionContentBlock[]
+  /** Replace this bubble with the `conversation.chat.user-editor` occupant. */
+  startEdit: () => void
+}
+
+/**
+ * Owner currency of the inline user-message editor: the same durable seq and
+ * frozen content as the action strip, plus the callback that restores the
+ * static bubble. The occupant owns draft state and the confirm transaction.
+ */
+export interface UserEditorOwnerProps {
+  /** Durable `user/message` event seq the editor addresses. */
+  seq: number
+  /** The user message's content blocks (frozen node payload). */
+  content: readonly UserActionContentBlock[]
+  /** Restore the static bubble and IconActions row. */
+  cancelEdit: () => void
+}
+
 /** Hook constrained to business data published on the current Chat Node's Turn. */
 export type UseChatNodeTurnData = <Key extends Extract<keyof ConversationTurnDataMap, string>>(
   key: Key,
@@ -457,6 +538,12 @@ export interface ConversationInjected {
    */
   selectWorkspace: (workspaceId: WorkspaceId) => Promise<void>
   /**
+   * Connect a Session that is not a Workspace member (Host scratch cwd) and
+   * open it. When a blank session is already current, carry its draft to the
+   * target.
+   */
+  selectNoDirectory: () => Promise<void>
+  /**
    * Framework-bound sources. `composerBlock` is this session's block when a
    * plugin raised one; the reason is the blocker's own localized copy, which
    * the root renders as the inert composer's placeholder.
@@ -488,6 +575,10 @@ export interface ConversationSessionHeaderInjected {
   }
   /** Select a real Session through the runtime navigation owner. */
   open: (sessionId: SessionId) => void
+  hooks: {
+    /** Whether the header paints the Chat/Trajectory tablist. */
+    viewTabs: ObservableSnapshot<boolean>
+  }
 }
 
 /**
@@ -569,7 +660,17 @@ export interface ComposerBarInjected {
     lexicon: ObservableSnapshot<ReadonlyMap<'/' | '@', readonly string[]>>
     /** Source name opened by the programmatic menu launcher, or null. */
     menuLauncher: ObservableSnapshot<string | null>
+    /** Whether InputBar paints `.cardBeam` while a turn is sending or thinking. */
+    composerBeam: ObservableSnapshot<boolean>
+    /** Whether InputBar and ApprovalPanel show the edge drag handles. */
+    composerResize: ObservableSnapshot<boolean>
+    /** Last Host-remembered scrollport height in CSS pixels (null = auto-grow). */
+    composerResizeHeight: ObservableSnapshot<number | null>
+    /** Last Host-remembered card width in CSS pixels (null = column width). */
+    composerResizeWidth: ObservableSnapshot<number | null>
   }
+  /** Persist a finished drag so remounts restore the box. */
+  setComposerResizeSize: (size: Partial<{ height: number; width: number }>) => void
 }
 
 /**
@@ -642,7 +743,7 @@ export type ConversationSessionHeaderSlotProps =
   PropsRuntime<'conversation.session.header'>
   & PropsRenderSlots<'conversation.session.header.actions' | 'conversation.session.header.utilities'>
   & PropsStore<ChatStore>
-  & ConversationSessionHeaderInjected
+  & InjectFace<ConversationSessionHeaderInjected>
   & PropsLocale<'conversation'>
 
 /** The pending approval carrier the owner dispatches into the composer chain. */
@@ -699,15 +800,34 @@ export class PendingApproval {
 }
 
 /**
+ * Injected share of the approval-composer entry: the same resize preference
+ * InputBar reads, so the takeover can paint the same edge handles.
+ */
+export interface ApprovalComposerInjected {
+  hooks: {
+    /** Whether ApprovalPanel shows the same edge drag handles as InputBar. */
+    composerResize: ObservableSnapshot<boolean>
+    /** Last Host-remembered scrollport height in CSS pixels (null = auto-grow). */
+    composerResizeHeight: ObservableSnapshot<number | null>
+    /** Last Host-remembered card width in CSS pixels (null = column width). */
+    composerResizeWidth: ObservableSnapshot<number | null>
+  }
+  /** Persist a finished drag so remounts restore the box. */
+  setComposerResizeSize: (size: Partial<{ height: number; width: number }>) => void
+}
+
+/**
  * Full approval-composer props: the framework runtime share (chain currency +
  * session/global standard kit) plus the chain `matched` share — the entry's
  * selector result, already narrowed to the approval carrier — plus the
- * standard locale seat. No injected share: the carrier plus the domain face
- * above carry the whole behavior surface; the paired command line derives
- * from useSession in-component.
+ * resize inject share and the standard locale seat. The paired command line
+ * derives from useSession in-component.
  */
 export type ApprovalComposerProps =
-  PropsRuntime<'conversation.composer'> & { matched: ApprovalWait } & PropsLocale<'conversation'>
+  PropsRuntime<'conversation.composer'>
+  & { matched: ApprovalWait }
+  & InjectFace<ApprovalComposerInjected>
+  & PropsLocale<'conversation'>
 
 /** In-memory reader position resilient to transcript width reflow. */
 export interface ChatScrollPosition {
@@ -763,7 +883,7 @@ export interface ChatViewInjected {
 /** Full chat-view component props: runtime & its Tool/command/tail render shares & store & injected & locale seat. */
 export type ChatViewSlotProps =
   PropsRuntime<'conversation.view'>
-  & PropsRenderSlots<'conversation.chat.node' | 'conversation.message.images'>
+  & PropsRenderSlots<'conversation.chat.node' | 'conversation.chat.empty' | 'conversation.message.images'>
   & PropsStore<ChatStore> & ChatViewInjected & PropsLocale<'conversation'>
 
 /** Full props of the attachment plugin's composer entry. */
@@ -792,6 +912,10 @@ export interface EmptyWorkspaceOwnerProps {
   anchorRef?: RefObject<HTMLElement>
   /** Currently active workspace (renders a trailing check in the picker list). */
   selectedId?: WorkspaceId | undefined
+  /** True when the current or pending target is a no-directory Session. */
+  noDirectorySelected?: boolean | undefined
   onPick: (workspaceId: WorkspaceId) => void
+  /** Adopt a Session that is not a Workspace member (Host scratch cwd). */
+  onPickNoDirectory: () => void
   onClose: () => void
 }

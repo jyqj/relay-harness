@@ -22,6 +22,7 @@ import { deriveKeyRef, messageOf, protocolChoices, providerUsable } from './stor
 import type { ModelsSettingsStore, ProviderRow } from './store.ts'
 import type { SettingsSchemaOperations } from './schema-operations.ts'
 import { ProviderEditor, type ProviderEditorProps } from './ProviderEditor.tsx'
+import { VISION_FALLBACK_NS, VisionModelPicker } from './VisionModelPicker.tsx'
 import type { en } from './locales.ts'
 import styles from './ModelsSection.module.css'
 
@@ -293,6 +294,13 @@ function Loaded({ injected }: { injected: ModelsSectionFace }): ReactNode {
             {providerCopy(t('savedProvider'), savedIdentity)}
           </p>
         )}
+      <VisionModelPicker
+        api={api}
+        t={t}
+        namespace={state.namespaces.get(VISION_FALLBACK_NS)}
+        writable={state.writable}
+        onSaved={() => { void controller.load() }}
+      />
       <ul className={styles['rows']}>
         {configured.map((row) => {
           const target = targetOf(row)

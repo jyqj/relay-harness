@@ -54,6 +54,8 @@ const experimentalPackageDirectory = /^packages\/experimental\/[^/]+$/
 const experimentalPackageNamePrefix = '@deepseek-ai/dsh-experimental-'
 /** Directories whose packages this repository publishes: one release member each. */
 const releaseMemberDirectory = /^(?:packages\/(?!experimental\/)[^/]+\/[^/]+|apps\/[^/]+|vendor\/[^/]+)$/
+/** Product applications that are distributed as installers rather than npm packages. */
+const privateApplicationDirectories = new Set(['apps/desktop'])
 
 const localArtifactDirs = new Set(['node_modules'])
 const appPackageFiles: Readonly<Record<string, readonly string[]>> = {
@@ -149,6 +151,9 @@ const packageFileExtras: Readonly<Record<string, readonly string[]>> = {
   '@deepseek-ai/dsh-client-ui-primitives': ['lib/**/*.css'],
   '@deepseek-ai/dsh-client-web': ['lib/**/*.css'],
   '@deepseek-ai/dsh-client-ui-theme': ['lib/styles'],
+  // The Ghostty terminal adapter loads wasm, font, and shader assets from the
+  // browser bundle's adjacent published directory.
+  '@deepseek-ai/dsh-client-ui-user-terminal': ['lib/assets/**'],
   // The CPython side ships as source .py files, published as-is rather than built.
   '@deepseek-ai/dsh-code-runtime-python': ['py/**/*.py'],
   // The Python runtime uses a distinct closed-resolution bin; the public CLI
@@ -194,6 +199,7 @@ function expectedDshPackageFiles(manifest: PackageManifest): readonly string[] {
     // A surface bundle's startup row is its own bundle: the Loader imports it
     // as a row module, so it cannot ride inside the package entry.
     ...exportDefault(manifest, './startup') === './lib/startup.js' ? ['lib/startup.js'] : [],
+    ...exportDefault(manifest, './features') === './lib/features.js' ? ['lib/features.js'] : [],
     ...extras,
     // Subpaths whose runtime default is the tsc-emitted tree (lib/types/*.js —
     // browser-safe source channels rehomed off src so plain Node can import
@@ -254,7 +260,7 @@ export function checkExperimentalManifest({ dir, manifest }: WorkspaceManifest):
   return errors
 }
 
-function checkWorkspace({ dir, manifest }: WorkspaceManifest): string[] {
+export function checkWorkspace({ dir, manifest }: WorkspaceManifest): string[] {
   const errors = checkExperimentalManifest({ dir, manifest })
   const label = manifest.name ?? dir
   const isLandlockPackageDir = dir.startsWith('native/landlock-run/packages/')
@@ -275,7 +281,7 @@ function checkWorkspace({ dir, manifest }: WorkspaceManifest): string[] {
       || manifest.repository.directory !== expectedDirectory) {
       errors.push(`${label}: published Landlock package repository must use ${repositoryUrl} with directory ${expectedDirectory} for trusted publishing`)
     }
-  } else if (releaseMemberDirectory.test(dir)) {
+  } else if (releaseMemberDirectory.test(dir) && !privateApplicationDirectories.has(dir)) {
     // Release members state that they are publishable: npm refuses a private
     // package, and the repository field is how a consumer finds the source of
     // the package it installed.

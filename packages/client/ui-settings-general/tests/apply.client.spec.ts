@@ -9,6 +9,9 @@ import { apply as settingsApply, inject as settingsInject } from '@deepseek-ai/d
 import { apply, inject } from '@deepseek-ai/dsh-client-ui-settings-general/client'
 import { CloseLabel, HeaderContent, TriggerContent } from '../src/client/chrome.tsx'
 import { GeneralSection } from '../src/client/GeneralSection.tsx'
+import { InterfaceSection } from '../src/client/InterfaceSection.tsx'
+import { AboutSection } from '../src/client/AboutSection.tsx'
+import { HarnessRestartRow } from '../src/client/HarnessRestartRow.tsx'
 import { SettingsDocumentAction } from '../src/client/SettingsDocumentAction.tsx'
 import type { SettingsDocumentActionInjected } from '../src/client/SettingsDocumentAction.tsx'
 
@@ -73,6 +76,10 @@ function declare(slots: SlotRegistry): () => void {
   )
 }
 
+function seatCount(name: string): number {
+  return name === 'settings.section' ? 3 : 1
+}
+
 function generalEntry(slots: SlotRegistry) {
   return slots.entries('settings.section').find(e => e.component === GeneralSection)
 }
@@ -93,8 +100,16 @@ describe('ui-settings-general apply', () => {
     expect(entry.options).toMatchObject({ id: 'general', order: 0 })
     // The nav label is a locale-following thunk; owners resolve at read time.
     expect(resolveSlotLabel(entry.options.label)).toBe('通用设置')
+    const iface = before.slots.entries('settings.section').find(e => e.component === InterfaceSection)
+    expect(iface?.options).toMatchObject({ id: 'interface', order: 6 })
+    expect(resolveSlotLabel(iface?.options.label)).toBe('界面设置')
+    const about = before.slots.entries('settings.section').find(e => e.component === AboutSection)
+    expect(about?.options).toMatchObject({ id: 'about', order: 90 })
+    expect(resolveSlotLabel(about?.options.label)).toBe('关于')
     expect(before.slots.spec('settings.general.item')).toEqual({ kind: 'list', scope: 'root' })
     expect(before.slots.entries('settings.general.item')).toEqual([])
+    expect(before.slots.spec('settings.interface.item')).toEqual({ kind: 'list', scope: 'root' })
+    expect(before.slots.entries('settings.interface.item')).toEqual([])
     // The onboarding hole stays declared for feature-owned steps; this plugin
     // no longer seats one.
     expect(before.slots.entries('settings.onboarding')).toEqual([])
@@ -114,10 +129,11 @@ describe('ui-settings-general apply', () => {
     for (const [name, component] of SEATS) {
       expect(after.slots.entries(name)[0]!.component).toBe(component)
       // The self-inflicted ledger notifications hit the duplicate guard.
-      expect(after.slots.entries(name)).toHaveLength(1)
+      expect(after.slots.entries(name)).toHaveLength(seatCount(name))
     }
     await vi.waitFor(() => {
       expect(after.slots.spec('settings.general.item')).toEqual({ kind: 'list', scope: 'root' })
+      expect(after.slots.spec('settings.interface.item')).toEqual({ kind: 'list', scope: 'root' })
     })
   })
 
@@ -146,11 +162,17 @@ describe('ui-settings-general apply', () => {
     // subscription), not re-registration.
     SEATS.forEach(([name], i) => {
       expect(b.slots.getVersion(name)).toBe(zhVersions[i]!)
-      expect(b.slots.entries(name)).toHaveLength(1)
+      expect(b.slots.entries(name)).toHaveLength(seatCount(name))
     })
     expect(resolveSlotLabel(generalEntry(b.slots)!.options.label)).toBe('General')
+    const iface = b.slots.entries('settings.section').find(e => e.component === InterfaceSection)
+    expect(resolveSlotLabel(iface?.options.label)).toBe('Interface')
+    const about = b.slots.entries('settings.section').find(e => e.component === AboutSection)
+    expect(resolveSlotLabel(about?.options.label)).toBe('About')
     b.locale.setLocale('zh')
     expect(resolveSlotLabel(generalEntry(b.slots)!.options.label)).toBe('通用设置')
+    expect(resolveSlotLabel(iface?.options.label)).toBe('界面设置')
+    expect(resolveSlotLabel(about?.options.label)).toBe('关于')
   })
 
   it('reads availability from the shared mirror and follows its reconnect refresh', async () => {
@@ -179,6 +201,43 @@ describe('ui-settings-general apply', () => {
     for (const [name] of SEATS) expect(b.slots.entries(name)).toEqual([])
   })
 
+  it('registers the desktop-only harness-restart row only for a shell with both config directions', async () => {
+    // No desktop bridge in this node environment: the General item list stays
+    // empty (the plain-browser composition has no process to restart).
+    const b = await bench()
+    declare(b.slots)
+    await b.ctx.plugin({ inject: [...inject], apply }).await()
+    expect(b.slots.entries('settings.general.item')).toEqual([])
+    await b.ctx.fiber.dispose()
+
+    const getConfig = vi.fn()
+    // The row needs the whole config pair; a one-direction bridge still
+    // withholds it (apply reads the bridge at activation time, so each case
+    // gets its own plugin instance).
+    ;(globalThis as { window?: unknown }).window = { shell: { getConfig } }
+    try {
+      const partial = await bench()
+      declare(partial.slots)
+      await partial.ctx.plugin({ inject: [...inject], apply }).await()
+      expect(partial.slots.entries('settings.general.item')).toEqual([])
+      await partial.ctx.fiber.dispose()
+
+      ;(globalThis as { window?: unknown }).window = { shell: { getConfig, saveConfig: vi.fn() } }
+      const desktop = await bench()
+      declare(desktop.slots)
+      await desktop.ctx.plugin({ inject: [...inject], apply }).await()
+      const entries = desktop.slots.entries('settings.general.item')
+      const entry = entries.find(item => item.options.id === 'harness-restart')!
+      expect(entry.component).toBe(HarnessRestartRow)
+      expect(entry.options).toMatchObject({ id: 'harness-restart', order: 100 })
+      // The row rides the shell-owned settings dictionary.
+      expect(entry.locale).toBe('settings')
+      await desktop.ctx.fiber.dispose()
+    } finally {
+      delete (globalThis as { window?: unknown }).window
+    }
+  })
+
   it('re-registers after an HMR collapse of the declaring chain (stale disposers must not block)', async () => {
     const b = await bench()
     const redeclare = declare(b.slots)
@@ -188,6 +247,7 @@ describe('ui-settings-general apply', () => {
     redeclare()
     for (const [name] of SEATS) expect(b.slots.entries(name)).toHaveLength(0)
     expect(b.slots.spec('settings.general.item')).toBeUndefined()
+    expect(b.slots.spec('settings.interface.item')).toBeUndefined()
     declare(b.slots)
     await Promise.resolve()
     for (const [name, component] of SEATS) {
@@ -195,6 +255,7 @@ describe('ui-settings-general apply', () => {
     }
     expect(b.slots.entries('settings.general.item')).toEqual([])
     expect(b.slots.spec('settings.general.item')).toEqual({ kind: 'list', scope: 'root' })
+    expect(b.slots.spec('settings.interface.item')).toEqual({ kind: 'list', scope: 'root' })
     // The recovered registrations still ride the locale path.
     b.locale.setLocale('en')
     expect(resolveSlotLabel(generalEntry(b.slots)!.options.label)).toBe('General')
@@ -207,8 +268,10 @@ describe('ui-settings-general apply', () => {
     const fiber = b.ctx.plugin({ inject: [...inject], apply })
     await fiber.await()
     expect(b.slots.spec('settings.general.item')).toBeDefined()
+    expect(b.slots.spec('settings.interface.item')).toBeDefined()
     await fiber.dispose()
     for (const [name] of SEATS) expect(b.slots.entries(name)).toHaveLength(0)
     expect(b.slots.spec('settings.general.item')).toBeUndefined()
+    expect(b.slots.spec('settings.interface.item')).toBeUndefined()
   })
 })

@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest'
 import {
   checkExperimentalDependencyIsolation,
   checkExperimentalManifest,
+  checkWorkspace,
   type WorkspaceManifest,
 } from './check-workspace-constraints.ts'
 
@@ -72,5 +73,14 @@ describe('experimental workspace constraints', () => {
     expect(checkExperimentalDependencyIsolation(manifests)).toEqual([
       '@deepseek-ai/dsh-python-runtime: dependencies.@deepseek-ai/dsh-experimental-prototype must not reference an experimental package',
     ])
+  })
+})
+
+describe('private application constraints', () => {
+  it('keeps the installer-only desktop app private', () => {
+    expect(checkWorkspace({
+      dir: 'apps/desktop',
+      manifest: { name: 'deepseek-harness-desktop', private: true },
+    })).toEqual([])
   })
 })

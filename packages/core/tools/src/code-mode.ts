@@ -12,8 +12,8 @@ import type { CodeBindingFunction, CodeRunResult, CodeRuntime } from '@deepseek-
 import { snapshotJsonValue } from '@deepseek-ai/dsh-session'
 import type { JsonValue } from '@deepseek-ai/dsh-session'
 import { defineTool, parameterSchemaSpecToJsonSchema } from './schema.ts'
-import { TOOL_RUNTIME_SCHEDULER } from './index.ts'
 import type { CodeDispatchLog, ToolDefinition, ToolExecutionResult, ToolRuntime, ToolRunContext } from './index.ts'
+import { toolRuntimeExecutionRequest } from './request-snapshot.ts'
 import type {} from './types.ts'
 
 /** The model-facing name of the Code Mode tool. */
@@ -268,7 +268,7 @@ type RunCodeOutput = { logs: string[]; result?: JsonValue }
  */
 export interface RunCodeBridgeOptions {
   /** Resolves `ctx.codeRuntime` or throws the loud misconfiguration error (shared with the registry's assembly-time checks). */
-  requireRuntime: () => CodeRuntime
+  requireRuntime: (exec: ToolRunContext) => CodeRuntime
   /**
    * Reads `ctx.codeRuntime` without throwing: `undefined` when none is mounted.
    * Lets schema emission tell "no runtime" (degrade to TS; the readers that
@@ -331,7 +331,7 @@ export function createRunCodeTool(registry: ToolRuntime, options: RunCodeBridgeO
       if (args.description.trim().length === 0) {
         throw new Error('invalid description: expected a non-empty string')
       }
-      const runtime = requireRuntime()
+      const runtime = requireRuntime(exec)
 
       // The run-scoped abort: follows the outer signal in, and fires when the
       // run settles for ANY reason, so an in-flight sub-dispatch is aborted
@@ -417,7 +417,7 @@ export function createRunCodeTool(registry: ToolRuntime, options: RunCodeBridgeO
                   head.abandon()
                   continue
                 }
-                // Reclassify at start time (fail-closed on registry changes).
+                // Classify at start time through the outer request snapshot.
                 const mode = head.classify()
                 const capacity = !exclusiveActive
                   && (mode === 'exclusive' ? inFlight.size === 0 : inFlight.size < maxParallel)
@@ -480,7 +480,8 @@ export function createRunCodeTool(registry: ToolRuntime, options: RunCodeBridgeO
           signal: runController.signal,
         }
         type DispatchOutcome = { isError: true; message: string } | { isError: false; value: JsonValue }
-        const scheduler = registry[TOOL_RUNTIME_SCHEDULER]
+        const request = toolRuntimeExecutionRequest(registry)
+        const scheduler = request.scheduler(exec)
         const outcome = await new Promise<DispatchOutcome>((resolve, reject) => {
           // Set by the dispatch stage (or start() for a pre-settled result): what commit() finalizes in submission order.
           let parked:
@@ -527,9 +528,9 @@ export function createRunCodeTool(registry: ToolRuntime, options: RunCodeBridgeO
           pendingQueue.push({
             flight: Promise.resolve(),
             settled: false,
-            // Re-read per driver pass against the same agent view the SDK
-            // declared; fail-closed exclusive when undeclared/invalid.
-            classify: () => registry.executionMode(input).kind,
+            // Re-read per driver pass against the captured view the SDK
+            // declared; fail-closed exclusive when undeclared or invalid.
+            classify: () => request.executionMode(exec, input).kind,
             abandon: () => {
               reject(new Error(`run_code run is over (${String(runController.signal.reason)}); ${name} tool call abandoned`))
             },
@@ -607,11 +608,10 @@ export function createRunCodeTool(registry: ToolRuntime, options: RunCodeBridgeO
       // silently dropping the binding), and the runtime host resolves
       // binding names as own properties only.
       const functions: Record<string, CodeBindingFunction> = Object.create(null) as Record<string, CodeBindingFunction>
-      // Enumerate the CALLING AGENT's visible set (scoped tools join,
+      // Enumerate the outer request's captured visible set (scoped tools join,
       // restricted globals vanish) — the same view the SDK section declared,
-      // so a program can bind exactly what its prompt promised; sub-dispatch
-      // re-resolves per call through the same view (exec.agent threads down).
-      for (const schema of registry.schemas(exec.agent)) {
+      // so a program can bind exactly what its prompt promised.
+      for (const schema of toolRuntimeExecutionRequest(registry).schemas(exec)) {
         if (schema.name === RUN_CODE_NAME) continue
         Object.defineProperty(functions, schema.name, { enumerable: true, value: binding(schema.name) })
       }

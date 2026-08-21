@@ -13,7 +13,7 @@ import { assertNever, deepFreeze, HarnessError } from '@deepseek-ai/dsh-llm'
 import type { Agent } from '@deepseek-ai/dsh-agent'
 import { snapshotJsonValue } from '@deepseek-ai/dsh-session'
 import type { JsonValue, UserMessage } from '@deepseek-ai/dsh-session'
-import type { ToolProviderResult } from '@deepseek-ai/dsh-system-prompt'
+import type { AssembleContext, ToolProviderResult } from '@deepseek-ai/dsh-system-prompt'
 import type { CodeRuntime } from '@deepseek-ai/dsh-code-runtime'
 // Type-only: makes `ctx.get('approval')` resolve to the ApprovalService
 // augmentation. The seam stays optional at runtime — see `serviceAsk`.
@@ -26,6 +26,8 @@ import type { CodeSdkLanguage } from './code-mode.ts'
 import { renderToolsSdk } from './ts-types.ts'
 import type { ToolSdkSchema } from './ts-types.ts'
 import { renderToolsSdkPy } from './py-types.ts'
+import { installToolRuntimeExecutionRequest } from './request-snapshot.ts'
+import { ToolResourceLockManager } from './resource-lock.ts'
 
 /**
  * Language → SDK-section renderer. The registry looks up the loaded
@@ -218,6 +220,14 @@ export interface ToolOutputDefinition {
   presentationMeta?(args: unknown, value: JsonValue): JsonValue
 }
 
+/** One canonical resource claim used to coordinate otherwise parallel calls. */
+export interface ToolResourceIntent {
+  /** Stable namespaced identity; equal keys participate in the same lock. */
+  readonly key: string
+  /** Reads may overlap; a write excludes every reader and writer for the key. */
+  readonly access: 'read' | 'write'
+}
+
 /** A registered tool: its schema plus the execution function. */
 export interface ToolDefinition extends ToolSchema {
   /** Mandatory canonical output declaration. */
@@ -267,6 +277,19 @@ export interface ToolDefinition extends ToolSchema {
    * @returns Whether this call may join a parallel group.
    */
   isConcurrencySafe?(args: unknown): boolean
+  /**
+   * Resolve canonical resources after pre-execute policy and before dispatch.
+   * Declaring this opts the call into the parallel pool; the runtime acquires
+   * fair read/write locks before invoking the body. Different keys may overlap.
+   * The resolver may perform identity lookup but must not mutate the resource.
+   * @param args - snapshotted, frozen arguments.
+   * @param exec - immutable execution identity and cancellation signal.
+   * @returns canonical namespaced resource claims for this call.
+   */
+  resourceIntents?(
+    args: unknown,
+    exec: Readonly<ToolExecution>,
+  ): readonly ToolResourceIntent[] | Promise<readonly ToolResourceIntent[]>
   /**
    * Optional: how to present the PENDING state of one call in a UI, derived from
    * the call's `args` (parsed arguments, `unknown` — the tool validates/narrows
@@ -460,10 +483,56 @@ export interface ToolRuntimeScheduler {
 }
 
 /**
- * Scheduler entry point omitted from the generated named service API.
+ * One sampling request's immutable tool definitions, schemas, presentation
+ * mode, and staged executor. The owner releases it after the request and all
+ * resulting tool calls settle.
  * @internal
  */
-export const TOOL_RUNTIME_SCHEDULER: unique symbol = Symbol('@deepseek-ai/dsh-tools.scheduler')
+export interface ToolRequestSnapshot {
+  /** Tool schemas and known-name universe captured for prompt assembly. */
+  readonly provider: ToolProviderResult
+  /** Presentation mode captured with the schemas. */
+  readonly presentationMode: ToolPresentationMode
+  /** Generated Code Mode SDK text captured with its backend and definitions. */
+  readonly sdkText: string
+  /** Scheduler bound to the captured definitions. */
+  readonly scheduler: ToolRuntimeScheduler
+  /** Classify one call against the captured definition and presentation mode. */
+  executionMode(exec: ToolExecutionInput): ToolExecutionMode
+  /** Restrict model-direct execution to the final post-waterfall advertised names. */
+  bindAdvertised(tools: readonly ToolSchema[]): void
+  /** Release captured definition and backend references after the step settles. */
+  release(): void
+}
+
+/** Internal request-snapshot entry point used by the default agent loop. */
+export interface ToolRuntimeRequests {
+  /** Capture the exact tool view for one sampling request. */
+  capture(scope?: ScopeKey): ToolRequestSnapshot
+}
+
+/**
+ * Scheduler entry point omitted from the generated named service API.
+ *
+ * Registered through the process-global symbol registry so a consumer that
+ * accidentally loads a second copy of this package in the same realm still
+ * reads the same key from a `ToolRuntime` instance built by the other copy.
+ * @internal
+ */
+export const TOOL_RUNTIME_SCHEDULER: unique symbol = Symbol.for('@deepseek-ai/dsh-tools.scheduler')
+
+/** Agent-loop entry point for request-scoped tool capture. */
+export const TOOL_RUNTIME_REQUESTS: unique symbol = Symbol('@deepseek-ai/dsh-tools.requests')
+
+/** Symbol-keyed prompt-assembly context slot carrying one tool request snapshot. */
+export const TOOL_REQUEST_SNAPSHOT: unique symbol = Symbol('@deepseek-ai/dsh-tools.request-snapshot')
+
+declare module '@deepseek-ai/dsh-system-prompt' {
+  interface AssembleContext {
+    /** Internal request snapshot whose schemas the tools provider contributes. */
+    [TOOL_REQUEST_SNAPSHOT]?: ToolRequestSnapshot
+  }
+}
 
 /** Canonical error code for cancellation after a tool body was invoked. */
 export const TOOL_ABORTED = 'ABORTED'
@@ -700,6 +769,17 @@ interface ToolView {
   readonly restrictableNames: ReadonlySet<string>
 }
 
+/** Private mutable state retained by one public request snapshot handle. */
+interface ToolRequestSnapshotState {
+  readonly mode: ToolPresentationMode
+  readonly definitions: Map<string, ToolDefinition>
+  readonly knownNames: Set<string>
+  readonly sdkSchemas: ToolSdkSchema[]
+  codeRuntime: CodeRuntime | undefined
+  advertisedNames?: Set<string>
+  released: boolean
+}
+
 /**
  * A monotonic execution guard evaluated after every `tools/pre-execute`
  * listener and before the tool body. Returning a reason denies the call;
@@ -799,6 +879,9 @@ export class ToolRuntime extends Service {
     finalize: (exec, result) => this.finalizeScheduledExecution(exec, result),
     finish: (exec, result) => this.finishScheduledExecution(exec, result),
   }
+  readonly [TOOL_RUNTIME_REQUESTS]: ToolRuntimeRequests = {
+    capture: scope => this.captureRequest(scope),
+  }
 
   /** Context deferred by a running tool body, keyed by its scheduler-owned execution. */
   private deferredContexts = new WeakMap<ToolRunContext, UserMessage[]>()
@@ -808,6 +891,16 @@ export class ToolRuntime extends Service {
   private cancellationStates = new WeakMap<ToolRunContext, ToolCancellationState>()
   /** Definition-owned final content transform snapshotted before policy begins. */
   private contentFinalizers = new WeakMap<ToolRunContext, ToolDefinition['finalizeContent']>()
+  /** Captured definition chosen once for every registry-minted execution. */
+  private executionDefinitions = new WeakMap<ToolExecution, ToolDefinition | null>()
+  /** Request snapshot that owns an execution, including nested Code Mode calls. */
+  private executionSnapshots = new WeakMap<ToolExecution, ToolRequestSnapshot>()
+  /** Resource claims resolved after policy and held around the tool body. */
+  private executionResourceIntents = new WeakMap<ToolExecution, readonly ToolResourceIntent[]>()
+  /** Fair per-key read/write coordination shared by every execution surface. */
+  private readonly resourceLocks = new ToolResourceLockManager()
+  /** Private state behind request snapshot handles. */
+  private requestSnapshots = new WeakMap<ToolRequestSnapshot, ToolRequestSnapshotState>()
   private readonly layers = new ScopedLayers(
     scope => new ToolLayer(scope),
     () => { this.ctx.emit('tools/change') },
@@ -829,7 +922,7 @@ export class ToolRuntime extends Service {
     // optional-input type for direct (non-Loader) construction in tests.
     this.defaultMode = config.mode ?? 'native'
     this.maxParallelSubCalls = resolveMaxParallelSubCalls(config.maxParallelSubCalls)
-    ctx.systemPrompt.tools(context => this.wireSchemas(context.scope))
+    ctx.systemPrompt.tools(context => context[TOOL_REQUEST_SNAPSHOT]?.provider ?? this.wireSchemas(context.scope))
     if (this.defaultMode !== 'native') {
       ctx.systemPrompt.section(this.collapseSection())
       ctx.systemPrompt.section(this.sdkSection())
@@ -852,13 +945,15 @@ export class ToolRuntime extends Service {
    * `both` renders empty: native calls do execute there, so the rule is false.
    * @returns the section registration.
    */
-  private collapseSection(): { name: string; order: number; text: (context: { scope?: ScopeKey }) => string } {
+  private collapseSection(): { name: string; order: number; text: (context: AssembleContext) => string } {
     return {
       name: 'tools:code-only',
       order: COLLAPSE_SECTION_ORDER,
       // The SAME predicate the executor denies by, so the prompt cannot state
       // a rule the registry does not enforce (see `collapses`).
-      text: context => this.modeFor(context.scope) === 'code' ? CODE_ONLY_INSTRUCTION : '',
+      text: context => (context[TOOL_REQUEST_SNAPSHOT]?.presentationMode ?? this.modeFor(context.scope)) === 'code'
+        ? CODE_ONLY_INSTRUCTION
+        : '',
     }
   }
 
@@ -872,12 +967,14 @@ export class ToolRuntime extends Service {
    * dropped from the rendered prompt.
    * @returns the section registration.
    */
-  private sdkSection(): { name: string; order: number; text: (context: { scope?: ScopeKey }) => string } {
+  private sdkSection(): { name: string; order: number; text: (context: AssembleContext) => string } {
     return {
       name: 'tools:sdk',
       order: SDK_SECTION_ORDER,
       // Regenerate from the calling scope's visible tools in stable order.
       text: (context) => {
+        const snapshot = context[TOOL_REQUEST_SNAPSHOT]
+        if (snapshot !== undefined) return snapshot.sdkText
         const mode = this.modeFor(context.scope)
         if (mode === 'native') return ''
         const runtime = this.requireCodeRuntime(mode)
@@ -920,8 +1017,13 @@ export class ToolRuntime extends Service {
    * @returns the shared transport definition.
    */
   private requireCodeTransport(): ToolDefinition {
+    installToolRuntimeExecutionRequest(this, {
+      schemas: exec => this.requestSchemas(exec),
+      scheduler: exec => this.executionSnapshots.get(exec)?.scheduler ?? this[TOOL_RUNTIME_SCHEDULER],
+      executionMode: (exec, input) => this.executionSnapshots.get(exec)?.executionMode(input) ?? this.executionMode(input),
+    })
     this.codeTransport ??= createRunCodeTool(this, {
-      requireRuntime: () => this.requireCodeRuntime(this.defaultMode),
+      requireRuntime: exec => this.requestRuntime(exec),
       // The language-aware description/parameters getters read the runtime
       // without demanding one, so a native-default process can still project
       // the transport for an agent that chose code.
@@ -980,8 +1082,13 @@ export class ToolRuntime extends Service {
   private wireSchemas(scope?: ScopeKey): ToolProviderResult {
     const view = this.view(scope)
     const mode = this.modeFor(scope)
+    return this.wireSchemasFrom(view, mode, false)
+  }
+
+  /** Project one already-resolved view into the model-facing presentation. */
+  private wireSchemasFrom(view: ToolView, mode: ToolPresentationMode, detachParameters: boolean): ToolProviderResult {
     if (mode === 'native') {
-      const schemas = [...view.visible.values()].map(definition => this.schemaOf(definition, false))
+      const schemas = [...view.visible.values()].map(definition => this.schemaOf(definition, detachParameters))
       return { schemas, knownNames: [...view.knownNames] }
     }
     // Validate the runtime language BEFORE projecting schemas: schemaOf reads
@@ -990,7 +1097,7 @@ export class ToolRuntime extends Service {
     // renderer-table rejection the canonical assembly-time error for a
     // language with no SDK renderer.
     this.requireCodeRuntime(mode)
-    const schemas = [...view.visible.values()].map(definition => this.schemaOf(definition, false))
+    const schemas = [...view.visible.values()].map(definition => this.schemaOf(definition, detachParameters))
     if (mode === 'code') {
       return {
         schemas: schemas.filter(schema => schema.name === RUN_CODE_NAME),
@@ -998,6 +1105,123 @@ export class ToolRuntime extends Service {
       }
     }
     return { schemas, knownNames: [...view.knownNames, RUN_CODE_NAME] }
+  }
+
+  /** Capture the tool view one model sampling request advertises and may execute. */
+  private captureRequest(scope?: ScopeKey): ToolRequestSnapshot {
+    const live = this.view(scope)
+    const mode = this.modeFor(scope)
+    const definitions = new Map(live.visible)
+    const knownNames = new Set(live.knownNames)
+    const capturedView: ToolView = {
+      visible: definitions,
+      knownNames,
+      restrictableNames: new Set(live.restrictableNames),
+    }
+    const codeRuntime = mode === 'native' ? undefined : this.requireCodeRuntime(mode)
+    const provider = this.wireSchemasFrom(capturedView, mode, true)
+    const sdkSchemas = codeRuntime === undefined ? [] : this.sdkSchemasFrom(capturedView)
+    let sdkText = ''
+    if (codeRuntime !== undefined) {
+      const render = SDK_RENDERERS[codeRuntime.language]
+      /* v8 ignore next -- requireCodeRuntime validated this language before returning the backend. */
+      if (render === undefined) throw new Error(`dsh-tools: no SDK renderer registered for runtime language ${JSON.stringify(codeRuntime.language)}`)
+      sdkText = render(sdkSchemas)
+    }
+    const snapshot = {} as ToolRequestSnapshot
+    const scheduler: ToolRuntimeScheduler = {
+      prepare: exec => this.prepareScheduledExecution(exec, snapshot),
+      dispatch: exec => this.dispatchScheduledExecution(exec),
+      finalize: (exec, result) => this.finalizeScheduledExecution(exec, result),
+      finish: (exec, result) => this.finishScheduledExecution(exec, result),
+    }
+    Object.assign(snapshot, {
+      provider,
+      presentationMode: mode,
+      sdkText,
+      scheduler,
+      executionMode: (exec: ToolExecutionInput) => this.snapshotExecutionMode(snapshot, exec),
+      bindAdvertised: (tools: readonly ToolSchema[]) => {
+        const state = this.requireRequestSnapshot(snapshot)
+        state.advertisedNames = new Set(tools.map(tool => tool.name))
+      },
+      release: () => {
+        const state = this.requestSnapshots.get(snapshot)
+        /* v8 ignore next 2 -- every returned snapshot is registered before callers can release it. */
+        if (state === undefined) return
+        if (state.released) return
+        state.released = true
+        state.definitions.clear()
+        state.knownNames.clear()
+        state.sdkSchemas.length = 0
+        state.codeRuntime = undefined
+        state.advertisedNames?.clear()
+      },
+    })
+    this.requestSnapshots.set(snapshot, {
+      mode,
+      definitions,
+      knownNames,
+      sdkSchemas,
+      codeRuntime,
+      released: false,
+    })
+    return snapshot
+  }
+
+  /** Return live private state or reject use after the owning step released it. */
+  private requireRequestSnapshot(snapshot: ToolRequestSnapshot): ToolRequestSnapshotState {
+    const state = this.requestSnapshots.get(snapshot)
+    /* v8 ignore next -- only handles minted and registered by captureRequest reach this helper. */
+    if (state === undefined) throw new Error('tool request snapshot is unknown')
+    if (state.released) throw new Error('tool request snapshot is no longer active')
+    return state
+  }
+
+  /** Resolve the backend captured with an outer run_code execution. */
+  private requestRuntime(exec: ToolExecution): CodeRuntime {
+    const snapshot = this.executionSnapshots.get(exec)
+    if (snapshot === undefined) return this.requireCodeRuntime(this.modeFor(exec.agent))
+    const state = this.requireRequestSnapshot(snapshot)
+    /* v8 ignore next 2 -- run_code exists only in non-native captures, which always retain a backend. */
+    if (state.codeRuntime === undefined) {
+      throw new Error('tool request snapshot has no code runtime')
+    }
+    return state.codeRuntime
+  }
+
+  /** Return the SDK schemas captured with an outer run_code execution. */
+  private requestSchemas(exec: ToolExecution): ToolSchema[] {
+    const snapshot = this.executionSnapshots.get(exec)
+    if (snapshot === undefined) return this.schemas(exec.agent)
+    return this.requireRequestSnapshot(snapshot).sdkSchemas
+  }
+
+  /** Classify through one request's captured definition and presentation mode. */
+  private snapshotExecutionMode(snapshot: ToolRequestSnapshot, exec: ToolExecutionInput): ToolExecutionMode {
+    const state = this.requireRequestSnapshot(snapshot)
+    const tool = this.snapshotExecutable(state, exec.name, exec.parent !== undefined)
+    if (tool?.resourceIntents !== undefined) return { kind: 'parallel' }
+    if (!tool?.isConcurrencySafe) return { kind: 'exclusive' }
+    try {
+      const concurrencySafe: unknown = tool.isConcurrencySafe(exec.arguments)
+      return concurrencySafe === true ? { kind: 'parallel' } : { kind: 'exclusive' }
+    } catch {
+      return { kind: 'exclusive' }
+    }
+  }
+
+  /** Resolve a definition that the captured request permits this call to execute. */
+  private snapshotExecutable(
+    state: ToolRequestSnapshotState,
+    name: string,
+    nested: boolean,
+  ): ToolDefinition | undefined {
+    const definition = state.definitions.get(name)
+    if (definition === undefined) return undefined
+    if (!nested && state.mode === 'code' && name !== RUN_CODE_NAME) return undefined
+    if (!nested && state.advertisedNames !== undefined && !state.advertisedNames.has(name)) return undefined
+    return definition
   }
 
   /**
@@ -1008,13 +1232,10 @@ export class ToolRuntime extends Service {
    * 'native'` (the loop's optional-backend idiom, same as
    * `sessionPersistence`).
    *
-   * Assembly and `run_code` execution read separately, so the language is not
-   * bound to a request. Harmless while one published backend exists — both
-   * reads return the same flavor — but a reload that swapped in a second
-   * language between them would hand a program written against one SDK to the
-   * other. Binding it is deferred until a second backend ships (the first
-   * point it is testable); rationale in the
-   * [language-dispatch note](../../../../.agents/notes/implemented/feature/2026-07-31-code-mode-language-dispatch.md).
+   * The agent loop resolves this once while capturing a request snapshot, so
+   * schema flavor, generated SDK, and `run_code` execution retain the same
+   * backend across streaming and HMR. Direct calls outside a captured request
+   * resolve the current backend at their own admission boundary.
    */
   private requireCodeRuntime(mode: ToolPresentationMode): CodeRuntime {
     const runtime = this.ctx.get('codeRuntime')
@@ -1237,7 +1458,12 @@ export class ToolRuntime extends Service {
 
   /** Project visible callable tools onto the generated Code Mode SDK contract. */
   private sdkSchemas(scope?: ScopeKey): ToolSdkSchema[] {
-    return [...this.view(scope).visible.values()]
+    return this.sdkSchemasFrom(this.view(scope))
+  }
+
+  /** Project one captured view onto the Code Mode SDK schema contract. */
+  private sdkSchemasFrom(view: ToolView): ToolSdkSchema[] {
+    return [...view.visible.values()]
       .filter(definition => definition.name !== RUN_CODE_NAME)
       .map((definition): ToolSdkSchema => {
         const output = snapshotJsonValue(definition.output.schema)
@@ -1275,6 +1501,7 @@ export class ToolRuntime extends Service {
    */
   executionMode(exec: ToolExecutionInput): ToolExecutionMode {
     const tool = this.resolveExecution(exec.name, exec.agent, exec.parent !== undefined)
+    if (tool?.resourceIntents !== undefined) return { kind: 'parallel' }
     if (!tool?.isConcurrencySafe) return { kind: 'exclusive' }
     try {
       const concurrencySafe: unknown = tool.isConcurrencySafe(exec.arguments)
@@ -1361,7 +1588,10 @@ export class ToolRuntime extends Service {
     }
   }
 
-  private createExecution(exec: ToolExecutionInput): ScheduledToolPreparation | { kind: 'ready'; exec: MutableToolRunContext } {
+  private createExecution(
+    exec: ToolExecutionInput,
+    snapshot?: ToolRequestSnapshot,
+  ): ScheduledToolPreparation | { kind: 'ready'; exec: MutableToolRunContext } {
     const deferredContexts: UserMessage[] = []
     const token = createExecutionToken()
     const callId = exec.callId
@@ -1377,8 +1607,14 @@ export class ToolRuntime extends Service {
     // observe — or worse, approve — a call that can only fail. An unknown tool
     // keeps the historical dispatch-stage `UNKNOWN_TOOL` path so policy
     // listeners still see every name that reaches the registry.
-    const visible = this.get(name, agent)
-    const collapsed = visible !== undefined && this.collapses(name, agent, parent !== undefined)
+    const requestState = snapshot === undefined ? undefined : this.requireRequestSnapshot(snapshot)
+    const visible = requestState === undefined ? this.get(name, agent) : requestState.definitions.get(name)
+    const collapsed = visible !== undefined && (requestState === undefined
+      ? this.collapses(name, agent, parent !== undefined)
+      : parent === undefined && requestState.mode === 'code' && name !== RUN_CODE_NAME)
+    const executable = requestState === undefined
+      ? collapsed ? undefined : visible
+      : this.snapshotExecutable(requestState, name, parent !== undefined)
     const concludingExecutions = this.concludingExecutions
     const base = {
       token,
@@ -1405,7 +1641,8 @@ export class ToolRuntime extends Service {
     // the same retained path), while the `UNKNOWN_TOOL` denial and the
     // invalid-args failure of a NON-ABORTED collapsed call drop it (the call
     // could never execute).
-    const capturedFinalizer = visible?.finalizeContent?.bind(visible)
+    const finalizerDefinition = collapsed ? visible : executable
+    const capturedFinalizer = finalizerDefinition?.finalizeContent?.bind(finalizerDefinition)
     const finalizerFor = (): ToolDefinition['finalizeContent'] | undefined =>
       collapsed && !signal.aborted ? undefined : capturedFinalizer
     try {
@@ -1414,6 +1651,7 @@ export class ToolRuntime extends Service {
         throw new TypeError('tool execution arguments must be losslessly JSON-serializable')
       }
       const execution: MutableToolRunContext = { ...base, arguments: deepFreeze(detached) }
+      this.captureExecution(execution, executable, snapshot)
       this.deferredContexts.set(execution, deferredContexts)
       this.contentFinalizers.set(execution, finalizerFor())
       this.cancellationStates.set(execution, {
@@ -1445,9 +1683,30 @@ export class ToolRuntime extends Service {
       return { kind: 'ready', exec: execution }
     } catch (error: unknown) {
       const execution: MutableToolRunContext = { ...base, arguments: undefined }
+      this.captureExecution(execution, executable, snapshot)
       this.contentFinalizers.set(execution, finalizerFor())
       return { kind: 'final-result', exec: execution, result: toolErrorResult(error) }
     }
+  }
+
+  /** Retain the request-selected definition and snapshot for the execution's complete pipeline. */
+  private captureExecution(
+    exec: ToolRunContext,
+    definition: ToolDefinition | undefined,
+    snapshot?: ToolRequestSnapshot,
+  ): void {
+    this.executionDefinitions.set(exec, definition ?? null)
+    if (snapshot !== undefined) this.executionSnapshots.set(exec, snapshot)
+  }
+
+  /** Resolve the definition captured when the registry minted this execution. */
+  private executionDefinition(exec: ToolExecution): ToolDefinition | undefined {
+    const captured = this.executionDefinitions.get(exec)
+    /* v8 ignore next -- every staged execution is recorded by createExecution. */
+    if (captured === undefined) {
+      throw new Error('tool registry scheduler invariant violated: missing captured definition')
+    }
+    return captured ?? undefined
   }
 
   /**
@@ -1456,15 +1715,19 @@ export class ToolRuntime extends Service {
    * @returns the prepared execution plus the next scheduler stage.
    * @internal
    */
-  private async prepareScheduledExecution(input: ToolExecutionInput): Promise<ScheduledToolPreparation> {
-    return this.prepareExecution(input, prepared => prepared)
+  private async prepareScheduledExecution(
+    input: ToolExecutionInput,
+    snapshot?: ToolRequestSnapshot,
+  ): Promise<ScheduledToolPreparation> {
+    return this.prepareExecution(input, prepared => prepared, snapshot)
   }
 
   private async prepareExecution<T>(
     input: ToolExecutionInput,
     next: (prepared: ScheduledToolPreparation) => T | PromiseLike<T>,
+    snapshot?: ToolRequestSnapshot,
   ): Promise<T> {
-    const created = this.createExecution(input)
+    const created = this.createExecution(input, snapshot)
     if (created.kind !== 'ready') return next(created)
     const exec = created.exec
     if (this.callerCancelled(exec)) {
@@ -1496,6 +1759,27 @@ export class ToolRuntime extends Service {
             error: { message: denialReason },
           }),
         })
+      }
+      if (this.callerCancelled(exec)) {
+        return await next({ kind: 'post-result', exec, result: toolAbortedBeforeDispatchResult() })
+      }
+      const tool = this.executionDefinition(exec)
+      if (tool?.resourceIntents !== undefined) {
+        try {
+          const intents = await tool.resourceIntents(exec.arguments, exec)
+          if (!Array.isArray(intents)) {
+            throw new TypeError(`tool "${exec.name}" resourceIntents must return an array`)
+          }
+          this.executionResourceIntents.set(exec, intents)
+        } catch (error: unknown) {
+          return await next({
+            kind: 'post-result',
+            exec,
+            result: this.callerCancelled(exec)
+              ? toolAbortedBeforeDispatchResult()
+              : toolErrorResult(error),
+          })
+        }
       }
       if (this.callerCancelled(exec)) {
         return await next({ kind: 'post-result', exec, result: toolAbortedBeforeDispatchResult() })
@@ -1543,15 +1827,19 @@ export class ToolRuntime extends Service {
     }
     exec.signal = signal
     try {
-      const tool = this.resolveExecution(exec.name, exec.agent, exec.parent !== undefined)
+      const tool = this.executionDefinition(exec)
       if (!tool) throw new ToolNotFoundError(exec.name)
-      state.bodyInvoked = true
-      const returned = await tool.execute(exec.arguments, exec)
+      const intents = this.executionResourceIntents.get(exec) ?? []
+      const returned = await this.resourceLocks.run(intents, signal, async () => {
+        state.bodyInvoked = true
+        return tool.execute(exec.arguments, exec)
+      })
       const result = this.createSuccessResult(exec, tool, returned)
       return isAborted(signal)
         ? toolAbortedResult(result)
         : result
     } catch (error: unknown) {
+      if (isAborted(signal) && !state.bodyInvoked) return toolAbortedBeforeDispatchResult()
       return toolErrorResult(error)
     } finally {
       fused.dispose()
@@ -1765,7 +2053,8 @@ export class ToolRuntime extends Service {
       if (result.isError) {
         throw new TypeError('tools/post-execute cannot replace the value of a failed result')
       }
-      const tool = this.resolveExecution(exec.name, exec.agent, exec.parent !== undefined)
+      const tool = this.executionDefinition(exec)
+      /* v8 ignore next -- a successful dispatch requires the captured definition that produced it. */
       if (tool === undefined) throw new ToolNotFoundError(exec.name)
       const replaced = this.createSuccessResult(exec, tool, decision.value)
       return this.markCanonical(exec, {
@@ -1834,7 +2123,7 @@ export class ToolRuntime extends Service {
         ...result.additionalContexts !== undefined ? { additionalContexts: result.additionalContexts } : {},
       })
     }
-    const tool = this.resolveExecution(exec.name, exec.agent, exec.parent !== undefined)
+    const tool = this.executionDefinition(exec)
     if (tool === undefined) throw new ToolNotFoundError(exec.name)
     const normalized = this.createSuccessResult(exec, tool, result.value)
     return this.markCanonical(exec, {

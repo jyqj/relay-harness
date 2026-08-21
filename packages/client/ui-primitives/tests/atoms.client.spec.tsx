@@ -89,6 +89,21 @@ describe('Menu', () => {
     expect(onClose).toHaveBeenCalledTimes(2)
   })
 
+  it('shows a tooltip for a disabled row that carries a hint', () => {
+    render(
+      <Menu
+        open
+        anchor={<span>trigger</span>}
+        items={[{ id: 'b', label: 'Beta', disabled: true, hint: 'No local commits to push.' }]}
+        onSelect={() => {}}
+        onClose={() => {}}
+      />,
+    )
+    const item = screen.getByRole('menuitem', { name: 'Beta' })
+    fireEvent.mouseEnter(item.parentElement!)
+    expect(screen.getByRole('tooltip').textContent).toBe('No local commits to push.')
+  })
+
   it('inside pointerdown does not close', () => {
     const onClose = vi.fn()
     render(
@@ -345,6 +360,26 @@ describe('Menu', () => {
     expect(menu.style.bottom).toBe('')
   })
 
+  it('renders a filter field above the items without treating it as a menuitem', () => {
+    const onChange = vi.fn()
+    const onClose = vi.fn()
+    render(
+      <Menu
+        open
+        anchor={<span>trigger</span>}
+        items={items}
+        filter={{ value: '', placeholder: 'Search…', label: 'Search items', onChange }}
+        onSelect={() => {}}
+        onClose={onClose}
+      />)
+    const field = screen.getByRole('searchbox', { name: 'Search items' })
+    expect(field.closest('[role="menuitem"]')).toBeNull()
+    fireEvent.change(field, { target: { value: 'al' } })
+    expect(onChange).toHaveBeenCalledWith('al')
+    fireEvent.pointerDown(field)
+    expect(onClose).not.toHaveBeenCalled()
+  })
+
   it('renders footer rows in a pinned section below the items; they still select', () => {
     const onSelect = vi.fn()
     render(
@@ -386,7 +421,16 @@ describe('Modal', () => {
       <Modal open={false} onClose={onClose} title="Create new workspace">body</Modal>)
     expect(screen.queryByRole('dialog')).toBeNull()
     rerender(
-      <Modal open onClose={onClose} title="Create new workspace" closeLabel="Configure later" description="Name it." contentClassName="scrolling-content" footer={<button type="button">Create</button>}>
+      <Modal
+        open
+        onClose={onClose}
+        title="Create new workspace"
+        closeLabel="Configure later"
+        description="Name it."
+        contentClassName="scrolling-content"
+        headerActions={<button type="button">Extra</button>}
+        footer={<button type="button">Create</button>}
+      >
         <input aria-label="name" />
       </Modal>)
     const dialog = screen.getByRole('dialog', { name: 'Create new workspace' })
@@ -395,6 +439,7 @@ describe('Modal', () => {
     // this document/current WebUI window.
     expect(dialog.parentElement?.parentElement).toBe(document.body)
     expect(screen.getByRole('button', { name: 'Configure later' })).toBeDefined()
+    expect(screen.getByRole('button', { name: 'Extra' })).toBeDefined()
     expect(screen.getByText('Name it.')).toBeDefined()
     expect(screen.getByText('Name it.').parentElement?.className).toContain('scrolling-content')
     fireEvent.keyDown(document, { key: 'a' })

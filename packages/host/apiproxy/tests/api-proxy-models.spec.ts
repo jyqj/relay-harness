@@ -457,6 +457,31 @@ describe('Web session model selection', () => {
     await ctx.fiber.dispose()
   })
 
+  it('skips saving the default when persistDefault is false', async () => {
+    const { ctx, sessionId } = await harness()
+    const saved: unknown[] = []
+    const api = createApiProxy(ctx, {
+      defaultModelSelection: () => ({ provider: 'deepseek-official', model: 'deepseek-chat' }),
+      saveDefaultModelSelection: (selection) => {
+        saved.push(selection)
+        return Promise.resolve()
+      },
+      cwd: '/tmp',
+    })
+
+    expectValue(await api.sessions.selectModel(request({
+      sessionId,
+      provider: 'deepseek-official',
+      model: 'deepseek-reasoner',
+      reasoningEffort: 'max',
+      persistDefault: false,
+    })))
+    expect(saved).toEqual([])
+    expect(expectValue(await api.sessions.models(request({ sessionId }))).current)
+      .toEqual({ provider: 'deepseek-official', model: 'deepseek-reasoner', reasoningEffort: 'max' })
+    await ctx.fiber.dispose()
+  })
+
   it('refuses a prompt no adapter can route, and reports it on the directory', async () => {
     const { ctx, sessionId } = await harness()
     const api = createApiProxy(ctx, {
@@ -503,6 +528,27 @@ describe('Web session model selection', () => {
     expect(catalog.current).toEqual({ provider: 'deleted-gateway', model: 'deleted-model' })
     expect(catalog.groups.flatMap(group => group.models.map(model => `${group.id}/${model.id}`)))
       .not.toContain('deleted-gateway/deleted-model')
+    await ctx.fiber.dispose()
+  })
+
+  it('advertises listed input modalities so a vision picker can filter image-capable models', async () => {
+    const { ctx } = await harness()
+    ctx.llm.registerAdapter(['codingplan'], new CatalogAdapter('Codingplan', [
+      { provider: 'codingplan', id: 'doubao-seed', name: 'Doubao Seed', inputModalities: ['text', 'image'] },
+      { provider: 'codingplan', id: 'glm-5.3', name: 'GLM 5.3', inputModalities: ['text'] },
+      { provider: 'codingplan', id: 'bare', name: 'Bare' },
+    ]))
+    const api = createApiProxy(ctx, {
+      defaultModelSelection: () => ({ provider: 'deepseek-official', model: 'deepseek-chat' }),
+      cwd: '/tmp',
+    })
+
+    const catalog = expectValue(await api.llm.models(request({})))
+    expect(catalog.groups.find(group => group.id === 'codingplan')?.models).toEqual([
+      { id: 'doubao-seed', name: 'Doubao Seed', inputModalities: ['text', 'image'] },
+      { id: 'glm-5.3', name: 'GLM 5.3', inputModalities: ['text'] },
+      { id: 'bare', name: 'Bare' },
+    ])
     await ctx.fiber.dispose()
   })
 })

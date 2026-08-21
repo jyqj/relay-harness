@@ -34,7 +34,7 @@ const config: Config = {
     model: deepseek-v4
 ```
 
-配置只在加载时解析**一次**。`configPath` 是**进程级**配置：相对路径在加载时根据进程启动 cwd 解析，而非每会话解析（`TODO(per-session-hook-config)`）。读取／解析失败会被隔离处理（记录 + 不注册任何内容）；实际消费 matcher 的事件所带的无效 matcher 正则属于此类失败，并报告其 pattern 与事件。只运行同步 `type: 'command'` hook；非 command 或 `async: true` hook 会被解析并跳过，同时记录警告。hook 接受 `timeout` 或 `timeoutSec` alias；两者都未设置时，使用协议参考默认值 `DEFAULT_HOOK_TIMEOUT_MS`（来自 `dsh-hook-protocol`，10 分钟）。五个桥接支持点之外的事件会在解析时丢弃。
+绝对 `configPath` 命名一个共享文件。相对路径会按会话独立发现：桥接从 `session.header.cwd` 开始，在每个祖先目录检查该路径，直至包含 `.git` 的最近目录，且不会越过该项目根；无 agent 调用从进程 cwd 开始。包含 `..` 的路径会被拒绝。已解析配置按绝对路径、文件系统身份、大小、mtime 与 ctime 缓存，因此不同工作区互相隔离，编辑会在下一个 hook 点生效。缺失文件表示没有 hook；发现或解析失败会被隔离并去重，直到路径或文件版本变化。无效正则会报告其 pattern 与事件。只运行同步 `type: 'command'` hook；非 command 或 `async: true` hook 会被解析并跳过，同时记录警告。hook 接受 `timeout` 或 `timeoutSec` alias；两者都未设置时，使用协议参考默认值 `DEFAULT_HOOK_TIMEOUT_MS`（来自 `dsh-hook-protocol`，10 分钟）。五个桥接支持点之外的事件会在解析时丢弃。
 
 hook 本身会在 agent（智能体）的会话工作区中运行：对 agent scope 点，桥接会将会话 `cwd` 作为 hook 进程工作目录，因此 hook 作用于用户项目树，而非服务器启动目录。
 
@@ -42,17 +42,17 @@ hook 本身会在 agent（智能体）的会话工作区中运行：对 agent sc
 
 | Codex hook | Harness 点 | 映射 |
 |---|---|---|
-| `SessionStart` | `agent/session-start`（emit） | 纯 stdout hook 的输出 → additionalContext → `agent.inject()` |
+| `SessionStart` | `agent/session-start`（emit）+ 第一个非空 `agent/pre-step` | 在 emit 处记录来源，随后等待纯 stdout 或 JSON additionalContext，并把它折入第一个进入的请求 |
 | `UserPromptSubmit` | `agent/pre-step`（waterfall，瀑布式事件） | `block`（退出码 2）→ `PreStepDecision.reject`；仅 additionalContext → 通过 `next()` 委托，再向下游 `enter` 决策追加一条单独标记来源的消息 |
 | `PreToolUse` | `tools/pre-execute`（waterfall） | `block` → `PreToolDecision.deny`（没有 `allow`／`ask`） |
 | `PostToolUse` | `tools/post-execute`（waterfall） | `block` → 带反馈的 `block`；仅 additionalContext → 通过 `next()` 委托，再将一个单独标记源的上下文前置到下游决策；Code Mode 将子调用上下文延迟到外层 `run_code` 结果 |
-| `Stop` | `agent/turn-stopping`（serial） | 阻塞 Stop hook 通过 `steer()` 送入其原因，强制再执行一步 |
+| `Stop` | `agent/turn-stopping`（serial） | 一个轮次中的首次阻塞会通过 `steer()` 送入原因；下一次检查报告 `stop_hook_active: true`，且不能再强制 continuation |
 
 工具调用的 payload 携带真实 `tool_name`（matcher 测试的相同值）与 Codex `tool_input: { command }` 形状（存在 `command` arg 时使用该值，否则使用 `''`）。matcher subject 是工具名称（`PreToolUse`／`PostToolUse`）或会话源（`SessionStart`）；`UserPromptSubmit`／`Stop` 忽略 matcher。
 
 每个 agent scope stdin payload 都携带 `session_id` 和 `transcript_path`。可用时，桥接通过 `ctx.sessionPersistence.locate(session.header)` 解析后者，否则发送 `null`，保留 Codex `string | null` 形状。查找不会创建或 flush 产物，因此在第一个轮次结束检查点之前，路径可能尚不存在，或其指向的 transcript（文本记录）可能尚未包含当前未结束的轮次。
 
-`SessionStart` 是唯一的 emit 点，它会脱离运行。每条运行链都会被跟踪；对桥接执行 dispose（资源释放）会中止仍在运行的 hook 进程，再排空 continuation，之后 dispose 才会完成（`createDetachedRuns`，位于 `dsh-hook-protocol`）。
+`SessionStart` 在 emit 处只记录来源。第一个非空 pre-step 会在 `UserPromptSubmit` 前运行并等待它，因此其上下文会进入第一个模型请求。每个点都在调用方信号与桥接生命周期组合出的信号下运行并受到跟踪；对桥接执行 dispose（资源释放）会中止仍在运行的 hook 进程，并等待其运行链结算（`createDetachedRuns`，位于 `dsh-hook-protocol`）。
 
 ## 上下文源
 
@@ -91,10 +91,10 @@ hook 不返回上下文时没有成本。Hook 文本取决于数据，会被记�
 ## 已知限制与暂缓事项
 
 - **不支持的 hook 事件（Codex 当前 10 项中的 5 项）：** `PermissionRequest`、`PreCompact`、`PostCompact`、`SubagentStart` 和 `SubagentStop`。这些事件的配置会在解析期间静默丢弃。比较基线是 Codex [官方 hook 参考](https://learn.chatgpt.com/docs/hooks)。
-- **`SessionStart` 只支持部分功能：** 支持纯 stdout 与 JSON `additionalContext`，但 hook 脱离运行，因此上下文可能错过第一个请求（`TODO(session-start-gating)`）。
+- **`SessionStart` 只支持部分功能：** 纯 stdout 与 JSON `additionalContext` 会进入第一个请求，但不会强制执行 `systemMessage` 与 `{"continue": false}`。
 - **`UserPromptSubmit` 只支持部分功能：** 支持阻塞加纯 stdout 或 JSON 上下文，但不会强制执行通用 `systemMessage` 和 `{"continue": false}` 控制。
 - **`PreToolUse` 只支持部分功能：** 支持阻塞，但会忽略 `additionalContext`、`permissionDecision: "allow"` 和 `updatedInput`。每个工具都表示为 `tool_input: { command }`，因此非 shell 工具参数不会如实公开给 hook。
 - **`PostToolUse` 只支持部分功能：** 支持阻塞反馈与 JSON `additionalContext`，但不会强制执行 `{"continue": false}`，非 shell 工具参数会缩减为 `{ command }`，结构化工具输出会在 `tool_response` 中展平为文本。
-- **`Stop` 只支持部分功能：** 阻塞会强制另一个模型轮次，但 `stop_hook_active` 始终为 `false`，`last_assistant_message` 始终为 `null`，且不会强制执行 `{"continue": false}`。因此，无条件阻塞 hook 会在每个步骤中强制 continuation，除非它自我限制（`TODO(stop-loop-guard)`）。
+- **`Stop` 只支持部分功能：** 首次阻塞会强制再执行一个模型步骤，同一轮次中的后续检查会收到 `stop_hook_active: true`；第二次阻塞会关闭轮次，而不是继续循环。`last_assistant_message` 仍为 `null`，且不会强制执行 `{"continue": false}`。
 - **通用 payload 与输出字段只支持部分功能：** 每个已映射事件都报告静态配置的 `model` 与 `permission_mode: "default"`，而非当前 Codex 运行时值。`systemMessage` 会被记录并触发警告，但不呈现，`{"continue": false}` 会被记录但不会应用 Codex 事件特定停止行为（`TODO(hook-continue-false)`）。
-- **配置加载与执行只支持部分功能：** 一个进程级 `configPath` 会在加载时解析；尚未实现 Codex 的活动用户层、项目层、会话层、系统／托管层和插件层、信任控制与内联 `config.toml` hook 形式（`TODO(per-session-hook-config)`）。只运行同步 `command` handler，忽略 `statusMessage` 与 `commandWindows` 等当前元数据，匹配 handler 串行运行，而非使用 Codex 的并发启动语义。
+- **配置加载与执行只支持部分功能：** 绝对共享路径或相对的逐会话项目发现会选择一个 JSON 文件；尚未实现 Codex 合并的用户层、会话层、系统／托管层和插件层、信任控制与内联 `config.toml` hook 形式。只运行同步 `command` handler，忽略 `statusMessage` 与 `commandWindows` 等当前元数据，匹配 handler 串行运行，而非使用 Codex 的并发启动语义。

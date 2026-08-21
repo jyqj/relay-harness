@@ -8,12 +8,13 @@
 // it escapes ancestor overflow clipping (the sidebar rail clips its column)
 // without a portal.
 
-import { cloneElement, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { cloneElement, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { FocusEventHandler, MouseEventHandler, MutableRefObject, ReactElement, Ref } from 'react'
+import { usePresence } from './usePresence.ts'
 import css from './Tooltip.module.css'
 
 /** Bubble placement relative to the anchor. */
-export type TooltipSide = 'right' | 'bottom' | 'top'
+export type TooltipSide = 'right' | 'left' | 'bottom' | 'top'
 
 /** Props Tooltip injects into its anchor child; the child's own handlers are chained ahead of the tooltip's. */
 interface AnchorProps {
@@ -51,16 +52,19 @@ export function Tooltip({ label, side = 'right', delayMs = 0, disabled = false, 
   // The anchor's edges rather than final coordinates: a vertical flip has to
   // re-derive the bubble's own top from the opposite edge.
   const [pos, setPos] = useState<{ x: number; top: number; bottom: number } | null>(null)
+  const [visible, setVisible] = useState(false)
+  const { mounted, state } = usePresence(visible)
   // Where the bubble actually sits, which is the requested side until the
   // viewport refuses it.
   const [placement, setPlacement] = useState<TooltipSide>(side)
   const bubble = useRef<HTMLSpanElement | null>(null)
-  const resolvedLabel = pos === null
-    ? null
-    : typeof label === 'function' ? label() : label
+  const resolvedLabel = useMemo(() => {
+    if (!mounted || pos === null) return null
+    return typeof label === 'function' ? label() : label
+  }, [mounted, pos, label])
   const y = pos === null
     ? 0
-    : placement === 'right'
+    : placement === 'right' || placement === 'left'
       ? pos.top + (pos.bottom - pos.top) / 2
       : placement === 'top' ? pos.top - 8 : pos.bottom + 8
   const EDGE_MARGIN = 12
@@ -79,6 +83,11 @@ export function Tooltip({ label, side = 'right', delayMs = 0, disabled = false, 
       if (el === null) return
       el.style.left = `${pos.x}px`
       const r = el.getBoundingClientRect()
+      if (side === 'left') {
+        el.style.left = `${pos.x - r.width - 10}px`
+        if (r.left - r.width - 10 < EDGE_MARGIN) el.style.left = `${EDGE_MARGIN}px`
+        return
+      }
       let dx = 0
       if (r.right > window.innerWidth - EDGE_MARGIN) dx = window.innerWidth - EDGE_MARGIN - r.right
       if (r.left + dx < EDGE_MARGIN) dx = EDGE_MARGIN - r.left
@@ -94,7 +103,7 @@ export function Tooltip({ label, side = 'right', delayMs = 0, disabled = false, 
     fit()
     window.addEventListener('resize', fit)
     return () => { window.removeEventListener('resize', fit) }
-  }, [placement, pos, resolvedLabel, side])
+  }, [mounted, placement, pos, resolvedLabel, side])
   const showTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   // Hover and focus are independent triggers: the bubble hides only after
   // BOTH clear (hovering away from a focused anchor must not drop it).
@@ -111,10 +120,14 @@ export function Tooltip({ label, side = 'right', delayMs = 0, disabled = false, 
     if (disabled) {
       cancelShow()
       triggers.current = { hover: false, focus: false }
-      setPos(null)
+      setVisible(false)
     }
     return cancelShow
   }, [cancelShow, disabled])
+
+  useEffect(() => {
+    if (!mounted && !visible) setPos(null)
+  }, [mounted, visible])
 
   const show = () => {
     if (disabled) return
@@ -125,7 +138,8 @@ export function Tooltip({ label, side = 'right', delayMs = 0, disabled = false, 
     // Every show starts from the requested side; the fit pass flips it only
     // where this anchor's position demands it.
     setPlacement(side)
-    setPos({ x: side === 'right' ? r.right + 10 : r.left + r.width / 2, top: r.top, bottom: r.bottom })
+    setPos({ x: side === 'right' ? r.right + 10 : side === 'left' ? r.left : r.left + r.width / 2, top: r.top, bottom: r.bottom })
+    setVisible(true)
   }
   const showAfterHoverDelay = () => {
     cancelShow()
@@ -140,7 +154,7 @@ export function Tooltip({ label, side = 'right', delayMs = 0, disabled = false, 
   }
   const hide = () => {
     cancelShow()
-    if (!triggers.current.hover && !triggers.current.focus) setPos(null)
+    if (!triggers.current.hover && !triggers.current.focus) setVisible(false)
   }
 
   return (
@@ -148,15 +162,18 @@ export function Tooltip({ label, side = 'right', delayMs = 0, disabled = false, 
       {cloneElement(children, {
         ref: mergedRef,
         onMouseEnter: (e) => { children.props.onMouseEnter?.(e); triggers.current.hover = true; showAfterHoverDelay() },
-        onMouseLeave: (e) => { children.props.onMouseLeave?.(e); triggers.current.hover = false; cancelShow(); setPos(null) },
+        onMouseLeave: (e) => { children.props.onMouseLeave?.(e); triggers.current.hover = false; cancelShow(); setVisible(false) },
         onFocus: (e) => { children.props.onFocus?.(e); triggers.current.focus = true; cancelShow(); show() },
         onBlur: (e) => { children.props.onBlur?.(e); triggers.current.focus = false; hide() },
       })}
-      {pos !== null && (
+      {mounted && pos !== null && (
         <span
           ref={bubble}
           className={css.bubble}
+          data-dsh-motion="fade"
+          data-state={state}
           data-side={placement}
+          aria-hidden={visible ? undefined : true}
           style={{ left: pos.x, top: y, ...maxWidth === undefined ? {} : { maxWidth } }}
           role="tooltip"
         >

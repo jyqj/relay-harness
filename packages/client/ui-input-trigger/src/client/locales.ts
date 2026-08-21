@@ -9,6 +9,8 @@ export const zh = {
   'command': '命令',
   'skill': '技能',
   'subagent': '子智能体',
+  'path': '文件',
+  'dshbot': '成员',
   'loading': '正在加载…',
   'suggestions.aria': '触发候选建议',
 } satisfies Record<string, string>
@@ -21,6 +23,8 @@ export const en = {
   'command': 'Commands',
   'skill': 'Skills',
   'subagent': 'Subagents',
+  'path': 'Files',
+  'dshbot': 'Members',
   'loading': 'Loading…',
   'suggestions.aria': 'Trigger suggestions',
 } satisfies Record<MenuKey, string>

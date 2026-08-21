@@ -99,7 +99,11 @@ describe('web e2e: message IconActions and clocks on settled history', () => {
     onTestFailed(() => saveFailureShot(page, 'web-e2e-message-actions'))
     const groupRow = page.locator('[role="treeitem"]').first()
     await groupRow.waitFor({ timeout: 15_000 })
-    await groupRow.click()
+    // Startup auto-selection opens the most recent session, pre-expanding its
+    // group; the header toggles on click, so expand only when it is collapsed.
+    if (await groupRow.getAttribute('aria-expanded') !== 'true') {
+      await groupRow.click()
+    }
     const sessionRow = page.locator('[role="treeitem"]').nth(1)
     await sessionRow.waitFor({ timeout: 10_000 })
     await sessionRow.click()
@@ -121,7 +125,13 @@ describe('web e2e: message IconActions and clocks on settled history', () => {
     await branchButtons.first().focus()
     await expect.poll(() => page.getByRole('tooltip').textContent(), { timeout: 5_000 })
       .toBe('Available only on the last message of a completed turn')
-    await expect.poll(() => page.getByRole('button', { name: 'Edit' }).count(), { timeout: 5_000 }).toBe(0)
+    // The edit plugin arms the NEWEST user message (the second
+    // prompt); the queued-dock edit button (named Edit queued message) is absent here.
+    await expect.poll(() => page.getByRole('button', { name: 'Edit' }).count(), { timeout: 5_000 }).toBe(1)
+    await expect.poll(
+      () => page.getByRole('button', { name: 'Edit' }).first().getAttribute('aria-disabled'),
+      { timeout: 5_000 },
+    ).toBeNull()
   }, 60_000)
 
   it.skipIf(MODE === 'record')('matches the conversation aria golden with IconActions and clocks', async () => {
@@ -132,6 +142,13 @@ describe('web e2e: message IconActions and clocks on settled history', () => {
     // Keep a footer focused so opacity-hidden actions stay in the a11y tree
     // as an active/focused control during the capture.
     await page.getByRole('button', { name: 'Copy' }).first().focus()
+    // The edit plugin arms the newest user message; the queued-dock
+    // edit button (named Edit queued message) is absent here.
+    await expect.poll(() => page.getByRole('button', { name: 'Edit' }).count(), { timeout: 10_000 }).toBe(1)
+    await expect.poll(
+      () => page.getByRole('button', { name: 'Edit' }).first().getAttribute('aria-disabled'),
+      { timeout: 10_000 },
+    ).toBeNull()
     const snapshot = (await captureStableAria(page, '[class*="centerCol"]', scaffold.workspaceCwd))
       .split(SEED_ID).join('{{seededId}}')
     await compareOrRefreshGolden(UI_EXPECTED, snapshot, MODE)

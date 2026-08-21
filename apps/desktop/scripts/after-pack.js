@@ -1,0 +1,659 @@
+const { execFileSync, spawnSync } = require('child_process');
+const fs = require('fs');
+const path = require('path');
+const { missingRuntimeFiles } = require('../src/main/plugin-runtime-files');
+const {
+  ensureGhosttyAssetsInHarness,
+  harnessHasGhosttyAssets,
+  missingGhosttyAssetPaths,
+} = require('../src/shared/ghostty-assets');
+
+const SKIP_DIRS = new Set([
+  '.git',
+  '.github',
+  '.agents',
+  '.artifacts',
+  '.cache',
+  '.sessions',
+  '.storages',
+  '.turbo',
+  '.vite',
+  '.vite-temp',
+  '.worktrees',
+  '__pycache__',
+  'coverage',
+  'docs',
+  'examples',
+  'python',
+  'website',
+  'worktrees',
+]);
+
+// 纯构建期工具，运行时不需要；按 pnpm 目录名（<name>@<version> 或 @scope+<name>@<version>）匹配
+const DEV_ONLY_NAMES = new Set([
+  'typescript',
+  'tsx',
+  'ts-node',
+  'vite',
+  'vitest',
+  '@vitest',
+  'eslint',
+  '@eslint',
+  '@typescript-eslint',
+  'turbo',
+  'rollup',
+  'webpack',
+  'jest',
+  '@jest',
+  'playwright',
+  '@playwright',
+  'storybook',
+  '@storybook',
+  'prettier',
+  'knip',
+  'oxlint',
+  'typedoc',
+  'eslint-plugin',
+  'babel',
+  '@babel',
+  'swc',
+  '@swc',
+  'nx',
+  'husky',
+  'lint-staged',
+]);
+
+function harnessSourceRoot(projectDir) {
+  return path.resolve(projectDir, '..', '..');
+}
+
+function missingPluginDependencies(packageDir) {
+  return missingRuntimeFiles(packageDir);
+}
+
+function defaultNpmInstall(packageDir) {
+  const nm = path.join(packageDir, 'node_modules');
+  if (fs.existsSync(nm)) {
+    fs.rmSync(nm, { recursive: true, force: true });
+  }
+  const npmCmd = process.platform === 'win32' ? 'npm.cmd' : 'npm';
+  const lockFile = path.join(packageDir, 'package-lock.json');
+  const args = fs.existsSync(lockFile)
+    ? ['ci', '--omit=dev', '--ignore-scripts', '--no-fund', '--no-audit']
+    : ['install', '--omit=dev', '--ignore-scripts', '--no-fund', '--no-audit'];
+  const result = spawnSync(npmCmd, args, {
+    cwd: packageDir,
+    stdio: 'inherit',
+    env: process.env,
+    windowsHide: true,
+    shell: process.platform === 'win32',
+  });
+  if (result.status !== 0) {
+    throw new Error(`${npmCmd} ${args.join(' ')} failed in ${packageDir} (status ${result.status})`);
+  }
+}
+
+/**
+ * extraResources from a plugin directory drops that directory's node_modules.
+ * Copy vendor/<name>/node_modules into the packaged tree when a declared
+ * dependency or its export file is still missing.
+ */
+function restoreVendoredPluginNodeModules(projectDir, resources, packageName) {
+  const srcNm = path.join(projectDir, 'vendor', packageName, 'node_modules');
+  const destPkg = path.join(resources, 'vendor', packageName);
+  if (!fs.existsSync(path.join(destPkg, 'package.json'))) {
+    return { restored: false, reason: 'missing-dest-package' };
+  }
+  if (!fs.existsSync(srcNm)) {
+    return { restored: false, reason: 'missing-source-node-modules' };
+  }
+  const missing = missingPluginDependencies(destPkg);
+  if (missing.length === 0) {
+    return { restored: false, reason: 'already-present' };
+  }
+  fs.cpSync(srcNm, path.join(destPkg, 'node_modules'), { recursive: true, force: true });
+  return { restored: true, missing };
+}
+
+/**
+ * Git-tracked plugin node_modules can omit export files (repo dist/ ignore).
+ * Wipe and npm-install from package.json when the packaged tree is incomplete.
+ * @param {string} packageDir
+ * @param {{ run?: (dir: string) => void, skipIfComplete?: boolean }} [options]
+ */
+function installPluginRuntimeDeps(packageDir, options = {}) {
+  if (!fs.existsSync(path.join(packageDir, 'package.json'))) {
+    return { installed: false, reason: 'missing-package' };
+  }
+  const missing = missingPluginDependencies(packageDir);
+  if (options.skipIfComplete && missing.length === 0) {
+    return { installed: false, reason: 'already-present' };
+  }
+  const run = options.run || defaultNpmInstall;
+  run(packageDir);
+  return { installed: true, missing };
+}
+
+function assertVendoredPluginRuntimeDeps(resources, packageName) {
+  const destPkg = path.join(resources, 'vendor', packageName);
+  const missing = missingPluginDependencies(destPkg);
+  if (missing.length) {
+    throw new Error(`packaged ${packageName} is missing node_modules: ${missing.join(', ')}`);
+  }
+}
+
+function longPath(target) {
+  const abs = path.resolve(target);
+  if (process.platform !== 'win32' || abs.length < 240) {
+    return abs;
+  }
+  if (abs.startsWith('\\\\?\\')) {
+    return abs;
+  }
+  if (abs.startsWith('\\\\')) {
+    return `\\\\?\\UNC\\${abs.slice(2)}`;
+  }
+  return `\\\\?\\${abs}`;
+}
+
+function isDevOnlyPnpmEntry(name) {
+  // pnpm 条目名: typescript@5.6.3 | @types+node@22.5.0 | @eslint+eslintrc@3.1.0
+  const parts = name.split('+');
+  const scope = parts.length > 1 ? parts[0] : null; // 带 @ 前缀
+  const base = parts[parts.length - 1].split('@')[0];
+  if (scope && scope.startsWith('@types')) {
+    return true;
+  }
+  if (DEV_ONLY_NAMES.has(base) || (scope && DEV_ONLY_NAMES.has(scope))) {
+    return true;
+  }
+  return false;
+}
+
+function shouldSkip(src, root, expandNested = false, skipStore = false) {
+  const rel = path.relative(root, src);
+  if (!rel || rel.startsWith('..')) {
+    return false;
+  }
+  const parts = rel.split(path.sep);
+  let nodeModulesSeen = 0;
+  for (let i = 0; i < parts.length; i += 1) {
+    const part = parts[i];
+    if (SKIP_DIRS.has(part)) {
+      return true;
+    }
+    if (skipStore && part === '.pnpm') {
+      // deploy 目录：顶层链接已解引用覆盖全部运行时包，.pnpm store 是硬链接重复，
+      // 跳过可避免 10 倍展开（体积与内存）
+      return true;
+    }
+    if (part === 'node_modules') {
+      nodeModulesSeen += 1;
+      if (nodeModulesSeen >= 3 && !expandNested) {
+        // .pnpm 条目内的二级以上嵌套 node_modules：对完整 workspace 是冗余链接；
+        // 对 deploy 目录（expandNested）是版本隔离依赖，必须保留
+        return true;
+      }
+      if (i + 1 < parts.length && isDevOnlyPnpmEntry(parts[i + 1])) {
+        return true; // node_modules 下的 dev-only 包
+      }
+    }
+    if ((part === 'src' || part === 'tests' || part === '__tests__') && /^(packages|apps)(\\|\/)/.test(parts.slice(0, i).join(path.sep))) {
+      // 只跳过 packages/ apps/ 下的源码与测试目录（node_modules 内的不动）
+      return true;
+    }
+  }
+  return false;
+}
+
+function realOf(target) {
+  try {
+    return fs.realpathSync(path.resolve(target));
+  } catch {
+    return path.resolve(target);
+  }
+}
+
+/** Runtime skill files under shipped agent presets are Markdown (`SKILL.md`). */
+function isShippedPresetMarkdown(src, root, base) {
+  if (!/\.md$/i.test(base)) {
+    return false;
+  }
+  const rel = path.relative(path.resolve(root), path.resolve(src)).split(path.sep);
+  return rel.includes('agent-presets');
+}
+
+/**
+ * 收集需要复制的文件：
+ * - 递归 + 回溯维护祖先链（防符号链接环），复用同一个 Set，避免 O(n²) 内存
+ * - 复制时由 fs.copyFile 解引用链接（复制目标内容）
+ * - flat: 拍平模式——.pnpm store 条目提升到 node_modules/<pkg>（短路径，避免 NSIS
+ *   长路径失败），全部内容保留（不丢包）
+ */
+function collectFiles(root, destRoot, expandNested = false, flat = false) {
+  const files = [];
+  const ancestors = new Set();
+  const visitedDirectories = new Set();
+  const topNodeModules = path.join(path.resolve(destRoot), 'node_modules');
+
+  function walk(src, dest) {
+    if (shouldSkip(src, root, expandNested)) {
+      return;
+    }
+    if (flat && src.endsWith(`${path.sep}node_modules`) && dest !== topNodeModules) {
+      // 任意 node_modules 目录（根 / .pnpm 条目 / 包内嵌套）都提升到顶层，
+      // 避免超长路径触发 NSIS 260 字符限制
+      dest = topNodeModules;
+    }
+    let lstat;
+    try {
+      lstat = fs.lstatSync(src);
+    } catch {
+      return;
+    }
+
+    if (lstat.isSymbolicLink() || lstat.isDirectory()) {
+      const real = realOf(src);
+      if (ancestors.has(real)) {
+        return; // 环
+      }
+      const visitKey = `${real}\0${path.resolve(dest)}`;
+      if (visitedDirectories.has(visitKey)) {
+        return;
+      }
+      visitedDirectories.add(visitKey);
+      let realStat;
+      try {
+        realStat = fs.statSync(real);
+      } catch {
+        return;
+      }
+      if (realStat.isFile()) {
+        files.push({ src: real, dest });
+        return;
+      }
+      ancestors.add(real);
+      let names;
+      try {
+        names = fs.readdirSync(src);
+      } catch {
+        ancestors.delete(real);
+        return;
+      }
+      for (const name of names) {
+        walk(path.join(src, name), path.join(dest, name));
+      }
+      ancestors.delete(real);
+      return;
+    }
+
+    if (lstat.isFile()) {
+      const base = path.basename(src);
+      if (/\.(map|tsbuildinfo|md|d\.ts)$/i.test(base) && !isShippedPresetMarkdown(src, root, base)) {
+        return;
+      }
+      if (/^(license|licence|changelog|changes|authors|contributing)(\.|$)/i.test(base)) {
+        return;
+      }
+      files.push({ src, dest });
+    }
+  }
+
+  walk(path.resolve(root), path.resolve(destRoot));
+  return files;
+}
+
+/** 并发复制（fs.copyFile 总是解引用链接，复制目标内容；EBUSY 重试以对抗杀软扫描） */
+async function copyFiles(files, limit = 32) {
+  let idx = 0;
+  let retried = 0;
+  const workers = Array.from({ length: limit }, async () => {
+    while (idx < files.length) {
+      const item = files[idx];
+      idx += 1;
+      fs.mkdirSync(longPath(path.dirname(item.dest)), { recursive: true });
+      for (let attempt = 0; ; attempt += 1) {
+        try {
+          await fs.promises.copyFile(longPath(item.src), longPath(item.dest));
+          break;
+        } catch (error) {
+          if (error.code === 'EBUSY' && attempt < 3) {
+            retried += 1;
+            await new Promise((r) => setTimeout(r, 1500 * (attempt + 1)));
+            continue;
+          }
+          throw error;
+        }
+      }
+    }
+  });
+  await Promise.all(workers);
+  if (retried) {
+    console.log(`（EBUSY 重试 ${retried} 次）`);
+  }
+  return files.length;
+}
+
+function deployCliEntries(deployDir) {
+  return fs.readdirSync(deployDir, { withFileTypes: true })
+    .filter((entry) => !entry.name.startsWith('.') && entry.name !== 'node_modules' && entry.name !== 'vendor');
+}
+
+/**
+ * 用精简 deploy 目录组装 resources/vendor/deepseek-harness：
+ *   apps/cli     <- deploy 根内容（lib/ config/ package.json，不含 node_modules）
+ *   apps/web/dist<- vendor 源码构建产物
+ *   node_modules <- deploy/node_modules（扁平依赖，完整展开以保留版本隔离嵌套）
+ *   vendor       <- deploy/vendor（本地 cordis 插件包源）
+ * 该结构已被验证可完整启动 dsh web（scripts/patch-deploy.js 迭代补齐）。
+ */
+async function assembleFromDeploy(projectDir, deployDir, harnessDest) {
+  const vendorSrc = harnessSourceRoot(projectDir);
+  // 1) apps/cli <- deploy 根内容（排除 node_modules 与 vendor，它们单独复制）
+  const cliDest = path.join(harnessDest, 'apps', 'cli');
+  let total = 0;
+  for (const n of deployCliEntries(deployDir)) {
+    const files = collectFiles(path.join(deployDir, n.name), path.join(cliDest, n.name), true);
+    total += await copyFiles(files, 32);
+  }
+  // 2) node_modules：
+  //    a) 顶层条目逐个收集（链接解引用后以真实路径为根）
+  //    b) 拍平 .pnpm store：每个条目的包内容复制到顶层（目标已存在则跳过），
+  //       使顶层覆盖全部运行时包，同时避免硬链接重复展开
+  const nmSrc = path.join(deployDir, 'node_modules');
+  const nmDest = path.join(harnessDest, 'node_modules');
+  for (const n of fs.readdirSync(nmSrc, { withFileTypes: true })) {
+    if (n.name === '.pnpm') {
+      continue;
+    }
+    const s = path.join(nmSrc, n.name);
+    const d = path.join(nmDest, n.name);
+    const root = n.isSymbolicLink() ? realOf(s) : s;
+    const files = collectFiles(root, d, false, false);
+    total += await copyFiles(files, 32);
+  }
+  const storeDir = path.join(nmSrc, '.pnpm');
+  if (fs.existsSync(storeDir)) {
+    const flattened = [];
+    const seen = new Set();
+    const flattenPkg = (pkgDir, destDir) => {
+      if (!fs.existsSync(path.join(pkgDir, 'package.json'))) {
+        return;
+      }
+      if (seen.has(destDir) || fs.existsSync(path.join(destDir, 'package.json'))) {
+        return;
+      }
+      seen.add(destDir);
+      const files = collectFiles(pkgDir, destDir, false, false);
+      for (const f of files) {
+        flattened.push(f);
+      }
+    };
+    for (const entry of fs.readdirSync(storeDir, { withFileTypes: true })) {
+      if (!entry.isDirectory()) {
+        continue;
+      }
+      const entryNm = path.join(storeDir, entry.name, 'node_modules');
+      if (!fs.existsSync(entryNm)) {
+        continue;
+      }
+      // 条目名 -> 包名：@scope+name@ver 或 @scope+name_hash -> [@scope, name]；name@ver / name_hash -> [name]
+      const parts = entry.name.split('+');
+      const scope = parts.length > 1 ? parts[0] : null;
+      const bare = (parts.length > 1 ? parts[1] : parts[0]).split('@')[0].split('_')[0];
+      flattenPkg(
+        path.join(entryNm, scope || '', bare),
+        path.join(nmDest, scope || '', bare)
+      );
+    }
+    // 共享目录 .pnpm/node_modules（被多个条目引用的包；条目是 junction 链接）
+    const sharedDir = path.join(storeDir, 'node_modules');
+    if (fs.existsSync(sharedDir)) {
+      for (const n of fs.readdirSync(sharedDir, { withFileTypes: true })) {
+        if (!n.isDirectory() && !n.isSymbolicLink()) {
+          continue;
+        }
+        const sharedPkg = path.join(sharedDir, n.name);
+        if (n.name.startsWith('@')) {
+          for (const s of fs.readdirSync(sharedPkg, { withFileTypes: true })) {
+            if (s.isDirectory() || s.isSymbolicLink()) {
+              flattenPkg(path.join(sharedPkg, s.name), path.join(nmDest, n.name, s.name));
+            }
+          }
+        } else {
+          flattenPkg(sharedPkg, path.join(nmDest, n.name));
+        }
+      }
+    }
+    console.log(`拍平 .pnpm store: ${flattened.length} 个文件`);
+    total += await copyFiles(flattened, 32);
+  }
+  const jobs = [
+    [path.join(deployDir, 'vendor'), path.join(harnessDest, 'vendor')],
+    [path.join(vendorSrc, 'apps', 'web', 'dist'), path.join(harnessDest, 'apps', 'web', 'dist')],
+  ];
+  for (const [src, dest] of jobs) {
+    if (!fs.existsSync(src)) {
+      throw new Error(`精简目录缺少 ${src}`);
+    }
+    const files = collectFiles(src, dest, false, false);
+    total += await copyFiles(files, 32);
+  }
+  return total;
+}
+
+function resolveResourcesDir(context) {
+  if (context?.packager && typeof context.packager.getResourcesDir === 'function') {
+    return context.packager.getResourcesDir(context.appOutDir);
+  }
+  if (context?.electronPlatformName === 'darwin') {
+    const product = context.packager?.appInfo?.productFilename || 'Deepseek-Harness-Desktop';
+    return path.join(context.appOutDir, `${product}.app`, 'Contents', 'Resources');
+  }
+  return path.join(context.appOutDir, 'resources');
+}
+
+function copyBundledNode(destDir) {
+  const src = [
+    process.env.NODE_BINARY,
+    process.execPath,
+    'C:\\Program Files\\nodejs\\node.exe',
+    'C:\\Program Files (x86)\\nodejs\\node.exe',
+  ].find((candidate) => candidate && fs.existsSync(candidate) && !/electron/i.test(candidate));
+  if (!src) {
+    throw new Error('打包时未找到 Node.js 可执行文件，安装包将无法启动官方 Web UI');
+  }
+  const dest = path.join(destDir, process.platform === 'win32' ? 'node.exe' : 'node');
+  fs.copyFileSync(src, dest);
+  if (process.platform !== 'win32') {
+    fs.chmodSync(dest, 0o755);
+  }
+  return dest;
+}
+
+function copyBundledPnpm(projectDir, destDir) {
+  const src = path.join(projectDir, 'node_modules', 'pnpm');
+  if (!fs.existsSync(path.join(src, 'bin', 'pnpm.cjs'))) {
+    throw new Error('打包时未找到 pnpm，请先 npm install');
+  }
+  const dest = path.join(destDir, 'pnpm');
+  fs.cpSync(src, dest, { recursive: true, dereference: true });
+  return dest;
+}
+
+function resolveDeployDir(deployEnv) {
+  if (!deployEnv || deployEnv === 'off') {
+    return null;
+  }
+  return path.resolve(deployEnv);
+}
+
+function nodePtyPrebuildRelative(platform = process.platform, arch = process.arch) {
+  const folder = `${platform}-${arch}`;
+  if (platform === 'win32') {
+    return path.join('prebuilds', folder, 'conpty.node');
+  }
+  return path.join('prebuilds', folder, 'pty.node');
+}
+
+function resolveNodePtyRoot(harnessDest) {
+  const direct = path.join(harnessDest, 'node_modules', 'node-pty');
+  if (fs.existsSync(path.join(direct, 'package.json'))) {
+    return direct;
+  }
+  throw new Error('安装包缺少 node-pty');
+}
+
+function assertHarnessVersions(harnessDest, pin) {
+  if (!pin || typeof pin.npm !== 'string' || pin.npm.trim() === '') {
+    throw new Error('assertHarnessRuntime requires pin.npm');
+  }
+  const rootPkg = JSON.parse(fs.readFileSync(path.join(harnessDest, 'package.json'), 'utf8'));
+  const cliPkg = JSON.parse(fs.readFileSync(path.join(harnessDest, 'apps', 'cli', 'package.json'), 'utf8'));
+  if (rootPkg.version !== pin.npm || cliPkg.version !== pin.npm) {
+    throw new Error(
+      `安装包 Harness 版本 ${rootPkg.version}/${cliPkg.version} 与 pin.npm ${pin.npm} 不一致`,
+    );
+  }
+}
+
+function assertNodePtyPrebuild(harnessDest, platform = process.platform, arch = process.arch) {
+  const relative = nodePtyPrebuildRelative(platform, arch);
+  const native = path.join(resolveNodePtyRoot(harnessDest), relative);
+  if (!fs.existsSync(native)) {
+    throw new Error(`安装包缺少 node-pty prebuild：${relative}`);
+  }
+}
+
+function assertHarnessRuntime(harnessDest, pin) {
+  const requiredFiles = [
+    path.join('apps', 'cli', 'lib', 'bin.js'),
+    path.join('apps', 'web', 'dist', 'index.html'),
+    path.join('node_modules', '@deepseek-ai', 'dsh-app-boot', 'lib', 'features.js'),
+    path.join('node_modules', '@deepseek-ai', 'dsh-client-modules', 'lib', 'index.js'),
+    path.join('node_modules', '@deepseek-ai', 'dsh-client-ui-conversation', 'lib', 'client.js'),
+    path.join('node_modules', '@deepseek-ai', 'dsh-mcp-servers-file', 'lib', 'index.js'),
+    path.join('node_modules', '@deepseek-ai', 'dsh-host-mcp-servers', 'lib', 'index.js'),
+    path.join('node_modules', '@deepseek-ai', 'dsh-host-skill-inventory', 'lib', 'index.js'),
+    path.join('node_modules', '@deepseek-ai', 'dsh-client-ui-settings-mcp', 'lib', 'index.js'),
+    path.join('node_modules', '@deepseek-ai', 'dsh-client-ui-settings-mcp', 'lib', 'client.js'),
+    path.join('node_modules', '@deepseek-ai', 'dsh-client-ui-settings-skills', 'lib', 'index.js'),
+    path.join('node_modules', '@deepseek-ai', 'dsh-client-ui-settings-skills', 'lib', 'client.js'),
+  ];
+  const missing = requiredFiles.filter((relative) => !fs.existsSync(path.join(harnessDest, relative)));
+  if (missing.length > 0) {
+    throw new Error(`安装包缺少 Harness 运行时产物：${missing.join(', ')}`);
+  }
+
+  // Root client tsdown does not run copy-ghostty-assets; fill lib/assets before the gate.
+  ensureGhosttyAssetsInHarness(harnessDest);
+  if (!harnessHasGhosttyAssets(harnessDest)) {
+    throw new Error(
+      `安装包缺少终端 Ghostty 资源（dirname(client.js)/assets）：${missingGhosttyAssetPaths(harnessDest).join(', ')}`,
+    );
+  }
+
+  const features = fs.readFileSync(
+    path.join(harnessDest, 'node_modules', '@deepseek-ai', 'dsh-app-boot', 'lib', 'features.js'),
+    'utf8',
+  );
+  const modules = fs.readFileSync(
+    path.join(harnessDest, 'node_modules', '@deepseek-ai', 'dsh-client-modules', 'lib', 'index.js'),
+    'utf8',
+  );
+  const conversation = fs.readFileSync(
+    path.join(harnessDest, 'node_modules', '@deepseek-ai', 'dsh-client-ui-conversation', 'lib', 'client.js'),
+    'utf8',
+  );
+  const requiredFeatures = [
+    'conversation.chat.user-actions',
+    'session.fork.beforeSeq',
+    'session.fork.blank',
+  ];
+  const missingFeatures = requiredFeatures.filter((feature) => !features.includes(feature));
+  if (missingFeatures.length > 0) {
+    throw new Error(`安装包的 Harness 缺少宿主能力：${missingFeatures.join(', ')}`);
+  }
+  const cliLib = path.join(harnessDest, 'apps', 'cli', 'lib');
+  const cliGatePresent = fs.readdirSync(cliLib)
+    .filter((name) => name.endsWith('.js'))
+    .some((name) => {
+      const code = fs.readFileSync(path.join(cliLib, name), 'utf8');
+      return code.includes('missingHostFeatures') && code.includes('parseCompatibilityFeatures');
+    });
+  if (!cliGatePresent) {
+    throw new Error('安装包的 dsh CLI 缺少插件兼容性门禁');
+  }
+  if (!modules.includes('missingHostFeatures') || !modules.includes('parseCompatibilityFeatures')) {
+    throw new Error('安装包的 Browser 模块图缺少插件兼容性门禁');
+  }
+  if (!conversation.includes('conversation.chat.user-actions')) {
+    throw new Error('安装包的会话 UI 缺少用户消息 action slot');
+  }
+  assertHarnessVersions(harnessDest, pin);
+  assertNodePtyPrebuild(harnessDest);
+}
+
+module.exports = async function afterPack(context) {
+  const projectDir = context.packager.projectDir;
+  const resources = resolveResourcesDir(context);
+  restoreVendoredPluginNodeModules(projectDir, resources, 'dshmarket');
+  installPluginRuntimeDeps(path.join(resources, 'vendor', 'dshmarket'), { skipIfComplete: true });
+  assertVendoredPluginRuntimeDeps(resources, 'dshmarket');
+  const harnessDest = path.join(resources, 'vendor', 'deepseek-harness');
+  const deployDir = resolveDeployDir(process.env.DSH_DEPLOY_DIR);
+  const started = Date.now();
+
+  let copied;
+  if (deployDir) {
+    console.log(`使用精简目录 ${deployDir} 组装 resources/vendor`);
+    copied = await assembleFromDeploy(projectDir, deployDir, harnessDest);
+  } else {
+    console.log('使用当前 monorepo Harness 全量复制（拍平 .pnpm 到顶层，避免超长路径）');
+    const harnessSrc = harnessSourceRoot(projectDir);
+    console.log('收集文件清单（解引用 pnpm 链接，跳过循环与 dev-only 包）...');
+    const files = collectFiles(harnessSrc, harnessDest, false, true);
+    console.log(`待复制 ${files.length} 个文件，收集耗时 ${((Date.now() - started) / 1000).toFixed(1)}s（并发复制中）`);
+    copied = await copyFiles(files, 32);
+  }
+
+  const nodeDest = copyBundledNode(resources);
+  const pnpmDest = copyBundledPnpm(projectDir, resources);
+  const pin = JSON.parse(fs.readFileSync(path.join(projectDir, 'vendor', 'harness-upstream.json'), 'utf8'));
+  fs.mkdirSync(path.join(resources, 'vendor'), { recursive: true });
+  fs.writeFileSync(
+    path.join(resources, 'vendor', 'harness-upstream.json'),
+    `${JSON.stringify(pin, null, 2)}\n`,
+  );
+  assertHarnessRuntime(harnessDest, pin);
+
+  const archive = path.join(resources, 'vendor', 'deepseek-harness.tar');
+  console.log('打包运行时为单个 tar，减少 NSIS 解压文件数…');
+  execFileSync('tar', ['-cf', path.basename(archive), '-C', path.basename(harnessDest), '.'], {
+    cwd: path.dirname(harnessDest),
+    stdio: 'inherit',
+    env: { ...process.env, COPYFILE_DISABLE: '1' },
+  });
+  if (!fs.existsSync(archive) || fs.statSync(archive).size < 1024) {
+    throw new Error('运行时 tar 生成失败');
+  }
+  fs.rmSync(longPath(harnessDest), { recursive: true, force: true });
+
+  console.log(`已复制 ${copied} 个文件，写入 ${nodeDest} 与 ${pnpmDest}`);
+  console.log(`运行时归档 ${((fs.statSync(archive).size / 1048576).toFixed(1))} MB`);
+  console.log(`afterPack 完成 ${((Date.now() - started) / 1000).toFixed(1)}s`);
+};
+
+module.exports.collectFiles = collectFiles;
+module.exports.copyFiles = copyFiles;
+module.exports.deployCliEntries = deployCliEntries;
+module.exports.resolveDeployDir = resolveDeployDir;
+module.exports.resolveResourcesDir = resolveResourcesDir;
+module.exports.assertHarnessRuntime = assertHarnessRuntime;
+module.exports.assertHarnessVersions = assertHarnessVersions;
+module.exports.assertNodePtyPrebuild = assertNodePtyPrebuild;
+module.exports.assertVendoredPluginRuntimeDeps = assertVendoredPluginRuntimeDeps;
+module.exports.installPluginRuntimeDeps = installPluginRuntimeDeps;
+module.exports.nodePtyPrebuildRelative = nodePtyPrebuildRelative;
+module.exports.restoreVendoredPluginNodeModules = restoreVendoredPluginNodeModules;
+module.exports.ensureGhosttyAssetsInHarness = ensureGhosttyAssetsInHarness;

@@ -8,6 +8,7 @@
 
 import { randomUUID } from 'node:crypto'
 import { availableParallelism } from 'node:os'
+import { isAbsolute, join } from 'node:path'
 import * as vm from 'node:vm'
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
@@ -16,6 +17,11 @@ import type { WorkflowRun, WorkflowRunInfo, WorkflowStartRequest } from '@deepse
 import { WorkerRun } from './host.ts'
 import { validateMeta } from './meta.ts'
 import type { WorkerInit, WorkerLimits } from './types.ts'
+import {
+  WorkflowJournal,
+  WorkflowJournalError,
+  workflowRequestHash,
+} from './journal.ts'
 
 export { validateMeta } from './meta.ts'
 export { materializeFromRealm, MaterializeError } from './realm.ts'
@@ -46,9 +52,11 @@ export interface Config {
    * 5000 ms); also bounds `dispose()`.
    */
   disposeGraceMs?: number
+  /** Absolute directory for durable per-run journals; omission disables resume. */
+  journalRoot?: string
 }
 
-type ResolvedConfig = Required<Config>
+type ResolvedConfig = Required<Omit<Config, 'journalRoot'>> & Pick<Config, 'journalRoot'>
 
 /** A body that still carries the Claude Code-style meta header (meta rides the seam as data here). */
 const META_STATEMENT = /^\s*export\s+const\s+meta\b/
@@ -119,6 +127,7 @@ class WorkerThreadWorkflowEngine extends WorkflowEngine {
     maxItemsPerCall: z.natural().min(1).default(4096),
     syncTimeoutMs: z.natural().min(1).default(5000),
     disposeGraceMs: z.natural().default(5000),
+    journalRoot: z.string(),
   })
 
   private readonly config: ResolvedConfig
@@ -145,7 +154,14 @@ class WorkerThreadWorkflowEngine extends WorkflowEngine {
     assertBodyParses(request.script, meta.name)
     const subagentProvider = resolveSubagentProvider(this.ctx, this.config.provider, request.subagentProvider)
     const maxTotalAgents = resolveMaxTotalAgents(request.maxTotalAgents, this.config.maxTotalAgents)
-    const id = WorkflowRunId(randomUUID())
+    const journalRoot = this.config.journalRoot
+    if (journalRoot !== undefined && !isAbsolute(journalRoot)) {
+      throw new WorkflowError('workflow journalRoot must be an absolute path', 'JOURNAL_INVALID')
+    }
+    if (request.resumeRunId !== undefined && journalRoot === undefined) {
+      throw new WorkflowError('workflow resume requires configured journalRoot', 'JOURNAL_UNAVAILABLE')
+    }
+    const id = request.resumeRunId ?? WorkflowRunId(randomUUID())
     const info: WorkflowRunInfo = { id, meta }
     const limits: WorkerLimits = {
       maxConcurrentAgents: this.config.maxConcurrentAgents === 0
@@ -160,6 +176,29 @@ class WorkerThreadWorkflowEngine extends WorkflowEngine {
       body: request.script,
       ...request.args !== undefined ? { args: request.args } : {},
       limits,
+    }
+    let journal: WorkflowJournal | undefined
+    if (journalRoot !== undefined) {
+      const journalPath = join(journalRoot, workflowRequestHash('run-id', id), 'journal.jsonl')
+      const requestHash = workflowRequestHash('workflow', {
+        script: request.script,
+        meta,
+        args: request.args ?? null,
+        subagentProvider,
+        maxTotalAgents,
+      })
+      try {
+        journal = request.resumeRunId !== undefined
+          ? WorkflowJournal.load(journalPath, id, requestHash)
+          : WorkflowJournal.create(journalPath, id, requestHash)
+      } catch (error: unknown) {
+        /* v8 ignore else -- journal entry points normalize every external throw. */
+        if (error instanceof WorkflowJournalError) {
+          throw new WorkflowError(error.message, error.code, { cause: error })
+        }
+        /* v8 ignore next -- journal entry points normalize every external throw. */
+        throw error
+      }
     }
     // Capture the dependency while this service call is still traced through
     // the start() holder. Cordis strips the engine-provider shadow when it
@@ -178,6 +217,7 @@ class WorkerThreadWorkflowEngine extends WorkflowEngine {
       init,
       subagentProvider,
       this.config.disposeGraceMs,
+      journal,
       {
         phase: (title) => { this.emitWorkflowEvent('workflow/phase', info, title) },
         log: (message) => { this.emitWorkflowEvent('workflow/log', info, message) },

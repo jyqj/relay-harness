@@ -49,15 +49,19 @@ function cardActions() {
   return { edit: vi.fn(), resetField: vi.fn(), save: vi.fn(), discard: vi.fn() }
 }
 
-function renderSection(rows: readonly PluginsSettingsTabEntry[]) {
+function renderSection(rows: readonly PluginsSettingsTabEntry[], close = vi.fn()) {
+  const owners: Array<{ close?: () => void }> = []
   const props = {
     t,
+    close,
     useTabs: (selector: (value: readonly PluginsSettingsTabEntry[]) => unknown) => selector(rows),
-    renderSlot: (_name: string, _owner: unknown, options: { only?: string }) => (
-      <span>{options.only}</span>
-    ),
+    renderSlot: (_name: string, owner: unknown, options: { only?: string }) => {
+      owners.push(owner as { close?: () => void })
+      return <span>{options.only}</span>
+    },
   } as unknown as PluginsSettingsSectionProps
   render(<PluginsSettingsSection {...props} />)
+  return { close, owners }
 }
 
 /**
@@ -107,6 +111,8 @@ describe('PluginsSettingsSection', () => {
 
     const configurable = screen.getByRole('tab', { name: en.configurableTab })
     const all = screen.getByRole('tab', { name: 'Plugin list' })
+    expect(configurable.getAttribute('data-dsh-settings-plugin-tab')).toBe('configurable')
+    expect(all.getAttribute('data-dsh-settings-plugin-tab')).toBe('all')
     expect(configurable.getAttribute('aria-selected')).toBe('true')
     expect(screen.getByText('configurable')).toBeTruthy()
     expect(screen.queryByText('all')).toBeNull()
@@ -126,6 +132,17 @@ describe('PluginsSettingsSection', () => {
 
     expect(screen.getByRole('heading', { name: en.title })).toBeTruthy()
     expect(screen.getByText(en.intro)).toBeTruthy()
+  })
+
+  it('forwards the settings close callback to each mounted tab', () => {
+    const close = vi.fn()
+    const { owners } = renderSection(
+      [{ id: 'configurable', order: 0, label: en.configurableTab }],
+      close,
+    )
+
+    expect(owners.length).toBeGreaterThan(0)
+    expect(owners.every(owner => owner.close === close)).toBe(true)
   })
 
   it('moves focus and selection with standard horizontal tab keys', () => {

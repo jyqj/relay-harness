@@ -12,8 +12,14 @@ import { stat } from 'node:fs/promises'
 import type { SessionHeader, SessionId } from '@deepseek-ai/dsh-session'
 import type { KvTable } from '@deepseek-ai/dsh-storage-domain'
 import type { WorkspaceRecord } from './spec.ts'
-import type { Workspace, WorkspaceId } from './types.ts'
+import type {
+  Workspace,
+  WorkspaceCheckpoint,
+  WorkspaceCheckpointId,
+  WorkspaceId,
+} from './types.ts'
 import { realpathNormalize } from './paths.ts'
+import { createWorkspaceCheckpoint, rewindWorkspaceCheckpoint } from './checkpoint.ts'
 
 /** An insertSessionBefore request named a session or anchor not on the account (storage failures stay plain errors). */
 export class WorkspaceMoveInvalidError extends Error {
@@ -185,6 +191,14 @@ export class WorkspaceEntity implements Workspace {
       // directory is not usable right now; the record itself never mutates.
       return 'missing-dir'
     }
+  }
+
+  async checkpoint(paths: readonly string[]): Promise<WorkspaceCheckpoint> {
+    return await createWorkspaceCheckpoint(this.record.path, this.id, paths)
+  }
+
+  async rewind(checkpointId: WorkspaceCheckpointId): Promise<void> {
+    await rewindWorkspaceCheckpoint(this.record.path, this.id, checkpointId)
   }
 
   /**

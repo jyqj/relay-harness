@@ -275,6 +275,88 @@ describe('WorkspaceRuntime', () => {
     await expect(workspaces.connectWorkspace(wid('alpha'))).resolves.toBe('s-fresh-2')
   })
 
+  it('connectWorkspace does not reuse a blank dshbot or subagent member', async () => {
+    const ctx = new Context()
+    const api = new FakeApiClient()
+    const sessions = new SessionRuntime(ctx, api, fakeRemote())
+    const workspaces = new WorkspaceRuntime(ctx, api, sessions)
+    api.onWorkspaceList = () => Promise.resolve(ok({
+      items: [workspace('alpha', [sid('s-room'), sid('s-child')])] as never[],
+    }))
+    api.onList = () => Promise.resolve(ok({
+      items: [
+        {
+          sessionId: sid('s-room'), updatedAt: 1, running: false, blank: true,
+          cwd: '/w/alpha', origin: 'dshbot',
+        },
+        {
+          sessionId: sid('s-child'), updatedAt: 2, running: false, blank: true,
+          cwd: '/w/alpha', origin: 'subagent',
+        },
+      ] as never[],
+    }))
+    await Promise.all([workspaces.refresh(), sessions.refresh()])
+    await Promise.resolve()
+    api.onCreate = () => Promise.resolve(ok({ sessionId: sid('s-fresh') }))
+    await expect(workspaces.connectWorkspace(wid('alpha'))).resolves.toBe('s-fresh')
+    expect(api.callsOf('session.create')).toEqual([{ workspaceId: 'alpha' }])
+  })
+
+  it('connectNoDirectory does not reuse a scratch blank stamped origin dshbot', async () => {
+    const ctx = new Context()
+    const api = new FakeApiClient()
+    const sessions = new SessionRuntime(ctx, api, fakeRemote())
+    const workspaces = new WorkspaceRuntime(ctx, api, sessions)
+    api.onWorkspaceList = () => Promise.resolve(ok({ items: [] as never[] }))
+    api.onList = () => Promise.resolve(ok({
+      items: [
+        {
+          sessionId: sid('s-room'), updatedAt: 1, running: false, blank: true,
+          cwd: '/scratch', origin: 'dshbot',
+        },
+      ] as never[],
+    }))
+    await Promise.all([workspaces.refresh(), sessions.refresh()])
+    await Promise.resolve()
+    api.onCreate = payload => Promise.resolve(ok({ sessionId: sid('s-fresh'), payload }))
+    await expect(workspaces.connectNoDirectory()).resolves.toBe('s-fresh')
+    expect(api.callsOf('session.create')).toEqual([{ cwd: '/scratch' }])
+  })
+
+  it('connectNoDirectory reuses a non-member scratch blank and creates otherwise', async () => {
+    const ctx = new Context()
+    const api = new FakeApiClient()
+    const sessions = new SessionRuntime(ctx, api, fakeRemote())
+    const workspaces = new WorkspaceRuntime(ctx, api, sessions)
+    api.onWorkspaceList = () => Promise.resolve(ok({
+      items: [workspace('alpha', [sid('s-member-scratch')])] as never[],
+    }))
+    api.onList = () => Promise.resolve(ok({
+      items: [
+        { sessionId: sid('s-member-scratch'), updatedAt: 1, running: false, blank: true, cwd: '/scratch' },
+        { sessionId: sid('s-task'), updatedAt: 2, running: false, blank: true, cwd: '/scratch' },
+        { sessionId: sid('s-other'), updatedAt: 3, running: false, blank: true, cwd: '/w/alpha' },
+      ] as never[],
+    }))
+    await Promise.all([workspaces.refresh(), sessions.refresh()])
+    await Promise.resolve()
+
+    await expect(workspaces.connectNoDirectory()).resolves.toBe('s-task')
+    expect(api.callsOf('session.create')).toEqual([])
+    expect(api.callsOf('workspace.create')).toEqual([])
+
+    api.onCreate = payload => Promise.resolve(ok({ sessionId: sid('s-fresh'), payload }))
+    api.onList = () => Promise.resolve(ok({
+      items: [
+        { sessionId: sid('s-member-scratch'), updatedAt: 1, running: false, blank: true, cwd: '/scratch' },
+      ] as never[],
+    }))
+    await sessions.refresh()
+    await Promise.resolve()
+    await expect(workspaces.connectNoDirectory()).resolves.toBe('s-fresh')
+    expect(api.callsOf('session.create')).toEqual([{ cwd: '/scratch' }])
+  })
+
   it('a rejected first prompt keeps the blank session eligible for connectWorkspace reuse', async () => {
     const ctx = new Context()
     const api = new FakeApiClient()
@@ -546,6 +628,51 @@ describe('startInitialSelection', () => {
     await new Promise(resolve => setTimeout(resolve, 0))
     expect(b.api.callsOf('session.create')).toEqual([{ workspaceId: 'recent' }])
     expect(b.sessions.list.getSnapshot().current).toBe('s-new')
+    stop()
+  })
+
+  it('opens the latest non-blank session instead of minting a blank one', async () => {
+    const b = bench()
+    b.api.onList = () => Promise.resolve(ok({
+      items: [
+        { sessionId: sid('blank'), updatedAt: 300, running: false, blank: true },
+        { sessionId: sid('old'), updatedAt: 100, running: false, blank: false },
+        { sessionId: sid('latest'), updatedAt: 200, running: false, blank: false },
+        { sessionId: sid('archived'), updatedAt: 400, running: false, blank: false },
+      ] as never[],
+    }))
+    b.api.onWorkspaceList = () => Promise.resolve(ok({
+      items: [workspace('recent', [sid('blank'), sid('old'), sid('latest'), sid('archived')])] as never[],
+      archivedSessionIds: [sid('archived')],
+    }))
+    const stop = b.workspaces.startInitialSelection()
+    await b.workspaces.refresh()
+    await b.sessions.refresh()
+    await new Promise(resolve => setTimeout(resolve, 0))
+    expect(b.api.callsOf('session.create')).toHaveLength(0)
+    expect(b.sessions.list.getSnapshot().current).toBe('latest')
+    stop()
+  })
+
+  it('replaces a restored blank current with the latest live session', async () => {
+    const b = bench()
+    b.api.onList = () => Promise.resolve(ok({
+      items: [
+        { sessionId: sid('blank'), updatedAt: 300, running: false, blank: true },
+        { sessionId: sid('old'), updatedAt: 100, running: false, blank: false },
+        { sessionId: sid('latest'), updatedAt: 200, running: false, blank: false },
+      ] as never[],
+    }))
+    b.api.onWorkspaceList = () => Promise.resolve(ok({
+      items: [workspace('recent', [sid('blank'), sid('old'), sid('latest')])] as never[],
+    }))
+    await b.sessions.refresh()
+    b.sessions.open(sid('blank'))
+    const stop = b.workspaces.startInitialSelection()
+    await b.workspaces.refresh()
+    await new Promise(resolve => setTimeout(resolve, 0))
+    expect(b.api.callsOf('session.create')).toHaveLength(0)
+    expect(b.sessions.list.getSnapshot().current).toBe('latest')
     stop()
   })
 

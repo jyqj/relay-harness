@@ -14,7 +14,7 @@ The package root is the Host face. The browser-safe `@deepseek-ai/dsh-workflow/t
 
 A run is holder-owned. Engine-plugin unload prevents new starts but does not revoke accepted runs. The holder must call `dispose()` on every path; disposal cancels remaining work and reaches or abandons quiescence within the documented bound.
 
-`WorkflowStartRequest` contains `{ meta, script, args?, subagentProvider?, maxTotalAgents?, parent, signal? }`. `parent` attributes every child agent to the invoking agent. `subagentProvider` optionally routes every child in that run without exposing provider choice to the script; omission uses the engine's configured provider. `maxTotalAgents` optionally lowers the engine's deployment ceiling for one run and is likewise invisible to the script. An implementation rejects invalid routes and limits synchronously. `meta` and `args` are plain data, not script fragments.
+`WorkflowStartRequest` contains `{ meta, script, args?, subagentProvider?, maxTotalAgents?, resumeRunId?, parent, signal? }`. `parent` attributes every child agent to the invoking agent. `subagentProvider` optionally routes every child in that run without exposing provider choice to the script; omission uses the engine's configured provider. `maxTotalAgents` optionally lowers the engine's deployment ceiling for one run and is likewise invisible to the script. `resumeRunId` asks a durable engine to restart the same script and replay its completed host-call prefix; engines without durable replay reject it. An implementation rejects invalid routes and limits synchronously. `meta` and `args` are plain data, not script fragments.
 
 `WorkflowRun` exposes `{ id, meta, result, cancel(reason?), dispose() }`. `WorkflowResult` contains `{ value, stopReason, error?, agentsStarted }`; `value` is plain JSON data or `null`.
 
@@ -53,7 +53,7 @@ No direct invalidation; the named consumer owns any request-prefix changes.
 ## Known Limitations and Deferred Work
 
 - **Foreground collection only** — the caller owns one live run and awaits it; background start/poll, spill handles, and detached collection are deferred.
-- **No journaling or resume** — scripts, child progress, and intermediate values are not checkpointed, so a process restart cannot continue a run.
+- **Resume is engine-specific** — the worker-thread provider can replay completed `agent()` calls when configured with a journal root; the generic seam does not promise storage, cross-process locking, or checkpointing of arbitrary script-local values.
 - **No saved or nested workflows** — the seam starts caller-supplied scripts only, and a workflow script receives no `workflow()` hook for recursive orchestration.
 - **No token-budget vocabulary** — engines cap concurrency, items, and children, but neither the request nor result accounts for model tokens across children.
 - **Runs are holder-owned, not service-tracked** — unloading the engine does not discover independent live handles; every consumer must dispose the run it started.

@@ -460,21 +460,17 @@ describe('signal, concurrency, and the fs/observed contract', () => {
     expect(await readFile(join(dir, 'a.txt'), 'utf8')).toBe('hello') // unchanged
   })
 
-  it('two concurrent edits of the same file, same session: one wins, one FS_STALE_VERSION', async () => {
+  it('serializes two same-session edits of one file so both changes land', async () => {
     await writeFile(join(dir, 'a.txt'), 'base value here')
-    // One read establishes the observed version both edits guard against; then
-    // race two edits so both carry the SAME observed version (the barrier).
+    // One read establishes the observed version. The resource lock serializes
+    // the edits, so the second intent observes the first committed version.
     expect((await callOwned('read', { file_path: 'a.txt' })).isError).toBe(false)
     const [one, two] = await Promise.all([
       callOwned('edit', { file_path: 'a.txt', old_string: 'base', new_string: 'ONE', replaceAll: false }),
       callOwned('edit', { file_path: 'a.txt', old_string: 'value', new_string: 'TWO', replaceAll: false }),
     ])
-    const errors = [one, two].filter(r => r.isError)
-    expect(errors).toHaveLength(1)
-    expect(errors[0]?.error).toMatchObject({ info: { code: 'FS_STALE_VERSION' } })
-    // The world is consistent: exactly one edit landed.
-    const onDisk = await readFile(join(dir, 'a.txt'), 'utf8')
-    expect(onDisk === 'ONE value here' || onDisk === 'base TWO here').toBe(true)
+    expect([one, two].filter(result => result.isError)).toEqual([])
+    expect(await readFile(join(dir, 'a.txt'), 'utf8')).toBe('ONE TWO here')
   })
 
   it('a stale observed version from an older read fails closed at edit CAS', async () => {

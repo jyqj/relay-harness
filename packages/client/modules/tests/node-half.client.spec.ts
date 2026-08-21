@@ -241,6 +241,134 @@ describe('client bundle activation', () => {
     })
     expect(body).toBe(map)
   })
+
+  it('serves Ghostty wasm beside a registered client bundle', async () => {
+    const packageName = '@fixture/ghostty-assets'
+    const clientPath = writePackage(packageName)
+    mkdirSync(dirname(clientPath), { recursive: true })
+    writeFileSync(clientPath, 'module.exports = {}\n')
+    mkdirSync(join(dirname(clientPath), 'assets'), { recursive: true })
+    const wasm = Buffer.from('wasm-bytes')
+    writeFileSync(join(dirname(clientPath), 'assets', 'ghostty-vt.wasm'), wasm)
+    const { route } = constructWithRoute([packageName])
+    let status = 0
+    let headers: Record<string, string> | undefined
+    let body = Buffer.alloc(0)
+    const response = {
+      writeHead(nextStatus: number, nextHeaders?: Record<string, string>) {
+        status = nextStatus
+        headers = nextHeaders
+        return response
+      },
+      end(chunk?: Uint8Array) {
+        body = chunk === undefined ? Buffer.alloc(0) : Buffer.from(chunk)
+        return response
+      },
+    } as unknown as ServerResponse
+
+    await route.handler({
+      method: 'GET',
+      url: `/plugins/${packageName}/assets/ghostty-vt.wasm`,
+    } as IncomingMessage, response)
+
+    expect(status).toBe(200)
+    expect(headers).toEqual({
+      'content-type': 'application/wasm',
+      'cache-control': 'no-cache',
+    })
+    expect(body.equals(wasm)).toBe(true)
+
+    writeFileSync(join(dirname(clientPath), 'assets', 'SymbolsNerdFontMono-Regular.woff2'), Buffer.from('font'))
+    await route.handler({
+      method: 'GET',
+      url: `/plugins/${packageName}/assets/SymbolsNerdFontMono-Regular.woff2`,
+    } as IncomingMessage, response)
+    expect(status).toBe(200)
+    expect(headers).toEqual({
+      'content-type': 'font/woff2',
+      'cache-control': 'no-cache',
+    })
+
+    await route.handler({
+      method: 'GET',
+      url: `/plugins/${packageName}/assets/../secret.wasm`,
+    } as IncomingMessage, response)
+    expect(status).toBe(404)
+
+    await route.handler({
+      method: 'GET',
+      url: `/plugins/${packageName}/assets/missing.wasm`,
+    } as IncomingMessage, response)
+    expect(status).toBe(404)
+
+    writeFileSync(join(dirname(clientPath), 'assets', 'notes.txt'), 'note')
+    await route.handler({
+      method: 'GET',
+      url: `/plugins/${packageName}/assets/notes.txt`,
+    } as IncomingMessage, response)
+    expect(status).toBe(200)
+    expect(headers).toEqual({
+      'content-type': 'application/octet-stream',
+      'cache-control': 'no-cache',
+    })
+  })
+})
+
+describe('host-feature compatibility gate', () => {
+  /** Write a web client package whose manifest carries the given dsh section and a built bundle. */
+  function writeCompatibleClient(packageName: string, dsh: Record<string, unknown>): void {
+    const clientPath = writePackage(packageName, { dsh })
+    mkdirSync(dirname(clientPath), { recursive: true })
+    writeFileSync(clientPath, 'module.exports = {}\n')
+  }
+
+  it('accepts a package whose required features are all host-supported', () => {
+    const packageName = '@fixture/features-ok'
+    writeCompatibleClient(packageName, {
+      client: { platform: 'web' },
+      compatibility: { features: ['conversation.chat.user-actions', 'session.fork.beforeSeq', 'session.fork.blank'] },
+    })
+    expect(construct([packageName]).graph().entries.map(entry => entry.id)).toEqual([packageName])
+  })
+
+  it('accepts a package declaring compatibility with no requirements', () => {
+    const packageName = '@fixture/features-empty'
+    writeCompatibleClient(packageName, { client: { platform: 'web' }, compatibility: {} })
+    expect(construct([packageName]).graph().entries.map(entry => entry.id)).toEqual([packageName])
+  })
+
+  it('rejects a package requiring missing host features, naming package and features', () => {
+    const packageName = '@fixture/features-missing'
+    writeCompatibleClient(packageName, {
+      client: { platform: 'web' },
+      compatibility: { features: ['conversation.chat.user-actions', 'editor.unsupported'] },
+    })
+    expect(() => construct([packageName])).toThrow([
+      `client-modules: ${packageName} requires host features this dsh host does not support: editor.unsupported`,
+      '  the package is not part of the boot graph — update dsh to a host that provides them, or remove the plugin',
+    ].join('\n'))
+  })
+
+  it('rejects a malformed dsh.compatibility declaration, naming the package', () => {
+    const packageName = '@fixture/features-malformed'
+    writeCompatibleClient(packageName, {
+      client: { platform: 'web' },
+      compatibility: { features: 'conversation.chat.user-actions' },
+    })
+    expect(() => construct([packageName]))
+      .toThrow(`${packageName}: dsh.compatibility.features must be a string array of feature ids`)
+  })
+
+  it('does not gate packages without a web client declaration', () => {
+    // A non-web package's compatibility is out of the module graph's scope
+    // (the install gate in `dsh plugin` owns every dependency); it must not
+    // fail the composition.
+    const packageName = '@fixture/features-node-only'
+    writePackage(packageName, {
+      dsh: { client: { platform: 'node' }, compatibility: { features: ['editor.unsupported'] } },
+    })
+    expect(construct([packageName]).graph().entries).toEqual([])
+  })
 })
 
 describe('shared module declarations', () => {

@@ -42,6 +42,16 @@ function declare(slots: SlotRegistry): () => void {
   } as never, () => null)
 }
 
+function marketplaceShell(overrides: Record<string, unknown> = {}) {
+  return {
+    listMarketplace: vi.fn(async (_options?: { refresh?: boolean; locale?: 'zh' | 'en' }) => ({ items: [] })),
+    listInstalledPlugins: vi.fn(async () => ({ plugins: [] })),
+    installMarketplacePlugin: vi.fn(async (_id: string, _options?: { allowBuilds?: string[] }) => ({ ok: true })),
+    uninstallPlugin: vi.fn(async (_name: string) => ({ ok: true })),
+    ...overrides,
+  }
+}
+
 describe('ui-settings-plugin-inventory browser plugin', () => {
   it('declares only the services used by the Settings Remote contribution', () => {
     expect(inject).toEqual(['slots', 'locale', 'remote', 'remote.pluginInventory'])
@@ -88,6 +98,16 @@ describe('ui-settings-plugin-inventory browser plugin', () => {
     await fiber.dispose()
     expect(b.slots.entries('settings.plugins.tab')).toHaveLength(0)
     expect(() => b.locale.register(NS, 'zh', {})).not.toThrow()
+    await b.ctx.fiber.dispose()
+  })
+
+  it('does not register a cloned marketplace tab when the desktop shell is present', async () => {
+    const b = await bench()
+    declare(b.slots)
+    ;(window as Window & { shell?: unknown }).shell = marketplaceShell()
+    await b.ctx.plugin({ inject: [...inject], apply }).await()
+    expect(b.slots.entries('settings.plugins.tab').map(entry => entry.options.id)).toEqual(['all'])
+    delete (window as Window & { shell?: unknown }).shell
     await b.ctx.fiber.dispose()
   })
 })

@@ -5,12 +5,12 @@
  * except workspace Rename/Delete and session Rename/Fork/Archive; the session
  * and workspace hover cards are suppressed while a menu is open.
  */
-import { useState } from 'react'
+import { type ReactNode, useState } from 'react'
 import clsx from 'clsx'
 import {
   HoverCard, IconArchiveOutline20, IconBranchOutline16, IconEditOutline16,
   IconEllipsisOutline16, IconFolderClose16, IconFolderOpen16, IconPlusOutline16,
-  IconTrashOutline16, IconTriangleRightFill14, Menu, StateDot,
+  IconTrashOutline16, IconTriangleRightFill14, Menu, StateDot, usePresence,
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { StateDotState } from '@deepseek-ai/dsh-client-ui-primitives'
 import { abbreviateHomePath } from '@deepseek-ai/dsh-client-runtime/client'
@@ -94,6 +94,31 @@ interface WorkspaceRowDragProps {
 function rowHalf(e: { clientY: number; currentTarget: HTMLElement }): 'before' | 'after' {
   const rect = e.currentTarget.getBoundingClientRect()
   return e.clientY < rect.top + rect.height / 2 ? 'before' : 'after'
+}
+
+/**
+ * Fade-and-collapse the session run under a Workspace or Tasks header.
+ * Presence keeps the last open rows mounted through the fade recipe; the
+ * inner track collapses `0fr`/`1fr` on the same duration token as AppFrame.
+ * @param props.open - whether the group is logically expanded.
+ * @param props.children - session rows and the optional overflow control.
+ * @returns the animated run, or nothing before the first expand.
+ */
+export function GroupSessionRun({ open, children }: { open: boolean; children: ReactNode }) {
+  const { mounted, state } = usePresence(open)
+  if (!mounted) return null
+  return (
+    <div
+      className={css.sessionRunFade}
+      data-dsh-motion="fade"
+      data-state={state}
+      aria-hidden={open ? undefined : true}
+    >
+      <div className={css.sessionRun} data-state={state}>
+        <div className={css.sessionRunInner}>{children}</div>
+      </div>
+    </div>
+  )
 }
 
 /**
@@ -211,6 +236,52 @@ export function ProjectRowItem({ group, onToggle, onCreate, actions, drag, home,
       copyLabel={t('copy')}
       copiedLabel={t('hover.copied')}
     />
+  )
+}
+
+/**
+ * Tasks section header: chevron + localized "Tasks" title + create. No
+ * folder icon and no Workspace menu — ungrouped sessions sit directly under
+ * this row at the same indent as sessions under a project.
+ * @param props.expanded - whether the session list below is shown.
+ * @param props.containsCurrent - the current session is in this section.
+ * @param props.onToggle - expand/collapse.
+ * @param props.onCreate - mint a no-directory session.
+ * @param props.t - the browser root's locale seat.
+ * @returns the row element.
+ */
+export function TasksSectionHeader({ expanded, containsCurrent, onToggle, onCreate, t }: {
+  expanded: boolean
+  containsCurrent: boolean
+  onToggle: () => void
+  onCreate: () => void
+  t: RowTranslate
+}) {
+  const label = t('section.tasks')
+  return (
+    <div
+      className={clsx(css.projectRow, css.tasksSection)}
+      role="treeitem"
+      aria-expanded={expanded}
+      onClick={onToggle}
+    >
+      <span className={clsx(css.slot, css.chevron, css.tasksChevron, containsCurrent && css.folderActive)}>
+        <IconTriangleRightFill14 className={clsx(css.arrow, expanded && css.arrowOpen)} />
+      </span>
+      <span className={css.projectText}>
+        <span className={css.title}>{label}</span>
+      </span>
+      <span className={css.rowActions}>
+        <button
+          type="button"
+          className={css.iconButton}
+          aria-label={t('actions.newSession.aria', { name: label })}
+          onClick={(e) => { e.stopPropagation(); onCreate() }}
+        >
+          <IconPlusOutline16 />
+        </button>
+      </span>
+    </div>
   )
 }
 

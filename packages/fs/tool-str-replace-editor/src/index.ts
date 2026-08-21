@@ -460,6 +460,13 @@ function registerStrReplaceEditor(ctx: Context, config: ResolvedConfig): void {
       schema: { type: 'string' },
       render: (_args, value) => [{ type: 'text', text: value }],
     },
+    resourceIntents: async (args, exec) => {
+      const target = await resolveTarget(ctx, args.path, exec.signal)
+      return [{
+        key: `fs:${String(target.targetKey)}`,
+        access: args.command === 'view' ? 'read' as const : 'write' as const,
+      }]
+    },
     async execute(args, exec) {
       switch (args.command) {
         case 'view':

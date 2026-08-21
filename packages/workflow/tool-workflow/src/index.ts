@@ -16,8 +16,9 @@ import { defineTool } from '@deepseek-ai/dsh-tools'
 import type { ToolCallView, ToolResultView } from '@deepseek-ai/dsh-tools'
 import type { ContentBlock } from '@deepseek-ai/dsh-llm'
 import type { JsonValue, Session, SessionEventMap } from '@deepseek-ai/dsh-session'
+import { WorkflowRunId } from '@deepseek-ai/dsh-workflow'
 import type {
-  WorkflowResult, WorkflowRun, WorkflowRunId, WorkflowStopReason,
+  WorkflowResult, WorkflowRun, WorkflowStopReason,
 } from '@deepseek-ai/dsh-workflow'
 import type {
   ToolWorkflowAgentEndData, ToolWorkflowAgentStartData,
@@ -158,6 +159,7 @@ type WorkflowCallArgs = {
     phases?: { title: string; detail?: string; provider?: string; model?: string }[]
   }
   args?: Record<string, unknown>
+  resumeRunId?: string
 }
 
 /** The pending-state card: a generic card titled by the workflow's meta name. */
@@ -253,6 +255,10 @@ export function apply(ctx: Context, config: Config): void {
         additionalProperties: true,
         description: 'Optional JSON input exposed to the script as the `args` global (wrap a bare list as a field, e.g. {"files": [...]}).',
       },
+      resumeRunId: {
+        type: 'string',
+        description: 'Optional prior workflow run id to resume by deterministic journal replay. Requires an engine configured with journalRoot; use the exact same script, meta, args, provider, and limits.',
+      },
     },
     output: {
       schema: {
@@ -285,6 +291,7 @@ export function apply(ctx: Context, config: Config): void {
         script: args.script,
         meta: args.meta,
         ...args.args !== undefined ? { args: args.args } : {},
+        ...args.resumeRunId !== undefined ? { resumeRunId: WorkflowRunId(args.resumeRunId) } : {},
         parent,
         signal: exec.signal,
       })

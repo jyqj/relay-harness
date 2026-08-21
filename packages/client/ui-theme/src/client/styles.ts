@@ -1,15 +1,22 @@
 import type { Context } from '@deepseek-ai/cordis'
 import base from '../styles/base.css?inline'
+import motion from '../styles/motion.css?inline'
 import designPlatform from '../styles/design-platform.css?inline'
+import wallpaper from '../styles/wallpaper.css?inline'
 import scrollbar from '../styles/scrollbar.css?inline'
 import gradientShadowText from '../styles/gradient-shadow-text.css?inline'
 import shiki from '../styles/shiki.css?inline'
 
 const PLUGIN_ID = '@deepseek-ai/dsh-client-ui-theme'
 
+// motion.css follows base.css (it reads that sheet's duration and easing
+// tokens); wallpaper.css follows the token sheets so chrome can mix those
+// fills; scrollbar.css follows design-platform.css (it reads its tokens).
 const STYLES = [
   ['base.css', base],
+  ['motion.css', motion],
   ['design-platform.css', designPlatform],
+  ['wallpaper.css', wallpaper],
   ['scrollbar.css', scrollbar],
   ['gradient-shadow-text.css', gradientShadowText],
   ['shiki.css', shiki],

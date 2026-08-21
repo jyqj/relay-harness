@@ -69,7 +69,7 @@ interface Config {
 
 插件失败会结束当前轮次，而不是结束循环。最终适配器选择、分发与迭代失败会以终止错误或中止结束的形式由 `ctx.llm` 传来，并进入 `agent/request-error`；middleware、结果处理、工具及其他扩展失败仍会抛出并直接关闭轮次。恢复逻辑会接收请求坐标、不可变的提供方事实、准备完成的适配器注册所捕获的不可变重试策略以及轮次信号；middleware 接管未准备路由时，该策略缺失。处理失败的监听器返回 `{ kind: 'retry' }`；未被处理的失败是终态。AgentLoop 为当前准入操作或轮次拥有一个取消信号。有效的 `cancel(cause)` 在未设置 `keepInbox` 时清除待处理工作，并以协作方式中止该信号；空闲取消是空操作。abort 触发后、活动收敛到空闲前到达的唤醒输入会被锁存（`wakeRequested`），并在 driver 自身的收敛边界重放，无需再发一条唤醒 send 即可执行；`disposed` 取消从不锁存，而 agent 已处于空闲时发送的唤醒总是打开自己的 turn 边界（即使消息已被清除，状态也会显示瞬态 `idle → running → idle` 对）。持久 `turn/end` 为 `user` 和 `parent` 记录 `aborted`，dispose 则记录 `disposed`；未分发的模型工具调用会收到合成的 `tool/call` 与 `ABORTED_BEFORE_DISPATCH` 结果对。取消原因只影响报告方式，不影响如何处理在取消后完成终结的结果上下文。dispose 会等待忽略信号的工作完成，然后才从注册表移除。[显式取消决策](../../../.agents/notes/implemented/architecture/2026-07-16-explicit-turn-cancellation.md)与[取消收敛窗口唤醒锁存](../../../.agents/notes/implemented/bug-fix/2026-08-07-cancel-convergence-wake-latch.md)规定生命周期与竞态约定。
 
-在步骤内，独占调用形成屏障；并行安全调用使用有界滚动池，并在启动前重新分类。只有分发和调用主体的执行会发生重叠。策略、持久结果和结果上下文仍保持模型顺序。中止会阻止启动新的调用，等待已启动调用的结果处理完毕，并保留其完成终结后的结果上下文，不区分取消原因。内部调度器故障会停止新的分发，等待已启动的分发，然后在不虚构工具结果的情况下到达轮次错误边界。
+提示词组装前，循环会为该模型请求捕获确切的 scope 工具定义、呈现模式、Code Mode 后端与 schema 集合。最终组装结果会绑定模型可调用的捕获名称。在由此产生的步骤内，独占调用形成屏障，可并行调用使用有界滚动池；资源相关调用会在紧邻主体前获取 runtime 读写锁，因此相同规范 key 会串行化，无关 key 可以重叠。实时注册表替换会影响下一步骤，而不会重新分类本响应。只有分发和调用主体的执行会发生重叠。策略、持久结果和结果上下文仍保持模型顺序。中止会阻止启动新的调用，等待已启动调用的结果处理完毕，并保留其完成终结后的结果上下文，不区分取消原因。内部调度器故障会停止新的分发，等待已启动的分发，然后在不虚构工具结果的情况下到达轮次错误边界。拒绝、空步骤、请求失败、取消与普通结算的每条路径都会释放请求快照（[决策](../../../.agents/notes/implemented/architecture/2026-08-21-request-tool-snapshot.md)）。
 
 ### 插件负责的内容
 
@@ -128,7 +128,7 @@ interface Config {
 
 ## 已知限制与暂缓事项
 
-- **分类是一元的**：安全性取决于比较同级调用或资源的调用必须保持独占（参见[设计原理](../../../.agents/notes/implemented/feature/2026-07-10-parallel-tool-call-execution.md)）。
+- **关系并发需要规范身份**：一元 `isConcurrencySafe` 处理全局安全调用；拥有提供方解析身份的工具使用 `resourceIntents`，未声明的关系安全仍保持独占（参见[设计原理](../../../.agents/notes/implemented/architecture/2026-08-21-tool-resource-intent-locks.md)）。
 - **配置 label 默认对应新会话**：省略 `sessionId` 时，每次启动都会创建新的 `${id}-session-<uuid>`；如需确切的恢复或创建行为，必须显式提供稳定的 `sessionId`，而 `resumeSessionId` 要求已有持久化历史。
 - **配置 agent 没有逐 agent persona 字段或 setup 钩子**：它们使用部署 persona；只有编程式 `ctx.agents.create()` / `resume()` 工厂选项支持带作用域的 persona／工具组合。
 - **没有内置轮次预算**：工具调用或 steering 会让当前轮次继续；限制失控轮次的策略必须从既有生命周期扩展点（如 `agent/turn-stopping`）执行取消。

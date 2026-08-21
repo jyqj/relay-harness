@@ -8,6 +8,7 @@ import { mkdir, stat } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { dirname } from 'node:path'
 import type { Context } from '@deepseek-ai/cordis'
+import { dshHomePath } from '@deepseek-ai/dsh-home-paths'
 import { installModelSelection } from '@deepseek-ai/dsh-agent'
 import type { Agent, ModelSelection, ModelSelectionRef, AgentOptions, AgentStatus } from '@deepseek-ai/dsh-agent'
 import type {} from '@deepseek-ai/dsh-agent-presets/types'
@@ -17,7 +18,7 @@ import { contentHasImage, createUserMessage, freezeMessage, ReasoningEffortId } 
 import { errorChain } from '@deepseek-ai/dsh-llm'
 import type { ContentBlock, MessageSource } from '@deepseek-ai/dsh-llm'
 import { isAppendSurfaceEvent, isJsonValue } from '@deepseek-ai/dsh-session'
-import type { JsonValue, Session, SessionEvent, SessionEventMap, SessionHeader, SessionId, UserMessage } from '@deepseek-ai/dsh-session'
+import type { JsonValue, Session, SessionEvent, SessionEventMap, SessionHeader, SessionId, SessionOrigin, UserMessage } from '@deepseek-ai/dsh-session'
 import type { SessionPersistence } from '@deepseek-ai/dsh-session-persistence'
 import { SessionQueryError, type SessionSearchCursor } from '@deepseek-ai/dsh-session-query'
 import { SubagentError } from '@deepseek-ai/dsh-subagent'
@@ -297,6 +298,7 @@ async function buildModelCatalog(ctx: Context): Promise<{
           id: model.id,
           name: model.name,
           ...model.description === undefined ? {} : { description: model.description },
+          ...model.inputModalities === undefined ? {} : { inputModalities: [...model.inputModalities] },
           ...reasoning === undefined ? {} : { reasoning },
         }
       }))
@@ -479,7 +481,7 @@ function sessionListUpdatedAt(header: SessionHeader, metadata: SessionListMetada
 /** Shared Session-header projection for list baselines and creation frames. */
 function sessionListFields(header: SessionHeader, events: readonly SessionEvent[] = []): {
   parentSessionId?: SessionId
-  origin?: 'subagent'
+  origin?: SessionOrigin
   cwd?: string
   agentPreset?: string
 } {
@@ -1468,6 +1470,32 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
   }
 
   /**
+   * The beforeSeq cut: the seed is everything BEFORE the `turn/start` of the
+   * turn that owns the anchored event — the anchored turn is excluded whole
+   * and may still be open. An anchor before the first `turn/start` forks an
+   * empty child (cut 0, allowed by the blank protocol). Returns undefined
+   * when the anchor is not a contiguous in-log seq, or when the last turn
+   * boundary before it is a `turn/end` (the anchor is a between-turn
+   * out-of-band event, which no turn owns).
+   * @param events - the source event log.
+   * @param anchor - the anchored event seq.
+   * @returns the exclusive cut index, or undefined when no turn owns the anchor.
+   */
+  function beforeTurnCut(events: readonly SessionEvent[], anchor: number): number | undefined {
+    if (anchor >= events.length || events[anchor]?.seq !== anchor) return undefined
+    let turnStart = -1
+    let turnEnd = -1
+    for (let index = 0; index <= anchor; index++) {
+      if (events[index]?.type === 'turn/start') turnStart = index
+      else if (events[index]?.type === 'turn/end') turnEnd = index
+    }
+    // The nearest turn boundary before the anchor is a turn/end: the anchor
+    // sits between turns, so no turn owns it.
+    if (turnEnd > turnStart) return undefined
+    return turnStart === -1 ? 0 : turnStart
+  }
+
+  /**
    * Resolve which session one transcript read is served from, without
    * acquiring an Agent owner. This is the read's only asynchronous step
    * besides ensuring the composition; {@link historyCutOf} takes the cut.
@@ -1565,6 +1593,7 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
     cwd: string,
     checkPersistedIdentity: boolean,
     presetId?: string,
+    origin?: SessionOrigin,
   ): Promise<Agent> {
     let creation = sessionCreations.get(sessionId)
     if (creation === undefined) {
@@ -1618,6 +1647,7 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
           meta: {
             cwd,
             ...composition.agentPreset === undefined ? {} : { agentPreset: composition.agentPreset },
+            ...origin === undefined ? {} : { origin },
           },
           setup: composition.setup,
         })).agent
@@ -2096,7 +2126,13 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
         const cwd = workspace?.path ?? request.payload.cwd ?? defaults.cwd
         const requestedPreset = request.payload.agentPreset
         try {
-          await ensureSession(sessionId, cwd, request.payload.sessionId !== undefined, requestedPreset)
+          await ensureSession(
+            sessionId,
+            cwd,
+            request.payload.sessionId !== undefined,
+            requestedPreset,
+            request.payload.origin,
+          )
         } catch (error: unknown) {
           if (error instanceof AgentPresetConflict) {
             return err(request, {
@@ -2213,11 +2249,17 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
             if (pendingImage || messagesHaveImage(found.agent.session.deriveMessages())) {
               const info = await ctx.llm.resolveModelInfo(resolved.provider, resolved.model)
               if (info.inputModalities !== undefined && !info.inputModalities.includes('image')) {
-                return err(request, {
-                  code: 'model-unavailable',
-                  message: `Model "${resolved.model}" does not accept image input, but this session already contains images; select an image-capable model.`,
-                  details: { provider, model },
-                })
+                // A designated vision-fallback model substitutes description
+                // text at request time, so switching to a text-only route
+                // stays allowed; without one the refusal stands.
+                const visionFallback = ctx.get('visionFallback') as { configured(): boolean } | undefined
+                if (visionFallback?.configured() !== true) {
+                  return err(request, {
+                    code: 'model-unavailable',
+                    message: `Model "${resolved.model}" does not accept image input, but this session already contains images; select an image-capable model.`,
+                    details: { provider, model },
+                  })
+                }
               }
             }
             const selected: ModelSelection = {
@@ -2228,12 +2270,14 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
                 : { reasoningEffort: resolved.reasoningEffort },
             }
             selectionFor(found.agent).current = selected
-            try {
-              await defaults.saveDefaultModelSelection?.(selected)
-            } catch (error: unknown) {
-              ctx.logger.warn(
-                `api-proxy: the model switch applies to this session but was not saved as the default: ${String(error)}`,
-              )
+            if (request.payload.persistDefault !== false) {
+              try {
+                await defaults.saveDefaultModelSelection?.(selected)
+              } catch (error: unknown) {
+                ctx.logger.warn(
+                  `api-proxy: the model switch applies to this session but was not saved as the default: ${String(error)}`,
+                )
+              }
             }
             return ok(request, { selected: { ...selected } })
           } catch (error: unknown) {
@@ -2277,7 +2321,7 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
       },
 
       async fork(request) {
-        const { sessionId, atSeq } = request.payload
+        const { sessionId, atSeq, beforeSeq } = request.payload
         let source: SessionReadState
         try {
           source = await readSessionState(sessionId)
@@ -2292,32 +2336,59 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
           })
         }
         const events = source.events
-        // An in-log anchor belongs to the turn containing it and must never
-        // clip backward to an earlier completed turn. Omitted and past-end
-        // anchors retain the last-completed-turn shortcut.
-        const lastSeq = events.at(-1)?.seq ?? -1
-        const anchoredBoundary = atSeq === undefined
-          ? undefined
-          : events.find(e => e.type === 'turn/end' && e.seq >= atSeq)
-        const boundary = anchoredBoundary
-          ?? (atSeq === undefined || atSeq > lastSeq
-            ? events.findLast(e => e.type === 'turn/end')
-            : undefined)
-        if (boundary === undefined) {
-          return err(request, {
-            code: 'fork-unavailable',
-            message: atSeq !== undefined && atSeq <= lastSeq
-              ? `session "${sessionId}" has not completed the turn containing event ${String(atSeq)}`
-              : `session "${sessionId}" has no completed turn to fork from`,
-            details: { sessionId },
-          })
+        // atSeq and beforeSeq are mutually exclusive (the wire schema rejects
+        // both together; the impl keeps the same guard for in-process callers).
+        // beforeSeq cuts BEFORE the anchored event's turn, so the anchored
+        // turn may be open and an anchor before the first turn forks an empty
+        // child. atSeq keeps its completed-turn contract: an in-log anchor
+        // belongs to the turn containing it and must never clip backward to
+        // an earlier completed turn; omitted and past-end anchors retain the
+        // last-completed-turn shortcut.
+        let cut: number
+        if (beforeSeq !== undefined) {
+          if (atSeq !== undefined) {
+            return err(request, {
+              code: 'fork-unavailable',
+              message: `session "${sessionId}": atSeq and beforeSeq are mutually exclusive cut anchors`,
+              details: { sessionId },
+            })
+          }
+          const beforeCut = beforeTurnCut(events, beforeSeq)
+          if (beforeCut === undefined) {
+            return err(request, {
+              code: 'fork-unavailable',
+              message: `session "${sessionId}" has no turn containing event ${String(beforeSeq)}`,
+              details: { sessionId },
+            })
+          }
+          cut = beforeCut
+        } else {
+          const lastSeq = events.at(-1)?.seq ?? -1
+          const anchoredBoundary = atSeq === undefined
+            ? undefined
+            : events.find(e => e.type === 'turn/end' && e.seq >= atSeq)
+          const boundary = anchoredBoundary
+            ?? (atSeq === undefined || atSeq > lastSeq
+              ? events.findLast(e => e.type === 'turn/end')
+              : undefined)
+          if (boundary === undefined) {
+            return err(request, {
+              code: 'fork-unavailable',
+              message: atSeq !== undefined && atSeq <= lastSeq
+                ? `session "${sessionId}" has not completed the turn containing event ${String(atSeq)}`
+                : `session "${sessionId}" has no completed turn to fork from`,
+              details: { sessionId },
+            })
+          }
+          // Extend the cut through trailing out-of-band appends (session/title,
+          // injections) up to the next turn/start: they are standalone events, so
+          // the seed stays balanced, and the child inherits a title generated
+          // right after the boundary turn.
+          cut = boundary.seq + 1
+          while (cut < events.length && events[cut]?.type !== 'turn/start') cut++
         }
-        // Extend the cut through trailing out-of-band appends (session/title,
-        // injections) up to the next turn/start: they are standalone events, so
-        // the seed stays balanced, and the child inherits a title generated
-        // right after the boundary turn.
-        let cut = boundary.seq + 1
-        while (cut < events.length && events[cut]?.type !== 'turn/start') cut++
+        const seed = events.slice(0, cut)
+        const blank = !seed.some(event => event.type === 'turn/start')
         let workspace: Workspace | undefined
         try {
           workspace = await forkWorkspace(source)
@@ -2338,7 +2409,7 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
         try {
           await ctx.agents.create({
             sessionId: childId,
-            seed: events.slice(0, cut),
+            seed,
             meta: {
               ...source.header.cwd === undefined ? {} : { cwd: source.header.cwd },
               parentSession: source.id,
@@ -2367,11 +2438,11 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
             return err(request, {
               code: 'workspace-attach-failed',
               message: `session "${childId}" was forked but could not attach to workspace "${workspace.id}": ${String(error)}`,
-              details: { sessionId: childId, workspaceId: workspace.id },
+              details: { sessionId: childId, workspaceId: workspace.id, blank },
             })
           }
         }
-        return ok(request, { sessionId: childId })
+        return ok(request, { sessionId: childId, blank })
       },
 
       async prompt(request) {
@@ -2402,11 +2473,17 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
               const current = selectionFor(agent).current
               const modelInfo = await ctx.llm.resolveModelInfo(current.provider, current.model)
               if (modelInfo.inputModalities !== undefined && !modelInfo.inputModalities.includes('image')) {
-                return err(request, {
-                  code: 'attachment-error',
-                  message: `Model "${current.model}" does not support image input.`,
-                  details: { reason: 'MODEL_DOES_NOT_SUPPORT_IMAGES' },
-                })
+                // A designated vision-fallback model substitutes description
+                // text at request time, so the text-only route may admit the
+                // image; without one the refusal stands.
+                const visionFallback = ctx.get('visionFallback') as { configured(): boolean } | undefined
+                if (visionFallback?.configured() !== true) {
+                  return err(request, {
+                    code: 'attachment-error',
+                    message: `Model "${current.model}" does not support image input.`,
+                    details: { reason: 'MODEL_DOES_NOT_SUPPORT_IMAGES' },
+                  })
+                }
               }
             }
             const durable = await durablePromptContent(ctx, content)
@@ -2837,10 +2914,12 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
     },
 
     host: {
-      describe(request) {
+      async describe(request) {
         // TODO: version should read apps/cli's package.json; placeholder for now.
         const selection = defaults.defaultModelSelection()
-        return Promise.resolve(ok(request, {
+        const scratchCwd = dshHomePath('no-workspace')
+        await mkdir(scratchCwd, { recursive: true })
+        return ok(request, {
           version: '0.0.1',
           // Same source as session.create's fallback: the UI's default project
           // must match where an unspecified-cwd session actually lands.
@@ -2852,7 +2931,8 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
           attachedSessions: ctx.agents.list().length,
           home: homedir(),
           canOpenPath: canOpenPaths(),
-        }))
+          scratchCwd,
+        })
       },
 
       async pickDirectory(request, signal) {

@@ -1,0 +1,659 @@
+import { useEffect, useRef, useState, type ReactNode } from 'react'
+import clsx from 'clsx'
+import {
+  Button,
+  IconChevronRightOutline14,
+  IconGlobeOutline14,
+  MarkdownText,
+  Tooltip,
+} from '@deepseek-ai/dsh-client-ui-primitives'
+import type { InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
+import {
+  formatFileCommentRange,
+  normalizeFileCommentRange,
+  selectionToLineRange,
+  type SelectedLineRange,
+} from './fileCommentAnnotations.ts'
+import { installFileEditorDismissal } from './fileEditorDismissal.ts'
+import { fileBreadcrumbs } from './filePath.ts'
+import { clampFileLine, resolveCenteredFileLineScrollTop } from './fileLineReveal.ts'
+import { isMarkdownPreviewFile, setMarkdownTaskChecked } from './filePreviewMode.ts'
+import { FileSaveCoordinator, type FileSaveResult } from './fileSaveCoordinator.ts'
+import { NS } from './locales.ts'
+import type { FilesShellInjected } from './shell.ts'
+import { isWorkspaceBrowserPreviewPath, isWorkspaceImagePreviewPath } from './workspacePreview.ts'
+import css from './FilePreview.module.css'
+
+export type FilePreviewProps =
+  & PropsRuntime<'surfaces.file'>
+  & PropsLocale<typeof NS>
+  & InjectFace<FilesShellInjected>
+
+const RENDER_MARKDOWN_KEY = 'dshd.renderMarkdown'
+const FILE_WORD_WRAP_KEY = 'dshd.fileWordWrap'
+const FILE_SAVE_DEBOUNCE_MS = 500
+const OPEN_SURFACE_EVENT = 'dshd-open-surface'
+const PENDING_PREVIEW_URL_KEY = 'dshd-pending-preview-url'
+const BROWSER_DOCUMENTS = new Set(['.html', '.htm', '.xhtml', '.svg', '.pdf'])
+
+interface DesktopPreviewShell {
+  previewWorkspaceFile?: (input: {
+    cwd: string
+    relativePath: string
+  }) => Promise<{ ok?: boolean, url?: string } | null | undefined>
+}
+
+function currentCwd(useSessions: FilePreviewProps['useSessions']): string | undefined {
+  return useSessions((s) => {
+    const id = s.current
+    const next = id === undefined ? undefined : s.byId[id]?.cwd
+    return next ? next : undefined
+  })
+}
+
+function fileName(relativePath: string): string {
+  const slash = relativePath.lastIndexOf('/')
+  return slash < 0 ? relativePath : relativePath.slice(slash + 1)
+}
+
+function basenameOf(cwd: string): string {
+  const normalized = cwd.replace(/\\/g, '/')
+  const trimmed = normalized.endsWith('/') ? normalized.slice(0, -1) : normalized
+  const slash = trimmed.lastIndexOf('/')
+  return slash < 0 ? trimmed : trimmed.slice(slash + 1)
+}
+
+/**
+ * @param relative - workspace-relative path using `/` separators.
+ * @returns the lowercased extension including the leading dot, or empty.
+ */
+function documentExtension(relative: string): string {
+  const slash = relative.lastIndexOf('/')
+  const base = slash >= 0 ? relative.slice(slash + 1) : relative
+  const dot = base.lastIndexOf('.')
+  if (dot <= 0) return ''
+  return base.slice(dot).toLowerCase()
+}
+
+/**
+ * @param key - localStorage flag stored as `'1'` / `'0'`.
+ * @returns true only when the stored value is `'1'`; missing or unreadable is false.
+ */
+function readStoredFlag(key: string): boolean {
+  try {
+    return localStorage.getItem(key) === '1'
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Persist a boolean flag as `'1'` / `'0'`.
+ * @param key - localStorage key.
+ * @param value - stored preference.
+ */
+function writeStoredFlag(key: string, value: boolean): void {
+  try {
+    localStorage.setItem(key, value ? '1' : '0')
+  } catch {
+    // Quota / private mode: the in-memory toggle still applies this session.
+  }
+}
+
+/**
+ * @returns desktop `window.shell`, or undefined outside the renderer.
+ */
+function readPreviewShell(): DesktopPreviewShell | undefined {
+  /* v8 ignore next -- browser-only module; Node coverage never sees a missing window. */
+  if (typeof window === 'undefined') return undefined
+  return (window as Window & { shell?: DesktopPreviewShell }).shell
+}
+
+/**
+ * Write the pending preview URL and open the Browser surface, matching terminal.
+ * @param url - loopback http(s) the guest should load.
+ */
+function openPreviewSurface(url: string): void {
+  try {
+    sessionStorage.setItem(PENDING_PREVIEW_URL_KEY, url)
+  } catch {
+    // Quota / SecurityError: Preview still listens for the event when mounted.
+  }
+  window.dispatchEvent(new CustomEvent(OPEN_SURFACE_EVENT, { detail: { kind: 'preview', url } }))
+}
+
+/**
+ * Load a browser-renderable workspace file in Browser.
+ * Missing or failing IPC leaves Files in place and does not throw.
+ * @param cwd - session workspace root.
+ * @param relative - path inside cwd.
+ */
+async function previewBrowserDocument(cwd: string, relative: string): Promise<void> {
+  const preview = readPreviewShell()?.previewWorkspaceFile
+  if (typeof preview !== 'function' || !BROWSER_DOCUMENTS.has(documentExtension(relative))) return
+  try {
+    const result = await preview({ cwd, relativePath: relative })
+    if (result?.ok === true && typeof result.url === 'string' && result.url.length > 0) {
+      openPreviewSurface(result.url)
+    }
+  } catch {
+    // Files already open; preview is optional.
+  }
+}
+
+/**
+ * Format a selected line span as the composer payload for 「添加到对话」.
+ * @param relativePath - workspace-relative path, backtick-wrapped in the header.
+ * @param startLine - inclusive 1-based first line.
+ * @param endLine - inclusive 1-based last line.
+ * @param contents - full editor text; whole lines in the span are fenced as `text`.
+ * @returns header plus a `text` fence of the selected lines.
+ */
+function formatFileCommentComposerText(
+  relativePath: string,
+  startLine: number,
+  endLine: number,
+  contents: string,
+): string {
+  const selectedLines = contents.split('\n').slice(startLine - 1, endLine).join('\n')
+  const header = `${formatFileCommentRange(startLine, endLine)} \`${relativePath}\``
+  return `${header}\n\n\`\`\`text\n${selectedLines}\n\`\`\``
+}
+
+/**
+ * Single-file occupant of `surfaces.file`. Clean text that is not truncated can
+ * be edited and saved through desktop `writeFile`. Draft changes debounce 500ms
+ * through `FileSaveCoordinator`; persist rereads first and refuses once when
+ * disk diverged from both the remembered baseline and the draft (`error.changed`
+ * still wins: persist returns `{ ok: false }` and pending stays). Explicit Save /
+ * Ctrl+S / `registerSave` use that same write path. The occupant rereads disk
+ * when `active` becomes true. A dirty draft stays in the editor (Markdown Source
+ * included) when the last reread failed, returned truncated or binary bytes, or
+ * ran without a cwd; Save writes whenever cwd exists. A successful write clears
+ * truncated/binary so the editor remains. Ctrl/Cmd+S saves only while this tab
+ * is active. The surfaces shell persists dirty buffers across reload. Markdown
+ * Source/Rendered defaults to Source via `dshd.renderMarkdown`. Jump-to-line
+ * (`revealLine` / `revealRequestId`) scrolls the source textarea and shows
+ * source while that reveal is pending. A non-collapsed textarea selection
+ * shows 「添加到对话」; that control appends an `L` range plus a `text` fence
+ * through `appendComposerText`. Outside click and Escape dismiss the selection.
+ * @param props - session-maybe seats, relativePath owner, read/write IPC, and copy.
+ * @returns the preview panel.
+ */
+export function FilePreview({
+  sessionId,
+  useSessions,
+  relativePath,
+  revealLine,
+  revealRequestId,
+  active,
+  onDirtyChange,
+  readBuffer,
+  writeBuffer,
+  registerSave,
+  readFile,
+  readFileMedia,
+  writeFile,
+  appendComposerText,
+  t,
+}: FilePreviewProps): ReactNode {
+  const cwd = currentCwd(useSessions)
+  const isImage = isWorkspaceImagePreviewPath(relativePath)
+  const isMarkdown = isMarkdownPreviewFile(relativePath)
+  const canOpenInBrowser = cwd !== undefined
+    && isWorkspaceBrowserPreviewPath(relativePath)
+    && BROWSER_DOCUMENTS.has(documentExtension(relativePath))
+  const projectName = cwd === undefined ? '' : basenameOf(cwd)
+  const crumbs = fileBreadcrumbs(projectName, relativePath)
+  const seed = readBuffer()
+  const [text, setText] = useState<string>(() => seed?.text ?? '')
+  const [draft, setDraft] = useState<string>(() => seed?.draft ?? '')
+  const [media, setMedia] = useState<{ mime: string; base64: string } | null>(null)
+  const [binary, setBinary] = useState(false)
+  const [truncated, setTruncated] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [saveError, setSaveError] = useState<string | null>(null)
+  const [renderMarkdown, setRenderMarkdown] = useState(() => readStoredFlag(RENDER_MARKDOWN_KEY))
+  const [wordWrap, setWordWrap] = useState(() => readStoredFlag(FILE_WORD_WRAP_KEY))
+  const [handledReveal, setHandledReveal] = useState<{ path: string; requestId: number } | null>(null)
+  const [saved, setSaved] = useState(false)
+  const [ready, setReady] = useState(seed !== undefined)
+  const loadedRef = useRef(seed !== undefined)
+  const textRef = useRef(seed?.text ?? '')
+  const draftRef = useRef(seed?.draft ?? '')
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const rootRef = useRef<HTMLDivElement>(null)
+  const handledRevealRequestIdRef = useRef<number | null>(null)
+  const [selectedLineRange, setSelectedLineRange] = useState<SelectedLineRange | null>(null)
+  textRef.current = text
+  draftRef.current = draft
+
+  const readBufferRef = useRef(readBuffer)
+  readBufferRef.current = readBuffer
+  const writeBufferRef = useRef(writeBuffer)
+  writeBufferRef.current = writeBuffer
+  const readFileRef = useRef(readFile)
+  readFileRef.current = readFile
+  const writeFileRef = useRef(writeFile)
+  writeFileRef.current = writeFile
+  const tRef = useRef(t)
+  tRef.current = t
+  const cwdRef = useRef(cwd)
+  cwdRef.current = cwd
+
+  useEffect(() => {
+    if (cwd === undefined) {
+      setError(t('empty.cwd'))
+      setSaveError(null)
+      // Keep text/draft: a transient missing cwd must not wipe unsaved edits.
+      return
+    }
+    if (!active && loadedRef.current) return
+    let cancelled = false
+    const markReady = (): void => {
+      loadedRef.current = true
+      setReady(true)
+    }
+    const applyError = (message: string): void => {
+      const remembered = readBufferRef.current()
+      setError(message)
+      setSaveError(null)
+      setMedia(null)
+      if (remembered !== undefined && remembered.draft !== remembered.text) {
+        setText(remembered.text)
+        setDraft(remembered.draft)
+        markReady()
+        return
+      }
+      if (draftRef.current !== textRef.current) {
+        markReady()
+        return
+      }
+      setText('')
+      setDraft('')
+      writeBufferRef.current(null)
+      markReady()
+    }
+    if (isImage) {
+      void readFileMedia(cwd, relativePath).then((result) => {
+        if (cancelled) return
+        if (!result.ok || result.mime === undefined || result.base64 === undefined) {
+          applyError(result.message ?? t('error.read'))
+          return
+        }
+        setError(null)
+        setSaveError(null)
+        setBinary(false)
+        setTruncated(result.truncated === true)
+        setMedia({ mime: result.mime, base64: result.base64 })
+        setText('')
+        setDraft('')
+        writeBufferRef.current(null)
+        markReady()
+      }).catch(() => {
+        if (!cancelled) applyError(t('error.read'))
+      })
+    } else {
+      void readFile(cwd, relativePath).then((result) => {
+        if (cancelled) return
+        if (!result.ok) {
+          applyError(result.message ?? t('error.read'))
+          return
+        }
+        setError(null)
+        setSaveError(null)
+        setBinary(result.binary === true)
+        setTruncated(result.truncated === true)
+        const next = result.text ?? ''
+        const remembered = readBufferRef.current()
+        const localDirty = draftRef.current !== textRef.current
+        if (localDirty) {
+          setText(next)
+          setDraft(draftRef.current)
+          writeBufferRef.current({ text: next, draft: draftRef.current })
+        } else if (remembered !== undefined && remembered.draft !== remembered.text) {
+          setText(next)
+          setDraft(remembered.draft)
+          writeBufferRef.current({ text: next, draft: remembered.draft })
+        } else if (remembered !== undefined && remembered.text === next) {
+          setText(remembered.text)
+          setDraft(remembered.draft)
+        } else {
+          setText(next)
+          setDraft(next)
+          writeBufferRef.current({ text: next, draft: next })
+        }
+        setMedia(null)
+        setSaved(false)
+        markReady()
+      }).catch(() => {
+        if (!cancelled) applyError(t('error.read'))
+      })
+    }
+    return () => { cancelled = true }
+  }, [cwd, relativePath, readFile, readFileMedia, t, isImage, active])
+
+  const editable = ready && error === null && !isImage && !binary && !truncated
+  // Dirty tracks buffer divergence even when cwd/error/truncated/binary block a
+  // clean preview, so tab-close confirm still runs and Save/Source stay reachable.
+  const dirty = !isImage && draft !== text
+  const canSave = cwd !== undefined && dirty
+  const showEditor = ready && !isImage && (dirty || editable)
+  const revealActive = typeof revealLine === 'number' && typeof revealRequestId === 'number'
+  const revealHandled = handledReveal?.path === relativePath && handledReveal.requestId === revealRequestId
+  const showRenderedMarkdown = isMarkdown && renderMarkdown && !(revealActive && !revealHandled)
+  const codeLabels = { copyLabel: t('preview.copy'), copiedLabel: t('preview.copied') }
+
+  const onDirtyChangeRef = useRef(onDirtyChange)
+  onDirtyChangeRef.current = onDirtyChange
+  useEffect(() => {
+    onDirtyChangeRef.current(dirty)
+  }, [dirty])
+  useEffect(() => () => { onDirtyChangeRef.current(false) }, [])
+
+  useEffect(() => {
+    if (!loadedRef.current) return
+    if (isImage) return
+    writeBufferRef.current({ text, draft })
+  }, [isImage, text, draft])
+
+  useEffect(() => {
+    handledRevealRequestIdRef.current = null
+  }, [relativePath])
+
+  useEffect(() => {
+    if (typeof revealLine !== 'number' || typeof revealRequestId !== 'number') return
+    if (handledRevealRequestIdRef.current === revealRequestId) return
+    if (!ready) return
+    const textarea = textareaRef.current
+    if (textarea === null) return
+    const line = clampFileLine(draft, revealLine)
+    const rect = textarea.getBoundingClientRect()
+    const parsed = Number.parseFloat(window.getComputedStyle(textarea).lineHeight)
+    const lineHeight = Number.isFinite(parsed) && parsed > 0 ? parsed : 20
+    textarea.scrollTop = resolveCenteredFileLineScrollTop({
+      scrollTop: textarea.scrollTop,
+      scrollHeight: textarea.scrollHeight,
+      viewportTop: rect.top,
+      viewportHeight: textarea.clientHeight,
+      fileTop: 0,
+      estimatedLine: { top: (line - 1) * lineHeight, height: lineHeight },
+    })
+    handledRevealRequestIdRef.current = revealRequestId
+  }, [ready, draft, revealLine, revealRequestId, showRenderedMarkdown])
+
+  const persistContents = async (
+    persistCwd: string | undefined,
+    persistPath: string,
+    contents: string,
+  ): Promise<FileSaveResult> => {
+    if (persistCwd === undefined) return { ok: false }
+    try {
+      const latest = await readFileRef.current(persistCwd, persistPath)
+      if (
+        latest.ok
+        && latest.binary !== true
+        && latest.truncated !== true
+        && typeof latest.text === 'string'
+        && latest.text !== textRef.current
+        && latest.text !== contents
+      ) {
+        setText(latest.text)
+        writeBufferRef.current({ text: latest.text, draft: draftRef.current })
+        setSaveError(tRef.current('error.changed'))
+        return { ok: false }
+      }
+      const result = await writeFileRef.current(persistCwd, persistPath, contents)
+      if (!result.ok) {
+        setSaveError(result.message ?? tRef.current('error.write'))
+        return { ok: false }
+      }
+      setSaveError(null)
+      setError(null)
+      setTruncated(false)
+      setBinary(false)
+      return { ok: true }
+    } catch {
+      setSaveError(tRef.current('error.write'))
+      return { ok: false }
+    }
+  }
+
+  const persistContentsRef = useRef(persistContents)
+  persistContentsRef.current = persistContents
+
+  // Unmount/Discard must not flush. Hook destroy runs in declaration order, so
+  // this empty-deps cleanup runs before dispose; relativePath change skips it.
+  useEffect(() => () => {
+    persistContentsRef.current = async () => ({ ok: false })
+  }, [])
+
+  const coordinatorRef = useRef<FileSaveCoordinator | null>(null)
+  useEffect(() => {
+    const persistPath = relativePath
+    const coordinator = new FileSaveCoordinator({
+      debounceMs: FILE_SAVE_DEBOUNCE_MS,
+      persist: contents => persistContentsRef.current(cwdRef.current, persistPath, contents),
+      onPendingChange: () => {},
+      onConfirmed: (contents) => {
+        setText(contents)
+        writeBufferRef.current({ text: contents, draft: draftRef.current })
+      },
+    })
+    coordinatorRef.current = coordinator
+    return () => {
+      coordinator.dispose()
+      if (coordinatorRef.current === coordinator) coordinatorRef.current = null
+    }
+  }, [relativePath])
+
+  const saveRef = useRef<() => Promise<boolean>>(async () => false)
+  const save = async (): Promise<boolean> => {
+    if (cwd === undefined || !dirty) return false
+    const result = await persistContents(cwd, relativePath, draftRef.current)
+    if (!result.ok) return false
+    setText(draftRef.current)
+    writeBufferRef.current({ text: draftRef.current, draft: draftRef.current })
+    setSaved(true)
+    window.setTimeout(() => { setSaved(false) }, 1200)
+    return true
+  }
+  saveRef.current = save
+
+  useEffect(() => {
+    registerSave(() => saveRef.current())
+    return () => { registerSave(null) }
+  }, [registerSave])
+
+  useEffect(() => {
+    if (!active || !canSave) return
+    const onKeyDown = (event: KeyboardEvent): void => {
+      if (!(event.metaKey || event.ctrlKey) || event.key.toLowerCase() !== 's') return
+      event.preventDefault()
+      void saveRef.current()
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => { window.removeEventListener('keydown', onKeyDown) }
+  }, [active, canSave])
+
+  useEffect(() => {
+    const root = rootRef.current
+    const editor = textareaRef.current
+    if (root === null || editor === null) return
+    return installFileEditorDismissal({
+      root,
+      editor,
+      isBlocked: () => false,
+      onDismiss: () => { setSelectedLineRange(null) },
+    })
+  }, [showEditor, showRenderedMarkdown])
+
+  const applyDraft = (next: string): void => {
+    setDraft(next)
+    writeBufferRef.current({ text: textRef.current, draft: next })
+    coordinatorRef.current?.change(next)
+  }
+
+  const onTaskChecked = (markerOffset: number, checked: boolean): void => {
+    const next = setMarkdownTaskChecked(draftRef.current, markerOffset, checked)
+    if (next === draftRef.current) return
+    applyDraft(next)
+  }
+
+  const syncTextareaSelection = (textarea: HTMLTextAreaElement): void => {
+    if (textarea.selectionStart === textarea.selectionEnd) {
+      setSelectedLineRange(null)
+      return
+    }
+    setSelectedLineRange(
+      selectionToLineRange(textarea.value, textarea.selectionStart, textarea.selectionEnd),
+    )
+  }
+
+  const addSelectionToChat = (range: SelectedLineRange): void => {
+    /* v8 ignore next -- optional inject / session-maybe; production apply always binds it. */
+    if (appendComposerText === undefined || sessionId === undefined) return
+    const { startLine, endLine } = normalizeFileCommentRange(range)
+    appendComposerText(
+      sessionId,
+      formatFileCommentComposerText(relativePath, startLine, endLine, draftRef.current),
+    )
+  }
+
+  return (
+    <div ref={rootRef} className={css.root} data-file-preview>
+      <div className={css.toolbar}>
+        <p className={css.crumbs} data-file-breadcrumbs>
+          {crumbs.map((crumb, index) => (
+            <span key={crumb.path || 'project'} className={css.crumb}>
+              {index > 0 ? <IconChevronRightOutline14 className={css.crumbSep} /> : null}
+              <span
+                className={clsx(css.crumbLabel, crumb.kind === 'file' && css.crumbFile)}
+                title={crumb.path || projectName}
+              >
+                {crumb.label}
+              </span>
+            </span>
+          ))}
+        </p>
+        {isMarkdown && (editable || dirty) ? (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              const next = !showRenderedMarkdown
+              setRenderMarkdown(next)
+              writeStoredFlag(RENDER_MARKDOWN_KEY, next)
+              if (typeof revealRequestId !== 'number') return
+              setHandledReveal(next ? { path: relativePath, requestId: revealRequestId } : null)
+            }}
+          >
+            {showRenderedMarkdown ? t('preview.source') : t('preview.render')}
+          </Button>
+        ) : null}
+        {editable || dirty ? (
+          <Button
+            variant="ghost"
+            size="sm"
+            aria-pressed={wordWrap}
+            aria-label={t('preview.wrap')}
+            onClick={() => {
+              setWordWrap((open) => {
+                const next = !open
+                writeStoredFlag(FILE_WORD_WRAP_KEY, next)
+                return next
+              })
+            }}
+          >
+            {t('preview.wrap')}
+          </Button>
+        ) : null}
+        {canOpenInBrowser ? (
+          <Tooltip label={t('preview.browser')} side="bottom">
+            <button
+              type="button"
+              className={css.iconButton}
+              aria-label={t('preview.browser')}
+              onClick={() => {
+                if (cwd === undefined) return
+                void previewBrowserDocument(cwd, relativePath)
+              }}
+            >
+              <IconGlobeOutline14 />
+            </button>
+          </Tooltip>
+        ) : null}
+        {selectedLineRange !== null && showEditor && !showRenderedMarkdown ? (
+          <Tooltip label={t('preview.comment')} side="bottom">
+            <Button
+              variant="ghost"
+              size="sm"
+              onMouseDown={event => { event.preventDefault() }}
+              onClick={() => { addSelectionToChat(selectedLineRange) }}
+            >
+              {t('preview.comment')}
+            </Button>
+          </Tooltip>
+        ) : null}
+        {editable || dirty ? (
+          <Button
+            variant="primary"
+            size="sm"
+            disabled={!canSave}
+            onClick={() => { void save() }}
+          >
+            {saved ? t('preview.saved') : t('preview.save')}
+          </Button>
+        ) : null}
+      </div>
+      <div className={css.body}>
+        {saveError !== null ? (
+          <p className={css.saveError} role="alert">{saveError}</p>
+        ) : null}
+        {error !== null ? (
+          <p className={css.message}>{error}</p>
+        ) : null}
+        {media !== null ? (
+          <>
+            {truncated ? <p className={css.message}>{t('preview.truncated')}</p> : null}
+            <img
+              className={css.image}
+              alt={fileName(relativePath)}
+              src={`data:${media.mime};base64,${media.base64}`}
+            />
+          </>
+        ) : binary && !dirty ? (
+          <p className={css.message}>{t('preview.binary')}</p>
+        ) : !ready ? (
+          null
+        ) : showEditor ? (
+          <>
+            {truncated ? <p className={css.message}>{t('preview.truncated')}</p> : null}
+            {binary ? <p className={css.message}>{t('preview.binary')}</p> : null}
+            {isMarkdown && showRenderedMarkdown ? (
+              <MarkdownText text={draft} codeLabels={codeLabels} onTaskChecked={onTaskChecked} />
+            ) : (
+              <textarea
+                ref={textareaRef}
+                className={clsx(css.editor, wordWrap && css.wrap)}
+                value={draft}
+                aria-label={relativePath}
+                onChange={event => { applyDraft(event.target.value) }}
+                onSelect={event => { syncTextareaSelection(event.currentTarget) }}
+              />
+            )}
+          </>
+        ) : truncated ? (
+          <>
+            <p className={css.message}>{t('preview.truncated')}</p>
+            {isMarkdown ? (
+              <MarkdownText text={text} codeLabels={codeLabels} />
+            ) : (
+              <pre className={css.code}>{text}</pre>
+            )}
+          </>
+        ) : null}
+      </div>
+    </div>
+  )
+}

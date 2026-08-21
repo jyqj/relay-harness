@@ -70,6 +70,8 @@ interface BenchOptions {
   }
   draft?: string
   running?: boolean
+  agentPreset?: string
+  origin?: 'dshbot'
   subagent?: Exclude<ConversationSnapshot['subagent'], null>
   disabled?: boolean
   inert?: boolean
@@ -105,6 +107,7 @@ function row(id: string): ConversationSnapshot['queue'][number] {
 
 /** Real machine behind the bar entry: sink spy, no slash pipeline (plain text goes straight to the sink). */
 function bench(over?: BenchOptions) {
+  const hasSessionRow = over?.agentPreset !== undefined || over?.origin !== undefined
   const sink = vi.fn<(
     text: string,
     imageIds: readonly DraftAttachmentId[],
@@ -156,7 +159,19 @@ function bench(over?: BenchOptions) {
     SessionProvider: ({ children }) => children(SID),
     useSession: bindSnapshotSelector(session),
     useSessions: bindSnapshotSelector(createSnapshotStore({
-      ids: [], byId: {}, current: undefined, phase: 'ready',
+      ids: hasSessionRow ? [SID] : [],
+      byId: hasSessionRow ? {
+        [SID]: {
+          id: SID,
+          displayTitle: 's1',
+          running: over?.running ?? false,
+          blank: false,
+          updatedAt: 0,
+          ...(over?.agentPreset !== undefined ? { agentPreset: over.agentPreset } : {}),
+          ...(over?.origin !== undefined ? { origin: over.origin } : {}),
+        },
+      } : {},
+      current: hasSessionRow ? SID : undefined, phase: 'ready',
       subagentsByParent: {}, jobsBySession: {}, currentAddress: undefined,
     })),
     useWorkspaces: bindSnapshotSelector(createSnapshotStore({
@@ -185,6 +200,11 @@ function bench(over?: BenchOptions) {
     useNotices: bindSnapshotSelector(shell.notices),
     useLexicon: bindSnapshotSelector(shell.lexicon),
     useMenuLauncher: bindSnapshotSelector(menuLauncher),
+    useComposerBeam: bindSnapshotSelector(createSnapshotStore(false)),
+    useComposerResize: bindSnapshotSelector(createSnapshotStore(false)),
+    useComposerResizeHeight: bindSnapshotSelector(createSnapshotStore(null)),
+    useComposerResizeWidth: bindSnapshotSelector(createSnapshotStore(null)),
+    setComposerResizeSize: () => {},
     stop,
     command: over?.command ?? (() => Promise.resolve(true)),
     // Mirrors the real lookup chain (conversation namespace, then common).
@@ -1388,7 +1408,7 @@ describe('command launcher chrome and control seats', () => {
     fireEvent.click(items[1]!)
     // Optimistic pick + disable until admission resolves (command stub resolves true).
     const busy = view.getByLabelText(/^访问模式/) as HTMLButtonElement
-    expect(busy.textContent).toBe('Workspace Write')
+    expect(busy.getAttribute('aria-label')).toContain('Workspace Write')
     expect(busy.disabled).toBe(true)
     expect(command).toHaveBeenCalledWith('/permission workspace-write')
     await act(async () => {})
@@ -1420,7 +1440,7 @@ describe('command launcher chrome and control seats', () => {
     expect(command).toHaveBeenCalledOnce()
     expect(command).toHaveBeenCalledWith('/permission danger-full-access')
     expect(view.queryByRole('dialog')).toBeNull()
-    expect((view.getByLabelText(/^访问模式/) as HTMLButtonElement).textContent).toBe('Full access')
+    expect((view.getByLabelText(/^访问模式/) as HTMLButtonElement).getAttribute('aria-label')).toContain('Full access')
     await act(async () => {})
   })
 
@@ -1514,4 +1534,30 @@ describe('command launcher chrome and control seats', () => {
     const live = bench({ running: true, permissions })
     expect((live.view.getByLabelText(/^访问模式/) as HTMLButtonElement).disabled).toBe(false)
   })
+
+  it('skips the model seat when the session agent preset is dshbot-room', () => {
+    const { view, slotCalls } = bench({
+      agentPreset: 'dshbot-room',
+      planEntry: <i data-testid="plan-entry" />,
+      modelEntry: <i data-testid="model-entry" />,
+    })
+    expect(slotCalls.map(call => call.key)).toEqual(['conversation.input.attachments'])
+    expect(view.queryByTestId('plan-entry')).toBeNull()
+    expect(view.queryByTestId('model-entry')).toBeNull()
+    expect(view.queryByLabelText('命令')).toBeNull()
+  })
+
+
+  it('skips the model seat when the session origin is dshbot', () => {
+    const { view, slotCalls } = bench({
+      origin: 'dshbot',
+      planEntry: <i data-testid="plan-entry" />,
+      modelEntry: <i data-testid="model-entry" />,
+    })
+    expect(slotCalls.map(call => call.key)).toEqual(['conversation.input.attachments', 'conversation.input.plan'])
+    expect(view.getByTestId('plan-entry')).toBeTruthy()
+    expect(view.queryByTestId('model-entry')).toBeNull()
+    expect(view.getByLabelText('命令')).toBeTruthy()
+  })
+
 })

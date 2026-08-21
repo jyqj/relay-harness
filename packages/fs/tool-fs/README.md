@@ -14,7 +14,7 @@ await ctx.plugin(ToolFs)                                  // this package — re
 
 `@deepseek-ai/dsh-fs-observation-policy` is **optional**: omit it and the tools run against the bare provider (unconditional write/overwrite/edit, no observed-state). A deployment that loads these tools is expected to also load it, so the behavior is read-before-write/edit.
 
-`read_image` registers only while a durable `ctx.attachments` service is mounted — without one the deployment cannot commit image bytes, so the tool never appears. Execution additionally requires the exact routed model to declare `image` input (resolved through `ctx.llm.resolveModelInfo` from the session's latest request header, falling back to agent options); an unknown or text-only route gets a refusal result before any filesystem I/O, so a text route's durable history stays free of image blocks.
+`read_image` registers only while a durable `ctx.attachments` service is mounted — without one the deployment cannot commit image bytes, so the tool never appears. Execution additionally requires the exact routed model to declare `image` input (resolved through `ctx.llm.resolveModelInfo` from the session's latest request header, falling back to agent options); an unknown or text-only route gets a refusal result before any filesystem I/O, so a text route's durable history stays free of image blocks. The one exception: a configured `visionFallback` service admits the read, because request assembly substitutes the image block with its logged vision-model description, keeping the route's durable history carriable.
 
 ## Config
 
@@ -32,7 +32,7 @@ All keys are optional; the defaults are the shipped read caps.
 | Tool | Arguments | Behavior |
 |---|---|---|
 | `read` | `file_path`, `offset?`, `limit?` | Line-numbered UTF-8 content with a pagination footer. `offset` is 1-based; `limit` defaults to and caps at the configured `readLimit` (2000). |
-| `read_image` | `file_path` | Reads a PNG/JPEG/WebP/GIF file through the bounded byte seam, persists it through `ctx.attachments.saveImage`, and returns an image block beside a small metadata envelope. It succeeds only when the exact routed model declares image input. |
+| `read_image` | `file_path` | Reads a PNG/JPEG/WebP/GIF file through the bounded byte seam, persists it through `ctx.attachments.saveImage`, and returns an image block beside a small metadata envelope. It succeeds only when the exact routed model declares image input, or when a configured `visionFallback` service is mounted (request assembly then substitutes the image block with a vision-model description). |
 | `write` | `file_path`, `content` | Create or fully replace a file. With the policy plugin: overwriting an existing file requires a prior `read` at the unchanged version; creating a new file does not. Without it: unconditional. |
 | `edit` | `file_path`, non-empty `old_string`, `new_string`, `replace_all?` | Literal replacement; unique match required unless `replace_all` is true. With the policy plugin: requires a prior `read` (any window) and the file unchanged since. Without it: unconditional. |
 
@@ -57,7 +57,7 @@ When `ctx.fs.sandboxMode` reports confinement, write/edit advertise `sandbox_per
 
 `fs/observed` fires AFTER the read/read_image/write/edit already succeeded, via a plain `ctx.emit`. A listener is contractually a synchronous, side-effect-only recorder (`@deepseek-ai/dsh-fs-observation-policy`'s is a `WeakMap.set`); the tool does not guard the emit, so a listener that throws would surface as the tool's `isError` result — async or fallible observation does not belong on this event.
 
-`read` opts into concurrent scheduling because its only mutation is the synchronous version recorder. Recorder races fail closed when a later `write` or `edit` re-checks the version under its target lock; both mutation tools remain exclusive. See the [parallel tool-call Agent Note](../../../.agents/notes/implemented/feature/2026-07-10-parallel-tool-call-execution.md).
+`read`, `write`, and `edit` declare canonical `fs:<FsTargetKey>` resource intents. Same-target reads may overlap, a mutation excludes every same-target reader or writer, and unrelated provider targets may execute concurrently. Intent/CAS policy runs inside the lock, so a queued mutation observes the prior committed version. See the [resource-lock Agent Note](../../../.agents/notes/implemented/architecture/2026-08-21-tool-resource-intent-locks.md).
 
 The package root exports only the Cordis plugin contract (`name`, `inject`, `Config`, and `apply`). Read rendering (line windowing + output formatting) lives in `src/read-render.ts` (Cordis-free, independently unit-tested); `src/read.ts`/`read-image.ts`/`write.ts`/`edit.ts` are the tool executors and `src/index.ts` composes them.
 

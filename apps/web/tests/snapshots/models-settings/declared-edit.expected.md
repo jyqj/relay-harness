@@ -4,21 +4,41 @@
     - button "通用设置":
       - img
       - text: 通用设置
+    - button "外观":
+      - img
+      - text: 外观
+    - button "界面设置":
+      - img
+      - text: 界面设置
     - button "模型":
       - img
       - text: 模型
     - button "插件":
       - img
       - text: 插件
+    - button "技能":
+      - img
+      - text: 技能
+    - button "MCP":
+      - img
+      - text: MCP
     - button "Agent 预设":
       - img
       - text: Agent 预设
+    - button "关于":
+      - img
+      - text: 关于
   - button "打开配置文件"
   - button "关闭":
     - img
     - text: 关闭
   - heading "模型" [level=2]
   - paragraph: 填入各提供方的 API 密钥即可使用其模型。
+  - text: 识图模型
+  - combobox "识图模型":
+    - option "不启用" [selected]
+    - option "DeepSeek / DeepSeek-V4-Flash"
+  - paragraph: 主模型不支持图片时，先由该模型识别图片内容，再把描述交给主模型处理。请选择一个支持图片输入的模型。
   - list:
     - listitem:
       - text: minimax-cn
@@ -57,6 +77,22 @@
             - /placeholder: 显示名称
           - button "容量 1"
           - button "删除模型 1"
+          - group "思考强度":
+            - text: 思考强度
+            - checkbox "关闭 1"
+            - text: 关闭
+            - checkbox "极低 1"
+            - text: 极低
+            - checkbox "低 1"
+            - text: 低
+            - checkbox "中 1"
+            - text: 中
+            - checkbox "高 1"
+            - text: 高
+            - checkbox "很高 1"
+            - text: 很高
+            - checkbox "最大 1"
+            - text: 最大
           - button "添加模型"
       - button "取消"
       - button "保存"

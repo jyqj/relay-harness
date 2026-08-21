@@ -32,6 +32,14 @@ subagent seam 允许一个 agent（智能体）通过具名提供方把工作委
 
 同进程请求、描述符、结果和事件 payload 都是可信的类型值，并按不可变约定借用。服务不会克隆或冻结它们；序列化和不可信输入校验属于真实的进程、worker、持久化和模型边界。
 
+## 容量准入
+
+`maxActivePerRoot` 限制一棵完整 live 会话树下并发存在的 child 生命周期；`maxActivePerParent` 可再增加直属 sibling 上限。服务解析调用 parent 的最高 live 持久祖先，并让一次性提供方、可继续 Activation、workflow fan-out 与 team provisioning 共用一张准入表。不同 root 彼此独立。省略某个上限即表示该 scope 无界；基础 bundle 配置 `maxActivePerRoot: 4`。
+
+`overflow: reject`（默认值与基础 bundle 策略）会在容量饱和时、任何提供方或 Agent 工作开始前，以 `SubagentError('CAPACITY_EXCEEDED')` 拒绝启动。`overflow: queue` 会在 root 局部队列中等待，移除已取消调用方，在队首因直属 parent 上限阻塞时跳到另一个合格 parent，并在 runtime 关闭时拒绝待处理工作。队列模式是显式部署选择，因为当 root 的全部 slot 都被占用时，正在等待的嵌套 child 可能依赖另一个生命周期释放。
+
+容量跟随资源所有权，而不是结果可见性。一次性 lease 会一直保留到 holder 调用幂等的 `SubagentRun.dispose()`；提供方启动失败会立即释放。可继续 lease 会转交给 Activation，仅在 handle disposal 或回滚达到静默后释放。结果结算、生命周期通知、提供方移除，以及 inbox 接受后的调用方取消，都不会提前释放仍存活 child 的 slot。参见[根会话树准入决策](../../../.agents/notes/implemented/architecture/2026-08-21-root-tree-subagent-admission.md)。
+
 ## 能力
 
 启动时功能通过 `provider.capabilities` 声明，因为服务必须在创建子 agent 前拒绝不受支持的一次性请求：

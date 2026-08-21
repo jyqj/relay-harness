@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /** Model-list editing, endpoint interrogation, and hand-declared provider creation. */
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import Schema from '@deepseek-ai/schemastery'
 import { bindSnapshotSelector } from '@deepseek-ai/dsh-client-test-runtime'
@@ -313,6 +313,71 @@ describe('model list editing', () => {
     ])
   })
 
+  it('offers every pi-ai thinking intensity on a new model row', async () => {
+    await mountSection()
+    openEditor('openai')
+    fireEvent.click(screen.getByRole('button', { name: en.addModel }))
+    const group = screen.getByRole('group', { name: en.effortTitle })
+    expect(within(group).getAllByRole('checkbox').map(box => box.getAttribute('aria-label'))).toEqual([
+      `${en['effort.off']} 1`,
+      `${en['effort.minimal']} 1`,
+      `${en['effort.low']} 1`,
+      `${en['effort.medium']} 1`,
+      `${en['effort.high']} 1`,
+      `${en['effort.xhigh']} 1`,
+      `${en['effort.max']} 1`,
+    ])
+  })
+
+  it('writes checked thinking intensities as reasoningEfforts on the model', async () => {
+    const { mutate } = await mountSection()
+    openEditor('openai')
+
+    fireEvent.click(screen.getByRole('button', { name: en.addModel }))
+    fireEvent.change(screen.getByLabelText(`${en.modelId} 1`), { target: { value: 'acme-think' } })
+    fireEvent.click(screen.getByLabelText(`${en['effort.off']} 1`))
+    fireEvent.click(screen.getByLabelText(`${en['effort.minimal']} 1`))
+    fireEvent.click(screen.getByLabelText(`${en['effort.high']} 1`))
+    fireEvent.click(screen.getByLabelText(`${en['effort.max']} 1`))
+    fireEvent.click(screen.getByText(en.apply))
+
+    await waitFor(() => { expect(mutate).toHaveBeenCalled() })
+    expect(firstMutate(mutate).ops[0]?.value).toEqual([{
+      id: 'acme-think',
+      reasoningEfforts: { off: null, minimal: 'minimal', high: 'high', max: 'max' },
+    }])
+  })
+
+  it('refuses apply when Off is the only checked thinking intensity', async () => {
+    await mountSection()
+    openEditor('openai')
+    fireEvent.click(screen.getByRole('button', { name: en.addModel }))
+    fireEvent.change(screen.getByLabelText(`${en.modelId} 1`), { target: { value: 'acme-think' } })
+    fireEvent.click(screen.getByLabelText(`${en['effort.off']} 1`))
+    expect(buttonNamed(en.apply).disabled).toBe(true)
+    expect(screen.getByText(`${en.model} 1: ${en.effortOffAlone}`)).toBeTruthy()
+  })
+
+  it('drops reasoningEfforts when every thinking intensity is unchecked', async () => {
+    const { mutate } = await mountSection({
+      providers: {
+        openai: {
+          baseURL: 'https://proxy.example/v1',
+          models: [{ id: 'acme-think', reasoningEfforts: { high: 'high', max: 'max' } }],
+        },
+      },
+    })
+    openEditor('openai')
+    expect(screen.getByLabelText<HTMLInputElement>(`${en['effort.high']} 1`).checked).toBe(true)
+    expect(screen.getByLabelText<HTMLInputElement>(`${en['effort.max']} 1`).checked).toBe(true)
+    fireEvent.click(screen.getByLabelText(`${en['effort.high']} 1`))
+    fireEvent.click(screen.getByLabelText(`${en['effort.max']} 1`))
+    fireEvent.click(screen.getByText(en.apply))
+
+    await waitFor(() => { expect(mutate).toHaveBeenCalled() })
+    expect(firstMutate(mutate).ops[0]?.value).toEqual([{ id: 'acme-think' }])
+  })
+
   it('shows the adapter defaults as inherited until an edit takes them over', async () => {
     await mountSection({ providers: { openai: { baseURL: 'https://proxy.example/v1' } } })
     openEditor('openai')
@@ -480,7 +545,10 @@ describe('endpoint interrogation', () => {
     fireEvent.click(screen.getByText(en.fetchModels))
     await screen.findByText(en.fetchTitle)
     // The already-configured row starts unchecked; the new one starts checked.
-    const boxes = [...document.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')]
+    // Scoped to the adopt dialog: the model rows behind it carry their own
+    // thinking-intensity checkboxes.
+    const dialog = screen.getByRole('dialog')
+    const boxes = [...within(dialog).getAllByRole('checkbox')] as HTMLInputElement[]
     expect(boxes.map(box => box.checked)).toEqual([false, true])
     fireEvent.click(screen.getByText(en.fetchAdopt))
 
@@ -596,7 +664,10 @@ describe('endpoint interrogation', () => {
 
     fireEvent.click(screen.getByText(en.fetchModels))
     await screen.findByText(en.fetchTitle)
-    const boxes = [...document.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')]
+    // The picker dialog's own checkboxes, scoped to the dialog: the editor
+    // behind it now owns checkboxes of its own (input types).
+    const dialog = screen.getByRole('dialog', { name: en.fetchTitle })
+    const boxes = [...dialog.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')]
     const first = boxes[0] as HTMLInputElement
     fireEvent.click(first)
     fireEvent.click(first)
@@ -750,11 +821,12 @@ describe('hand-declared providers', () => {
     cleanup()
 
     // A shipped route's models each carry their own protocol, so its editor
-    // offers no route-level protocol to override them with.
+    // offers no route-level protocol to override them with; the route-level
+    // default input types are its own fallback control.
     await mountSection({ providers: { openai: { apiKeyEnv: 'OPENAI_API_KEY' } } })
     openEditor('openai')
     fireEvent.click(screen.getByText(en.customized))
-    expect(fields()).toEqual([en.keyInput, en.baseUrl])
+    expect(fields()).toEqual([en.keyInput, en.baseUrl, en.inputText, en.inputImage])
     cleanup()
 
     // A hand-declared route named its own protocol at creation, so editing it
@@ -764,7 +836,9 @@ describe('hand-declared providers', () => {
       declaredRoutes: ['acme-gateway'],
     })
     openEditor('acme-gateway')
-    expect(fields()).toEqual([en.keyInput, en.customDisplayName, en.baseUrl, en.customApi])
+    expect(fields()).toEqual([
+      en.keyInput, en.customDisplayName, en.baseUrl, en.customApi, en.inputText, en.inputImage,
+    ])
   })
 
   it('renames a declared route and falls back to its id when the name is cleared', async () => {
@@ -1095,6 +1169,22 @@ describe('hand-declared providers', () => {
 
     await waitFor(() => { expect(onClose).toHaveBeenCalledWith(true) })
     expect(firstMutate(mutate).ops[0]?.value).toMatchObject({ models: [{ id: 'bare' }] })
+  })
+
+  it('creates a model with the thinking intensities the user checked', async () => {
+    const { mutate, onClose } = mountCard()
+    fireEvent.change(screen.getByLabelText(en.customRoute), { target: { value: 'acme' } })
+    fireEvent.change(screen.getByLabelText(en.baseUrl), { target: { value: 'https://acme.test/v1' } })
+    fireEvent.click(screen.getByRole('button', { name: en.addModel }))
+    fireEvent.change(screen.getByLabelText(`${en.modelId} 1`), { target: { value: 'thinker' } })
+    fireEvent.click(screen.getByLabelText(`${en['effort.low']} 1`))
+    fireEvent.click(screen.getByLabelText(`${en['effort.medium']} 1`))
+    fireEvent.click(screen.getByText(en.create))
+
+    await waitFor(() => { expect(onClose).toHaveBeenCalledWith(true) })
+    expect(firstMutate(mutate).ops[0]?.value).toMatchObject({
+      models: [{ id: 'thinker', reasoningEfforts: { low: 'low', medium: 'medium' } }],
+    })
   })
 
   it('refuses to create until the route, endpoint, and a model are usable', () => {

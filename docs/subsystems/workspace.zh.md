@@ -16,6 +16,25 @@
 type WorkspaceId = Branded<'WorkspaceId'>
 ```
 
+```ts type-equiv
+/** Identifies one co-located workspace filesystem checkpoint. */
+type WorkspaceCheckpointId = Branded<'WorkspaceCheckpointId'>
+```
+
+```ts type-equiv
+/** Metadata returned after a checkpoint is durably captured. */
+interface WorkspaceCheckpoint {
+  /** Opaque id supplied to {@link Workspace.rewind}. */
+  readonly id: WorkspaceCheckpointId
+  /** ISO-8601 capture instant. */
+  readonly createdAt: string
+  /** Stable sorted workspace-relative file paths captured. */
+  readonly paths: readonly string[]
+  /** Complete bytes retained across present files. */
+  readonly bytes: number
+}
+```
+
 `WorkspaceId` 是[品牌化 id](core.md#branded-ids)。路径标识与之分离：`realpathNormalize`（`fs.realpath`；尾部斜杠、`..` 与符号链接全部解析）是唯一的一套唯一性规范——工作区路径以规范化形式存储，唯一性即规范路径的字符串相等（指向已被拥有目录的符号链接会与之冲突），attach 时的会话 cwd 检查也走同一套规范。
 
 ## 工作区实体
@@ -110,10 +129,29 @@ interface Workspace {
    * @returns `'ok'` when the directory exists, `'missing-dir'` otherwise.
    */
   status(): Promise<'ok' | 'missing-dir'>
+
+  /**
+   * Durably capture selected regular files or confirmed-absent paths before a
+   * risky operation. Paths are relative to this workspace; symlinks,
+   * directories, escapes, more than 4096 paths, or more than 64 MiB reject.
+   * @param paths - workspace-relative paths to snapshot.
+   * @returns durable checkpoint metadata.
+   */
+  checkpoint(paths: readonly string[]): Promise<WorkspaceCheckpoint>
+
+  /**
+   * Restore every path in one checkpoint transactionally, rolling back applied
+   * changes when a later write fails, then remove that checkpoint and newer
+   * checkpoints from the local timeline.
+   * @param checkpointId - checkpoint previously returned by {@link checkpoint}.
+   */
+  rewind(checkpointId: WorkspaceCheckpointId): Promise<void>
 }
 ```
 
 所有权的真源是记录中有序的 `sessionIds`，绝不从会话 cwd 派生——但成员资格要求两者同时成立：账本上有其 id，且 header 的规范 cwd 等于工作区路径，因此一个会话在结构上至多属于一个工作区。失败的写入会拒绝（`insertSessionBefore` 的账本错误以 `WorkspaceMoveInvalidError` 拒绝，存储失败以普通错误拒绝）；每次被接受的变更都盖上 `updatedAt` 时间戳，并持久修剪不再通过成员资格检查的候选项。
+
+文件系统 rewind 是显式操作，并与 session history 分离。`checkpoint(paths)` 会在 gitignored 的 `.dsh/rewind-checkpoints` 下存储普通文件 bytes／mode 与确认缺失状态，同时强制 lexical containment、component symlink 拒绝、4096 路径与 64 MiB 上限、owner-only atomic file，以及稳定 opaque id。`rewind(id)` 会在 mutation 前验证完整 record 与当前路径类型，恢复全部路径，在后续写入失败时回滚先前 sibling，并截断所选 checkpoint 与更新条目。它既不会在 prompt boundary 自动运行，也不会重写 Session log。理由见[显式 workspace checkpoint Agent Note](../../.agents/notes/implemented/feature/2026-08-21-explicit-workspace-checkpoint-rewind.md)。
 
 ## 注册表：`ctx.workspaceRegistry`
 
@@ -147,7 +185,7 @@ Abstract directory-picking service. Subclass, implement `capability()`, and load
 abstract capability(): DirectoryPickerCapability
 ```
 
-Source: [`packages/host/directory-picker/src/index.ts:131`](../../packages/host/directory-picker/src/index.ts)
+Source: [`packages/host/directory-picker/src/index.ts:140`](../../packages/host/directory-picker/src/index.ts)
 
 <a id="ctxworkspaceregistry--workspaceregistry"></a>
 
@@ -224,5 +262,5 @@ async resolveByPath(path: string): Promise<Workspace | undefined>
 
 Types: [SessionId](core.md)
 
-Source: [`packages/workspace/workspace/src/index.ts:92`](../../packages/workspace/workspace/src/index.ts)
+Source: [`packages/workspace/workspace/src/index.ts:107`](../../packages/workspace/workspace/src/index.ts)
 <!-- END GENERATED cordis-surface -->

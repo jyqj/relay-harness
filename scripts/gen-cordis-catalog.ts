@@ -75,6 +75,7 @@ export const SERVICE_PAGE: Record<string, string> = {
   invariants: 'invariants.md',
   llm: 'llm-streaming.md',
   lsp: 'lsp.md',
+  mcpServersFile: 'extensions.md',
   messageFeedback: 'feedback.md',
   permissionPresets: 'permission-presets.md',
   planMode: 'plan.md',
@@ -105,6 +106,7 @@ export const SERVICE_PAGE: Record<string, string> = {
   typert: 'typert.md',
   typertGateway: 'typert.md',
   userQuestions: 'user-questions.md',
+  visionFallback: 'llm-streaming.md',
   web: 'web.md',
   workflowEngine: 'workflow.md',
   workspaceRegistry: 'workspace.md',
@@ -596,6 +598,12 @@ export const TYPE_LINK_EXEMPTIONS: Readonly<Record<string, string>> = {
   WorkflowAgentEndInfo: 'event-local snapshot is owned by packages/workflow/workflow/src/index.ts',
   WorkflowAgentInfo: 'event-local snapshot is owned by packages/workflow/workflow/src/index.ts',
   WorkflowResultInfo: 'event-local snapshot is owned by packages/workflow/workflow/src/index.ts',
+  ChildFiberPhase: 'mounted mcp-client child lifecycle phase is owned by packages/mcp/mcp-servers-file/src/types.ts',
+  McpClientMounter: 'service-local child mount factory is owned by packages/mcp/mcp-servers-file/src/service.ts',
+  McpOAuthTokens: 'HTTP OAuth token response is owned by packages/mcp/mcp-servers-file/src/oauth.ts',
+  McpClientStatus: 'mcp-client connection status snapshot is owned by packages/mcp/mcp-client/src/status.ts',
+  McpServerRecord: 'managed MCP server record is owned by packages/mcp/mcp-servers-file/src/types.ts',
+  McpServerUpsert: 'managed MCP server upsert input is owned by packages/mcp/mcp-servers-file/src/types.ts',
 }
 
 /** Repository data policy consumed by the Cordis catalog projector. */

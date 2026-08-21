@@ -3,9 +3,11 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import type {
-  SidebarFooterActionOwnerProps, SidebarRootComponentProps, SidebarSectionOwnerProps,
-  SidebarSettingsOwnerProps,
+  SidebarFooterActionOwnerProps, SidebarPageOwnerProps, SidebarRootComponentProps,
+  SidebarSectionOwnerProps, SidebarSettingsOwnerProps,
 } from '../src/client/contract/slots.ts'
+import type { SidebarNavTabRow } from '../src/client/stores.ts'
+import { SESSIONS_TAB_ID } from '../src/client/stores.ts'
 import { SidebarRoot } from '../src/client/SidebarRoot.tsx'
 import { en } from '../src/client/locales.ts'
 
@@ -23,23 +25,40 @@ afterEach(() => {
 // props share; stub them as never-called functions.
 const neverHook = (() => { throw new Error('shell must not read global hooks') }) as never
 
-function mountShell({ collapsed = false, width = 300 }: { collapsed?: boolean; width?: number } = {}) {
+function mountShell({
+  collapsed = false,
+  width = 300,
+  tabs = [],
+  selectedTab = SESSIONS_TAB_ID,
+}: {
+  collapsed?: boolean
+  width?: number
+  tabs?: readonly SidebarNavTabRow[]
+  selectedTab?: string
+} = {}) {
   const startSession = vi.fn()
   const toggleSidebar = vi.fn()
+  const selectTab = vi.fn()
   let regionOwner: SidebarSectionOwnerProps | undefined
+  let pageOwner: SidebarPageOwnerProps | undefined
+  let pageKey: string | undefined
   let settingsOwner: SidebarSettingsOwnerProps | undefined
   let footerActionOwner: SidebarFooterActionOwnerProps | undefined
   const brandMark = <span data-testid="custom-brand-mark">M</span>
   const brandName = <span data-testid="custom-brand-name">Custom Brand</span>
-  let current = { collapsed, width }
+  let current = { collapsed, width, selectedTab }
   const root = () => (
     <SidebarRoot
       collapsed={current.collapsed} width={current.width}
       useSessions={neverHook} useWorkspaces={neverHook}
+      useStore={selector => selector({ selectedTab: current.selectedTab })}
+      actions={{ selectTab }}
+      useNavTabs={selector => selector(tabs)}
       startSession={startSession} toggleSidebar={toggleSidebar} t={t}
       renderSlot={((
         key: string,
-        owner: SidebarFooterActionOwnerProps | SidebarSectionOwnerProps | SidebarSettingsOwnerProps,
+        owner: SidebarFooterActionOwnerProps | SidebarPageOwnerProps | SidebarSectionOwnerProps | SidebarSettingsOwnerProps,
+        opts?: { entryKey?: string; only?: string },
       ) => {
         if (key === 'sidebar.brand.mark') return brandMark
         if (key === 'sidebar.brand.name') return brandName
@@ -51,6 +70,11 @@ function mountShell({ collapsed = false, width = 300 }: { collapsed?: boolean; w
           footerActionOwner = owner
           return <div data-testid="footer-action-seat" data-wide={owner.wide} />
         }
+        if (key === 'sidebar.page') {
+          pageOwner = owner as SidebarPageOwnerProps
+          pageKey = opts?.entryKey
+          return <div data-testid="plugin-page" data-wide={owner.wide} data-key={pageKey} />
+        }
         regionOwner = owner as SidebarSectionOwnerProps
         return <div data-testid="region" data-wide={owner.wide} />
       }) as SidebarRootComponentProps['renderSlot']}
@@ -60,10 +84,16 @@ function mountShell({ collapsed = false, width = 300 }: { collapsed?: boolean; w
   return {
     startSession,
     toggleSidebar,
+    selectTab,
     regionOwner: () => {
       if (regionOwner === undefined) throw new Error('region owner not rendered')
       return regionOwner
     },
+    pageOwner: () => {
+      if (pageOwner === undefined) throw new Error('page owner not rendered')
+      return pageOwner
+    },
+    pageKey: () => pageKey,
     settingsOwner: () => {
       if (settingsOwner === undefined) throw new Error('settings owner not rendered')
       return settingsOwner
@@ -98,6 +128,9 @@ describe('SidebarRoot shell', () => {
     const { container } = render(<SidebarRoot
       collapsed={false} width={300}
       useSessions={neverHook} useWorkspaces={neverHook}
+      useStore={selector => selector({ selectedTab: SESSIONS_TAB_ID })}
+      actions={{ selectTab: vi.fn() }}
+      useNavTabs={selector => selector([])}
       startSession={vi.fn()} toggleSidebar={vi.fn()} t={t}
       renderSlot={((_key: string, _owner: unknown, options?: { fallback?: ReactNode }) =>
         options?.fallback ?? null) as SidebarRootComponentProps['renderSlot']}
@@ -138,5 +171,27 @@ describe('SidebarRoot shell', () => {
     const b = mountShell({ collapsed: true })
     expect(b.regionOwner().wide).toBe(false)
     expect(screen.getByRole('button', { name: 'Open sidebar' })).toBeTruthy()
+  })
+
+  it('draws no tab strip when no plugin tabs are registered', () => {
+    mountShell()
+    expect(screen.queryByRole('tablist')).toBeNull()
+    expect(screen.getByTestId('region')).toBeTruthy()
+    expect(screen.queryByTestId('plugin-page')).toBeNull()
+  })
+
+  it('hides New Session and the workspace region when a plugin tab is selected', () => {
+    const tabs = [{ id: 'bots', order: 0, label: 'Bots' }]
+    const b = mountShell({ tabs, selectedTab: 'bots' })
+    expect(screen.getByRole('tablist')).toBeTruthy()
+    expect(screen.getByRole('tab', { name: 'Sessions' }).getAttribute('aria-selected')).toBe('false')
+    expect(screen.getByRole('tab', { name: 'Bots' }).getAttribute('aria-selected')).toBe('true')
+    expect(screen.queryByRole('button', { name: 'New session' })).toBeNull()
+    expect(screen.queryByTestId('region')).toBeNull()
+    expect(screen.getByTestId('plugin-page')).toBeTruthy()
+    expect(b.pageKey()).toBe('bots')
+    expect(b.pageOwner().wide).toBe(true)
+    fireEvent.click(screen.getByRole('tab', { name: 'Sessions' }))
+    expect(b.selectTab).toHaveBeenCalledWith(SESSIONS_TAB_ID)
   })
 })

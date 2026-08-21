@@ -109,9 +109,20 @@ describe('dsh-tool-workflow', () => {
   it('starts a run with the script/args/parent/signal and renders the completed value', async () => {
     const { ctx, engine, parent } = await setup()
     const controller = new AbortController()
-    const pending = execute(ctx, { script: SCRIPT, meta: META, args: { files: ['a.ts'] } }, { agent: parent, signal: controller.signal })
+    const pending = execute(ctx, {
+      script: SCRIPT,
+      meta: META,
+      args: { files: ['a.ts'] },
+      resumeRunId: 'resume-me',
+    }, { agent: parent, signal: controller.signal })
     await vi.waitFor(() => { expect(engine.requests.length).toBe(1) })
-    expect(engine.requests[0]).toMatchObject({ script: SCRIPT, meta: META, args: { files: ['a.ts'] }, parent })
+    expect(engine.requests[0]).toMatchObject({
+      script: SCRIPT,
+      meta: META,
+      args: { files: ['a.ts'] },
+      resumeRunId: 'resume-me',
+      parent,
+    })
     expect(engine.requests[0]!.signal).toBe(controller.signal)
     engine.settle({ value: { findings: [1, 2] }, stopReason: 'completed', agentsStarted: 7 })
     const result = await pending

@@ -235,6 +235,19 @@ export interface DshWindow {
   __DSH_BOOT__?: unknown
   /** HTML-installed facade: a pending registration queue, then the live module-system target. */
   __ModuleLoader__?: ClientModuleLoaderTarget
+  /**
+   * Desktop shell probe: the created module system, exposed right after
+   * {@link ClientModuleLoaderTarget.create} so the desktop e2e can import a
+   * platform module and verify runtime-loaded plugins see complete exports.
+   */
+  __DSH_MODULES__?: ClientModuleSystem
+  /**
+   * Resolves after every graph entry is ACTIVE (or boot failed loud).
+   * ConnectionController waits on this before `host.describe` / WebSocket
+   * upgrades so those requests cannot occupy the phone's HTTP/1.1 slots
+   * while plugin `<script>` tags are still loading.
+   */
+  __DSH_BOOT_GATE__?: Promise<void>
 }
 
 /** Per-module bookkeeping in {@link ClientModuleLoader.loadCache} (module-graph boundary, flat today). */

@@ -37,7 +37,7 @@ export class BootPage {
     this.wordmark = div(css.wordmark, 'HARNESS')
     this.spinner = div(css.spinner)
     this.spinner.dataset.dshBootSpinner = ''
-    this.hint = div(css.hint, 'Loading plugins…')
+    this.hint = div(css.hint, '正在加载插件…')
     this.card.append(this.wordmark, this.spinner, this.hint)
     this.root.append(this.card)
     container.append(this.root)
@@ -81,6 +81,7 @@ export class BootPage {
 
   /** Redraw the state-dependent content below the wordmark. */
   private render(): void {
+    this.updateProbe()
     const failed = [...this.states].filter(([, state]) => state === 'failed').map(([id]) => id)
     if (this.failure === undefined && failed.length === 0) {
       if (this.spinner.parentElement !== this.card) {
@@ -99,5 +100,24 @@ export class BootPage {
   private updateProgress(): void {
     const ratio = this.total === 0 ? 0 : Math.min(this.active.size / this.total, 1)
     this.spinner.style.setProperty('--dsh-boot-arc', `${String(Math.round(72 + ratio * 216))}deg`)
+    this.updateProbe()
+  }
+
+  // data-dshd-boot-* is the desktop shell's boot probe surface (it must not
+  // scrape rendered copy to decide when the harness view may be revealed).
+  private updateProbe(): void {
+    const failed = [...this.states].filter(([, state]) => state === 'failed').map(([id]) => id)
+    const loud = this.failure !== undefined || failed.length > 0
+    const report = [this.failure, ...failed]
+      .filter((item): item is string => item !== undefined && item !== '')
+      .join('\n')
+      .slice(0, 400)
+    this.root.dataset.dshdBootStatus = loud ? 'failed' : 'loading'
+    this.root.dataset.dshdBootReady = String(this.active.size)
+    this.root.dataset.dshdBootTotal = String(this.total)
+    this.root.dataset.dshdBootError = loud ? report : ''
+    this.hint.textContent = this.total > 0
+      ? `正在加载插件 ${String(this.active.size)}/${String(this.total)}`
+      : '正在加载插件…'
   }
 }

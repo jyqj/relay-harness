@@ -43,16 +43,6 @@ function waitForIdle(_ctx: Context, agent: Agent): Promise<void> {
   return agent.whenIdle()
 }
 function events(agent: Agent): SessionEvent[] { return [...agent.session.events] }
-/** Poll until `predicate` holds or the deadline passes — robust to detached
- * emit-listener hooks firing on a `.then` (a fixed sleep flakes under load). */
-async function waitFor(predicate: () => boolean, timeout = 5000, interval = 10): Promise<void> {
-  const deadline = Date.now() + timeout
-  while (!predicate()) {
-    if (Date.now() > deadline) throw new Error('waitFor: condition not met before deadline')
-    await new Promise(r => setTimeout(r, interval))
-  }
-}
-
 export type CoverageGroup = 'prompt' | 'post-tool' | 'result-shape' | 'edge-paths' | 'payload'
 
 /** Register independently schedulable slices of the hooks-codex coverage matrix. */
@@ -211,9 +201,8 @@ export function defineCoverageCases(groups: CoverageGroup | readonly CoverageGro
       const adapter = new MockAdapter([textResponse('ok')])
       const ctx = await harness(join(d, 'hooks.json'), adapter)
       const agent = ctx.agentLoop.create(SessionId('a1'), { provider: 'mock', model: 'mock' })
-      await waitFor(() => agent.inbox.nextStep.some(message =>
-        message.content.some(block => block.type === 'text' && block.text.includes('start-ctx'))))
-      agent.followup(createUserMessage({ content: [{ type: 'text', text: 'go' }], source: { kind: 'user' } })); await waitForIdle(ctx, agent)
+      agent.followup(createUserMessage({ content: [{ type: 'text', text: 'go' }], source: { kind: 'user' } }))
+      await waitForIdle(ctx, agent)
       expect(JSON.stringify(adapter.requests[0]!.messages)).toContain('start-ctx')
     })
 
@@ -341,20 +330,19 @@ export function defineCoverageCases(groups: CoverageGroup | readonly CoverageGro
 
     it('SessionStart with no additionalContext is a no-op (contextFrom empty)', async () => {
       const d = dir()
-      // The hook touches a marker so we can wait for it to ACTUALLY FINISH before
-      // asserting absence — a completed turn alone would not prove the detached
-      // session-start hook ran, making the absence check a false pass.
+      // The hook touches a marker so the completed gated turn proves it ran.
       const marker = join(d, 'ss-ran')
       hooks(d, { SessionStart: [{ hooks: [{ type: 'command', command: sh(d, 's.sh', `#!/usr/bin/env bash\ntouch "${marker}"\nexit 0\n`) }] }] })
       const adapter = new MockAdapter([textResponse('ok')])
       const ctx = await harness(join(d, 'hooks.json'), adapter)
       const agent = ctx.agentLoop.create(SessionId('a1'), { provider: 'mock', model: 'mock' })
-      await waitFor(() => existsSync(marker)) // the clean no-output hook has finished
-      agent.followup(createUserMessage({ content: [{ type: 'text', text: 'go' }], source: { kind: 'user' } })); await waitForIdle(ctx, agent)
+      agent.followup(createUserMessage({ content: [{ type: 'text', text: 'go' }], source: { kind: 'user' } }))
+      await waitForIdle(ctx, agent)
+      expect(existsSync(marker)).toBe(true)
       expect(events(agent).some(e => e.type === 'user/message' && e.data.source.kind !== 'user')).toBe(false)
     })
 
-    it('a throwing SessionStart inject is contained (logged)', async () => {
+    it('an entering SessionStart context does not use the Agent.inject side channel', async () => {
       const d = dir()
       hooks(d, { SessionStart: [{ hooks: [{ type: 'command', command: sh(d, 's.sh', '#!/usr/bin/env bash\necho \'{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"x"}}\'\n') }] }] })
       const adapter = new MockAdapter([textResponse('ok')])
@@ -362,8 +350,42 @@ export function defineCoverageCases(groups: CoverageGroup | readonly CoverageGro
       const warn = vi.fn(); ctx.logger.warn = warn as never
       const agent = ctx.agentLoop.create(SessionId('a1'), { provider: 'mock', model: 'mock' })
       agent.inject = (() => { throw new Error('inject boom') })
-      await waitFor(() => warn.mock.calls.some(c => String(c[0]).includes('SessionStart hook failed')))
-      expect(warn).toHaveBeenCalledWith(expect.stringContaining('SessionStart hook failed'))
+      agent.followup(createUserMessage({ content: [{ type: 'text', text: 'go' }], source: { kind: 'user' } }))
+      await waitForIdle(ctx, agent)
+      expect(JSON.stringify(adapter.requests[0]!.messages)).toContain('"x"')
+      expect(warn).not.toHaveBeenCalledWith(expect.stringContaining('SessionStart hook failed'))
+    })
+
+    it('keeps SessionStart context pending when UserPromptSubmit blocks the first step', async () => {
+      const d = dir()
+      hooks(d, {
+        SessionStart: [{ hooks: [{ type: 'command', command: sh(d, 'start.sh', '#!/usr/bin/env bash\necho \'{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"startup-pending"}}\'\n') }] }],
+        UserPromptSubmit: [{ hooks: [{ type: 'command', command: sh(d, 'deny.sh', '#!/usr/bin/env bash\nexit 2\n') }] }],
+      })
+      const adapter = new MockAdapter([])
+      const ctx = await harness(join(d, 'hooks.json'), adapter)
+      const agent = ctx.agentLoop.create(SessionId('blocked-startup'), { provider: 'mock', model: 'mock' })
+
+      agent.followup(createUserMessage({ content: [{ type: 'text', text: 'go' }], source: { kind: 'user' } }))
+      await waitForIdle(ctx, agent)
+
+      expect(agent.inbox.nextStep.some(message =>
+        message.content.some(block => block.type === 'text' && block.text.includes('startup-pending')))).toBe(true)
+    })
+
+    it('keeps SessionStart context pending when a downstream pre-step policy rejects', async () => {
+      const d = dir()
+      hooks(d, { SessionStart: [{ hooks: [{ type: 'command', command: sh(d, 'start.sh', '#!/usr/bin/env bash\necho \'{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"downstream-pending"}}\'\n') }] }] })
+      const adapter = new MockAdapter([])
+      const ctx = await harness(join(d, 'hooks.json'), adapter)
+      ctx.on('agent/pre-step', async () => ({ kind: 'reject' as const }))
+      const agent = ctx.agentLoop.create(SessionId('downstream-blocked-startup'), { provider: 'mock', model: 'mock' })
+
+      agent.followup(createUserMessage({ content: [{ type: 'text', text: 'go' }], source: { kind: 'user' } }))
+      await waitForIdle(ctx, agent)
+
+      expect(agent.inbox.nextStep.some(message =>
+        message.content.some(block => block.type === 'text' && block.text.includes('downstream-pending')))).toBe(true)
     })
   })
 
@@ -517,8 +539,8 @@ export function defineCoverageCases(groups: CoverageGroup | readonly CoverageGro
     })
 
     it('a NON-clean SessionStart hook (exit 2) does NOT inject its stdout as context', async () => {
-    // SessionStart cannot block, but non-clean stdout still must not become context. The marker
-    // waits for detached completion; `echo stale; exit 2` then proves the exit-code gate matches
+    // SessionStart cannot block, but non-clean stdout still must not become context. The gated turn
+    // waits for completion; `echo stale; exit 2` then proves the exit-code gate matches
     // the codec's structured-stdout rule.
       const d = dir()
       const marker = join(d, 'ran')
@@ -526,9 +548,10 @@ export function defineCoverageCases(groups: CoverageGroup | readonly CoverageGro
       const adapter = new MockAdapter([textResponse('ok')])
       const ctx = await harness(join(d, 'hooks.json'), adapter)
       const agent = ctx.agentLoop.create(SessionId('a1'), { provider: 'mock', model: 'mock' })
-      await waitFor(() => existsSync(marker)) // the exit-2 hook has finished
-      expect(events(agent).some(e => e.type === 'user/message'
-      && e.data.content.some(b => b.type === 'text' && b.text.includes('stale')))).toBe(false)
+      agent.followup(createUserMessage({ content: [{ type: 'text', text: 'go' }], source: { kind: 'user' } }))
+      await waitForIdle(ctx, agent)
+      expect(existsSync(marker)).toBe(true)
+      expect(JSON.stringify(adapter.requests[0]!.messages)).not.toContain('stale')
     })
 
     it('a UserPromptSubmit hook with a non-blocking error exit (1) + stdout does NOT inject it', async () => {
@@ -551,9 +574,8 @@ export function defineCoverageCases(groups: CoverageGroup | readonly CoverageGro
       const adapter = new MockAdapter([textResponse('ok')])
       const ctx = await harness(join(d, 'hooks.json'), adapter)
       const agent = ctx.agentLoop.create(SessionId('a1'), { provider: 'mock', model: 'mock' })
-      await waitFor(() => agent.inbox.nextStep.some(message =>
-        message.content.some(block => block.type === 'text' && block.text.includes('session preamble'))))
-      agent.followup(createUserMessage({ content: [{ type: 'text', text: 'go' }], source: { kind: 'user' } })); await waitForIdle(ctx, agent)
+      agent.followup(createUserMessage({ content: [{ type: 'text', text: 'go' }], source: { kind: 'user' } }))
+      await waitForIdle(ctx, agent)
       expect(JSON.stringify(adapter.requests[0]!.messages)).toContain('session preamble')
     })
 

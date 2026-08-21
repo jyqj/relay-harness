@@ -17,6 +17,8 @@ The entity/storage rationale lives in the [domain Agent Note](../../../.agents/n
 - `ctx.workspaceRegistry.archiveSession(id)` / `archivedSessionIds` — the registry-global archive set, layered over workspace accounting: an archived session disappears from grouping surfaces but keeps its session log and its `sessionIds` slot, so a future unarchive restores its position. Archiving accepts any live or persisted session (accounted or Ungrouped), resolves without writing for an already archived id, and rejects an unknown id. State written before the field existed parses with an empty set.
 - `Workspace.sessionIds` — synchronous id-plus-canonical-cwd membership projection in durable candidate order. Missing headers, invalid cwd values, and mismatches are filtered; the next workspace mutation prunes them. A medium indexing one session under two workspaces, claiming one path from two records, or diverging from durable workspace order rejects at startup.
 - `Workspace.status()` — uncached directory check, `'ok' | 'missing-dir'`; a missing directory never mutates the record.
+- `Workspace.checkpoint(paths)` — explicitly snapshots selected workspace-relative regular files and confirmed absence to owner-only, gitignored `.dsh/rewind-checkpoints` storage. Paths are sorted/deduplicated; escapes, symlinks, directories, more than 4096 paths, and more than 64 MiB reject.
+- `Workspace.rewind(checkpointId)` — preflights every checkpoint path, transactionally restores bytes/modes or absence, rolls back already-applied siblings when a later write fails, then removes the selected checkpoint and newer local checkpoints. It never rewinds conversation history automatically.
 
 `storageDomain` and `sessionPersistence` are required startup dependencies. An unavailable peer leaves the plugin pending and cannot commit an empty initialized marker. On the first successful start, the registry calls `SessionPersistence.list()` and uses only header `id`, `cwd`, and `createdAt` to group valid historical directories and persist initial order; it never reads event bodies. The initialized marker is written last, so partial bootstrap writes are reused safely after restart. Later cwd-only sessions remain Ungrouped.
 
@@ -28,7 +30,7 @@ Create and delete persist an explicit pending-mutation marker before their recor
 
 #### What the model sees
 
-Nothing. `ctx.workspaceRegistry` serves workspace records to host-side consumers only: the package registers no tools, injects no prompts, and writes no session events, so no request field ever carries this package's data.
+Nothing. `ctx.workspaceRegistry` serves workspace records and explicit checkpoint operations to host-side consumers only: the package registers no tools, injects no prompts, and writes no session events, so no request field ever carries this package's data.
 
 #### Token effect
 
@@ -42,3 +44,4 @@ Independent of live requests: the package never touches a request prefix, so it 
 
 - Session deletion and destructive folder removal are separate, absent capabilities; Workspace registration deletion never substitutes for either ([decision](../../../.agents/notes/implemented/feature/2026-07-27-workspace-registration-deletion.md)).
 - The header index refreshes at startup and when attach must resolve an uncached persisted id; deletion or cwd damage performed by another process is observed after the next refresh or restart.
+- Filesystem checkpoints are local single-process artifacts, not storage-domain records. They snapshot only explicitly named regular files or absence; directory trees, symlinks, conversation rewind, cross-process leases, and exactly-once recovery from the external-write-to-checkpoint-fsync crash window are absent.

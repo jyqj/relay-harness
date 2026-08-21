@@ -756,6 +756,7 @@ describe('plugin registration and config', () => {
       mode: 'always',
       initialDelayMs: 25,
       maxDelayMs: 100,
+      maxProviderDelayMs: 60_000,
       jitterRatio: 0.2,
     })
   })

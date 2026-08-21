@@ -1,0 +1,48 @@
+/* Wallpaper layer + translucent chrome. Activated by html[data-dsh-wallpaper]. */
+
+#dsh-wallpaper {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+/*
+ * The inner canvas carries a cover-cropped bitmap drawn at cssSize / factor;
+ * CSS stretches it back up and `image-rendering: pixelated` keeps the blocks.
+ * The 48px bleed per side matches WALLPAPER_BLEED so blur has no edge halo.
+ * The background-image is the pre-decode fallback painted until the bitmap
+ * lands (and permanently under jsdom, which has no 2d context).
+ */
+#dsh-wallpaper-inner {
+  position: absolute;
+  left: -48px;
+  top: -48px;
+  width: calc(100% + 96px);
+  height: calc(100% + 96px);
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+  image-rendering: pixelated;
+  filter: blur(var(--dsh-wallpaper-blur, 0px));
+}
+
+html[data-dsh-wallpaper],
+html[data-dsh-wallpaper] body,
+html[data-dsh-wallpaper] #root {
+  background: transparent;
+}
+
+#dsh-wallpaper::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--dsw-alias-bg-mask-1);
+  pointer-events: none;
+}
+
+html[data-dsh-wallpaper] #root {
+  position: relative;
+  z-index: 1;
+}

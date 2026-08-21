@@ -11,6 +11,7 @@ import SubagentRuntime, {
   SubagentError,
   assertSubagentMaxDepth,
   type ResolvedSubagentStartRequest,
+  type Config,
   type SubagentCapabilities,
   type SubagentProvider,
   type SubagentResult,
@@ -22,6 +23,13 @@ import { SessionId, type SessionEvent } from '@deepseek-ai/dsh-session'
 
 function fakeParent(id = 'parent-1'): Agent {
   return { id: SessionId(id) } as unknown as Agent
+}
+
+function fakeDescendant(id: string, rootId: string): Agent {
+  return {
+    id: SessionId(id),
+    session: { header: { parentSession: SessionId(rootId) } },
+  } as unknown as Agent
 }
 
 const ALL_CAPS: SubagentCapabilities = { outputSchema: true, depthLimit: true, toolFilter: true, persona: true }
@@ -62,9 +70,9 @@ class StubProvider implements SubagentProvider {
   }
 }
 
-async function service(): Promise<{ ctx: Context; subagents: SubagentRuntime }> {
+async function service(config: Config = {}): Promise<{ ctx: Context; subagents: SubagentRuntime }> {
   const ctx = new Context()
-  await ctx.plugin(SubagentRuntime)
+  await ctx.plugin(SubagentRuntime, config)
   return { ctx, subagents: ctx.subagents }
 }
 
@@ -245,6 +253,64 @@ describe('SubagentRuntime', () => {
     ctx.on('subagent/end', lifecycle)
     await expect(subagents.start('failed', baseRequest())).rejects.toThrow('setup rolled back')
     expect(lifecycle).not.toHaveBeenCalled()
+  })
+
+  it('shares configured root capacity across parents and releases it only through run disposal', async () => {
+    const { subagents } = await service({ maxActivePerRoot: 1, overflow: 'reject' })
+    let disposeCount = 0
+    subagents.registerProvider({
+      name: 'bounded',
+      capabilities: NO_CAPS,
+      inheritsParentContext: false,
+      async start(request) {
+        return {
+          id: SessionId(`child-${request.parent.id}`),
+          localAgent: undefined,
+          result: Promise.resolve({ output: [], stopReason: 'completed' }),
+          async dispose() { disposeCount += 1 },
+        }
+      },
+    })
+    const first = await subagents.start('bounded', baseRequest({
+      parent: fakeDescendant('parent-a', 'shared-root'),
+    }))
+    await expect(subagents.start('bounded', baseRequest({
+      parent: fakeDescendant('parent-b', 'shared-root'),
+    }))).rejects.toMatchObject({ code: 'CAPACITY_EXCEEDED' })
+
+    const firstDisposal = first.dispose()
+    expect(first.dispose()).toBe(firstDisposal)
+    await firstDisposal
+    expect(disposeCount).toBe(1)
+
+    const replacement = await subagents.start('bounded', baseRequest({
+      parent: fakeDescendant('parent-b', 'shared-root'),
+    }))
+    await replacement.dispose()
+    expect(disposeCount).toBe(2)
+  })
+
+  it('releases admission when provider startup rejects', async () => {
+    const { subagents } = await service({ maxActivePerRoot: 1 })
+    let attempts = 0
+    subagents.registerProvider({
+      name: 'retry-start',
+      capabilities: NO_CAPS,
+      inheritsParentContext: false,
+      async start() {
+        attempts += 1
+        if (attempts === 1) throw new Error('startup failed')
+        return {
+          id: SessionId('recovered'),
+          localAgent: undefined,
+          result: Promise.resolve({ output: [], stopReason: 'completed' }),
+          async dispose() {},
+        }
+      },
+    })
+    await expect(subagents.start('retry-start', baseRequest())).rejects.toThrow('startup failed')
+    const recovered = await subagents.start('retry-start', baseRequest())
+    await recovered.dispose()
   })
 
   it('emits an enriched end event and maps result rejection to error telemetry', async () => {

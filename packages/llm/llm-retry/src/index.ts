@@ -10,6 +10,7 @@ import type { Context, Events } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import type { Agent, RequestErrorAction } from '@deepseek-ai/dsh-agent'
 import type { LlmFailure, ResolvedRetryPolicy } from '@deepseek-ai/dsh-llm'
+import { classifyLlmFailure } from '@deepseek-ai/dsh-llm'
 import type { SessionEvent } from '@deepseek-ai/dsh-session'
 import { RetryId } from './brand.ts'
 import type { LlmRetryEventData } from './types.ts'
@@ -64,13 +65,15 @@ function localDelay(config: ResolvedRetryPolicy, retry: number, random: () => nu
 
 function retryPolicyKey(policy: ResolvedRetryPolicy): string {
   return policy.mode === 'always'
-    ? JSON.stringify([policy.mode, policy.initialDelayMs, policy.maxDelayMs, policy.jitterRatio])
+    ? JSON.stringify([policy.mode, policy.initialDelayMs, policy.maxDelayMs, policy.maxProviderDelayMs, policy.jitterRatio])
     : JSON.stringify([
       policy.mode,
       policy.maxRetries,
       [...policy.retryableCodes].sort(),
+      [...policy.scheduledCodes].sort(),
       policy.initialDelayMs,
       policy.maxDelayMs,
+      policy.maxProviderDelayMs,
       policy.jitterRatio,
     ])
 }
@@ -158,6 +161,7 @@ export function apply(ctx: Context, config: Config = {}, internals: RetryInterna
     next: () => Promise<RequestErrorAction>,
   ): Promise<RequestErrorAction> {
     if (policy === undefined) return next()
+    const recovery = classifyLlmFailure(failure)
     if (policy.mode === 'always') {
       if (signal.aborted || lifetime.signal.aborted) return
       const fusedSignal = AbortSignal.any([signal, lifetime.signal])
@@ -174,7 +178,9 @@ export function apply(ctx: Context, config: Config = {}, internals: RetryInterna
       if (downstream.type === 'decision' && downstream.decision?.kind === 'retry') {
         return downstream.decision
       }
-    } else if (!policy.retryableCodes.includes(failure.code)) {
+    } else if (recovery.kind === 'provider-scheduled'
+      ? !policy.retryableCodes.includes(failure.code) && !policy.scheduledCodes.includes(failure.code)
+      : !policy.retryableCodes.includes(failure.code)) {
       return next()
     }
 
@@ -191,14 +197,16 @@ export function apply(ctx: Context, config: Config = {}, internals: RetryInterna
     const retry = previousRetry + 1
     const retryId = priorPolicyRetry?.data.retryId ?? RetryId(randomUUID())
     let delayMs: number
-    if (failure.providerRetryAfterMs !== undefined
-      && Number.isFinite(failure.providerRetryAfterMs)
-      && failure.providerRetryAfterMs > 0) {
-      if (failure.providerRetryAfterMs > policy.maxDelayMs) {
+    if (recovery.kind === 'provider-scheduled') {
+      if (recovery.delayMs > policy.maxProviderDelayMs) {
+        // The provider's resume time is unschedulable: normal mode delegates
+        // rather than abandon the attempt budget on an hopeless wait, while
+        // always mode falls back to local backoff so it cannot terminate on
+        // that instruction.
         if (policy.mode === 'normal') return next()
         delayMs = localDelay(policy, retry, random)
       } else {
-        delayMs = failure.providerRetryAfterMs
+        delayMs = recovery.delayMs
       }
     } else {
       delayMs = localDelay(policy, retry, random)

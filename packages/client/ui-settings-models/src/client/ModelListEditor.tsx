@@ -117,6 +117,59 @@ function IconTrash(): ReactNode {
 type CapacityField = 'contextWindow' | 'maxTokens'
 
 /**
+ * Thinking levels this form can declare, in pi-ai's escalation order. Ids are
+ * canonical keys. A checked level other than `off` writes that same string as
+ * the wire spelling (`high: high`). `off` is the one valueless key: checking
+ * it writes `off: null` (offer Off, send nothing). A custom wire rename stays
+ * YAML-only.
+ */
+const EFFORT_CHOICES = [
+  { id: 'off', key: 'effort.off' },
+  { id: 'minimal', key: 'effort.minimal' },
+  { id: 'low', key: 'effort.low' },
+  { id: 'medium', key: 'effort.medium' },
+  { id: 'high', key: 'effort.high' },
+  { id: 'xhigh', key: 'effort.xhigh' },
+  { id: 'max', key: 'effort.max' },
+] as const satisfies readonly { id: string; key: keyof typeof en }[]
+
+type EffortId = (typeof EFFORT_CHOICES)[number]['id']
+
+/** One model's `reasoningEfforts` dict, or empty when the field is absent / false. */
+function effortsOf(model: ModelDraft): Record<string, string | null> {
+  const value = model['reasoningEfforts']
+  if (value === false || value === null || typeof value !== 'object' || Array.isArray(value)) {
+    return {}
+  }
+  return { ...(value as Record<string, string | null>) }
+}
+
+/**
+ * Input types this form can declare, in the canonical pi-ai order (text
+ * first). The wire spelling is the same string (`text: text`); audio and
+ * other modalities wait for pi-ai upstream support.
+ */
+const INPUT_CHOICES = [
+  { id: 'text', key: 'inputText' },
+  { id: 'image', key: 'inputImage' },
+] as const satisfies readonly { id: string; key: keyof typeof en }[]
+
+type InputId = (typeof INPUT_CHOICES)[number]['id']
+
+/** One model's declared input types, or `undefined` when it declares none. */
+function inputOf(model: ModelDraft): readonly InputId[] | undefined {
+  const value = model['input']
+  if (!Array.isArray(value)) return undefined
+  const declared = value.filter((id): id is InputId => id === 'text' || id === 'image')
+  return declared.length === 0 ? undefined : declared
+}
+
+/** Reorder a declared set into the canonical choice order. */
+function orderedInput(selected: readonly InputId[]): InputId[] {
+  return INPUT_CHOICES.filter(choice => selected.includes(choice.id)).map(choice => choice.id)
+}
+
+/**
  * What an empty capacity field is worth, shown as its placeholder so a row left
  * blank does not read as a model with no capacity at all.
  *
@@ -210,7 +263,7 @@ export function ModelListEditor(props: ModelListEditorProps): ReactNode {
     })
   }
 
-  const patch = (index: number, next: Record<string, string | number | undefined>): void => {
+  const patch = (index: number, next: Record<string, unknown>): void => {
     onChange(models.map((model, at) => {
       if (at !== index) return model
       // Rebuilt rather than spread over: an emptied optional field has to leave
@@ -225,6 +278,21 @@ export function ModelListEditor(props: ModelListEditorProps): ReactNode {
         Object.entries({ ...model, ...next }).filter(([key]) => !cleared.has(key)),
       )
     }))
+  }
+
+  const toggleEffort = (index: number, model: ModelDraft, id: EffortId): void => {
+    const dict = effortsOf(model)
+    if (Object.prototype.hasOwnProperty.call(dict, id)) delete dict[id]
+    else dict[id] = id === 'off' ? null : id
+    const stillOffers = EFFORT_CHOICES.some(choice => Object.prototype.hasOwnProperty.call(dict, choice.id))
+    patch(index, { reasoningEfforts: stillOffers ? dict : undefined })
+  }
+
+  /** Toggle one declared input type; an empty set removes the field (inherit). */
+  const toggleInput = (index: number, model: ModelDraft, id: InputId): void => {
+    const current = inputOf(model) ?? []
+    const next = current.includes(id) ? current.filter(existing => existing !== id) : [...current, id]
+    patch(index, { input: next.length === 0 ? undefined : orderedInput(next) })
   }
 
   const fetchModels = async (): Promise<void> => {
@@ -400,6 +468,26 @@ export function ModelListEditor(props: ModelListEditorProps): ReactNode {
               <IconTrash />
             </button>
           </div>
+          <fieldset className={styles['effortGroup']}>
+            <legend className={styles['modelFieldLabel']}>{t('effortTitle')}</legend>
+            <div className={styles['effortOptions']}>
+              {EFFORT_CHOICES.map((choice) => {
+                const checked = Object.prototype.hasOwnProperty.call(effortsOf(model), choice.id)
+                return (
+                  <label className={styles['effortOption']} key={choice.id}>
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      disabled={disabled}
+                      aria-label={`${t(choice.key)} ${index + 1}`}
+                      onChange={() => { toggleEffort(index, model, choice.id) }}
+                    />
+                    <span>{t(choice.key)}</span>
+                  </label>
+                )
+              })}
+            </div>
+          </fieldset>
           {expanded.has(index)
             ? (
               <div className={styles['modelAdvanced']}>
@@ -429,6 +517,29 @@ export function ModelListEditor(props: ModelListEditorProps): ReactNode {
                     onChange={(event) => { editCapacity(index, 'maxTokens', event.target.value) }}
                   />
                 </label>
+                <fieldset className={styles['effortGroup']}>
+                  <legend className={styles['modelFieldLabel']}>{t('inputTitle')}</legend>
+                  <div className={styles['effortOptions']}>
+                    {INPUT_CHOICES.map((choice) => {
+                      const checked = (inputOf(model) ?? []).includes(choice.id)
+                      return (
+                        <label className={styles['effortOption']} key={choice.id}>
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            disabled={disabled}
+                            aria-label={`${t(choice.key)} ${index + 1}`}
+                            onChange={() => { toggleInput(index, model, choice.id) }}
+                          />
+                          <span>{t(choice.key)}</span>
+                        </label>
+                      )
+                    })}
+                  </div>
+                  {inputOf(model) === undefined
+                    ? <span className={styles['modelFieldLabel']}>{t('inputInherited')}</span>
+                    : null}
+                </fieldset>
               </div>
             )
             : null}

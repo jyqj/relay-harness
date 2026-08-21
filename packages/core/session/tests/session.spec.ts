@@ -1,6 +1,6 @@
 import { describe, expect, expectTypeOf, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
-import { createUserMessage, CallId, createMessage, createToolResultMessage, MessageId, ReasoningEffortId } from '@deepseek-ai/dsh-llm'
+import { createUserMessage, CallId, createAssistantMessage, createMessage, createToolResultMessage, MessageId, ReasoningEffortId } from '@deepseek-ai/dsh-llm'
 import SessionStore, {
   adoptSessionEvent,
   SESSION_FORMAT_VERSION,
@@ -439,6 +439,13 @@ describe('Session', () => {
     session.append('user/message', createUserMessage({
       content: [{ type: 'text', text: 'original' }], source: { kind: 'user' },
     }), { surfaceOp: 'append' })
+    session.append('assistant/message', {
+      turn: 1, step: 1,
+      message: createAssistantMessage({
+        content: [{ type: 'tool-call', id: CallId('c1'), name: 'read', arguments: '{}' }],
+        source: { provider: 'mock', model: 'mock' },
+      }),
+    }, { surfaceOp: 'append' })
     session.append('tool/result', {
       turn: 1, step: 1,
       message: createToolResultMessage({
@@ -453,7 +460,7 @@ describe('Session', () => {
     const messages = session.deriveMessages()
     const userBlock = messages[0]!.content[0]!
     expect(() => { if (userBlock.type === 'text') userBlock.text = 'HACKED' }).toThrow(TypeError)
-    const toolBlock = messages[1]!.content[0]!
+    const toolBlock = messages[2]!.content[0]!
     expect(() => {
       if (toolBlock.type === 'tool-result') toolBlock.content.push({ type: 'text', text: 'injected' })
     }).toThrow(TypeError)
@@ -1292,6 +1299,15 @@ describe('SessionStore', () => {
     })
   })
 
+  it('accepts dshbot origin on a top-level session header', async () => {
+    const ctx = new Context()
+    await ctx.plugin(SessionStore)
+    const session = ctx.sessions.create(SessionId('bot-contact'), {
+      meta: { origin: 'dshbot' },
+    })
+    expect(session.header.origin).toBe('dshbot')
+  })
+
   it('rejects non-JSON and invalid scalar session metadata', async () => {
     const ctx = new Context()
     await ctx.plugin(SessionStore)
@@ -1306,7 +1322,7 @@ describe('SessionStore', () => {
       { meta: { seedLength: '1' }, error: /seedLength must be a non-negative safe integer/ },
       { meta: { seedLength: 0.5 }, error: /seedLength must be a non-negative safe integer/ },
       { meta: { seedLength: -1 }, error: /seedLength must be a non-negative safe integer/ },
-      { meta: { origin: 'fork' }, error: /origin must be "subagent"/ },
+      { meta: { origin: 'fork' }, error: /origin must be "subagent" or "dshbot"/ },
       { meta: { delegationDepth: '1' }, error: /delegationDepth must be a non-negative safe integer/ },
       { meta: { delegationDepth: 0.5 }, error: /delegationDepth must be a non-negative safe integer/ },
       { meta: { delegationDepth: -1 }, error: /delegationDepth must be a non-negative safe integer/ },
@@ -1703,7 +1719,7 @@ describe('todo/write event', () => {
   })
 
   it('is NOT a surface event: it produces no derived message and joins no surface node', () => {
-    const session = Session.create(SessionId('t3'))
+    const session = Session.create(SessionId('sid'))
     session.append('user/message', createUserMessage({
       content: [{ type: 'text', text: 'q' }], source: { kind: 'user' },
     }), { surfaceOp: 'append' })

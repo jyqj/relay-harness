@@ -39,6 +39,7 @@ import {
   reconcileInstructionContext,
   type InstructionVersionCache,
 } from '../src/state.ts'
+import { loadBaselineInstructionSet } from '../src/files.ts'
 import { resolveConfig } from '../src/config.ts'
 import { candidateScopeKey, renderInstructionChanges, renderWorkspaceInstructionSet, USER_GLOBAL_DIRECTORY, USER_GLOBAL_FILE } from '../src/render.ts'
 import { MockAdapter, textResponse, toolCallResponse } from '../../../core/agent-loop/tests/mock-adapter.ts'
@@ -505,6 +506,12 @@ describe('workspace context instruction discovery', () => {
       await expect(loadBaselineInstructions({ cwd: root, dshHome: home, maxBytes: 65536, maxSourceBytes: 0 })).resolves.toBeUndefined()
       await expect(loadBaselineInstructions({
         cwd: root, dshHome: home, maxBytes: 65536, maxSourceBytes: Infinity,
+      })).resolves.toBeUndefined()
+      await expect(loadBaselineInstructions({
+        cwd: root, dshHome: home, maxBytes: 65536, maxTotalSourceBytes: 0,
+      })).resolves.toBeUndefined()
+      await expect(loadBaselineInstructions({
+        cwd: root, dshHome: home, maxBytes: 65536, maxTotalSourceBytes: Infinity,
       })).resolves.toBeUndefined()
     } finally {
       await rm(root, { recursive: true, force: true })
@@ -1122,6 +1129,72 @@ describe('workspace context request injection', () => {
       expect(baselineEvents(resumed)).toHaveLength(1)
       expect(resumed.session.events.filter(event => event.type === 'user/message'
         && event.data.source.kind === 'agent-instructions')).toHaveLength(1)
+    } finally {
+      await ctx.fiber.dispose()
+      await rm(dirname(root), { recursive: true, force: true })
+      await rm(dirname(home), { recursive: true, force: true })
+    }
+  })
+
+  it('preserves a visible baseline when its project-root marker is unavailable during resume', async () => {
+    const root = join(await tempRepo(), 'virtual-repo')
+    const home = join(await tempRepo(), 'virtual-home')
+    const ctx = new Context()
+    try {
+      await ctx.plugin(RecordingFileSystem)
+      const fs = ctx.fs as RecordingFileSystem
+      fs.entries.set(join(root, '.git'), { type: 'directory' })
+      fs.entries.set(join(root, 'AGENTS.md'), { type: 'file', content: 'repo rule' })
+      await ctx.plugin(workspaceContext, { dshHome: home, maxBytes: 65536 })
+      const original = stubAgent(root)
+      await composeBaselinePrefix(ctx, original)
+
+      fs.throwOnStat.add(join(root, '.git'))
+      const warn = vi.spyOn(ctx.logger, 'warn').mockImplementation(() => undefined)
+      const resumed = stubAgent(root, [...original.session.events])
+      await composeBaselinePrefix(ctx, resumed)
+
+      expect(baselineEvents(resumed)).toHaveLength(1)
+      expect(resumed.session.events.filter(event => event.type === 'user/message'
+        && event.data.source.kind === 'agent-instructions')).toHaveLength(1)
+      expect(warn).toHaveBeenCalledWith(
+        'agent-instructions: retaining the visible baseline because project-root discovery failed: %s',
+        `project root marker is unavailable: ${join(root, '.git')}`,
+      )
+    } finally {
+      await ctx.fiber.dispose()
+      await rm(dirname(root), { recursive: true, force: true })
+      await rm(dirname(home), { recursive: true, force: true })
+    }
+  })
+
+  it('does not turn marker-probe cancellation into a last-known-baseline fallback', async () => {
+    const root = join(await tempRepo(), 'virtual-repo')
+    const home = join(await tempRepo(), 'virtual-home')
+    const ctx = new Context()
+    try {
+      await ctx.plugin(RecordingFileSystem)
+      const fs = ctx.fs as RecordingFileSystem
+      fs.entries.set(join(root, '.git'), { type: 'directory' })
+      fs.entries.set(join(root, 'AGENTS.md'), { type: 'file', content: 'repo rule' })
+      await ctx.plugin(workspaceContext, { dshHome: home, maxBytes: 65536 })
+      const original = stubAgent(root)
+      await composeBaselinePrefix(ctx, original)
+
+      const resumed = stubAgent(root, [...original.session.events])
+      const controller = new AbortController()
+      const failure = new Error('cancel marker probe')
+      vi.spyOn(fs, 'stat').mockImplementationOnce((_target, signal) => {
+        controller.abort(failure)
+        signal?.throwIfAborted()
+        return Promise.resolve(undefined)
+      })
+
+      await expect(agentEvents(ctx, resumed).waterfall(
+        'agent/pre-step',
+        { messages: [], turn: 2, step: 1, signal: controller.signal },
+        () => Promise.resolve({ kind: 'enter' as const, messages: [] }),
+      )).rejects.toBe(failure)
     } finally {
       await ctx.fiber.dispose()
       await rm(dirname(root), { recursive: true, force: true })
@@ -2046,7 +2119,12 @@ describe('workspace context request injection', () => {
       const fs = ctx.fs as RecordingFileSystem
       fs.entries.set(join(root, '.git'), { type: 'directory' })
       fs.entries.set(join(root, 'AGENTS.md'), { type: 'file', content: 'far too large' })
-      await ctx.plugin(workspaceContext, { dshHome: home, maxBytes: 65536, maxSourceBytes: 4 })
+      await ctx.plugin(workspaceContext, {
+        dshHome: home,
+        maxBytes: 65536,
+        maxSourceBytes: 4,
+        maxTotalSourceBytes: 10,
+      })
 
       const prefix = await composeBaselinePrefix(ctx, stubAgent(root))
 
@@ -2071,13 +2149,78 @@ describe('workspace context request injection', () => {
       fs.entries.set(join(root, '.git'), { type: 'directory' })
       fs.entries.set(instructionPath, { type: 'file', content: 'far too large' })
       fs.omitSizes.add(instructionPath)
-      await ctx.plugin(workspaceContext, { dshHome: home, maxBytes: 65536, maxSourceBytes: 4 })
+      await ctx.plugin(workspaceContext, {
+        dshHome: home,
+        maxBytes: 65536,
+        maxSourceBytes: 4,
+        maxTotalSourceBytes: 10,
+      })
 
       const prefix = await composeBaselinePrefix(ctx, stubAgent(root))
 
       expect(prefix).toEqual([])
       expect(fs.readTargets).toEqual([instructionPath, instructionPath])
       expect(fs.readTextTargets).toEqual([])
+    } finally {
+      await ctx.fiber.dispose()
+      await rm(dirname(root), { recursive: true, force: true })
+      await rm(dirname(home), { recursive: true, force: true })
+    }
+  })
+
+  it('bounds aggregate baseline source reads and gives the most-specific directory priority', async () => {
+    const root = join(await tempRepo(), 'virtual-repo')
+    const home = join(await tempRepo(), 'virtual-home')
+    const cwd = join(root, 'pkg')
+    const ctx = new Context()
+    try {
+      await ctx.plugin(RecordingFileSystem)
+      const fs = ctx.fs as RecordingFileSystem
+      const broad = join(root, 'AGENTS.md')
+      const specific = join(cwd, 'AGENTS.md')
+      fs.entries.set(join(root, '.git'), { type: 'directory' })
+      fs.entries.set(broad, { type: 'file', content: 'broad-123' })
+      fs.entries.set(specific, { type: 'file', content: 'specific!!' })
+
+      const loaded = await loadBaselineInstructionSet({
+        cwd,
+        dshHome: home,
+        maxBytes: 10,
+        maxSourceBytes: 10,
+        maxTotalSourceBytes: 10,
+      }, fs)
+
+      expect(loaded?.observed.map(file => file.absolutePath)).toEqual([specific])
+      expect(fs.readTargets).toEqual([specific])
+    } finally {
+      await ctx.fiber.dispose()
+      await rm(dirname(root), { recursive: true, force: true })
+      await rm(dirname(home), { recursive: true, force: true })
+    }
+  })
+
+  it('stops an unknown-size source stream when it exhausts the aggregate allowance', async () => {
+    const root = join(await tempRepo(), 'virtual-repo')
+    const home = join(await tempRepo(), 'virtual-home')
+    const ctx = new Context()
+    try {
+      await ctx.plugin(RecordingFileSystem)
+      const fs = ctx.fs as RecordingFileSystem
+      const instructionPath = join(root, 'AGENTS.md')
+      fs.entries.set(join(root, '.git'), { type: 'directory' })
+      fs.entries.set(instructionPath, { type: 'file', content: 'abcdef' })
+      fs.omitSizes.add(instructionPath)
+
+      const loaded = await loadBaselineInstructionSet({
+        cwd: root,
+        dshHome: home,
+        maxBytes: 65536,
+        maxSourceBytes: 10,
+        maxTotalSourceBytes: 5,
+      }, fs)
+
+      expect(loaded).toBeUndefined()
+      expect(fs.readTargets).toEqual([instructionPath])
     } finally {
       await ctx.fiber.dispose()
       await rm(dirname(root), { recursive: true, force: true })
@@ -2236,25 +2379,26 @@ describe('workspace context request injection', () => {
     }
   })
 
-  it('treats ctx.fs marker lookup failures as absent root markers', async () => {
-    const root = await tempRepo()
+  it('fails closed on an unavailable ctx.fs root marker instead of crossing into an ancestor project', async () => {
+    const outer = await tempRepo()
     const home = await tempRepo()
+    const ctx = new Context()
     try {
-      await mkdir(join(root, '.git'), { recursive: true })
-      await write(join(root, 'AGENTS.md'), 'repo rule')
-      const ctx = new Context()
+      const root = join(outer, 'project')
+      const cwd = join(root, 'pkg')
       await ctx.plugin(RecordingFileSystem)
       const fs = ctx.fs as RecordingFileSystem
+      fs.entries.set(join(outer, '.git'), { type: 'directory' })
+      fs.entries.set(join(outer, 'AGENTS.md'), { type: 'file', content: 'ancestor project rule' })
       fs.throwOnStat.add(join(root, '.git'))
-      fs.entries.set(join(root, 'AGENTS.md'), { type: 'file', content: 'repo rule' })
-      await ctx.plugin(workspaceContext, { dshHome: home, maxBytes: 65536 })
-      const agent = stubAgent(root)
 
-      await composeBaselinePrefix(ctx, agent)
+      await expect(loadBaselineInstructions({ cwd, dshHome: home, maxBytes: 65536 }, fs))
+        .rejects.toThrow(`project root marker is unavailable: ${join(root, '.git')}`)
 
-      expect(derivedText(agent)).toContain('repo rule')
+      expect(fs.readTargets).not.toContain(join(outer, 'AGENTS.md'))
     } finally {
-      await rm(root, { recursive: true, force: true })
+      await ctx.fiber.dispose()
+      await rm(outer, { recursive: true, force: true })
       await rm(home, { recursive: true, force: true })
     }
   })
@@ -2485,9 +2629,78 @@ describe('workspace context request injection', () => {
       await rm(home, { recursive: true, force: true })
     }
   })
+
+  it('fails closed on an unavailable host root marker instead of crossing into an ancestor project', async () => {
+    const outer = await tempRepo()
+    const home = await tempRepo()
+    const root = join(outer, 'project')
+    const cwd = join(root, 'pkg')
+    try {
+      await mkdir(join(outer, '.git'), { recursive: true })
+      await mkdir(cwd, { recursive: true })
+      await write(join(outer, 'AGENTS.md'), 'ancestor project rule')
+      vi.resetModules()
+      vi.doMock('node:fs/promises', async (importOriginal) => {
+        const actual = await importOriginal<typeof import('node:fs/promises')>()
+        return {
+          ...actual,
+          stat: async (path: string) => {
+            if (path === join(root, '.git')) {
+              throw Object.assign(new Error('permission denied'), { code: 'EACCES' })
+            }
+            return actual.stat(path)
+          },
+        }
+      })
+      const isolated = await import('@deepseek-ai/dsh-agent-instructions')
+
+      await expect(isolated.loadBaselineInstructions({ cwd, dshHome: home, maxBytes: 65536 }))
+        .rejects.toThrow(`project root marker is unavailable: ${join(root, '.git')}`)
+    } finally {
+      vi.doUnmock('node:fs/promises')
+      vi.resetModules()
+      await rm(outer, { recursive: true, force: true })
+      await rm(home, { recursive: true, force: true })
+    }
+  })
 })
 
 describe('dynamic nested workspace context injection', () => {
+  it('bounds one reconciliation batch and reads the most-specific changed directory first', async () => {
+    const root = join(await tempRepo(), 'virtual-repo')
+    const home = join(await tempRepo(), 'virtual-home')
+    const ctx = new Context()
+    try {
+      await ctx.plugin(RecordingFileSystem)
+      const fs = ctx.fs as RecordingFileSystem
+      const broad = join(root, 'a/AGENTS.md')
+      const specific = join(root, 'a/b/AGENTS.md')
+      fs.entries.set(broad, { type: 'file', content: 'broad-123' })
+      fs.entries.set(specific, { type: 'file', content: 'specific!!' })
+      const agent = stubAgent(root)
+
+      await reconcileInstructionContext(
+        agent,
+        resolveConfig({ dshHome: home, maxBytes: 10, maxSourceBytes: 10, maxTotalSourceBytes: 10 }),
+        new WeakMap(),
+        fs,
+        {
+          authorityMessages: [],
+          scopeMessages: [],
+          touchedPaths: [join(root, 'a/file.ts'), join(root, 'a/b/file.ts')],
+          includeBaselineScopes: false,
+          projectRoot: root,
+        },
+      )
+
+      expect(fs.readTargets).toEqual([specific])
+    } finally {
+      await ctx.fiber.dispose()
+      await rm(dirname(root), { recursive: true, force: true })
+      await rm(dirname(home), { recursive: true, force: true })
+    }
+  })
+
   it('projects a successful file result even when a later sibling aborts the step', async () => {
     const root = await tempRepo()
     const home = await tempRepo()

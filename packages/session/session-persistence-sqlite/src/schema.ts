@@ -10,6 +10,7 @@ import type { DatabaseSync } from 'node:sqlite'
 import { setTimeout as delay } from 'node:timers/promises'
 import {
   SessionId,
+  isSessionOrigin,
   type SessionHeader,
 } from '@deepseek-ai/dsh-session'
 import { sql } from './sql.ts'
@@ -27,7 +28,7 @@ export interface SessionRow {
   readonly cwd: string | null
   readonly parent_session: string | null
   readonly seed_length: number | null
-  readonly origin: 'subagent' | null
+  readonly origin: 'subagent' | 'dshbot' | null
   readonly incarnation: string
   readonly revision: number
   readonly delegation_depth: number | null
@@ -288,7 +289,7 @@ export function decodeSessionRow(value: unknown): SessionRow {
   if (cwd !== null && !isAbsolute(cwd)) throw new Error('stored session cwd must be absolute')
   const parent = nullableStringField(row, 'parent_session')
   const origin = nullableStringField(row, 'origin')
-  if (origin !== null && origin !== 'subagent') throw new Error('stored session origin must be subagent or null')
+  if (origin !== null && !isSessionOrigin(origin)) throw new Error('stored session origin must be "subagent" or "dshbot"')
   const incarnation = nonemptyStringField(row, 'incarnation')
   if (!UUID.test(incarnation)) throw new Error('stored session incarnation must be a UUID')
   return {

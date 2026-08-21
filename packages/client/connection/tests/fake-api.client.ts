@@ -47,7 +47,8 @@ export class FakeApiClient implements IApiClient {
     () => Promise.resolve(ok({ items: [], hasMore: false }))
   onCreate: (payload: unknown) => Promise<RpcResponse<{ sessionId: SessionId }>> = () => Promise.resolve(ok({ sessionId: 'fk-new' as SessionId }))
   onRename: (payload: unknown) => Promise<RpcResponse<{ title: string; seq: number }>> = () => Promise.resolve(ok({ title: 'fk-renamed', seq: 0 }))
-  onFork: (payload: unknown) => Promise<RpcResponse<{ sessionId: SessionId }>> = () => Promise.resolve(ok({ sessionId: 'fk-fork' as SessionId }))
+  onFork: (payload: unknown) => Promise<RpcResponse<{ sessionId: SessionId; blank: boolean }>> =
+    () => Promise.resolve(ok({ sessionId: 'fk-fork' as SessionId, blank: false }))
   onHistory: (payload: { sessionId: SessionId; beforeSeq?: number; maxMessages?: number })
   => Promise<RpcResponse<{ events: never[]; hasMore: boolean; modelSelection: ModelSelection }>> =
     () => Promise.resolve(ok({
@@ -76,9 +77,10 @@ export class FakeApiClient implements IApiClient {
     attachedSessions: number
     home: string
     canOpenPath: boolean
+    scratchCwd: string
   }>> =
     () => Promise.resolve(ok({
-      version: '0-fake', cwd: '/f', attachedSessions: 0, home: '/h', canOpenPath: true,
+      version: '0-fake', cwd: '/f', attachedSessions: 0, home: '/h', canOpenPath: true, scratchCwd: '/scratch',
     }))
   onPickDirectory: (payload: unknown) => Promise<RpcResponse<{ path: string | null }>> =
     () => Promise.resolve(ok({ path: null }))

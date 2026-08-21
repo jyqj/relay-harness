@@ -140,6 +140,17 @@ function resolveReasoningLevel(
   )
 }
 
+/** English picker labels. Canonical ids stay `xhigh` / `max`; only the name changes. */
+const THINKING_LEVEL_LABEL: Record<ModelThinkingLevel, string> = {
+  off: 'Off',
+  minimal: 'Minimal',
+  low: 'Low',
+  medium: 'Medium',
+  high: 'High',
+  xhigh: 'Extra High',
+  max: 'Max',
+}
+
 /**
  * Selectable reasoning efforts for one model, or nothing at all.
  *
@@ -166,7 +177,7 @@ function reasoningInfo(
     reasoning: {
       efforts: levels.map(level => ({
         id: ReasoningEffortId(level),
-        name: `${level.charAt(0).toUpperCase()}${level.slice(1)}`,
+        name: THINKING_LEVEL_LABEL[level] ?? `${level.charAt(0).toUpperCase()}${level.slice(1)}`,
       })),
       ...defaultLevel === undefined ? {} : { defaultEffort: ReasoningEffortId(defaultLevel) },
     },
