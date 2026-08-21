@@ -35,6 +35,6 @@ Consumer 会保留 prepared handle，直到持久的最终 `turn/end`。complete
 
 ## 已知限制与延期工作
 
-- **尚无自动提取 worker** — Consumer 负责召回和结算已有记忆；模型工具和后续后台提取负责创建版本。
+- **召回 Consumer 不拥有提取策略** — `memory-agent` 只负责召回与结算；独立且显式开启的 `memory-extractor-llm` Consumer 创建自动版本。
 - **字符预算而非 tokenizer 预算** — 完整上限跨 Provider 确定，但不是精确模型 token 数。
 - **尚无 cited-use 信号** — commit 记录进入模型的候选，不判断最终答案是否实际使用每一条。

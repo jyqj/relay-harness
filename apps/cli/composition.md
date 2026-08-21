@@ -52,6 +52,8 @@ flowchart LR
   cfg --> plugin_dsh_base_session_query_sqlite
   plugin_dsh_base_memory_sqlite["memory-sqlite<br/>@deepseek-ai/dsh-memory-sqlite"]
   cfg --> plugin_dsh_base_memory_sqlite
+  plugin_dsh_base_memory_extractor_llm["memory-extractor-llm<br/>@deepseek-ai/dsh-memory-extractor-llm"]
+  cfg --> plugin_dsh_base_memory_extractor_llm
   plugin_dsh_base_session_projection["session-projection<br/>@deepseek-ai/dsh-session-projection"]
   cfg --> plugin_dsh_base_session_projection
   plugin_dsh_base_session_telemetry_otel["session-telemetry-otel<br/>@deepseek-ai/dsh-session-telemetry-otel"]
@@ -200,6 +202,7 @@ flowchart LR
 | `attachment-local` | `@deepseek-ai/dsh-attachment-local` |
 | `session-query-sqlite` | `@deepseek-ai/dsh-session-query-sqlite` |
 | `memory-sqlite` | `@deepseek-ai/dsh-memory-sqlite` |
+| `memory-extractor-llm` | `@deepseek-ai/dsh-memory-extractor-llm` |
 | `session-projection` | `@deepseek-ai/dsh-session-projection` |
 | `session-telemetry-otel` | `@deepseek-ai/dsh-session-telemetry-otel` |
 | `subprocess` | `@deepseek-ai/dsh-subprocess-local` |

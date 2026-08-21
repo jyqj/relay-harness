@@ -10,6 +10,9 @@ export type MemoryId = Branded<'MemoryId'>
 /** Provider-owned identity of one prepared turn. */
 export type MemoryTurnHandle = Branded<'MemoryTurnHandle'>
 
+/** Stable identity of one durable automatic-extraction job. */
+export type MemoryExtractionJobId = Branded<'MemoryExtractionJobId'>
+
 /** Stable recall and write partition. Every operation addresses one exact scope. */
 export interface MemoryScope {
   /** Stable workspace identity; callers may use a canonical local path. */
@@ -171,4 +174,79 @@ export interface ForgetMemoryInput {
   readonly id: MemoryId
   readonly reason: string
   readonly evidence: readonly MemoryEvidence[]
+}
+
+/** Auxiliary LLM route captured for a restart-safe extraction job. */
+export interface MemoryExtractionRoute {
+  readonly provider: string
+  readonly model: string
+}
+
+/** One bounded source item copied from a completed turn for extraction. */
+export interface MemoryExtractionSource {
+  readonly kind: 'user' | 'tool-result'
+  readonly text: string
+  readonly evidence: MemoryEvidence
+  /** Tool name for a result source; absent for direct user messages. */
+  readonly toolName?: string
+}
+
+/** Idempotent durable-job admission request. */
+export interface EnqueueMemoryExtractionInput {
+  /** Version of the deterministic extractor prompt and output schema. */
+  readonly promptVersion: 1
+  readonly scope: MemoryScope
+  readonly sessionId: SessionId
+  readonly turn: number
+  readonly sourceHash: string
+  readonly route: MemoryExtractionRoute
+  readonly sources: readonly MemoryExtractionSource[]
+  readonly maxAttempts: number
+}
+
+/** Durable extraction-job state. */
+export type MemoryExtractionJobStatus = 'pending' | 'running' | 'completed' | 'failed'
+
+/** Terminal extraction facts retained without storing raw model output. */
+export interface MemoryExtractionResult {
+  readonly memoryIds: readonly MemoryId[]
+  readonly candidateCount: number
+  readonly skippedCount: number
+  readonly outputHash: string
+}
+
+/** One durable extraction job, including lease and retry state. */
+export interface MemoryExtractionJob extends EnqueueMemoryExtractionInput {
+  readonly id: MemoryExtractionJobId
+  readonly status: MemoryExtractionJobStatus
+  readonly attempts: number
+  readonly availableAt: number
+  readonly leaseOwner?: string
+  readonly leaseUntil?: number
+  readonly lastError?: string
+  readonly result?: MemoryExtractionResult
+  readonly createdAt: number
+  readonly updatedAt: number
+}
+
+/** Atomic claim request for one available or expired-lease job. */
+export interface ClaimMemoryExtractionInput {
+  readonly workerId: string
+  readonly leaseMs: number
+  readonly now?: number
+}
+
+/** Successful settlement by the worker that owns the current lease. */
+export interface CompleteMemoryExtractionInput {
+  readonly jobId: MemoryExtractionJobId
+  readonly workerId: string
+  readonly result: MemoryExtractionResult
+}
+
+/** Failed attempt and retry schedule selected by the current lease owner. */
+export interface FailMemoryExtractionInput {
+  readonly jobId: MemoryExtractionJobId
+  readonly workerId: string
+  readonly error: string
+  readonly retryAt: number
 }

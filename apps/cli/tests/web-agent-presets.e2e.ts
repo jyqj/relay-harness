@@ -64,6 +64,32 @@ class MemorySnapshotAdapter extends LlmAdapter {
   }
 }
 
+class AutoExtractionSnapshotAdapter extends LlmAdapter {
+  readonly requests: GenerateOptions[] = []
+
+  override resolveModel(provider: string, model: string): Promise<LlmResolvedModelInfo> {
+    return Promise.resolve({ provider, id: model, name: model })
+  }
+
+  async* stream(options: GenerateOptions): AsyncIterable<StreamChunk> {
+    this.requests.push(options)
+    const text = options.purpose === 'memory-extraction'
+      ? JSON.stringify({ candidates: [{
+        kind: 'preference',
+        content: 'The user validation drink is lapsang souchong.',
+        summary: 'Validation drink',
+        importance: 3,
+        evidence_quote: 'validation drink is lapsang souchong',
+      }] })
+      : 'Memory extraction snapshot response.'
+    yield { type: 'block-start', index: 0, blockType: 'text' }
+    yield { type: 'text-delta', index: 0, text }
+    yield { type: 'block-end', index: 0, block: { type: 'text', text } }
+    yield { type: 'usage', usage: { inputTokens: 10, outputTokens: 5 } }
+    yield { type: 'finish', reason: { kind: 'stop' } }
+  }
+}
+
 /**
  * Boot the shipped Web composition, minus the rows that would bind a port,
  * touch the network, or write outside the test. Everything that decides an
@@ -92,6 +118,7 @@ async function bootWeb(
     // this composition test to its temp home so it never reads or writes the
     // developer's personal memory store.
     { id: 'memory-sqlite', config: { path: join(dirname(settingsFile), 'memory.db') } },
+    { id: 'memory-extractor-llm', config: { enabled: false } },
     // Host rows with side effects outside this process: a bound port, a served
     // asset tree, a telemetry exporter. `api-gateway` and `directory-picker`
     // stay ENABLED on purpose — the api-proxy is the host row that injects
@@ -308,7 +335,7 @@ describe('the shipped Web composition', () => {
       await handle.agent.whenIdle()
       expect(adapter.requests.find(request => request.messages.some(message => message.source.kind === 'memory-recall')))
         .toBeDefined()
-      const transcript = handle.agent.session.events.flatMap((event) => {
+      const transcript = handle.agent.session.events.flatMap<{ type: string; source: string; text: string }>((event) => {
         if (event.type === 'user/message') {
           if (event.data.source.kind !== 'user' && event.data.source.kind !== 'memory-recall') return []
           const text = event.data.content.flatMap(block => block.type === 'text' ? [block.text] : []).join('\n')
@@ -366,6 +393,88 @@ describe('the shipped Web composition', () => {
       unregister()
     }
   })
+
+  it('extracts a standard turn durably and recalls it in a fresh composed session', async () => {
+    const home = await mkdtemp(join(tmpdir(), 'dsh-memory-extraction-composition-'))
+    const settingsFile = join(home, 'settings.yaml')
+    const workspace = await mkdtemp(join(tmpdir(), 'dsh-memory-extraction-workspace-'))
+    const userId = process.env.USER || process.env.USERNAME || 'local'
+    await writeFile(settingsFile, '{}\n')
+    const productCtx = await bootWeb(settingsFile, [{
+      id: 'memory-extractor-llm',
+      config: {
+        enabled: true,
+        userId,
+        agentId: 'deepseek-harness',
+        agentPresets: ['standard'],
+        provider: 'memory-auto-snapshot',
+        model: 'memory-auto-snapshot',
+        pollMs: 2,
+        retryDelayMs: 0,
+        leaseMs: 10_000,
+        timeoutMs: 5_000,
+      },
+    }])
+    const adapter = new AutoExtractionSnapshotAdapter()
+    productCtx.llm.registerAdapter(['memory-auto-snapshot'], adapter)
+    try {
+      const first = await productCtx.agents.create({
+        sessionId: SessionId(`memory-auto-source-${randomUUID()}`),
+        meta: { cwd: workspace, agentPreset: 'standard' },
+        agentOptions: { provider: 'memory-auto-snapshot', model: 'memory-auto-snapshot' },
+        setup: agentCtx => productCtx.agentPresets.mount(agentCtx, 'standard').then(() => undefined),
+      })
+      first.agent.followup(createUserMessage({
+        source: { kind: 'user' },
+        content: [{ type: 'text', text: 'Remember that my validation drink is lapsang souchong.' }],
+      }))
+      await first.agent.whenIdle()
+      await expect.poll(async () => productCtx.longTermMemory.search({
+        scope: { workspaceId: workspace, userId, agentId: 'deepseek-harness' },
+        query: 'validation drink lapsang',
+        limit: 10,
+      })).toHaveLength(1)
+      await first.dispose()
+
+      const second = await productCtx.agents.create({
+        sessionId: SessionId(`memory-auto-target-${randomUUID()}`),
+        meta: { cwd: workspace, agentPreset: 'standard' },
+        agentOptions: { provider: 'memory-auto-snapshot', model: 'memory-auto-snapshot' },
+        setup: agentCtx => productCtx.agentPresets.mount(agentCtx, 'standard').then(() => undefined),
+      })
+      second.agent.followup(createUserMessage({
+        source: { kind: 'user' },
+        content: [{ type: 'text', text: 'What is my validation drink?' }],
+      }))
+      await second.agent.whenIdle()
+      const recalledRequest = adapter.requests.find(request =>
+        request.messages.some(message => message.source.kind === 'memory-recall'))
+      expect(recalledRequest).toBeDefined()
+      const active = await productCtx.longTermMemory.search({
+        scope: { workspaceId: workspace, userId, agentId: 'deepseek-harness' },
+        query: 'validation drink lapsang',
+        limit: 10,
+      })
+      expect(active.map(hit => ({
+        kind: hit.entry.kind,
+        status: hit.entry.status,
+        trust: hit.entry.trust,
+        content: hit.entry.content,
+      }))).toMatchInlineSnapshot(`
+        [
+          {
+            "content": "validation drink is lapsang souchong",
+            "kind": "preference",
+            "status": "active",
+            "trust": "user-stated",
+          },
+        ]
+      `)
+      await second.dispose()
+    } finally {
+      await productCtx.fiber.dispose()
+    }
+  }, 120_000)
 
   it('composes the exact RL prompt and two tools from `minimal`', async () => {
     const handle = await ctx.agents.create({

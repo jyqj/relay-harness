@@ -18,6 +18,7 @@ flowchart LR
   pkg_llm_replay["llm-replay"]
   pkg_agent_loop["agent-loop"]
   pkg_compaction_basic["compaction-basic"]
+  pkg_memory_extractor_llm["memory-extractor-llm"]
   pkg_llm_vision_fallback["llm-vision-fallback"]
   svc_visionFallback["ctx.visionFallback<br/>Vision-to-text fallback substitution"]
   pkg_apiproxy["apiproxy"]
@@ -110,6 +111,7 @@ flowchart LR
   pkg_memory_sqlite["memory-sqlite"]
   pkg_memory_agent["memory-agent"]
   pkg_tool_memory["tool-memory"]
+  svc_memoryExtractionQueue["ctx.memoryExtractionQueue<br/>Durable memory-extraction job seam"]
   pkg_mcp_servers_file["mcp-servers-file"]
   svc_mcpServersFile["ctx.mcpServersFile<br/>File-backed MCP server document"]
   pkg_mcp_client["mcp-client"]
@@ -256,7 +258,9 @@ flowchart LR
   pkg_lsp_local --> svc_lsp
   pkg_mcp_servers_file --> svc_mcpServersFile
   pkg_memory --> svc_longTermMemory
+  pkg_memory --> svc_memoryExtractionQueue
   pkg_memory_sqlite --> svc_longTermMemory
+  pkg_memory_sqlite --> svc_memoryExtractionQueue
   pkg_message_feedback --> svc_messageFeedback
   pkg_modules --> svc_clientModules
   pkg_permission_presets --> svc_permissionPresets
@@ -352,11 +356,14 @@ flowchart LR
   svc_jobs --> pkg_tool_terminal
   svc_llm --> pkg_agent_loop
   svc_llm --> pkg_compaction_basic
+  svc_llm --> pkg_memory_extractor_llm
   svc_longTermMemory --> pkg_memory_agent
+  svc_longTermMemory --> pkg_memory_extractor_llm
   svc_longTermMemory --> pkg_tool_memory
   svc_lsp --> pkg_tool_lsp
   svc_mcpServersFile --> pkg_host_mcp_servers
   svc_mcpServersFile --> pkg_mcp_client
+  svc_memoryExtractionQueue --> pkg_memory_extractor_llm
   svc_sandbox --> pkg_bash_sandbox
   svc_sandbox --> pkg_terminal_bash
   svc_sandboxPolicy --> pkg_bash_sandbox
@@ -444,7 +451,7 @@ flowchart LR
 | ctx key | Role | Owner | Implementations | Direct consumers | Companion plugins | Note |
 | --- | --- | --- | --- | --- | --- | --- |
 | `ctx.attachments` | `seam` | [`attachment`](../packages/attachment/attachment) | [`attachment-local`](../packages/attachment/attachment-local) | `host-runtime`, [`llm-pi-ai`](../packages/llm/llm-pi-ai) | - | The host commits accepted images before session events; provider adapters resolve authorized durable references into provider-native content. |
-| `ctx.llm` | `seam` | [`llm`](../packages/llm/llm) | [`llm-deepseek`](../packages/llm/llm-deepseek), [`llm-pi-ai`](../packages/llm/llm-pi-ai), [`llm-replay`](../packages/test-support/llm-replay) | [`agent-loop`](../packages/core/agent-loop), [`compaction-basic`](../packages/compaction/compaction-basic) | - | Adapters register provider implementations; the loop and compaction call the provider-neutral stream service. |
+| `ctx.llm` | `seam` | [`llm`](../packages/llm/llm) | [`llm-deepseek`](../packages/llm/llm-deepseek), [`llm-pi-ai`](../packages/llm/llm-pi-ai), [`llm-replay`](../packages/test-support/llm-replay) | [`agent-loop`](../packages/core/agent-loop), [`compaction-basic`](../packages/compaction/compaction-basic), [`memory-extractor-llm`](../packages/memory/memory-extractor-llm) | - | Adapters register provider implementations; the loop, compaction, and durable memory extractor call the provider-neutral stream service. |
 | `ctx.visionFallback` | `core` | [`llm-vision-fallback`](../packages/llm/llm-vision-fallback) | - | `apiproxy`, [`agent-loop`](../packages/core/agent-loop), [`tool-fs`](../packages/fs/tool-fs) | - | A designated vision model describes each image attachment once; text-only main routes receive the logged description text in place of image blocks. |
 | `ctx.tokenMeter` | `core` | [`token-meter`](../packages/llm/token-meter) | - | [`compaction-basic`](../packages/compaction/compaction-basic) | - | Owns isolated per-session replay folds; pressure consumers share immutable revisioned measurements. |
 | `ctx.toolResultPruner` | `core` | [`compaction-tool-result-pruner`](../packages/compaction/compaction-tool-result-pruner) | - | [`compaction-basic`](../packages/compaction/compaction-basic) | - | Rewrites oversized current tool results through replayable single-node surface replacements before summary compaction. |
@@ -473,7 +480,8 @@ flowchart LR
 | `ctx.sessionProjections` | `core` | [`session-projection`](../packages/session/session-projection) | - | [`tool-todo`](../packages/todo/tool-todo), [`session-title`](../packages/session/session-title), [`host-apiproxy`](../packages/host/apiproxy) | - | Domains register state-driven fold units; the eager drive keeps per-session watermark states and api-proxy serves baselines and pushes changed values. |
 | `ctx.sessionProjectionCache` | `core` | [`session-projection-cache`](../packages/session/session-projection-cache) | - | [`host-apiproxy`](../packages/host/apiproxy) | - | Durably checkpoints projection unit states per session (throttled + turn/end/detach mandatory points) and serves the cold-read ladder: cache row + persistence tail replay, so listings never load full logs. |
 | `ctx.skills` | `seam` | [`skill`](../packages/skill/skill) | [`skill-badge`](../packages/skill/skill-badge), [`skill-filesystem`](../packages/skill/skill-filesystem) | [`tool-skill`](../packages/skill/tool-skill) | - | Merges provider skill catalogs; tool-skill renders the session-prefix catalog and loads complete skill bodies. |
-| `ctx.longTermMemory` | `seam` | [`memory`](../packages/memory/memory) | [`memory-sqlite`](../packages/memory/memory-sqlite) | [`memory-agent`](../packages/memory/memory-agent), [`tool-memory`](../packages/memory/tool-memory) | - | The canonical provider owns revisions, Scope, retrieval, and prepared-turn settlement; Agent and tool Consumers independently decide model-visible recall and governed writes. |
+| `ctx.longTermMemory` | `seam` | [`memory`](../packages/memory/memory) | [`memory-sqlite`](../packages/memory/memory-sqlite) | [`memory-agent`](../packages/memory/memory-agent), [`memory-extractor-llm`](../packages/memory/memory-extractor-llm), [`tool-memory`](../packages/memory/tool-memory) | - | The canonical provider owns revisions, Scope, retrieval, and prepared-turn settlement; Agent, extraction, and tool Consumers independently decide model-visible recall and governed writes. |
+| `ctx.memoryExtractionQueue` | `seam` | [`memory`](../packages/memory/memory) | [`memory-sqlite`](../packages/memory/memory-sqlite) | [`memory-extractor-llm`](../packages/memory/memory-extractor-llm) | - | The canonical SQLite owner persists idempotent completed-turn jobs, leases, retries, and terminal results; the extractor captures eligible evidence and runs one auxiliary LLM worker. |
 | `ctx.mcpServersFile` | `core` | [`mcp-servers-file`](../packages/mcp/mcp-servers-file) | - | [`mcp-client`](../packages/mcp/mcp-client), [`host-mcp-servers`](../packages/host/mcp-servers) | - | Owns mcp-servers.yaml and mounts one mcp-client child per enabled record; model-facing tools belong to those children. |
 | `ctx.agents` | `core` | [`agent`](../packages/core/agent) | - | [`agent-loop`](../packages/core/agent-loop), [`acp`](../packages/acp/acp), `subagent-inprocess` | - | Owns live Agent handles, the create/resume factory seam, and process-local initiator propagation. |
 | `ctx.agentDefaultModel` | `core` | [`agent-default-model`](../packages/core/agent-default-model) | - | [`headless`](../packages/bundle/headless), [`host-apiproxy`](../packages/host/apiproxy) | - | Layers the default ModelSelection through settings so direct and Host-backed Agent entry points share one state owner. |

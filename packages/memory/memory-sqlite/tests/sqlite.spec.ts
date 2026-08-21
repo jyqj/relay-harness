@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
+import { DatabaseSync } from 'node:sqlite'
 import { CallId } from '@deepseek-ai/dsh-llm'
 import { MemoryId } from '@deepseek-ai/dsh-memory'
 import type { MemoryEvidence, MemoryScope } from '@deepseek-ai/dsh-memory/types'
@@ -152,6 +153,7 @@ describe('SQLite long-term memory', () => {
       evidence: [userEvidence],
     })
     const input = {
+      promptVersion: 1 as const,
       scope,
       sessionId: SessionId('session-b'),
       turn: 1,
@@ -197,6 +199,17 @@ describe('SQLite long-term memory', () => {
     expect(() => ctx.longTermMemory.remember({
       scope,
       kind: 'fact',
+      content: 'Safe public content',
+      summary: 'password: abcdefghijklmnop',
+      importance: 1,
+      confidence: 1,
+      trust: 'user-stated',
+      status: 'active',
+      evidence: [userEvidence],
+    })).toThrow('secret')
+    expect(() => ctx.longTermMemory.remember({
+      scope,
+      kind: 'fact',
       content: 'No evidence entry',
       importance: 1,
       confidence: 1,
@@ -220,5 +233,163 @@ describe('SQLite long-term memory', () => {
       evidence: [userEvidence],
     })).toThrow('10 Unicode code points')
     await bounded.fiber.dispose()
+  })
+
+  it('deduplicates normalized content and promotes an existing candidate instead of forking identity', async () => {
+    const ctx = await harness()
+    const proposalEvidence: MemoryEvidence = {
+      sessionId: SessionId('proposal'),
+      eventSeqs: [1],
+      verification: 'agent-proposal',
+      callId: CallId('proposal-call'),
+    }
+    const candidate = await ctx.longTermMemory.remember({
+      scope,
+      kind: 'fact',
+      content: '  Deployment   codename is COBALT. ',
+      importance: 2,
+      confidence: 0.5,
+      trust: 'agent-proposed',
+      status: 'candidate',
+      evidence: [proposalEvidence],
+    })
+    const promoted = await ctx.longTermMemory.remember({
+      scope,
+      kind: 'fact',
+      content: 'deployment codename is cobalt.',
+      importance: 3,
+      confidence: 1,
+      trust: 'user-stated',
+      status: 'active',
+      evidence: [userEvidence],
+    })
+    expect(promoted).toMatchObject({ id: candidate.id, revision: 2, status: 'active', importance: 3 })
+    const repeated = await ctx.longTermMemory.remember({
+      scope,
+      kind: 'fact',
+      content: 'DEPLOYMENT CODENAME IS COBALT.',
+      importance: 3,
+      confidence: 1,
+      trust: 'user-stated',
+      status: 'active',
+      evidence: [userEvidence],
+    })
+    expect(repeated).toMatchObject({ id: candidate.id, revision: 2 })
+    await ctx.fiber.dispose()
+  })
+
+  it('persists idempotent extraction jobs, reclaims expired leases, retries, and reaches terminal status', async () => {
+    const path = await databasePath()
+    const ctx = await harness(path)
+    const input = {
+      scope,
+      sessionId: SessionId('extract-session'),
+      turn: 3,
+      promptVersion: 1 as const,
+      sourceHash: 'a'.repeat(64),
+      route: { provider: 'mock', model: 'mock' },
+      sources: [{ kind: 'user' as const, text: 'Remember cobalt.', evidence: userEvidence }],
+      maxAttempts: 3,
+    }
+    const enqueued = await ctx.memoryExtractionQueue.enqueue(input)
+    expect(await ctx.memoryExtractionQueue.enqueue(input)).toEqual(enqueued)
+    const base = enqueued.availableAt
+    const leaseMs = 50_000
+    const first = await ctx.memoryExtractionQueue.claim({ workerId: 'worker-1', leaseMs, now: base })
+    expect(first).toMatchObject({ id: enqueued.id, status: 'running', attempts: 1, leaseUntil: base + leaseMs })
+    expect(await ctx.memoryExtractionQueue.claim({ workerId: 'worker-2', leaseMs, now: base + leaseMs - 1 })).toBeUndefined()
+    const reclaimed = await ctx.memoryExtractionQueue.claim({ workerId: 'worker-2', leaseMs, now: base + leaseMs })
+    expect(reclaimed).toMatchObject({ id: enqueued.id, attempts: 2, leaseOwner: 'worker-2' })
+    await expect(Promise.resolve().then(() => ctx.memoryExtractionQueue.complete({
+      jobId: enqueued.id,
+      workerId: 'worker-1',
+      result: { memoryIds: [], candidateCount: 0, skippedCount: 0, outputHash: 'b'.repeat(64) },
+    }))).rejects.toThrow('not leased')
+    const retry = await ctx.memoryExtractionQueue.fail({
+      jobId: enqueued.id,
+      workerId: 'worker-2',
+      error: 'transient',
+      retryAt: base + leaseMs * 2,
+    })
+    expect(retry).toMatchObject({ status: 'pending', attempts: 2, availableAt: base + leaseMs * 2 })
+    expect(await ctx.memoryExtractionQueue.claim({ workerId: 'worker-3', leaseMs, now: base + leaseMs * 2 - 1 })).toBeUndefined()
+    const last = await ctx.memoryExtractionQueue.claim({ workerId: 'worker-3', leaseMs, now: base + leaseMs * 2 })
+    expect(last).toMatchObject({ attempts: 3 })
+    const failed = await ctx.memoryExtractionQueue.fail({
+      jobId: enqueued.id,
+      workerId: 'worker-3',
+      error: 'terminal',
+      retryAt: base + leaseMs * 4,
+    })
+    expect(failed).toMatchObject({ status: 'failed', attempts: 3, lastError: 'terminal' })
+    expect(await ctx.memoryExtractionQueue.claim({ workerId: 'worker-4', leaseMs, now: base + leaseMs * 6 })).toBeUndefined()
+
+    const completedInput = { ...input, turn: 4, sourceHash: 'c'.repeat(64) }
+    const queuedComplete = await ctx.memoryExtractionQueue.enqueue(completedInput)
+    await ctx.memoryExtractionQueue.claim({ workerId: 'worker-ok', leaseMs, now: queuedComplete.availableAt })
+    const completed = await ctx.memoryExtractionQueue.complete({
+      jobId: queuedComplete.id,
+      workerId: 'worker-ok',
+      result: { memoryIds: [], candidateCount: 1, skippedCount: 1, outputHash: 'd'.repeat(64) },
+    })
+    expect(completed).toMatchObject({ status: 'completed', result: { candidateCount: 1, skippedCount: 1 } })
+
+    const finalLease = await ctx.memoryExtractionQueue.enqueue({
+      ...input,
+      turn: 5,
+      sourceHash: 'e'.repeat(64),
+      maxAttempts: 1,
+    })
+    await ctx.memoryExtractionQueue.claim({ workerId: 'worker-crashed', leaseMs, now: finalLease.availableAt })
+    expect(await ctx.memoryExtractionQueue.claim({
+      workerId: 'worker-after-crash',
+      leaseMs,
+      now: finalLease.availableAt + leaseMs,
+    })).toBeUndefined()
+    expect(await ctx.memoryExtractionQueue.read(finalLease.id)).toMatchObject({
+      status: 'failed',
+      attempts: 1,
+      lastError: 'worker lease expired after final attempt',
+    })
+    await ctx.fiber.dispose()
+
+    const reopened = await harness(path)
+    expect(await reopened.memoryExtractionQueue.read(enqueued.id)).toMatchObject({ status: 'failed', attempts: 3 })
+    expect(await reopened.memoryExtractionQueue.read(queuedComplete.id)).toMatchObject({ status: 'completed' })
+    await reopened.fiber.dispose()
+  })
+
+  it('migrates the canonical version-one store before accepting new jobs', async () => {
+    const path = await databasePath()
+    const db = new DatabaseSync(path)
+    db.exec('PRAGMA application_id = 1146308685')
+    db.exec('PRAGMA user_version = 1')
+    db.exec(`
+      CREATE TABLE memory_entries (
+        memory_id TEXT PRIMARY KEY, revision INTEGER NOT NULL, workspace_id TEXT NOT NULL,
+        user_id TEXT NOT NULL, agent_id TEXT NOT NULL, kind TEXT NOT NULL, status TEXT NOT NULL,
+        trust TEXT NOT NULL, importance INTEGER NOT NULL, confidence REAL NOT NULL,
+        valid_until INTEGER, updated_at INTEGER NOT NULL, access_count INTEGER NOT NULL,
+        useful_access_count INTEGER NOT NULL, entry_json TEXT NOT NULL
+      ) STRICT
+    `)
+    db.close()
+
+    const ctx = await harness(path)
+    const entry = await ctx.longTermMemory.remember({
+      scope,
+      kind: 'fact',
+      content: 'Migrated memory store accepts revisions.',
+      importance: 2,
+      confidence: 1,
+      trust: 'user-stated',
+      status: 'active',
+      evidence: [userEvidence],
+    })
+    expect(await ctx.longTermMemory.read(scope, entry.id)).toMatchObject({ revision: 1 })
+    await ctx.fiber.dispose()
+    const migrated = new DatabaseSync(path)
+    expect(migrated.prepare('PRAGMA user_version').get()).toEqual({ user_version: 2 })
+    migrated.close()
   })
 })

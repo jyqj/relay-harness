@@ -2,7 +2,7 @@
 
 [English](memory.md) | 中文
 
-长期记忆在多个 Agent 会话之间保存受治理的知识，但不替代产生知识的追加式 SessionEvent 证据。[`@deepseek-ai/dsh-memory`](../../packages/memory/memory) 负责 Provider 无关类型与 `ctx.longTermMemory`；[`memory-sqlite`](../../packages/memory/memory-sqlite) 是随附的本地 Provider；[`memory-agent`](../../packages/memory/memory-agent) 与 [`tool-memory`](../../packages/memory/tool-memory) 是相互独立的 Consumer。
+长期记忆在多个 Agent 会话之间保存受治理的知识，但不替代产生知识的追加式 SessionEvent 证据。[`@deepseek-ai/dsh-memory`](../../packages/memory/memory) 负责 Provider 无关的 `ctx.longTermMemory` 与 `ctx.memoryExtractionQueue` seam；[`memory-sqlite`](../../packages/memory/memory-sqlite) 是随附的单一 Owner；[`memory-agent`](../../packages/memory/memory-agent)、[`memory-extractor-llm`](../../packages/memory/memory-extractor-llm) 与 [`tool-memory`](../../packages/memory/tool-memory) 是相互独立的 Consumer。
 
 ## Scope 与标识
 
@@ -30,9 +30,17 @@ Prepared handle 保持打开，直到最终 `turn/end`。Completed 与 max-token
 
 Recall-form 用户消息保留在原始 Session 日志中，但不会生成 Session Query 语义文档。这会阻止已召回记忆或被引用 Session 快照变成新的 episodic 证据并递归放大自身。
 
+## 自动提取生命周期
+
+自动提取是 Host Consumer，而不是隐藏的 Agent-loop mutation。其包级默认关闭；发行的 base 组合只对带持久 `standard` preset identity 的会话显式开启，并排除 subagent。completed 或 max-token `turn/end` 到达时，capture 只投影直接用户消息和成功工具结果。派生 recall/plugin 消息、reasoning、失败结果、memory/session/skill 工具输出以及含 secret 的来源会在持久化前排除。
+
+有界 source snapshot 与辅助 route 会进入按 Scope、session、turn 和 source hash 幂等的持久 job。SQLite 原子领取最早可用 job，持久记录 attempts 与有期限 lease，重新领取被中断工作，对畸形输出、模型或 Provider 故障重试，并跨重启保存 completed 或 terminal 状态。成功结果只保留 memory id、计数与模型 output hash；原始模型输出不会成为另一份 truth source。
+
+辅助调用使用 `purpose: 'memory-extraction'`、固定的仅 JSON 指令、无工具且无对话历史。提案会被严格解析。直接用户来源中的精确连续引文可成为 user-stated active memory；allowlist 内成功本地工具结果中的精确引文可成为 action-verified active memory。自动 active 内容就是精确引文，而非模型改写。非 allowlist 的成功 observation 与无法 grounding 的提案保持 candidate。Provider 侧 trust、evidence、Scope、secret 与精确去重检查在每次重试中仍是权威边界。
+
 ## SQLite 检索
 
-本地 Provider 为当前非 tombstoned 条目维护 Unicode 与 trigram FTS5 索引。它融合各渠道排名，再应用有界 importance 和 trust 权重。查询和每个元数据筛选器都是 SQL 参数；调用者 Scope 为必填。规范数据库会拒绝无关文件和未知 schema 版本，而不是重置它们。
+本地 Provider 为当前非 tombstoned 条目维护 Unicode 与 trigram FTS5 索引。它融合各渠道排名，再应用有界 importance 和 trust 权重。查询和每个元数据筛选器都是 SQL 参数；调用者 Scope 为必填。规范数据库会拒绝无关文件和未知 schema 版本，而不是重置它们。schema version 2 增加确定性 content hash 与提取 job；version-1 store 会原地迁移。
 
 <!-- BEGIN GENERATED cordis-surface (gen-cordis-catalog.ts) — do not edit between markers -->
 
@@ -113,5 +121,50 @@ abstract read(scope: MemoryScope, id: MemoryId, signal?: AbortSignal): Promise<M
 abstract search(input: SearchMemoryInput, signal?: AbortSignal): Promise<readonly MemorySearchHit[]>
 ```
 
-Source: [`packages/memory/memory/src/index.ts:51`](../../packages/memory/memory/src/index.ts)
+Source: [`packages/memory/memory/src/index.ts:63`](../../packages/memory/memory/src/index.ts)
+
+<a id="ctxmemoryextractionqueue--memoryextractionqueue-abstract-seam"></a>
+
+### `ctx.memoryExtractionQueue` — `MemoryExtractionQueue` (abstract seam)
+
+Provider-neutral durable queue used by turn capture and extractor workers.
+
+```ts cordis-catalog
+/**
+ * Idempotently admit one completed-turn source snapshot.
+ * @param input - exact Scope, source hash, route, bounded sources, and retry cap.
+ * @returns existing or newly committed job for the dedupe identity.
+ */
+abstract enqueue(input: EnqueueMemoryExtractionInput): Promise<MemoryExtractionJob>
+
+/**
+ * Atomically claim the oldest available job or reclaim one whose lease expired.
+ * @param input - worker identity, lease duration, and optional deterministic clock.
+ * @returns claimed running job, or undefined when none is available.
+ */
+abstract claim(input: ClaimMemoryExtractionInput): Promise<MemoryExtractionJob | undefined>
+
+/**
+ * Commit one successful extraction under the current lease.
+ * @param input - job, worker identity, and terminal result.
+ * @returns completed job.
+ */
+abstract complete(input: CompleteMemoryExtractionInput): Promise<MemoryExtractionJob>
+
+/**
+ * Settle one failed attempt as pending retry or terminal failed.
+ * @param input - job, worker identity, error, and requested retry time.
+ * @returns updated job.
+ */
+abstract fail(input: FailMemoryExtractionInput): Promise<MemoryExtractionJob>
+
+/**
+ * Read one job for diagnostics and tests.
+ * @param id - durable job identity.
+ * @returns current job, or undefined when absent.
+ */
+abstract read(id: MemoryExtractionJobId): Promise<MemoryExtractionJob | undefined>
+```
+
+Source: [`packages/memory/memory/src/extraction.ts:20`](../../packages/memory/memory/src/extraction.ts)
 <!-- END GENERATED cordis-surface -->

@@ -8,13 +8,25 @@ import { createHash, randomUUID } from 'node:crypto'
 import type { DatabaseSync } from 'node:sqlite'
 import { Context, Service } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
-import LongTermMemory, { MemoryId, MemoryTurnHandle } from '@deepseek-ai/dsh-memory'
+import LongTermMemory, {
+  MemoryExtractionJobId,
+  MemoryExtractionQueue,
+  MemoryId,
+  MemoryTurnHandle,
+  memoryContainsSecret,
+} from '@deepseek-ai/dsh-memory'
 import type {
   AbortMemoryTurnInput,
   CommitMemoryTurnInput,
+  CompleteMemoryExtractionInput,
+  ClaimMemoryExtractionInput,
+  EnqueueMemoryExtractionInput,
+  FailMemoryExtractionInput,
   ForgetMemoryInput,
   MemoryEntry,
   MemoryEvidence,
+  MemoryExtractionJob,
+  MemoryExtractionJobId as MemoryExtractionJobIdType,
   MemoryId as MemoryIdType,
   MemoryKind,
   MemoryScope,
@@ -28,7 +40,7 @@ import type {
   ReviseMemoryInput,
   SearchMemoryInput,
 } from '@deepseek-ai/dsh-memory/types'
-import { openMemoryDatabase, type JournalMode } from './schema.ts'
+import { memoryContentHash, openMemoryDatabase, type JournalMode } from './schema.ts'
 
 export {
   MEMORY_SQLITE_APPLICATION_ID,
@@ -86,6 +98,55 @@ interface TurnRow {
   reason: string | null
 }
 
+interface ExtractionJobRow {
+  id: string
+  payload_json: string
+  status: MemoryExtractionJob['status']
+  attempts: number
+  max_attempts: number
+  available_at: number
+  lease_owner: string | null
+  lease_until: number | null
+  last_error: string | null
+  result_json: string | null
+  created_at: number
+  updated_at: number
+}
+
+interface ExtractionQueueOperations {
+  enqueue(input: EnqueueMemoryExtractionInput): Promise<MemoryExtractionJob>
+  claim(input: ClaimMemoryExtractionInput): Promise<MemoryExtractionJob | undefined>
+  complete(input: CompleteMemoryExtractionInput): Promise<MemoryExtractionJob>
+  fail(input: FailMemoryExtractionInput): Promise<MemoryExtractionJob>
+  read(id: MemoryExtractionJobIdType): Promise<MemoryExtractionJob | undefined>
+}
+
+class SqliteMemoryExtractionQueue extends MemoryExtractionQueue {
+  constructor(ctx: Context, private readonly operations: ExtractionQueueOperations) {
+    super(ctx)
+  }
+
+  override enqueue(input: EnqueueMemoryExtractionInput): Promise<MemoryExtractionJob> {
+    return this.operations.enqueue(input)
+  }
+
+  override claim(input: ClaimMemoryExtractionInput): Promise<MemoryExtractionJob | undefined> {
+    return this.operations.claim(input)
+  }
+
+  override complete(input: CompleteMemoryExtractionInput): Promise<MemoryExtractionJob> {
+    return this.operations.complete(input)
+  }
+
+  override fail(input: FailMemoryExtractionInput): Promise<MemoryExtractionJob> {
+    return this.operations.fail(input)
+  }
+
+  override read(id: MemoryExtractionJobIdType): Promise<MemoryExtractionJob | undefined> {
+    return this.operations.read(id)
+  }
+}
+
 /** Canonical local provider with append-only revisions and rebuildable FTS indexes. */
 export class SqliteLongTermMemory extends LongTermMemory {
   static Config: z<Config> = z.object({
@@ -104,6 +165,13 @@ export class SqliteLongTermMemory extends LongTermMemory {
   constructor(ctx: Context, config: Config) {
     super(ctx)
     this.config = resolveConfig(config)
+    new SqliteMemoryExtractionQueue(ctx, {
+      enqueue: input => this.enqueueExtraction(input),
+      claim: input => this.claimExtraction(input),
+      complete: input => this.completeExtraction(input),
+      fail: input => this.failExtraction(input),
+      read: id => this.readExtraction(id),
+    })
     ctx.effect(() => async () => this.close(), 'memorySqlite.close')
   }
 
@@ -212,6 +280,21 @@ export class SqliteLongTermMemory extends LongTermMemory {
   override remember(input: RememberMemoryInput, signal?: AbortSignal): Promise<MemoryEntry> {
     signal?.throwIfAborted()
     validateRemember(input, this.config)
+    const existing = this.findExact(input.scope, input.kind, input.content)
+    if (existing !== undefined) {
+      if (input.status === 'active' && existing.status !== 'active') {
+        return this.revise({
+          scope: input.scope,
+          id: existing.id,
+          status: 'active',
+          trust: input.trust,
+          confidence: Math.max(existing.confidence, input.confidence),
+          importance: Math.max(existing.importance, input.importance),
+          evidence: input.evidence,
+        }, signal)
+      }
+      return Promise.resolve(existing)
+    }
     const now = Date.now()
     const entry: MemoryEntry = {
       id: MemoryId(randomUUID()),
@@ -408,10 +491,10 @@ export class SqliteLongTermMemory extends LongTermMemory {
       )
       db.prepare(`
         INSERT INTO memory_entries (
-          memory_id, revision, workspace_id, user_id, agent_id, kind, status, trust,
+          memory_id, revision, workspace_id, user_id, agent_id, kind, status, trust, content_hash,
           importance, confidence, valid_until, updated_at, access_count,
           useful_access_count, entry_json
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(memory_id) DO UPDATE SET
           revision = excluded.revision,
           workspace_id = excluded.workspace_id,
@@ -420,6 +503,7 @@ export class SqliteLongTermMemory extends LongTermMemory {
           kind = excluded.kind,
           status = excluded.status,
           trust = excluded.trust,
+          content_hash = excluded.content_hash,
           importance = excluded.importance,
           confidence = excluded.confidence,
           valid_until = excluded.valid_until,
@@ -436,6 +520,7 @@ export class SqliteLongTermMemory extends LongTermMemory {
         entry.kind,
         entry.status,
         entry.trust,
+        memoryContentHash(entry.kind, entry.content),
         entry.importance,
         entry.confidence,
         entry.validUntil ?? null,
@@ -471,6 +556,160 @@ export class SqliteLongTermMemory extends LongTermMemory {
       INSERT INTO memory_signals (id, memory_id, signal, session_id, turn, created_at)
       VALUES (?, ?, ?, ?, ?, ?)
     `).run(randomUUID(), id, signal, sessionId ?? null, turn ?? null, Date.now())
+  }
+
+  private enqueueExtraction(input: EnqueueMemoryExtractionInput): Promise<MemoryExtractionJob> {
+    validateExtractionInput(input)
+    const payload = snapshotExtractionInput(input)
+    const payloadJson = JSON.stringify(payload)
+    const dedupeKey = extractionDedupeKey(payload)
+    const id = MemoryExtractionJobId(`memory-extraction-${dedupeKey}`)
+    const existing = this.requireDb().prepare(
+      'SELECT * FROM memory_extraction_jobs WHERE dedupe_key = ?',
+    ).get(dedupeKey) as ExtractionJobRow | undefined
+    if (existing !== undefined) {
+      if (existing.payload_json !== payloadJson || existing.max_attempts !== input.maxAttempts) {
+        throw new Error(`memory extraction job ${existing.id} was enqueued with different input`)
+      }
+      return Promise.resolve(parseExtractionJob(existing))
+    }
+    const now = Date.now()
+    this.requireDb().prepare(`
+      INSERT INTO memory_extraction_jobs (
+        id, dedupe_key, workspace_id, user_id, agent_id, session_id, turn,
+        source_hash, payload_json, status, max_attempts, available_at,
+        created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?)
+    `).run(
+      id,
+      dedupeKey,
+      input.scope.workspaceId,
+      input.scope.userId,
+      input.scope.agentId,
+      input.sessionId,
+      input.turn,
+      input.sourceHash,
+      payloadJson,
+      input.maxAttempts,
+      now,
+      now,
+      now,
+    )
+    return Promise.resolve(this.requireExtractionJob(id))
+  }
+
+  private claimExtraction(input: ClaimMemoryExtractionInput): Promise<MemoryExtractionJob | undefined> {
+    const workerId = requireText('extraction workerId', input.workerId)
+    assertPositiveSafeInteger('extraction leaseMs', input.leaseMs)
+    const now = input.now ?? Date.now()
+    if (!Number.isSafeInteger(now) || now < 0) throw new Error('memory extraction now must be a non-negative safe integer')
+    const db = this.requireDb()
+    db.exec('BEGIN IMMEDIATE')
+    try {
+      db.prepare(`
+        UPDATE memory_extraction_jobs
+        SET status = 'failed', lease_owner = NULL, lease_until = NULL,
+            last_error = 'worker lease expired after final attempt', updated_at = ?
+        WHERE status = 'running' AND lease_until IS NOT NULL AND lease_until <= ?
+          AND attempts >= max_attempts
+      `).run(now, now)
+      const candidate = db.prepare(`
+        SELECT id FROM memory_extraction_jobs
+        WHERE attempts < max_attempts AND (
+          (status = 'pending' AND available_at <= ?)
+          OR (status = 'running' AND lease_until IS NOT NULL AND lease_until <= ?)
+        )
+        ORDER BY available_at ASC, created_at ASC, id ASC
+        LIMIT 1
+      `).get(now, now) as { id: string } | undefined
+      if (candidate === undefined) {
+        db.exec('COMMIT')
+        return Promise.resolve(undefined)
+      }
+      db.prepare(`
+        UPDATE memory_extraction_jobs
+        SET status = 'running', attempts = attempts + 1,
+            lease_owner = ?, lease_until = ?, updated_at = ?
+        WHERE id = ?
+      `).run(workerId, now + input.leaseMs, now, candidate.id)
+      const claimed = this.requireExtractionJob(MemoryExtractionJobId(candidate.id))
+      db.exec('COMMIT')
+      return Promise.resolve(claimed)
+    } catch (error: unknown) {
+      db.exec('ROLLBACK')
+      throw error
+    }
+  }
+
+  private completeExtraction(input: CompleteMemoryExtractionInput): Promise<MemoryExtractionJob> {
+    const workerId = requireText('extraction workerId', input.workerId)
+    validateExtractionResult(input.result)
+    const now = Date.now()
+    const changed = this.requireDb().prepare(`
+      UPDATE memory_extraction_jobs
+      SET status = 'completed', result_json = ?, lease_owner = NULL,
+          lease_until = NULL, last_error = NULL, updated_at = ?
+      WHERE id = ? AND status = 'running' AND lease_owner = ?
+        AND lease_until IS NOT NULL AND lease_until > ?
+    `).run(JSON.stringify(input.result), now, input.jobId, workerId, now).changes
+    if (changed !== 1) throw new Error(`memory extraction job ${input.jobId} is not leased by ${workerId}`)
+    return Promise.resolve(this.requireExtractionJob(input.jobId))
+  }
+
+  private failExtraction(input: FailMemoryExtractionInput): Promise<MemoryExtractionJob> {
+    const workerId = requireText('extraction workerId', input.workerId)
+    const error = requireText('extraction error', input.error)
+    if (Array.from(error).length > 2_000) throw new Error('memory extraction error must not exceed 2000 Unicode code points')
+    if (!Number.isSafeInteger(input.retryAt) || input.retryAt < 0) {
+      throw new Error('memory extraction retryAt must be a non-negative safe integer')
+    }
+    const row = this.requireExtractionJob(input.jobId)
+    if (row.status !== 'running' || row.leaseOwner !== workerId
+      || row.leaseUntil === undefined || row.leaseUntil <= Date.now()) {
+      throw new Error(`memory extraction job ${input.jobId} is not leased by ${workerId}`)
+    }
+    const terminal = row.attempts >= row.maxAttempts
+    const changed = this.requireDb().prepare(`
+      UPDATE memory_extraction_jobs
+      SET status = ?, available_at = ?, lease_owner = NULL, lease_until = NULL,
+          last_error = ?, updated_at = ?
+      WHERE id = ? AND status = 'running' AND lease_owner = ?
+    `).run(terminal ? 'failed' : 'pending', input.retryAt, error, Date.now(), input.jobId, workerId).changes
+    if (changed !== 1) throw new Error(`memory extraction job ${input.jobId} changed before failure settlement`)
+    return Promise.resolve(this.requireExtractionJob(input.jobId))
+  }
+
+  private readExtraction(id: MemoryExtractionJobIdType): Promise<MemoryExtractionJob | undefined> {
+    const row = this.requireDb().prepare(
+      'SELECT * FROM memory_extraction_jobs WHERE id = ?',
+    ).get(id) as ExtractionJobRow | undefined
+    return Promise.resolve(row === undefined ? undefined : parseExtractionJob(row))
+  }
+
+  private requireExtractionJob(id: MemoryExtractionJobIdType): MemoryExtractionJob {
+    const row = this.requireDb().prepare(
+      'SELECT * FROM memory_extraction_jobs WHERE id = ?',
+    ).get(id) as ExtractionJobRow | undefined
+    if (row === undefined) throw new Error(`memory extraction job ${id} was not found`)
+    return parseExtractionJob(row)
+  }
+
+  private findExact(scope: MemoryScope, kind: MemoryKind, content: string): MemoryEntry | undefined {
+    const row = this.requireDb().prepare(`
+      SELECT entry_json FROM memory_entries
+      WHERE workspace_id = ? AND user_id = ? AND agent_id = ?
+        AND kind = ? AND content_hash = ?
+        AND status NOT IN ('superseded', 'tombstoned')
+      ORDER BY updated_at DESC, memory_id ASC
+      LIMIT 1
+    `).get(
+      scope.workspaceId,
+      scope.userId,
+      scope.agentId,
+      kind,
+      memoryContentHash(kind, content),
+    ) as { entry_json: string } | undefined
+    return row === undefined ? undefined : parseEntry(row.entry_json)
   }
 
   private requireDb(): DatabaseSync {
@@ -532,6 +771,7 @@ function validateEntryFields(input: {
     if (Array.from(summary).length > limits.maxSummaryChars) {
       throw new Error(`memory summary must not exceed ${limits.maxSummaryChars} Unicode code points`)
     }
+    assertNoSecret(input.summary)
   }
   assertNoSecret(input.content)
   if (!Number.isSafeInteger(input.importance) || input.importance < 1 || input.importance > 4) {
@@ -609,12 +849,7 @@ function requireText(name: string, value: string): string {
 }
 
 function assertNoSecret(content: string): void {
-  const patterns = [
-    /-----BEGIN [A-Z ]*PRIVATE KEY-----/u,
-    /\b(?:sk|ghp|github_pat)_[A-Za-z0-9_-]{16,}\b/u,
-    /\b(?:api[_ -]?key|access[_ -]?token|password|secret)\s*[:=]\s*[^\s]{8,}/iu,
-  ]
-  if (patterns.some(pattern => pattern.test(content))) {
+  if (memoryContainsSecret(content)) {
     throw new Error('memory content appears to contain a secret and cannot be persisted')
   }
 }
@@ -633,6 +868,101 @@ function snapshotEntry(entry: MemoryEntry): MemoryEntry {
 
 function parseEntry(value: string): MemoryEntry {
   return JSON.parse(value) as MemoryEntry
+}
+
+function validateExtractionInput(input: EnqueueMemoryExtractionInput): void {
+  assertExtractionPromptVersion(input.promptVersion)
+  assertScope(input.scope)
+  assertPositiveSafeInteger('extraction turn', input.turn)
+  assertPositiveSafeInteger('extraction maxAttempts', input.maxAttempts)
+  requireSha256('extraction sourceHash', input.sourceHash)
+  requireText('extraction route.provider', input.route.provider)
+  requireText('extraction route.model', input.route.model)
+  if (input.sources.length === 0 || input.sources.length > 64) {
+    throw new Error('memory extraction sources must contain from 1 through 64 items')
+  }
+  for (const source of input.sources) {
+    const text = requireText('extraction source text', source.text)
+    assertNoSecret(text)
+    validateEvidence([source.evidence])
+    if (source.kind === 'user' && source.evidence.verification !== 'user-statement') {
+      throw new Error('memory extraction user sources require user-statement evidence')
+    }
+    if (source.kind === 'tool-result'
+      && source.evidence.verification !== 'successful-tool-result'
+      && source.evidence.verification !== 'external-observation') {
+      throw new Error('memory extraction tool-result sources require successful-tool-result or external-observation evidence')
+    }
+    if (source.kind === 'tool-result') requireText('extraction source toolName', source.toolName ?? '')
+    if (source.kind === 'user' && source.toolName !== undefined) {
+      throw new Error('memory extraction user sources cannot name a tool')
+    }
+  }
+}
+
+function validateExtractionResult(result: CompleteMemoryExtractionInput['result']): void {
+  if (!Number.isSafeInteger(result.candidateCount) || result.candidateCount < 0) {
+    throw new Error('memory extraction candidateCount must be a non-negative safe integer')
+  }
+  if (!Number.isSafeInteger(result.skippedCount) || result.skippedCount < 0) {
+    throw new Error('memory extraction skippedCount must be a non-negative safe integer')
+  }
+  requireSha256('extraction outputHash', result.outputHash)
+  if (new Set(result.memoryIds).size !== result.memoryIds.length) {
+    throw new Error('memory extraction result memoryIds must be unique')
+  }
+}
+
+function snapshotExtractionInput(input: EnqueueMemoryExtractionInput): EnqueueMemoryExtractionInput {
+  return structuredClone({
+    promptVersion: input.promptVersion,
+    scope: snapshotScope(input.scope),
+    sessionId: input.sessionId,
+    turn: input.turn,
+    sourceHash: input.sourceHash,
+    route: input.route,
+    sources: input.sources,
+    maxAttempts: input.maxAttempts,
+  })
+}
+
+function extractionDedupeKey(input: EnqueueMemoryExtractionInput): string {
+  return createHash('sha256').update(JSON.stringify([
+    input.scope.workspaceId,
+    input.scope.userId,
+    input.scope.agentId,
+    input.sessionId,
+    input.turn,
+    input.sourceHash,
+  ])).digest('hex')
+}
+
+function parseExtractionJob(row: ExtractionJobRow): MemoryExtractionJob {
+  const input = JSON.parse(row.payload_json) as EnqueueMemoryExtractionInput
+  validateExtractionInput(input)
+  return {
+    ...input,
+    id: MemoryExtractionJobId(row.id),
+    status: row.status,
+    attempts: row.attempts,
+    maxAttempts: row.max_attempts,
+    availableAt: row.available_at,
+    ...row.lease_owner === null ? {} : { leaseOwner: row.lease_owner },
+    ...row.lease_until === null ? {} : { leaseUntil: row.lease_until },
+    ...row.last_error === null ? {} : { lastError: row.last_error },
+    ...row.result_json === null ? {} : { result: JSON.parse(row.result_json) as CompleteMemoryExtractionInput['result'] },
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  }
+}
+
+function assertExtractionPromptVersion(value: number): void {
+  if (value !== 1) throw new Error(`memory extraction promptVersion ${value} is unsupported`)
+}
+
+function requireSha256(name: string, value: string): string {
+  if (!/^[0-9a-f]{64}$/u.test(value)) throw new Error(`memory ${name} must be a lowercase SHA-256 hex string`)
+  return value
 }
 
 function turnHandle(input: PrepareMemoryTurnInput): string {

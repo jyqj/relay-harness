@@ -1535,6 +1535,60 @@ export interface Config {
 
 来源： [`packages/memory/memory-agent/src/index.ts:53`](../packages/memory/memory-agent/src/index.ts)
 
+<a id="deepseek-aidsh-memory-extractor-llm"></a>
+
+## `@deepseek-ai/dsh-memory-extractor-llm`
+
+需要： `llm` · `longTermMemory` · `memoryExtractionQueue`
+
+```ts config-catalog
+/** Automatic extraction capture, routing, retry, and budget policy. */
+export interface Config {
+  /** Register capture and worker behavior. Defaults to false. */
+  enabled?: boolean
+  /** Stable user identity inside each workspace. Defaults to `local`. */
+  userId?: string
+  /** Stable Agent identity shared across sessions. Defaults to `deepseek-harness`. */
+  agentId?: string
+  /** Optional explicit workspace identity; omission uses session cwd, then `global`. */
+  workspaceId?: string
+  /** Restrict capture to these durable agent-preset ids; empty accepts every preset. */
+  agentPresets?: string[]
+  /** Whether delegated subagent sessions are captured. Defaults to false. */
+  includeSubagents?: boolean
+  /** Optional auxiliary provider override; must be paired with `model`. */
+  provider?: string
+  /** Optional auxiliary model override; must be paired with `provider`. */
+  model?: string
+  /** Tool names whose successful results qualify as action-verified evidence. */
+  verifiedToolNames?: string[]
+  /** Complete system-plus-user extraction input cap in Unicode code points. */
+  maxInputChars?: number
+  /** Per-source text cap in Unicode code points. */
+  maxSourceChars?: number
+  /** Largest accepted model candidate count. */
+  maxCandidates?: number
+  /** Largest accepted candidate content in Unicode code points. */
+  maxCandidateContentChars?: number
+  /** Largest accepted candidate summary in Unicode code points. */
+  maxCandidateSummaryChars?: number
+  /** Auxiliary model output-token cap. */
+  maxOutputTokens?: number
+  /** End-to-end auxiliary request deadline in milliseconds. */
+  timeoutMs?: number
+  /** Durable attempt cap for one source hash. */
+  maxAttempts?: number
+  /** Worker lease duration in milliseconds; must exceed `timeoutMs`. */
+  leaseMs?: number
+  /** Delay before retrying one failed attempt. */
+  retryDelayMs?: number
+  /** Idle queue polling interval. */
+  pollMs?: number
+}
+```
+
+Source: [`packages/memory/memory-extractor-llm/src/index.ts:43`](../packages/memory/memory-extractor-llm/src/index.ts)
+
 <a id="deepseek-aidsh-memory-sqlite"></a>
 
 ## `@deepseek-ai/dsh-memory-sqlite`

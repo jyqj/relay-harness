@@ -10,6 +10,7 @@ import type {
   CommitMemoryTurnInput,
   ForgetMemoryInput,
   MemoryEntry,
+  MemoryExtractionJobId as MemoryExtractionJobIdValue,
   MemoryId as MemoryIdValue,
   MemoryScope,
   MemorySearchHit,
@@ -22,11 +23,16 @@ import type {
 } from './types.ts'
 
 export type * from './types.ts'
+export { MemoryExtractionQueue } from './extraction.ts'
+export { default as MemoryExtractionQueueService } from './extraction.ts'
+export { memoryContainsSecret } from './security.ts'
 
 /** Public type face paired with the runtime branding helper below. */
 export type MemoryId = MemoryIdValue
 /** Public type face paired with the runtime branding helper below. */
 export type MemoryTurnHandle = MemoryTurnHandleValue
+/** Public type face paired with the runtime branding helper below. */
+export type MemoryExtractionJobId = MemoryExtractionJobIdValue
 
 /**
  * Brand one validated logical-memory identity.
@@ -40,6 +46,12 @@ export const MemoryId = (value: string): MemoryIdValue => value as MemoryIdValue
  * @returns branded prepared-turn identity.
  */
 export const MemoryTurnHandle = (value: string): MemoryTurnHandleValue => value as MemoryTurnHandleValue
+/**
+ * Brand one provider-owned extraction-job identity.
+ * @param value - provider-owned opaque identity.
+ * @returns branded extraction-job identity.
+ */
+export const MemoryExtractionJobId = (value: string): MemoryExtractionJobIdValue => value as MemoryExtractionJobIdValue
 
 declare module '@deepseek-ai/cordis' {
   interface Context {

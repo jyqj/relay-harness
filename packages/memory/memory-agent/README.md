@@ -35,6 +35,6 @@ Recall is an append-only user-role suffix, so it preserves earlier reusable hist
 
 ## Known Limitations and Deferred Work
 
-- **No automatic extraction worker** — the Consumer recalls and settles existing memory; model tools and future background extraction create revisions.
+- **No extraction policy in the recall Consumer** — `memory-agent` only recalls and settles; the independent, explicitly enabled `memory-extractor-llm` Consumer creates automatic revisions.
 - **Character rather than tokenizer budget** — the complete bound is deterministic across providers, but it is not an exact model-token count.
 - **No cited-use signal** — commit records candidates admitted to the model, not whether the final answer semantically used each one.

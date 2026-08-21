@@ -2,7 +2,7 @@
 
 English | [中文](memory.zh.md)
 
-Long-term memory stores governed knowledge across Agent sessions without replacing the append-only SessionEvent evidence that produced it. [`@deepseek-ai/dsh-memory`](../../packages/memory/memory) owns the provider-neutral types and `ctx.longTermMemory`; [`memory-sqlite`](../../packages/memory/memory-sqlite) is the shipped local provider; [`memory-agent`](../../packages/memory/memory-agent) and [`tool-memory`](../../packages/memory/tool-memory) are independent Consumers.
+Long-term memory stores governed knowledge across Agent sessions without replacing the append-only SessionEvent evidence that produced it. [`@deepseek-ai/dsh-memory`](../../packages/memory/memory) owns the provider-neutral `ctx.longTermMemory` and `ctx.memoryExtractionQueue` seams; [`memory-sqlite`](../../packages/memory/memory-sqlite) is the shipped single owner; [`memory-agent`](../../packages/memory/memory-agent), [`memory-extractor-llm`](../../packages/memory/memory-extractor-llm), and [`tool-memory`](../../packages/memory/tool-memory) are independent Consumers.
 
 ## Scope and identity
 
@@ -30,9 +30,17 @@ The prepared handle remains open until final `turn/end`. Completed and max-token
 
 Recall-form user messages remain in the raw session log but contribute no Session Query semantic document. This prevents recalled memory or referenced-session snapshots from becoming fresh episodic evidence and recursively amplifying themselves.
 
+## Automatic extraction lifecycle
+
+Automatic extraction is a host Consumer rather than hidden Agent-loop mutation. Its package default is off; the shipped base composition explicitly enables it only for sessions carrying the durable `standard` preset identity and excludes subagents. On completed or max-token `turn/end`, capture projects direct user messages and successful tool results only. Derived recall/plugin messages, reasoning, failed results, memory/session/skill tool outputs, and secret-bearing sources are excluded before persistence.
+
+The bounded source snapshot and auxiliary route enter an idempotent durable job keyed by Scope, session, turn, and source hash. SQLite atomically claims the oldest available job, persists attempts and an expiring lease, reclaims interrupted work, retries malformed/model/provider failures, and records completed or terminal state across restart. A completed result retains only memory ids, counts, and the model-output hash; raw model output is not another truth source.
+
+The auxiliary call uses `purpose: 'memory-extraction'`, a fixed JSON-only instruction, no tools, and no conversation history. Proposals are parsed strictly. An exact contiguous quote from a direct user source becomes user-stated active memory; an exact quote from an allowlisted successful local-tool result becomes action-verified active memory. Active automatic content is the exact quote, not the model paraphrase. Successful non-allowlisted observations and ungrounded proposals remain candidates. Provider-side trust, evidence, Scope, secret, and exact-dedup checks remain authoritative on every retry.
+
 ## SQLite retrieval
 
-The local provider maintains Unicode and trigram FTS5 indexes over current non-tombstoned entries. It fuses channel ranks, then applies bounded importance and trust weights. Queries and every metadata filter are SQL parameters; caller Scope is mandatory. The canonical database rejects unrelated files and unknown schema versions instead of resetting them.
+The local provider maintains Unicode and trigram FTS5 indexes over current non-tombstoned entries. It fuses channel ranks, then applies bounded importance and trust weights. Queries and every metadata filter are SQL parameters; caller Scope is mandatory. The canonical database rejects unrelated files and unknown schema versions instead of resetting them. Schema version 2 adds deterministic content hashes and extraction jobs; version-1 stores migrate in place.
 
 <!-- BEGIN GENERATED cordis-surface (gen-cordis-catalog.ts) — do not edit between markers -->
 
@@ -113,5 +121,50 @@ abstract read(scope: MemoryScope, id: MemoryId, signal?: AbortSignal): Promise<M
 abstract search(input: SearchMemoryInput, signal?: AbortSignal): Promise<readonly MemorySearchHit[]>
 ```
 
-Source: [`packages/memory/memory/src/index.ts:51`](../../packages/memory/memory/src/index.ts)
+Source: [`packages/memory/memory/src/index.ts:63`](../../packages/memory/memory/src/index.ts)
+
+<a id="ctxmemoryextractionqueue--memoryextractionqueue-abstract-seam"></a>
+
+### `ctx.memoryExtractionQueue` — `MemoryExtractionQueue` (abstract seam)
+
+Provider-neutral durable queue used by turn capture and extractor workers.
+
+```ts cordis-catalog
+/**
+ * Idempotently admit one completed-turn source snapshot.
+ * @param input - exact Scope, source hash, route, bounded sources, and retry cap.
+ * @returns existing or newly committed job for the dedupe identity.
+ */
+abstract enqueue(input: EnqueueMemoryExtractionInput): Promise<MemoryExtractionJob>
+
+/**
+ * Atomically claim the oldest available job or reclaim one whose lease expired.
+ * @param input - worker identity, lease duration, and optional deterministic clock.
+ * @returns claimed running job, or undefined when none is available.
+ */
+abstract claim(input: ClaimMemoryExtractionInput): Promise<MemoryExtractionJob | undefined>
+
+/**
+ * Commit one successful extraction under the current lease.
+ * @param input - job, worker identity, and terminal result.
+ * @returns completed job.
+ */
+abstract complete(input: CompleteMemoryExtractionInput): Promise<MemoryExtractionJob>
+
+/**
+ * Settle one failed attempt as pending retry or terminal failed.
+ * @param input - job, worker identity, error, and requested retry time.
+ * @returns updated job.
+ */
+abstract fail(input: FailMemoryExtractionInput): Promise<MemoryExtractionJob>
+
+/**
+ * Read one job for diagnostics and tests.
+ * @param id - durable job identity.
+ * @returns current job, or undefined when absent.
+ */
+abstract read(id: MemoryExtractionJobId): Promise<MemoryExtractionJob | undefined>
+```
+
+Source: [`packages/memory/memory/src/extraction.ts:20`](../../packages/memory/memory/src/extraction.ts)
 <!-- END GENERATED cordis-surface -->

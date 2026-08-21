@@ -1119,6 +1119,43 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     ],
   },
   {
+    key: 'memoryExtractionQueue',
+    summary: 'Provider-neutral durable queue used by turn capture and extractor workers.',
+    description: 'Provider-neutral durable queue used by turn capture and extractor workers.',
+    methods: [
+      {
+        signature: 'abstract enqueue(input: EnqueueMemoryExtractionInput): Promise<MemoryExtractionJob>',
+        description: 'Idempotently admit one completed-turn source snapshot.',
+        parameters: [{ name: 'input', description: 'exact Scope, source hash, route, bounded sources, and retry cap.' }],
+        returns: 'existing or newly committed job for the dedupe identity.',
+      },
+      {
+        signature: 'abstract claim(input: ClaimMemoryExtractionInput): Promise<MemoryExtractionJob | undefined>',
+        description: 'Atomically claim the oldest available job or reclaim one whose lease expired.',
+        parameters: [{ name: 'input', description: 'worker identity, lease duration, and optional deterministic clock.' }],
+        returns: 'claimed running job, or undefined when none is available.',
+      },
+      {
+        signature: 'abstract complete(input: CompleteMemoryExtractionInput): Promise<MemoryExtractionJob>',
+        description: 'Commit one successful extraction under the current lease.',
+        parameters: [{ name: 'input', description: 'job, worker identity, and terminal result.' }],
+        returns: 'completed job.',
+      },
+      {
+        signature: 'abstract fail(input: FailMemoryExtractionInput): Promise<MemoryExtractionJob>',
+        description: 'Settle one failed attempt as pending retry or terminal failed.',
+        parameters: [{ name: 'input', description: 'job, worker identity, error, and requested retry time.' }],
+        returns: 'updated job.',
+      },
+      {
+        signature: 'abstract read(id: MemoryExtractionJobId): Promise<MemoryExtractionJob | undefined>',
+        description: 'Read one job for diagnostics and tests.',
+        parameters: [{ name: 'id', description: 'durable job identity.' }],
+        returns: 'current job, or undefined when absent.',
+      },
+    ],
+  },
+  {
     key: 'messageFeedback',
     summary: 'Storage-domain sidecar service.',
     description: 'Storage-domain sidecar service. It inspects persisted Session history and never creates or resumes an Agent or Session.',
@@ -3026,6 +3063,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export type ChildFiberPhase = \'pending\' | \'loading\' | \'active\' | \'failed\' | \'unloading\' | null;',
   },
   {
+    name: 'ClaimMemoryExtractionInput',
+    declaration: 'export interface ClaimMemoryExtractionInput {\n    readonly workerId: string;\n    readonly leaseMs: number;\n    readonly now?: number;\n}',
+  },
+  {
     name: 'ClientResponse',
     declaration: 'export interface ClientResponse {\n    type: \'client-response\';\n    rpcId: RpcId;\n    result: RpcResult<unknown>;\n}',
   },
@@ -3112,6 +3153,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'CompactionTrigger',
     declaration: 'export type CompactionTrigger = \'pressure\' | \'context-overflow\';',
+  },
+  {
+    name: 'CompleteMemoryExtractionInput',
+    declaration: 'export interface CompleteMemoryExtractionInput {\n    readonly jobId: MemoryExtractionJobId;\n    readonly workerId: string;\n    readonly result: MemoryExtractionResult;\n}',
   },
   {
     name: 'ConfinedArgv',
@@ -3326,8 +3371,16 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface EncodedImageAttachment {\n    mediaType: ImageMediaType;\n    data: string;\n    name?: string;\n}',
   },
   {
+    name: 'EnqueueMemoryExtractionInput',
+    declaration: 'export interface EnqueueMemoryExtractionInput {\n    readonly promptVersion: 1;\n    readonly scope: MemoryScope;\n    readonly sessionId: SessionId;\n    readonly turn: number;\n    readonly sourceHash: string;\n    readonly route: MemoryExtractionRoute;\n    readonly sources: readonly MemoryExtractionSource[];\n    readonly maxAttempts: number;\n}',
+  },
+  {
     name: 'EpochHeader',
     declaration: 'export interface EpochHeader {\n    config: LlmCallConfig;\n    adapterDefaults?: LlmCallConfigAdapterDefaults;\n    system?: string;\n    tools?: ToolSchema[];\n}',
+  },
+  {
+    name: 'FailMemoryExtractionInput',
+    declaration: 'export interface FailMemoryExtractionInput {\n    readonly jobId: MemoryExtractionJobId;\n    readonly workerId: string;\n    readonly error: string;\n    readonly retryAt: number;\n}',
   },
   {
     name: 'FileDiff',
@@ -3399,7 +3452,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'GenerateOptions',
-    declaration: 'export interface GenerateOptions {\n    provider: string;\n    model: string;\n    reasoningEffort?: ReasoningEffortId;\n    messages: Message[];\n    system?: string;\n    tools?: ToolSchema[];\n    temperature?: number;\n    maxTokens?: number;\n    stop?: string[];\n    signal?: AbortSignal;\n    sessionId?: Branded<\'SessionId\'>;\n    purpose?: \'compaction\' | \'session-title\' | \'vision-describe\';\n}',
+    declaration: 'export interface GenerateOptions {\n    provider: string;\n    model: string;\n    reasoningEffort?: ReasoningEffortId;\n    messages: Message[];\n    system?: string;\n    tools?: ToolSchema[];\n    temperature?: number;\n    maxTokens?: number;\n    stop?: string[];\n    signal?: AbortSignal;\n    sessionId?: Branded<\'SessionId\'>;\n    purpose?: \'compaction\' | \'session-title\' | \'vision-describe\' | \'memory-extraction\';\n}',
   },
   {
     name: 'GenericCallView',
@@ -3716,6 +3769,26 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'MemoryEvidence',
     declaration: 'export interface MemoryEvidence {\n    readonly sessionId: SessionId;\n    readonly eventSeqs: readonly number[];\n    readonly verification: MemoryVerification;\n    readonly callId?: CallId;\n    readonly excerpt?: string;\n}',
+  },
+  {
+    name: 'MemoryExtractionJob',
+    declaration: 'export interface MemoryExtractionJob extends EnqueueMemoryExtractionInput {\n    readonly id: MemoryExtractionJobId;\n    readonly status: MemoryExtractionJobStatus;\n    readonly attempts: number;\n    readonly availableAt: number;\n    readonly leaseOwner?: string;\n    readonly leaseUntil?: number;\n    readonly lastError?: string;\n    readonly result?: MemoryExtractionResult;\n    readonly createdAt: number;\n    readonly updatedAt: number;\n}',
+  },
+  {
+    name: 'MemoryExtractionJobStatus',
+    declaration: 'export type MemoryExtractionJobStatus = \'pending\' | \'running\' | \'completed\' | \'failed\';',
+  },
+  {
+    name: 'MemoryExtractionResult',
+    declaration: 'export interface MemoryExtractionResult {\n    readonly memoryIds: readonly MemoryId[];\n    readonly candidateCount: number;\n    readonly skippedCount: number;\n    readonly outputHash: string;\n}',
+  },
+  {
+    name: 'MemoryExtractionRoute',
+    declaration: 'export interface MemoryExtractionRoute {\n    readonly provider: string;\n    readonly model: string;\n}',
+  },
+  {
+    name: 'MemoryExtractionSource',
+    declaration: 'export interface MemoryExtractionSource {\n    readonly kind: \'user\' | \'tool-result\';\n    readonly text: string;\n    readonly evidence: MemoryEvidence;\n    readonly toolName?: string;\n}',
   },
   {
     name: 'MemoryKind',

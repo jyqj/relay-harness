@@ -153,6 +153,7 @@
     { "path": "./packages/memory/memory" },
     { "path": "./packages/memory/memory-sqlite" },
     { "path": "./packages/memory/memory-agent" },
+    { "path": "./packages/memory/memory-extractor-llm" },
     { "path": "./packages/memory/tool-memory" },
     { "path": "./packages/settings/settings" },
     { "path": "./packages/settings/settings-file" },

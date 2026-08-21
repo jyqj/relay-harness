@@ -2,13 +2,13 @@
 
 English | [中文](README.zh.md)
 
-Service Definition for `ctx.longTermMemory`. It defines exact user/workspace/agent scope, append-only logical revisions, durable SessionEvent evidence, governed status and trust, ranked search, and prepare/commit/abort host-turn settlement. Providers implement storage and retrieval; Agent and tool Consumers keep their own prompt and authorization policy.
+Service Definitions for `ctx.longTermMemory` and `ctx.memoryExtractionQueue`. They define exact user/workspace/agent scope, append-only logical revisions, durable SessionEvent evidence, governed status and trust, ranked search, prepare/commit/abort host-turn settlement, and restart-safe automatic-extraction jobs. Providers implement storage, retrieval, and queue ownership; Agent, extraction, and tool Consumers keep their own prompt and authorization policy.
 
 `MemoryEntry` is the current materialized view. A provider must retain prior revisions even when `revise()` or `forget()` changes that view. `active` entries require `user-stated` or `action-verified` trust; candidate, disputed, superseded, and tombstoned states remain explicit rather than silently overwriting history.
 
 ## Model Experience
 
-Indirectly, through `@deepseek-ai/dsh-memory-agent` recall messages and `@deepseek-ai/dsh-tool-memory` tool calls.
+Indirectly, through `@deepseek-ai/dsh-memory-agent` recall messages, `@deepseek-ai/dsh-memory-extractor-llm` auxiliary requests, and `@deepseek-ai/dsh-tool-memory` tool calls.
 
 #### KV Cache effect
 

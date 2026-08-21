@@ -267,6 +267,7 @@ flowchart TD
   subgraph group_memory["packages/memory"]
     pkg_memory["memory"]
     pkg_memory_agent["memory-agent"]
+    pkg_memory_extractor_llm["memory-extractor-llm"]
     pkg_memory_sqlite["memory-sqlite"]
     pkg_tool_memory["tool-memory"]
   end
@@ -603,6 +604,11 @@ flowchart TD
   pkg_memory_agent --> pkg_llm
   pkg_memory_agent --> pkg_memory
   pkg_memory_agent --> pkg_session
+  pkg_memory_extractor_llm --> pkg_invariants
+  pkg_memory_extractor_llm --> pkg_llm
+  pkg_memory_extractor_llm --> pkg_memory
+  pkg_memory_extractor_llm --> pkg_session
+  pkg_memory_extractor_llm --> pkg_timeout
   pkg_memory_sqlite --> pkg_invariants
   pkg_memory_sqlite --> pkg_memory
   pkg_agent_presets --> pkg_agent
@@ -1701,6 +1707,7 @@ flowchart TD
 | [`user-questions`](../packages/interaction/user-questions) | `interaction` | [`agent`](../packages/core/agent), [`invariants`](../packages/runtime-diagnostics/invariants), [`llm`](../packages/llm/llm) |
 | [`jobs`](../packages/jobs/jobs) | `jobs` | [`agent`](../packages/core/agent), [`brand`](../packages/util/brand), [`invariants`](../packages/runtime-diagnostics/invariants), [`session`](../packages/core/session) |
 | [`memory-agent`](../packages/memory/memory-agent) | `memory` | [`agent`](../packages/core/agent), [`invariants`](../packages/runtime-diagnostics/invariants), [`llm`](../packages/llm/llm), [`memory`](../packages/memory/memory), [`session`](../packages/core/session) |
+| [`memory-extractor-llm`](../packages/memory/memory-extractor-llm) | `memory` | [`invariants`](../packages/runtime-diagnostics/invariants), [`llm`](../packages/llm/llm), [`memory`](../packages/memory/memory), [`session`](../packages/core/session), [`timeout`](../packages/util/timeout) |
 | [`memory-sqlite`](../packages/memory/memory-sqlite) | `memory` | [`invariants`](../packages/runtime-diagnostics/invariants), [`memory`](../packages/memory/memory) |
 | [`agent-presets`](../packages/preset/agent-presets) | `preset` | [`agent`](../packages/core/agent), [`atomic-write`](../packages/util/atomic-write), [`home-paths`](../packages/util/home-paths), [`invariants`](../packages/runtime-diagnostics/invariants), [`scope`](../packages/core/scope), [`session`](../packages/core/session), [`settings`](../packages/settings/settings), [`system-prompt`](../packages/core/system-prompt) |
 | [`sandbox-local`](../packages/sandbox/sandbox-local) | `sandbox` | [`invariants`](../packages/runtime-diagnostics/invariants), [`llm`](../packages/llm/llm), [`sandbox`](../packages/sandbox/sandbox), [`session`](../packages/core/session) |

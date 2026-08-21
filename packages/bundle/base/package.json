@@ -67,6 +67,7 @@
     "@deepseek-ai/dsh-llm-vision-fallback": "workspace:^",
     "@deepseek-ai/dsh-memory": "workspace:^",
     "@deepseek-ai/dsh-memory-agent": "workspace:^",
+    "@deepseek-ai/dsh-memory-extractor-llm": "workspace:^",
     "@deepseek-ai/dsh-memory-sqlite": "workspace:^",
     "@deepseek-ai/dsh-permission-presets": "workspace:^",
     "@deepseek-ai/dsh-plan-mode": "workspace:^",
