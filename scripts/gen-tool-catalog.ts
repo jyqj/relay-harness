@@ -55,6 +55,8 @@ import * as ToolGoal from '@deepseek-ai/dsh-tool-goal'
 import * as ToolSchedule from '@deepseek-ai/dsh-schedule'
 import Lsp from '@deepseek-ai/dsh-lsp'
 import * as ToolLsp from '@deepseek-ai/dsh-tool-lsp'
+import SqliteLongTermMemory from '@deepseek-ai/dsh-memory-sqlite'
+import * as ToolMemory from '@deepseek-ai/dsh-tool-memory'
 import * as ToolSkill from '@deepseek-ai/dsh-tool-skill'
 import * as ToolSessionQuery from '@deepseek-ai/dsh-tool-session-query'
 import * as ToolTasks from '@deepseek-ai/dsh-tool-jobs'
@@ -406,6 +408,19 @@ const TOOL_PACKAGES: ToolPackage[] = [
     },
     note:
       'The lsp tool keeps provider selection and language-server subprocesses behind ctx.lsp, so its model-visible schema stays stable across providers. Requires a registered provider (e.g. `@deepseek-ai/dsh-lsp-stdio`) at runtime; without one, a query returns the structured `LSP_UNAVAILABLE` error rather than changing the schema.',
+  },
+  {
+    pkg: '@deepseek-ai/dsh-tool-memory',
+    dir: 'tool-memory',
+    source: 'packages/memory/tool-memory/src/index.ts',
+    requires: ['ctx.tools', 'ctx.longTermMemory', 'a calling Agent for exact Scope and write evidence'],
+    writes: ['tool/call', 'canonical memory revisions or tombstones', 'tool/result'],
+    async mount(ctx) {
+      await ctx.plugin(SqliteLongTermMemory, { path: ':memory:' })
+      await ctx.plugin(ToolMemory)
+    },
+    note:
+      'Search and read are Scope-bound. Remember and update activate only exact direct-user or successful-tool-result evidence; unverified proposals remain candidates, and forget requires a direct-user deletion excerpt.',
   },
   {
     pkg: '@deepseek-ai/dsh-tool-ralph',

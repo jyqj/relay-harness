@@ -961,6 +961,61 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     ],
   },
   {
+    key: 'longTermMemory',
+    summary: 'Service Definition for durable write governance and cross-session recall.',
+    description: 'Service Definition for durable write governance and cross-session recall.',
+    methods: [
+      {
+        signature: 'abstract prepare(input: PrepareMemoryTurnInput, signal: AbortSignal): Promise<PreparedMemoryTurn>',
+        description: 'Prepare one immutable recall observation before a host turn enters the log.',
+        parameters: [{ name: 'input', description: 'exact scope, host identity, query, and candidate cap.' }, { name: 'signal', description: 'cancellation for the active host turn.' }],
+        returns: 'provider handle and ranked candidates retained until settlement.',
+      },
+      {
+        signature: 'abstract commit(input: CommitMemoryTurnInput): Promise<void>',
+        description: 'Commit the exact candidates made model-visible by a successful host turn.',
+        parameters: [{ name: 'input', description: 'prepared observation and admitted candidate identities.' }],
+        returns: 'after the provider durably settles the prepared turn.',
+      },
+      {
+        signature: 'abstract abort(input: AbortMemoryTurnInput): Promise<void>',
+        description: 'Abort a prepared turn that never reached a successful host settlement.',
+        parameters: [{ name: 'input', description: 'prepared observation and stable host-owned reason.' }],
+        returns: 'after the provider durably settles the prepared turn.',
+      },
+      {
+        signature: 'abstract remember(input: RememberMemoryInput, signal?: AbortSignal): Promise<MemoryEntry>',
+        description: 'Append the first revision of one governed memory.',
+        parameters: [{ name: 'input', description: 'scoped content, classification, trust, and durable evidence.' }, { name: 'signal', description: 'cancellation for the write.' }],
+        returns: 'the committed current entry.',
+      },
+      {
+        signature: 'abstract revise(input: ReviseMemoryInput, signal?: AbortSignal): Promise<MemoryEntry>',
+        description: 'Append a replacement revision without mutating prior evidence.',
+        parameters: [{ name: 'input', description: 'scoped identity, changed fields, and new evidence.' }, { name: 'signal', description: 'cancellation for the write.' }],
+        returns: 'the committed current entry.',
+      },
+      {
+        signature: 'abstract forget(input: ForgetMemoryInput, signal?: AbortSignal): Promise<MemoryEntry>',
+        description: 'Append a tombstone and remove the entry from recall indexes.',
+        parameters: [{ name: 'input', description: 'scoped identity, reason, and durable evidence.' }, { name: 'signal', description: 'cancellation for the write.' }],
+        returns: 'the committed tombstoned entry.',
+      },
+      {
+        signature: 'abstract read(scope: MemoryScope, id: MemoryId, signal?: AbortSignal): Promise<MemoryEntry | undefined>',
+        description: 'Read one current entry inside an exact scope.',
+        parameters: [{ name: 'scope', description: 'exact recall partition.' }, { name: 'id', description: 'logical memory identity.' }, { name: 'signal', description: 'cancellation for the read.' }],
+        returns: 'current entry, or undefined when absent from this scope.',
+      },
+      {
+        signature: 'abstract search(input: SearchMemoryInput, signal?: AbortSignal): Promise<readonly MemorySearchHit[]>',
+        description: 'Search current entries inside an exact scope.',
+        parameters: [{ name: 'input', description: 'normalized query, filters, and result cap.' }, { name: 'signal', description: 'cancellation for the read.' }],
+        returns: 'ranked current entries with retrieval-channel evidence.',
+      },
+    ],
+  },
+  {
     key: 'lsp',
     summary: 'The LSP capability seam (`ctx.lsp`).',
     description: 'The LSP capability seam (`ctx.lsp`). Owns provider registration/selection and normalized query execution; exposes exactly the four operations and no protocol escape hatch.',
@@ -2835,6 +2890,10 @@ export const EVENT_API: readonly EventApiEntry[] = [
 /** Shapes of every exported type the Service and Event signatures reference (transitively), sorted by name. */
 export const TYPE_API: readonly TypeApiEntry[] = [
   {
+    name: 'AbortMemoryTurnInput',
+    declaration: 'export interface AbortMemoryTurnInput {\n    readonly prepared: PreparedMemoryTurn;\n    readonly reason: string;\n}',
+  },
+  {
     name: 'AdapterRegistrationHandle',
     declaration: 'export interface AdapterRegistrationHandle {\n    (): void;\n    replace(providers: string[]): void;\n}',
   },
@@ -3033,6 +3092,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'CommandResult',
     declaration: 'export type CommandResult = {\n    readonly kind: \'success\';\n    readonly text?: string;\n    readonly sourceEventSeq?: number;\n} | {\n    readonly kind: \'error\';\n    readonly text: string;\n};',
+  },
+  {
+    name: 'CommitMemoryTurnInput',
+    declaration: 'export interface CommitMemoryTurnInput {\n    readonly prepared: PreparedMemoryTurn;\n    readonly recalledMemoryIds: readonly MemoryId[];\n    readonly assistantMessageId?: string;\n}',
   },
   {
     name: 'CompactionAgentContext',
@@ -3285,6 +3348,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'FinishReasonMap',
     declaration: 'export interface FinishReasonMap {\n    \'stop\': {\n        kind: \'stop\';\n    };\n    \'tool-calls\': {\n        kind: \'tool-calls\';\n    };\n    \'max-tokens\': {\n        kind: \'max-tokens\';\n    };\n    \'aborted\': {\n        kind: \'aborted\';\n        failure: LlmFailure;\n    };\n    \'error\': {\n        kind: \'error\';\n        failure: LlmFailure;\n    };\n}',
+  },
+  {
+    name: 'ForgetMemoryInput',
+    declaration: 'export interface ForgetMemoryInput {\n    readonly scope: MemoryScope;\n    readonly id: MemoryId;\n    readonly reason: string;\n    readonly evidence: readonly MemoryEvidence[];\n}',
   },
   {
     name: 'FsDirEntry',
@@ -3643,6 +3710,38 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface McpStdioServerRecord extends McpServerRecordBase {\n    readonly transport: \'stdio\';\n    readonly command: string;\n    readonly args?: readonly string[];\n    readonly env?: Readonly<Record<string, string>>;\n    readonly cwd?: string;\n}',
   },
   {
+    name: 'MemoryEntry',
+    declaration: 'export interface MemoryEntry {\n    readonly id: MemoryId;\n    readonly revision: number;\n    readonly scope: MemoryScope;\n    readonly kind: MemoryKind;\n    readonly status: MemoryStatus;\n    readonly trust: MemoryTrust;\n    readonly content: string;\n    readonly summary?: string;\n    readonly importance: number;\n    readonly confidence: number;\n    readonly createdAt: number;\n    readonly updatedAt: number;\n    readonly validUntil?: number;\n    readonly supersedes?: MemoryId;\n    readonly supersededBy?: MemoryId;\n    readonly tombstoneReason?: string;\n    readonly evidence: readonly MemoryEvidence[];\n    readonly accessCount: number;\n    readonly usefulAccessCount: number;\n}',
+  },
+  {
+    name: 'MemoryEvidence',
+    declaration: 'export interface MemoryEvidence {\n    readonly sessionId: SessionId;\n    readonly eventSeqs: readonly number[];\n    readonly verification: MemoryVerification;\n    readonly callId?: CallId;\n    readonly excerpt?: string;\n}',
+  },
+  {
+    name: 'MemoryKind',
+    declaration: 'export type MemoryKind = \'preference\' | \'fact\' | \'constraint\' | \'decision\' | \'procedure\' | \'lesson\';',
+  },
+  {
+    name: 'MemoryScope',
+    declaration: 'export interface MemoryScope {\n    readonly workspaceId: string;\n    readonly userId: string;\n    readonly agentId: string;\n}',
+  },
+  {
+    name: 'MemorySearchHit',
+    declaration: 'export interface MemorySearchHit {\n    readonly entry: MemoryEntry;\n    readonly score: number;\n    readonly matchedBy: readonly string[];\n}',
+  },
+  {
+    name: 'MemoryStatus',
+    declaration: 'export type MemoryStatus = \'candidate\' | \'active\' | \'disputed\' | \'superseded\' | \'tombstoned\';',
+  },
+  {
+    name: 'MemoryTrust',
+    declaration: 'export type MemoryTrust = \'user-stated\' | \'action-verified\' | \'agent-proposed\' | \'external\';',
+  },
+  {
+    name: 'MemoryVerification',
+    declaration: 'export type MemoryVerification = \'user-statement\' | \'successful-tool-result\' | \'agent-proposal\' | \'external-observation\';',
+  },
+  {
     name: 'Message',
     declaration: 'export interface Message {\n    readonly id: MessageId;\n    readonly role: \'system\' | \'user\' | \'assistant\';\n    readonly content: ContentBlock[];\n    readonly source: MessageSource;\n}',
   },
@@ -3767,8 +3866,16 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface PreparedLlmCall {\n    readonly config: LlmCallConfig;\n    readonly retryPolicy: ResolvedRetryPolicy;\n    readonly context?: LlmModelContext;\n    readonly adapterDefaults: LlmCallConfigAdapterDefaults;\n    stream(options: GenerateOptions): AsyncIterable<StreamChunk>;\n}',
   },
   {
+    name: 'PreparedMemoryTurn',
+    declaration: 'export interface PreparedMemoryTurn {\n    readonly handle: MemoryTurnHandle;\n    readonly scope: MemoryScope;\n    readonly sessionId: SessionId;\n    readonly turn: number;\n    readonly query: string;\n    readonly candidates: readonly MemorySearchHit[];\n}',
+  },
+  {
     name: 'PreparedReferencedMessage',
     declaration: 'export interface PreparedReferencedMessage {\n    content: ContentBlock[];\n    additionalContext?: UserMessage;\n}',
+  },
+  {
+    name: 'PrepareMemoryTurnInput',
+    declaration: 'export interface PrepareMemoryTurnInput {\n    readonly scope: MemoryScope;\n    readonly sessionId: SessionId;\n    readonly turn: number;\n    readonly query: string;\n    readonly candidateLimit: number;\n}',
   },
   {
     name: 'PrepareSessionOptions',
@@ -3859,6 +3966,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface RedactedSecret {\n    path: string[];\n    set: boolean;\n}',
   },
   {
+    name: 'RememberMemoryInput',
+    declaration: 'export interface RememberMemoryInput {\n    readonly scope: MemoryScope;\n    readonly kind: MemoryKind;\n    readonly content: string;\n    readonly summary?: string;\n    readonly importance: number;\n    readonly confidence: number;\n    readonly trust: MemoryTrust;\n    readonly status: \'candidate\' | \'active\' | \'disputed\';\n    readonly validUntil?: number;\n    readonly evidence: readonly MemoryEvidence[];\n}',
+  },
+  {
     name: 'ReplayEnvelope',
     declaration: 'export interface ReplayEnvelope {\n    response: unknown;\n    blocks?: readonly unknown[];\n}',
   },
@@ -3913,6 +4024,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'ResumeAgentOptions',
     declaration: 'export interface ResumeAgentOptions {\n    readonly resumeSessionId: SessionId;\n    readonly agentOptions?: AgentOptions;\n    readonly signal?: AbortSignal;\n    readonly setup?: AgentSetup;\n}',
+  },
+  {
+    name: 'ReviseMemoryInput',
+    declaration: 'export interface ReviseMemoryInput {\n    readonly scope: MemoryScope;\n    readonly id: MemoryId;\n    readonly content?: string;\n    readonly summary?: string | null;\n    readonly importance?: number;\n    readonly confidence?: number;\n    readonly trust?: MemoryTrust;\n    readonly status?: Exclude<MemoryStatus, \'tombstoned\'>;\n    readonly validUntil?: number | null;\n    readonly evidence: readonly MemoryEvidence[];\n}',
   },
   {
     name: 'RpcError',
@@ -3997,6 +4112,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'SearchMatchesResultView',
     declaration: 'export interface SearchMatchesResultView {\n    card: \'search\';\n    shape: \'matches\';\n    title?: string;\n    files: SearchFileMatches[];\n    truncated: boolean;\n    total: number;\n}',
+  },
+  {
+    name: 'SearchMemoryInput',
+    declaration: 'export interface SearchMemoryInput {\n    readonly scope: MemoryScope;\n    readonly query: string;\n    readonly limit: number;\n    readonly kinds?: readonly MemoryKind[];\n    readonly statuses?: readonly MemoryStatus[];\n}',
   },
   {
     name: 'SearchPathsResultView',

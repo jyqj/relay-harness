@@ -75,6 +75,7 @@ const GROUP_ORDER = [
   'e2b',
   'fs',
   'skill',
+  'memory',
   'compact',
   'subagent',
   'tasks',
@@ -339,6 +340,15 @@ const SERVICE_ROLES: ServiceRole[] = [
     implementations: ['skill-badge', 'skill-filesystem'],
     consumers: ['tool-skill'],
     note: 'Merges provider skill catalogs; tool-skill renders the session-prefix catalog and loads complete skill bodies.',
+  },
+  {
+    key: 'longTermMemory',
+    pkg: 'memory',
+    title: 'Governed long-term-memory seam',
+    mode: 'seam',
+    implementations: ['memory-sqlite'],
+    consumers: ['memory-agent', 'tool-memory'],
+    note: 'The canonical provider owns revisions, Scope, retrieval, and prepared-turn settlement; Agent and tool Consumers independently decide model-visible recall and governed writes.',
   },
   {
     key: 'mcpServersFile',

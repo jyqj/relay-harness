@@ -1,0 +1,20 @@
+# `@deepseek-ai/dsh-memory`
+
+[English](README.md) | 中文
+
+`ctx.longTermMemory` 的 Service Definition。它定义精确的用户／工作区／Agent Scope、追加式逻辑版本、持久 SessionEvent 证据、受治理的状态与信任、排序搜索，以及 prepare/commit/abort 主机轮次结算。Provider 实现存储和检索；Agent 与工具 Consumer 分别拥有自己的提示词和授权策略。
+
+`MemoryEntry` 是当前物化视图。即使 `revise()` 或 `forget()` 改变该视图，Provider 也必须保留旧版本。`active` 条目要求 `user-stated` 或 `action-verified` 信任；candidate、disputed、superseded 和 tombstoned 状态保持显式，不能静默覆盖历史。
+
+## 模型体验
+
+间接地，通过 `@deepseek-ai/dsh-memory-agent` 召回消息和 `@deepseek-ai/dsh-tool-memory` 工具调用产生影响。
+
+#### KV 缓存影响
+
+本包不发出请求内容；每个 Consumer 分别拥有自己的缓存影响。
+
+## 已知限制与延期工作
+
+- **尚无 Provider Registry** — 一个 Cordis realm 中只能有一个 `ctx.longTermMemory` Provider；部署通过组合替换 Provider。
+- **尚无 embedding 契约** — Provider 无关搜索会暴露检索渠道，但语义向量配置留给后续 Provider seam。

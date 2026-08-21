@@ -154,6 +154,26 @@
         headChars: 4096
         tailChars: 1024
 
+# ── long-term memory ────────────────────────────────────────────────────────
+
+# The canonical SQLite provider is host-owned. These Consumers are preset-local:
+# minimal sessions get neither automatic recall nor memory tools, while standard
+# sessions share the stable user/workspace/agent scope across session ids.
+- id: memory-agent
+  name: '@deepseek-ai/dsh-memory-agent'
+  config:
+    userId: !!js process.env.USER || process.env.USERNAME || 'local'
+    agentId: deepseek-harness
+    candidateLimit: 10
+    maxContextChars: 3200
+
+- id: tool-memory
+  name: '@deepseek-ai/dsh-tool-memory'
+  config:
+    userId: !!js process.env.USER || process.env.USERNAME || 'local'
+    agentId: deepseek-harness
+    defaultSearchLimit: 10
+
 # ── delegation and workflows ────────────────────────────────────────────────
 
 # The `subagents` registry and its spawn/fork backends live in the HOST

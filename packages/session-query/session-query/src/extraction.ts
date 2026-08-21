@@ -13,6 +13,9 @@ import type { SessionEvent } from '@deepseek-ai/dsh-session'
 export function extractSessionEventText(event: SessionEvent): string {
   switch (event.type) {
     case 'user/message':
+      // Recall projections stay in the raw log for request reconstruction, but
+      // indexing them would turn derived context into fresh episodic evidence.
+      if ('form' in event.data.source && event.data.source.form === 'recall') return ''
       return contentText(event.data.content)
     case 'assistant/message':
       return contentText(event.data.message.content)

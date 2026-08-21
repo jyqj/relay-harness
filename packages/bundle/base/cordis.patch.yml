@@ -129,6 +129,14 @@
         path: ':memory:'
         openAt: never
 
+    # Canonical long-term memory is separate from the append-only session log:
+    # revisions and governance decisions live here, while every source keeps
+    # exact SessionEvent evidence. Agent presets choose whether to consume it.
+    - id: memory-sqlite
+      name: '@deepseek-ai/dsh-memory-sqlite'
+      config:
+        path: !!js dshHomePath('memory/memory.db')
+
     # Shared projection registry: subagent catalog identity (mode/label) folds
     # through its registered units, so the `list_agents` surface below fails
     # loud without it; web layers reuse this same mount for list rows.

@@ -138,7 +138,7 @@ interface SessionEventSearchDocument extends SessionEventRecord {
 }
 ```
 
-`ctx.sessionQuery.filterSessions(filters)` applies `SessionResultFilter` to the complete logical corpus; `ctx.sessionQuery.filterEvents(sessionId, filters)` returns matching documents in ascending seq order. Messages, reasoning, tool calls/results, blocked prompts, todos, and failure/status detail contribute semantic text; structural events and stream chunks do not.
+`ctx.sessionQuery.filterSessions(filters)` applies `SessionResultFilter` to the complete logical corpus; `ctx.sessionQuery.filterEvents(sessionId, filters)` returns matching documents in ascending seq order. Direct and ordinary injected messages, tool calls/results, todos, and failure/status detail contribute semantic text; structural events, reasoning blocks, stream chunks, and user-role context whose form is `recall` do not. Recall messages remain available through exact raw reads but cannot recursively become fresh evidence.
 
 ## Full-text search pages
 

@@ -1507,6 +1507,57 @@ export interface McpServersFileOptions {
 
 Source: [`packages/mcp/mcp-servers-file/src/index.ts:12`](../packages/mcp/mcp-servers-file/src/index.ts)
 
+<a id="deepseek-aidsh-memory-agent"></a>
+
+## `@deepseek-ai/dsh-memory-agent`
+
+Requires: `longTermMemory`
+
+```ts config-catalog
+/** Agent recall Consumer configuration. */
+export interface Config {
+  /** Stable user identity inside each workspace. Defaults to `local`. */
+  userId?: string
+  /** Stable Agent identity shared across recallable sessions. Defaults to `deepseek-harness`. */
+  agentId?: string
+  /** Explicit workspace identity; omission uses the session cwd, then `global`. */
+  workspaceId?: string
+  /** Provider candidate cap before model-context packing. Defaults to 10. */
+  candidateLimit?: number
+  /** Complete memory message character cap, including safety framing. Defaults to 3200. */
+  maxContextChars?: number
+  /** Whether delegated subagents receive and settle memory. Defaults to false. */
+  includeSubagents?: boolean
+}
+```
+
+Source: [`packages/memory/memory-agent/src/index.ts:53`](../packages/memory/memory-agent/src/index.ts)
+
+<a id="deepseek-aidsh-memory-sqlite"></a>
+
+## `@deepseek-ai/dsh-memory-sqlite`
+
+```ts config-catalog
+/** SQLite provider configuration. */
+export interface Config {
+  /** Canonical memory database path; `:memory:` is supported for tests. */
+  path: string
+  /** SQLite journal mode. Defaults to `wal`. */
+  journalMode?: JournalMode
+  /** Largest accepted search result cap. Defaults to 50. */
+  maxSearchLimit?: number
+  /** Largest accepted memory content in Unicode code points. Defaults to 8000. */
+  maxContentChars?: number
+  /** Largest accepted summary in Unicode code points. Defaults to 500. */
+  maxSummaryChars?: number
+}
+
+/** Supported SQLite journal modes. */
+export type JournalMode = 'wal' | 'delete' | 'truncate' | 'persist'
+```
+
+Source: [`packages/memory/memory-sqlite/src/index.ts:48`](../packages/memory/memory-sqlite/src/index.ts)
+
 <a id="deepseek-aidsh-message-feedback"></a>
 
 ## `@deepseek-ai/dsh-message-feedback`
@@ -2804,6 +2855,28 @@ export interface Config {
 
 Source: [`packages/lsp/tool-lsp/src/index.ts:58`](../packages/lsp/tool-lsp/src/index.ts)
 
+<a id="deepseek-aidsh-tool-memory"></a>
+
+## `@deepseek-ai/dsh-tool-memory`
+
+Requires: `longTermMemory` · `tools`
+
+```ts config-catalog
+/** Model-facing memory-tool configuration. */
+export interface Config {
+  /** Stable user identity inside each workspace. Defaults to `local`. */
+  userId?: string
+  /** Stable Agent identity shared across recallable sessions. Defaults to `deepseek-harness`. */
+  agentId?: string
+  /** Explicit workspace identity; omission uses the calling session cwd, then `global`. */
+  workspaceId?: string
+  /** Default `memory_search` result cap; from 1 through 50. Defaults to 10. */
+  defaultSearchLimit?: number
+}
+```
+
+Source: [`packages/memory/tool-memory/src/index.ts:29`](../packages/memory/tool-memory/src/index.ts)
+
 <a id="deepseek-aidsh-tool-pwsh"></a>
 
 ## `@deepseek-ai/dsh-tool-pwsh`
@@ -3454,6 +3527,7 @@ Abstract service classes — a deployment loads a concrete implementation packag
 - `@deepseek-ai/dsh-fs` — abstract `FileSystem` ([`packages/fs/fs/src/index.ts`](../packages/fs/fs/src/index.ts))
 - `@deepseek-ai/dsh-host-directory-picker` — abstract `DirectoryPicker` ([`packages/host/directory-picker/src/index.ts`](../packages/host/directory-picker/src/index.ts))
 - `@deepseek-ai/dsh-jobs` — abstract `JobRegistry` ([`packages/jobs/jobs/src/index.ts`](../packages/jobs/jobs/src/index.ts))
+- `@deepseek-ai/dsh-memory` — abstract `LongTermMemory` ([`packages/memory/memory/src/index.ts`](../packages/memory/memory/src/index.ts))
 - `@deepseek-ai/dsh-sandbox` — abstract `SandboxProvider` ([`packages/sandbox/sandbox/src/index.ts`](../packages/sandbox/sandbox/src/index.ts))
 - `@deepseek-ai/dsh-session-persistence` — abstract `SessionPersistence` ([`packages/session/session-persistence/src/index.ts`](../packages/session/session-persistence/src/index.ts))
 - `@deepseek-ai/dsh-session-query` — abstract `SessionQueryEngine` ([`packages/session-query/session-query/src/index.ts`](../packages/session-query/session-query/src/index.ts))

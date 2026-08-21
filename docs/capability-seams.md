@@ -105,6 +105,11 @@ flowchart LR
   svc_skills["ctx.skills<br/>Skill provider registry"]
   pkg_skill_badge["skill-badge"]
   pkg_skill_filesystem["skill-filesystem"]
+  pkg_memory["memory"]
+  svc_longTermMemory["ctx.longTermMemory<br/>Governed long-term-memory seam"]
+  pkg_memory_sqlite["memory-sqlite"]
+  pkg_memory_agent["memory-agent"]
+  pkg_tool_memory["tool-memory"]
   pkg_mcp_servers_file["mcp-servers-file"]
   svc_mcpServersFile["ctx.mcpServersFile<br/>File-backed MCP server document"]
   pkg_mcp_client["mcp-client"]
@@ -250,6 +255,8 @@ flowchart LR
   pkg_lsp --> svc_lsp
   pkg_lsp_local --> svc_lsp
   pkg_mcp_servers_file --> svc_mcpServersFile
+  pkg_memory --> svc_longTermMemory
+  pkg_memory_sqlite --> svc_longTermMemory
   pkg_message_feedback --> svc_messageFeedback
   pkg_modules --> svc_clientModules
   pkg_permission_presets --> svc_permissionPresets
@@ -345,6 +352,8 @@ flowchart LR
   svc_jobs --> pkg_tool_terminal
   svc_llm --> pkg_agent_loop
   svc_llm --> pkg_compaction_basic
+  svc_longTermMemory --> pkg_memory_agent
+  svc_longTermMemory --> pkg_tool_memory
   svc_lsp --> pkg_tool_lsp
   svc_mcpServersFile --> pkg_host_mcp_servers
   svc_mcpServersFile --> pkg_mcp_client
@@ -464,6 +473,7 @@ flowchart LR
 | `ctx.sessionProjections` | `core` | [`session-projection`](../packages/session/session-projection) | - | [`tool-todo`](../packages/todo/tool-todo), [`session-title`](../packages/session/session-title), [`host-apiproxy`](../packages/host/apiproxy) | - | Domains register state-driven fold units; the eager drive keeps per-session watermark states and api-proxy serves baselines and pushes changed values. |
 | `ctx.sessionProjectionCache` | `core` | [`session-projection-cache`](../packages/session/session-projection-cache) | - | [`host-apiproxy`](../packages/host/apiproxy) | - | Durably checkpoints projection unit states per session (throttled + turn/end/detach mandatory points) and serves the cold-read ladder: cache row + persistence tail replay, so listings never load full logs. |
 | `ctx.skills` | `seam` | [`skill`](../packages/skill/skill) | [`skill-badge`](../packages/skill/skill-badge), [`skill-filesystem`](../packages/skill/skill-filesystem) | [`tool-skill`](../packages/skill/tool-skill) | - | Merges provider skill catalogs; tool-skill renders the session-prefix catalog and loads complete skill bodies. |
+| `ctx.longTermMemory` | `seam` | [`memory`](../packages/memory/memory) | [`memory-sqlite`](../packages/memory/memory-sqlite) | [`memory-agent`](../packages/memory/memory-agent), [`tool-memory`](../packages/memory/tool-memory) | - | The canonical provider owns revisions, Scope, retrieval, and prepared-turn settlement; Agent and tool Consumers independently decide model-visible recall and governed writes. |
 | `ctx.mcpServersFile` | `core` | [`mcp-servers-file`](../packages/mcp/mcp-servers-file) | - | [`mcp-client`](../packages/mcp/mcp-client), [`host-mcp-servers`](../packages/host/mcp-servers) | - | Owns mcp-servers.yaml and mounts one mcp-client child per enabled record; model-facing tools belong to those children. |
 | `ctx.agents` | `core` | [`agent`](../packages/core/agent) | - | [`agent-loop`](../packages/core/agent-loop), [`acp`](../packages/acp/acp), `subagent-inprocess` | - | Owns live Agent handles, the create/resume factory seam, and process-local initiator propagation. |
 | `ctx.agentDefaultModel` | `core` | [`agent-default-model`](../packages/core/agent-default-model) | - | [`headless`](../packages/bundle/headless), [`host-apiproxy`](../packages/host/apiproxy) | - | Layers the default ModelSelection through settings so direct and Host-backed Agent entry points share one state owner. |

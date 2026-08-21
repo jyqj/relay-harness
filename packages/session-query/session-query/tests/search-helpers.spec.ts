@@ -141,6 +141,32 @@ describe('session-query semantic extraction', () => {
     ]
     expect(structural.map(extractSessionEventText)).toEqual(['', '', '', '', '', ''])
   })
+
+  it('keeps recall projections out of semantic documents while retaining direct user text', () => {
+    const recalled: SessionEvent<'user/message'> = {
+      type: 'user/message',
+      seq: 0,
+      time: 1,
+      data: createUserMessage({
+        source: { kind: 'plugin', plugin: 'memory-test', form: 'recall' },
+        content: [{ type: 'text', text: 'derived memory echo' }],
+      }),
+      surfaceOp: 'append',
+    }
+    const direct: SessionEvent<'user/message'> = {
+      type: 'user/message',
+      seq: 1,
+      time: 2,
+      data: createUserMessage({
+        source: { kind: 'user' },
+        content: [{ type: 'text', text: 'direct evidence' }],
+      }),
+      surfaceOp: 'append',
+    }
+    expect(extractSessionEventText(recalled)).toBe('')
+    expect(buildSessionEventSearchDocuments(id, [recalled, direct]).map(document => document.text))
+      .toEqual(['direct evidence'])
+  })
 })
 
 describe('session-query document and filter helpers', () => {
