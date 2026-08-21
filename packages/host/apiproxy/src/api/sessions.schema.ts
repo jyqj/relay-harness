@@ -55,6 +55,7 @@ export const sessionSummarySchema = z.object({
   running: z.boolean(),
   blank: z.boolean(),
   parentSessionId: sessionIdSchema.optional(),
+  seedLength: z.number().int().nonnegative().optional(),
   origin: z.enum(['subagent', 'dshbot']).optional(),
   cwd: z.string().optional(),
   agentPreset: z.string().optional(),

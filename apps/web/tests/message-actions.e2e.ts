@@ -154,6 +154,19 @@ describe('web e2e: message IconActions and clocks on settled history', () => {
     await compareOrRefreshGolden(UI_EXPECTED, snapshot, MODE)
   })
 
+  it.skipIf(MODE === 'record')('opens the native Session Tree over durable Turn history', async () => {
+    onTestFailed(() => saveFailureShot(page, 'web-e2e-session-tree'))
+    const trigger = page.getByRole('button', { name: 'Session Tree', exact: true })
+    await trigger.waitFor({ timeout: 10_000 })
+    await trigger.click()
+    const tree = page.getByRole('dialog', { name: 'Session Tree' })
+    await tree.waitFor({ timeout: 10_000 })
+    await expect.poll(() => tree.getByText(SECOND_PROMPT, { exact: true }).count(), { timeout: 15_000 }).toBe(1)
+    await expect.poll(() => tree.getByText('DONE', { exact: true }).count(), { timeout: 15_000 }).toBe(1)
+    await tree.getByRole('button', { name: 'Back to conversation' }).click()
+    await expect.poll(() => tree.count(), { timeout: 5_000 }).toBe(0)
+  })
+
   it.skipIf(MODE === 'record')('forks through the settled-message and session-row actions', async () => {
     onTestFailed(() => saveFailureShot(page, 'web-e2e-message-fork'))
     // The last message action belongs to the completed second-turn assistant.

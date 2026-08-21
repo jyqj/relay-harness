@@ -65,4 +65,11 @@ describe('AppFrame.module.css titlebar trailing cluster', () => {
     expect(open?.get('grid-column')).toBe('2 / 4')
     expect(open?.get('margin-right')).toBe('8px')
   })
+
+  it('gives a declared modal overlay exclusive control of the caption band', () => {
+    expect(declarations('.frame:has([data-shell-modal-overlay]) .overlayLayer')?.get('z-index')).toBe('30')
+    const trailing = declarations('.frame:has([data-shell-modal-overlay]) .titlebarTrailing')
+    expect(trailing?.get('visibility')).toBe('hidden')
+    expect(trailing?.get('pointer-events')).toBe('none')
+  })
 })

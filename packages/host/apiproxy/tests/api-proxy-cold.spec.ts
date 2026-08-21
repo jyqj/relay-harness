@@ -53,7 +53,7 @@ describe('sessions.list cold merge', () => {
       header('small-conversation', 200),
       header('large-unknown', 300),
       header('cached-nonblank', 400),
-      header('locationless', 500, { parentSession: sid('session-parent'), origin: 'subagent' }),
+      header('locationless', 500, { parentSession: sid('session-parent'), seedLength: 7, origin: 'subagent' }),
       header('vanished', 600),
       header('read-failure', 700),
     ]
@@ -120,6 +120,7 @@ describe('sessions.list cold merge', () => {
       blank: false,
       updatedAt: 500,
       parentSessionId: 'session-parent',
+      seedLength: 7,
       origin: 'subagent',
     })
     expect(byId['vanished']).toMatchObject({ blank: false, updatedAt: 600 })

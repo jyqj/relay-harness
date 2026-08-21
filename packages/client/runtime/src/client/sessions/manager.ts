@@ -824,6 +824,7 @@ export class SessionManager {
         this.mergeSummary({
           sessionId: frame.sessionId, updatedAt: Date.now(), running: false, blank: frame.blank,
           ...(frame.parentSessionId !== undefined ? { parentSessionId: frame.parentSessionId } : {}),
+          ...(frame.seedLength !== undefined ? { seedLength: frame.seedLength } : {}),
           ...(frame.origin !== undefined ? { origin: frame.origin } : {}),
           ...(frame.cwd !== undefined ? { cwd: frame.cwd } : {}),
           ...(frame.agentPreset !== undefined ? { agentPreset: frame.agentPreset } : {}),
@@ -1072,7 +1073,7 @@ export class SessionManager {
       if (
         prev !== undefined && prev.updatedAt === entry.updatedAt && prev.running === entry.running
         && prev.blank === entry.blank && prev.agentPreset === entry.agentPreset
-        && prev.parentSessionId === entry.parentSessionId && prev.cwd === entry.cwd
+        && prev.parentSessionId === entry.parentSessionId && prev.seedLength === entry.seedLength && prev.cwd === entry.cwd
         && prev.origin === entry.origin && prev.title === entry.title && prev.depth === entry.depth
         && prev.pendingInteraction === entry.pendingInteraction
         && prev.projectionValues === entry.projectionValues
@@ -1118,6 +1119,8 @@ function applyMutation(summaries: readonly SessionSummary[], mutation: SessionLi
         ...(existing.cwd === undefined && mutation.summary.cwd !== undefined ? { cwd: mutation.summary.cwd } : {}),
         ...(existing.parentSessionId === undefined && mutation.summary.parentSessionId !== undefined
           ? { parentSessionId: mutation.summary.parentSessionId } : {}),
+        ...(existing.seedLength === undefined && mutation.summary.seedLength !== undefined
+          ? { seedLength: mutation.summary.seedLength } : {}),
         ...(existing.origin === undefined && mutation.summary.origin !== undefined
           ? { origin: mutation.summary.origin } : {}),
         // Newest wins, not fill-only: a blank-session preset switch replaces
@@ -1127,6 +1130,7 @@ function applyMutation(summaries: readonly SessionSummary[], mutation: SessionLi
           ? { agentPreset: mutation.summary.agentPreset } : {}),
       }
       if (filled.cwd === existing.cwd && filled.parentSessionId === existing.parentSessionId
+        && filled.seedLength === existing.seedLength
         && filled.origin === existing.origin && filled.blank === existing.blank
         && filled.agentPreset === existing.agentPreset) return [...summaries]
       return summaries.map(summary => summary.sessionId === mutation.summary.sessionId ? filled : summary)

@@ -600,7 +600,7 @@ async execute(exec: ToolExecutionInput): Promise<ToolExecutionResult>
 
 Types: [ScopeKey](scope.md)
 
-Source: [`packages/core/tools/src/index.ts:863`](../../packages/core/tools/src/index.ts)
+Source: [`packages/core/tools/src/index.ts:867`](../../packages/core/tools/src/index.ts)
 
 <a id="tools-events"></a>
 

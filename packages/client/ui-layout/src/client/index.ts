@@ -92,6 +92,9 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
      *
      * This is the additive seat for a frame-wide surface of your own: a fresh
      * `id` is added beside the shipped entries instead of replacing them.
+     * A full-frame modal entry marks its root with `data-shell-modal-overlay`;
+     * AppFrame then raises the overlay layer above and disables the shared
+     * titlebar cluster until that entry unmounts.
      */
     'shell.overlay': { kind: 'list'; scope: 'root' }
     /**

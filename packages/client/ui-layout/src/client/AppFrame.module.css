@@ -181,6 +181,18 @@
   -webkit-app-region: no-drag;
 }
 
+/* A modal frame overlay owns the caption band while mounted. Raise the
+   declaring layer over shared titlebar chrome and remove that chrome from hit
+   testing; the overlay's own Back action restores it on unmount. */
+.frame:has([data-shell-modal-overlay]) .overlayLayer {
+  z-index: 30;
+}
+
+.frame:has([data-shell-modal-overlay]) .titlebarTrailing {
+  visibility: hidden;
+  pointer-events: none;
+}
+
 /* Shared titlebar band over the details column only. Height comes from the
    conversation header via centerCol subgrid (row 1 = auto). Hairline matches
    conversation header::after (1px up from the row bottom). Surfaces spans

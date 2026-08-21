@@ -199,6 +199,11 @@ export default defineConfig({
         'packages/client/ui-primitives/src/RiskConfirmation.tsx',
         'packages/client/ui-workspace/src/client/WorkspaceBrowser.tsx',
         'packages/client/ui-workspace/src/client/WorkspacePicker.tsx',
+        // Pointer-capture canvas gestures and the slot-only trigger are covered
+        // by component assertions plus the assembled Playwright Session Tree scenario.
+        'packages/client/ui-session-tree/src/client/SessionTreeCanvas.tsx',
+        'packages/client/ui-session-tree/src/client/SessionTreeAction.tsx',
+        'packages/client/ui-session-tree/src/client/SessionTreeTitlebarAction.tsx',
         'packages/client/ui-renderer/src/client/*',
         // This isolated settings-scope lifecycle has complete unit coverage;
         // keep it out of the broader client-runtime GUI debt exemption.

@@ -481,6 +481,7 @@ function sessionListUpdatedAt(header: SessionHeader, metadata: SessionListMetada
 /** Shared Session-header projection for list baselines and creation frames. */
 function sessionListFields(header: SessionHeader, events: readonly SessionEvent[] = []): {
   parentSessionId?: SessionId
+  seedLength?: number
   origin?: SessionOrigin
   cwd?: string
   agentPreset?: string
@@ -491,6 +492,7 @@ function sessionListFields(header: SessionHeader, events: readonly SessionEvent[
   const agentPreset = resolveSessionPreset({ header, events })
   return {
     ...header.parentSession === undefined ? {} : { parentSessionId: header.parentSession },
+    ...header.seedLength === undefined ? {} : { seedLength: header.seedLength },
     ...header.origin === undefined ? {} : { origin: header.origin },
     ...header.cwd === undefined ? {} : { cwd: header.cwd },
     ...agentPreset === undefined ? {} : { agentPreset },

@@ -201,6 +201,8 @@ export interface SessionSummary {
   blank: boolean
   /** fork/spawn lineage (session.header.parentSession passthrough); absent for root sessions. */
   parentSessionId?: SessionId
+  /** Number of source events inherited by a fork child; absent for root sessions. */
+  seedLength?: number
   /** Coarse durable origin used by navigation surfaces; never proves resumability. */
   origin?: SessionOrigin
   /** Session working directory (header.cwd passthrough); absent when unrecorded. */

@@ -887,7 +887,7 @@ describe('remaining branches', () => {
     expect(manager.getListSnapshot().items).toBe(after.items)
   })
 
-  it('carries parentSessionId from host/session-added into the lineage row', () => {
+  it('carries parentSessionId and seedLength from host/session-added into the lineage row', () => {
     const api = new FakeApiClient()
     const manager = new SessionManager(api, fakeRemote())
     manager.handleHostEnvelope({ rpcId: 'h1' as never, payload: { type: 'host/session-added', blank: true, sessionId: S1 } })
@@ -898,9 +898,13 @@ describe('remaining branches', () => {
         parentSessionId: S1, origin: 'subagent',
       },
     })
+    manager.handleHostEnvelope({
+      rpcId: 'h3' as never,
+      payload: { type: 'host/session-added', blank: true, sessionId: S2, parentSessionId: S1, seedLength: 7 },
+    })
     const items = manager.getListSnapshot().items
     expect(items.find(e => e.sessionId === S2)).toMatchObject({
-      parentSessionId: S1, origin: 'subagent', depth: 1,
+      parentSessionId: S1, seedLength: 7, origin: 'subagent', depth: 1,
     })
   })
 })

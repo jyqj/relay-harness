@@ -78,6 +78,7 @@
     "@deepseek-ai/dsh-client-ui-settings": "workspace:^",
     "@deepseek-ai/dsh-client-ui-settings-general": "workspace:^",
     "@deepseek-ai/dsh-client-ui-sidebar": "workspace:^",
+    "@deepseek-ai/dsh-client-ui-session-tree": "workspace:^",
     "@deepseek-ai/dsh-client-ui-titlebar": "workspace:^",
     "@deepseek-ai/dsh-client-ui-git": "workspace:^",
     "@deepseek-ai/dsh-client-ui-user-terminal": "workspace:^",

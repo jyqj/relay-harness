@@ -22,6 +22,8 @@ export interface SessionListEntry {
   /** Empty-log bit mirrored from the summary; lists hide blank sessions (filtering stays with the consumer). */
   blank: boolean
   parentSessionId?: SessionId
+  /** Number of source events inherited by a fork child. */
+  seedLength?: number
   /** Coarse durable origin for navigation filtering; not a continuation capability. */
   origin?: 'subagent' | 'dshbot'
   cwd?: string

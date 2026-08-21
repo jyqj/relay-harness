@@ -53,6 +53,8 @@ export interface SessionSummary {
    */
   agentPreset?: string
   parentId?: SessionId
+  /** Number of source events inherited by a fork child. */
+  seedLength?: number
   /** Coarse durable origin for navigation filtering; not a continuation capability. */
   origin?: 'subagent' | 'dshbot'
   running: boolean
@@ -539,7 +541,7 @@ export class SessionRuntime implements ISessions {
     if (!result.ok) throw new SessionForkError(result.error, opts.sessionId)
     this.projectList()
     const childId = result.value.sessionId
-    if (sourceTitle !== undefined && result.value.blank === false) {
+    if (sourceTitle !== undefined && !result.value.blank) {
       const child = this.binding(childId)?.session
       if (child === undefined) throw new Error(`fork child "${childId}" is not locally addressable`)
       const renamed = await child.rename(increasedForkTitle(sourceTitle))
@@ -698,6 +700,7 @@ export class SessionRuntime implements ISessions {
         ...(entry.title !== undefined ? { title: entry.title } : {}),
         ...(entry.cwd !== undefined ? { cwd: entry.cwd } : {}),
         ...(entry.parentSessionId !== undefined ? { parentId: entry.parentSessionId } : {}),
+        ...(entry.seedLength !== undefined ? { seedLength: entry.seedLength } : {}),
         ...(entry.origin !== undefined ? { origin: entry.origin } : {}),
         ...(entry.agentPreset !== undefined ? { agentPreset: entry.agentPreset } : {}),
       }
