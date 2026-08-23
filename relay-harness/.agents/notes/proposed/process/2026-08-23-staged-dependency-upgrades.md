@@ -2,6 +2,8 @@
 
 Status: proposed
 
+English | [中文](2026-08-23-staged-dependency-upgrades.zh.md)
+
 ## Problem
 
 The `dsh` → `rlh` rename regenerated `pnpm-lock.yaml` wholesale: every one of the 281 workspace packages changed name, so the lockfile diff is almost entirely rename churn. That is exactly the wrong moment to also move dependency versions. A reviewer auditing the lockfile for "did the rename touch a resolution it should not have" cannot do that if upgrades are interleaved, and a regression bisected to the rename commit could equally be a bumped transitive dependency.
@@ -52,7 +54,7 @@ Order the waves 1 → 2 → 3, and inside wave 3 do TypeScript before React: the
 
 ## Acceptance criteria
 
-- The rename PR merges with `pnpm-lock.yaml` showing workspace renames and no third-party version changes.
+- The rename PR merges with `pnpm-lock.yaml` showing workspace renames and no third-party version changes. The one non-rename entry is `node-pty`'s `patch_hash`, which moves because the patch text carries a renamed environment variable; the resolved version is unchanged.
 - Wave 1 lands as one commit with `doc-sync`, `lint`, `typecheck`, and the full test suite green, and the `koffi` and `esbuild` changelogs read rather than assumed.
 - Wave 2 lands as three commits, each independently revertable, with new lint findings resolved rather than suppressed wholesale.
 - Wave 3 lands one migration per PR, each carrying its own Agent Note where it changes an observable contract, with the ACP snapshot suite re-recorded and reviewed for the SDK crossing.

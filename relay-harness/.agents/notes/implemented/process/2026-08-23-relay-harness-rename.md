@@ -29,6 +29,8 @@ Directory and file names follow the same tokens: `.agents/skills/dsh-*` became `
 
 The pre-release stance in [AGENTS.md](../../../../AGENTS.md) governs the blast radius: there are no external consumers, so no compatibility aliases exist for the old scope, binary name, or environment variables. Reading a `DSH_*` variable is not a supported fallback; it is simply unset.
 
+One variable is read from outside the repository and so is worth naming. [`patches/node-pty@1.2.0-beta.15.patch`](../../../../patches/node-pty@1.2.0-beta.15.patch) makes the pty spawn helper path overridable for an embedder that ships the helper somewhere other than beside the addon, and nothing in this tree sets it. That override is now `RLH_NODE_PTY_SPAWN_HELPER`, and an embedder still exporting the old name gets the unpatched sibling lookup rather than an error. The rename is also why the `node-pty` `patch_hash` moves in `pnpm-lock.yaml`: the patch text changed, not the package version.
+
 ### What the rename does not touch
 
 Three categories keep their original spelling, and the codemod protects each with an explicit pattern so a re-run cannot erode them.

@@ -2,6 +2,8 @@
 
 Status: proposed
 
+[English](2026-08-23-staged-dependency-upgrades.md) | 中文
+
 ## Problem
 
 `dsh` → `rlh` 更名整体重新生成了 `pnpm-lock.yaml`：281 个 workspace 包全部改名，因此 lockfile 的 diff 几乎全是更名产生的噪声。此时再去改动依赖版本恰恰是最糟糕的时机。审阅者若想从 lockfile 中确认"更名有没有意外改动某个解析结果"，一旦升级混在其中就无从判断；而某个回归即便被 bisect 定位到更名提交，也同样可能出自被顺带提升的传递依赖。
@@ -52,7 +54,7 @@ Status: proposed
 
 ## Acceptance criteria
 
-- 更名 PR 合入时，`pnpm-lock.yaml` 只体现 workspace 更名，不含任何第三方版本变更。
+- 更名 PR 合入时，`pnpm-lock.yaml` 只体现 workspace 更名，不含任何第三方版本变更。唯一的非更名条目是 `node-pty` 的 `patch_hash`，它位移是因为补丁文本中带有一个被改名的环境变量；解析出的版本没有变化。
 - 第一批作为一个提交落地，`doc-sync`、`lint`、`typecheck` 与完整测试套件全绿，且 `koffi` 与 `esbuild` 的 changelog 是读过的而非假定的。
 - 第二批作为三个提交落地，各自可独立回滚，新增的 lint 发现被逐一处理而非整体压制。
 - 第三批每次迁移一个 PR，凡改变可观察契约者各自附带 Agent Note；SDK 跨版本一项须重新录制并审阅 ACP 快照套件。

@@ -29,6 +29,8 @@ Harness 一直以一个并不属于自己的名字发布。所有 npm 包位于 
 
 [AGENTS.md](../../../../AGENTS.md) 的预发布立场决定了改动半径：没有外部消费者，因此旧 scope、旧二进制名和旧环境变量都不保留兼容别名。读取 `DSH_*` 变量不是受支持的回退路径，它只是未设置。
 
+有一个变量是从仓库之外读取的，值得单独点名。[`patches/node-pty@1.2.0-beta.15.patch`](../../../../patches/node-pty@1.2.0-beta.15.patch) 让 pty spawn helper 的路径可被覆盖，以适配那些把 helper 放在 addon 同级目录之外的嵌入方，而本仓库中没有任何地方设置它。该覆盖项现为 `RLH_NODE_PTY_SPAWN_HELPER`；仍在导出旧名称的嵌入方会退回到未打补丁的同级查找，而不是报错。这也是 `pnpm-lock.yaml` 中 `node-pty` 的 `patch_hash` 发生位移的原因：变的是补丁文本，不是包版本。
+
 ### 更名不触及的部分
 
 三类内容保持原拼写，codemod 为每一类都设了显式保护模式，重跑不会侵蚀它们。
