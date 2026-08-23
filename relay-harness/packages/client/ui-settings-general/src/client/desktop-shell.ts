@@ -79,6 +79,7 @@ export type DesktopConfig = {
   repoUrl?: string
   releasesUrl?: string
   closeToTray?: boolean
+  simpleMode?: boolean
 } & Partial<HarnessRestartConfig>
 
 /** The preload-exposed desktop API surface used by the settings UI. */

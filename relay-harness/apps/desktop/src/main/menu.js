@@ -1,11 +1,10 @@
 const { Menu, shell, app } = require('electron');
 const { openHarnessSettings, openMarketplace } = require('./window');
 const { loadConfig } = require('./config');
+const { isSimpleMode, shellMenuEntries } = require('./simple-mode');
 
-function buildMenu({ onOpenWorkspace, onRestart, onReload }) {
-  const isMac = process.platform === 'darwin';
-
-  const template = [
+function menuTemplate({ isMac, onOpenWorkspace, onRestart, onReload }) {
+  return [
     ...(isMac
       ? [{
         label: app.name,
@@ -42,14 +41,17 @@ function buildMenu({ onOpenWorkspace, onRestart, onReload }) {
         {
           label: '插件市场…',
           accelerator: 'CmdOrCtrl+Shift+M',
+          advanced: true,
           click: () => { openMarketplace(); },
         },
         {
           label: 'MCP…',
+          advanced: true,
           click: () => { openHarnessSettings('mcp'); },
         },
         {
           label: '技能…',
+          advanced: true,
           click: () => { openHarnessSettings('skills'); },
         },
         { type: 'separator' },
@@ -101,8 +103,18 @@ function buildMenu({ onOpenWorkspace, onRestart, onReload }) {
       ],
     },
   ];
-
-  Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 }
 
-module.exports = { buildMenu };
+function buildMenu({ onOpenWorkspace, onRestart, onReload }) {
+  const template = menuTemplate({
+    isMac: process.platform === 'darwin',
+    onOpenWorkspace,
+    onRestart,
+    onReload,
+  });
+  Menu.setApplicationMenu(
+    Menu.buildFromTemplate(shellMenuEntries(template, isSimpleMode(loadConfig()))),
+  );
+}
+
+module.exports = { buildMenu, menuTemplate };

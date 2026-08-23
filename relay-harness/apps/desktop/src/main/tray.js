@@ -2,8 +2,21 @@
 const { Tray, Menu, nativeImage } = require('electron');
 const { showMain, iconImage, openHarnessSettings, openMarketplace } = require('./window');
 const { assetFile } = require('./paths');
+const { loadConfig } = require('./config');
+const { isSimpleMode, shellMenuEntries } = require('./simple-mode');
 
 let tray = null;
+
+function trayTemplate({ onRestart, onQuit }) {
+  return [
+    { label: '显示窗口', click: () => showMain() },
+    { label: '设置…', click: () => { openHarnessSettings(); } },
+    { label: '插件市场', advanced: true, click: () => { openMarketplace(); } },
+    { label: '重启 Harness', click: () => onRestart() },
+    { type: 'separator' },
+    { label: '退出', click: () => onQuit() },
+  ];
+}
 
 function createTray({ onRestart, onQuit }) {
   if (tray) {
@@ -20,14 +33,9 @@ function createTray({ onRestart, onQuit }) {
 
   tray = new Tray(image && !image.isEmpty() ? image : nativeImage.createEmpty());
   tray.setToolTip('Relay-Harness-Desktop');
-  tray.setContextMenu(Menu.buildFromTemplate([
-    { label: '显示窗口', click: () => showMain() },
-    { label: '设置…', click: () => { openHarnessSettings(); } },
-    { label: '插件市场', click: () => { openMarketplace(); } },
-    { label: '重启 Harness', click: () => onRestart() },
-    { type: 'separator' },
-    { label: '退出', click: () => onQuit() },
-  ]));
+  tray.setContextMenu(Menu.buildFromTemplate(
+    shellMenuEntries(trayTemplate({ onRestart, onQuit }), isSimpleMode(loadConfig())),
+  ));
   tray.on('click', () => showMain());
   return tray;
 }
@@ -35,4 +43,5 @@ function createTray({ onRestart, onQuit }) {
 module.exports = {
   createTray,
   showMain,
+  trayTemplate,
 };

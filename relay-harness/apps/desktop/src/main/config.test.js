@@ -30,6 +30,7 @@ const {
   saveConfig,
   normalizeHarnessRecovery,
   normalizeRendererConfigPatch,
+  normalizeShellSurface,
 } = require('./config');
 
 test.after(() => {
@@ -80,10 +81,27 @@ test('renderer config patch only accepts safe typed fields', () => {
     { workspace: 'C:\\' },
     { baseUrl: 'https://attacker.invalid' },
     { closeToTray: 'yes' },
+    { simpleMode: 'on' },
     { harnessRestartMaxAttempts: 99 },
   ]) {
     assert.throws(() => normalizeRendererConfigPatch(patch));
   }
+});
+
+test('simple mode is off by default and survives a round trip', () => {
+  assert.equal(DEFAULTS.simpleMode, false);
+  assert.deepEqual(normalizeRendererConfigPatch({ simpleMode: true }), { simpleMode: true });
+  assert.equal(normalizeShellSurface({}).simpleMode, false);
+  assert.equal(normalizeShellSurface({ simpleMode: 'yes' }).simpleMode, false);
+
+  try {
+    assert.equal(saveConfig({ simpleMode: true }).simpleMode, true);
+    assert.equal(loadConfig().simpleMode, true);
+    assert.equal(publicConfig(loadConfig()).simpleMode, true);
+  } finally {
+    saveConfig({ simpleMode: false });
+  }
+  assert.equal(loadConfig().simpleMode, false);
 });
 
 test('remote can be enabled and HTTP relay origins stay discarded', () => {

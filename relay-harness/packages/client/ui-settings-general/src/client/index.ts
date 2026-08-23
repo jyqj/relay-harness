@@ -27,6 +27,7 @@ import { InterfaceSection } from './InterfaceSection.tsx'
 import { CloseBehaviorRow } from './CloseBehaviorRow.tsx'
 import { AboutSection } from './AboutSection.tsx'
 import { HarnessRestartRow } from './HarnessRestartRow.tsx'
+import { SimpleModeRow } from './SimpleModeRow.tsx'
 import { canPersistCloseBehavior, desktopShell } from './desktop-shell.ts'
 import { SettingsDocumentAction } from './SettingsDocumentAction.tsx'
 import type { SettingsDocumentActionInjected } from './SettingsDocumentAction.tsx'
@@ -43,6 +44,7 @@ export type {
   InterfaceSectionComponentProps,
 } from './InterfaceSection.tsx'
 export type { HarnessRestartRowProps } from './HarnessRestartRow.tsx'
+export type { SimpleModeRowProps } from './SimpleModeRow.tsx'
 export type { AboutSectionProps } from './AboutSection.tsx'
 export type { SettingsDocumentActionInjected, SettingsDocumentActionProps } from './SettingsDocumentAction.tsx'
 export type { SettingsDocumentState } from './settings-document-store.ts'
@@ -207,6 +209,12 @@ export function apply(ctx: ClientContext): void {
   // Harness process to restart. Feature-owned rows keep their earlier orders.
   const shell = desktopShell()
   if (shell?.getConfig && shell.saveConfig) {
+    ctx.slots.inject('settings.general.item', () => ctx.slots.register({
+      name: 'settings.general.item',
+      id: 'simple-mode',
+      order: 30,
+      locale: NS,
+    }, SimpleModeRow))
     ctx.slots.inject('settings.general.item', () => ctx.slots.register({
       name: 'settings.general.item',
       id: 'harness-restart',
