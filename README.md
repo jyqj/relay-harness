@@ -1,59 +1,20 @@
-# DeepSeek Harness
+# Relay
 
-English | [中文](README.zh.md)
+Relay 是一个面向普通用户的通用 Agent：用户只需用自然语言描述需求或引入文件，Relay 负责补全上下文、执行任务、验证结果并交付。
 
-DeepSeek Harness (`dsh`) is an open-source agent harness developed by [DeepSeek AI](https://deepseek.com).
+产品原则：
 
-It uses an architecture where **everything is a plugin**, and is powered by [Cordis](https://github.com/cordiverse/cordis), whose design is described in [_A Programming Paradigm for Spatiotemporal Composability_](https://github.com/cordiverse/paper).
+- **傻瓜式可用**：不要求用户理解 Prompt、项目、模型或 Agent 工作流。
+- **chat + work**：chat 用于对话，work 用于持续执行任务。
+- **无项目心智**：work 不要求先建项目；文件与文件夹作为一次 work 的显式上下文引入。
+- **Prompt Enhancing**：用户提交前可主动点击按钮，基于当前上下文优化草稿，但不会自动提交。
+- **长期记忆**：记住用户真正需要长期保留的信息；具体实现路径待专项讨论。
+- **模型路由外置**：agent 只消费中转调度项目的接口，不设计其内部路由算法。
 
-## Developer preview
+- [Harness 实现](relay-harness/README.md) — 基于 DeepSeek Harness 的 agent runtime 与桌面/Web 壳层
+- [文档地图](docs/README.md)
+- [领域上下文](docs/CONTEXT.md)
+- [产品体验](docs/product/product-experience.md)
+- [Agent 架构](docs/agent/overview.md)
+- [当前架构决策](docs/adr/README.md)
 
-DeepSeek Harness is currently in _developer preview_ and is iterating rapidly. **THERE WILL BE COMPATIBILITY-BREAKING CHANGES.**
-
-## Run
-
-### Run from `npm`
-
-Install `Node.js`, then run:
-
-```sh
-npx @deepseek-ai/dsh web
-```
-
-The command starts the Web UI at `http://127.0.0.1:3080` by default and opens it in the default browser for a local launch. An SSH launch only prints the host URL because the SSH client or editor owns the local forwarded address. Pass `--no-open` to run the server without opening a browser. See [Web UI guide](docs/user/guide/index.md).
-
-### Run from source
-
-To run from a repository checkout:
-
-```sh
-git clone https://github.com/deepseek-ai/deepseek-harness.git
-cd deepseek-harness
-pnpm install
-pnpm run build
-pnpm dsh web
-```
-
-`pnpm run build` prepares the repository artifacts. `pnpm dsh web` uses those built artifacts without rebuilding.
-
-## Community and support
-
-- Feel free to submit feedback or bug reports through [GitHub Discussions](https://github.com/deepseek-ai/deepseek-harness/discussions).
-- Add the [`dsh-plugin`](https://github.com/topics/dsh-plugin) topic to your plugin repository for discoverability.
-- Join <a href="https://discord.gg/Ycq5dCaS4">DeepSeek Harness Discord community</a>.
-
-## Contributing
-
-See [CONTRIBUTING.md](CONTRIBUTING.md).
-
-## Development
-
-Start with the [development guide](docs/development.md) and [architecture documentation](docs/architecture.md).
-
-For agents, follow [AGENTS.md](AGENTS.md).
-
-## License
-
-[MIT](LICENSE)
-
-Third-party dependencies and their licenses are disclosed in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
