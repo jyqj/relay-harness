@@ -10,6 +10,12 @@ const {
   htmlPreview,
   captureElement,
 } = require('./preview-pick-helpers.js');
+const {
+  OVERLAY_ATTRIBUTE,
+  OVERLAY_STYLES,
+  TOOL_ATTRIBUTE,
+  cursorStyles,
+} = require('./preview-guest-styles.js');
 
 const leftoverBrand = ['t', '3', 'code'].join('');
 const leftoverTools = ['t', '3', 'tools'].join('');
@@ -28,6 +34,8 @@ test('guest preload and helpers keep ipcRenderer and omit leftover brand markers
   const files = [
     'preview-guest-preload.js',
     'preview-guest-protocol.js',
+    'preview-guest-styles.js',
+    'preview-guest-geometry.js',
     'preview-pick-helpers.js',
     'preview-pick-label.js',
     'preview-annotation-keyboard.js',
@@ -38,10 +46,11 @@ test('guest preload and helpers keep ipcRenderer and omit leftover brand markers
   }
   const preload = readSource('preview-guest-preload.js');
   assert.match(preload, /globalThis\.ipcRenderer = ipcRenderer/);
-  assert.match(preload, /data-rlhd-annotation-ui/);
-  assert.match(preload, /data-rlhd-annotation-tool/);
-  assert.match(preload, /--rlhd-preview-primary/);
   assert.doesNotMatch(preload, /react-grab/);
+  assert.equal(OVERLAY_ATTRIBUTE, 'data-rlhd-annotation-ui');
+  assert.equal(TOOL_ATTRIBUTE, 'data-rlhd-annotation-tool');
+  assert.match(OVERLAY_STYLES, /--rlhd-preview-primary/);
+  assert.match(cursorStyles(), /cursor: crosshair !important/);
 });
 
 test('selector helper returns #id when present', () => {
