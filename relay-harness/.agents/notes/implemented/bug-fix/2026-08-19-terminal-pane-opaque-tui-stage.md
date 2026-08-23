@@ -10,7 +10,7 @@ CodeBuddy's slash menu marks the selected row with Ink `bold` plus `colors.info`
 
 ## Decision
 
-The PTY well is opaque. `--dsw-alias-terminal-pane` is `var(--dsw-alias-bg-base)` on the design sheet; `mixWallpaperSurfaces` keeps it the opaque canvas fallback (`--dsw-static-neutral-bluish-00` light, `--dsw-static-neutral-bluish-950` dark) or a family's solid `--dsw-alias-bg-base`, never a `color-mix` against transparent. `.paneTerminal` paints that token and has no `backdrop-filter`. `readXtermTheme` sets `theme.background` to the canvas RGB with no alpha. `TerminalPane` constructs xterm with `allowTransparency: false` so xterm does not replace a translucent fill with `#000000`. Wallpaper still mixes the chat canvas and sidebar; the terminal well does not participate. The pane still does not restyle `.xterm-bold` or paint a guessed selection bar. Inverse-video cells keep the `.xterm-bg-257` / `.xterm-fg-257` token overrides. `minimumContrastRatio` is 1; ANSI cyan/blue are Pierre, owned by [PTY ANSI colors follow T3code Pierre, not UI state tokens](2026-08-19-terminal-ansi-pierre-palette.md).
+The PTY well is opaque. `--rlw-alias-terminal-pane` is `var(--rlw-alias-bg-base)` on the design sheet; `mixWallpaperSurfaces` keeps it the opaque canvas fallback (`--rlw-static-neutral-bluish-00` light, `--rlw-static-neutral-bluish-950` dark) or a family's solid `--rlw-alias-bg-base`, never a `color-mix` against transparent. `.paneTerminal` paints that token and has no `backdrop-filter`. `readXtermTheme` sets `theme.background` to the canvas RGB with no alpha. `TerminalPane` constructs xterm with `allowTransparency: false` so xterm does not replace a translucent fill with `#000000`. Wallpaper still mixes the chat canvas and sidebar; the terminal well does not participate. The pane still does not restyle `.xterm-bold` or paint a guessed selection bar. Inverse-video cells keep the `.xterm-bg-257` / `.xterm-fg-257` token overrides. `minimumContrastRatio` is 1; ANSI cyan/blue are Pierre, owned by [PTY ANSI colors follow T3code Pierre, not UI state tokens](2026-08-19-terminal-ansi-pierre-palette.md).
 
 ## Alternatives considered
 
@@ -20,7 +20,7 @@ The PTY well is opaque. `--dsw-alias-terminal-pane` is `var(--dsw-alias-bg-base)
 
 **Leave cells alpha-0 and rely on `minimumContrastRatio` alone.** Rejected: contrast against canvas RGB does not reconstruct a selected row when the TUI never paints a background.
 
-**Fill the pane with `--dsw-alias-bg-layer-2`.** Rejected: layer-2 is the raised dialog token; the well follows the canvas family, not a stacked dialog.
+**Fill the pane with `--rlw-alias-bg-layer-2`.** Rejected: layer-2 is the raised dialog token; the well follows the canvas family, not a stacked dialog.
 
 ## Consequences
 
@@ -28,8 +28,8 @@ Wallpaper no longer shows through the conversation-column drawer or the right-pa
 
 ## Testing
 
-`readXtermTheme` pins an opaque `rgb(...)` `theme.background` from `--dsw-alias-bg-base` (including `color-mix` and `color(srgb …)` tokens). The drawer spec pins `allowTransparency: false` and `.paneTerminal` background `--dsw-alias-terminal-pane` with no `backdrop-filter`. `mixWallpaperSurfaces` pins a light well to `var(--dsw-static-neutral-bluish-00)` and a custom hex canvas to that hex. `theme.client.spec.ts` pins the wallpaper mix to those opaque pane values. `wallpaper.css` has no `--dsw-terminal-pane-blur`.
+`readXtermTheme` pins an opaque `rgb(...)` `theme.background` from `--rlw-alias-bg-base` (including `color-mix` and `color(srgb …)` tokens). The drawer spec pins `allowTransparency: false` and `.paneTerminal` background `--rlw-alias-terminal-pane` with no `backdrop-filter`. `mixWallpaperSurfaces` pins a light well to `var(--rlw-static-neutral-bluish-00)` and a custom hex canvas to that hex. `theme.client.spec.ts` pins the wallpaper mix to those opaque pane values. `wallpaper.css` has no `--rlw-terminal-pane-blur`.
 
 ## Related
 
-[Terminal canvas uses the app background](2026-08-18-terminal-canvas-app-background.md) owns the transparent workspace root, wallpaper mask, and the rule that nested chrome does not restack `--dsw-alias-bg-base` on the chat canvas. [Terminal panes render TUIs verbatim with minimum contrast](2026-08-19-terminal-verbatim-tui-contrast-and-follow.md) owns the deleted row painter and inverse-cell CSS. [PTY ANSI colors follow T3code Pierre, not UI state tokens](2026-08-19-terminal-ansi-pierre-palette.md) owns ANSI 1–15 and `minimumContrastRatio`.
+[Terminal canvas uses the app background](2026-08-18-terminal-canvas-app-background.md) owns the transparent workspace root, wallpaper mask, and the rule that nested chrome does not restack `--rlw-alias-bg-base` on the chat canvas. [Terminal panes render TUIs verbatim with minimum contrast](2026-08-19-terminal-verbatim-tui-contrast-and-follow.md) owns the deleted row painter and inverse-cell CSS. [PTY ANSI colors follow T3code Pierre, not UI state tokens](2026-08-19-terminal-ansi-pierre-palette.md) owns ANSI 1–15 and `minimumContrastRatio`.

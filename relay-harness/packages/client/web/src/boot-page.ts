@@ -1,7 +1,7 @@
 /**
  * Framework-free boot page and failure report. It remains available when a
  * client plugin fails because React arrives only with the UI renderer.
- * @module @deepseek-ai/dsh-client-web/src/boot-page
+ * @module @relay-harness/rlh-client-web/src/boot-page
  */
 import type { LoaderEntryState } from './loader-status.ts'
 import css from './boot-page.module.css'
@@ -32,11 +32,11 @@ export class BootPage {
    */
   constructor(container: HTMLElement) {
     this.root = div(css.boot)
-    this.root.dataset.dshBoot = ''
+    this.root.dataset.rlhBoot = ''
     this.card = div(css.card)
     this.wordmark = div(css.wordmark, 'HARNESS')
     this.spinner = div(css.spinner)
-    this.spinner.dataset.dshBootSpinner = ''
+    this.spinner.dataset.rlhBootSpinner = ''
     this.hint = div(css.hint, '正在加载插件…')
     this.card.append(this.wordmark, this.spinner, this.hint)
     this.root.append(this.card)
@@ -99,11 +99,11 @@ export class BootPage {
   /** Grow the rotating arc monotonically as loader entries activate. */
   private updateProgress(): void {
     const ratio = this.total === 0 ? 0 : Math.min(this.active.size / this.total, 1)
-    this.spinner.style.setProperty('--dsh-boot-arc', `${String(Math.round(72 + ratio * 216))}deg`)
+    this.spinner.style.setProperty('--rlh-boot-arc', `${String(Math.round(72 + ratio * 216))}deg`)
     this.updateProbe()
   }
 
-  // data-dshd-boot-* is the desktop shell's boot probe surface (it must not
+  // data-rlhd-boot-* is the desktop shell's boot probe surface (it must not
   // scrape rendered copy to decide when the harness view may be revealed).
   private updateProbe(): void {
     const failed = [...this.states].filter(([, state]) => state === 'failed').map(([id]) => id)
@@ -112,10 +112,10 @@ export class BootPage {
       .filter((item): item is string => item !== undefined && item !== '')
       .join('\n')
       .slice(0, 400)
-    this.root.dataset.dshdBootStatus = loud ? 'failed' : 'loading'
-    this.root.dataset.dshdBootReady = String(this.active.size)
-    this.root.dataset.dshdBootTotal = String(this.total)
-    this.root.dataset.dshdBootError = loud ? report : ''
+    this.root.dataset.rlhdBootStatus = loud ? 'failed' : 'loading'
+    this.root.dataset.rlhdBootReady = String(this.active.size)
+    this.root.dataset.rlhdBootTotal = String(this.total)
+    this.root.dataset.rlhdBootError = loud ? report : ''
     this.hint.textContent = this.total > 0
       ? `正在加载插件 ${String(this.active.size)}/${String(this.total)}`
       : '正在加载插件…'

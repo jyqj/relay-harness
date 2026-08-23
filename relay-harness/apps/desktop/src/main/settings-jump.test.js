@@ -30,9 +30,9 @@ test('normalizeSettingsSection maps non-string input to the default section', ()
 
 test('buildSettingsSectionScript embeds the section id as a JSON string', () => {
   const script = buildSettingsSectionScript('mcp');
-  assert.match(script, /data-dsh-settings-trigger/);
+  assert.match(script, /data-rlh-settings-trigger/);
   assert.match(script, /const id = "mcp";/);
-  assert.doesNotMatch(script, /data-dsh-settings-section="[^"]*mcp[^"]*"/);
+  assert.doesNotMatch(script, /data-rlh-settings-section="[^"]*mcp[^"]*"/);
 });
 
 test('buildSettingsSectionScript opens the default section for an empty id', () => {
@@ -49,5 +49,5 @@ test('buildSettingsSectionScript survives a hostile section id without escaping 
   assert.ok(script.includes(`const id = ${encoded};`));
   // The selector is always built from the quoted runtime variable, never from
   // interpolated source text.
-  assert.match(script, /data-dsh-settings-section="' \+ id \+ '"/);
+  assert.match(script, /data-rlh-settings-section="' \+ id \+ '"/);
 });

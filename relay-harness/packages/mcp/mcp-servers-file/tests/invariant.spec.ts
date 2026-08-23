@@ -1,6 +1,6 @@
-import { Context } from '@deepseek-ai/cordis'
+import { Context } from '@relay-harness/cordis'
 import { describe, expect, it } from 'vitest'
-import InvariantRegistry from '@deepseek-ai/dsh-invariants'
+import InvariantRegistry from '@relay-harness/rlh-invariants'
 import * as McpServersFileInvariant from '../src/invariant.ts'
 
 describe('mcp-servers-file invariant companion', () => {

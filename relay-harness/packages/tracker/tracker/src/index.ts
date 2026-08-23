@@ -1,18 +1,18 @@
 /**
  * Provider registry for issue-tracker reads and provider-native host tools.
- * @module @deepseek-ai/dsh-tracker
+ * @module @relay-harness/rlh-tracker
  */
 
-import { Context, Service } from '@deepseek-ai/cordis'
-import { deepFreeze } from '@deepseek-ai/dsh-llm'
-import { assertObjectJsonSchema } from '@deepseek-ai/dsh-tools'
+import { Context, Service } from '@relay-harness/cordis'
+import { deepFreeze } from '@relay-harness/rlh-llm'
+import { assertObjectJsonSchema } from '@relay-harness/rlh-tools'
 import type {
   TrackerProvider,
   TrackerToolContext,
   TrackerToolBinding,
   TrackerToolResult,
 } from './types.ts'
-import type { JsonValue } from '@deepseek-ai/dsh-session'
+import type { JsonValue } from '@relay-harness/rlh-session'
 
 export type * from './types.ts'
 export type { TrackerIssueId as TrackerIssueIdValue } from './types.ts'
@@ -29,7 +29,7 @@ const PROVIDER_NAME = /^[a-z][a-z0-9-]*$/
 const TOOL_NAME = /^[a-zA-Z][a-zA-Z0-9_-]*$/
 const ENVIRONMENT_NAME = /^[A-Za-z_][A-Za-z0-9_]*$/
 
-declare module '@deepseek-ai/cordis' {
+declare module '@relay-harness/cordis' {
   interface Context {
     trackers: TrackerRegistry
   }

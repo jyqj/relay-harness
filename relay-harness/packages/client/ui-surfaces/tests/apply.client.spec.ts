@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
 /** Surfaces plugin occupies the layout surfaces column and declares five children. */
-import { Context } from '@deepseek-ai/cordis'
+import { Context } from '@relay-harness/cordis'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { SlotRegistry } from '@deepseek-ai/dsh-client-runtime/client'
-import { LocaleRuntime } from '@deepseek-ai/dsh-client-locale/client'
+import { SlotRegistry } from '@relay-harness/rlh-client-runtime/client'
+import { LocaleRuntime } from '@relay-harness/rlh-client-locale/client'
 import { apply, desktopListingAvailable, inject } from '../src/client/index.ts'
 import type { SurfacesRootInjected } from '../src/client/SurfacesRoot.tsx'
 import { SurfacesRoot } from '../src/client/SurfacesRoot.tsx'
@@ -217,7 +217,7 @@ describe('ui-surfaces apply', () => {
     }))
     const events: unknown[] = []
     const onOpen = (event: Event) => { events.push((event as CustomEvent).detail) }
-    window.addEventListener('dshd-open-surface', onOpen)
+    window.addEventListener('rlhd-open-surface', onOpen)
     sessionStorage.clear()
     ;(window as Window & { shell?: unknown }).shell = {
       listDir: async () => ({ ok: true }),
@@ -229,12 +229,12 @@ describe('ui-surfaces apply', () => {
       expect(previewWorkspaceFile).toHaveBeenCalledWith({
         cwd: '/tmp/proj', relativePath: 'site/index.html',
       })
-      expect(sessionStorage.getItem('dshd-pending-preview-url')).toBe(
+      expect(sessionStorage.getItem('rlhd-pending-preview-url')).toBe(
         'http://127.0.0.1:9/tok/site/index.html',
       )
       expect(events).toEqual([{ kind: 'preview', url: 'http://127.0.0.1:9/tok/site/index.html' }])
     } finally {
-      window.removeEventListener('dshd-open-surface', onOpen)
+      window.removeEventListener('rlhd-open-surface', onOpen)
       await b.fiber.dispose()
     }
   })
@@ -247,7 +247,7 @@ describe('ui-surfaces apply', () => {
     }))
     const events: unknown[] = []
     const onOpen = (event: Event) => { events.push((event as CustomEvent).detail) }
-    window.addEventListener('dshd-open-surface', onOpen)
+    window.addEventListener('rlhd-open-surface', onOpen)
     sessionStorage.clear()
     ;(window as Window & { shell?: unknown }).shell = {
       listDir: async () => ({ ok: true }),
@@ -259,12 +259,12 @@ describe('ui-surfaces apply', () => {
       expect(previewWorkspaceFile).toHaveBeenCalledWith({
         cwd: '/tmp/proj', relativePath: 'doc.pdf',
       })
-      expect(sessionStorage.getItem('dshd-pending-preview-url')).toBe(
+      expect(sessionStorage.getItem('rlhd-pending-preview-url')).toBe(
         'http://127.0.0.1:9/tok/doc.pdf',
       )
       expect(events).toEqual([{ kind: 'preview', url: 'http://127.0.0.1:9/tok/doc.pdf' }])
     } finally {
-      window.removeEventListener('dshd-open-surface', onOpen)
+      window.removeEventListener('rlhd-open-surface', onOpen)
       await b.fiber.dispose()
     }
   })
@@ -304,7 +304,7 @@ describe('ui-surfaces apply', () => {
     }
     const events: unknown[] = []
     const onOpen = (event: Event) => { events.push((event as CustomEvent).detail) }
-    window.addEventListener('dshd-open-surface', onOpen)
+    window.addEventListener('rlhd-open-surface', onOpen)
     try {
       await b.workspaces.openPath('/tmp/proj/page.svg')
       expect(previewWorkspaceFile).toHaveBeenCalled()
@@ -321,7 +321,7 @@ describe('ui-surfaces apply', () => {
       expect(events).toEqual([])
       expect(openFile).toHaveBeenCalled()
     } finally {
-      window.removeEventListener('dshd-open-surface', onOpen)
+      window.removeEventListener('rlhd-open-surface', onOpen)
       await b.fiber.dispose()
     }
   })
@@ -338,14 +338,14 @@ describe('ui-surfaces apply', () => {
     const b = await bench({ current: 'sess-1' })
     const events: unknown[] = []
     const onOpen = (event: Event) => { events.push((event as CustomEvent).detail) }
-    window.addEventListener('dshd-open-surface', onOpen)
+    window.addEventListener('rlhd-open-surface', onOpen)
     sessionStorage.clear()
     try {
       listener?.({ url: '' })
       listener?.({})
       expect(events).toEqual([])
       listener?.({ url: 'http://127.0.0.1:5173/' })
-      expect(sessionStorage.getItem('dshd-pending-preview-url')).toBe('http://127.0.0.1:5173/')
+      expect(sessionStorage.getItem('rlhd-pending-preview-url')).toBe('http://127.0.0.1:5173/')
       expect(events).toEqual([{ kind: 'preview', url: 'http://127.0.0.1:5173/' }])
 
       events.length = 0
@@ -356,7 +356,7 @@ describe('ui-surfaces apply', () => {
       expect(events).toEqual([{ kind: 'preview', url: 'http://127.0.0.1:4173/' }])
     } finally {
       vi.restoreAllMocks()
-      window.removeEventListener('dshd-open-surface', onOpen)
+      window.removeEventListener('rlhd-open-surface', onOpen)
       await b.fiber.dispose()
       expect(listener).toBeUndefined()
     }

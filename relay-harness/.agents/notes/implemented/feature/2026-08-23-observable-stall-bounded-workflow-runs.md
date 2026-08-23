@@ -18,13 +18,13 @@ The mechanisms are a clean-room adaptation of Symphony's single-owner runtime sn
 
 ## Alternatives considered
 
-**Copy Symphony's tracker orchestrator into Workflow or Agent Loop.** Rejected because issue polling, provider-native ticket writes, and per-issue checkout policy are deployment concerns. Folding them into `agent-loop` or `workflow-worker-thread` would duplicate DSH Session, Subagent, Schedule, and Workspace ownership; the later opt-in automation layer preserves that separation.
+**Copy Symphony's tracker orchestrator into Workflow or Agent Loop.** Rejected because issue polling, provider-native ticket writes, and per-issue checkout policy are deployment concerns. Folding them into `agent-loop` or `workflow-worker-thread` would duplicate RLH Session, Subagent, Schedule, and Workspace ownership; the later opt-in automation layer preserves that separation.
 
 **Expose the live `WorkflowRun` objects from the service.** Rejected because an observer would acquire cancellation and disposal authority. Detached facts preserve the existing holder-owned lifetime.
 
 **Persist active-run snapshots.** Rejected because a process restart cannot resurrect worker threads or arbitrary script state. The existing workflow journal restores completed host calls; presenting its rows as live execution would be false.
 
-**Enable a fixed watchdog by default.** Rejected because DSH has no universal upper bound for silent remote child work. Deployments opt in with a deadline larger than their longest expected protocol silence.
+**Enable a fixed watchdog by default.** Rejected because RLH has no universal upper bound for silent remote child work. Deployments opt in with a deadline larger than their longest expected protocol silence.
 
 **Reset only on model-visible narration.** Rejected because child publication, result forwarding, and disposal acknowledgements are real forward progress even when the workflow emits no phase or log line.
 

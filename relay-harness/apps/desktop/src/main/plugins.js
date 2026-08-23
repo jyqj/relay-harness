@@ -6,34 +6,34 @@ const { pathToFileURL } = require('url');
 
 const PROFILE = 'web';
 const DROPPED = [
-  '@dsh-external/dsh-genui',
-  '@huanlin/dsh-plugin-yet-another-subagent',
+  '@rlh-external/rlh-genui',
+  '@huanlin/rlh-plugin-yet-another-subagent',
 ];
-const PATCH_BEGIN = '# --- dshd-gui-plugin-toggles ---';
-const PATCH_END = '# --- end dshd-gui-plugin-toggles ---';
-const DESKTOP_INSTALL_BEGIN = '# --- dshd-gui-desktop-install ---';
-const DESKTOP_INSTALL_END = '# --- end dshd-gui-desktop-install ---';
-const LEGACY_DESKTOP_INSTALL_BEGIN = '# --- dsh-gui-desktop-install ---';
-const LEGACY_DESKTOP_INSTALL_END = '# --- end dsh-gui-desktop-install ---';
+const PATCH_BEGIN = '# --- rlhd-gui-plugin-toggles ---';
+const PATCH_END = '# --- end rlhd-gui-plugin-toggles ---';
+const DESKTOP_INSTALL_BEGIN = '# --- rlhd-gui-desktop-install ---';
+const DESKTOP_INSTALL_END = '# --- end rlhd-gui-desktop-install ---';
+const LEGACY_DESKTOP_INSTALL_BEGIN = '# --- rlh-gui-desktop-install ---';
+const LEGACY_DESKTOP_INSTALL_END = '# --- end rlh-gui-desktop-install ---';
 const DESKTOP_INSTALL_FILES = [
-  'install-dsh-plugin.mjs',
-  'install-dsh-plugin-client.js',
+  'install-rlh-plugin.mjs',
+  'install-rlh-plugin-client.js',
 ];
 const OFFICIAL_TEMPLATE_BUNDLES = new Set([
-  '@deepseek-ai/dsh-base',
-  '@deepseek-ai/dsh-web-app',
+  '@relay-harness/rlh-base',
+  '@relay-harness/rlh-web-app',
 ]);
 
-function dshHome() {
-  const fromEnv = process.env.DSH_HOME;
+function rlhHome() {
+  const fromEnv = process.env.RLH_HOME;
   if (typeof fromEnv === 'string' && fromEnv.trim()) {
     return path.resolve(fromEnv.trim());
   }
-  return path.join(os.homedir(), '.dsh');
+  return path.join(os.homedir(), '.rlh');
 }
 
 function webProfileDir() {
-  return path.join(dshHome(), 'profiles', PROFILE);
+  return path.join(rlhHome(), 'profiles', PROFILE);
 }
 
 function defaultInstallAnchor() {
@@ -76,7 +76,7 @@ function healDanglingBundles(options = {}) {
   } catch {
     return { ok: false, reason: 'invalid-profile', changed: false };
   }
-  const current = manifest.dsh?.profile?.bundles;
+  const current = manifest.rlh?.profile?.bundles;
   if (!Array.isArray(current)) return { ok: true, changed: false, removed: [] };
   const installAnchor = options.installAnchor || defaultInstallAnchor();
   const removed = current.filter((name) => (
@@ -86,9 +86,9 @@ function healDanglingBundles(options = {}) {
   ));
   if (removed.length === 0) return { ok: true, changed: false, removed: [] };
   const bundles = current.filter((name) => !removed.includes(name));
-  manifest.dsh = {
-    ...manifest.dsh,
-    profile: { ...manifest.dsh.profile, bundles },
+  manifest.rlh = {
+    ...manifest.rlh,
+    profile: { ...manifest.rlh.profile, bundles },
   };
   writeAtomic(file, `${JSON.stringify(manifest, null, 2)}\n`);
   return { ok: true, changed: true, removed };
@@ -164,14 +164,14 @@ function hostPluginDir() {
 }
 
 /**
- * Copy the desktop-only install_dsh_plugin Host plugin into the web profile
+ * Copy the desktop-only install_rlh_plugin Host plugin into the web profile
  * and keep a managed cordis.patch.yml insert pointing at the copy.
  * @param options - optional sourceDir / profileDir overrides for tests.
  */
 function ensureDesktopInstallPlugin(options = {}) {
   const sourceDir = options.sourceDir || hostPluginDir();
   const profileDir = options.profileDir || webProfileDir();
-  const destDir = path.join(profileDir, 'desktop-plugins', 'install-dsh-plugin');
+  const destDir = path.join(profileDir, 'desktop-plugins', 'install-rlh-plugin');
   fs.mkdirSync(destDir, { recursive: true });
   for (const name of DESKTOP_INSTALL_FILES) {
     const src = path.join(sourceDir, name);
@@ -180,7 +180,7 @@ function ensureDesktopInstallPlugin(options = {}) {
     }
     fs.copyFileSync(src, path.join(destDir, name));
   }
-  const entry = path.join(destDir, 'install-dsh-plugin.mjs');
+  const entry = path.join(destDir, 'install-rlh-plugin.mjs');
   const href = pathToFileURL(entry).href;
   const patchFile = path.join(profileDir, 'cordis.patch.yml');
   const strippedLegacy = stripBlockFromFile(
@@ -190,7 +190,7 @@ function ensureDesktopInstallPlugin(options = {}) {
   );
   const body = [
     '- insert:',
-    '    - id: dshd-desktop-plugin-install',
+    '    - id: rlhd-desktop-plugin-install',
     `      name: ${JSON.stringify(href)}`,
   ].join('\n');
   const patchChanged = upsertManagedBlock(
@@ -224,14 +224,14 @@ function stripDroppedPlugins() {
       }
     }
   }
-  const current = manifest.dsh?.profile?.bundles;
+  const current = manifest.rlh?.profile?.bundles;
   if (Array.isArray(current)) {
     const bundles = current.filter((name) => !DROPPED.includes(name));
     if (bundles.length !== current.length) {
-      manifest.dsh = {
-        ...manifest.dsh,
+      manifest.rlh = {
+        ...manifest.rlh,
         profile: {
-          ...manifest.dsh.profile,
+          ...manifest.rlh.profile,
           bundles,
         },
       };
@@ -255,7 +255,7 @@ function listInstalledPlugins() {
     const dependencies = manifest.dependencies && typeof manifest.dependencies === 'object'
       ? manifest.dependencies
       : {};
-    const bundles = Array.isArray(manifest.dsh?.profile?.bundles) ? manifest.dsh.profile.bundles : [];
+    const bundles = Array.isArray(manifest.rlh?.profile?.bundles) ? manifest.rlh.profile.bundles : [];
     return {
       ok: true,
       profile: PROFILE,

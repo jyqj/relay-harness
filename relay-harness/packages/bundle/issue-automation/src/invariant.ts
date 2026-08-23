@@ -1,8 +1,8 @@
-/** Package-owned invariant companion for `@deepseek-ai/dsh-issue-automation`. */
+/** Package-owned invariant companion for `@relay-harness/rlh-issue-automation`. */
 /* jscpd:ignore-start */
-import type { Context } from '@deepseek-ai/cordis'
-import type { InvariantInstaller } from '@deepseek-ai/dsh-invariants'
-const PACKAGE_NAME = '@deepseek-ai/dsh-issue-automation'
+import type { Context } from '@relay-harness/cordis'
+import type { InvariantInstaller } from '@relay-harness/rlh-invariants'
+const PACKAGE_NAME = '@relay-harness/rlh-issue-automation'
 export const name = 'issue-automation-invariant'
 export const inject = ['invariants']
 /** No runtime invariant: this package is a declarative bundle over package-owned companions. */

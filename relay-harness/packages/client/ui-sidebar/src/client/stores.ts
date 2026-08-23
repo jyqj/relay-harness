@@ -3,7 +3,7 @@
  * tabs occupy `sidebar.nav.tab`. Module level exports the factory only
  * (a module-level handle would pin identity across plugin reloads).
  */
-import { defineStore, type EngineStoreHandle } from '@deepseek-ai/dsh-client-runtime/client'
+import { defineStore, type EngineStoreHandle } from '@relay-harness/rlh-client-runtime/client'
 
 /** Built-in sessions region id; plugin tabs use their list-slot `id`. */
 export const SESSIONS_TAB_ID = 'sessions'
@@ -35,7 +35,7 @@ type SidebarNavActions = {
 export function createSidebarNavStore(): EngineStoreHandle<SidebarNavState, SidebarNavActions> {
   return defineStore({
     init: (): SidebarNavState => ({ selectedTab: SESSIONS_TAB_ID }),
-    persist: 'dsh.sidebar.nav.v1',
+    persist: 'rlh.sidebar.nav.v1',
     actions: {
       selectTab: (d, id: string) => { d.selectedTab = id },
     },

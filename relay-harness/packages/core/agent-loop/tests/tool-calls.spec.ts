@@ -4,17 +4,17 @@
  */
 
 import { describe, expect, it, vi } from 'vitest'
-import { Context } from '@deepseek-ai/cordis'
-import { createUserMessage, CallId, StreamChunk  } from '@deepseek-ai/dsh-llm'
-import SessionStore, { SessionEvent, SessionId, TOOL_NOT_STARTED, TOOL_OUTCOME_UNKNOWN, assertToolTranscriptValid } from '@deepseek-ai/dsh-session'
-import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
-import LlmRuntime from '@deepseek-ai/dsh-llm'
-import ToolRuntime, { defineContentToolFixture, TOOL_ABORTED_BEFORE_DISPATCH, TOOL_RUNTIME_REQUESTS, type PostToolDecision, type PreToolDecision, type ToolExecutionResult, type ToolRequestSnapshot, type ToolRunContext } from '@deepseek-ai/dsh-tools'
-import AgentRegistry, { type Agent } from '@deepseek-ai/dsh-agent'
-import AgentLoop, { DEFAULT_MAX_PARALLEL_TOOL_CALLS } from '@deepseek-ai/dsh-agent-loop'
+import { Context } from '@relay-harness/cordis'
+import { createUserMessage, CallId, StreamChunk  } from '@relay-harness/rlh-llm'
+import SessionStore, { SessionEvent, SessionId, TOOL_NOT_STARTED, TOOL_OUTCOME_UNKNOWN, assertToolTranscriptValid } from '@relay-harness/rlh-session'
+import SystemPrompt from '@relay-harness/rlh-system-prompt'
+import LlmRuntime from '@relay-harness/rlh-llm'
+import ToolRuntime, { defineContentToolFixture, TOOL_ABORTED_BEFORE_DISPATCH, TOOL_RUNTIME_REQUESTS, type PostToolDecision, type PreToolDecision, type ToolExecutionResult, type ToolRequestSnapshot, type ToolRunContext } from '@relay-harness/rlh-tools'
+import AgentRegistry, { type Agent } from '@relay-harness/rlh-agent'
+import AgentLoop, { DEFAULT_MAX_PARALLEL_TOOL_CALLS } from '@relay-harness/rlh-agent-loop'
 import { MockAdapter, textResponse } from './mock-adapter.ts'
-import { CodeRuntime } from '@deepseek-ai/dsh-code-runtime'
-import type { CodeRunRequest, CodeRunResult } from '@deepseek-ai/dsh-code-runtime'
+import { CodeRuntime } from '@relay-harness/rlh-code-runtime'
+import type { CodeRunRequest, CodeRunResult } from '@relay-harness/rlh-code-runtime'
 
 async function harness(adapter: MockAdapter, maxParallelToolCalls?: number) {
   const ctx = new Context()

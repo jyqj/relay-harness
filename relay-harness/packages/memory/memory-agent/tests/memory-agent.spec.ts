@@ -1,6 +1,6 @@
-import { Context } from '@deepseek-ai/cordis'
-import { createAssistantMessage, createUserMessage } from '@deepseek-ai/dsh-llm'
-import LongTermMemory, { MemoryId, MemoryTurnHandle } from '@deepseek-ai/dsh-memory'
+import { Context } from '@relay-harness/cordis'
+import { createAssistantMessage, createUserMessage } from '@relay-harness/rlh-llm'
+import LongTermMemory, { MemoryId, MemoryTurnHandle } from '@relay-harness/rlh-memory'
 import type {
   AbortMemoryTurnInput,
   CommitMemoryTurnInput,
@@ -12,13 +12,13 @@ import type {
   RememberMemoryInput,
   ReviseMemoryInput,
   SearchMemoryInput,
-} from '@deepseek-ai/dsh-memory/types'
-import * as MemoryAgent from '@deepseek-ai/dsh-memory-agent'
-import SessionStore, { Session, SessionId } from '@deepseek-ai/dsh-session'
-import type { Agent } from '@deepseek-ai/dsh-agent'
+} from '@relay-harness/rlh-memory/types'
+import * as MemoryAgent from '@relay-harness/rlh-memory-agent'
+import SessionStore, { Session, SessionId } from '@relay-harness/rlh-session'
+import type { Agent } from '@relay-harness/rlh-agent'
 import { describe, expect, it } from 'vitest'
 
-const scope: MemoryScope = { workspaceId: '/workspace', userId: 'local', agentId: 'deepseek-harness' }
+const scope: MemoryScope = { workspaceId: '/workspace', userId: 'local', agentId: 'relay-harness' }
 
 class FakeMemory extends LongTermMemory {
   prepared: PreparedMemoryTurn[] = []

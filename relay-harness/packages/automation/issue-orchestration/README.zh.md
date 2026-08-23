@@ -1,4 +1,4 @@
-# `@deepseek-ai/dsh-issue-orchestration`
+# `@relay-harness/rlh-issue-orchestration`
 
 [English](README.md) | 中文
 

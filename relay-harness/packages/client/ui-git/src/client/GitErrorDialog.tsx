@@ -1,10 +1,10 @@
 /**
  * Git failure dialog: a short headline plus a capped, scrollable log.
  * Hook dumps stay inside the card instead of stretching the page.
- * @module @deepseek-ai/dsh-client-ui-git/client/GitErrorDialog
+ * @module @relay-harness/rlh-client-ui-git/client/GitErrorDialog
  */
 
-import { Button, Modal } from '@deepseek-ai/dsh-client-ui-primitives'
+import { Button, Modal } from '@relay-harness/rlh-client-ui-primitives'
 import css from './GitErrorDialog.module.css'
 
 /** Props for the git error dialog. */

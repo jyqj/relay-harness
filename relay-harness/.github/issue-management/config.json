@@ -1,9 +1,9 @@
 {
-  "organization": "deepseek-harness",
-  "repository": "deepseek-harness",
+  "organization": "relay-harness",
+  "repository": "relay-harness",
   "projectNumber": 1,
-  "projectTitle": "DSH Issue Management",
-  "lifecycleActor": "dsh-issue-management",
+  "projectTitle": "RLH Issue Management",
+  "lifecycleActor": "rlh-issue-management",
   "priorityField": "Priority",
   "allowUnassignedOwner": true,
   "statuses": [

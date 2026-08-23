@@ -1,11 +1,11 @@
 /** Preview URL helpers: loopback host check, free-form http(s) normalize, tab ids. */
 
-const TAB_ID_PREFIX = 'dshd-tab_'
+const TAB_ID_PREFIX = 'rlhd-tab_'
 let nextPreviewTabSequence = 0
 
 /**
  * Mint a preview tab id. Sequence increments per call in this module.
- * @returns id starting with `dshd-tab_`.
+ * @returns id starting with `rlhd-tab_`.
  */
 export function newPreviewTabId(): string {
   nextPreviewTabSequence += 1

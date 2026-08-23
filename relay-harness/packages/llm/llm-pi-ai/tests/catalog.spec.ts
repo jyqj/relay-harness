@@ -2,13 +2,13 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { Context } from '@deepseek-ai/cordis'
-import LlmRuntime, { createUserMessage, ReasoningEffortId } from '@deepseek-ai/dsh-llm'
-import type { StreamChunk } from '@deepseek-ai/dsh-llm'
-import FileSettingsProvider from '@deepseek-ai/dsh-settings-file'
-import { settingsNamespace } from '@deepseek-ai/dsh-settings'
-import * as LlmPiAi from '@deepseek-ai/dsh-llm-pi-ai'
-import { PiAiAdapter } from '@deepseek-ai/dsh-llm-pi-ai'
+import { Context } from '@relay-harness/cordis'
+import LlmRuntime, { createUserMessage, ReasoningEffortId } from '@relay-harness/rlh-llm'
+import type { StreamChunk } from '@relay-harness/rlh-llm'
+import FileSettingsProvider from '@relay-harness/rlh-settings-file'
+import { settingsNamespace } from '@relay-harness/rlh-settings'
+import * as LlmPiAi from '@relay-harness/rlh-llm-pi-ai'
+import { PiAiAdapter } from '@relay-harness/rlh-llm-pi-ai'
 import { getBuiltinModels } from '@earendil-works/pi-ai/providers/all'
 import { createModels, getSupportedThinkingLevels } from '@earendil-works/pi-ai'
 import type { Api, Model, OpenAICompletionsCompat, Provider } from '@earendil-works/pi-ai'
@@ -34,9 +34,9 @@ afterEach(async () => {
   await Promise.all(homes.splice(0).map(dir => rm(dir, { recursive: true, force: true })))
 })
 
-/** A throwaway $DSH_HOME with an empty settings document. */
+/** A throwaway $RLH_HOME with an empty settings document. */
 async function home(): Promise<string> {
-  const dir = await mkdtemp(join(tmpdir(), 'dsh-pi-catalog-'))
+  const dir = await mkdtemp(join(tmpdir(), 'rlh-pi-catalog-'))
   homes.push(dir)
   await writeFile(join(dir, 'settings.yaml'), '')
   return dir

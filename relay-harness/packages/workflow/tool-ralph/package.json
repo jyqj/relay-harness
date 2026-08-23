@@ -1,5 +1,5 @@
 {
-  "name": "@deepseek-ai/dsh-tool-ralph",
+  "name": "@relay-harness/rlh-tool-ralph",
   "description": "Model-facing fresh-agent Ralph loop over the workflow and subagent seams",
   "version": "0.1.0-rc.8",
   "publishConfig": {
@@ -7,7 +7,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+    "url": "git+https://github.com/jyqj/relay-harness.git",
     "directory": "packages/workflow/tool-ralph"
   },
   "type": "module",
@@ -32,33 +32,33 @@
   ],
   "license": "MIT",
   "peerDependencies": {
-    "@deepseek-ai/dsh-agent": "workspace:^",
-    "@deepseek-ai/dsh-invariants": "workspace:^",
-    "@deepseek-ai/dsh-llm": "workspace:^",
-    "@deepseek-ai/dsh-subagent": "workspace:^",
-    "@deepseek-ai/dsh-system-prompt": "workspace:^",
-    "@deepseek-ai/dsh-tools": "workspace:^",
-    "@deepseek-ai/dsh-workflow": "workspace:^",
-    "@deepseek-ai/cordis": "workspace:^"
+    "@relay-harness/rlh-agent": "workspace:^",
+    "@relay-harness/rlh-invariants": "workspace:^",
+    "@relay-harness/rlh-llm": "workspace:^",
+    "@relay-harness/rlh-subagent": "workspace:^",
+    "@relay-harness/rlh-system-prompt": "workspace:^",
+    "@relay-harness/rlh-tools": "workspace:^",
+    "@relay-harness/rlh-workflow": "workspace:^",
+    "@relay-harness/cordis": "workspace:^"
   },
   "dependencies": {
-    "@deepseek-ai/schemastery": "workspace:^"
+    "@relay-harness/schemastery": "workspace:^"
   },
   "devDependencies": {
-    "@deepseek-ai/cordis-plugin-loader": "workspace:^",
-    "@deepseek-ai/dsh-agent": "workspace:^",
-    "@deepseek-ai/dsh-agent-loop": "workspace:^",
-    "@deepseek-ai/dsh-agent-loop-testkit": "workspace:^",
-    "@deepseek-ai/dsh-invariants": "workspace:^",
-    "@deepseek-ai/dsh-llm": "workspace:^",
-    "@deepseek-ai/dsh-session": "workspace:^",
-    "@deepseek-ai/dsh-subagent": "workspace:^",
-    "@deepseek-ai/dsh-subagent-in-process-driver": "workspace:^",
-    "@deepseek-ai/dsh-subagent-spawn-in-process": "workspace:^",
-    "@deepseek-ai/dsh-system-prompt": "workspace:^",
-    "@deepseek-ai/dsh-tools": "workspace:^",
-    "@deepseek-ai/dsh-workflow": "workspace:^",
-    "@deepseek-ai/dsh-workflow-worker-thread": "workspace:^",
-    "@deepseek-ai/cordis": "workspace:^"
+    "@relay-harness/cordis-plugin-loader": "workspace:^",
+    "@relay-harness/rlh-agent": "workspace:^",
+    "@relay-harness/rlh-agent-loop": "workspace:^",
+    "@relay-harness/rlh-agent-loop-testkit": "workspace:^",
+    "@relay-harness/rlh-invariants": "workspace:^",
+    "@relay-harness/rlh-llm": "workspace:^",
+    "@relay-harness/rlh-session": "workspace:^",
+    "@relay-harness/rlh-subagent": "workspace:^",
+    "@relay-harness/rlh-subagent-in-process-driver": "workspace:^",
+    "@relay-harness/rlh-subagent-spawn-in-process": "workspace:^",
+    "@relay-harness/rlh-system-prompt": "workspace:^",
+    "@relay-harness/rlh-tools": "workspace:^",
+    "@relay-harness/rlh-workflow": "workspace:^",
+    "@relay-harness/rlh-workflow-worker-thread": "workspace:^",
+    "@relay-harness/cordis": "workspace:^"
   }
 }

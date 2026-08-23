@@ -1,10 +1,10 @@
 /**
  * Provider-neutral long-term-memory capability.
  *
- * @module @deepseek-ai/dsh-memory
+ * @module @relay-harness/rlh-memory
  */
 
-import { Context, Service } from '@deepseek-ai/cordis'
+import { Context, Service } from '@relay-harness/cordis'
 import type {
   AbortMemoryTurnInput,
   CommitMemoryTurnInput,
@@ -53,7 +53,7 @@ export const MemoryTurnHandle = (value: string): MemoryTurnHandleValue => value 
  */
 export const MemoryExtractionJobId = (value: string): MemoryExtractionJobIdValue => value as MemoryExtractionJobIdValue
 
-declare module '@deepseek-ai/cordis' {
+declare module '@relay-harness/cordis' {
   interface Context {
     longTermMemory: LongTermMemory
   }

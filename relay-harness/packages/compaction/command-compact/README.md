@@ -1,4 +1,4 @@
-# @deepseek-ai/dsh-command-compact
+# @relay-harness/rlh-command-compact
 
 English | [中文](README.zh.md)
 
@@ -34,14 +34,14 @@ The producer injects `commands` and `compact`. Mount the command registry, one b
 
 ```yaml
 - id: commands
-  name: '@deepseek-ai/dsh-commands'
+  name: '@relay-harness/rlh-commands'
 - id: compaction-basic
-  name: '@deepseek-ai/dsh-compaction-basic'
+  name: '@relay-harness/rlh-compaction-basic'
 - id: command-compact
-  name: '@deepseek-ai/dsh-command-compact'
+  name: '@relay-harness/rlh-command-compact'
 ```
 
-The shipped `dsh` base mounts it beside `compaction-basic`, and the Web client provides the command adapter. Automation surfaces that compose no command adapter keep automatic compaction only.
+The shipped `rlh` base mounts it beside `compaction-basic`, and the Web client provides the command adapter. Automation surfaces that compose no command adapter keep automatic compaction only.
 
 ## Model Experience
 

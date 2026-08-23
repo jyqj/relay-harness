@@ -1,11 +1,11 @@
 /** Cordis dynamic-plugin cards, inventory panel, business-view host, and `@pluginId` source. */
 
-import type { ClientContext, SessionId } from '@deepseek-ai/dsh-client-runtime/client'
-import type {} from '@deepseek-ai/dsh-client-ui-tool/client'
-import type {} from '@deepseek-ai/dsh-client-locale/client'
-import type {} from '@deepseek-ai/dsh-client-ui-sidebar/client'
-import type {} from '@deepseek-ai/dsh-api-remotes/client'
-import type { InputTriggerService, InputTriggerSource } from '@deepseek-ai/dsh-client-ui-input-trigger/client'
+import type { ClientContext, SessionId } from '@relay-harness/rlh-client-runtime/client'
+import type {} from '@relay-harness/rlh-client-ui-tool/client'
+import type {} from '@relay-harness/rlh-client-locale/client'
+import type {} from '@relay-harness/rlh-client-ui-sidebar/client'
+import type {} from '@relay-harness/rlh-api-remotes/client'
+import type { InputTriggerService, InputTriggerSource } from '@relay-harness/rlh-client-ui-input-trigger/client'
 import type {} from './events.ts'
 import { CordisActionRow } from './CordisActionRow.tsx'
 import { CordisDefineRow } from './CordisDefineRow.tsx'
@@ -144,7 +144,7 @@ export function apply(ctx: ClientContext): void {
 
   const rowsOf = (sessionId: SessionId, query: string) => {
     const sessions = ctx.get('sessions')
-    if (sessions?.list.getSnapshot().byId[sessionId]?.agentPreset === 'dshbot-room') return []
+    if (sessions?.list.getSnapshot().byId[sessionId]?.agentPreset === 'rlhbot-room') return []
     return inventory.getSnapshot().rows
       .filter(row => row.agentId === sessionId && String(row.pluginId).includes(query))
   }

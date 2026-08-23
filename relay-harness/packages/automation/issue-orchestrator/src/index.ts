@@ -1,23 +1,23 @@
 /**
  * Durable single-writer issue scheduler with reconciliation, retry, blocked state, and recovery.
- * @module @deepseek-ai/dsh-issue-orchestrator
+ * @module @relay-harness/rlh-issue-orchestrator
  */
 
-import { Context, Service } from '@deepseek-ai/cordis'
-import { Remote, TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol'
-import type { KvTable } from '@deepseek-ai/dsh-storage-domain'
-import { IssueOrchestrationError } from '@deepseek-ai/dsh-issue-orchestration'
+import { Context, Service } from '@relay-harness/cordis'
+import { Remote, TypertRemoteService } from '@relay-harness/rlh-typert-protocol'
+import type { KvTable } from '@relay-harness/rlh-storage-domain'
+import { IssueOrchestrationError } from '@relay-harness/rlh-issue-orchestration'
 import type {
   IssueCommand,
   IssueOrchestrationEntry,
   IssueOrchestrationSnapshot,
   IssueRefreshResult,
-} from '@deepseek-ai/dsh-issue-orchestration'
-import type { IssueRun, IssueRunEvent, IssueRunResult } from '@deepseek-ai/dsh-issue-runner'
-import type { IssueWorkspace } from '@deepseek-ai/dsh-issue-workspace'
-import type { IssueWorkflowPolicy } from '@deepseek-ai/dsh-issue-workflow'
-import type { TrackerIssue, TrackerProvider } from '@deepseek-ai/dsh-tracker'
-import type { TrackerIssueId } from '@deepseek-ai/dsh-tracker/types'
+} from '@relay-harness/rlh-issue-orchestration'
+import type { IssueRun, IssueRunEvent, IssueRunResult } from '@relay-harness/rlh-issue-runner'
+import type { IssueWorkspace } from '@relay-harness/rlh-issue-workspace'
+import type { IssueWorkflowPolicy } from '@relay-harness/rlh-issue-workflow'
+import type { TrackerIssue, TrackerProvider } from '@relay-harness/rlh-tracker'
+import type { TrackerIssueId } from '@relay-harness/rlh-tracker/types'
 import { issueOrchestratorDomainSpec, type IssueOrchestrationRecord } from './spec.ts'
 
 export { issueOrchestratorDomainSpec, issueOrchestrationRecord, trackerIssue } from './spec.ts'

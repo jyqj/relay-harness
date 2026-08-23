@@ -8,9 +8,9 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, relative, resolve } from 'node:path'
 import ts from 'typescript'
-import { projectCordisCatalog } from '@deepseek-ai/dsh-typert-generator'
+import { projectCordisCatalog } from '@relay-harness/rlh-typert-generator'
 import { CORDIS_CATALOG_POLICY } from './gen-cordis-catalog.ts'
-import type { EventEntry, ServiceEntry } from '@deepseek-ai/dsh-typert-generator'
+import type { EventEntry, ServiceEntry } from '@relay-harness/rlh-typert-generator'
 import {
   collectPackageGraph,
   escapeMermaidLabel as escLabel,
@@ -164,7 +164,7 @@ const SERVICE_ROLES: ServiceRole[] = [
     title: 'Runtime type registry',
     mode: 'core',
     consumers: ['typert-loader', 'api-gateway'],
-    note: 'Plugins register live zod contributions directly or through dsh-typert-loader; the API gateway consumes invocation descriptors and providers, while other runtime consumers query schemas and reflection metadata at their own edges.',
+    note: 'Plugins register live zod contributions directly or through rlh-typert-loader; the API gateway consumes invocation descriptors and providers, while other runtime consumers query schemas and reflection metadata at their own edges.',
   },
   {
     key: 'typertGateway',
@@ -391,7 +391,7 @@ const SERVICE_ROLES: ServiceRole[] = [
     title: 'Concrete loop driver',
     mode: 'bundle',
     consumers: ['agent-spine-demo'],
-    note: 'The one concrete loop plugin; extension packages depend on dsh-agent events and services, not on this package.',
+    note: 'The one concrete loop plugin; extension packages depend on rlh-agent events and services, not on this package.',
   },
   {
     key: 'goals',
@@ -432,7 +432,7 @@ const SERVICE_ROLES: ServiceRole[] = [
     title: 'Managed bash environment registry',
     mode: 'core',
     consumers: ['tool-bash', 'tool-pwsh'],
-    note: 'Plugins declare effect-scoped DSH_* facts; each shell tool collects one trusted snapshot per execution and its executor rebuilds the namespace.',
+    note: 'Plugins declare effect-scoped RLH_* facts; each shell tool collects one trusted snapshot per execution and its executor rebuilds the namespace.',
   },
   {
     key: 'terminals',
@@ -511,7 +511,7 @@ const SERVICE_ROLES: ServiceRole[] = [
     pkg: 'subagent',
     title: 'Subagent provider and continuation service',
     mode: 'seam',
-    implementations: ['subagent-spawn-in-process', 'subagent-fork-in-process', 'subagent-acp', 'subagent-codex', 'subagent-claude-code', 'subagent-dsh-sdk'],
+    implementations: ['subagent-spawn-in-process', 'subagent-fork-in-process', 'subagent-acp', 'subagent-codex', 'subagent-claude-code', 'subagent-rlh-sdk'],
     consumers: ['tool-subagent', 'tool-subagent-control', 'tool-ralph'],
     note: 'Providers implement transports; the service also owns optional Activation-based continuation orchestration, tool-subagent selects one-shot or continuable delegation, tool-subagent-control delivers follow-ups, and tool-ralph requires one fresh structured-output route.',
   },
@@ -573,7 +573,7 @@ const SERVICE_ROLES: ServiceRole[] = [
     title: 'Client plugin graph host',
     mode: 'core',
     consumers: ['hmr'],
-    note: 'Composes the __DSH_BOOT__ entry graph from an incremental dsh.client scan, serves plugin bundles, and notifies rebuilt/graph-changed subscribers.',
+    note: 'Composes the __RLH_BOOT__ entry graph from an incremental rlh.client scan, serves plugin bundles, and notifies rebuilt/graph-changed subscribers.',
   },
   {
     key: 'workflowEngine',
@@ -798,12 +798,12 @@ function stripYamlScalar(value: string): string {
 
 const APP_EXAMPLES = [
   {
-    id: 'dsh_base',
+    id: 'rlh_base',
     rel: 'apps/cli/composition.md',
-    title: 'DSH Base Composition',
+    title: 'RLH Base Composition',
     label: 'packages/bundle/base/cordis.patch.yml',
     config: 'packages/bundle/base/cordis.patch.yml',
-    summary: 'The dsh-base bundle patch every profile applies first; mode bundles (dsh-web-app, dsh-headless) and the user\'s profile layer patch over it.',
+    summary: 'The rlh-base bundle patch every profile applies first; mode bundles (rlh-web-app, rlh-headless) and the user\'s profile layer patch over it.',
   },
   {
     id: 'headless',
@@ -828,10 +828,10 @@ type AppExample = typeof APP_EXAMPLES[number]
 function renderAppExpansion(lines: string[], appNode: string, pluginName: string): void {
   const agentCore = nodeId('bundle', 'agent_core')
   const jsonl = nodeId('bundle', 'jsonl')
-  lines.push(`  ${appNode} --> ${agentCore}["@deepseek-ai/dsh-agent-spine-demo"]`)
-  lines.push(`  ${appNode} --> ${jsonl}["@deepseek-ai/dsh-session-persistence-jsonl"]`)
-  if (pluginName === '@deepseek-ai/dsh-acp-demo') {
-    lines.push(`  ${appNode} --> ${nodeId('entrypoint', 'acp')}["@deepseek-ai/dsh-acp<br/>automation-only JSON-RPC stdio<br/>fresh sessions created by client"]`)
+  lines.push(`  ${appNode} --> ${agentCore}["@relay-harness/rlh-agent-spine-demo"]`)
+  lines.push(`  ${appNode} --> ${jsonl}["@relay-harness/rlh-session-persistence-jsonl"]`)
+  if (pluginName === '@relay-harness/rlh-acp-demo') {
+    lines.push(`  ${appNode} --> ${nodeId('entrypoint', 'acp')}["@relay-harness/rlh-acp<br/>automation-only JSON-RPC stdio<br/>fresh sessions created by client"]`)
   }
   lines.push(
     `  ${agentCore} --> ${nodeId('spine', 'llm')}["ctx.llm"]`,
@@ -856,7 +856,7 @@ function renderAppComposition(example: AppExample): string {
     const pluginNode = nodeId(`plugin_${example.id}`, plugin.id)
     lines.push(`  ${pluginNode}["${escLabel(plugin.id)}<br/>${escLabel(plugin.name)}"]`)
     lines.push(`  cfg --> ${pluginNode}`)
-    if (plugin.name === '@deepseek-ai/dsh-acp-demo') {
+    if (plugin.name === '@relay-harness/rlh-acp-demo') {
       renderAppExpansion(lines, pluginNode, plugin.name)
     }
   }
@@ -1397,7 +1397,7 @@ function renderLifecycle(): string {
     '',
     'The `assistant/message` event records every successful provider call, including content-less and `max-tokens` finishes. Empty content stays out of derived history, while the durable event keeps usage and `sourceEventSeqs` listing the exact `assistant/chunk` events, including an explicit empty list.',
     '',
-    '`dsh-compaction-basic` uses `agent/pre-step` for pressure before request derivation and `agent/request-error` only for canonical context overflow. Once either trigger qualifies, optional tool-result pruning runs before summary selection. Recovery works between the closed failed step and failed turn close, and opens a fresh retry turn only when pruning or summarization advances the surface replacement generation; otherwise the original request error remains authoritative.',
+    '`rlh-compaction-basic` uses `agent/pre-step` for pressure before request derivation and `agent/request-error` only for canonical context overflow. Once either trigger qualifies, optional tool-result pruning runs before summary selection. Recovery works between the closed failed step and failed turn close, and opens a fresh retry turn only when pruning or summarization advances the surface replacement generation; otherwise the original request error remains authoritative.',
     '',
     'The returned `agent/pre-step` decision is authoritative; listeners wrapping `next()` preserve downstream messages unless replacement is intentional. Steering and injected context pass through the same waterfall after a later claim operation takes their next-step batch.',
     '',
@@ -1493,7 +1493,7 @@ function renderDocs(): GraphDoc[] {
 function renderIndex(docs: GraphDoc[]): string {
   const labels: Record<string, string> = {
     'docs/capability-seams.md': 'capability seams and core services',
-    'apps/cli/composition.md': 'dsh shared base composition',
+    'apps/cli/composition.md': 'rlh shared base composition',
     'examples/headless-agent/composition.md': 'headless-agent app composition',
     'examples/cordis-agent/composition.md': 'cordis-agent app composition',
     'examples/acp-agent/composition.md': 'acp-agent app composition',

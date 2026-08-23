@@ -1,5 +1,5 @@
 {
-  "name": "@deepseek-ai/dsh-tool-pwsh",
+  "name": "@relay-harness/rlh-tool-pwsh",
   "description": "Model-facing pwsh tool over the bash executor seam",
   "version": "0.1.0-rc.8",
   "publishConfig": {
@@ -7,7 +7,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+    "url": "git+https://github.com/jyqj/relay-harness.git",
     "directory": "packages/shell/tool-pwsh"
   },
   "type": "module",
@@ -32,39 +32,39 @@
   ],
   "license": "MIT",
   "peerDependencies": {
-    "@deepseek-ai/dsh-agent": "workspace:^",
-    "@deepseek-ai/dsh-shell": "workspace:^",
-    "@deepseek-ai/dsh-shell-env": "workspace:^",
-    "@deepseek-ai/dsh-invariants": "workspace:^",
-    "@deepseek-ai/dsh-llm": "workspace:^",
-    "@deepseek-ai/dsh-sandbox": "workspace:^",
-    "@deepseek-ai/dsh-sandbox-policy": "workspace:^",
-    "@deepseek-ai/dsh-system-prompt": "workspace:^",
-    "@deepseek-ai/dsh-jobs": "workspace:^",
-    "@deepseek-ai/dsh-tools": "workspace:^",
-    "@deepseek-ai/dsh-user-approval": "workspace:^",
-    "@deepseek-ai/cordis": "workspace:^"
+    "@relay-harness/rlh-agent": "workspace:^",
+    "@relay-harness/rlh-shell": "workspace:^",
+    "@relay-harness/rlh-shell-env": "workspace:^",
+    "@relay-harness/rlh-invariants": "workspace:^",
+    "@relay-harness/rlh-llm": "workspace:^",
+    "@relay-harness/rlh-sandbox": "workspace:^",
+    "@relay-harness/rlh-sandbox-policy": "workspace:^",
+    "@relay-harness/rlh-system-prompt": "workspace:^",
+    "@relay-harness/rlh-jobs": "workspace:^",
+    "@relay-harness/rlh-tools": "workspace:^",
+    "@relay-harness/rlh-user-approval": "workspace:^",
+    "@relay-harness/cordis": "workspace:^"
   },
   "dependencies": {
-    "@deepseek-ai/schemastery": "workspace:^"
+    "@relay-harness/schemastery": "workspace:^"
   },
   "devDependencies": {
-    "@deepseek-ai/dsh-agent": "workspace:^",
-    "@deepseek-ai/dsh-shell": "workspace:^",
-    "@deepseek-ai/dsh-shell-env": "workspace:^",
-    "@deepseek-ai/dsh-invariants": "workspace:^",
-    "@deepseek-ai/dsh-llm": "workspace:^",
-    "@deepseek-ai/dsh-loader-smoke": "workspace:^",
-    "@deepseek-ai/dsh-pwsh-local": "workspace:^",
-    "@deepseek-ai/dsh-sandbox": "workspace:^",
-    "@deepseek-ai/dsh-sandbox-policy": "workspace:^",
-    "@deepseek-ai/dsh-subprocess-local": "workspace:^",
-    "@deepseek-ai/dsh-system-prompt": "workspace:^",
-    "@deepseek-ai/dsh-jobs": "workspace:^",
-    "@deepseek-ai/dsh-jobs-local": "workspace:^",
-    "@deepseek-ai/dsh-tool-jobs": "workspace:^",
-    "@deepseek-ai/dsh-tools": "workspace:^",
-    "@deepseek-ai/dsh-user-approval": "workspace:^",
-    "@deepseek-ai/cordis": "workspace:^"
+    "@relay-harness/rlh-agent": "workspace:^",
+    "@relay-harness/rlh-shell": "workspace:^",
+    "@relay-harness/rlh-shell-env": "workspace:^",
+    "@relay-harness/rlh-invariants": "workspace:^",
+    "@relay-harness/rlh-llm": "workspace:^",
+    "@relay-harness/rlh-loader-smoke": "workspace:^",
+    "@relay-harness/rlh-pwsh-local": "workspace:^",
+    "@relay-harness/rlh-sandbox": "workspace:^",
+    "@relay-harness/rlh-sandbox-policy": "workspace:^",
+    "@relay-harness/rlh-subprocess-local": "workspace:^",
+    "@relay-harness/rlh-system-prompt": "workspace:^",
+    "@relay-harness/rlh-jobs": "workspace:^",
+    "@relay-harness/rlh-jobs-local": "workspace:^",
+    "@relay-harness/rlh-tool-jobs": "workspace:^",
+    "@relay-harness/rlh-tools": "workspace:^",
+    "@relay-harness/rlh-user-approval": "workspace:^",
+    "@relay-harness/cordis": "workspace:^"
   }
 }

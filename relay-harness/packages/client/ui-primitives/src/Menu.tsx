@@ -292,7 +292,7 @@ export function Menu({ open, anchor, items, selectedId, selectedIds, onSelect, o
       ref={listRef}
       className={clsx(css.list, dense && css.denseList, compact && css.compactList, scrollable && css.scrollable, portal && css.portal, side === 'top' && !portal && css.sideTop, align === 'end' && !portal && css.alignEnd)}
       style={portal ? fixedPos ?? MEASURE_STYLE : undefined}
-      data-dsh-motion="popover"
+      data-rlh-motion="popover"
       data-state={state}
       aria-hidden={open ? undefined : true}
       role="menu"

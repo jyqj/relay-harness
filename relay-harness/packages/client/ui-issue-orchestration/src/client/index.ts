@@ -1,15 +1,15 @@
 /** Browser plugin for the issue automation operator surface. */
 
-import type { ClientContext, SessionId } from '@deepseek-ai/dsh-client-runtime/client'
-import type {} from '@deepseek-ai/dsh-client-locale/client'
-import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
-import type { IssueOrchestrationSnapshot } from '@deepseek-ai/dsh-api-remotes/client'
+import type { ClientContext, SessionId } from '@relay-harness/rlh-client-runtime/client'
+import type {} from '@relay-harness/rlh-client-locale/client'
+import type {} from '@relay-harness/rlh-client-ui-layout/client'
+import type { IssueOrchestrationSnapshot } from '@relay-harness/rlh-api-remotes/client'
 import { IssueOrchestrationAction, type IssueOrchestrationActionInjected } from './IssueOrchestrationAction.tsx'
 import { IssueOrchestrationPanel, type IssueOrchestrationPanelInjected } from './IssueOrchestrationPanel.tsx'
 import { IssueDashboardController } from './state.ts'
 import { en, NS, type IssueOrchestrationKey, zh } from './locales.ts'
 
-declare module '@deepseek-ai/dsh-client-ui-slots' {
+declare module '@relay-harness/rlh-client-ui-slots' {
   interface LocaleNamespaceMap {
     issueOrchestration: IssueOrchestrationKey
   }

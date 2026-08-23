@@ -1,8 +1,8 @@
-# `@deepseek-ai/dsh-issue-automation`
+# `@relay-harness/rlh-issue-automation`
 
 English | [中文](README.zh.md)
 
-Opt-in bundle layer applied after `dsh-base` and `dsh-web-app`. It composes the tracker registry and Linear provider, repository workflow file, local issue workspace, native multi-turn Agent runner, durable orchestrator, generated Remote namespace, and browser operator overlay. The layer is not part of the stock Web profile because it requires an explicit workflow path, tracker scope, credential, and isolated workspace policy.
+Opt-in bundle layer applied after `rlh-base` and `rlh-web-app`. It composes the tracker registry and Linear provider, repository workflow file, local issue workspace, native multi-turn Agent runner, durable orchestrator, generated Remote namespace, and browser operator overlay. The layer is not part of the stock Web profile because it requires an explicit workflow path, tracker scope, credential, and isolated workspace policy.
 
 ## Model Experience
 

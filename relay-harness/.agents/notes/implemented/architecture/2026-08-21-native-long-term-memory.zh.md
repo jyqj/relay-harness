@@ -12,11 +12,11 @@ Harness 已持久化精确模型历史、compaction 替换和可搜索 Session e
 
 ## 决策
 
-长期记忆是 `packages/memory` 下的能力 seam：`@deepseek-ai/dsh-memory` 定义 `ctx.longTermMemory` 与 `ctx.memoryExtractionQueue`；`memory-sqlite` 提供规范版本、检索与提取 job；`memory-agent` 在 Agent 轮次消费召回；`memory-extractor-llm` 捕获并提取已完成轮次；`tool-memory` 暴露受治理的模型操作。标准 preset 挂载召回和工具，base bundle 在 `$DSH_HOME/memory/memory.db` 拥有一个规范 Provider，并只对 standard 会话显式开启提取。
+长期记忆是 `packages/memory` 下的能力 seam：`@relay-harness/rlh-memory` 定义 `ctx.longTermMemory` 与 `ctx.memoryExtractionQueue`；`memory-sqlite` 提供规范版本、检索与提取 job；`memory-agent` 在 Agent 轮次消费召回；`memory-extractor-llm` 捕获并提取已完成轮次；`tool-memory` 暴露受治理的模型操作。标准 preset 挂载召回和工具，base bundle 在 `$RLH_HOME/memory/memory.db` 拥有一个规范 Provider，并只对 standard 会话显式开启提取。
 
 SessionEvent 仍是对话证据源。每个记忆版本引用一个 Session id 和更早的 event seq；规范记忆 journal 记录从这些证据作出的决策。当前行和 FTS 是物化视图。Tombstone 会取消召回资格，但不会删除早期版本或证据。
 
-每个操作都绑定工作区、用户和稳定 Agent Scope。Session id 标识证据与 prepared turn，不决定长期可见性。标准 preset 使用会话 cwd、本地操作系统用户和 `deepseek-harness` Agent id，因此匹配会话共享记忆，不同工作区或用户相互隔离。
+每个操作都绑定工作区、用户和稳定 Agent Scope。Session id 标识证据与 prepared turn，不决定长期可见性。标准 preset 使用会话 cwd、本地操作系统用户和 `relay-harness` Agent id，因此匹配会话共享记忆，不同工作区或用户相互隔离。
 
 Kind 为 preference、fact、constraint、decision、procedure 和 lesson。实时任务状态留在记忆之外。状态为 candidate、active、disputed、superseded 或 tombstoned。Active 状态要求用户陈述或成功工具结果证据；Agent proposal 和外部观察无法在 Provider 操作中成为 active。Provider secret 扫描适用于所有 Consumer。
 
@@ -36,7 +36,7 @@ Prepared turn 在最终 `turn/end` 结算。Completed 和 max-token 轮次提交
 
 **采用 ALTM 完整 L0-L4、Graph、Persona 与自治治理栈。** 默认实现拒绝：它的 prepare/commit/abort、Scope、证据、生命周期信号与排名融合值得吸收，但在第一方 seam 出现前强制 Python 服务、Graph 和 Persona pipeline 会增加独立事实和部署复杂度。
 
-**采用 dsh-meow 的七张表与首消息前缀。** 核心契约拒绝：它的实际 Hook 与 transcript 披露启发了 Consumer，但固定表、sidecar seen 状态、首轮全量注入和模型直接修改不提供追加式证据治理。
+**采用 rlh-meow 的七张表与首消息前缀。** 核心契约拒绝：它的实际 Hook 与 transcript 披露启发了 Consumer，但固定表、sidecar seen 状态、首轮全量注入和模型直接修改不提供追加式证据治理。
 
 **只在请求局部状态保存召回。** 拒绝：回放无法重建模型所见内容，违反 Session 日志不变式。
 

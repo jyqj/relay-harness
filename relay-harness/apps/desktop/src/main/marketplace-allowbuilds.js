@@ -1,4 +1,4 @@
-const { isValidAllowBuild, normalizeAllowBuilds } = require('../host/install-dsh-plugin-client');
+const { isValidAllowBuild, normalizeAllowBuilds } = require('../host/install-rlh-plugin-client');
 
 /**
  * Parse package names pnpm asked the user to allow-build.

@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
-import { Button, Modal } from '@deepseek-ai/dsh-client-ui-primitives'
+import { Button, Modal } from '@relay-harness/rlh-client-ui-primitives'
 import type {
   InjectFace, PropsLocale, PropsRenderSlots, PropsRuntime, PropsStore,
-} from '@deepseek-ai/dsh-client-ui-slots'
-import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
+} from '@relay-harness/rlh-client-ui-slots'
+import type {} from '@relay-harness/rlh-client-ui-layout/client'
 import { EmptyState } from './EmptyState.tsx'
 import { NS } from './locales.ts'
 import type { createSurfacesStore, OpenableKind, Surface } from './stores.ts'
@@ -13,7 +13,7 @@ import { SurfaceTabs } from './SurfaceTabs.tsx'
 import css from './SurfacesRoot.module.css'
 
 /** Must match ui-user-terminal; client packages cannot share a value export. */
-const OPEN_SURFACE_EVENT = 'dshd-open-surface'
+const OPEN_SURFACE_EVENT = 'rlhd-open-surface'
 
 /** Layout write and probes injected so cards can open the column and disable Browser. */
 export interface SurfacesRootInjected {

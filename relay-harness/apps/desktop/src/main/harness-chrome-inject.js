@@ -1,6 +1,6 @@
 (() => {
-  const STYLE_ID = 'dshd-shell-integrated-chrome';
-  const CONTROLS_ID = 'dshd-shell-controls';
+  const STYLE_ID = 'rlhd-shell-integrated-chrome';
+  const CONTROLS_ID = 'rlhd-shell-controls';
   const CONTROL_SIZE = 32;
   const CONTROL_GAP = 0;
   const EDGE = 8;
@@ -65,7 +65,7 @@
       document.documentElement.appendChild(style);
     }
     const css = `
-      :root { --dshd-wco-controls: ${windowControlsRight()}px; }
+      :root { --rlhd-wco-controls: ${windowControlsRight()}px; }
       #${CONTROLS_ID} {
         position: fixed;
         top: 0;
@@ -95,7 +95,7 @@
         border: 0;
         border-radius: 8px;
         background: transparent;
-        color: var(--dsw-alias-label-primary);
+        color: var(--rlw-alias-label-primary);
         cursor: pointer;
         pointer-events: auto;
         -webkit-app-region: no-drag;
@@ -107,7 +107,7 @@
         pointer-events: none;
       }
       #${CONTROLS_ID} button:hover {
-        background: var(--dsw-alias-interactive-bg-hover);
+        background: var(--rlw-alias-interactive-bg-hover);
       }
       #${CONTROLS_ID} button[data-act="close"]:hover {
         background: #e81123;
@@ -187,8 +187,8 @@
     ensureStyle();
     const host = ensureControls();
     placeControls(host);
-    document.documentElement.style.setProperty('--dshd-wco-controls', `${windowControlsRight()}px`);
-    applyControlTheme(host, Boolean(window.__dshShellMaximized));
+    document.documentElement.style.setProperty('--rlhd-wco-controls', `${windowControlsRight()}px`);
+    applyControlTheme(host, Boolean(window.__rlhShellMaximized));
     const sample = { bg: opaqueBg(document.body) };
     if (window.shell && typeof window.shell.reportChrome === 'function') {
       window.shell.reportChrome(sample);
@@ -196,8 +196,8 @@
     return sample;
   }
 
-  if (!window.__dshShellChromeBound) {
-    window.__dshShellChromeBound = true;
+  if (!window.__rlhShellChromeBound) {
+    window.__rlhShellChromeBound = true;
     let timer = 0;
     const schedule = () => {
       window.clearTimeout(timer);
@@ -206,7 +206,7 @@
     window.addEventListener('resize', schedule);
     if (window.shell && typeof window.shell.onWindowState === 'function') {
       window.shell.onWindowState((state) => {
-        window.__dshShellMaximized = Boolean(state && state.maximized);
+        window.__rlhShellMaximized = Boolean(state && state.maximized);
         measure();
       });
     }

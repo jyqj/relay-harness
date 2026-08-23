@@ -50,10 +50,10 @@ function loadPreload(argv = ['electron']) {
 const { buildShellApi, shellRole } = loadPreload().exports;
 
 test('shellRole accepts only explicit desktop roles', () => {
-  assert.equal(shellRole(['electron', '--dshd-shell-role=boot']), 'boot');
-  assert.equal(shellRole(['electron', '--dshd-shell-role=harness']), 'harness');
-  assert.equal(shellRole(['electron', '--dshd-shell-role=marketplace']), null);
-  assert.equal(shellRole(['electron', '--dshd-shell-role=admin']), null);
+  assert.equal(shellRole(['electron', '--rlhd-shell-role=boot']), 'boot');
+  assert.equal(shellRole(['electron', '--rlhd-shell-role=harness']), 'harness');
+  assert.equal(shellRole(['electron', '--rlhd-shell-role=marketplace']), null);
+  assert.equal(shellRole(['electron', '--rlhd-shell-role=admin']), null);
   assert.equal(shellRole(['electron']), null);
 });
 
@@ -61,7 +61,7 @@ test('sandbox preload entry is self-contained and exposes the selected role', ()
   const source = fs.readFileSync(path.join(__dirname, 'index.js'), 'utf8');
   assert.doesNotMatch(source, /require\(\s*['"]\.{1,2}[\\/]/);
 
-  const { exposed } = loadPreload(['electron', '--dshd-shell-role=boot']);
+  const { exposed } = loadPreload(['electron', '--rlhd-shell-role=boot']);
   assert.equal(exposed?.name, 'shell');
   assert.equal(typeof exposed?.api.getState, 'function');
   assert.equal(exposed?.api.writeFile, undefined);
@@ -80,7 +80,7 @@ test('boot preload exposes recovery but no workspace mutation', () => {
 test('marketplace preload role is not exposed', () => {
   assert.equal(buildShellApi('marketplace', fakeRenderer()), null);
 
-  const { exposed } = loadPreload(['electron', '--dshd-shell-role=marketplace']);
+  const { exposed } = loadPreload(['electron', '--rlhd-shell-role=marketplace']);
   assert.equal(exposed, null);
 });
 

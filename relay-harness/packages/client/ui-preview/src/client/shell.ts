@@ -34,7 +34,7 @@ export interface PreviewNavState {
 /** Guest `prefers-color-scheme` override. Empty string in CDP is `'system'`. */
 export type PreviewColorScheme = 'system' | 'light' | 'dark'
 
-/** Annotation chrome theme collected from `--dsw-alias-*` tokens. */
+/** Annotation chrome theme collected from `--rlw-alias-*` tokens. */
 export interface PreviewAnnotationTheme {
   colorScheme: 'light' | 'dark'
   radius: string

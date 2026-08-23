@@ -10,18 +10,18 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { Context } from '@deepseek-ai/cordis'
-import type { Agent } from '@deepseek-ai/dsh-agent'
-import AgentLoop from '@deepseek-ai/dsh-agent-loop'
-import { mountAgentLoopTestDependencies } from '@deepseek-ai/dsh-agent-loop-testkit'
-import { createUserMessage } from '@deepseek-ai/dsh-llm'
-import SandboxPolicyService, { effectiveSandboxMode, setSandboxMode } from '@deepseek-ai/dsh-sandbox-policy'
-import { SessionId } from '@deepseek-ai/dsh-session'
-import type { SessionEvent } from '@deepseek-ai/dsh-session'
-import JsonlSessionPersistence from '@deepseek-ai/dsh-session-persistence-jsonl'
-import * as SubagentFork from '@deepseek-ai/dsh-subagent-fork-in-process'
-import * as SubagentSpawn from '@deepseek-ai/dsh-subagent-spawn-in-process'
-import ApprovalService, { effectiveApprovalPolicy } from '@deepseek-ai/dsh-user-approval'
+import { Context } from '@relay-harness/cordis'
+import type { Agent } from '@relay-harness/rlh-agent'
+import AgentLoop from '@relay-harness/rlh-agent-loop'
+import { mountAgentLoopTestDependencies } from '@relay-harness/rlh-agent-loop-testkit'
+import { createUserMessage } from '@relay-harness/rlh-llm'
+import SandboxPolicyService, { effectiveSandboxMode, setSandboxMode } from '@relay-harness/rlh-sandbox-policy'
+import { SessionId } from '@relay-harness/rlh-session'
+import type { SessionEvent } from '@relay-harness/rlh-session'
+import JsonlSessionPersistence from '@relay-harness/rlh-session-persistence-jsonl'
+import * as SubagentFork from '@relay-harness/rlh-subagent-fork-in-process'
+import * as SubagentSpawn from '@relay-harness/rlh-subagent-spawn-in-process'
+import ApprovalService, { effectiveApprovalPolicy } from '@relay-harness/rlh-user-approval'
 import { MockAdapter, textResponse } from '../../../core/agent-loop/tests/mock-adapter.ts'
 import SubagentRuntime from '../src/index.ts'
 
@@ -39,7 +39,7 @@ async function setup(script: Script) {
   const ctx = new Context()
   contexts.push(ctx)
   await mountAgentLoopTestDependencies(ctx)
-  const root = mkdtempSync(join(tmpdir(), 'dsh-continuation-inherit-'))
+  const root = mkdtempSync(join(tmpdir(), 'rlh-continuation-inherit-'))
   roots.push(root)
   await ctx.plugin(JsonlSessionPersistence, { root })
   await ctx.plugin(SandboxPolicyService, { mode: 'workspace-write', workspaceRoot: root })
@@ -104,7 +104,7 @@ describe('continuable policy inheritance', () => {
     const runtimeContext = loaded.events.find(
       (event): event is SessionEvent<'user/message'> => event.type === 'user/message'
         && event.data.source.kind === 'plugin'
-        && event.data.source.plugin === '@deepseek-ai/dsh-system-prompt',
+        && event.data.source.plugin === '@relay-harness/rlh-system-prompt',
     )
     const contextText = runtimeContext?.data.content
       .flatMap(block => block.type === 'text' ? [block.text] : [])

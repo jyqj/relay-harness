@@ -2,7 +2,7 @@
  * Branch picker pure logic: local names from remote refs, hide origin
  * rows that already have a local match, and keep the create-branch row
  * visible while filtering.
- * @module @deepseek-ai/dsh-client-ui-git/client/branches
+ * @module @relay-harness/rlh-client-ui-git/client/branches
  */
 
 /** One ref row the picker lists. */

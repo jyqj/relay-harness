@@ -1,4 +1,4 @@
-# @deepseek-ai/dsh-client-ui-surfaces
+# @relay-harness/rlh-client-ui-surfaces
 
 [English](README.md) | 中文
 

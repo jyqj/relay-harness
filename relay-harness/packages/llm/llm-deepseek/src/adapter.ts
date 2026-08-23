@@ -5,10 +5,10 @@
  * operation and the bearer token through a per-request resolver, so the
  * registering plugin owns validation, layering, and credential policy.
  *
- * @module dsh-llm-deepseek/adapter
+ * @module rlh-llm-deepseek/adapter
  */
 
-import { attributionHeaders, contentHasImage, CONTEXT_WINDOW_EXCEEDED_CODE, isContextWindowExceededError, isQuotaExceededError, LlmAdapter, LlmError, ProviderRequestId, QUOTA_EXCEEDED_CODE, ReasoningEffortId } from '@deepseek-ai/dsh-llm'
+import { attributionHeaders, contentHasImage, CONTEXT_WINDOW_EXCEEDED_CODE, isContextWindowExceededError, isQuotaExceededError, LlmAdapter, LlmError, ProviderRequestId, QUOTA_EXCEEDED_CODE, ReasoningEffortId } from '@relay-harness/rlh-llm'
 import type {
   GenerateOptions,
   LlmModelInfo,
@@ -17,11 +17,11 @@ import type {
   ModelModality,
   ResolvedRetryPolicy,
   StreamChunk,
-} from '@deepseek-ai/dsh-llm'
-import type { AttachmentStore } from '@deepseek-ai/dsh-attachment'
-import type { CredentialRef } from '@deepseek-ai/dsh-credentials'
-import { idleWatchdog, timeoutOf } from '@deepseek-ai/dsh-timeout'
-import type { AnonymousUserId } from '@deepseek-ai/dsh-anonymous-user-id'
+} from '@relay-harness/rlh-llm'
+import type { AttachmentStore } from '@relay-harness/rlh-attachment'
+import type { CredentialRef } from '@relay-harness/rlh-credentials'
+import { idleWatchdog, timeoutOf } from '@relay-harness/rlh-timeout'
+import type { AnonymousUserId } from '@relay-harness/rlh-anonymous-user-id'
 import { serializeRequest, serializeRequestWithImages } from './serialize.ts'
 import type { RequestDefaults } from './serialize.ts'
 import { parseSse } from './sse.ts'
@@ -325,12 +325,12 @@ export class DeepSeekAdapter extends LlmAdapter {
       'content-type': 'application/json',
       'accept': 'text/event-stream',
       ...attributionHeaders(),
-      'x-deepseek-harness-user-id': String(userId),
+      'x-relay-harness-user-id': String(userId),
       ...options.sessionId !== undefined
-        ? { 'x-deepseek-harness-session-id': String(options.sessionId) }
+        ? { 'x-relay-harness-session-id': String(options.sessionId) }
         : {},
       ...options.purpose === 'compaction'
-        ? { 'x-deepseek-harness-compact': '1' }
+        ? { 'x-relay-harness-compact': '1' }
         : {},
     }
 

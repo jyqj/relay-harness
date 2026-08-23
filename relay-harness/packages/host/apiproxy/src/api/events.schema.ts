@@ -5,7 +5,7 @@
  */
 
 import { z } from 'zod'
-import type { AskUserQuestionItem } from '@deepseek-ai/dsh-user-questions/types'
+import type { AskUserQuestionItem } from '@relay-harness/rlh-user-questions/types'
 import type { HostFrame, MuxFrame } from './events.ts'
 import type { Wire } from './rpc.schema.ts'
 import { rpcErrorSchema, rpcIdSchema } from './rpc.schema.ts'
@@ -16,7 +16,7 @@ import {
 import { taskViewSchema } from './jobs.schema.ts'
 import { workspaceIdSchema, workspaceViewSchema } from './workspace.schema.ts'
 
-/** Question fields validated strictly against core dsh-user-questions. */
+/** Question fields validated strictly against core rlh-user-questions. */
 export const askUserQuestionItemSchema = z.object({
   id: z.string(),
   question: z.string(),
@@ -74,7 +74,7 @@ export const hostFrameSchema = z.discriminatedUnion('type', [
     blank: z.boolean(),
     parentSessionId: sessionIdSchema.optional(),
     seedLength: z.number().int().nonnegative().optional(),
-    origin: z.enum(['subagent', 'dshbot']).optional(),
+    origin: z.enum(['subagent', 'rlhbot']).optional(),
     cwd: z.string().optional(),
     agentPreset: z.string().optional(),
   }),

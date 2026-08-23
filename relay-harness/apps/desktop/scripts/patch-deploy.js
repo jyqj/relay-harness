@@ -1,4 +1,4 @@
-// deploy 精简目录迭代补齐：运行 dsh web，解析缺失包并从 workspace/store 补齐，直到能启动
+// deploy 精简目录迭代补齐：运行 rlh web，解析缺失包并从 workspace/store 补齐，直到能启动
 const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
@@ -89,13 +89,13 @@ function copyPackage(name) {
 
 function runWeb() {
   const bin = path.join(deploy, 'lib', 'bin.js');
-  // 用隔离的 DSH_HOME，避免串读用户级配置
-  const home = path.join(deploy, '.dsh-home');
+  // 用隔离的 RLH_HOME，避免串读用户级配置
+  const home = path.join(deploy, '.rlh-home');
   const res = spawnSync(process.execPath, [bin, 'web', '--host', '127.0.0.1', '--port', '3081', '--no-open'], {
     cwd: deploy,
     timeout: 25000,
     encoding: 'utf8',
-    env: { ...process.env, DSH_HOME: home, DSH_WEB_PORT: '3081' },
+    env: { ...process.env, RLH_HOME: home, RLH_WEB_PORT: '3081' },
   });
   const out = (res.stdout || '') + '\n' + (res.stderr || '');
   // ETIMEDOUT = 进程存活到超时被杀（web 持续运行 = 启动成功）
@@ -121,7 +121,7 @@ for (let round = 1; round <= MAX_ROUNDS; round += 1) {
   if (!unique.length) {
     const fatal = out.match(/failed to (load|import|apply)|plugin tree failed/i);
     if (!fatal && alive) {
-      console.log('✅ dsh web 启动成功（进程存活，插件树完整）');
+      console.log('✅ rlh web 启动成功（进程存活，插件树完整）');
       process.exit(0);
     }
     console.log(`⚠ 无新缺失但${fatal ? '有加载错误' : '进程未存活'}，继续迭代：\n${out.split('\n').slice(0, 8).join('\n')}`);

@@ -148,7 +148,7 @@ test('showBoot cancels a plugin boot watch before its first probe', { timeout: 1
     }
 
     executeJavaScript(script) {
-      if (script.includes('data-dshd-boot-status')) {
+      if (script.includes('data-rlhd-boot-status')) {
         this.probes += 1;
       }
       return Promise.resolve({
@@ -249,11 +249,11 @@ test('showBoot cancels a plugin boot watch before its first probe', { timeout: 1
     assert.equal(harnessContents.probes, 0);
     assert.deepEqual(
       getMainWindow().webContents.ownerOptions.webPreferences.additionalArguments,
-      ['--dshd-shell-role=boot'],
+      ['--rlhd-shell-role=boot'],
     );
     assert.deepEqual(
       harnessContents.ownerOptions.webPreferences.additionalArguments,
-      ['--dshd-shell-role=harness'],
+      ['--rlhd-shell-role=harness'],
     );
 
     const sameOrigin = { prevented: false, preventDefault() { this.prevented = true; } };

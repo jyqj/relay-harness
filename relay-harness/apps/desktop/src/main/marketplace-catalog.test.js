@@ -4,37 +4,37 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const DEFAULT_REGISTRY_URL = 'https://awesome-dsh-plugin.com/plugins.json';
+const DEFAULT_REGISTRY_URL = 'https://awesome-rlh-plugin.com/plugins.json';
 const FIXTURE_URL = 'http://127.0.0.1/plugins.json';
 const electronPath = require.resolve('electron');
 const catalogPath = require.resolve('./marketplace-catalog');
 
 const LIVE_REGISTRY = {
-  name: 'awesome-dsh-plugin',
-  url: 'https://awesome-dsh-plugin.com',
+  name: 'awesome-rlh-plugin',
+  url: 'https://awesome-rlh-plugin.com',
   categories: {
     ui: { en: 'UI Enhancements', zh: 'UI 增强' },
     workflow: { en: 'Workflow & Automation', zh: '工作流与自动化' },
   },
   plugins: [
     {
-      name: 'dsh-composer-expand',
+      name: 'rlh-composer-expand',
       owner: '13071301808',
-      url: 'https://github.com/13071301808/dsh-composer-expand',
+      url: 'https://github.com/13071301808/rlh-composer-expand',
       category: 'ui',
       description: {
         en: 'Composer expand/collapse toggle.',
         zh: '输入框展开收起。',
       },
-      npm: 'dsh-composer-expand',
+      npm: 'rlh-composer-expand',
       stars: 4,
-      install: 'dsh plugin --profile web add dsh-composer-expand',
+      install: 'rlh plugin --profile web add rlh-composer-expand',
       added: '2026-08-15',
     },
     {
-      name: 'dsh-status-rotator',
+      name: 'rlh-status-rotator',
       owner: '01Virex',
-      url: 'https://github.com/01Virex/dsh-status-rotator',
+      url: 'https://github.com/01Virex/rlh-status-rotator',
       category: 'ui',
       description: {
         en: 'Rotating status phrases.',
@@ -42,13 +42,13 @@ const LIVE_REGISTRY = {
       },
       npm: null,
       stars: 21,
-      install: 'dsh plugin --profile web add github:01Virex/dsh-status-rotator',
+      install: 'rlh plugin --profile web add github:01Virex/rlh-status-rotator',
       added: '2026-08-14',
     },
     {
-      name: 'dsh-web-ui#dsh-aionui-panel',
+      name: 'rlh-web-ui#rlh-aionui-panel',
       owner: 'DamonKoy',
-      url: 'https://github.com/DamonKoy/dsh-web-ui/tree/main/packages/dsh-aionui-panel',
+      url: 'https://github.com/DamonKoy/rlh-web-ui/tree/main/packages/rlh-aionui-panel',
       category: 'ui',
       description: {
         en: 'AionUi right panel.',
@@ -56,7 +56,7 @@ const LIVE_REGISTRY = {
       },
       npm: null,
       stars: 3,
-      install: 'dsh plugin --profile web add github:DamonKoy/dsh-web-ui#path:/packages/dsh-aionui-panel',
+      install: 'rlh plugin --profile web add github:DamonKoy/rlh-web-ui#path:/packages/rlh-aionui-panel',
       added: '2026-08-17',
     },
     {
@@ -70,21 +70,21 @@ const LIVE_REGISTRY = {
       },
       npm: 'npm-name-not-used',
       stars: 1,
-      install: 'dsh plugin --profile web add github:acme/spec-mismatch',
+      install: 'rlh plugin --profile web add github:acme/spec-mismatch',
       added: '2026-08-18',
     },
     {
-      name: 'dsh-genui',
+      name: 'rlh-genui',
       owner: 'omdsh-dev',
-      url: 'https://github.com/omdsh-dev/dsh-genui',
+      url: 'https://github.com/omdsh-dev/rlh-genui',
       category: 'ui',
       description: {
         en: 'Dropped genui package.',
         zh: '已下架的 genui 包。',
       },
-      npm: '@dsh-external/dsh-genui',
+      npm: '@rlh-external/rlh-genui',
       stars: 196,
-      install: 'dsh plugin --profile web add @dsh-external/dsh-genui',
+      install: 'rlh plugin --profile web add @rlh-external/rlh-genui',
       added: '2026-08-13',
     },
     {
@@ -98,15 +98,15 @@ const LIVE_REGISTRY = {
       },
       npm: null,
       stars: 0,
-      install: 'dsh plugin --profile web add github:example/old-loop',
+      install: 'rlh plugin --profile web add github:example/old-loop',
       added: '2026-07-01',
       deprecated: true,
-      replacement: 'DamonKoy/dsh-web-ui#dsh-aionui-panel',
+      replacement: 'DamonKoy/rlh-web-ui#rlh-aionui-panel',
     },
     {
-      name: 'dsh-whale-desktop-launcher',
+      name: 'rlh-whale-desktop-launcher',
       owner: 'HUITianYi',
-      url: 'https://github.com/HUITianYi/dsh-whale-desktop-launcher',
+      url: 'https://github.com/HUITianYi/rlh-whale-desktop-launcher',
       category: 'ui',
       description: {
         en: 'Release tarball install command.',
@@ -114,13 +114,13 @@ const LIVE_REGISTRY = {
       },
       npm: null,
       stars: 1,
-      install: 'dsh plugin --profile web add "https://github.com/HUITianYi/dsh-whale-desktop-launcher/releases/latest/download/dsh-whale-desktop-launcher-0.1.0.tgz"',
+      install: 'rlh plugin --profile web add "https://github.com/HUITianYi/rlh-whale-desktop-launcher/releases/latest/download/rlh-whale-desktop-launcher-0.1.0.tgz"',
       added: '2026-08-16',
     },
     {
-      name: 'dsh-wallpaper-engine#plugin',
+      name: 'rlh-wallpaper-engine#plugin',
       owner: 'TianYa-DAO',
-      url: 'https://github.com/TianYa-DAO/dsh-wallpaper-engine/tree/main/packages/dsh-wallpaper-engine',
+      url: 'https://github.com/TianYa-DAO/rlh-wallpaper-engine/tree/main/packages/rlh-wallpaper-engine',
       category: 'ui',
       description: {
         en: 'Monorepo plugin with a tarball install command.',
@@ -128,7 +128,7 @@ const LIVE_REGISTRY = {
       },
       npm: null,
       stars: 2,
-      install: 'dsh plugin --profile web add "https://github.com/TianYa-DAO/dsh-wallpaper-engine/releases/download/dsh-0.1.2/dsh-wallpaper-engine-0.1.2.tgz"',
+      install: 'rlh plugin --profile web add "https://github.com/TianYa-DAO/rlh-wallpaper-engine/releases/download/rlh-0.1.2/rlh-wallpaper-engine-0.1.2.tgz"',
       added: '2026-08-16',
     },
   ],
@@ -194,7 +194,7 @@ function assertNotGithubSearch(calls) {
 }
 
 test.before(() => {
-  userData = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-marketplace-catalog-'));
+  userData = fs.mkdtempSync(path.join(os.tmpdir(), 'rlh-marketplace-catalog-'));
   mockElectron(userData);
 });
 
@@ -208,7 +208,7 @@ test.after(() => {
 
 test.afterEach(() => {
   globalThis.fetch = originalFetch;
-  delete process.env.DSHD_MARKETPLACE_REGISTRY_URL;
+  delete process.env.RLHD_MARKETPLACE_REGISTRY_URL;
   delete require.cache[catalogPath];
   try {
     fs.unlinkSync(cacheFile());
@@ -218,7 +218,7 @@ test.afterEach(() => {
 });
 
 test('live catalog maps npm, github, and #path: install tokens from plugins.json', async () => {
-  process.env.DSHD_MARKETPLACE_REGISTRY_URL = FIXTURE_URL;
+  process.env.RLHD_MARKETPLACE_REGISTRY_URL = FIXTURE_URL;
   const calls = mockFetch(async () => jsonResponse(LIVE_REGISTRY));
   const { listMarketplace } = loadCatalog();
   const result = await listMarketplace();
@@ -228,25 +228,25 @@ test('live catalog maps npm, github, and #path: install tokens from plugins.json
   assert.equal(calls[0].url, FIXTURE_URL);
   assertNotGithubSearch(calls);
 
-  const npmPlugin = byId(result.items, '13071301808/dsh-composer-expand');
-  assert.equal(npmPlugin.installSpec, 'dsh-composer-expand');
-  assert.equal(npmPlugin.packageName, 'dsh-composer-expand');
-  assert.equal(npmPlugin.npm, 'dsh-composer-expand');
-  assert.equal(npmPlugin.homepage, 'https://github.com/13071301808/dsh-composer-expand');
+  const npmPlugin = byId(result.items, '13071301808/rlh-composer-expand');
+  assert.equal(npmPlugin.installSpec, 'rlh-composer-expand');
+  assert.equal(npmPlugin.packageName, 'rlh-composer-expand');
+  assert.equal(npmPlugin.npm, 'rlh-composer-expand');
+  assert.equal(npmPlugin.homepage, 'https://github.com/13071301808/rlh-composer-expand');
   assert.equal(npmPlugin.isBundle, true);
   assert.equal(npmPlugin.category, 'ui');
   assert.equal(npmPlugin.added, '2026-08-15');
   assert.deepEqual(npmPlugin.screenshots, []);
 
-  const githubPlugin = byId(result.items, '01Virex/dsh-status-rotator');
-  assert.equal(githubPlugin.installSpec, 'github:01Virex/dsh-status-rotator');
+  const githubPlugin = byId(result.items, '01Virex/rlh-status-rotator');
+  assert.equal(githubPlugin.installSpec, 'github:01Virex/rlh-status-rotator');
   assert.equal(githubPlugin.packageName, '');
   assert.equal(githubPlugin.npm, null);
   assert.equal(githubPlugin.stars, 21);
 
-  const pathPlugin = byId(result.items, 'DamonKoy/dsh-web-ui#dsh-aionui-panel');
-  assert.equal(pathPlugin.installSpec, 'github:DamonKoy/dsh-web-ui#path:/packages/dsh-aionui-panel');
-  assert.equal(pathPlugin.repo, 'dsh-web-ui#dsh-aionui-panel');
+  const pathPlugin = byId(result.items, 'DamonKoy/rlh-web-ui#rlh-aionui-panel');
+  assert.equal(pathPlugin.installSpec, 'github:DamonKoy/rlh-web-ui#path:/packages/rlh-aionui-panel');
+  assert.equal(pathPlugin.repo, 'rlh-web-ui#rlh-aionui-panel');
   assert.equal(pathPlugin.owner, 'DamonKoy');
 
   const mismatch = byId(result.items, 'acme/spec-mismatch');
@@ -254,29 +254,29 @@ test('live catalog maps npm, github, and #path: install tokens from plugins.json
   assert.equal(mismatch.npm, 'npm-name-not-used');
   assert.equal(mismatch.packageName, 'npm-name-not-used');
 
-  const tarball = byId(result.items, 'HUITianYi/dsh-whale-desktop-launcher');
-  assert.equal(tarball.installSpec, 'github:HUITianYi/dsh-whale-desktop-launcher');
+  const tarball = byId(result.items, 'HUITianYi/rlh-whale-desktop-launcher');
+  assert.equal(tarball.installSpec, 'github:HUITianYi/rlh-whale-desktop-launcher');
   assert.equal(tarball.installSpec.includes('.tgz'), false);
 
-  const treeTarball = byId(result.items, 'TianYa-DAO/dsh-wallpaper-engine#plugin');
+  const treeTarball = byId(result.items, 'TianYa-DAO/rlh-wallpaper-engine#plugin');
   assert.equal(
     treeTarball.installSpec,
-    'github:TianYa-DAO/dsh-wallpaper-engine#path:/packages/dsh-wallpaper-engine',
+    'github:TianYa-DAO/rlh-wallpaper-engine#path:/packages/rlh-wallpaper-engine',
   );
 
   const deprecated = byId(result.items, 'example/old-loop');
   assert.equal(deprecated.isBundle, false);
   assert.equal(deprecated.deprecated, true);
-  assert.equal(deprecated.replacement, 'DamonKoy/dsh-web-ui#dsh-aionui-panel');
+  assert.equal(deprecated.replacement, 'DamonKoy/rlh-web-ui#rlh-aionui-panel');
 });
 
 test('locale picks Chinese or English copy and category labels', async () => {
-  process.env.DSHD_MARKETPLACE_REGISTRY_URL = FIXTURE_URL;
+  process.env.RLHD_MARKETPLACE_REGISTRY_URL = FIXTURE_URL;
   const calls = mockFetch(async () => jsonResponse(LIVE_REGISTRY));
   const { listMarketplace } = loadCatalog();
 
   const zh = await listMarketplace({ locale: 'zh' });
-  assert.equal(byId(zh.items, '13071301808/dsh-composer-expand').description, '输入框展开收起。');
+  assert.equal(byId(zh.items, '13071301808/rlh-composer-expand').description, '输入框展开收起。');
   assert.equal(zh.categories[0].id, 'all');
   assert.equal(zh.categories[0].label, '全部');
   assert.equal(zh.categories[0].count, 7);
@@ -289,12 +289,12 @@ test('locale picks Chinese or English copy and category labels', async () => {
   assert.equal(zh.categories.some((row) => row.id === 'learn'), false);
 
   const en = await listMarketplace({ locale: 'en' });
-  assert.equal(byId(en.items, '13071301808/dsh-composer-expand').description, 'Composer expand/collapse toggle.');
+  assert.equal(byId(en.items, '13071301808/rlh-composer-expand').description, 'Composer expand/collapse toggle.');
   assert.equal(en.categories[0].label, 'All');
   assert.equal(en.categories[1].label, 'UI Enhancements');
 
   const zhCn = await listMarketplace({ locale: 'zh-CN' });
-  assert.equal(byId(zhCn.items, '01Virex/dsh-status-rotator').description, '轮换状态文案。');
+  assert.equal(byId(zhCn.items, '01Virex/rlh-status-rotator').description, '轮换状态文案。');
   assert.equal(zhCn.categories[0].label, '全部');
 
   const defaults = await listMarketplace();
@@ -303,7 +303,7 @@ test('locale picks Chinese or English copy and category labels', async () => {
 });
 
 test('fetch errors without cache fall back to the packed snapshot', async () => {
-  process.env.DSHD_MARKETPLACE_REGISTRY_URL = FIXTURE_URL;
+  process.env.RLHD_MARKETPLACE_REGISTRY_URL = FIXTURE_URL;
   mockFetch(async () => {
     throw new Error('offline');
   });
@@ -314,15 +314,15 @@ test('fetch errors without cache fall back to the packed snapshot', async () => 
   assert.equal(result.ok, true);
   assert.ok(result.warning);
   assert.ok(result.items.length > 0);
-  assert.equal(byId(result.items, '01Virex/dsh-status-rotator').installSpec, 'github:01Virex/dsh-status-rotator');
+  assert.equal(byId(result.items, '01Virex/rlh-status-rotator').installSpec, 'github:01Virex/rlh-status-rotator');
   assert.equal(
-    byId(result.items, 'DamonKoy/dsh-web-ui#dsh-aionui-panel').installSpec,
-    'github:DamonKoy/dsh-web-ui#path:/packages/dsh-aionui-panel',
+    byId(result.items, 'DamonKoy/rlh-web-ui#rlh-aionui-panel').installSpec,
+    'github:DamonKoy/rlh-web-ui#path:/packages/rlh-aionui-panel',
   );
 });
 
 test('memory and disk cache beat the snapshot; refresh skips TTL', async () => {
-  process.env.DSHD_MARKETPLACE_REGISTRY_URL = FIXTURE_URL;
+  process.env.RLHD_MARKETPLACE_REGISTRY_URL = FIXTURE_URL;
   const liveOnly = {
     categories: { ui: { en: 'UI', zh: '界面' } },
     plugins: [{
@@ -333,7 +333,7 @@ test('memory and disk cache beat the snapshot; refresh skips TTL', async () => {
       description: { en: 'Live row', zh: '在线行' },
       npm: 'from-live',
       stars: 2,
-      install: 'dsh plugin --profile web add from-live',
+      install: 'rlh plugin --profile web add from-live',
       added: '2026-08-18',
     }],
   };
@@ -362,7 +362,7 @@ test('memory and disk cache beat the snapshot; refresh skips TTL', async () => {
         category: 'ui',
         description: { en: 'Disk row', zh: '磁盘行' },
         npm: null,
-        install: 'dsh plugin --profile web add github:disk/from-disk',
+        install: 'rlh plugin --profile web add github:disk/from-disk',
         added: '2026-08-18',
       }],
     },
@@ -376,7 +376,7 @@ test('memory and disk cache beat the snapshot; refresh skips TTL', async () => {
   assert.ok(fromMemory.warning);
   assert.ok(byId(fromMemory.items, 'mem/from-live'));
   assert.equal(byId(fromMemory.items, 'disk/from-disk'), undefined);
-  assert.equal(byId(fromMemory.items, '01Virex/dsh-status-rotator'), undefined);
+  assert.equal(byId(fromMemory.items, '01Virex/rlh-status-rotator'), undefined);
 
   const diskCatalog = loadCatalog();
   const fromDisk = await diskCatalog.listMarketplace();
@@ -388,12 +388,12 @@ test('memory and disk cache beat the snapshot; refresh skips TTL', async () => {
   const refreshCalls = mockFetch(async () => jsonResponse(LIVE_REGISTRY));
   const refreshed = await diskCatalog.listMarketplace({ refresh: true });
   assert.equal(refreshed.source, 'live');
-  assert.ok(byId(refreshed.items, '13071301808/dsh-composer-expand'));
+  assert.ok(byId(refreshed.items, '13071301808/rlh-composer-expand'));
   assert.equal(refreshCalls.length, 1);
 });
 
 test('empty plugins arrays and non-objects are not live', async () => {
-  process.env.DSHD_MARKETPLACE_REGISTRY_URL = FIXTURE_URL;
+  process.env.RLHD_MARKETPLACE_REGISTRY_URL = FIXTURE_URL;
   const catalog = loadCatalog();
 
   mockFetch(async () => jsonResponse({ plugins: [] }));
@@ -415,18 +415,18 @@ test('empty plugins arrays and non-objects are not live', async () => {
 });
 
 test('listMarketplace hides DROPPED packages; getMarketplacePlugin still returns them', async () => {
-  process.env.DSHD_MARKETPLACE_REGISTRY_URL = FIXTURE_URL;
+  process.env.RLHD_MARKETPLACE_REGISTRY_URL = FIXTURE_URL;
   mockFetch(async () => jsonResponse(LIVE_REGISTRY));
   const { listMarketplace, getMarketplacePlugin } = loadCatalog();
   const listed = await listMarketplace();
 
-  assert.equal(byId(listed.items, 'omdsh-dev/dsh-genui'), undefined);
-  assert.equal(listed.items.some((item) => item.packageName === '@dsh-external/dsh-genui'), false);
+  assert.equal(byId(listed.items, 'omdsh-dev/rlh-genui'), undefined);
+  assert.equal(listed.items.some((item) => item.packageName === '@rlh-external/rlh-genui'), false);
 
-  const dropped = getMarketplacePlugin('omdsh-dev/dsh-genui');
-  assert.equal(dropped.id, 'omdsh-dev/dsh-genui');
-  assert.equal(dropped.packageName, '@dsh-external/dsh-genui');
-  assert.equal(dropped.npm, '@dsh-external/dsh-genui');
+  const dropped = getMarketplacePlugin('omdsh-dev/rlh-genui');
+  assert.equal(dropped.id, 'omdsh-dev/rlh-genui');
+  assert.equal(dropped.packageName, '@rlh-external/rlh-genui');
+  assert.equal(dropped.npm, '@rlh-external/rlh-genui');
   assert.equal(dropped.description, '已下架的 genui 包。');
 
   assert.equal(getMarketplacePlugin('missing/plugin'), null);
@@ -442,7 +442,7 @@ test('fetch uses the curated registry URL, not GitHub topic search', async () =>
 });
 
 test('CACHE_VERSION 2 disk files are ignored', async () => {
-  process.env.DSHD_MARKETPLACE_REGISTRY_URL = FIXTURE_URL;
+  process.env.RLHD_MARKETPLACE_REGISTRY_URL = FIXTURE_URL;
   fs.writeFileSync(cacheFile(), JSON.stringify({
     version: 2,
     fetchedAt: Date.now(),
@@ -464,7 +464,7 @@ test('CACHE_VERSION 2 disk files are ignored', async () => {
 });
 
 test('a still-fresh cache does not claim the online directory failed', async () => {
-  process.env.DSHD_MARKETPLACE_REGISTRY_URL = FIXTURE_URL;
+  process.env.RLHD_MARKETPLACE_REGISTRY_URL = FIXTURE_URL;
   mockFetch(async () => jsonResponse(LIVE_REGISTRY));
   const { listMarketplace } = loadCatalog();
   await listMarketplace();
@@ -475,7 +475,7 @@ test('a still-fresh cache does not claim the online directory failed', async () 
 });
 
 test('disk cache older than one hour is fetched again', async () => {
-  process.env.DSHD_MARKETPLACE_REGISTRY_URL = FIXTURE_URL;
+  process.env.RLHD_MARKETPLACE_REGISTRY_URL = FIXTURE_URL;
   fs.writeFileSync(cacheFile(), JSON.stringify({
     version: 3,
     fetchedAt: Date.now() - (60 * 60 * 1000) - 1,
@@ -488,7 +488,7 @@ test('disk cache older than one hour is fetched again', async () => {
         category: 'ui',
         description: { en: 'Stale', zh: '过期' },
         npm: 'stale-disk',
-        install: 'dsh plugin --profile web add stale-disk',
+        install: 'rlh plugin --profile web add stale-disk',
         added: '2026-08-01',
       }],
     },
@@ -497,13 +497,13 @@ test('disk cache older than one hour is fetched again', async () => {
   const { listMarketplace } = loadCatalog();
   const result = await listMarketplace();
   assert.equal(result.source, 'live');
-  assert.ok(byId(result.items, '13071301808/dsh-composer-expand'));
+  assert.ok(byId(result.items, '13071301808/rlh-composer-expand'));
   assert.equal(byId(result.items, 'disk/stale-disk'), undefined);
   assert.equal(calls.length, 1);
 });
 
 test('a hung registry fetch aborts after 4s and uses the snapshot', async (t) => {
-  process.env.DSHD_MARKETPLACE_REGISTRY_URL = FIXTURE_URL;
+  process.env.RLHD_MARKETPLACE_REGISTRY_URL = FIXTURE_URL;
   t.mock.timers.enable({ apis: ['setTimeout'] });
   mockFetch(async (_url, options) => new Promise((_, reject) => {
     options.signal.addEventListener('abort', () => {
@@ -521,10 +521,10 @@ test('a hung registry fetch aborts after 4s and uses the snapshot', async (t) =>
 });
 
 test('last-token github: fallback is empty when the spec is not an allow-listed marketplace spec', async () => {
-  process.env.DSHD_MARKETPLACE_REGISTRY_URL = FIXTURE_URL;
+  process.env.RLHD_MARKETPLACE_REGISTRY_URL = FIXTURE_URL;
   mockFetch(async () => jsonResponse({
-    name: 'awesome-dsh-plugin',
-    url: 'https://awesome-dsh-plugin.com',
+    name: 'awesome-rlh-plugin',
+    url: 'https://awesome-rlh-plugin.com',
     categories: { ui: { en: 'UI', zh: 'UI' } },
     plugins: [{
       name: 'bad-path',
@@ -534,7 +534,7 @@ test('last-token github: fallback is empty when the spec is not an allow-listed 
       description: { en: 'x', zh: 'x' },
       npm: null,
       stars: 0,
-      install: 'dsh plugin --profile web add github:evil/bad-path#path:/../etc',
+      install: 'rlh plugin --profile web add github:evil/bad-path#path:/../etc',
       added: '2026-08-18',
     }, {
       name: 'other-repo',
@@ -544,7 +544,7 @@ test('last-token github: fallback is empty when the spec is not an allow-listed 
       description: { en: 'x', zh: 'x' },
       npm: null,
       stars: 0,
-      install: 'dsh plugin --profile web add github:evil/other-repo',
+      install: 'rlh plugin --profile web add github:evil/other-repo',
       added: '2026-08-18',
     }],
   }));
@@ -555,10 +555,10 @@ test('last-token github: fallback is empty when the spec is not an allow-listed 
 });
 
 test('last-token npm fallback is empty when the row has no registry npm field', async () => {
-  process.env.DSHD_MARKETPLACE_REGISTRY_URL = FIXTURE_URL;
+  process.env.RLHD_MARKETPLACE_REGISTRY_URL = FIXTURE_URL;
   mockFetch(async () => jsonResponse({
-    name: 'awesome-dsh-plugin',
-    url: 'https://awesome-dsh-plugin.com',
+    name: 'awesome-rlh-plugin',
+    url: 'https://awesome-rlh-plugin.com',
     categories: { ui: { en: 'UI', zh: 'UI' } },
     plugins: [{
       name: 'stray-npm',
@@ -568,7 +568,7 @@ test('last-token npm fallback is empty when the row has no registry npm field', 
       description: { en: 'x', zh: 'x' },
       npm: null,
       stars: 0,
-      install: 'dsh plugin --profile web add lodash',
+      install: 'rlh plugin --profile web add lodash',
       added: '2026-08-18',
     }],
   }));

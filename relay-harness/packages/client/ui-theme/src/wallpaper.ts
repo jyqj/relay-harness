@@ -21,16 +21,16 @@ export const MAX_WALLPAPER_FILE_BYTES = 12 * 1024 * 1024
 export const MAX_WALLPAPER_EDGE = 1920
 
 /** Fixed layer that paints the wallpaper behind `#root`. */
-export const WALLPAPER_LAYER_ID = 'dsh-wallpaper'
+export const WALLPAPER_LAYER_ID = 'rlh-wallpaper'
 
 /** Inner canvas that carries the cover-cropped (optionally pixelated) bitmap plus blur. */
-export const WALLPAPER_INNER_ID = 'dsh-wallpaper-inner'
+export const WALLPAPER_INNER_ID = 'rlh-wallpaper-inner'
 
 /** Bleed (px per side) around the viewport so blur has no bright edge halo. */
 export const WALLPAPER_BLEED = 48
 
 /** Root attribute flipped on while a wallpaper is live. */
-export const WALLPAPER_ATTR = 'data-dsh-wallpaper'
+export const WALLPAPER_ATTR = 'data-rlh-wallpaper'
 
 /**
  * Canvas fill percent never exceeds this while a wallpaper is mixed, so glass
@@ -299,7 +299,7 @@ export function wallpaperCanvasSolidity(solidity: number): number {
  * glass 100% fully opaques the rail, and raised surfaces keep the full
  * glass solidity. A 100% mix stores the solid color, not a color-mix.
  * The terminal pane stays the opaque canvas fallback (or a family's solid
- * `--dsw-alias-bg-base`) so TUI SGR does not sit on wallpaper glass.
+ * `--rlw-alias-bg-base`) so TUI SGR does not sit on wallpaper glass.
  * @param tokens - current alias tokens (may be empty for DeepSeek).
  * @param mode - resolved half, picks the sheet fallbacks.
  * @param solidity - percent of the solid fill kept (the user's glass opacity).
@@ -311,16 +311,16 @@ export function mixWallpaperSurfaces(tokens: ThemeTokens, mode: 'light' | 'dark'
   const canvas = wallpaperCanvasSolidity(kept)
   const sidebar = Math.round((wallpaperCanvasSolidityUncapped(kept) + kept) / 2)
   const base = mode === 'dark'
-    ? 'var(--dsw-static-neutral-bluish-950)'
-    : 'var(--dsw-static-neutral-bluish-00)'
+    ? 'var(--rlw-static-neutral-bluish-950)'
+    : 'var(--rlw-static-neutral-bluish-00)'
   const raised = mode === 'dark'
-    ? 'var(--dsw-static-neutral-bluish-875)'
-    : 'var(--dsw-static-neutral-bluish-00)'
+    ? 'var(--rlw-static-neutral-bluish-875)'
+    : 'var(--rlw-static-neutral-bluish-00)'
   const surfaces: Record<string, { fallback: string; percent: number }> = {
-    '--dsw-alias-bg-base': { fallback: base, percent: canvas },
-    '--dsw-alias-bg-layer-1': { fallback: raised, percent: kept },
-    '--dsw-alias-bg-layer-2': { fallback: raised, percent: kept },
-    '--dsw-specific-sidebar-fill': { fallback: raised, percent: sidebar },
+    '--rlw-alias-bg-base': { fallback: base, percent: canvas },
+    '--rlw-alias-bg-layer-1': { fallback: raised, percent: kept },
+    '--rlw-alias-bg-layer-2': { fallback: raised, percent: kept },
+    '--rlw-specific-sidebar-fill': { fallback: raised, percent: sidebar },
   }
   for (const [name, { fallback, percent }] of Object.entries(surfaces)) {
     const current = next[name]
@@ -329,8 +329,8 @@ export function mixWallpaperSurfaces(tokens: ThemeTokens, mode: 'light' | 'dark'
       ? solid
       : `color-mix(in srgb, ${solid} ${percent}%, transparent)`
   }
-  const pane = tokens['--dsw-alias-bg-base']
-  next['--dsw-alias-terminal-pane'] =
+  const pane = tokens['--rlw-alias-bg-base']
+  next['--rlw-alias-terminal-pane'] =
     pane !== undefined && !pane.includes('color-mix') ? pane : base
   return next
 }
@@ -427,7 +427,7 @@ export function applyWallpaperLayer(extras: {
     decodedFor = ''
     root.removeAttribute(WALLPAPER_ATTR)
     document.getElementById(WALLPAPER_LAYER_ID)?.remove()
-    root.style.removeProperty('--dsh-wallpaper-blur')
+    root.style.removeProperty('--rlh-wallpaper-blur')
     if (resizeBound && typeof window !== 'undefined') {
       window.removeEventListener('resize', redrawApplied)
       resizeBound = false
@@ -456,7 +456,7 @@ export function applyWallpaperLayer(extras: {
     resizeBound = true
   }
   if (applied === null || applied.blurPx !== blurPx) {
-    root.style.setProperty('--dsh-wallpaper-blur', `${blurPx}px`)
+    root.style.setProperty('--rlh-wallpaper-blur', `${blurPx}px`)
   }
   const imageChanged = applied === null || applied.image !== image
   const factorChanged = applied === null || applied.factor !== factor

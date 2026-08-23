@@ -6,8 +6,8 @@ import { composerResizeHeight, composerResizeMaxWidth, composerResizeWidth } fro
 import type { ComposerResizeWidthEdge } from './composer-resize.ts'
 import css from './ComposerResizeHandles.module.css'
 
-const HEIGHT_VAR = '--dsh-composer-resized-height'
-const WIDTH_VAR = '--dsh-composer-resized-width'
+const HEIGHT_VAR = '--rlh-composer-resized-height'
+const WIDTH_VAR = '--rlh-composer-resized-width'
 
 function seatOf(node: HTMLElement | null): HTMLElement | null {
   return node?.closest('[data-composer-seat]') ?? null

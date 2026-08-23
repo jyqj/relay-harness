@@ -23,7 +23,7 @@
   border: 0;
   border-radius: 999px;
   background: transparent;
-  color: var(--dsw-alias-label-primary);
+  color: var(--rlw-alias-label-primary);
   cursor: pointer;
   pointer-events: auto;
   -webkit-app-region: no-drag;
@@ -37,7 +37,7 @@
 }
 
 .window-controls button:hover {
-  background: var(--dsw-alias-interactive-bg-hover);
+  background: var(--rlw-alias-interactive-bg-hover);
 }
 
 .window-controls button[data-act="close"]:hover {

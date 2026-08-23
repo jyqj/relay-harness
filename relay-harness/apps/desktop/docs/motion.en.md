@@ -2,23 +2,23 @@
 
 [中文](motion.md) · English
 
-This reference records the product motion contract and which surfaces use which recipe. Visual rules live in the [design language](design-language.en.md). Authoritative duration, easing, and distance values live in official [`base.css`](../vendor/deepseek-harness/packages/client/ui-theme/src/styles/base.css) and [`motion.css`](../vendor/deepseek-harness/packages/client/ui-theme/src/styles/motion.css). Engineering rules: [`web-styling.md`](../vendor/deepseek-harness/docs/web-styling.md). Rationale: [the motion-system Agent Note](../vendor/deepseek-harness/.agents/notes/implemented/architecture/2026-08-14-web-motion-presence-and-recipes.md).
+This reference records the product motion contract and which surfaces use which recipe. Visual rules live in the [design language](design-language.en.md). Authoritative duration, easing, and distance values live in official [`base.css`](../vendor/relay-harness/packages/client/ui-theme/src/styles/base.css) and [`motion.css`](../vendor/relay-harness/packages/client/ui-theme/src/styles/motion.css). Engineering rules: [`web-styling.md`](../vendor/relay-harness/docs/web-styling.md). Rationale: [the motion-system Agent Note](../vendor/relay-harness/.agents/notes/implemented/architecture/2026-08-14-web-motion-presence-and-recipes.md).
 
-The inventory is grouped by recipe and product surface. It does not list every Tooltip or button hover. Verify against source: search `data-dsh-motion`, `usePresence`, and `FlipText`.
+The inventory is grouped by recipe and product surface. It does not list every Tooltip or button hover. Verify against source: search `data-rlh-motion`, `usePresence`, and `FlipText`.
 
 ## Scope
 
 Any change to visible enter/exit, label replacement, or a persistent indicator is in scope, including:
 
-- Official Web UI: `vendor/deepseek-harness/packages/client/**`, `apps/web/**`
+- Official Web UI: `vendor/relay-harness/packages/client/**`, `apps/web/**`
 - Desktop chrome: `src/renderer/**`, `src/main/closing-overlay.js`
 
 ## Rules
 
 1. **Animate only `opacity` and `transform`.** Do not animate `backdrop-filter` or large-panel width/height, and do not add an animation library.
-2. **New dialogs, menus, and in-place swaps use a recipe.** A surface sets `data-dsh-motion` and `data-state` from `usePresence`. It does not invent another duration or easing.
+2. **New dialogs, menus, and in-place swaps use a recipe.** A surface sets `data-rlh-motion` and `data-state` from `usePresence`. It does not invent another duration or easing.
 3. **A trigger label that changes after a pick uses `FlipText`.** Permission, model, and effort chips flip when the chosen value replaces the previous string.
-4. **`prefers-reduced-motion: reduce` zeros `--ds-transition-duration*` and `--ds-motion-duration-*`.** New motion must consume those tokens so it collapses with the rest.
+4. **`prefers-reduced-motion: reduce` zeros `--rl-transition-duration*` and `--rl-motion-duration-*`.** New motion must consume those tokens so it collapses with the rest.
 5. **Reuse a primitive first.** `Modal`, `Menu`, `Tooltip`, `HoverCard`, `DisclosureRow`, and `OnboardingSurface` already carry Presence and a recipe.
 
 ## Tokens
@@ -27,18 +27,18 @@ Current values come from `ui-theme` `base.css`. Change durations in the theme sh
 
 | Token | Current value | Use |
 | --- | --- | --- |
-| `--ds-ease-in-out` | `cubic-bezier(0.4, 0, 0.2, 1)` | Shared easing |
-| `--ds-transition-duration-fast` | 100ms | Fast transition; overlay exit, swap / fade |
-| `--ds-transition-duration` | 200ms | Default transition; overlay enter |
-| `--ds-transition-duration-slow` | 300ms | Column collapse, Hero micro-motion |
-| `--ds-motion-duration-overlay` | 200ms | Overlay enter |
-| `--ds-motion-duration-overlay-out` | 100ms | Overlay exit |
-| `--ds-motion-duration-popover` | 160ms | Menus / floating cards |
-| `--ds-motion-duration-swap` | 100ms | Fade, swap |
-| `--ds-motion-duration-flip` | 400ms | `FlipText` |
-| `--ds-motion-distance-overlay` | 8px | Overlay panel rise |
-| `--ds-motion-distance-popover` | 4px | Popover rise |
-| `--ds-motion-scale-overlay` | 0.96 | Overlay panel scale |
+| `--rl-ease-in-out` | `cubic-bezier(0.4, 0, 0.2, 1)` | Shared easing |
+| `--rl-transition-duration-fast` | 100ms | Fast transition; overlay exit, swap / fade |
+| `--rl-transition-duration` | 200ms | Default transition; overlay enter |
+| `--rl-transition-duration-slow` | 300ms | Column collapse, Hero micro-motion |
+| `--rl-motion-duration-overlay` | 200ms | Overlay enter |
+| `--rl-motion-duration-overlay-out` | 100ms | Overlay exit |
+| `--rl-motion-duration-popover` | 160ms | Menus / floating cards |
+| `--rl-motion-duration-swap` | 100ms | Fade, swap |
+| `--rl-motion-duration-flip` | 400ms | `FlipText` |
+| `--rl-motion-distance-overlay` | 8px | Overlay panel rise |
+| `--rl-motion-distance-popover` | 4px | Popover rise |
+| `--rl-motion-scale-overlay` | 0.96 | Overlay panel scale |
 
 `usePresence` holds the tree for 200ms on exit (`PRESENCE_EXIT_MS`), matching the overlay enter token. `FlipText` holds for 400ms (`FLIP_TEXT_MS`), independent of Presence.
 
@@ -102,13 +102,13 @@ The composer’s four floats share this timing: plus slash `MenuView`, permissio
 | --- | --- |
 | Every Tooltip | `Tooltip` (sidebar, title-bar panel toggles, composer, queue, message actions, terminal, Git hints, …) |
 | Disclosure body | `DisclosureRow`: reasoning, tool rows, command cards, context injection, Diff files, workflow status |
-| Sidebar workspace session run | `GroupSessionRun`: `fade` enter/exit; inner `0fr` / `1fr` collapses on `--ds-transition-duration`; the caret rotates on the same token |
+| Sidebar workspace session run | `GroupSessionRun`: `fade` enter/exit; inner `0fr` / `1fr` collapses on `--rl-transition-duration`; the caret rotates on the same token |
 
 ### swap
 
 | Surface | Implementation |
 | --- | --- |
-| Settings section change | `SettingsRoot` wraps the pane in `data-dsh-motion="swap"` with `key={active}` |
+| Settings section change | `SettingsRoot` wraps the pane in `data-rlh-motion="swap"` with `key={active}` |
 
 ### flip
 
@@ -119,14 +119,14 @@ The composer’s four floats share this timing: plus slash `MenuView`, permissio
 
 ### Same tokens, not a recipe
 
-These transitions consume `--ds-transition-*` / `--ds-ease-in-out` without `data-dsh-motion`. Do not invent a duration for them.
+These transitions consume `--rl-transition-*` / `--rl-ease-in-out` without `data-rlh-motion`. Do not invent a duration for them.
 
 | Surface | Behavior |
 | --- | --- |
 | Sidebar / column collapse | `AppFrame` transitions `grid-template-columns` / `rows`, handle `left`, and icon offset; pauses while dragging; stops under reduced motion |
-| Switch | `Switch` thumb `transform` over `--ds-transition-duration-fast` |
+| Switch | `Switch` thumb `transform` over `--rl-transition-duration-fast` |
 | Button, field, and row hover | Interactive color tokens, not an enter/exit recipe |
-| Empty-session Hero fish | On hover when motion is not reduced, a `--ds-transition-duration-slow` nudge |
+| Empty-session Hero fish | On hover when motion is not reduced, a `--rl-transition-duration-slow` nudge |
 
 ### Exceptions
 
@@ -136,14 +136,14 @@ These do not use a `motion.css` recipe. Do not spread them onto new Web UI overl
 | --- | --- | --- |
 | Toast | 160ms slide-in, 3s hold, 1s fade; the component times its own unmount | `Toast.tsx` / `Toast.module.css`. Composer attachment cap, model-select failure, … |
 | Desktop boot page | Mark / copy `rise` (8px + fade, staggered 0 / 80 / 120 / 160ms); stamp `pulse` 1.2s; reticle `spin` 1.05s; log lines `fade`. Durations use official tokens; reduced motion stops all of them | [`boot.css`](../src/renderer/boot.css). The instrument look must not spread; see [Desktop boot page](design-language.en.md#desktop-boot-page) |
-| Closing overlay | Local 0.85s infinite spin; does not read `--ds-motion-*` and has no reduced-motion branch | [`closing-overlay.js`](../src/main/closing-overlay.js) |
-| dshbot robot avatar | Thinking morphs the same-command-count path as slime (squash, bulge, stretch, lean); sclera blink and pupil use `transform` only; uploaded images pulse with `scale`. Easing is `--ds-ease-in-out`; reduced motion freezes all of it | [`vendor/dshbot/client/client.js`](../vendor/dshbot/client/client.js). Do not spread onto official Web UI overlays |
+| Closing overlay | Local 0.85s infinite spin; does not read `--rl-motion-*` and has no reduced-motion branch | [`closing-overlay.js`](../src/main/closing-overlay.js) |
+| rlhbot robot avatar | Thinking morphs the same-command-count path as slime (squash, bulge, stretch, lean); sclera blink and pupil use `transform` only; uploaded images pulse with `scale`. Easing is `--rl-ease-in-out`; reduced motion freezes all of it | [`vendor/rlhbot/client/client.js`](../vendor/rlhbot/client/client.js). Do not spread onto official Web UI overlays |
 
 ## Adding motion
 
 | Need | Use |
 | --- | --- |
-| Full-surface dialog or masked panel | `Modal`, or `usePresence` + `data-dsh-motion="overlay"` (`mask` / `panel`) |
+| Full-surface dialog or masked panel | `Modal`, or `usePresence` + `data-rlh-motion="overlay"` (`mask` / `panel`) |
 | Anchored menu or card | `Menu` / `HoverCard`, or `usePresence` + `popover` |
 | Hint already placed with transform | `Tooltip`, or `fade` |
 | Replace one in-place block | `swap` on the keyed node |
@@ -155,8 +155,8 @@ The tree stays mounted for 200ms after logical close. Tests treat `aria-hidden` 
 
 ## Source
 
-- Recipes: [`motion.css`](../vendor/deepseek-harness/packages/client/ui-theme/src/styles/motion.css)
-- Tokens: [`base.css`](../vendor/deepseek-harness/packages/client/ui-theme/src/styles/base.css)
-- Presence: [`usePresence.ts`](../vendor/deepseek-harness/packages/client/ui-primitives/src/usePresence.ts)
-- Flip labels: [`FlipText.tsx`](../vendor/deepseek-harness/packages/client/ui-primitives/src/FlipText.tsx)
-- Desktop boot tokens: [`boot-tokens.css`](../src/renderer/boot-tokens.css), [`dsh-webui-tokens.css`](../src/shared/dsh-webui-tokens.css)
+- Recipes: [`motion.css`](../vendor/relay-harness/packages/client/ui-theme/src/styles/motion.css)
+- Tokens: [`base.css`](../vendor/relay-harness/packages/client/ui-theme/src/styles/base.css)
+- Presence: [`usePresence.ts`](../vendor/relay-harness/packages/client/ui-primitives/src/usePresence.ts)
+- Flip labels: [`FlipText.tsx`](../vendor/relay-harness/packages/client/ui-primitives/src/FlipText.tsx)
+- Desktop boot tokens: [`boot-tokens.css`](../src/renderer/boot-tokens.css), [`rlh-webui-tokens.css`](../src/shared/rlh-webui-tokens.css)

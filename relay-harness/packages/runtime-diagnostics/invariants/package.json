@@ -1,13 +1,13 @@
 {
-  "name": "@deepseek-ai/dsh-invariants",
-  "description": "Registry service for package-owned DeepSeek Harness runtime invariants",
+  "name": "@relay-harness/rlh-invariants",
+  "description": "Registry service for package-owned Relay Harness runtime invariants",
   "version": "0.1.0-rc.8",
   "publishConfig": {
     "access": "public"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+    "url": "git+https://github.com/jyqj/relay-harness.git",
     "directory": "packages/runtime-diagnostics/invariants"
   },
   "type": "module",
@@ -32,12 +32,12 @@
   ],
   "license": "MIT",
   "peerDependencies": {
-    "@deepseek-ai/cordis": "workspace:^"
+    "@relay-harness/cordis": "workspace:^"
   },
   "dependencies": {
-    "@deepseek-ai/schemastery": "workspace:^"
+    "@relay-harness/schemastery": "workspace:^"
   },
   "devDependencies": {
-    "@deepseek-ai/cordis": "workspace:^"
+    "@relay-harness/cordis": "workspace:^"
   }
 }

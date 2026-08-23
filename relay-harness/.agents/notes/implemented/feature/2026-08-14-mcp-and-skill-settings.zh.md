@@ -6,25 +6,25 @@ Status: implemented
 
 ## Problem
 
-Harness 已经能通过 `dsh-mcp-client` 连接 MCP 服务器、通过 `dsh-skill-filesystem` 发现技能，但两份目录都没有 Settings 管理页。用户只能手改 `cordis.patch.yml` 或技能文件。桌面端也不该另做一份持久化：这些目录属于 `$DSH_HOME`，CLI 与 Web 必须共用。
+Harness 已经能通过 `rlh-mcp-client` 连接 MCP 服务器、通过 `rlh-skill-filesystem` 发现技能，但两份目录都没有 Settings 管理页。用户只能手改 `cordis.patch.yml` 或技能文件。桌面端也不该另做一份持久化：这些目录属于 `$RLH_HOME`，CLI 与 Web 必须共用。
 
 ## Decision
 
 Settings 增加两个栏目：`skills`（order 16）和 `mcp`（order 18）。两者都不写用户的 `cordis.patch.yml`。桌面端只通过已有的 `openHarnessSettings('mcp'|'skills')` 菜单跳转。
 
-MCP 持久化是 `$DSH_HOME/mcp-servers.yaml`，由挂在 base bundle 上的 `@deepseek-ai/dsh-mcp-servers-file` 拥有。文件插件为每条已启用记录挂载一个 `dsh-mcp-client` 子实例，并在写入或监视时 reconcile。`@deepseek-ai/dsh-host-mcp-servers` 发布 Typert Remote `mcpServers`（`list` / `upsert` / `delete` / `setEnabled` / `retry` / `authorize`）。`list` 合并受管行与 Loader 里存活的 mcp-client 实例。组成配置行只读（`origin: 'composition'`）。`retry` 重新挂载一个受管子实例，不改文件。`authorize` 在系统浏览器里跑 MCP HTTP OAuth，把 `Authorization` 写进该受管记录并重新挂载，使子实例的工具对对话可用。看起来像密钥的 env / header 在 list 时掩码，受管行与组成配置行一视同仁；upsert 里空字符串或 `********` 的值保留已存密钥，而省略整个 env / headers 映射则将其清空。
+MCP 持久化是 `$RLH_HOME/mcp-servers.yaml`，由挂在 base bundle 上的 `@relay-harness/rlh-mcp-servers-file` 拥有。文件插件为每条已启用记录挂载一个 `rlh-mcp-client` 子实例，并在写入或监视时 reconcile。`@relay-harness/rlh-host-mcp-servers` 发布 Typert Remote `mcpServers`（`list` / `upsert` / `delete` / `setEnabled` / `retry` / `authorize`）。`list` 合并受管行与 Loader 里存活的 mcp-client 实例。组成配置行只读（`origin: 'composition'`）。`retry` 重新挂载一个受管子实例，不改文件。`authorize` 在系统浏览器里跑 MCP HTTP OAuth，把 `Authorization` 写进该受管记录并重新挂载，使子实例的工具对对话可用。看起来像密钥的 env / header 在 list 时掩码，受管行与组成配置行一视同仁；upsert 里空字符串或 `********` 的值保留已存密钥，而省略整个 env / headers 映射则将其清空。
 
-技能启停仍写已有 SKILL.md frontmatter：`disable-model-invocation` 与 `user-invocable`。`@deepseek-ai/dsh-host-skill-inventory` 发布 Typert Remote `skillInventory`（`list` / `get` / `create` / `update` / `delete` / `setInvocation`）。每个方法都接受可选的 `cwd` 与 `sessionId`；提供 `sessionId` 时只读解析该精确存活 Agent 并读取其分层 `ctx.skills` 视图，不会创建或恢复 Agent，缺少存活 Agent 时抛出类型化的 `session-not-found`。`list` 不过滤 composer 的 `isUserInvocable`。可写根是 `user-dsh`、`user-agents`，以及当前 session 提供 `cwd` 时的 `project-dsh` / `project-agents`。项目技能创建写入 `<project-root>/.dsh/skills/...`，其中 `project-root` 是 `cwd` 最近的 `.git` 祖先。bundled、runtime 与 custom skill 只读。创建会明确选择用户根或当前项目根，并写入调用方给出的初始 invocation 开关。更新正文或只改调用开关都会保留 Settings 不拥有的 frontmatter 字段；删除会移除整个技能目录。目录会跟随当前 session 的 `sessionId`/`cwd` 变化，并拒绝上一个 session 的迟到响应；客户端按 session 记住最近一次 `cwd`，sessions 存储重建的闪烁不会把请求静默改划到无项目视图。composer 的 `skill.list` 不变。`mcpServers/*` 与 `skillInventory/*` 的读写仅限 loopback；`trustedHosts` 仍是 DNS-rebinding 围栏，不是认证。
+技能启停仍写已有 SKILL.md frontmatter：`disable-model-invocation` 与 `user-invocable`。`@relay-harness/rlh-host-skill-inventory` 发布 Typert Remote `skillInventory`（`list` / `get` / `create` / `update` / `delete` / `setInvocation`）。每个方法都接受可选的 `cwd` 与 `sessionId`；提供 `sessionId` 时只读解析该精确存活 Agent 并读取其分层 `ctx.skills` 视图，不会创建或恢复 Agent，缺少存活 Agent 时抛出类型化的 `session-not-found`。`list` 不过滤 composer 的 `isUserInvocable`。可写根是 `user-rlh`、`user-agents`，以及当前 session 提供 `cwd` 时的 `project-rlh` / `project-agents`。项目技能创建写入 `<project-root>/.rlh/skills/...`，其中 `project-root` 是 `cwd` 最近的 `.git` 祖先。bundled、runtime 与 custom skill 只读。创建会明确选择用户根或当前项目根，并写入调用方给出的初始 invocation 开关。更新正文或只改调用开关都会保留 Settings 不拥有的 frontmatter 字段；删除会移除整个技能目录。目录会跟随当前 session 的 `sessionId`/`cwd` 变化，并拒绝上一个 session 的迟到响应；客户端按 session 记住最近一次 `cwd`，sessions 存储重建的闪烁不会把请求静默改划到无项目视图。composer 的 `skill.list` 不变。`mcpServers/*` 与 `skillInventory/*` 的读写仅限 loopback；`trustedHosts` 仍是 DNS-rebinding 围栏，不是认证。
 
-`@deepseek-ai/dsh-client-ui-settings-mcp` 与 `@deepseek-ai/dsh-client-ui-settings-skills` 注册 Settings 页。两页采用同一套紧凑管理语言：搜索、一个来源或启用筛选、结果计数、发丝行、来源 `Pill`、保留原生语义的共享 `Switch`、就地错误和图标动作。MCP 把受管行与只读组成配置行分开，并把配置启用状态与 Host `fiberPhase` 分开；没有观察到阶段的行采用中性文字，不显示警告色。MCP 编辑弹窗在表单与 JSON 对象之间切换。技能行显示模型调用 `Switch` 并打开现有编辑器；只读行没有删除。
+`@relay-harness/rlh-client-ui-settings-mcp` 与 `@relay-harness/rlh-client-ui-settings-skills` 注册 Settings 页。两页采用同一套紧凑管理语言：搜索、一个来源或启用筛选、结果计数、发丝行、来源 `Pill`、保留原生语义的共享 `Switch`、就地错误和图标动作。MCP 把受管行与只读组成配置行分开，并把配置启用状态与 Host `fiberPhase` 分开；没有观察到阶段的行采用中性文字，不显示警告色。MCP 编辑弹窗在表单与 JSON 对象之间切换。技能行显示模型调用 `Switch` 并打开现有编辑器；只读行没有删除。
 
 ## Alternatives considered
 
 **把 MCP 行写进用户的 `cordis.patch.yml`。** 否决，因为该文件可能含 `!!js` 和其他手写组成，Settings 不能变成 YAML 编辑器。
 
-**在 frontmatter 之外再做一份技能启用清单。** 否决，因为 `dsh-skill-filesystem` 已经拥有调用开关；第二份清单会与监视器已在重载的文件漂移。
+**在 frontmatter 之外再做一份技能启用清单。** 否决，因为 `rlh-skill-filesystem` 已经拥有调用开关；第二份清单会与监视器已在重载的文件漂移。
 
-**用桌面 `window.shell` API 管这些目录。** 否决，因为持久化属于 `$DSH_HOME`，Settings 已在 Harness Web UI 里。桌面端只需要 About / Plugins 已经在用的栏目跳转。
+**用桌面 `window.shell` API 管这些目录。** 否决，因为持久化属于 `$RLH_HOME`，Settings 已在 Harness Web UI 里。桌面端只需要 About / Plugins 已经在用的栏目跳转。
 
 **v1 导入 Cursor 或 Claude 的 `.mcp.json`。** 否决。受管 YAML 留给后续导入器；v1 只读写自己的文档。
 

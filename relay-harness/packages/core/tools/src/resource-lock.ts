@@ -1,6 +1,6 @@
 /**
  * Fair, cancellation-aware read/write locks for tool-declared resources.
- * @module @deepseek-ai/dsh-tools/resource-lock
+ * @module @relay-harness/rlh-tools/resource-lock
  */
 
 import type { ToolResourceIntent } from './index.ts'

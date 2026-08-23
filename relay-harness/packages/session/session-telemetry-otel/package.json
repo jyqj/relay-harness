@@ -1,13 +1,13 @@
 {
-  "name": "@deepseek-ai/dsh-session-telemetry-otel",
-  "description": "OpenTelemetry backend for the DeepSeek Harness telemetry seam: hands captured session records to the OTel JS SDK's log pipeline",
+  "name": "@relay-harness/rlh-session-telemetry-otel",
+  "description": "OpenTelemetry backend for the Relay Harness telemetry seam: hands captured session records to the OTel JS SDK's log pipeline",
   "version": "0.1.0-rc.8",
   "publishConfig": {
     "access": "public"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+    "url": "git+https://github.com/jyqj/relay-harness.git",
     "directory": "packages/session/session-telemetry-otel"
   },
   "type": "module",
@@ -38,25 +38,25 @@
     "@opentelemetry/otlp-exporter-base": "^0.220.0",
     "@opentelemetry/resources": "^2.9.0",
     "@opentelemetry/sdk-logs": "^0.220.0",
-    "@deepseek-ai/schemastery": "workspace:^"
+    "@relay-harness/schemastery": "workspace:^"
   },
   "peerDependencies": {
-    "@deepseek-ai/dsh-command-feedback": "workspace:^",
-    "@deepseek-ai/dsh-invariants": "workspace:^",
-    "@deepseek-ai/dsh-llm": "workspace:^",
-    "@deepseek-ai/dsh-session": "workspace:^",
-    "@deepseek-ai/dsh-session-telemetry": "workspace:^",
-    "@deepseek-ai/dsh-anonymous-user-id": "workspace:^",
-    "@deepseek-ai/cordis": "workspace:^"
+    "@relay-harness/rlh-command-feedback": "workspace:^",
+    "@relay-harness/rlh-invariants": "workspace:^",
+    "@relay-harness/rlh-llm": "workspace:^",
+    "@relay-harness/rlh-session": "workspace:^",
+    "@relay-harness/rlh-session-telemetry": "workspace:^",
+    "@relay-harness/rlh-anonymous-user-id": "workspace:^",
+    "@relay-harness/cordis": "workspace:^"
   },
   "devDependencies": {
-    "@deepseek-ai/cordis-plugin-loader": "workspace:^",
-    "@deepseek-ai/dsh-command-feedback": "workspace:^",
-    "@deepseek-ai/dsh-invariants": "workspace:^",
-    "@deepseek-ai/dsh-llm": "workspace:^",
-    "@deepseek-ai/dsh-session": "workspace:^",
-    "@deepseek-ai/dsh-session-telemetry": "workspace:^",
-    "@deepseek-ai/dsh-anonymous-user-id": "workspace:^",
-    "@deepseek-ai/cordis": "workspace:^"
+    "@relay-harness/cordis-plugin-loader": "workspace:^",
+    "@relay-harness/rlh-command-feedback": "workspace:^",
+    "@relay-harness/rlh-invariants": "workspace:^",
+    "@relay-harness/rlh-llm": "workspace:^",
+    "@relay-harness/rlh-session": "workspace:^",
+    "@relay-harness/rlh-session-telemetry": "workspace:^",
+    "@relay-harness/rlh-anonymous-user-id": "workspace:^",
+    "@relay-harness/cordis": "workspace:^"
   }
 }

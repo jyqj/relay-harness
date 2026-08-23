@@ -1,7 +1,7 @@
 /** Registers the Diff occupant into surfaces.diff. */
-import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
-import type {} from '@deepseek-ai/dsh-client-locale/client'
-import type {} from '@deepseek-ai/dsh-client-ui-surfaces/client'
+import type { ClientContext } from '@relay-harness/rlh-client-runtime/client'
+import type {} from '@relay-harness/rlh-client-locale/client'
+import type {} from '@relay-harness/rlh-client-ui-surfaces/client'
 import { DiffPanel } from './DiffPanel.tsx'
 import { en, NS, zh, type DiffKey } from './locales.ts'
 import { readDiffShell, type DiffShellInjected } from './shell.ts'
@@ -10,7 +10,7 @@ export type { DiffPanelProps } from './DiffPanel.tsx'
 export type { DiffKey } from './locales.ts'
 export type { DiffBranchRef, DiffFile, DiffHunk, DiffLine, DiffShellInjected, GitBranchListResult, GitDiffOptions, GitDiffResult, GitStatusEntriesResult, GitStatusEntry } from './shell.ts'
 
-declare module '@deepseek-ai/dsh-client-ui-slots' {
+declare module '@relay-harness/rlh-client-ui-slots' {
   interface LocaleNamespaceMap {
     /** Diff surface copy. */
     diff: DiffKey

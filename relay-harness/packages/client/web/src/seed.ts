@@ -10,9 +10,9 @@ import * as React from 'react'
 import * as ReactJsxRuntime from 'react/jsx-runtime'
 import * as ReactDom from 'react-dom'
 import * as ReactDomClient from 'react-dom/client'
-import * as Cordis from '@deepseek-ai/cordis'
-import * as UiSlots from '@deepseek-ai/dsh-client-ui-slots'
-import * as UiPrimitives from '@deepseek-ai/dsh-client-ui-primitives'
+import * as Cordis from '@relay-harness/cordis'
+import * as UiSlots from '@relay-harness/rlh-client-ui-slots'
+import * as UiPrimitives from '@relay-harness/rlh-client-ui-primitives'
 import type { PlatformModule } from './platform.ts'
 
 function preserveModuleExports<T extends object>(module: T): T {
@@ -34,8 +34,8 @@ export function getStaticModules(): Record<string, unknown> {
     'react/jsx-runtime': preserveModuleExports(ReactJsxRuntime),
     'react-dom': preserveModuleExports(ReactDom),
     'react-dom/client': preserveModuleExports(ReactDomClient),
-    '@deepseek-ai/cordis': preserveModuleExports(Cordis),
-    '@deepseek-ai/dsh-client-ui-slots': preserveModuleExports(UiSlots),
-    '@deepseek-ai/dsh-client-ui-primitives': preserveModuleExports(UiPrimitives),
+    '@relay-harness/cordis': preserveModuleExports(Cordis),
+    '@relay-harness/rlh-client-ui-slots': preserveModuleExports(UiSlots),
+    '@relay-harness/rlh-client-ui-primitives': preserveModuleExports(UiPrimitives),
   } satisfies Record<PlatformModule, unknown>
 }

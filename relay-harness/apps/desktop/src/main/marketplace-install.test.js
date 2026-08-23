@@ -4,7 +4,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const userData = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-marketplace-install-'));
+const userData = fs.mkdtempSync(path.join(os.tmpdir(), 'rlh-marketplace-install-'));
 const electronPath = require.resolve('electron');
 require.cache[electronPath] = {
   id: electronPath,
@@ -32,22 +32,22 @@ const {
   installMarketplacePlugin,
 } = require('./marketplace-install');
 
-const NPM_ID = '13071301808/dsh-composer-expand';
-const GITHUB_ID = '01Virex/dsh-status-rotator';
-const PATH_ID = 'DamonKoy/dsh-web-ui#dsh-aionui-panel';
-const DROPPED_ID = 'omdsh-dev/dsh-genui';
-const NPM_SPEC = 'dsh-composer-expand';
-const GITHUB_SPEC = 'github:01Virex/dsh-status-rotator';
-const PATH_SPEC = 'github:DamonKoy/dsh-web-ui#path:/packages/dsh-aionui-panel';
+const NPM_ID = '13071301808/rlh-composer-expand';
+const GITHUB_ID = '01Virex/rlh-status-rotator';
+const PATH_ID = 'DamonKoy/rlh-web-ui#rlh-aionui-panel';
+const DROPPED_ID = 'omdsh-dev/rlh-genui';
+const NPM_SPEC = 'rlh-composer-expand';
+const GITHUB_SPEC = 'github:01Virex/rlh-status-rotator';
+const PATH_SPEC = 'github:DamonKoy/rlh-web-ui#path:/packages/rlh-aionui-panel';
 
-let dshHomeDir = '';
+let rlhHomeDir = '';
 
 function cacheFile() {
   return path.join(userData, 'marketplace-cache.json');
 }
 
 function profileDir() {
-  return path.join(dshHomeDir, 'profiles', 'web');
+  return path.join(rlhHomeDir, 'profiles', 'web');
 }
 
 function writeProfileDep(packageName, spec) {
@@ -76,7 +76,7 @@ function writePlugin(packageName, manifest, files = {}) {
 function writeBundlePlugin(packageName) {
   const id = `bundle-${String(packageName).replace(/[^A-Za-z0-9]+/g, '-')}`.slice(0, 48);
   writePlugin(packageName, {
-    dsh: { bundle: { patch: './cordis.patch.yml' } },
+    rlh: { bundle: { patch: './cordis.patch.yml' } },
   }, {
     'cordis.patch.yml': `- insert:\n    - id: ${id}\n      name: ${packageName}\n`,
   });
@@ -84,7 +84,7 @@ function writeBundlePlugin(packageName) {
 
 function writeClientPlugin(packageName) {
   writePlugin(packageName, {
-    dsh: { client: { platform: 'web', inject: [] } },
+    rlh: { client: { platform: 'web', inject: [] } },
     exports: { './client': { default: './lib/client.js' } },
   }, { 'lib/client.js': 'export {}\n' });
 }
@@ -116,7 +116,7 @@ function githubRow(owner, name, url, installToken) {
     description: { en: name, zh: name },
     npm: null,
     stars: 0,
-    install: `dsh plugin --profile web add ${installToken}`,
+    install: `rlh plugin --profile web add ${installToken}`,
     added: '2026-08-18',
   };
 }
@@ -136,13 +136,13 @@ function recordRunner(onAdd) {
 }
 
 test.beforeEach(() => {
-  dshHomeDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-home-'));
-  process.env.DSH_HOME = dshHomeDir;
+  rlhHomeDir = fs.mkdtempSync(path.join(os.tmpdir(), 'rlh-home-'));
+  process.env.RLH_HOME = rlhHomeDir;
 });
 
 test.afterEach(() => {
-  delete process.env.DSH_HOME;
-  fs.rmSync(dshHomeDir, { recursive: true, force: true });
+  delete process.env.RLH_HOME;
+  fs.rmSync(rlhHomeDir, { recursive: true, force: true });
   try {
     fs.unlinkSync(cacheFile());
   } catch {
@@ -158,10 +158,10 @@ test.after(() => {
 test('parseAllowBuilds reads ignored build script names', () => {
   const keys = parseAllowBuilds(`
 pnpm: git-hosted plugins build on install
-Ignored build scripts: @dsh-external/dsh-loop@0.1.0 foo-bar@2.0.0
+Ignored build scripts: @rlh-external/rlh-loop@0.1.0 foo-bar@2.0.0
 Run "pnpm approve-builds" to pick which dependencies should be allowed
 `);
-  assert.ok(keys.includes('@dsh-external/dsh-loop'));
+  assert.ok(keys.includes('@rlh-external/rlh-loop'));
   assert.ok(keys.includes('foo-bar'));
 });
 
@@ -254,8 +254,8 @@ test('installMarketplacePlugin rolls back a dependency when no loadable entry is
 
 test('installMarketplacePlugin installs github:owner/repo through the plugin runner', async () => {
   const { calls, runPlugin } = recordRunner(() => {
-    writeProfileDep('@virex/dsh-status-rotator', 'git+https://github.com/01Virex/dsh-status-rotator.git');
-    writeClientPlugin('@virex/dsh-status-rotator');
+    writeProfileDep('@virex/rlh-status-rotator', 'git+https://github.com/01Virex/rlh-status-rotator.git');
+    writeClientPlugin('@virex/rlh-status-rotator');
   });
   const result = await installMarketplacePlugin(GITHUB_ID, { runPlugin });
   assert.equal(result.ok, true);
@@ -265,10 +265,10 @@ test('installMarketplacePlugin installs github:owner/repo through the plugin run
 test('installMarketplacePlugin allows a catalog #path: spec that Host installPlugin rejects', async () => {
   const { calls, runPlugin } = recordRunner(() => {
     writeProfileDep(
-      'dsh-aionui-panel',
-      'git+https://github.com/DamonKoy/dsh-web-ui.git#path:/packages/dsh-aionui-panel',
+      'rlh-aionui-panel',
+      'git+https://github.com/DamonKoy/rlh-web-ui.git#path:/packages/rlh-aionui-panel',
     );
-    writeExportsPlugin('dsh-aionui-panel');
+    writeExportsPlugin('rlh-aionui-panel');
   });
   const result = await installMarketplacePlugin(PATH_ID, { runPlugin });
   assert.equal(result.ok, true);
@@ -337,7 +337,7 @@ test('installMarketplacePlugin and uninstallPlugin share an in-flight mutex', as
   assert.equal(firstResult.ok, false);
 });
 
-test('installMarketplacePlugin removes a package with no loadable dsh entry', async () => {
+test('installMarketplacePlugin removes a package with no loadable rlh entry', async () => {
   const { calls, runPlugin } = recordRunner();
   const result = await installMarketplacePlugin(NPM_ID, { runPlugin });
   assert.equal(result.ok, false);
@@ -345,45 +345,45 @@ test('installMarketplacePlugin removes a package with no loadable dsh entry', as
   assert.deepEqual(calls, [['add', NPM_SPEC], ['remove', NPM_SPEC]]);
 });
 
-test('installMarketplacePlugin removes a github package with no loadable dsh entry', async () => {
+test('installMarketplacePlugin removes a github package with no loadable rlh entry', async () => {
   const { calls, runPlugin } = recordRunner(() => {
-    writeProfileDep('@virex/dsh-status-rotator', 'git+https://github.com/01Virex/dsh-status-rotator.git');
-    writeBarePlugin('@virex/dsh-status-rotator');
+    writeProfileDep('@virex/rlh-status-rotator', 'git+https://github.com/01Virex/rlh-status-rotator.git');
+    writeBarePlugin('@virex/rlh-status-rotator');
   });
   const result = await installMarketplacePlugin(GITHUB_ID, { runPlugin });
   assert.equal(result.ok, false);
   assert.match(result.error, /可加载/);
-  assert.deepEqual(calls, [['add', GITHUB_SPEC], ['remove', '@virex/dsh-status-rotator']]);
+  assert.deepEqual(calls, [['add', GITHUB_SPEC], ['remove', '@virex/rlh-status-rotator']]);
 });
 
-test('installMarketplacePlugin removes a #path: package with no loadable dsh entry', async () => {
+test('installMarketplacePlugin removes a #path: package with no loadable rlh entry', async () => {
   const { calls, runPlugin } = recordRunner(() => {
     writeProfileDep(
-      'dsh-aionui-panel',
-      'git+https://github.com/DamonKoy/dsh-web-ui.git#path:/packages/dsh-aionui-panel',
+      'rlh-aionui-panel',
+      'git+https://github.com/DamonKoy/rlh-web-ui.git#path:/packages/rlh-aionui-panel',
     );
-    writeBarePlugin('dsh-aionui-panel');
+    writeBarePlugin('rlh-aionui-panel');
   });
   const result = await installMarketplacePlugin(PATH_ID, { runPlugin });
   assert.equal(result.ok, false);
   assert.match(result.error, /可加载/);
-  assert.deepEqual(calls, [['add', PATH_SPEC], ['remove', 'dsh-aionui-panel']]);
+  assert.deepEqual(calls, [['add', PATH_SPEC], ['remove', 'rlh-aionui-panel']]);
 });
 
 test('installMarketplacePlugin installs a GitHub URL when the install command is a tarball', async () => {
   writeDiskRegistry([githubRow(
     'HUITianYi',
-    'dsh-whale-desktop-launcher',
-    'https://github.com/HUITianYi/dsh-whale-desktop-launcher',
-    '"https://github.com/HUITianYi/dsh-whale-desktop-launcher/releases/latest/download/x.tgz"',
+    'rlh-whale-desktop-launcher',
+    'https://github.com/HUITianYi/rlh-whale-desktop-launcher',
+    '"https://github.com/HUITianYi/rlh-whale-desktop-launcher/releases/latest/download/x.tgz"',
   )]);
   const { calls, runPlugin } = recordRunner(() => {
-    writeProfileDep('dsh-whale-desktop-launcher', 'github:HUITianYi/dsh-whale-desktop-launcher');
-    writeClientPlugin('dsh-whale-desktop-launcher');
+    writeProfileDep('rlh-whale-desktop-launcher', 'github:HUITianYi/rlh-whale-desktop-launcher');
+    writeClientPlugin('rlh-whale-desktop-launcher');
   });
-  const result = await installMarketplacePlugin('HUITianYi/dsh-whale-desktop-launcher', { runPlugin });
+  const result = await installMarketplacePlugin('HUITianYi/rlh-whale-desktop-launcher', { runPlugin });
   assert.equal(result.ok, true);
-  assert.deepEqual(calls, [['add', 'github:HUITianYi/dsh-whale-desktop-launcher']]);
+  assert.deepEqual(calls, [['add', 'github:HUITianYi/rlh-whale-desktop-launcher']]);
   assert.equal(result.spec.includes('.tgz'), false);
 });
 
@@ -416,27 +416,27 @@ test('installMarketplacePlugin rejects a #path: spec that contains a colon', asy
 
 test('installMarketplacePlugin removes a github package that landed only in node_modules', async () => {
   const { calls, runPlugin } = recordRunner(() => {
-    writeBarePlugin('@virex/dsh-status-rotator');
+    writeBarePlugin('@virex/rlh-status-rotator');
   });
   const result = await installMarketplacePlugin(GITHUB_ID, { runPlugin });
   assert.equal(result.ok, false);
   assert.match(result.error, /可加载/);
-  assert.deepEqual(calls, [['add', GITHUB_SPEC], ['remove', '@virex/dsh-status-rotator']]);
+  assert.deepEqual(calls, [['add', GITHUB_SPEC], ['remove', '@virex/rlh-status-rotator']]);
 });
 
 test('installMarketplacePlugin removes a github package already in the profile when it is not loadable', async () => {
-  writeProfileDep('@virex/dsh-status-rotator', GITHUB_SPEC);
-  writeBarePlugin('@virex/dsh-status-rotator');
+  writeProfileDep('@virex/rlh-status-rotator', GITHUB_SPEC);
+  writeBarePlugin('@virex/rlh-status-rotator');
   const { calls, runPlugin } = recordRunner();
   const result = await installMarketplacePlugin(GITHUB_ID, { runPlugin });
   assert.equal(result.ok, false);
   assert.match(result.error, /可加载/);
-  assert.ok(calls.some((args) => args[0] === 'remove' && args[1] === '@virex/dsh-status-rotator'));
+  assert.ok(calls.some((args) => args[0] === 'remove' && args[1] === '@virex/rlh-status-rotator'));
 });
 
 test('installMarketplacePlugin removes a package whose bundle patch only sets patch: true', async () => {
   const { calls, runPlugin } = recordRunner(() => {
-    writePlugin(NPM_SPEC, { dsh: { bundle: { patch: true } } });
+    writePlugin(NPM_SPEC, { rlh: { bundle: { patch: true } } });
   });
   const result = await installMarketplacePlugin(NPM_ID, { runPlugin });
   assert.equal(result.ok, false);
@@ -444,17 +444,17 @@ test('installMarketplacePlugin removes a package whose bundle patch only sets pa
 });
 
 test('installMarketplacePlugin removes a package that inserts a duplicate loader id', async () => {
-  writeProfileDep('@deepseek-ai/dsh-web-app', 'workspace:*');
-  writePlugin('@deepseek-ai/dsh-web-app', {
-    dsh: { bundle: { patch: './cordis.patch.yml' } },
+  writeProfileDep('@relay-harness/rlh-web-app', 'workspace:*');
+  writePlugin('@relay-harness/rlh-web-app', {
+    rlh: { bundle: { patch: './cordis.patch.yml' } },
   }, {
-    'cordis.patch.yml': '- insert:\n    - id: storage\n      name: @deepseek-ai/dsh-web-app\n',
+    'cordis.patch.yml': '- insert:\n    - id: storage\n      name: @relay-harness/rlh-web-app\n',
   });
   const { calls, runPlugin } = recordRunner(() => {
     writePlugin(NPM_SPEC, {
-      dsh: { bundle: { patch: './cordis.patch.yml' } },
+      rlh: { bundle: { patch: './cordis.patch.yml' } },
     }, {
-      'cordis.patch.yml': '- insert:\n    - id: storage\n      name: dsh-composer-expand\n',
+      'cordis.patch.yml': '- insert:\n    - id: storage\n      name: rlh-composer-expand\n',
     });
   });
   const result = await installMarketplacePlugin(NPM_ID, { runPlugin });
@@ -464,8 +464,8 @@ test('installMarketplacePlugin removes a package that inserts a duplicate loader
 });
 
 test('parseAllowBuilds reads ndjson-escaped prepare-not-allowed package names', () => {
-  const keys = parseAllowBuilds('{"msg":"The git-hosted package \\"dsh-loop@1.0.0\\" needs to execute build scripts but is not in the allowBuilds allowlist."}');
-  assert.ok(keys.includes('dsh-loop'));
+  const keys = parseAllowBuilds('{"msg":"The git-hosted package \\"rlh-loop@1.0.0\\" needs to execute build scripts but is not in the allowBuilds allowlist."}');
+  assert.ok(keys.includes('rlh-loop'));
 });
 
 test('installMarketplacePlugin leaves a floating github ref when no token is stored', async () => {
@@ -478,8 +478,8 @@ test('installMarketplacePlugin leaves a floating github ref when no token is sto
   };
   try {
     const { calls, runPlugin } = recordRunner((spec) => {
-      writeProfileDep('@virex/dsh-status-rotator', spec);
-      writeClientPlugin('@virex/dsh-status-rotator');
+      writeProfileDep('@virex/rlh-status-rotator', spec);
+      writeClientPlugin('@virex/rlh-status-rotator');
     });
     const result = await installMarketplacePlugin(GITHUB_ID, { runPlugin, token: '' });
     assert.equal(result.ok, true);
@@ -500,12 +500,12 @@ test('installMarketplacePlugin pins a SHA when a GitHub token is stored', async 
   };
   try {
     const { calls, runPlugin } = recordRunner((spec) => {
-      writeProfileDep('@virex/dsh-status-rotator', spec);
-      writeClientPlugin('@virex/dsh-status-rotator');
+      writeProfileDep('@virex/rlh-status-rotator', spec);
+      writeClientPlugin('@virex/rlh-status-rotator');
     });
     const result = await installMarketplacePlugin(GITHUB_ID, { runPlugin, token: 'ghp_test' });
     assert.equal(result.ok, true);
-    assert.deepEqual(calls[0], ['add', 'github:01Virex/dsh-status-rotator#abc1234567890']);
+    assert.deepEqual(calls[0], ['add', 'github:01Virex/rlh-status-rotator#abc1234567890']);
   } finally {
     globalThis.fetch = previous;
   }

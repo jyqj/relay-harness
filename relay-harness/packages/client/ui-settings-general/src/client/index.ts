@@ -8,15 +8,15 @@
  * Feature-owned rows and sections stay with their features.
  * Export discipline: packages/client/AGENTS.md.
  */
-import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
-import type { ConnectionHandle } from '@deepseek-ai/dsh-api-remotes/client'
-import { resolveSlotLabel } from '@deepseek-ai/dsh-client-ui-slots'
+import type { ClientContext } from '@relay-harness/rlh-client-runtime/client'
+import type { ConnectionHandle } from '@relay-harness/rlh-api-remotes/client'
+import { resolveSlotLabel } from '@relay-harness/rlh-client-ui-slots'
 // Type-only: the settings slot declarations plus the ctx.settingsScope Context
 // merge. Cross-plugin collaboration goes through the service, never a value
 // import (client bundle purity gate).
-import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
+import type {} from '@relay-harness/rlh-client-ui-settings/client'
 // Type-only: pulls ctx.locale into this program.
-import type {} from '@deepseek-ai/dsh-client-locale/client'
+import type {} from '@relay-harness/rlh-client-locale/client'
 import type {
   SettingsOnboardingStep, SettingsRootInjected, SettingsSectionRow,
 } from './shell-contract.ts'
@@ -49,7 +49,7 @@ export type { SettingsDocumentState } from './settings-document-store.ts'
 export { SettingsDocumentStore } from './settings-document-store.ts'
 export type { SettingsKey } from './locales.ts'
 
-declare module '@deepseek-ai/dsh-client-ui-slots' {
+declare module '@relay-harness/rlh-client-ui-slots' {
   interface LocaleNamespaceMap {
     /** Shell chrome + shell-owned General section copy. */
     settings: SettingsKey

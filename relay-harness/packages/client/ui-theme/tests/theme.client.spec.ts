@@ -1,13 +1,13 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { Context } from '@deepseek-ai/cordis'
-import { stubSettingsScope, type StubSettingsScope } from '@deepseek-ai/dsh-client-test-runtime'
+import { Context } from '@relay-harness/cordis'
+import { stubSettingsScope, type StubSettingsScope } from '@relay-harness/rlh-client-test-runtime'
 import type {
   ThemeSettings,
   ThemeSnapshot,
   ThemeTokenOverrides,
-} from '@deepseek-ai/dsh-client-ui-theme/client'
-import { ThemeRuntime } from '@deepseek-ai/dsh-client-ui-theme/client'
+} from '@relay-harness/rlh-client-ui-theme/client'
+import { ThemeRuntime } from '@relay-harness/rlh-client-ui-theme/client'
 import {
   DEFAULT_THEME_SETTINGS,
   DEFAULT_WALLPAPER_SOURCES,
@@ -47,7 +47,7 @@ describe('ThemeRuntime', () => {
     // jsdom matchMedia is absent; system resolves to light.
     expect(snapshot.active.id).toBe('deepseek')
     expect(snapshot.active.colorScheme).toBe('light')
-    expect(snapshot.active.tokens).toMatchObject({ '--dsw-alias-glass-opacity': '80%' })
+    expect(snapshot.active.tokens).toMatchObject({ '--rlw-alias-glass-opacity': '80%' })
     expect(snapshot.activeLightThemeId).toBe('deepseek')
     expect(snapshot.activeDarkThemeId).toBe('deepseek')
     expect(snapshot.themes.map(t => t.id)).toEqual(['light', 'dark'])
@@ -97,10 +97,10 @@ describe('ThemeRuntime', () => {
 
   it('registered themes join the snapshot; disposing the active one resets to default', () => {
     const { theme, events, host } = make()
-    const dispose = theme.register({ id: 'sepia', colorScheme: 'light', tokens: { '--dsw-alias-bg-base': 'red' } })
+    const dispose = theme.register({ id: 'sepia', colorScheme: 'light', tokens: { '--rlw-alias-bg-base': 'red' } })
     expect(theme.getTheme().themes.map(t => t.id)).toEqual(['light', 'dark', 'sepia'])
     theme.setTheme('sepia')
-    expect(theme.getTheme().active.tokens['--dsw-alias-bg-base']).toBe('red')
+    expect(theme.getTheme().active.tokens['--rlw-alias-bg-base']).toBe('red')
     dispose()
     expect(theme.getTheme().preference).toBe('system')
     expect(theme.getTheme().themes.map(t => t.id)).toEqual(['light', 'dark'])
@@ -171,7 +171,7 @@ describe('ThemeRuntime', () => {
     expect(theme.getTheme().active.tokens).toMatchObject({ '--new': 'new-light' })
     current()
     current()
-    expect(theme.getTheme().active.tokens).toEqual({ '--dsw-alias-glass-opacity': '80%' })
+    expect(theme.getTheme().active.tokens).toEqual({ '--rlw-alias-glass-opacity': '80%' })
     expect(events).toHaveLength(3)
   })
 
@@ -181,7 +181,7 @@ describe('ThemeRuntime', () => {
       id: 'custom',
       colorScheme: 'light',
       tokens: {
-        '--dsw-alias-bg-base': 'duplicate-built-in',
+        '--rlw-alias-bg-base': 'duplicate-built-in',
         '--registered': 'registered',
       },
     })
@@ -199,7 +199,7 @@ describe('ThemeRuntime', () => {
     const semantic = tokens.find(token => token.name === 'semanticAccent')
     expect(semantic).toMatchObject({ valueType: 'CSS value' })
     expect(semantic).not.toHaveProperty('cssVariable')
-    expect(tokens.filter(token => token.name === '--dsw-alias-bg-base')).toHaveLength(1)
+    expect(tokens.filter(token => token.name === '--rlw-alias-bg-base')).toHaveLength(1)
 
     tokens[0]!.description = 'caller mutation'
     expect(theme.exportInspectTokens()[0]!.description).not.toBe('caller mutation')
@@ -279,7 +279,7 @@ describe('ThemeRuntime', () => {
     theme.setThemeHalf('light', 'celadon')
     expect(theme.getTheme().activeLightThemeId).toBe('celadon')
     expect(theme.getTheme().active.id).toBe('celadon')
-    expect(theme.getTheme().active.tokens['--dsw-alias-bg-base']).toBe('#f3faf7')
+    expect(theme.getTheme().active.tokens['--rlw-alias-bg-base']).toBe('#f3faf7')
     flushWrites()
     expect(host.set).toHaveBeenCalledWith('activeLightThemeId', 'celadon')
     theme.setThemeHalf('light', 'celadon')
@@ -301,7 +301,7 @@ describe('ThemeRuntime', () => {
     }
     theme.setPreviewFamily(draft)
     expect(theme.getTheme().active.id).toBe('red-draft')
-    expect(theme.getTheme().active.tokens['--dsw-alias-brand-primary']).toBe('#e60000')
+    expect(theme.getTheme().active.tokens['--rlw-alias-brand-primary']).toBe('#e60000')
     // Durable selection is untouched: no scope write, half ids unchanged.
     expect(theme.getTheme().activeLightThemeId).toBe(before.activeLightThemeId)
     flushWrites()
@@ -323,9 +323,9 @@ describe('ThemeRuntime', () => {
       writable: true,
     })
     expect(theme.getTheme().activeDarkThemeId).toBe('violet')
-    expect(theme.getTheme().active.tokens['--dsw-alias-bg-base']).toBe('#120e18')
+    expect(theme.getTheme().active.tokens['--rlw-alias-bg-base']).toBe('#120e18')
     theme.setTheme('light')
-    expect(theme.getTheme().active.tokens['--dsw-alias-bg-base']).toBeUndefined()
+    expect(theme.getTheme().active.tokens['--rlw-alias-bg-base']).toBeUndefined()
   })
 
   it('stores custom families and falls back to DeepSeek when the active one is removed', () => {
@@ -367,7 +367,7 @@ describe('ThemeRuntime', () => {
   it('persists glass opacity and typography extras', () => {
     const { theme, host } = make()
     theme.setGlassOpacity(60)
-    expect(theme.getTheme().active.tokens['--dsw-alias-glass-opacity']).toBe('60%')
+    expect(theme.getTheme().active.tokens['--rlw-alias-glass-opacity']).toBe('60%')
     flushWrites()
     expect(host.set).toHaveBeenCalledWith('glassOpacity', 60)
     theme.setGlassOpacity(60)
@@ -386,14 +386,14 @@ describe('ThemeRuntime', () => {
     expect(theme.getTheme().wallpaperImage).toBe(png)
     expect(theme.getTheme().wallpaperBlur).toBe(25)
     expect(theme.getTheme().wallpaperPixelate).toBe(40)
-    expect(theme.getTheme().active.tokens['--dsw-alias-bg-base']).toContain('var(--dsw-static-neutral-bluish-00)')
-    expect(theme.getTheme().active.tokens['--dsw-alias-terminal-pane']).toBe('var(--dsw-static-neutral-bluish-00)')
+    expect(theme.getTheme().active.tokens['--rlw-alias-bg-base']).toContain('var(--rlw-static-neutral-bluish-00)')
+    expect(theme.getTheme().active.tokens['--rlw-alias-terminal-pane']).toBe('var(--rlw-static-neutral-bluish-00)')
     theme.setTheme('dark')
-    expect(theme.getTheme().active.tokens['--dsw-alias-bg-base']).toContain('var(--dsw-static-neutral-bluish-950)')
-    expect(theme.getTheme().active.tokens['--dsw-alias-terminal-pane']).toBe('var(--dsw-static-neutral-bluish-950)')
+    expect(theme.getTheme().active.tokens['--rlw-alias-bg-base']).toContain('var(--rlw-static-neutral-bluish-950)')
+    expect(theme.getTheme().active.tokens['--rlw-alias-terminal-pane']).toBe('var(--rlw-static-neutral-bluish-950)')
     theme.setTheme('light')
     theme.setThemeHalf('light', 'celadon')
-    expect(theme.getTheme().active.tokens['--dsw-alias-bg-base']).toContain('#f3faf7')
+    expect(theme.getTheme().active.tokens['--rlw-alias-bg-base']).toContain('#f3faf7')
     flushWrites()
     expect(host.set).toHaveBeenCalledWith('wallpaperImage', png)
     theme.setWallpaper({ wallpaperImage: png, wallpaperBlur: 25, wallpaperPixelate: 40 })

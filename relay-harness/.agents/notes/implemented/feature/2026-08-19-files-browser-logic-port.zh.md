@@ -10,11 +10,11 @@ Status: implemented
 
 ## 决策
 
-本桌面从本地参考树 `C:\Ai\t3code` 移植这些 Files/Browser 工作环，并把所有存活标识重命名为 `dshd`。Effect/Atom/Schema 剥离为 Promise 与 `webContents`。不交付 Playwright Chromium、`playwright-core` 和 `__t3PlaywrightInjected`；自动化是现有 guest 上的 CDP。铬仍是官方 dsh `ui-primitives` 加 `--dsw-alias-*`（不用 Pierre、lucide、shadcn 或 Tailwind）。
+本桌面从本地参考树 `C:\Ai\t3code` 移植这些 Files/Browser 工作环，并把所有存活标识重命名为 `rlhd`。Effect/Atom/Schema 剥离为 Promise 与 `webContents`。不交付 Playwright Chromium、`playwright-core` 和 `__t3PlaywrightInjected`；自动化是现有 guest 上的 CDP。铬仍是官方 rlh `ui-primitives` 加 `--rlw-alias-*`（不用 Pierre、lucide、shadcn 或 Tailwind）。
 
 guest BrowserView 为 `contextIsolation: false`、`sandbox: true`、`nodeIntegration: false`，以便选取浮层使用 `ipcRenderer`。Harness 主窗口保持 `contextIsolation: true`。PiP 窗口保持 `contextIsolation: true`。访客页文档可以是任意 `http(s)`；`file:` 文档会被取消。地址栏 `normalizePreviewUrl` 把裸 loopback 主机当成 `http`，把裸公网主机当成 `https`。Harness 主窗口的 loopback 墙不变。
 
-dshd 额外能力保留：未保存 Tab 的继续编辑／放弃／保存、`error.changed`、占用隐藏（`overlayOpen || pipOpen`），以及带 token 前缀的工作区文件服务。到达 guest 的预览 IPC 只经 harness 授权。录制是宿主渲染进程的 `MediaRecorder`；成品落在 `userData/preview-recordings/`。
+rlhd 额外能力保留：未保存 Tab 的继续编辑／放弃／保存、`error.changed`、占用隐藏（`overlayOpen || pipOpen`），以及带 token 前缀的工作区文件服务。到达 guest 的预览 IPC 只经 harness 授权。录制是宿主渲染进程的 `MediaRecorder`；成品落在 `userData/preview-recordings/`。
 
 ## 考虑过的替代
 
@@ -24,7 +24,7 @@ dshd 额外能力保留：未保存 Tab 的继续编辑／放弃／保存、`err
 
 **再打一份 Chromium。** 否决：Playwright 的浏览器下载会撑破 electron-builder；CDP 打在现有 guest 上才是接线。
 
-**把 Pierre 拷进 slot 树。** 否决：设计语言要求 `ui-primitives` 和 `--dsw-alias-*`；第二套图标／组件库是第二层皮。
+**把 Pierre 拷进 slot 树。** 否决：设计语言要求 `ui-primitives` 和 `--rlw-alias-*`；第二套图标／组件库是第二层皮。
 
 **关掉 guest `sandbox`。** 否决：选取需要 guest 里的 `ipcRenderer`，`contextIsolation: false` 已经提供；sandbox 保持开启。
 

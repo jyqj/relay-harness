@@ -14,7 +14,7 @@ Workspace 注册会保留目录身份与 session 分组，却无法让 host 操�
 
 公开 `Workspace` entity 暴露 `checkpoint(paths)` 与 `rewind(checkpointId)`。本包保持 host-only，不注册模型工具或 prompt。Checkpoint path 必须为 workspace-relative、lexically contained，并排序去重。每个现存 component 都在不跟随 symlink 的情况下检查；symlink、目录、特殊文件、空选择、超过 4096 个 path、单文件超过 64 MiB 或 aggregate 超过 64 MiB 都会在发布前拒绝。
 
-每个 path 记录确认缺失状态，或完整 binary bytes 加 permission mode。Record 是带版本 JSON，位于 `<workspace>/.dsh/rewind-checkpoints/<sha256(workspaceId)>/<sha256(checkpointId)>.json`；原始 caller id 永不成为路径 component。store 写入 owner-only 的 `*` `.gitignore`。Checkpoint 与文件恢复都使用同目录随机 temporary、fsync、rename 和最终 chmod。返回的 `WorkspaceCheckpoint` 包含 opaque id、capture time、排序 path 与保留 byte count。
+每个 path 记录确认缺失状态，或完整 binary bytes 加 permission mode。Record 是带版本 JSON，位于 `<workspace>/.rlh/rewind-checkpoints/<sha256(workspaceId)>/<sha256(checkpointId)>.json`；原始 caller id 永不成为路径 component。store 写入 owner-only 的 `*` `.gitignore`。Checkpoint 与文件恢复都使用同目录随机 temporary、fsync、rename 和最终 chmod。返回的 `WorkspaceCheckpoint` 包含 opaque id、capture time、排序 path 与保留 byte count。
 
 `rewind(id)` 会严格验证 workspace ownership、id、唯一 normalized path、snapshot tag、canonical base64、逐文件 byte 声明与完整 byte total。然后，它会在应用任何变化前预检每个 path 当前状态，并 capture rollback snapshot。Present snapshot 会原子替换 bytes 与 mode；absent snapshot 会 unlink 当前普通文件，或在已经缺失时 no-op。若后续 apply 失败，先前 path 会按逆序从 rollback snapshot 恢复，再报告原始 failure。第二个独立 rollback failure 会成为 aggregate。
 
@@ -24,7 +24,7 @@ Workspace 注册会保留目录身份与 session 分组，却无法让 host 操�
 
 ## Alternatives considered
 
-**自动 checkpoint 每个用户 prompt。** 不予采用，因为没有当前 host 或 UI 拥有匹配的 conversation-rewind transaction，而文件写入可以通过 shell、subprocess 或外部程序绕过 DSH 工具。自动承诺会不完整。
+**自动 checkpoint 每个用户 prompt。** 不予采用，因为没有当前 host 或 UI 拥有匹配的 conversation-rewind transaction，而文件写入可以通过 shell、subprocess 或外部程序绕过 RLH 工具。自动承诺会不完整。
 
 **Snapshot 完整目录树。** 不予采用，因为它会捕获无关 repository、credential、build artifact 与大型 dependency tree。显式 path 可约束 authority、storage 与 review。
 

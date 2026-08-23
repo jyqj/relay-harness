@@ -5,13 +5,13 @@
  * the entries, so no SlotMap merge lives here. The fork-before/open/draft/
  * submit transaction and the failure notice ride the editor inject; the
  * pencil only calls the owner `startEdit` callback.
- * @module @deepseek-ai/dsh-client-ui-message-edit/client/slots
+ * @module @relay-harness/rlh-client-ui-message-edit/client/slots
  */
 
 import type {
   InjectFace, PropsLocale, PropsRuntime,
-} from '@deepseek-ai/dsh-client-ui-slots'
-import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
+} from '@relay-harness/rlh-client-ui-slots'
+import type {} from '@relay-harness/rlh-client-ui-conversation/client'
 // Type-only: pulls this package's LocaleNamespaceMap merge (the 'messageEdit' seat).
 import type {} from './locales.ts'
 

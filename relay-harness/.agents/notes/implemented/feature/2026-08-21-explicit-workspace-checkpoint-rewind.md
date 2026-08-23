@@ -14,7 +14,7 @@ Automatic per-prompt rewind was not justified by a current caller. It would need
 
 The public `Workspace` entity exposes `checkpoint(paths)` and `rewind(checkpointId)`. The package remains host-only and registers no model tool or prompt. Checkpoint paths are workspace-relative, lexically contained, sorted, and deduplicated. Every existing component is inspected without following symlinks; a symlink, directory, special file, empty selection, more than 4096 paths, a single file over 64 MiB, or an aggregate over 64 MiB rejects before publication.
 
-Each path records either confirmed absence or complete binary bytes plus permission mode. Records are versioned JSON in `<workspace>/.dsh/rewind-checkpoints/<sha256(workspaceId)>/<sha256(checkpointId)>.json`; raw caller ids never become path components. The store writes an owner-only `*` `.gitignore`. Checkpoint and restored file writes use same-directory random temporaries, fsync, rename, and final chmod. The returned `WorkspaceCheckpoint` contains the opaque id, capture time, sorted paths, and retained byte count.
+Each path records either confirmed absence or complete binary bytes plus permission mode. Records are versioned JSON in `<workspace>/.rlh/rewind-checkpoints/<sha256(workspaceId)>/<sha256(checkpointId)>.json`; raw caller ids never become path components. The store writes an owner-only `*` `.gitignore`. Checkpoint and restored file writes use same-directory random temporaries, fsync, rename, and final chmod. The returned `WorkspaceCheckpoint` contains the opaque id, capture time, sorted paths, and retained byte count.
 
 `rewind(id)` strictly validates workspace ownership, id, unique normalized paths, snapshot tags, canonical base64, per-file byte declarations, and the complete byte total. It then preflights the current state of every path and captures a rollback snapshot before applying anything. Present snapshots replace bytes and mode atomically; absent snapshots unlink a current regular file or no-op when already absent. If a later apply fails, earlier paths are restored from the rollback snapshots in reverse order before the original failure is reported. A second independent rollback failure becomes an aggregate.
 
@@ -24,7 +24,7 @@ This operation affects files only. It does not mutate Workspace registration rec
 
 ## Alternatives considered
 
-**Automatically checkpoint every user prompt.** Rejected because no current host or UI owns the matching conversation-rewind transaction, and filesystem writes can bypass DSH tools through shell, subprocess, or external programs. An automatic promise would be incomplete.
+**Automatically checkpoint every user prompt.** Rejected because no current host or UI owns the matching conversation-rewind transaction, and filesystem writes can bypass RLH tools through shell, subprocess, or external programs. An automatic promise would be incomplete.
 
 **Snapshot the complete directory tree.** Rejected because it captures unrelated repositories, credentials, build artifacts, and large dependency trees. Explicit paths bound authority, storage, and review.
 

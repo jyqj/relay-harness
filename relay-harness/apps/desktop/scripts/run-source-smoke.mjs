@@ -8,7 +8,7 @@ import {
 } from './smoke-workspace.mjs'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
-const timeoutMs = Number(process.env.DSH_SMOKE_TIMEOUT_MS) || 300_000
+const timeoutMs = Number(process.env.RLH_SMOKE_TIMEOUT_MS) || 300_000
 
 function electronExecutable() {
   if (process.env.ELECTRON_PATH && existsSync(process.env.ELECTRON_PATH)) {
@@ -67,8 +67,8 @@ function run(executable, args, env) {
   })
 }
 
-const dirs = createSmokeDirs('dsh-source-smoke-')
-const keepArtifacts = process.env.DSH_SMOKE_KEEP === '1'
+const dirs = createSmokeDirs('rlh-source-smoke-')
+const keepArtifacts = process.env.RLH_SMOKE_KEEP === '1'
 
 try {
   const executable = electronExecutable()
@@ -79,8 +79,8 @@ try {
   console.log(`Source smoke: ${executable}`)
   const outcome = await run(executable, ['.', `--user-data-dir=${dirs.userData}`, '--no-first-run'], {
     ...process.env,
-    DSH_HOME: dirs.dshHome,
-    DSH_SMOKE: '1',
+    RLH_HOME: dirs.rlhHome,
+    RLH_SMOKE: '1',
   })
 
   if (!existsSync(dirs.resultPath)) {

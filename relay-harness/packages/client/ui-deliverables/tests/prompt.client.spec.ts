@@ -1,8 +1,8 @@
 /** Node-half coverage for the model guidance paired with Web file references. */
 
-import { Context } from '@deepseek-ai/cordis'
+import { Context } from '@relay-harness/cordis'
 import { afterEach, describe, expect, it } from 'vitest'
-import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
+import SystemPrompt from '@relay-harness/rlh-system-prompt'
 import { apply, inject } from '../src/index.ts'
 
 let ctx: Context | undefined

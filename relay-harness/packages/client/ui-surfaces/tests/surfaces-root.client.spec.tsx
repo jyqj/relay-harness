@@ -2,7 +2,7 @@
 import { useEffect, useState, useSyncExternalStore } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import type { SessionId, SessionListState } from '@deepseek-ai/dsh-client-runtime/client'
+import type { SessionId, SessionListState } from '@relay-harness/rlh-client-runtime/client'
 import { en } from '../src/client/locales.ts'
 import { createSurfacesStore } from '../src/client/stores.ts'
 import { loadPersistedDrafts, SURFACES_PERSIST_PREFIX } from '../src/client/persist.ts'
@@ -224,7 +224,7 @@ describe('SurfacesRoot', () => {
     await act(async () => {
       vi.advanceTimersByTime(80)
     })
-    expect(localStorage.getItem('dsh-surfaces:v1:session-1')).toContain('files')
+    expect(localStorage.getItem('rlh-surfaces:v1:session-1')).toContain('files')
     vi.useRealTimers()
   })
 
@@ -554,7 +554,7 @@ describe('SurfacesRoot', () => {
     expect(await screen.findByRole('dialog', { name: 'Discard unsaved changes?' })).toBeTruthy()
   })
 
-  it('opens a preview surface from dshd-open-surface without a session id', async () => {
+  it('opens a preview surface from rlhd-open-surface without a session id', async () => {
     const instance = createSurfacesStore().create()
     const openSurfaces = vi.fn()
     const renderSlot = vi.fn(() => <div data-occupant="stub" />)
@@ -576,7 +576,7 @@ describe('SurfacesRoot', () => {
       />,
     )
     await act(async () => {
-      window.dispatchEvent(new CustomEvent('dshd-open-surface', { detail: { kind: 'preview' } }))
+      window.dispatchEvent(new CustomEvent('rlhd-open-surface', { detail: { kind: 'preview' } }))
     })
     expect(openSurfaces).toHaveBeenCalled()
     expect(instance.getSnapshot().bySession['']?.surfaces.some(s => s.kind === 'preview')).toBe(true)
@@ -686,11 +686,11 @@ describe('SurfacesRoot', () => {
     expect(instance.getSnapshot().bySession['session-1']?.surfaces.map(surface => surface.id)).toEqual(['files'])
   })
 
-  it('opens the preview surface from dshd-open-surface', () => {
+  it('opens the preview surface from rlhd-open-surface', () => {
     const b = mount()
     act(() => {
-      window.dispatchEvent(new CustomEvent('dshd-open-surface', { detail: { kind: 'nope' } }))
-      window.dispatchEvent(new CustomEvent('dshd-open-surface', { detail: { kind: 'preview' } }))
+      window.dispatchEvent(new CustomEvent('rlhd-open-surface', { detail: { kind: 'nope' } }))
+      window.dispatchEvent(new CustomEvent('rlhd-open-surface', { detail: { kind: 'preview' } }))
     })
     expect(b.openSurfaces).toHaveBeenCalledOnce()
     expect(b.instance.getSnapshot().bySession['session-1']?.surfaces.some(surface => surface.kind === 'preview')).toBe(true)

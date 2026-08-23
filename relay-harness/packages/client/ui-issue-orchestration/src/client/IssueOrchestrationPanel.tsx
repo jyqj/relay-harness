@@ -1,8 +1,8 @@
 import { useState, type ReactNode } from 'react'
-import type { IssueOrchestrationEntry } from '@deepseek-ai/dsh-api-remotes/client'
-import type { SessionId } from '@deepseek-ai/dsh-client-connection/client'
-import type { SnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
-import type { InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
+import type { IssueOrchestrationEntry } from '@relay-harness/rlh-api-remotes/client'
+import type { SessionId } from '@relay-harness/rlh-client-connection/client'
+import type { SnapshotStore } from '@relay-harness/rlh-client-runtime/client'
+import type { InjectFace, PropsLocale, PropsRuntime } from '@relay-harness/rlh-client-ui-slots'
 import type { IssueDashboardState } from './state.ts'
 import css from './IssueOrchestrationPanel.module.css'
 

@@ -1,5 +1,5 @@
 {
-  "name": "@deepseek-ai/dsh-client-runtime",
+  "name": "@relay-harness/rlh-client-runtime",
   "description": "Client core services: SlotRegistry, SessionRuntime (scope tree + object layer)",
   "version": "0.1.0-rc.8",
   "publishConfig": {
@@ -7,7 +7,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+    "url": "git+https://github.com/jyqj/relay-harness.git",
     "directory": "packages/client/runtime"
   },
   "type": "module",
@@ -29,12 +29,12 @@
     "./src/*": "./src/*",
     "./package.json": "./package.json"
   },
-  "dsh": {
+  "rlh": {
     "client": {
       "inject": [
-        "@deepseek-ai/dsh-client-connection",
-        "@deepseek-ai/dsh-typert-registry",
-        "@deepseek-ai/dsh-api-remotes"
+        "@relay-harness/rlh-client-connection",
+        "@relay-harness/rlh-typert-registry",
+        "@relay-harness/rlh-api-remotes"
       ],
       "platform": "web",
       "immediately": true
@@ -46,44 +46,44 @@
     "zustand": "~4.4.7"
   },
   "peerDependencies": {
-    "@deepseek-ai/cordis": "workspace:^",
-    "@deepseek-ai/dsh-api-remotes": "workspace:^",
-    "@deepseek-ai/dsh-invariants": "workspace:^",
-    "@deepseek-ai/dsh-typert-protocol": "workspace:^",
-    "@deepseek-ai/dsh-typert-registry": "workspace:^",
-    "@deepseek-ai/dsh-agent": "workspace:^",
-    "@deepseek-ai/dsh-attachment": "workspace:^",
-    "@deepseek-ai/dsh-client-connection": "workspace:^",
-    "@deepseek-ai/dsh-commands": "workspace:^",
-    "@deepseek-ai/dsh-host-apiproxy": "workspace:^",
-    "@deepseek-ai/dsh-llm": "workspace:^",
-    "@deepseek-ai/dsh-llm-retry": "workspace:^",
-    "@deepseek-ai/dsh-session": "workspace:^",
-    "@deepseek-ai/dsh-session-projection": "workspace:^",
-    "@deepseek-ai/dsh-session-title": "workspace:^",
-    "@deepseek-ai/dsh-tools": "workspace:^"
+    "@relay-harness/cordis": "workspace:^",
+    "@relay-harness/rlh-api-remotes": "workspace:^",
+    "@relay-harness/rlh-invariants": "workspace:^",
+    "@relay-harness/rlh-typert-protocol": "workspace:^",
+    "@relay-harness/rlh-typert-registry": "workspace:^",
+    "@relay-harness/rlh-agent": "workspace:^",
+    "@relay-harness/rlh-attachment": "workspace:^",
+    "@relay-harness/rlh-client-connection": "workspace:^",
+    "@relay-harness/rlh-commands": "workspace:^",
+    "@relay-harness/rlh-host-apiproxy": "workspace:^",
+    "@relay-harness/rlh-llm": "workspace:^",
+    "@relay-harness/rlh-llm-retry": "workspace:^",
+    "@relay-harness/rlh-session": "workspace:^",
+    "@relay-harness/rlh-session-projection": "workspace:^",
+    "@relay-harness/rlh-session-title": "workspace:^",
+    "@relay-harness/rlh-tools": "workspace:^"
   },
   "devDependencies": {
-    "@deepseek-ai/cordis": "workspace:^",
-    "@deepseek-ai/dsh-api-remotes": "workspace:^",
-    "@deepseek-ai/dsh-invariants": "workspace:^",
-    "@deepseek-ai/dsh-timeout": "workspace:^",
-    "@deepseek-ai/dsh-typert-protocol": "workspace:^",
-    "@deepseek-ai/dsh-typert-registry": "workspace:^",
+    "@relay-harness/cordis": "workspace:^",
+    "@relay-harness/rlh-api-remotes": "workspace:^",
+    "@relay-harness/rlh-invariants": "workspace:^",
+    "@relay-harness/rlh-timeout": "workspace:^",
+    "@relay-harness/rlh-typert-protocol": "workspace:^",
+    "@relay-harness/rlh-typert-registry": "workspace:^",
     "@types/react": "~18.3.1",
-    "@deepseek-ai/dsh-client-ui-slots": "workspace:^",
+    "@relay-harness/rlh-client-ui-slots": "workspace:^",
     "react": "^18.2.0",
-    "@deepseek-ai/dsh-agent": "workspace:^",
-    "@deepseek-ai/dsh-attachment": "workspace:^",
-    "@deepseek-ai/dsh-client-connection": "workspace:^",
-    "@deepseek-ai/dsh-commands": "workspace:^",
-    "@deepseek-ai/dsh-host-apiproxy": "workspace:^",
-    "@deepseek-ai/dsh-llm": "workspace:^",
-    "@deepseek-ai/dsh-llm-retry": "workspace:^",
-    "@deepseek-ai/dsh-session": "workspace:^",
-    "@deepseek-ai/dsh-session-projection": "workspace:^",
-    "@deepseek-ai/dsh-session-title": "workspace:^",
-    "@deepseek-ai/dsh-tools": "workspace:^"
+    "@relay-harness/rlh-agent": "workspace:^",
+    "@relay-harness/rlh-attachment": "workspace:^",
+    "@relay-harness/rlh-client-connection": "workspace:^",
+    "@relay-harness/rlh-commands": "workspace:^",
+    "@relay-harness/rlh-host-apiproxy": "workspace:^",
+    "@relay-harness/rlh-llm": "workspace:^",
+    "@relay-harness/rlh-llm-retry": "workspace:^",
+    "@relay-harness/rlh-session": "workspace:^",
+    "@relay-harness/rlh-session-projection": "workspace:^",
+    "@relay-harness/rlh-session-title": "workspace:^",
+    "@relay-harness/rlh-tools": "workspace:^"
   },
   "files": [
     "lib/index.js",

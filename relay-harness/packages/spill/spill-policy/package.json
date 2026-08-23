@@ -1,13 +1,13 @@
 {
-  "name": "@deepseek-ai/dsh-spill-policy",
-  "description": "Tool-result spill policy for the DeepSeek Harness — replaces oversized plain-text tool results with a retained preview plus a spill-file path (no service API)",
+  "name": "@relay-harness/rlh-spill-policy",
+  "description": "Tool-result spill policy for the Relay Harness — replaces oversized plain-text tool results with a retained preview plus a spill-file path (no service API)",
   "version": "0.1.0-rc.8",
   "publishConfig": {
     "access": "public"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+    "url": "git+https://github.com/jyqj/relay-harness.git",
     "directory": "packages/spill/spill-policy"
   },
   "type": "module",
@@ -32,26 +32,26 @@
   ],
   "license": "MIT",
   "peerDependencies": {
-    "@deepseek-ai/dsh-invariants": "workspace:^",
-    "@deepseek-ai/dsh-llm": "workspace:^",
-    "@deepseek-ai/dsh-output-retention": "workspace:^",
-    "@deepseek-ai/dsh-session": "workspace:^",
-    "@deepseek-ai/dsh-spill": "workspace:^",
-    "@deepseek-ai/dsh-tools": "workspace:^",
-    "@deepseek-ai/cordis": "workspace:^"
+    "@relay-harness/rlh-invariants": "workspace:^",
+    "@relay-harness/rlh-llm": "workspace:^",
+    "@relay-harness/rlh-output-retention": "workspace:^",
+    "@relay-harness/rlh-session": "workspace:^",
+    "@relay-harness/rlh-spill": "workspace:^",
+    "@relay-harness/rlh-tools": "workspace:^",
+    "@relay-harness/cordis": "workspace:^"
   },
   "dependencies": {
-    "@deepseek-ai/schemastery": "workspace:^"
+    "@relay-harness/schemastery": "workspace:^"
   },
   "devDependencies": {
-    "@deepseek-ai/dsh-agent": "workspace:^",
-    "@deepseek-ai/dsh-code-runtime-worker-thread": "workspace:^",
-    "@deepseek-ai/dsh-invariants": "workspace:^",
-    "@deepseek-ai/dsh-llm": "workspace:^",
-    "@deepseek-ai/dsh-output-retention": "workspace:^",
-    "@deepseek-ai/dsh-session": "workspace:^",
-    "@deepseek-ai/dsh-spill": "workspace:^",
-    "@deepseek-ai/dsh-tools": "workspace:^",
-    "@deepseek-ai/cordis": "workspace:^"
+    "@relay-harness/rlh-agent": "workspace:^",
+    "@relay-harness/rlh-code-runtime-worker-thread": "workspace:^",
+    "@relay-harness/rlh-invariants": "workspace:^",
+    "@relay-harness/rlh-llm": "workspace:^",
+    "@relay-harness/rlh-output-retention": "workspace:^",
+    "@relay-harness/rlh-session": "workspace:^",
+    "@relay-harness/rlh-spill": "workspace:^",
+    "@relay-harness/rlh-tools": "workspace:^",
+    "@relay-harness/cordis": "workspace:^"
   }
 }

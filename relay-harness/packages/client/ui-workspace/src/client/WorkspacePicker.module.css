@@ -12,9 +12,9 @@
 }
 
 .modalError {
-  color: var(--dsw-alias-state-error-primary);
+  color: var(--rlw-alias-state-error-primary);
 }
 
 .menuStatus {
-  color: var(--dsw-alias-label-secondary);
+  color: var(--rlw-alias-label-secondary);
 }

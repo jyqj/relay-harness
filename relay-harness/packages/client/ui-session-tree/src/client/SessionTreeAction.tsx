@@ -1,4 +1,4 @@
-import type { InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
+import type { InjectFace, PropsLocale, PropsRuntime } from '@relay-harness/rlh-client-ui-slots'
 import css from './SessionTreeAction.module.css'
 
 /** Per-session action face. */

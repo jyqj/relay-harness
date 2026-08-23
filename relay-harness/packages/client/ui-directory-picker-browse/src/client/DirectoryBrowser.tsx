@@ -39,10 +39,10 @@ import clsx from 'clsx'
 import {
   Button, IconCheckOutline16, IconChevronRightOutline14, IconEditOutline16, IconFolderClose16, IconFolderOpen16,
   IconPlusOutline16, Modal,
-} from '@deepseek-ai/dsh-client-ui-primitives'
-import type { DirectoryEntry, DirectoryListing } from '@deepseek-ai/dsh-client-runtime/client'
-import { DirectoryBrowseError } from '@deepseek-ai/dsh-client-runtime/client'
-import type { Translate } from '@deepseek-ai/dsh-client-locale/client'
+} from '@relay-harness/rlh-client-ui-primitives'
+import type { DirectoryEntry, DirectoryListing } from '@relay-harness/rlh-client-runtime/client'
+import { DirectoryBrowseError } from '@relay-harness/rlh-client-runtime/client'
+import type { Translate } from '@relay-harness/rlh-client-locale/client'
 import css from './DirectoryBrowser.module.css'
 
 /** Owner-supplied browser props: browse calls, pick semantics, and copy. */
@@ -101,7 +101,7 @@ const DRAFT_PREVIEW_DEBOUNCE_MS = 250
  * directory-picker seam. Duplicated here so the browser bundle does not
  * import the host Service Definition package.
  */
-const WINDOWS_VOLUME_ROOT = '\\\\.\\dsh-computer'
+const WINDOWS_VOLUME_ROOT = '\\\\.\\rlh-computer'
 
 /**
  * Breadcrumb rows for display: the host chain in full, with Home and the

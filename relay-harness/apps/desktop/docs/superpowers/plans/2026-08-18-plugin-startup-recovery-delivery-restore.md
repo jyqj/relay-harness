@@ -6,18 +6,18 @@
 
 **Architecture:** Keep the two-spawn FSM, sticky `pluginRecovery`, and `--skip-user-plugins`. Make heal byte-equivalent to vendor `packageDirFromAnchor`, classify Chinese 组合失败, use a primitive **primary** Button as the market notice CTA, and add tests that fail if those contracts weaken.
 
-**Tech Stack:** Electron main `node:test`; vendored vitest/jsdom for marketplace; no `dsh-app-boot` import into Electron.
+**Tech Stack:** Electron main `node:test`; vendored vitest/jsdom for marketplace; no `rlh-app-boot` import into Electron.
 
 **Spec:** [docs/superpowers/specs/2026-08-18-plugin-startup-recovery-design.md](../specs/2026-08-18-plugin-startup-recovery-design.md)
 
 ## Global Constraints
 
 - Restore the spec. Do not amend the spec to match weaker code or tests.
-- Do not auto-disable loader ids; no quarantine JSON; no second port; no temp `$DSH_HOME`; no boot uninstall.
-- One Loader per `$DSH_HOME`. Ready means the `dsh web:` line.
+- Do not auto-disable loader ids; no quarantine JSON; no second port; no temp `$RLH_HOME`; no boot uninstall.
+- One Loader per `$RLH_HOME`. Ready means the `rlh web:` line.
 - Product copy Chinese; comments English. Boot page stays the instrument canvas with one Retry (label 「重试」, not 「安全模式」).
 - Heal must **not** run `reconcileBundleLayers`.
-- Do not import `@deepseek-ai/dsh-app-boot` into Electron main. Heal must still match `resolveBundleDir` / `packageDirFromAnchor`.
+- Do not import `@relay-harness/rlh-app-boot` into Electron main. Heal must still match `resolveBundleDir` / `packageDirFromAnchor`.
 - Do not commit unless asked.
 - Do not edit `.cursor/plans/plugin_startup_recovery_d1ae9b0d.plan.md`.
 - Out of scope: wallpaper, terminal, git, titlebar, appearance. Do not mix those into this change set beyond files this plan names.
@@ -31,7 +31,7 @@ Every spec obligation maps to a task or to an **already-proven** existing test. 
 | Recovery does not rewrite user profile except heal | Proven (`profile.spec.ts` template load) | Keep |
 | One Loader; no second port | Proven (controller one extra spawn) | Keep |
 | No `disabled: true` / JSON ledger | Proven (`config.test.js`) | Keep |
-| Ready = `dsh web:`; HTTP alone is not ready | Proven (`dsh.test.js`) | Keep |
+| Ready = `rlh web:`; HTTP alone is not ready | Proven (`rlh.test.js`) | Keep |
 | `--skip-user-plugins` flag order, dump mutex, skip dump tree | Proven (CLI specs) | Keep |
 | Template load does not write manifest | Proven | Keep |
 | Skip profile/home patch; `--patch` kept | Proven | Keep |
@@ -62,7 +62,7 @@ Every spec obligation maps to a task or to an **already-proven** existing test. 
 - `src/main/plugin-recovery-actions.js` + `.test.js` — IPC retry/uninstall without electron.
 - `src/main/ipc.js` — call those actions.
 - `src/main/harness-controller.js` + `.test.js` — heal-on-start, official-template fail, `beginRuntimeRecovery` spy, install non-tree, named catch.
-- `src/main/dsh.test.js` — HTTP+tree never ready (keep) + phase startup pin.
+- `src/main/rlh.test.js` — HTTP+tree never ready (keep) + phase startup pin.
 - `src/main/config.test.js` — reason 500.
 - `src/renderer/boot-recovery.js` + `.test.js` — copy + log filter; `boot.js` consumes it.
 - Marketplace tab TSX — `Button variant="primary"`.
@@ -85,8 +85,8 @@ Vendor `packageDirFromAnchor` (`profile.ts:330-336`) calls `createRequire(anchor
 
 ```js
 test('healDanglingBundles keeps a name resolvable when the install anchor file is missing', () => {
-  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-home-'));
-  const install = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-install-'));
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'rlh-home-'));
+  const install = fs.mkdtempSync(path.join(os.tmpdir(), 'rlh-install-'));
   try {
     const profileDir = path.join(home, 'profiles', 'web');
     fs.mkdirSync(profileDir, { recursive: true });
@@ -100,14 +100,14 @@ test('healDanglingBundles keeps a name resolvable when the install anchor file i
     fs.mkdirSync(kept, { recursive: true });
     fs.writeFileSync(path.join(kept, 'package.json'), '{"name":"from-install"}\n');
     fs.writeFileSync(path.join(profileDir, 'package.json'), `${JSON.stringify({
-      name: 'dsh-profile-web',
+      name: 'rlh-profile-web',
       dependencies: { 'from-install': '1.0.0', ghost: '1.0.0' },
-      dsh: { profile: { bundles: [...WEB_TEMPLATE_BUNDLES, 'from-install', 'ghost'] } },
+      rlh: { profile: { bundles: [...WEB_TEMPLATE_BUNDLES, 'from-install', 'ghost'] } },
     }, null, 2)}\n`);
     const result = healDanglingBundles({ profileDir, installAnchor: installPkg });
     assert.equal(result.ok, true);
     const manifest = JSON.parse(fs.readFileSync(path.join(profileDir, 'package.json'), 'utf8'));
-    assert.deepEqual(manifest.dsh.profile.bundles, [...WEB_TEMPLATE_BUNDLES, 'from-install']);
+    assert.deepEqual(manifest.rlh.profile.bundles, [...WEB_TEMPLATE_BUNDLES, 'from-install']);
     assert.equal(manifest.dependencies.ghost, '1.0.0');
   } finally {
     fs.rmSync(home, { recursive: true, force: true });
@@ -189,7 +189,7 @@ expect(retry.className).not.toMatch(/ghost/)
 
 If CSS modules hash the name, match `/primary/` still works (local name is `primary`).
 
-- [ ] **Step 2: Run** from `vendor/deepseek-harness`:  
+- [ ] **Step 2: Run** from `vendor/relay-harness`:  
   `pnpm exec vitest run packages/client/ui-settings-plugin-inventory/tests/marketplace.client.spec.tsx`  
   Expected: FAIL (current `ghost`).
 
@@ -224,14 +224,14 @@ Use a temp profile + real `healDanglingBundles`. Controller `healDanglingBundles
 const { healDanglingBundles, WEB_TEMPLATE_BUNDLES } = require('./plugins');
 
 test('performStart heals a dangling non-template name and keeps dependencies', async () => {
-  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-home-'));
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'rlh-home-'));
   const profileDir = path.join(home, 'profiles', 'web');
   fs.mkdirSync(profileDir, { recursive: true });
   const file = path.join(profileDir, 'package.json');
   fs.writeFileSync(file, `${JSON.stringify({
-    name: 'dsh-profile-web',
+    name: 'rlh-profile-web',
     dependencies: { ghost: '1.0.0' },
-    dsh: { profile: { bundles: [...WEB_TEMPLATE_BUNDLES, 'ghost'] } },
+    rlh: { profile: { bundles: [...WEB_TEMPLATE_BUNDLES, 'ghost'] } },
   }, null, 2)}\n`);
   try {
     const f = fixture({
@@ -239,7 +239,7 @@ test('performStart heals a dangling non-template name and keeps dependencies', a
     });
     await f.controller.start();
     const manifest = JSON.parse(fs.readFileSync(file, 'utf8'));
-    assert.deepEqual(manifest.dsh.profile.bundles, [...WEB_TEMPLATE_BUNDLES]);
+    assert.deepEqual(manifest.rlh.profile.bundles, [...WEB_TEMPLATE_BUNDLES]);
     assert.equal(manifest.dependencies.ghost, '1.0.0');
   } finally {
     fs.rmSync(home, { recursive: true, force: true });
@@ -247,27 +247,27 @@ test('performStart heals a dangling non-template name and keeps dependencies', a
 });
 
 test('an unresolvable official template name is not healed away and start fails', async () => {
-  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-home-'));
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'rlh-home-'));
   const profileDir = path.join(home, 'profiles', 'web');
   fs.mkdirSync(profileDir, { recursive: true });
   const file = path.join(profileDir, 'package.json');
   fs.writeFileSync(file, `${JSON.stringify({
-    name: 'dsh-profile-web',
+    name: 'rlh-profile-web',
     dependencies: {},
-    dsh: { profile: { bundles: [...WEB_TEMPLATE_BUNDLES] } },
+    rlh: { profile: { bundles: [...WEB_TEMPLATE_BUNDLES] } },
   }, null, 2)}\n`);
   try {
     const f = fixture({
       healDanglingBundles: () => healDanglingBundles({ profileDir }),
     });
-    f.dsh.startResults.push(
-      new Error('cannot resolve profile bundle "@deepseek-ai/dsh-web-app"'),
-      new Error('cannot resolve profile bundle "@deepseek-ai/dsh-web-app"'),
+    f.rlh.startResults.push(
+      new Error('cannot resolve profile bundle "@relay-harness/rlh-web-app"'),
+      new Error('cannot resolve profile bundle "@relay-harness/rlh-web-app"'),
     );
     await assert.rejects(() => f.controller.start());
     const manifest = JSON.parse(fs.readFileSync(file, 'utf8'));
-    assert.deepEqual(manifest.dsh.profile.bundles, [...WEB_TEMPLATE_BUNDLES]);
-    assert.equal(f.dsh.startCalls, 2); // full then one recovery; no third
+    assert.deepEqual(manifest.rlh.profile.bundles, [...WEB_TEMPLATE_BUNDLES]);
+    assert.equal(f.rlh.startCalls, 2); // full then one recovery; no third
     assert.equal(f.controller.snapshot().pluginRecovery.skipUserPlugins, true);
   } finally {
     fs.rmSync(home, { recursive: true, force: true });
@@ -275,7 +275,7 @@ test('an unresolvable official template name is not healed away and start fails'
 });
 ```
 
-If FakeDsh Error path logs the message then throws `dsh 进程结束…`, classification still uses logs — keep that.
+If FakeRlh Error path logs the message then throws `rlh 进程结束…`, classification still uses logs — keep that.
 
 - [ ] **Step 2: Run** `node --test src/main/harness-controller.test.js`  
   Expected: FAIL on the new tests until wired (first test may PASS already if start calls heal — that is OK; the official-template test must FAIL if heal drops names or a third spawn happens). If the first test already PASSES, keep it as the spec pin.
@@ -290,7 +290,7 @@ If FakeDsh Error path logs the message then throws `dsh 进程结束…`, classi
 
 **Files:**
 - Modify: `src/main/harness-controller.test.js`
-- Modify: `src/main/dsh.test.js` only if the HTTP+tree test does not already assert `failure.phase === 'startup'` (it does — add an explicit “not ready” + startup pin comment is not enough; add controller spy).
+- Modify: `src/main/rlh.test.js` only if the HTTP+tree test does not already assert `failure.phase === 'startup'` (it does — add an explicit “not ready” + startup pin comment is not enough; add controller spy).
 
 - [ ] **Step 1:**
 
@@ -303,20 +303,20 @@ test('plugin-tree startup failure does not beginRuntimeRecovery', async () => {
     began += 1;
     return original(...args);
   };
-  f.dsh.startResults.push(new Error('plugin tree failed to load'));
-  f.dsh.startResults.push(new Error('plugin tree failed to load'));
+  f.rlh.startResults.push(new Error('plugin tree failed to load'));
+  f.rlh.startResults.push(new Error('plugin tree failed to load'));
   await assert.rejects(() => f.controller.start());
   assert.equal(began, 0);
 });
 ```
 
-Keep existing `plugin-tree runtime crash returns to boot without scheduling auto-restart`. Keep `dsh.test.js` `plugin-tree stderr without dsh web: never becomes ready` (`failure.phase === 'startup'`).
+Keep existing `plugin-tree runtime crash returns to boot without scheduling auto-restart`. Keep `rlh.test.js` `plugin-tree stderr without rlh web: never becomes ready` (`failure.phase === 'startup'`).
 
 - [ ] **Step 2: Run** controller tests — FAIL if `began > 0`.
 
 - [ ] **Step 3:** If it already PASSES, keep the test as the spec pin. If it fails, production must not call `beginRuntimeRecovery` on startup-phase tree fail (already the `phase === 'runtime'` guard).
 
-- [ ] **Step 4: Re-run** `node --test src/main/harness-controller.test.js src/main/dsh.test.js` — PASS.
+- [ ] **Step 4: Re-run** `node --test src/main/harness-controller.test.js src/main/rlh.test.js` — PASS.
 
 ---
 
@@ -475,7 +475,7 @@ Do not add a second boot button. Do not change `boot.html` canvas.
 - Test: `src/main/harness-controller.test.js`
 - Test: `src/main/config.test.js` (reason 500)
 - Modify: `src/main/plugins.js` comment on `WEB_TEMPLATE_BUNDLES`
-- Modify: `vendor/deepseek-harness/packages/boot/app-boot/src/profile.ts` JSDoc if it still calls skip a “bundles-only consumer” beside dump-default-config
+- Modify: `vendor/relay-harness/packages/boot/app-boot/src/profile.ts` JSDoc if it still calls skip a “bundles-only consumer” beside dump-default-config
 
 **Spec:** install step 4 is plugin-tree → remove → full start. Other failures take the normal startup error path (no remove). Runtime plugin-tree: cancel auto-restart; empty catch must name what it swallows.
 
@@ -486,15 +486,15 @@ test('install non-tree failure does not remove the package or spawn recovery', a
   const removed = [];
   const f = fixture();
   await f.controller.start();
-  const starts = f.dsh.startCalls;
-  f.dsh.startResults.push(new Error('listen EADDRINUSE: address already in use'));
+  const starts = f.rlh.startCalls;
+  f.rlh.startResults.push(new Error('listen EADDRINUSE: address already in use'));
   await assert.rejects(() => f.controller.restartAfterInstall({
     before: { plugins: [] },
     after: { plugins: [{ name: 'ghost', spec: '1.0.0' }] },
     uninstallPlugin: async (name) => { removed.push(name); },
   }));
   assert.deepEqual(removed, []);
-  assert.equal(f.dsh.startCalls, starts + 1);
+  assert.equal(f.rlh.startCalls, starts + 1);
   assert.equal(f.controller.snapshot().pluginRecovery.skipUserPlugins, false);
 });
 ```
@@ -555,7 +555,7 @@ Better: drop the useless `.catch` on `allSettled` (it never rejects) and name th
 ```js
 void Promise.allSettled([
   Promise.resolve(this.remote?.sync?.()).catch((error) => {
-    this.dsh.log(`手机 Remote 同步失败：${errorMessage(error)}`, 'app');
+    this.rlh.log(`手机 Remote 同步失败：${errorMessage(error)}`, 'app');
   }),
   this.ensureBootVisible().catch(() => {
     // Window already gone after a plugin-tree runtime abort.
@@ -563,7 +563,7 @@ void Promise.allSettled([
 ]);
 ```
 
-`WEB_TEMPLATE_BUNDLES` comment: must stay equal to `PROFILE_TEMPLATES.web` in app-boot (`@deepseek-ai/dsh-base` then `@deepseek-ai/dsh-web-app`). Cannot import app-boot.
+`WEB_TEMPLATE_BUNDLES` comment: must stay equal to `PROFILE_TEMPLATES.web` in app-boot (`@relay-harness/rlh-base` then `@relay-harness/rlh-web-app`). Cannot import app-boot.
 
 JSDoc on `LoadProfileOptions.userLayer`: `--dump-default-config` is manifest bundles / no user layer / no `--patch`; `--skip-user-plugins` is template bundles / no user layer / `--patch` allowed. Do not call them the same “bundles-only consumer.”
 
@@ -576,10 +576,10 @@ JSDoc on `LoadProfileOptions.userLayer`: `--dump-default-config` is manifest bun
 Desktop:
 
 ```
-node --test src/main/plugins.test.js src/main/plugin-tree-failure.test.js src/main/plugin-recovery-actions.test.js src/main/dsh.test.js src/main/harness-controller.test.js src/main/config.test.js src/main/desktop-install-control.test.js src/main/marketplace-install.test.js src/main/ipc-authorization.test.js src/preload/shell-api.test.js src/renderer/boot-recovery.test.js
+node --test src/main/plugins.test.js src/main/plugin-tree-failure.test.js src/main/plugin-recovery-actions.test.js src/main/rlh.test.js src/main/harness-controller.test.js src/main/config.test.js src/main/desktop-install-control.test.js src/main/marketplace-install.test.js src/main/ipc-authorization.test.js src/preload/shell-api.test.js src/renderer/boot-recovery.test.js
 ```
 
-Vendor (from `vendor/deepseek-harness`):
+Vendor (from `vendor/relay-harness`):
 
 ```
 pnpm exec vitest run packages/boot/app-boot/tests/profile.spec.ts apps/cli/tests/args.spec.ts apps/cli/tests/profile-boot.spec.ts apps/cli/tests/dump-config.spec.ts packages/client/ui-settings-plugin-inventory/tests/marketplace.client.spec.tsx packages/client/ui-settings-plugin-inventory/tests/browser-plugin.client.spec.tsx

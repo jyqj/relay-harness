@@ -1,4 +1,4 @@
-# `@deepseek-ai/dsh-memory-extractor-llm`
+# `@relay-harness/rlh-memory-extractor-llm`
 
 [English](README.md) | 中文
 
@@ -14,7 +14,7 @@
 |---|---:|---|
 | `enabled` | `false` | 只有显式开启才注册 capture 与 worker。 |
 | `userId` | `local` | 提取记忆的稳定用户 Scope。 |
-| `agentId` | `deepseek-harness` | 跨会话共享的稳定 Agent Scope。 |
+| `agentId` | `relay-harness` | 跨会话共享的稳定 Agent Scope。 |
 | `workspaceId` | 会话 cwd，其次 `global` | 可选的显式工作区 Scope。 |
 | `agentPresets` | `[]` | 持久 preset allowlist；空数组接受全部 preset。 |
 | `includeSubagents` | `false` | 是否捕获 delegated 会话。 |

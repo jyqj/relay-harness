@@ -2,22 +2,22 @@
    the PowerShell counterpart shares the session registry, polling loop, and reset contract by design. */
 /**
  * Model-facing persistent `pwsh` tool over the owner-scoped PTY seam.
- * @module @deepseek-ai/dsh-tool-pwsh-persistent
+ * @module @relay-harness/rlh-tool-pwsh-persistent
  */
 
 import { randomUUID } from 'node:crypto'
-import type { Context } from '@deepseek-ai/cordis'
-import z from '@deepseek-ai/schemastery'
-import type { Agent } from '@deepseek-ai/dsh-agent'
-import type { TerminalReadResult, TerminalSendResult, TerminalSessionId } from '@deepseek-ai/dsh-terminal'
-import { deadline, timeoutOf } from '@deepseek-ai/dsh-timeout'
-import { defineTool } from '@deepseek-ai/dsh-tools'
+import type { Context } from '@relay-harness/cordis'
+import z from '@relay-harness/schemastery'
+import type { Agent } from '@relay-harness/rlh-agent'
+import type { TerminalReadResult, TerminalSendResult, TerminalSessionId } from '@relay-harness/rlh-terminal'
+import { deadline, timeoutOf } from '@relay-harness/rlh-timeout'
+import { defineTool } from '@relay-harness/rlh-tools'
 
 // TODO: Replace the file-search advice; arbitrary command output need not come from a searchable file.
 const TRUNCATED_MESSAGE = '<response clipped><NOTE>To save on context only part of this file has been shown to you. You should retry this tool after you have searched inside the file with Select-String in order to find the line numbers of what you are looking for.</NOTE>'
 const LOST_PREFIX_MESSAGE = '<response clipped><NOTE>The beginning of this command output was dropped by the terminal scrollback limit. The following text is the earliest retained output.</NOTE>\n'
 const SHELL_RESET_MESSAGE = 'The persistent pwsh shell was reset; the next pwsh call starts from the workspace with a fresh current directory and environment.'
-const SHELL_PROMPT = '__DSH_PERSISTENT_PWSH_PROMPT__ '
+const SHELL_PROMPT = '__RLH_PERSISTENT_PWSH_PROMPT__ '
 const TIMEOUT_CODE = 'PERSISTENT_PWSH_TIMEOUT'
 // One page is enough to find a just-emitted completion marker; the full
 // scrollback is assembled only when a command settles or needs partial output.
@@ -64,8 +64,8 @@ function maybeTruncate(content: string, maxOutputChars: number, incomplete = fal
 function markers(): CommandMarkers {
   const nonce = randomUUID()
   return {
-    start: `__DSH_PERSISTENT_PWSH_START_${nonce}__`,
-    end: `__DSH_PERSISTENT_PWSH_END_${nonce}:`,
+    start: `__RLH_PERSISTENT_PWSH_START_${nonce}__`,
+    end: `__RLH_PERSISTENT_PWSH_END_${nonce}:`,
   }
 }
 

@@ -14,10 +14,10 @@ test('injected chrome script is a re-runnable IIFE with no Node exports', () => 
 });
 
 test('injected window controls follow official label and hover tokens', () => {
-  assert.match(injectSource, /color:\s*var\(--dsw-alias-label-primary\)/);
-  assert.match(injectSource, /background:\s*var\(--dsw-alias-interactive-bg-hover\)/);
-  assert.doesNotMatch(injectSource, /--dsh-ctrl-fg/);
-  assert.doesNotMatch(injectSource, /--dsh-ctrl-hover/);
+  assert.match(injectSource, /color:\s*var\(--rlw-alias-label-primary\)/);
+  assert.match(injectSource, /background:\s*var\(--rlw-alias-interactive-bg-hover\)/);
+  assert.doesNotMatch(injectSource, /--rlh-ctrl-fg/);
+  assert.doesNotMatch(injectSource, /--rlh-ctrl-hover/);
 });
 
 test('injected chrome script omits the marketplace window-control', () => {
@@ -29,11 +29,11 @@ test('injected chrome owns only the window-control plate', () => {
   assert.match(injectSource, /const CAPTION_HEIGHT = 48/);
   assert.match(injectSource, /addEventListener\('pointerdown'/);
   assert.match(injectSource, /pointer-events:\s*none/);
-  assert.match(injectSource, /--dshd-wco-controls/);
-  assert.doesNotMatch(injectSource, /--dshd-wco-pad/);
-  assert.doesNotMatch(injectSource, /dshd-shell-drag-strip/);
-  assert.doesNotMatch(injectSource, /data-dshd-shell-drag/);
-  assert.doesNotMatch(injectSource, /data-dshd-shell-hit/);
+  assert.match(injectSource, /--rlhd-wco-controls/);
+  assert.doesNotMatch(injectSource, /--rlhd-wco-pad/);
+  assert.doesNotMatch(injectSource, /rlhd-shell-drag-strip/);
+  assert.doesNotMatch(injectSource, /data-rlhd-shell-drag/);
+  assert.doesNotMatch(injectSource, /data-rlhd-shell-hit/);
   assert.doesNotMatch(injectSource, /findSessionLog/);
   assert.doesNotMatch(injectSource, /findTopBar/);
   assert.doesNotMatch(injectSource, /findCenterCol/);
@@ -48,7 +48,7 @@ test('injected chrome script can be evaluated twice in one realm', () => {
   const context = vm.createContext(createInjectSandbox());
   assert.doesNotThrow(() => vm.runInContext(injectSource, context));
   assert.doesNotThrow(() => vm.runInContext(injectSource, context));
-  const hosts = context.document.querySelectorAll('#dshd-shell-controls');
+  const hosts = context.document.querySelectorAll('#rlhd-shell-controls');
   assert.equal(hosts.length, 1);
 });
 
@@ -56,11 +56,11 @@ test('injected measure publishes only the window-control inset', () => {
   const cssVars = {};
   const context = vm.createContext(createInjectSandbox({ cssVars }));
   vm.runInContext(injectSource, context);
-  assert.equal(cssVars['--dshd-wco-controls'], '112px');
-  assert.equal(cssVars['--dshd-wco-pad'], undefined);
-  assert.equal(context.document.getElementById('dshd-shell-drag-strip'), null);
-  assert.equal(context.document.querySelector('[data-dshd-shell-drag]'), null);
-  assert.equal(context.document.querySelector('[data-dshd-shell-hit]'), null);
+  assert.equal(cssVars['--rlhd-wco-controls'], '112px');
+  assert.equal(cssVars['--rlhd-wco-pad'], undefined);
+  assert.equal(context.document.getElementById('rlhd-shell-drag-strip'), null);
+  assert.equal(context.document.querySelector('[data-rlhd-shell-drag]'), null);
+  assert.equal(context.document.querySelector('[data-rlhd-shell-hit]'), null);
 });
 
 test('injected window controls dispatch windowAction on pointerdown', () => {
@@ -73,7 +73,7 @@ test('injected window controls dispatch windowAction on pointerdown', () => {
     },
   }));
   vm.runInContext(injectSource, context);
-  const host = context.document.getElementById('dshd-shell-controls');
+  const host = context.document.getElementById('rlhd-shell-controls');
   assert.ok(host);
   const close = host.querySelector('[data-act="close"]');
   assert.ok(close);
@@ -266,8 +266,8 @@ function createInjectSandbox(options = {}) {
   };
 
   const window = {
-    __dshShellChromeBound: false,
-    __dshShellMaximized: false,
+    __rlhShellChromeBound: false,
+    __rlhShellMaximized: false,
     innerWidth: 1280,
     shell: options.shell || null,
     addEventListener() {},

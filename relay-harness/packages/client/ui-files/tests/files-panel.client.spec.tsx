@@ -1,13 +1,13 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor, act } from '@testing-library/react'
-import { writeClipboard } from '@deepseek-ai/dsh-client-ui-primitives'
+import { writeClipboard } from '@relay-harness/rlh-client-ui-primitives'
 
-vi.mock('@deepseek-ai/dsh-client-ui-primitives', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@deepseek-ai/dsh-client-ui-primitives')>()
+vi.mock('@relay-harness/rlh-client-ui-primitives', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@relay-harness/rlh-client-ui-primitives')>()
   return { ...actual, writeClipboard: vi.fn(async () => true) }
 })
-import type { SessionId, SessionListState } from '@deepseek-ai/dsh-client-runtime/client'
+import type { SessionId, SessionListState } from '@relay-harness/rlh-client-runtime/client'
 import { filterEntries } from '../src/client/filter.ts'
 import { FileTree, joinRel } from '../src/client/FileTree.tsx'
 import { FilePreview } from '../src/client/FilePreview.tsx'
@@ -2163,7 +2163,7 @@ describe('FilePreview', () => {
     )
     const editor = await screen.findByLabelText('a.ts')
     fireEvent.click(screen.getByRole('button', { name: 'Word wrap' }))
-    expect(localStorage.getItem('dshd.fileWordWrap')).toBe('1')
+    expect(localStorage.getItem('rlhd.fileWordWrap')).toBe('1')
     expect(
       editor.className.split(/\s+/).some(name => /wrap/i.test(name))
       || getComputedStyle(editor).whiteSpace === 'pre-wrap',
@@ -2238,7 +2238,7 @@ describe('FilePreview', () => {
     ;(window as Window & { shell?: unknown }).shell = { previewWorkspaceFile }
     const events: unknown[] = []
     const onOpen = (event: Event): void => { events.push((event as CustomEvent).detail) }
-    window.addEventListener('dshd-open-surface', onOpen)
+    window.addEventListener('rlhd-open-surface', onOpen)
     try {
       render(
         <FilePreview
@@ -2271,12 +2271,12 @@ describe('FilePreview', () => {
         })
         expect(events).toEqual([{ kind: 'preview', url: 'http://127.0.0.1:9/tok/index.html' }])
       })
-      expect(sessionStorage.getItem('dshd-pending-preview-url')).toBe(
+      expect(sessionStorage.getItem('rlhd-pending-preview-url')).toBe(
         'http://127.0.0.1:9/tok/index.html',
       )
     } finally {
-      window.removeEventListener('dshd-open-surface', onOpen)
-      sessionStorage.removeItem('dshd-pending-preview-url')
+      window.removeEventListener('rlhd-open-surface', onOpen)
+      sessionStorage.removeItem('rlhd-pending-preview-url')
     }
   })
 
@@ -2288,7 +2288,7 @@ describe('FilePreview', () => {
     ;(window as Window & { shell?: unknown }).shell = { previewWorkspaceFile }
     const events: unknown[] = []
     const onOpen = (event: Event): void => { events.push((event as CustomEvent).detail) }
-    window.addEventListener('dshd-open-surface', onOpen)
+    window.addEventListener('rlhd-open-surface', onOpen)
     try {
       render(
         <FilePreview
@@ -2321,12 +2321,12 @@ describe('FilePreview', () => {
         })
         expect(events).toEqual([{ kind: 'preview', url: 'http://127.0.0.1:9/tok/doc.pdf' }])
       })
-      expect(sessionStorage.getItem('dshd-pending-preview-url')).toBe(
+      expect(sessionStorage.getItem('rlhd-pending-preview-url')).toBe(
         'http://127.0.0.1:9/tok/doc.pdf',
       )
     } finally {
-      window.removeEventListener('dshd-open-surface', onOpen)
-      sessionStorage.removeItem('dshd-pending-preview-url')
+      window.removeEventListener('rlhd-open-surface', onOpen)
+      sessionStorage.removeItem('rlhd-pending-preview-url')
     }
   })
 
@@ -2505,7 +2505,7 @@ describe('FilePreview', () => {
   })
 
   it('switches markdown from rendered to source for a line reveal', async () => {
-    localStorage.setItem('dshd.renderMarkdown', '1')
+    localStorage.setItem('rlhd.renderMarkdown', '1')
     render(
       <FilePreview
         sessionId={SID}

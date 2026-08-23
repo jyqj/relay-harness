@@ -1,9 +1,9 @@
 /** Titlebar plugin injects panel toggles into the trailing cluster at order 40. */
-import { Context } from '@deepseek-ai/cordis'
+import { Context } from '@relay-harness/cordis'
 import { describe, expect, it, vi } from 'vitest'
-import { SlotRegistry } from '@deepseek-ai/dsh-client-runtime/client'
-import { LocaleRuntime } from '@deepseek-ai/dsh-client-locale/client'
-import { stubSettingsScope } from '@deepseek-ai/dsh-client-test-runtime'
+import { SlotRegistry } from '@relay-harness/rlh-client-runtime/client'
+import { LocaleRuntime } from '@relay-harness/rlh-client-locale/client'
+import { stubSettingsScope } from '@relay-harness/rlh-client-test-runtime'
 import { apply, inject } from '../src/client/index.ts'
 import type { PanelTogglesInjected } from '../src/client/PanelToggles.tsx'
 import { PanelToggles } from '../src/client/PanelToggles.tsx'

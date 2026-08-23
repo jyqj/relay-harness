@@ -1,5 +1,5 @@
 {
-  "name": "@deepseek-ai/dsh-client-ui-agents-panel",
+  "name": "@relay-harness/rlh-client-ui-agents-panel",
   "description": "Right-panel Agents surface: current-session subagent list",
   "version": "0.1.0-rc.8",
   "publishConfig": {
@@ -7,7 +7,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+    "url": "git+https://github.com/jyqj/relay-harness.git",
     "directory": "packages/client/ui-agents-panel"
   },
   "type": "module",
@@ -29,11 +29,11 @@
     "./src/*": "./src/*",
     "./package.json": "./package.json"
   },
-  "dsh": {
+  "rlh": {
     "client": {
       "inject": [
-        "@deepseek-ai/dsh-client-runtime",
-        "@deepseek-ai/dsh-client-locale"
+        "@relay-harness/rlh-client-runtime",
+        "@relay-harness/rlh-client-locale"
       ],
       "platform": "web"
     }
@@ -44,26 +44,26 @@
   },
   "license": "MIT",
   "peerDependencies": {
-    "@deepseek-ai/dsh-client-locale": "workspace:^",
-    "@deepseek-ai/dsh-client-runtime": "workspace:^",
-    "@deepseek-ai/dsh-client-ui-primitives": "workspace:^",
-    "@deepseek-ai/dsh-client-ui-slots": "workspace:^",
-    "@deepseek-ai/dsh-invariants": "workspace:^",
-    "@deepseek-ai/cordis": "workspace:^",
+    "@relay-harness/rlh-client-locale": "workspace:^",
+    "@relay-harness/rlh-client-runtime": "workspace:^",
+    "@relay-harness/rlh-client-ui-primitives": "workspace:^",
+    "@relay-harness/rlh-client-ui-slots": "workspace:^",
+    "@relay-harness/rlh-invariants": "workspace:^",
+    "@relay-harness/cordis": "workspace:^",
     "react": "^18.2.0",
-    "@deepseek-ai/dsh-client-ui-surfaces": "workspace:^"
+    "@relay-harness/rlh-client-ui-surfaces": "workspace:^"
   },
   "devDependencies": {
-    "@deepseek-ai/dsh-client-locale": "workspace:^",
-    "@deepseek-ai/dsh-client-runtime": "workspace:^",
-    "@deepseek-ai/dsh-client-test-runtime": "workspace:^",
-    "@deepseek-ai/dsh-client-ui-primitives": "workspace:^",
-    "@deepseek-ai/dsh-client-ui-slots": "workspace:^",
-    "@deepseek-ai/dsh-invariants": "workspace:^",
+    "@relay-harness/rlh-client-locale": "workspace:^",
+    "@relay-harness/rlh-client-runtime": "workspace:^",
+    "@relay-harness/rlh-client-test-runtime": "workspace:^",
+    "@relay-harness/rlh-client-ui-primitives": "workspace:^",
+    "@relay-harness/rlh-client-ui-slots": "workspace:^",
+    "@relay-harness/rlh-invariants": "workspace:^",
     "@types/react": "~18.3.1",
-    "@deepseek-ai/cordis": "workspace:^",
+    "@relay-harness/cordis": "workspace:^",
     "react": "^18.2.0",
-    "@deepseek-ai/dsh-client-ui-surfaces": "workspace:^"
+    "@relay-harness/rlh-client-ui-surfaces": "workspace:^"
   },
   "files": [
     "lib/index.js",

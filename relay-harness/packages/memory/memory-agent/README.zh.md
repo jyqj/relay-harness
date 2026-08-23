@@ -1,4 +1,4 @@
-# `@deepseek-ai/dsh-memory-agent`
+# `@relay-harness/rlh-memory-agent`
 
 [English](README.md) | 中文
 
@@ -11,7 +11,7 @@ Consumer 会保留 prepared handle，直到持久的最终 `turn/end`。complete
 | Key | 默认值 | 契约 |
 |---|---:|---|
 | `userId` | `local` | 稳定用户 Scope。 |
-| `agentId` | `deepseek-harness` | 跨会话共享的稳定 Agent Scope。 |
+| `agentId` | `relay-harness` | 跨会话共享的稳定 Agent Scope。 |
 | `workspaceId` | 会话 cwd，其次 `global` | 可选的显式稳定工作区 Scope。 |
 | `candidateLimit` | `10` | 装入前的 Provider 候选数。 |
 | `maxContextChars` | `3200` | 包含安全框架的完整召回消息上限，以 Unicode code point 计。 |

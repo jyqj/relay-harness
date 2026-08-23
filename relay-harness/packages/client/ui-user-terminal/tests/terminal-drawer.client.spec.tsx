@@ -117,7 +117,7 @@ vi.mock('../src/client/ghostty/surface.ts', () => {
   }
 })
 
-import type { SessionId, SessionListState } from '@deepseek-ai/dsh-client-runtime/client'
+import type { SessionId, SessionListState } from '@relay-harness/rlh-client-runtime/client'
 import type { TerminalDrawerProps } from '../src/client/TerminalDrawer.tsx'
 import { TerminalDrawer } from '../src/client/TerminalDrawer.tsx'
 import { TerminalPane } from '../src/client/TerminalPane.tsx'
@@ -935,7 +935,7 @@ describe('ui-user-terminal production imports', () => {
     for (const name of readdirSync(dir)) {
       if (!/\.(ts|tsx)$/.test(name)) continue
       const text = readFileSync(join(dir, name), 'utf8')
-      expect(text.includes('@deepseek-ai/dsh-client-ui-layout/src/'), name).toBe(false)
+      expect(text.includes('@relay-harness/rlh-client-ui-layout/src/'), name).toBe(false)
     }
   })
 
@@ -954,9 +954,9 @@ describe('ui-user-terminal production imports', () => {
       'utf8',
     )
     expect(terminalCss).toMatch(/\.root\s*{[\s\S]{0,220}background:\s*transparent/)
-    expect(terminalCss).toMatch(/\.paneTerminal\s*{[\s\S]{0,280}background:\s*var\(--dsw-alias-terminal-pane\)/)
+    expect(terminalCss).toMatch(/\.paneTerminal\s*{[\s\S]{0,280}background:\s*var\(--rlw-alias-terminal-pane\)/)
     expect(terminalCss).not.toMatch(/backdrop-filter/)
-    expect(terminalCss).not.toMatch(/\.paneTerminal\s*{[\s\S]{0,320}--dsw-alias-bg-layer-2/)
+    expect(terminalCss).not.toMatch(/\.paneTerminal\s*{[\s\S]{0,320}--rlw-alias-bg-layer-2/)
     expect(terminalCss).toMatch(new RegExp(['t', '3', '-ghostty-canvas'].join('')))
     expect(terminalCss).not.toMatch(/canvas[\s\S]{0,120}background:/)
   })
@@ -968,8 +968,8 @@ describe('ui-user-terminal production imports', () => {
     )
     expect(terminalCss).not.toMatch(/xterm-bg-257/)
     expect(terminalCss).not.toMatch(/xterm-bold[^{]*\{[^}]*background/)
-    expect(terminalCss).not.toMatch(/data-dsh-tui-selected/)
-    expect(terminalCss).not.toMatch(/dsh-tui-selected-bar/)
+    expect(terminalCss).not.toMatch(/data-rlh-tui-selected/)
+    expect(terminalCss).not.toMatch(/rlh-tui-selected-bar/)
     expect(terminalCss).toMatch(/\.paneTerminalWrap\s*\{[^}]*isolation:\s*isolate/)
   })
 })

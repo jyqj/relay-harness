@@ -1,4 +1,4 @@
-# @deepseek-ai/dsh-tool-pwsh-persistent
+# @relay-harness/rlh-tool-pwsh-persistent
 
 [English](README.md) | 中文
 

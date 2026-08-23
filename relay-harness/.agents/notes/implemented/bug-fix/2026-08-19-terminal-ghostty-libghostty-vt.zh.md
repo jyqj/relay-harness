@@ -22,7 +22,7 @@ CodeBuddy 的斜杠菜单用 Ink 的 `bold` 加 `colors.info`（青色）标出�
 
 ## 后果
 
-插件 `client.js` 从 `/plugins/@deepseek-ai/dsh-client-ui-user-terminal/assets/` 拉取 `ghostty-vt.wasm`、`ghostty-write-pty.wasm` 和 symbols Nerd Font。`@xterm/xterm` 不再是窗格依赖。对话里的 bash 卡片（`TerminalBlock`）不变。Windows PTY 启动复制 T3code 的 `createTerminalSpawnEnv` 和 `name: xterm-color`。Windows 上丢掉 Electron 的 `TERM=dumb`；T3code 的 Windows node-pty 不会把 `name` 写进 `$TERM`。选区的复制 / 加入对话 / 打开仍是现有工作环工具条。实机斜杠菜单只能用选中行的 CDP 截图证明，不能靠单元测试。
+插件 `client.js` 从 `/plugins/@relay-harness/rlh-client-ui-user-terminal/assets/` 拉取 `ghostty-vt.wasm`、`ghostty-write-pty.wasm` 和 symbols Nerd Font。`@xterm/xterm` 不再是窗格依赖。对话里的 bash 卡片（`TerminalBlock`）不变。Windows PTY 启动复制 T3code 的 `createTerminalSpawnEnv` 和 `name: xterm-color`。Windows 上丢掉 Electron 的 `TERM=dumb`；T3code 的 Windows node-pty 不会把 `name` 写进 `$TERM`。选区的复制 / 加入对话 / 打开仍是现有工作环工具条。实机斜杠菜单只能用选中行的 CDP 截图证明，不能靠单元测试。
 
 ## 测试
 
@@ -30,4 +30,4 @@ CodeBuddy 的斜杠菜单用 Ink 的 `bold` 加 `colors.info`（青色）标出�
 
 ## 相关
 
-[PTY 的 ANSI 颜色跟随 T3code Pierre，而不是 UI 状态 token](2026-08-19-terminal-ansi-pierre-palette.md) 描述了已放弃的 xterm Pierre 映射；此处 ANSI 1–15 由 Ghostty 引擎色板拥有。[终端窗格是不透明的画布井](2026-08-19-terminal-pane-opaque-tui-stage.md) 拥有 `--dsw-alias-terminal-pane`。[ConPTY 启动匹配 T3code；DA1 每个 PTY 只应答一次](2026-08-18-terminal-conpty-oneshot-no-dll.md) 拥有 Windows 启动；xterm 的 DA1 锁存器不被此窗格使用。
+[PTY 的 ANSI 颜色跟随 T3code Pierre，而不是 UI 状态 token](2026-08-19-terminal-ansi-pierre-palette.md) 描述了已放弃的 xterm Pierre 映射；此处 ANSI 1–15 由 Ghostty 引擎色板拥有。[终端窗格是不透明的画布井](2026-08-19-terminal-pane-opaque-tui-stage.md) 拥有 `--rlw-alias-terminal-pane`。[ConPTY 启动匹配 T3code；DA1 每个 PTY 只应答一次](2026-08-18-terminal-conpty-oneshot-no-dll.md) 拥有 Windows 启动；xterm 的 DA1 锁存器不被此窗格使用。

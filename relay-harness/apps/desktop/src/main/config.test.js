@@ -4,7 +4,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const userData = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-config-test-'));
+const userData = fs.mkdtempSync(path.join(os.tmpdir(), 'rlh-config-test-'));
 const electronPath = require.resolve('electron');
 require.cache[electronPath] = {
   id: electronPath,
@@ -75,7 +75,7 @@ test('renderer config patch only accepts safe typed fields', () => {
     githubToken: 'token',
   });
   for (const patch of [
-    { dshBin: 'C:\\malware.cmd' },
+    { rlhBin: 'C:\\malware.cmd' },
     { nodeBin: 'C:\\malware.exe' },
     { workspace: 'C:\\' },
     { baseUrl: 'https://attacker.invalid' },

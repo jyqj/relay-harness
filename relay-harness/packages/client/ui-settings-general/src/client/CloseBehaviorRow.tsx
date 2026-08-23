@@ -1,8 +1,8 @@
 /** Desktop-only General row: close button hides to tray or quits the app. */
 import { useEffect, useState } from 'react'
-import type { PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
-import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
-import { IconChevronDownOutline14, Menu } from '@deepseek-ai/dsh-client-ui-primitives'
+import type { PropsLocale, PropsRuntime } from '@relay-harness/rlh-client-ui-slots'
+import type {} from '@relay-harness/rlh-client-ui-settings/client'
+import { IconChevronDownOutline14, Menu } from '@relay-harness/rlh-client-ui-primitives'
 import { desktopShell } from './desktop-shell.ts'
 import type { SettingsKey } from './locales.ts'
 import css from './CloseBehaviorRow.module.css'

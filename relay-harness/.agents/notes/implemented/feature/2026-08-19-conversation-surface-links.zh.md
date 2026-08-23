@@ -6,11 +6,11 @@ Status: implemented
 
 ## 问题
 
-桌面对话里本来就有两条工作环，但没接到一起。文件提及、产物芯片和工具行路径走 `workspaces.openPath`，surfaces 拦截器只把它变成 Files 的 `file:` Tab，所以 `.html`／`.svg` 当源码打开。Markdown 和行内代码里的 http(s) 使用 `target="_blank"`，Harness BrowserView 的 `setWindowOpenHandler` 把所有 http(s)（含 loopback）交给 `shell.openExternal`。终端已经把 loopback 送到 `dshd-open-surface` 和 `dshd-pending-preview-url`。[从 web UI 打开产出的文件](2026-07-31-web-workspace-file-links.md) 否决了从 harness 源提供工作区文件（同源 `/api` 泄露），并把桌面 WebView 记为剩余的隔离方式。`file:` 会被取消；guest 文档可以是任意 http(s)；Harness 主窗口仍限制在 loopback。
+桌面对话里本来就有两条工作环，但没接到一起。文件提及、产物芯片和工具行路径走 `workspaces.openPath`，surfaces 拦截器只把它变成 Files 的 `file:` Tab，所以 `.html`／`.svg` 当源码打开。Markdown 和行内代码里的 http(s) 使用 `target="_blank"`，Harness BrowserView 的 `setWindowOpenHandler` 把所有 http(s)（含 loopback）交给 `shell.openExternal`。终端已经把 loopback 送到 `rlhd-open-surface` 和 `rlhd-pending-preview-url`。[从 web UI 打开产出的文件](2026-07-31-web-workspace-file-links.md) 否决了从 harness 源提供工作区文件（同源 `/api` 泄露），并把桌面 WebView 记为剩余的隔离方式。`file:` 会被取消；guest 文档可以是任意 http(s)；Harness 主窗口仍限制在 loopback。
 
 ## 决策
 
-**工作区 HTML/SVG 先开 Files 再开 Browser。** 桌面 `wrapOpenPath` 会 await `openInSurfaces`。在 `openFile` 和 `layout.openSurfaces()` 之后，`.html`／`.htm`／`.xhtml`／`.svg`（与 Host `openPath` 当作浏览器文档的集合相同）调用 `previewWorkspaceFile({ cwd, relativePath })`。得到 `{ ok, url }` 时，拦截器先写 `dshd-pending-preview-url`，再 dispatch `dshd-open-surface`（`{ kind: 'preview', url }`），因此激活 Tab 是 Browser，源码 Tab 留在条上。IPC 缺失、抛错或拒绝时只留 Files，不 throw，也不回落到操作系统 `openPath`。
+**工作区 HTML/SVG 先开 Files 再开 Browser。** 桌面 `wrapOpenPath` 会 await `openInSurfaces`。在 `openFile` 和 `layout.openSurfaces()` 之后，`.html`／`.htm`／`.xhtml`／`.svg`（与 Host `openPath` 当作浏览器文档的集合相同）调用 `previewWorkspaceFile({ cwd, relativePath })`。得到 `{ ok, url }` 时，拦截器先写 `rlhd-pending-preview-url`，再 dispatch `rlhd-open-surface`（`{ kind: 'preview', url }`），因此激活 Tab 是 Browser，源码 Tab 留在条上。IPC 缺失、抛错或拒绝时只留 Files，不 throw，也不回落到操作系统 `openPath`。
 
 **用带 token 前缀、只接受 GET 的监听器提供这些文件。** URL 是 `http://127.0.0.1:{port}/{token}/{relative}`，套接字只绑 `127.0.0.1`。token 是每个已解析 cwd 的 16 字节 `base64url`（≥96 bit）。没有 token 的 GET 是 404。POST／PUT／DELETE 是 405。`Host` 必须是 `127.0.0.1`（可带端口）。响应带 `X-Content-Type-Options: nosniff`。路径 decode 一次再 `resolveInside`。不做目录 listing，也不跟随 `index.html`；对目录的 `fileUrl` 失败，对目录的 GET 是 403。预览 origin 能 `fetch` 同一 token 下的其它工作区文件（含 `.env`）；隔离目标是 harness `/api` 源和未认证端口扫描，不是页面沙箱。`preview.closeAll`／Harness 重启会关掉监听器并丢弃 token。
 
@@ -32,7 +32,7 @@ Status: implemented
 
 ## 后果
 
-`dsh web` 仍使用 Host `openPath`／系统浏览器。桌面对话里的 HTML/SVG 以及非 Harness 同源 loopback 留在右边栏。远程 http(s) 仍离开应用。同源 `_blank` 不能把 Harness UI 装进 preview partition。boot 窗口永远收不到 `shell:open-preview-url`。
+`rlh web` 仍使用 Host `openPath`／系统浏览器。桌面对话里的 HTML/SVG 以及非 Harness 同源 loopback 留在右边栏。远程 http(s) 仍离开应用。同源 `_blank` 不能把 Harness UI 装进 preview partition。boot 窗口永远收不到 `shell:open-preview-url`。
 
 ## 测试
 
@@ -40,4 +40,4 @@ Status: implemented
 
 ## 相关
 
-[从 web UI 打开产出的文件](2026-07-31-web-workspace-file-links.md) 拥有 `dsh web` 的 Host `openPath`。[右边栏与终端工作环](2026-08-16-surfaces-terminal-work-loops.md) 拥有本拦截器接入的 Files／Browser／Terminal 工作环。
+[从 web UI 打开产出的文件](2026-07-31-web-workspace-file-links.md) 拥有 `rlh web` 的 Host `openPath`。[右边栏与终端工作环](2026-08-16-surfaces-terminal-work-loops.md) 拥有本拦截器接入的 Files／Browser／Terminal 工作环。

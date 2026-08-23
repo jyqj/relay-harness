@@ -1,9 +1,9 @@
 /** Live issue-runner protocol shared by orchestration and execution providers. */
 
-import type { Branded } from '@deepseek-ai/dsh-brand'
-import type { SessionId, SessionEvent } from '@deepseek-ai/dsh-session/types'
-import type { TrackerIssue, TrackerToolBinding } from '@deepseek-ai/dsh-tracker/types'
-import type { IssueWorkspace } from '@deepseek-ai/dsh-issue-workspace/types'
+import type { Branded } from '@relay-harness/rlh-brand'
+import type { SessionId, SessionEvent } from '@relay-harness/rlh-session/types'
+import type { TrackerIssue, TrackerToolBinding } from '@relay-harness/rlh-tracker/types'
+import type { IssueWorkspace } from '@relay-harness/rlh-issue-workspace/types'
 
 /** Stable identity of one issue execution attempt. */
 export type IssueRunId = Branded<'IssueRunId'>

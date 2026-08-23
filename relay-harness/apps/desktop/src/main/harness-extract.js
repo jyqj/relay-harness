@@ -7,11 +7,11 @@ const { app } = require('electron');
 const { harnessHasGhosttyAssets } = require('../shared/ghostty-assets');
 
 function looseHarnessRoot() {
-  return path.join(process.resourcesPath, 'vendor', 'deepseek-harness');
+  return path.join(process.resourcesPath, 'vendor', 'relay-harness');
 }
 
 function harnessArchivePath() {
-  return path.join(process.resourcesPath, 'vendor', 'deepseek-harness.tar');
+  return path.join(process.resourcesPath, 'vendor', 'relay-harness.tar');
 }
 
 function extractedHarnessRoot() {
@@ -90,7 +90,7 @@ async function ensurePackagedHarness(log = () => {}) {
   }
   const archive = harnessArchivePath();
   if (!fs.existsSync(archive)) {
-    throw new Error('安装包缺少运行时归档 deepseek-harness.tar');
+    throw new Error('安装包缺少运行时归档 relay-harness.tar');
   }
   log('正在解压运行时（仅首次，之后会变快）…');
   fs.mkdirSync(dest, { recursive: true });

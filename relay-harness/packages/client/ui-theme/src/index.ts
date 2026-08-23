@@ -1,8 +1,8 @@
 /** Host registration for the browser theme preference and pre-plugin palette. */
 
-import type { Context } from '@deepseek-ai/cordis'
-import type {} from '@deepseek-ai/dsh-host-webserver'
-import { settingsNamespace } from '@deepseek-ai/dsh-settings'
+import type { Context } from '@relay-harness/cordis'
+import type {} from '@relay-harness/rlh-host-webserver'
+import { settingsNamespace } from '@relay-harness/rlh-settings'
 import { buildThemeBootPayload, injectBootTheme } from './boot-theme.ts'
 import {
   THEME_SETTINGS_NAMESPACE, ThemeSettingsSchema, type ThemeSettings,

@@ -11,13 +11,13 @@
  * synthetic outcome-unknown result otherwise, and calls that never began
  * receive a synthetic not-started result. The step's assistant tool calls are
  * therefore always fully paired before the turn ends.
- * @module dsh-agent-loop/tool-calls
+ * @module rlh-agent-loop/tool-calls
  */
 
-import type { Context } from '@deepseek-ai/cordis'
-import { assertNever, createToolResultMessage, type ToolCallBlock } from '@deepseek-ai/dsh-llm'
-import { TOOL_NOT_STARTED, TOOL_OUTCOME_UNKNOWN, type Session, type UserMessage } from '@deepseek-ai/dsh-session'
-import { TOOL_ABORTED_BEFORE_DISPATCH, type ToolErrorInfo, type ToolExecutionInput, type ToolExecutionMode, type ToolExecutionResult, type ToolRequestSnapshot, type ToolRunContext } from '@deepseek-ai/dsh-tools'
+import type { Context } from '@relay-harness/cordis'
+import { assertNever, createToolResultMessage, type ToolCallBlock } from '@relay-harness/rlh-llm'
+import { TOOL_NOT_STARTED, TOOL_OUTCOME_UNKNOWN, type Session, type UserMessage } from '@relay-harness/rlh-session'
+import { TOOL_ABORTED_BEFORE_DISPATCH, type ToolErrorInfo, type ToolExecutionInput, type ToolExecutionMode, type ToolExecutionResult, type ToolRequestSnapshot, type ToolRunContext } from '@relay-harness/rlh-tools'
 
 /** One tool call after argument parsing, ready to schedule. */
 interface PlannedCall {

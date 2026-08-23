@@ -1,4 +1,4 @@
-# @deepseek-ai/dsh-session-telemetry
+# @relay-harness/rlh-session-telemetry
 
 [English](README.md) | 中文
 

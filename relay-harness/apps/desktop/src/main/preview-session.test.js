@@ -51,10 +51,10 @@ function fakeSession(ua = BRIEF_UA) {
   };
 }
 
-test('previewPartitionForScope uses persist:dshd-preview- plus 20 hex chars', () => {
+test('previewPartitionForScope uses persist:rlhd-preview- plus 20 hex chars', () => {
   const partition = previewPartitionForScope('shared');
   assert.equal(partition.startsWith(PREVIEW_PARTITION_PREFIX), true);
-  assert.equal(PREVIEW_PARTITION_PREFIX, 'persist:dshd-preview-');
+  assert.equal(PREVIEW_PARTITION_PREFIX, 'persist:rlhd-preview-');
   const digest = partition.slice(PREVIEW_PARTITION_PREFIX.length);
   assert.equal(digest.length, 20);
   assert.match(digest, /^[0-9a-f]{20}$/);

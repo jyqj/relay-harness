@@ -4,13 +4,13 @@
  * registration follows the slot declaration, resolves the per-session controller from the slot's
  * sessionId, and unregisters on fiber teardown.
  */
-import { Context } from '@deepseek-ai/cordis'
+import { Context } from '@relay-harness/cordis'
 import { describe, expect, it } from 'vitest'
-import { LocaleRuntime } from '@deepseek-ai/dsh-client-locale/client'
-import { createScope, scopeOf, SlotRegistry } from '@deepseek-ai/dsh-client-runtime/client'
-import type { SessionId } from '@deepseek-ai/dsh-client-runtime/client'
-import { apply, inject, InputTriggerService } from '@deepseek-ai/dsh-client-ui-input-trigger/client'
-import type { MenuViewInjected } from '@deepseek-ai/dsh-client-ui-input-trigger/client'
+import { LocaleRuntime } from '@relay-harness/rlh-client-locale/client'
+import { createScope, scopeOf, SlotRegistry } from '@relay-harness/rlh-client-runtime/client'
+import type { SessionId } from '@relay-harness/rlh-client-runtime/client'
+import { apply, inject, InputTriggerService } from '@relay-harness/rlh-client-ui-input-trigger/client'
+import type { MenuViewInjected } from '@relay-harness/rlh-client-ui-input-trigger/client'
 
 const sid = (k: string): SessionId => k as SessionId
 
@@ -54,7 +54,7 @@ describe('apply', () => {
     expect(t('skill')).toBe('Skills')
     expect(t('subagent')).toBe('Subagents')
     expect(t('path')).toBe('Files')
-    expect(t('dshbot')).toBe('Members')
+    expect(t('rlhbot')).toBe('Members')
     expect(t('loading')).toBe('Loading…')
   })
 

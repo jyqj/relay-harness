@@ -1,4 +1,4 @@
-import type { SessionId, SessionListState, SubagentCatalogSnapshot } from '@deepseek-ai/dsh-client-runtime/client'
+import type { SessionId, SessionListState, SubagentCatalogSnapshot } from '@relay-harness/rlh-client-runtime/client'
 
 /** One current-session subagent row derived from the existing snapshot. */
 export interface AgentRow {

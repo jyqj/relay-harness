@@ -8,7 +8,7 @@
   padding: 0 8px;
   /* Margin, not padding: a drag box that included the control pad would steal
      minimize / maximize / close. AppFrame owns the caption rectangle. */
-  margin-right: var(--dshd-wco-controls, 8px);
+  margin-right: var(--rlhd-wco-controls, 8px);
   box-sizing: border-box;
   overflow-x: auto;
 }
@@ -32,18 +32,18 @@
   border: none;
   border-radius: 8px;
   background: transparent;
-  color: var(--dsw-alias-label-secondary);
+  color: var(--rlw-alias-label-secondary);
   cursor: pointer;
 }
 
 .tab:hover:not(.active) {
-  background: var(--dsw-alias-interactive-bg-hover);
-  color: var(--dsw-alias-label-primary);
+  background: var(--rlw-alias-interactive-bg-hover);
+  color: var(--rlw-alias-label-primary);
 }
 
 .active {
-  background: var(--dsw-alias-button-ghost-active-fill);
-  color: var(--dsw-alias-label-primary);
+  background: var(--rlw-alias-button-ghost-active-fill);
+  color: var(--rlw-alias-label-primary);
 }
 
 .label {
@@ -81,13 +81,13 @@
 .add {
   width: 24px;
   height: 24px;
-  color: var(--dsw-alias-label-secondary);
+  color: var(--rlw-alias-label-secondary);
 }
 
 .close:hover,
 .add:hover {
-  background: var(--dsw-alias-interactive-bg-hover);
-  color: var(--dsw-alias-label-primary);
+  background: var(--rlw-alias-interactive-bg-hover);
+  color: var(--rlw-alias-label-primary);
 }
 
 .contextAnchor {

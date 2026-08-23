@@ -112,27 +112,27 @@ function loginPage() {
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="rgb(21, 21, 23)" />
-  <title>Deepseek Harness 远程</title>
+  <title>Relay Harness 远程</title>
   <style>
     :root {
       color-scheme: dark;
-      --dsw-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
-      --dsw-alias-bg-base: rgb(21, 21, 23);
-      --dsw-alias-label-primary: rgb(249, 250, 251);
-      --dsw-alias-label-tertiary: rgb(173, 178, 184);
-      --dsw-alias-border-l2: rgba(255, 255, 255, 0.12);
-      --dsw-alias-bg-layer-1: rgb(35, 35, 36);
-      --dsw-alias-button-primary-fill: rgb(249, 250, 251);
-      --dsw-alias-label-primary-foreground: rgb(15, 17, 21);
-      --dsw-alias-button-primary-hover: rgb(235, 238, 242);
+      --rlw-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+      --rlw-alias-bg-base: rgb(21, 21, 23);
+      --rlw-alias-label-primary: rgb(249, 250, 251);
+      --rlw-alias-label-tertiary: rgb(173, 178, 184);
+      --rlw-alias-border-l2: rgba(255, 255, 255, 0.12);
+      --rlw-alias-bg-layer-1: rgb(35, 35, 36);
+      --rlw-alias-button-primary-fill: rgb(249, 250, 251);
+      --rlw-alias-label-primary-foreground: rgb(15, 17, 21);
+      --rlw-alias-button-primary-hover: rgb(235, 238, 242);
     }
-    html, body { margin: 0; min-height: 100%; background: var(--dsw-alias-bg-base); color: var(--dsw-alias-label-primary); font: 16px/24px var(--dsw-font-family); }
+    html, body { margin: 0; min-height: 100%; background: var(--rlw-alias-bg-base); color: var(--rlw-alias-label-primary); font: 16px/24px var(--rlw-font-family); }
     main { max-width: 380px; margin: 0 auto; padding: 48px 24px; }
     h1 { font-size: 16px; line-height: 24px; font-weight: 500; margin: 0 0 8px; }
-    p { color: var(--dsw-alias-label-tertiary); font-size: 14px; line-height: 22px; margin: 0 0 20px; }
+    p { color: var(--rlw-alias-label-tertiary); font-size: 14px; line-height: 22px; margin: 0 0 20px; }
     input, button { width: 100%; box-sizing: border-box; font: inherit; }
-    input { height: 36px; padding: 0 14px; border: 1px solid var(--dsw-alias-border-l2); border-radius: 8px; background: var(--dsw-alias-bg-layer-1); color: inherit; margin-bottom: 12px; }
-    button { height: 36px; border: 0; border-radius: 18px; background: var(--dsw-alias-button-primary-fill); color: var(--dsw-alias-label-primary-foreground); font-size: 14px; line-height: 22px; font-weight: 500; }
+    input { height: 36px; padding: 0 14px; border: 1px solid var(--rlw-alias-border-l2); border-radius: 8px; background: var(--rlw-alias-bg-layer-1); color: inherit; margin-bottom: 12px; }
+    button { height: 36px; border: 0; border-radius: 18px; background: var(--rlw-alias-button-primary-fill); color: var(--rlw-alias-label-primary-foreground); font-size: 14px; line-height: 22px; font-weight: 500; }
   </style>
 </head>
 <body>
@@ -543,7 +543,7 @@ class RemoteGateway extends EventEmitter {
       return;
     }
 
-    const parsed = new URL(url, 'http://dsh.remote');
+    const parsed = new URL(url, 'http://rlh.remote');
     const queryToken = parsed.searchParams.get('token');
     if (queryToken) {
       parsed.searchParams.delete('token');

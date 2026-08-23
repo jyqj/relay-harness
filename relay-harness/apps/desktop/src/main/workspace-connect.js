@@ -4,7 +4,7 @@
  * Shared page-driving engine plus the workspace-connect walk.
  *
  * This module is the packaged half of the QA surface: the launch smoke
- * (`DSH_SMOKE=1`, run against the installed app by `npm run smoke:packaged`)
+ * (`RLH_SMOKE=1`, run against the installed app by `npm run smoke:packaged`)
  * needs `connectConfiguredWorkspace` to unlock the workspace before it can
  * hit-test the branch/git titlebar controls, so unlike the full QA walkers
  * (`release-ui-walk.js`, `composer-official-qa.js`) these helpers ship inside
@@ -17,7 +17,7 @@
  * executeJavaScript can eval them without a Node closure.
  */
 const PAGE_HELPERS = `
-function dshShown(el) {
+function rlhShown(el) {
   if (!el) return false;
   if (el.closest('[aria-hidden="true"]')) return false;
   const box = el.getBoundingClientRect();
@@ -25,18 +25,18 @@ function dshShown(el) {
   const st = getComputedStyle(el);
   return st.visibility !== 'hidden' && st.display !== 'none';
 }
-function dshLabel(el) {
+function rlhLabel(el) {
   return ((el.getAttribute('aria-label') || '') + ' ' + (el.textContent || ''))
     .replace(/\\s+/g, ' ').trim();
 }
-function dshFind(pattern, root) {
+function rlhFind(pattern, root) {
   const re = new RegExp(pattern, 'i');
   const scope = root || document;
   return Array.from(scope.querySelectorAll(
     'button, [role="button"], [role="menuitem"], [role="tab"], [role="searchbox"], [role="textbox"], input, textarea, a'
-  )).find((el) => dshShown(el) && re.test(dshLabel(el))) || null;
+  )).find((el) => rlhShown(el) && re.test(rlhLabel(el))) || null;
 }
-function dshSetValue(el, value) {
+function rlhSetValue(el, value) {
   if (!el) return false;
   const proto = el instanceof HTMLTextAreaElement
     ? HTMLTextAreaElement.prototype
@@ -50,23 +50,23 @@ function dshSetValue(el, value) {
   el.dispatchEvent(new Event('change', { bubbles: true }));
   return true;
 }
-function dshDialog() {
-  return Array.from(document.querySelectorAll('[role="dialog"]')).find(dshShown) || null;
+function rlhDialog() {
+  return Array.from(document.querySelectorAll('[role="dialog"]')).find(rlhShown) || null;
 }
-function dshDialogNamed(pattern) {
+function rlhDialogNamed(pattern) {
   const re = new RegExp(pattern, 'i');
-  return Array.from(document.querySelectorAll('[role="dialog"]')).filter(dshShown).find((el) => {
+  return Array.from(document.querySelectorAll('[role="dialog"]')).filter(rlhShown).find((el) => {
     const labelled = el.getAttribute('aria-labelledby');
     const title = labelled ? ((document.getElementById(labelled) && document.getElementById(labelled).textContent) || '') : '';
     const aria = el.getAttribute('aria-label') || '';
     return re.test(aria) || re.test(title);
   }) || null;
 }
-function dshHeading(pattern, root) {
+function rlhHeading(pattern, root) {
   const re = new RegExp(pattern, 'i');
   const scope = root || document;
   return Array.from(scope.querySelectorAll('h1, h2, h3')).find((el) =>
-    dshShown(el) && re.test((el.textContent || '').trim())) || null;
+    rlhShown(el) && re.test((el.textContent || '').trim())) || null;
 }
 `;
 
@@ -100,7 +100,7 @@ function pageScript(wc, body, args) {
 function clickNamed(wc, pattern, rootSelector) {
   return pageScript(wc, `
     const root = args.rootSelector ? document.querySelector(args.rootSelector) : document;
-    const el = dshFind(args.pattern, root || document);
+    const el = rlhFind(args.pattern, root || document);
     if (!el || el.disabled) return false;
     el.click();
     return true;
@@ -122,7 +122,7 @@ function makeRecorder(steps) {
     };
     if (optional) row.optional = true;
     steps.push(row);
-    console.log(`[DSH_QA] ${ok ? 'PASS' : (optional ? 'SKIP' : 'FAIL')} ${name}${row.detail ? ` — ${row.detail}` : ''}`);
+    console.log(`[RLH_QA] ${ok ? 'PASS' : (optional ? 'SKIP' : 'FAIL')} ${name}${row.detail ? ` — ${row.detail}` : ''}`);
   };
 }
 
@@ -146,14 +146,14 @@ async function connectConfiguredWorkspace(wc, helpers, rec) {
   await sleep(300);
   await pageEval(wc, () => {
     const item = Array.from(document.querySelectorAll('[role="menuitem"]')).find((el) =>
-      dshShown(el) && /add workspace|添加工作区/i.test(dshLabel(el)));
+      rlhShown(el) && /add workspace|添加工作区/i.test(rlhLabel(el)));
     if (!item) return false;
     item.click();
     return true;
   });
 
   const picker = await waitUntil(() => pageEval(wc, () =>
-    Boolean(dshDialogNamed('select workspace directory|选择工作区目录'))), 10_000);
+    Boolean(rlhDialogNamed('select workspace directory|选择工作区目录'))), 10_000);
   rec('workspace.picker', Boolean(picker), picker ? '' : 'directory picker missing');
   if (!picker) {
     rec('workspace.connected', false, 'picker did not open');
@@ -163,13 +163,13 @@ async function connectConfiguredWorkspace(wc, helpers, rec) {
   await clickNamed(wc, 'edit path|编辑路径');
   await sleep(250);
   const filled = await pageScript(wc, `
-    const dialog = dshDialogNamed('select workspace directory|选择工作区目录');
+    const dialog = rlhDialogNamed('select workspace directory|选择工作区目录');
     if (!dialog) return false;
-    const input = Array.from(dialog.querySelectorAll('input, textarea')).find(dshShown)
-      || dshFind('edit path|编辑路径', dialog);
+    const input = Array.from(dialog.querySelectorAll('input, textarea')).find(rlhShown)
+      || rlhFind('edit path|编辑路径', dialog);
     if (!input) return false;
     input.focus();
-    return dshSetValue(input, args.path);
+    return rlhSetValue(input, args.path);
   `, { path: workspacePath });
   if (!filled) {
     rec('workspace.connected', false, 'path editor missing');
@@ -177,17 +177,17 @@ async function connectConfiguredWorkspace(wc, helpers, rec) {
   }
   await pressEnter(wc);
   const openReady = await waitUntil(() => pageScript(wc, `
-    const dialog = dshDialogNamed('select workspace directory|选择工作区目录');
+    const dialog = rlhDialogNamed('select workspace directory|选择工作区目录');
     if (!dialog) return null;
     const btn = Array.from(dialog.querySelectorAll('button')).find((el) =>
-      dshShown(el) && /^(open|打开)$/i.test(dshLabel(el)) && !el.disabled);
+      rlhShown(el) && /^(open|打开)$/i.test(rlhLabel(el)) && !el.disabled);
     return btn || null;
   `), 12_000);
   if (openReady) {
     await pageScript(wc, `
-      const dialog = dshDialogNamed('select workspace directory|选择工作区目录');
+      const dialog = rlhDialogNamed('select workspace directory|选择工作区目录');
       const btn = dialog && Array.from(dialog.querySelectorAll('button')).find((el) =>
-        dshShown(el) && /^(open|打开)$/i.test(dshLabel(el)) && !el.disabled);
+        rlhShown(el) && /^(open|打开)$/i.test(rlhLabel(el)) && !el.disabled);
       if (!btn) return false;
       btn.click();
       return true;
@@ -197,11 +197,11 @@ async function connectConfiguredWorkspace(wc, helpers, rec) {
     await pressEnter(wc);
   }
   let pickerClosed = await waitUntil(() => pageEval(wc, () =>
-    !dshDialogNamed('select workspace directory|选择工作区目录')), 12_000);
+    !rlhDialogNamed('select workspace directory|选择工作区目录')), 12_000);
   if (!pickerClosed) {
     await pressEnter(wc);
     pickerClosed = await waitUntil(() => pageEval(wc, () =>
-      !dshDialogNamed('select workspace directory|选择工作区目录')), 8_000);
+      !rlhDialogNamed('select workspace directory|选择工作区目录')), 8_000);
   }
   const connected = await waitUntil(() => pageEval(wc, () => {
     const ta = document.querySelector('[data-composer-card] textarea');
@@ -210,10 +210,10 @@ async function connectConfiguredWorkspace(wc, helpers, rec) {
   if (connected && !pickerClosed) {
     // Workspace already unlocked; dismiss a stuck directory dialog so chrome is usable.
     await pageEval(wc, () => {
-      const dialog = dshDialogNamed('select workspace directory|选择工作区目录');
+      const dialog = rlhDialogNamed('select workspace directory|选择工作区目录');
       if (!dialog) return false;
       const close = Array.from(dialog.querySelectorAll('button')).find((el) =>
-        dshShown(el) && /^(open|打开|cancel|取消|close|关闭)$/i.test(dshLabel(el)));
+        rlhShown(el) && /^(open|打开|cancel|取消|close|关闭)$/i.test(rlhLabel(el)));
       if (close) {
         close.click();
         return true;
@@ -227,7 +227,7 @@ async function connectConfiguredWorkspace(wc, helpers, rec) {
       }
     }
     pickerClosed = await waitUntil(() => pageEval(wc, () =>
-      !dshDialogNamed('select workspace directory|选择工作区目录')), 5_000);
+      !rlhDialogNamed('select workspace directory|选择工作区目录')), 5_000);
   }
   rec('workspace.pickerClosed', Boolean(pickerClosed), pickerClosed ? '' : 'picker stayed open', true);
   rec(

@@ -1,6 +1,6 @@
 /** Theme preferences stored in the Host user-settings document. */
 
-import z from '@deepseek-ai/schemastery'
+import z from '@relay-harness/schemastery'
 import {
   DEFAULT_CODE_FONT_SIZE,
   DEFAULT_FAMILY_ID,

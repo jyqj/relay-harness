@@ -31,7 +31,7 @@ export const en: Record<SessionTreeKey, string> = {
   'filters.user-only': 'Questions only', 'filters.labeled-only': 'Labeled only', 'filters.all': 'All process',
 }
 
-declare module '@deepseek-ai/dsh-client-ui-slots' {
+declare module '@relay-harness/rlh-client-ui-slots' {
   interface LocaleNamespaceMap {
     /** Session Tree product copy. */
     'sessionTree': SessionTreeKey

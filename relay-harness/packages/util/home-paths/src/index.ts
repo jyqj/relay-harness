@@ -1,21 +1,21 @@
 /**
- * Shared filesystem path helpers for DeepSeek Harness user data.
+ * Shared filesystem path helpers for Relay Harness user data.
  *
- * @module @deepseek-ai/dsh-home-paths
+ * @module @relay-harness/rlh-home-paths
  */
 
 import { opendir, realpath } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { basename, dirname, join, resolve } from 'node:path'
 
-/** Directory name for the default DeepSeek Harness home under the OS home. */
-export const DSH_HOME_DIR_NAME = '.dsh'
+/** Directory name for the default Relay Harness home under the OS home. */
+export const RLH_HOME_DIR_NAME = '.rlh'
 
-/** Stable user-facing display form for the default DeepSeek Harness home. */
-export const DEFAULT_DSH_HOME_DISPLAY = `~/${DSH_HOME_DIR_NAME}`
+/** Stable user-facing display form for the default Relay Harness home. */
+export const DEFAULT_RLH_HOME_DISPLAY = `~/${RLH_HOME_DIR_NAME}`
 
-/** Environment variable that overrides the default DeepSeek Harness home. */
-export const DSH_HOME_ENV = 'DSH_HOME'
+/** Environment variable that overrides the default Relay Harness home. */
+export const RLH_HOME_ENV = 'RLH_HOME'
 
 /**
  * Give a native filesystem watcher one canonical spelling of a path, even
@@ -55,11 +55,11 @@ export async function canonicalizeWatchPath(path: string): Promise<string> {
 }
 
 /**
- * Resolve the default DeepSeek Harness home using Node's platform path rules.
+ * Resolve the default Relay Harness home using Node's platform path rules.
  * @returns the absolute default harness home path.
  */
-export function defaultDshHome(): string {
-  return join(homedir(), DSH_HOME_DIR_NAME)
+export function defaultRlhHome(): string {
+  return join(homedir(), RLH_HOME_DIR_NAME)
 }
 
 /**
@@ -74,39 +74,39 @@ export function expandHomePath(path: string): string {
 }
 
 /**
- * Resolve the single-root DeepSeek Harness home.
+ * Resolve the single-root Relay Harness home.
  *
- * Precedence, highest first: an explicit configured path, `$DSH_HOME`, then
- * `~/.dsh`. The harness keeps all user data under one root. An empty or
- * whitespace-only `$DSH_HOME` is treated as unset, so a blank override never
+ * Precedence, highest first: an explicit configured path, `$RLH_HOME`, then
+ * `~/.rlh`. The harness keeps all user data under one root. An empty or
+ * whitespace-only `$RLH_HOME` is treated as unset, so a blank override never
  * resolves the home to the current working directory.
  * @param configured - explicit harness-home override, which has highest precedence.
- * @param env - environment mapping used to read `DSH_HOME`.
+ * @param env - environment mapping used to read `RLH_HOME`.
  * @returns the normalized absolute harness home path.
  */
-export function resolveDshHome(configured?: string, env: Record<string, string | undefined> = process.env): string {
-  const fromEnv = env[DSH_HOME_ENV]
-  const selected = configured ?? (fromEnv !== undefined && fromEnv.trim().length > 0 ? fromEnv : defaultDshHome())
+export function resolveRlhHome(configured?: string, env: Record<string, string | undefined> = process.env): string {
+  const fromEnv = env[RLH_HOME_ENV]
+  const selected = configured ?? (fromEnv !== undefined && fromEnv.trim().length > 0 ? fromEnv : defaultRlhHome())
   return resolve(expandHomePath(selected))
 }
 
 /**
- * Join path segments onto the resolved DeepSeek Harness home.
+ * Join path segments onto the resolved Relay Harness home.
  * @param segments - path segments appended to the Harness home; an empty list returns the home itself.
  * @returns the normalized absolute joined path.
  */
-export function dshHomePath(...segments: string[]): string {
-  return join(resolveDshHome(), ...segments)
+export function rlhHomePath(...segments: string[]): string {
+  return join(resolveRlhHome(), ...segments)
 }
 
 /**
  * Describe a resolved harness home symbolically for user-facing display.
  *
  * It never returns an absolute machine path: the default home is labelled
- * `~/.dsh`, and any configured home is labelled `$DSH_HOME`.
- * @param resolvedHome - the absolute path returned by {@link resolveDshHome}.
- * @returns `~/.dsh` for the default home, otherwise `$DSH_HOME`.
+ * `~/.rlh`, and any configured home is labelled `$RLH_HOME`.
+ * @param resolvedHome - the absolute path returned by {@link resolveRlhHome}.
+ * @returns `~/.rlh` for the default home, otherwise `$RLH_HOME`.
  */
-export function dshHomeDisplay(resolvedHome: string): string {
-  return resolvedHome === resolve(defaultDshHome()) ? DEFAULT_DSH_HOME_DISPLAY : `$${DSH_HOME_ENV}`
+export function rlhHomeDisplay(resolvedHome: string): string {
+  return resolvedHome === resolve(defaultRlhHome()) ? DEFAULT_RLH_HOME_DISPLAY : `$${RLH_HOME_ENV}`
 }

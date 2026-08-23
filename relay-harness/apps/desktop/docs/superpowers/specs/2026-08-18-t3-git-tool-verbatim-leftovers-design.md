@@ -2,7 +2,7 @@
 
 标题栏 Git 工具已经按 T3 迁过 porcelain v2、`workingTree`、`prepareCommitContext`、`GitActionsControl.logic.ts` 状态机。本设计只处理**还留着的、没有正当理由的自写**。不新开产品能力。
 
-视觉语言仍是官方 `dsh web`：`ui-primitives` 与 `--dsw-alias-*`。T3 的 lucide / shadcn / Tailwind / `@pierre` 不能贴过来。见 [design-language.md](../../design-language.md)。
+视觉语言仍是官方 `rlh web`：`ui-primitives` 与 `--rlw-alias-*`。T3 的 lucide / shadcn / Tailwind / `@pierre` 不能贴过来。见 [design-language.md](../../design-language.md)。
 
 T3 对照源：
 

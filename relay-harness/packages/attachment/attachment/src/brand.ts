@@ -1,6 +1,6 @@
-/** Attachment identifier brand. @module @deepseek-ai/dsh-attachment/brand */
+/** Attachment identifier brand. @module @relay-harness/rlh-attachment/brand */
 
-import type { Branded } from '@deepseek-ai/dsh-brand'
+import type { Branded } from '@relay-harness/rlh-brand'
 
 /** Opaque content-addressed identifier for one immutable attachment object. */
 export type AttachmentId = Branded<'AttachmentId'>

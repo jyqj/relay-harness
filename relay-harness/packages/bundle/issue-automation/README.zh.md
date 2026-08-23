@@ -1,8 +1,8 @@
-# `@deepseek-ai/dsh-issue-automation`
+# `@relay-harness/rlh-issue-automation`
 
 [English](README.md) | 中文
 
-应用在 `dsh-base` 与 `dsh-web-app` 之后的 opt-in bundle layer。它组合 Tracker Registry 与 Linear Provider、仓库 Workflow 文件、本地 Issue Workspace、原生多轮 Agent Runner、持久化 Orchestrator、生成的 Remote namespace 和浏览器 Operator overlay。该层不进入默认 Web profile，因为它要求显式 Workflow 路径、Tracker Scope、凭据和隔离 Workspace 策略。
+应用在 `rlh-base` 与 `rlh-web-app` 之后的 opt-in bundle layer。它组合 Tracker Registry 与 Linear Provider、仓库 Workflow 文件、本地 Issue Workspace、原生多轮 Agent Runner、持久化 Orchestrator、生成的 Remote namespace 和浏览器 Operator overlay。该层不进入默认 Web profile，因为它要求显式 Workflow 路径、Tracker Scope、凭据和隔离 Workspace 策略。
 
 ## 模型体验
 

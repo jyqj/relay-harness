@@ -8,22 +8,22 @@
  */
 
 import { describe, expect, it, vi } from 'vitest'
-import { Context } from '@deepseek-ai/cordis'
+import { Context } from '@relay-harness/cordis'
 import { z } from 'zod'
-import AgentRegistry, { Inbox } from '@deepseek-ai/dsh-agent'
-import { AttachmentStore } from '@deepseek-ai/dsh-attachment'
-import type { Agent } from '@deepseek-ai/dsh-agent'
-import { createUserMessage } from '@deepseek-ai/dsh-llm'
-import SessionStore, { SessionId } from '@deepseek-ai/dsh-session'
-import type { Session } from '@deepseek-ai/dsh-session'
-import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
-import type { ProjectionDefinition } from '@deepseek-ai/dsh-session-projection'
-import UserQuestionService from '@deepseek-ai/dsh-user-questions'
-import type { MuxFrame, RpcRequest } from '@deepseek-ai/dsh-host-apiproxy/api'
-import { RpcId } from '@deepseek-ai/dsh-host-apiproxy/api/rpc'
-import { createApiProxy } from '@deepseek-ai/dsh-host-apiproxy'
+import AgentRegistry, { Inbox } from '@relay-harness/rlh-agent'
+import { AttachmentStore } from '@relay-harness/rlh-attachment'
+import type { Agent } from '@relay-harness/rlh-agent'
+import { createUserMessage } from '@relay-harness/rlh-llm'
+import SessionStore, { SessionId } from '@relay-harness/rlh-session'
+import type { Session } from '@relay-harness/rlh-session'
+import SessionProjectionRegistry from '@relay-harness/rlh-session-projection'
+import type { ProjectionDefinition } from '@relay-harness/rlh-session-projection'
+import UserQuestionService from '@relay-harness/rlh-user-questions'
+import type { MuxFrame, RpcRequest } from '@relay-harness/rlh-host-apiproxy/api'
+import { RpcId } from '@relay-harness/rlh-host-apiproxy/api/rpc'
+import { createApiProxy } from '@relay-harness/rlh-host-apiproxy'
 
-declare module '@deepseek-ai/dsh-session-projection/types' {
+declare module '@relay-harness/rlh-session-projection/types' {
   interface SessionProjectionMap {
     'test/last-user': { text: string } | null
   }

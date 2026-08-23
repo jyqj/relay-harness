@@ -2,14 +2,14 @@ const fs = require('fs');
 const path = require('path');
 const { app } = require('electron');
 const { DROPPED } = require('./plugins');
-const { isValidPackageName } = require('../host/install-dsh-plugin-client');
+const { isValidPackageName } = require('../host/install-rlh-plugin-client');
 const { isAllowedMarketplaceSpec } = require('./marketplace-spec');
 
-const DEFAULT_REGISTRY_URL = 'https://awesome-dsh-plugin.com/plugins.json';
+const DEFAULT_REGISTRY_URL = 'https://awesome-rlh-plugin.com/plugins.json';
 const CACHE_VERSION = 3;
 const CACHE_TTL_MS = 60 * 60 * 1000;
 const FETCH_TIMEOUT_MS = 4000;
-const USER_AGENT = 'Deepseek-Harness-Desktop';
+const USER_AGENT = 'Relay-Harness-Desktop';
 const SNAPSHOT_PATH = path.join(__dirname, 'marketplace-registry-snapshot.json');
 const WARNING_FRESH_CACHE = '正在使用一小时内的本地插件目录。';
 const WARNING_EMPTY = '无法加载插件目录。';
@@ -22,7 +22,7 @@ function cachePath() {
 }
 
 function registryUrl() {
-  const fromEnv = process.env.DSHD_MARKETPLACE_REGISTRY_URL;
+  const fromEnv = process.env.RLHD_MARKETPLACE_REGISTRY_URL;
   if (typeof fromEnv === 'string' && fromEnv.trim()) {
     return fromEnv.trim();
   }
@@ -100,7 +100,7 @@ function allowedFallbackSpec(spec, plugin) {
 }
 
 /**
- * Resolve the CLI spec the way dsh-market `installTargetFor` does:
+ * Resolve the CLI spec the way rlh-market `installTargetFor` does:
  * a valid npm name, else github / #path: from the GitHub URL,
  * else the last `install` token when `isAllowedMarketplaceSpec` accepts it.
  * @param {object} plugin

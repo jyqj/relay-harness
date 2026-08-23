@@ -1,8 +1,8 @@
 /** Registers the sidebar shell into the layout-owned slot. */
-import { resolveSlotLabel } from '@deepseek-ai/dsh-client-ui-slots'
-import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
+import { resolveSlotLabel } from '@relay-harness/rlh-client-ui-slots'
+import type { ClientContext } from '@relay-harness/rlh-client-runtime/client'
 // Type-only: pulls the locale plugin's Context merge (ctx.locale).
-import type {} from '@deepseek-ai/dsh-client-locale/client'
+import type {} from '@relay-harness/rlh-client-locale/client'
 import type { SidebarRootInjected } from './contract/slots.ts'
 import type { SidebarNavTabRow } from './stores.ts'
 import { createSidebarNavStore } from './stores.ts'
@@ -18,7 +18,7 @@ export type {
 export type { SidebarKey } from './locales.ts'
 export type { SidebarNavTabRow } from './stores.ts'
 
-declare module '@deepseek-ai/dsh-client-ui-slots' {
+declare module '@relay-harness/rlh-client-ui-slots' {
   interface LocaleNamespaceMap {
     /** Sidebar shell controls copy. */
     sidebar: SidebarKey

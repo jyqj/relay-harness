@@ -16,22 +16,22 @@
   border: none;
   border-radius: 8px;
   background: transparent;
-  color: var(--dsw-alias-label-secondary);
+  color: var(--rlw-alias-label-secondary);
   cursor: pointer;
   -webkit-app-region: no-drag;
 }
 
 .toggle:hover:not(:disabled) {
-  background: var(--dsw-alias-interactive-bg-hover);
+  background: var(--rlw-alias-interactive-bg-hover);
 }
 
 .pressed {
-  color: var(--dsw-alias-label-primary);
-  background: var(--dsw-alias-button-ghost-active-fill);
-  box-shadow: var(--dsw-shadow-lv1);
+  color: var(--rlw-alias-label-primary);
+  background: var(--rlw-alias-button-ghost-active-fill);
+  box-shadow: var(--rlw-shadow-lv1);
 }
 
 .toggle:disabled {
-  color: var(--dsw-alias-label-dimmed);
+  color: var(--rlw-alias-label-dimmed);
   cursor: not-allowed;
 }

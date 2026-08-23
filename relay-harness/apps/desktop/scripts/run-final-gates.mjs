@@ -37,7 +37,7 @@ function changedVendorFiles() {
 const CHANGED_VENDOR_FILES = changedVendorFiles()
 
 const GATES = [
-  { name: 'desktop-tests', cwd: ROOT, cmd: 'pnpm', args: ['--filter', 'deepseek-harness-desktop', 'test'] },
+  { name: 'desktop-tests', cwd: ROOT, cmd: 'pnpm', args: ['--filter', 'relay-harness-desktop', 'test'] },
   { name: 'typecheck', cwd: VENDOR, cmd: 'pnpm', args: ['run', 'typecheck'] },
   // Blocking: this changeset's own files must lint clean (the repo carries a
   // pre-existing baseline of lint errors that this delivery must not extend).
@@ -59,8 +59,8 @@ const GATES = [
   { name: 'md-wrap', cwd: VENDOR, cmd: 'pnpm', args: ['run', 'verify-md-wrap'] },
   { name: 'cordis-config', cwd: VENDOR, cmd: 'pnpm', args: ['run', 'verify-cordis-config'] },
   { name: 'test-web', cwd: VENDOR, cmd: 'pnpm', args: ['run', 'test:web'] },
-  { name: 'pack', cwd: ROOT, cmd: 'pnpm', args: ['--filter', 'deepseek-harness-desktop', 'run', 'dist'] },
-  { name: 'packaged-smoke', cwd: ROOT, cmd: 'pnpm', args: ['--filter', 'deepseek-harness-desktop', 'run', 'smoke:packaged'] },
+  { name: 'pack', cwd: ROOT, cmd: 'pnpm', args: ['--filter', 'relay-harness-desktop', 'run', 'dist'] },
+  { name: 'packaged-smoke', cwd: ROOT, cmd: 'pnpm', args: ['--filter', 'relay-harness-desktop', 'run', 'smoke:packaged'] },
 ]
 
 function parseArgv(argv) {

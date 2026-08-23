@@ -29,9 +29,9 @@ export function OnboardingSurface({ children }: { children: ReactNode }) {
   }, [])
 
   return createPortal((
-    <div className={css.onboardingOverlay} role="presentation" data-dsh-motion="overlay" data-state={state}>
-      <div className={css.onboardingMask} data-dsh-motion-part="mask" aria-hidden="true" />
-      <div className={css.onboardingStage} data-dsh-motion-part="panel">{children}</div>
+    <div className={css.onboardingOverlay} role="presentation" data-rlh-motion="overlay" data-state={state}>
+      <div className={css.onboardingMask} data-rlh-motion-part="mask" aria-hidden="true" />
+      <div className={css.onboardingStage} data-rlh-motion-part="panel">{children}</div>
     </div>
   ), document.body)
 }

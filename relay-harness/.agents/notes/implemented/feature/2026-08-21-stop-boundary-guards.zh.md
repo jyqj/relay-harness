@@ -10,7 +10,7 @@ Status: implemented
 
 ## Decision
 
-两个新 guard 插件监听 `agent/turn-stopping`，按轮次收尾的 finish 种类划分管辖，监听器顺序因此不影响结果。`@deepseek-ai/dsh-behavior-correction` 只在普通 `stop` finish 上行动：检测三类偏差（检查顺序：空回复、未执行代码、未验证完成），并经 `agent.steer(...)` 向收尾轮次注入一条纠正消息，按轮次限界，空回复另有连续次数放弃机制。未验证完成检测要求收尾轮次零工具调用且更早轮次有工具活动，纯聊天会话永不被质疑。`@deepseek-ai/dsh-token-budget-controller` 只在 `max-tokens` finish 上行动：注入继续提示，由每轮 continuation 上限与收益递减检测（基于该轮次逐步 `outputTokens` 序列；未上报 usage 按产出充足计，仅由上限约束）双重限界。
+两个新 guard 插件监听 `agent/turn-stopping`，按轮次收尾的 finish 种类划分管辖，监听器顺序因此不影响结果。`@relay-harness/rlh-behavior-correction` 只在普通 `stop` finish 上行动：检测三类偏差（检查顺序：空回复、未执行代码、未验证完成），并经 `agent.steer(...)` 向收尾轮次注入一条纠正消息，按轮次限界，空回复另有连续次数放弃机制。未验证完成检测要求收尾轮次零工具调用且更早轮次有工具活动，纯聊天会话永不被质疑。`@relay-harness/rlh-token-budget-controller` 只在 `max-tokens` finish 上行动：注入继续提示，由每轮 continuation 上限与收益递减检测（基于该轮次逐步 `outputTokens` 序列；未上报 usage 按产出充足计，仅由上限约束）双重限界。
 
 两个插件都是边界上读取会话日志的纯函数——finish 种类、收尾 assistant 消息、每轮工具调用计数与 usage 全部来自事件——因此唯一自有状态是 `WeakMap` 中按 agent 隔离的内存计数，并明确文档化为不跨恢复保留。纠正走现有的持久 steer 通道（插件来源的 `user/message`），model-visible ⟺ logged 不变量无需新会话事件即可保持。
 

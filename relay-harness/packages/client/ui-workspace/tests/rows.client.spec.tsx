@@ -1,10 +1,10 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, createEvent, fireEvent, render, screen } from '@testing-library/react'
-import type { SessionId, WorkspaceId } from '@deepseek-ai/dsh-client-runtime/client'
-import { makeTranslate } from '@deepseek-ai/dsh-client-test-runtime'
-import { zh as commonZh } from '@deepseek-ai/dsh-client-locale/src/locales/zh.ts'
-import { PRESENCE_EXIT_MS } from '@deepseek-ai/dsh-client-ui-primitives'
+import type { SessionId, WorkspaceId } from '@relay-harness/rlh-client-runtime/client'
+import { makeTranslate } from '@relay-harness/rlh-client-test-runtime'
+import { zh as commonZh } from '@relay-harness/rlh-client-locale/src/locales/zh.ts'
+import { PRESENCE_EXIT_MS } from '@relay-harness/rlh-client-ui-primitives'
 import type { RowDragProps } from '../src/client/rows/Rows.tsx'
 import { GroupSessionRun, ProjectRowItem, SearchResultItem, SessionNodeItem } from '../src/client/rows/Rows.tsx'
 import type { GroupNode, SearchResultNode, SessionNode } from '../src/client/tree.ts'
@@ -138,9 +138,9 @@ describe('workspace browser rows', () => {
     vi.useFakeTimers()
     const { rerender } = render(<GroupSessionRun open><span>held row</span></GroupSessionRun>)
     act(() => { vi.advanceTimersToNextFrame(); vi.advanceTimersToNextFrame() })
-    expect(screen.getByText('held row').closest('[data-dsh-motion]')?.getAttribute('data-state')).toBe('open')
+    expect(screen.getByText('held row').closest('[data-rlh-motion]')?.getAttribute('data-state')).toBe('open')
     rerender(<GroupSessionRun open={false}><span>held row</span></GroupSessionRun>)
-    const run = screen.getByText('held row').closest('[data-dsh-motion]')
+    const run = screen.getByText('held row').closest('[data-rlh-motion]')
     expect(run?.getAttribute('aria-hidden')).toBe('true')
     expect(run?.getAttribute('data-state')).toBe('closed')
     act(() => { vi.advanceTimersByTime(PRESENCE_EXIT_MS) })

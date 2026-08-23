@@ -1,4 +1,4 @@
-# @deepseek-ai/dsh-client-ui-cordis
+# @relay-harness/rlh-client-ui-cordis
 
 English | [中文](README.zh.md)
 

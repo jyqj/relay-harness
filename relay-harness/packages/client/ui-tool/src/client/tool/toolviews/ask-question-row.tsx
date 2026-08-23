@@ -6,9 +6,9 @@
 // when the user dismissed the whole set — because the questions themselves
 // render in the composer takeover.
 
-import { IconQuestionOutline14 } from '@deepseek-ai/dsh-client-ui-primitives'
-import type { Context } from '@deepseek-ai/cordis'
-import type { PropsLocale } from '@deepseek-ai/dsh-client-ui-slots'
+import { IconQuestionOutline14 } from '@relay-harness/rlh-client-ui-primitives'
+import type { Context } from '@relay-harness/cordis'
+import type { PropsLocale } from '@relay-harness/rlh-client-ui-slots'
 import type { ToolCallViewProps } from '../../contract/slots.ts'
 import { toolRowModel } from '../models/tool-call-model.ts'
 import { ToolRow } from '../components/ToolRow.tsx'

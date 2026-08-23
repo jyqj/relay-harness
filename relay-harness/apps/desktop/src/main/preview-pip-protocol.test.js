@@ -15,10 +15,10 @@ const {
   buildPreviewPictureInPictureDataUrl,
 } = require('./preview-pip-protocol.js');
 
-test('pip protocol exports the dshd frame channel and size constants', () => {
-  assert.equal(PREVIEW_PIP_FRAME_CHANNEL, 'dshd-preview-pip-frame');
+test('pip protocol exports the rlhd frame channel and size constants', () => {
+  assert.equal(PREVIEW_PIP_FRAME_CHANNEL, 'rlhd-preview-pip-frame');
   assert.equal(PREVIEW_PIP_FRAME_CHANNEL.includes(['t', '3'].join('')), false);
-  assert.match(PREVIEW_PIP_FRAME_CHANNEL, /^dshd-preview-/);
+  assert.match(PREVIEW_PIP_FRAME_CHANNEL, /^rlhd-preview-/);
   assert.equal(PICTURE_IN_PICTURE_INITIAL_WIDTH, 480);
   assert.equal(PICTURE_IN_PICTURE_INITIAL_HEIGHT, 320);
   assert.equal(PICTURE_IN_PICTURE_MIN_WIDTH, 240);

@@ -2,10 +2,10 @@ import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { Context } from '@deepseek-ai/cordis'
-import { bindScopeParent, createScope, scopeOf } from '@deepseek-ai/dsh-scope'
-import SkillRegistry, { type SkillDefinition, type SkillSummary } from '@deepseek-ai/dsh-skill'
-import { remoteMethods, TypertLookupFailure } from '@deepseek-ai/dsh-typert-protocol'
+import { Context } from '@relay-harness/cordis'
+import { bindScopeParent, createScope, scopeOf } from '@relay-harness/rlh-scope'
+import SkillRegistry, { type SkillDefinition, type SkillSummary } from '@relay-harness/rlh-skill'
+import { remoteMethods, TypertLookupFailure } from '@relay-harness/rlh-typert-protocol'
 import SkillInventoryGateway, { parseSkillMarkdown } from '../src/index.ts'
 
 const contexts: Context[] = []
@@ -18,7 +18,7 @@ function summary(partial: Partial<SkillSummary> & Pick<SkillSummary, 'name'>): S
   return {
     description: partial.description ?? 'desc',
     invocation: partial.invocation ?? { modelInvocable: true, userInvocable: true },
-    source: partial.source ?? 'user-dsh',
+    source: partial.source ?? 'user-rlh',
     provider: partial.provider ?? 'filesystem',
     ...partial,
   }
@@ -47,10 +47,10 @@ describe('SkillInventoryGateway', () => {
     ])
   })
 
-  it('creates a user-dsh bundle and rejects a non-kebab name', async () => {
-    const home = await mkdtemp(join(tmpdir(), 'dsh-skill-inv-'))
-    const previous = process.env.DSH_HOME
-    process.env.DSH_HOME = home
+  it('creates a user-rlh bundle and rejects a non-kebab name', async () => {
+    const home = await mkdtemp(join(tmpdir(), 'rlh-skill-inv-'))
+    const previous = process.env.RLH_HOME
+    process.env.RLH_HOME = home
     const ctx = new Context()
     contexts.push(ctx)
     provideAgents(ctx)
@@ -66,7 +66,7 @@ describe('SkillInventoryGateway', () => {
       name: 'Not Valid',
       description: 'x',
       content: 'body',
-      root: 'user-dsh',
+      root: 'user-rlh',
       modelInvocable: true,
       userInvocable: true,
     })).rejects.toThrow(/kebab-case/)
@@ -74,7 +74,7 @@ describe('SkillInventoryGateway', () => {
       name: 'demo-skill',
       description: 'A demo',
       content: 'Do it',
-      root: 'user-dsh',
+      root: 'user-rlh',
       modelInvocable: false,
       userInvocable: false,
     })
@@ -83,14 +83,14 @@ describe('SkillInventoryGateway', () => {
     expect(written).toContain('disable-model-invocation: true')
     expect(written).toContain('user-invocable: false')
     expect(written).toContain('Do it')
-    if (previous === undefined) delete process.env.DSH_HOME
-    else process.env.DSH_HOME = previous
+    if (previous === undefined) delete process.env.RLH_HOME
+    else process.env.RLH_HOME = previous
   })
 
   it('invalidates the registry cache after every successful write', async () => {
-    const home = await mkdtemp(join(tmpdir(), 'dsh-skill-inv-'))
-    const previous = process.env.DSH_HOME
-    process.env.DSH_HOME = home
+    const home = await mkdtemp(join(tmpdir(), 'rlh-skill-inv-'))
+    const previous = process.env.RLH_HOME
+    process.env.RLH_HOME = home
     const ctx = new Context()
     contexts.push(ctx)
     provideAgents(ctx)
@@ -107,7 +107,7 @@ describe('SkillInventoryGateway', () => {
       name: 'demo-skill',
       description: 'A demo',
       content: 'Do it',
-      root: 'user-dsh',
+      root: 'user-rlh',
       modelInvocable: true,
       userInvocable: true,
     })
@@ -115,7 +115,7 @@ describe('SkillInventoryGateway', () => {
       name: 'demo-skill',
       description: 'A demo',
       invocation: { modelInvocable: true, userInvocable: true },
-      source: 'user-dsh',
+      source: 'user-rlh',
       provider: 'filesystem',
       path: join(home, 'skills', 'demo-skill', 'SKILL.md'),
       content: 'Do it',
@@ -138,19 +138,19 @@ describe('SkillInventoryGateway', () => {
       name: 'Bad Name',
       description: 'x',
       content: 'body',
-      root: 'user-dsh',
+      root: 'user-rlh',
       modelInvocable: true,
       userInvocable: true,
     })).rejects.toThrow(/kebab-case/)
     expect(invalidate).toHaveBeenCalledTimes(4)
-    if (previous === undefined) delete process.env.DSH_HOME
-    else process.env.DSH_HOME = previous
+    if (previous === undefined) delete process.env.RLH_HOME
+    else process.env.RLH_HOME = previous
   })
 
   it('lists, updates, and toggles a writable skill', async () => {
-    const home = await mkdtemp(join(tmpdir(), 'dsh-skill-inv-'))
-    const previous = process.env.DSH_HOME
-    process.env.DSH_HOME = home
+    const home = await mkdtemp(join(tmpdir(), 'rlh-skill-inv-'))
+    const previous = process.env.RLH_HOME
+    process.env.RLH_HOME = home
     const ctx = new Context()
     contexts.push(ctx)
     provideAgents(ctx)
@@ -167,7 +167,7 @@ describe('SkillInventoryGateway', () => {
       description: 'A demo',
       whenToUse: 'When testing',
       content: 'Do it',
-      root: 'user-dsh',
+      root: 'user-rlh',
       modelInvocable: true,
       userInvocable: true,
     })
@@ -176,7 +176,7 @@ describe('SkillInventoryGateway', () => {
       description: 'A demo',
       whenToUse: 'When testing',
       invocation: { modelInvocable: true, userInvocable: true },
-      source: 'user-dsh',
+      source: 'user-rlh',
       provider: 'filesystem',
       path: join(home, 'skills', 'demo-skill', 'SKILL.md'),
       content: 'Do it',
@@ -221,12 +221,12 @@ describe('SkillInventoryGateway', () => {
     })
     expect(written.data).not.toHaveProperty('disable-model-invocation')
     await gateway.delete({ name: 'demo-skill' })
-    if (previous === undefined) delete process.env.DSH_HOME
-    else process.env.DSH_HOME = previous
+    if (previous === undefined) delete process.env.RLH_HOME
+    else process.env.RLH_HOME = previous
   })
 
   it('creates a project skill and refuses create without cwd', async () => {
-    const cwd = await mkdtemp(join(tmpdir(), 'dsh-skill-proj-'))
+    const cwd = await mkdtemp(join(tmpdir(), 'rlh-skill-proj-'))
     await mkdir(join(cwd, '.git'))
     const ctx = new Context()
     contexts.push(ctx)
@@ -242,7 +242,7 @@ describe('SkillInventoryGateway', () => {
       name: 'proj-skill',
       description: 'P',
       content: 'body',
-      root: 'project-dsh',
+      root: 'project-rlh',
       modelInvocable: true,
       userInvocable: true,
     })).rejects.toThrow(/requires cwd/)
@@ -250,16 +250,16 @@ describe('SkillInventoryGateway', () => {
       name: 'proj-skill',
       description: 'P',
       content: 'body',
-      root: 'project-dsh',
+      root: 'project-rlh',
       modelInvocable: true,
       userInvocable: true,
       cwd,
     })
-    expect(await readFile(join(cwd, '.dsh', 'skills', 'proj-skill', 'SKILL.md'), 'utf8')).toContain('name: proj-skill')
+    expect(await readFile(join(cwd, '.rlh', 'skills', 'proj-skill', 'SKILL.md'), 'utf8')).toContain('name: proj-skill')
   })
 
   it('creates a project skill at the nearest git root for a nested cwd', async () => {
-    const project = await mkdtemp(join(tmpdir(), 'dsh-skill-proj-root-'))
+    const project = await mkdtemp(join(tmpdir(), 'rlh-skill-proj-root-'))
     const cwd = join(project, 'packages', 'app')
     await mkdir(join(project, '.git'))
     await mkdir(cwd, { recursive: true })
@@ -277,13 +277,13 @@ describe('SkillInventoryGateway', () => {
       name: 'nested-project-skill',
       description: 'Nested project skill',
       content: 'body',
-      root: 'project-dsh',
+      root: 'project-rlh',
       modelInvocable: true,
       userInvocable: true,
       cwd,
     })
     expect(await readFile(
-      join(project, '.dsh', 'skills', 'nested-project-skill', 'SKILL.md'),
+      join(project, '.rlh', 'skills', 'nested-project-skill', 'SKILL.md'),
       'utf8',
     )).toContain('name: nested-project-skill')
   })

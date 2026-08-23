@@ -12,7 +12,7 @@
 
 ## Global Constraints
 
-- Official `dsh web` tokens / `ui-primitives` only.
+- Official `rlh web` tokens / `ui-primitives` only.
 - Product copy Chinese in `locales.ts`; English keys in lockstep (`satisfies Record<ThemeKey, string>`).
 - Timeline / UHD / Unsplash / search / favorites stay out.
 - Do not commit.
@@ -25,7 +25,7 @@
 
 ## File map
 
-- Modify: `vendor/deepseek-harness/packages/client/ui-theme/src/wallpaper.ts` — `CROP_DECODE_TIMEOUT_MS`, crop timeout, named catch.
+- Modify: `vendor/relay-harness/packages/client/ui-theme/src/wallpaper.ts` — `CROP_DECODE_TIMEOUT_MS`, crop timeout, named catch.
 - Modify: `WallpaperCropModal.tsx` — ready gate, resize aspect.
 - Modify: `WallpaperSources.tsx` — reject non-https before persist.
 - Modify: `WallpaperRow.tsx` — local pick failure copy.
@@ -38,8 +38,8 @@
 ### Task 1: Crop decode fail-closed
 
 **Files:**
-- Modify: `vendor/deepseek-harness/packages/client/ui-theme/src/wallpaper.ts`
-- Test: `vendor/deepseek-harness/packages/client/ui-theme/tests/wallpaper.client.spec.ts`
+- Modify: `vendor/relay-harness/packages/client/ui-theme/src/wallpaper.ts`
+- Test: `vendor/relay-harness/packages/client/ui-theme/tests/wallpaper.client.spec.ts`
 
 **Interfaces:**
 - Produces: `export const CROP_DECODE_TIMEOUT_MS = 8_000`
@@ -68,7 +68,7 @@ Import `CROP_DECODE_TIMEOUT_MS` and use that number instead of a literal once th
 
 - [ ] **Step 2: Run to verify RED**
 
-Run: `pnpm exec vitest run packages/client/ui-theme/tests/wallpaper.client.spec.ts -t "returns null when decode never settles"` from `vendor/deepseek-harness`.
+Run: `pnpm exec vitest run packages/client/ui-theme/tests/wallpaper.client.spec.ts -t "returns null when decode never settles"` from `vendor/relay-harness`.
 
 Expected: FAIL — promise still pending / test times out or `settled` stays false.
 
@@ -177,7 +177,7 @@ Facts:
 
 ## Verification
 
-From `vendor/deepseek-harness`:
+From `vendor/relay-harness`:
 
 ```
 pnpm exec vitest run packages/client/ui-theme/tests/appearance-section.client.spec.tsx packages/client/ui-theme/tests/wallpaper.client.spec.ts packages/client/ui-theme/tests/theme.client.spec.ts

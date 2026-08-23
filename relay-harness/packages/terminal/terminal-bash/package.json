@@ -1,13 +1,13 @@
 {
-  "name": "@deepseek-ai/dsh-terminal-bash",
-  "description": "Persistent shell PTY backend over the DeepSeek Harness subprocess terminal primitive",
+  "name": "@relay-harness/rlh-terminal-bash",
+  "description": "Persistent shell PTY backend over the Relay Harness subprocess terminal primitive",
   "version": "0.1.0-rc.8",
   "publishConfig": {
     "access": "public"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+    "url": "git+https://github.com/jyqj/relay-harness.git",
     "directory": "packages/terminal/terminal-bash"
   },
   "type": "module",
@@ -32,28 +32,28 @@
   ],
   "license": "MIT",
   "peerDependencies": {
-    "@deepseek-ai/dsh-agent": "workspace:^",
-    "@deepseek-ai/dsh-invariants": "workspace:^",
-    "@deepseek-ai/dsh-terminal": "workspace:^",
-    "@deepseek-ai/dsh-sandbox": "workspace:^",
-    "@deepseek-ai/dsh-sandbox-policy": "workspace:^",
-    "@deepseek-ai/dsh-session": "workspace:^",
-    "@deepseek-ai/dsh-subprocess": "workspace:^",
-    "@deepseek-ai/cordis": "workspace:^"
+    "@relay-harness/rlh-agent": "workspace:^",
+    "@relay-harness/rlh-invariants": "workspace:^",
+    "@relay-harness/rlh-terminal": "workspace:^",
+    "@relay-harness/rlh-sandbox": "workspace:^",
+    "@relay-harness/rlh-sandbox-policy": "workspace:^",
+    "@relay-harness/rlh-session": "workspace:^",
+    "@relay-harness/rlh-subprocess": "workspace:^",
+    "@relay-harness/cordis": "workspace:^"
   },
   "dependencies": {
-    "@deepseek-ai/dsh-pwsh-local": "workspace:^",
-    "@deepseek-ai/schemastery": "workspace:^"
+    "@relay-harness/rlh-pwsh-local": "workspace:^",
+    "@relay-harness/schemastery": "workspace:^"
   },
   "devDependencies": {
-    "@deepseek-ai/dsh-agent": "workspace:^",
-    "@deepseek-ai/dsh-invariants": "workspace:^",
-    "@deepseek-ai/dsh-terminal": "workspace:^",
-    "@deepseek-ai/dsh-sandbox": "workspace:^",
-    "@deepseek-ai/dsh-sandbox-policy": "workspace:^",
-    "@deepseek-ai/dsh-session": "workspace:^",
-    "@deepseek-ai/dsh-subprocess": "workspace:^",
-    "@deepseek-ai/dsh-subprocess-local": "workspace:^",
-    "@deepseek-ai/cordis": "workspace:^"
+    "@relay-harness/rlh-agent": "workspace:^",
+    "@relay-harness/rlh-invariants": "workspace:^",
+    "@relay-harness/rlh-terminal": "workspace:^",
+    "@relay-harness/rlh-sandbox": "workspace:^",
+    "@relay-harness/rlh-sandbox-policy": "workspace:^",
+    "@relay-harness/rlh-session": "workspace:^",
+    "@relay-harness/rlh-subprocess": "workspace:^",
+    "@relay-harness/rlh-subprocess-local": "workspace:^",
+    "@relay-harness/cordis": "workspace:^"
   }
 }

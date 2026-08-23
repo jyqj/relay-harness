@@ -1,10 +1,10 @@
-/** Package-owned invariant companion for `@deepseek-ai/dsh-memory-sqlite`. */
+/** Package-owned invariant companion for `@relay-harness/rlh-memory-sqlite`. */
 
 /* jscpd:ignore-start */
-import type { Context } from '@deepseek-ai/cordis'
-import type { InvariantInstaller } from '@deepseek-ai/dsh-invariants'
+import type { Context } from '@relay-harness/cordis'
+import type { InvariantInstaller } from '@relay-harness/rlh-invariants'
 
-const PACKAGE_NAME = '@deepseek-ai/dsh-memory-sqlite'
+const PACKAGE_NAME = '@relay-harness/rlh-memory-sqlite'
 export const name = 'memory-sqlite-invariant'
 export const inject = ['invariants']
 

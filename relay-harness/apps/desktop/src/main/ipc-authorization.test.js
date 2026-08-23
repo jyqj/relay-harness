@@ -62,6 +62,6 @@ test('assertIpcSender enforces per-surface capabilities', () => {
   );
   assert.throws(
     () => assertIpcSender(eventFor(policy.surfaces.boot), [IPC_ROLES.HARNESS], policy),
-    (error) => error.code === 'ERR_DSH_IPC_SENDER',
+    (error) => error.code === 'ERR_RLH_IPC_SENDER',
   );
 });

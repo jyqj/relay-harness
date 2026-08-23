@@ -1,10 +1,10 @@
-import { Context } from '@deepseek-ai/cordis'
+import { Context } from '@relay-harness/cordis'
 import { describe, expect, it } from 'vitest'
-import { SettingsProvider, settingsNamespace, type SettingsNamespace } from '@deepseek-ai/dsh-settings'
+import { SettingsProvider, settingsNamespace, type SettingsNamespace } from '@relay-harness/rlh-settings'
 import {
   CONVERSATION_SETTINGS_NAMESPACE, DEFAULT_BUSY_ENTER_BEHAVIOR, DEFAULT_COMPOSER_BEAM,
   DEFAULT_COMPOSER_RESIZE, DEFAULT_STATS_LINE, DEFAULT_VIEW_TABS, apply,
-} from '@deepseek-ai/dsh-client-ui-conversation'
+} from '@relay-harness/rlh-client-ui-conversation'
 
 class MemorySettings extends SettingsProvider {
   readonly writable = true

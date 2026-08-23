@@ -1,7 +1,7 @@
 /**
  * Default Agent driver over queued turns and step-boundary input. Every request
  * is derived from the session log.
- * @module dsh-agent-loop/agent
+ * @module rlh-agent-loop/agent
  */
 
 import type {
@@ -14,9 +14,9 @@ import type {
   InboxTarget,
   PreStepDecision,
   RequestErrorAction,
-} from '@deepseek-ai/dsh-agent'
-import { Inbox, agentEvents, assembleContextFor } from '@deepseek-ai/dsh-agent'
-import type { GenerateOptions, LlmCallConfig, Message, PreparedLlmCall } from '@deepseek-ai/dsh-llm'
+} from '@relay-harness/rlh-agent'
+import { Inbox, agentEvents, assembleContextFor } from '@relay-harness/rlh-agent'
+import type { GenerateOptions, LlmCallConfig, Message, PreparedLlmCall } from '@relay-harness/rlh-llm'
 import {
   BlockAssembler,
   LlmError,
@@ -24,15 +24,15 @@ import {
   deepFreeze,
   errorChain,
   markAgentLoopRequest,
-} from '@deepseek-ai/dsh-llm'
-import type { Scope } from '@deepseek-ai/dsh-scope'
-import { createScope } from '@deepseek-ai/dsh-scope'
-import type { EpochHeader, RequestContext, Session, SessionId, TurnEndReason, UserMessage } from '@deepseek-ai/dsh-session'
-import { assertToolTranscriptValid, canonicalHeader, headerEquals } from '@deepseek-ai/dsh-session'
-import { joinContextSections, renderContextSections, renderPrompt } from '@deepseek-ai/dsh-system-prompt'
-import type { PromptAssembly } from '@deepseek-ai/dsh-system-prompt'
-import { TOOL_REQUEST_SNAPSHOT, TOOL_RUNTIME_REQUESTS, type ToolRequestSnapshot } from '@deepseek-ai/dsh-tools'
-import type { Context } from '@deepseek-ai/cordis'
+} from '@relay-harness/rlh-llm'
+import type { Scope } from '@relay-harness/rlh-scope'
+import { createScope } from '@relay-harness/rlh-scope'
+import type { EpochHeader, RequestContext, Session, SessionId, TurnEndReason, UserMessage } from '@relay-harness/rlh-session'
+import { assertToolTranscriptValid, canonicalHeader, headerEquals } from '@relay-harness/rlh-session'
+import { joinContextSections, renderContextSections, renderPrompt } from '@relay-harness/rlh-system-prompt'
+import type { PromptAssembly } from '@relay-harness/rlh-system-prompt'
+import { TOOL_REQUEST_SNAPSHOT, TOOL_RUNTIME_REQUESTS, type ToolRequestSnapshot } from '@relay-harness/rlh-tools'
+import type { Context } from '@relay-harness/cordis'
 import { RuntimeContextProjection } from './runtime-context.ts'
 import { executeToolCalls } from './tool-calls.ts'
 
@@ -54,7 +54,7 @@ type PreparedStep =
 
 /**
  * Structural face of the optional `visionFallback` service
- * (`@deepseek-ai/dsh-llm-vision-fallback`): rewrites derived messages for a
+ * (`@relay-harness/rlh-llm-vision-fallback`): rewrites derived messages for a
  * text-only route by substituting image blocks with logged description text.
  * Declared structurally so the loop takes no dependency on the plugin package.
  */

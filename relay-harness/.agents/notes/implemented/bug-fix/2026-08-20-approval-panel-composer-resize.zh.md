@@ -10,9 +10,9 @@ Status: implemented
 
 ## 决策
 
-`ApprovalPanel` 注入 InputBar 所读的同一个 `ComposerSubmissionPolicy.composerResize` store（`ApprovalComposerInjected.hooks.composerResize`）。该字段为 `true` 时绘制共享的 `ComposerResizeHandles`，`useComposerResizeDrag` 把高度写到 `[data-approval-scroll]`、把宽度写到 `[data-composer-card]`。若存在 `[data-composer-seat]` 祖先，拖动还会在该座位上发布 `--dsh-composer-resized-height` / `--dsh-composer-resized-width`，并复制到座位下每一个 InputBar / ApprovalPanel 主体，因此被 overlay 隐藏的兜底输入栏保持已拖动的尺寸，接管在挂载时采纳它。关闭该设置会去掉手柄并清除已发布的尺寸。QuestionComposer 不变：它的卡片仍使用视口上限，而不是这项设置所调整的草稿滚动区。
+`ApprovalPanel` 注入 InputBar 所读的同一个 `ComposerSubmissionPolicy.composerResize` store（`ApprovalComposerInjected.hooks.composerResize`）。该字段为 `true` 时绘制共享的 `ComposerResizeHandles`，`useComposerResizeDrag` 把高度写到 `[data-approval-scroll]`、把宽度写到 `[data-composer-card]`。若存在 `[data-composer-seat]` 祖先，拖动还会在该座位上发布 `--rlh-composer-resized-height` / `--rlh-composer-resized-width`，并复制到座位下每一个 InputBar / ApprovalPanel 主体，因此被 overlay 隐藏的兜底输入栏保持已拖动的尺寸，接管在挂载时采纳它。关闭该设置会去掉手柄并清除已发布的尺寸。QuestionComposer 不变：它的卡片仍使用视口上限，而不是这项设置所调整的草稿滚动区。
 
-静止上限仍是 `.composerSeat` 上的 `--dsh-composer-text-max-height`（[审批文本上限](2026-07-30-approval-panel-command-cap.md)）。拖动后的区域把 `max-height` 提到 `70vh`，与 InputBar 一致。
+静止上限仍是 `.composerSeat` 上的 `--rlh-composer-text-max-height`（[审批文本上限](2026-07-30-approval-panel-command-cap.md)）。拖动后的区域把 `max-height` 提到 `70vh`，与 InputBar 一致。
 
 ## 曾考虑的替代方案
 
@@ -28,7 +28,7 @@ Status: implemented
 
 ## 测试
 
-`approval-panel.client.spec.tsx` 钉住 `composerResize` 为 true 之前没有手柄、从上边拖动设定 `[data-approval-scroll]` 高度、从侧边拖动设定 `[data-composer-card]` 宽度、关闭设置时清除、从 `[data-composer-seat]` 采纳 `--dsh-composer-resized-*`、以及把拖动写回该座位。apply 接线钉住审批条目的 inject store 与界面设置拖动行是同一个对象。InputBar 的拖动用例仍通过共享手柄模块。
+`approval-panel.client.spec.tsx` 钉住 `composerResize` 为 true 之前没有手柄、从上边拖动设定 `[data-approval-scroll]` 高度、从侧边拖动设定 `[data-composer-card]` 宽度、关闭设置时清除、从 `[data-composer-seat]` 采纳 `--rlh-composer-resized-*`、以及把拖动写回该座位。apply 接线钉住审批条目的 inject store 与界面设置拖动行是同一个对象。InputBar 的拖动用例仍通过共享手柄模块。
 
 ## 相关
 

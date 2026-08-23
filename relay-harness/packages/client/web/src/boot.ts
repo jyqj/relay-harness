@@ -2,14 +2,14 @@
  * Web boot kernel. It owns only the module system, Cordis loader, and a
  * framework-free boot page. The dynamic UI renderer receives the mount
  * point after every client entry activates.
- * @module @deepseek-ai/dsh-client-web/src/boot
+ * @module @relay-harness/rlh-client-web/src/boot
  */
-import { Context } from '@deepseek-ai/cordis'
-import Loader from '@deepseek-ai/cordis-plugin-loader'
+import { Context } from '@relay-harness/cordis'
+import Loader from '@relay-harness/cordis-plugin-loader'
 import type {
-  BootManifest, ClientModuleCreateOptions, ClientModuleSystem, DshWindow,
-} from '@deepseek-ai/dsh-client-modules/client'
-import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
+  BootManifest, ClientModuleCreateOptions, ClientModuleSystem, RlhWindow,
+} from '@relay-harness/rlh-client-modules/client'
+import type {} from '@relay-harness/rlh-client-ui-renderer/client'
 import { BootPage } from './boot-page.ts'
 import { getStaticModules } from './seed.ts'
 import { STATE_LABELS } from './loader-status.ts'
@@ -45,27 +45,27 @@ export class AppWebEntry {
    * @returns Resolves after application mount or failure rendering.
    */
   async run(): Promise<void> {
-    // __DSH_BOOT_GATE__ holds the connection stream loop until every client
+    // __RLH_BOOT_GATE__ holds the connection stream loop until every client
     // factory is registered (cross-package synchronous require edges need the
     // full immediately tier before any materialization); it releases even
     // when the sweep fails so the failure stays observable.
     let releaseBootGate = (): void => {}
-    ;(globalThis as DshWindow).__DSH_BOOT_GATE__ = new Promise<void>((resolve) => {
+    ;(globalThis as RlhWindow).__RLH_BOOT_GATE__ = new Promise<void>((resolve) => {
       releaseBootGate = resolve
     })
     try {
-      const win = globalThis as DshWindow
+      const win = globalThis as RlhWindow
       const moduleLoader = win.__ModuleLoader__
       if (moduleLoader === undefined) {
         throw new Error('web boot: window.__ModuleLoader__ bootstrap facade is missing')
       }
       this.modules = moduleLoader.create({
-        boot: win.__DSH_BOOT__,
+        boot: win.__RLH_BOOT__,
         staticModules: getStaticModules(),
         ...this.seams,
       })
-      // Desktop shell probe handle (see DshWindow.__DSH_MODULES__).
-      ;(globalThis as DshWindow).__DSH_MODULES__ = this.modules
+      // Desktop shell probe handle (see RlhWindow.__RLH_MODULES__).
+      ;(globalThis as RlhWindow).__RLH_MODULES__ = this.modules
       this.manifest = this.modules.manifest
 
       const prefetching = this.prefetchImmediateTier()

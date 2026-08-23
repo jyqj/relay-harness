@@ -1,13 +1,13 @@
 /**
- * Package-owned invariant companion for `@deepseek-ai/dsh-skill-badge`.
- * @module @deepseek-ai/dsh-skill-badge/invariant
+ * Package-owned invariant companion for `@relay-harness/rlh-skill-badge`.
+ * @module @relay-harness/rlh-skill-badge/invariant
  */
 
 /* jscpd:ignore-start */
-import type { Context } from '@deepseek-ai/cordis'
-import type { InvariantInstaller } from '@deepseek-ai/dsh-invariants'
+import type { Context } from '@relay-harness/cordis'
+import type { InvariantInstaller } from '@relay-harness/rlh-invariants'
 
-const PACKAGE_NAME = '@deepseek-ai/dsh-skill-badge'
+const PACKAGE_NAME = '@relay-harness/rlh-skill-badge'
 
 /** Cordis companion plugin name. */
 export const name = 'skill-badge-invariant'

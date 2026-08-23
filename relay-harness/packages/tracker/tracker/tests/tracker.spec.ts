@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { Context } from '@deepseek-ai/cordis'
-import type { JsonValue } from '@deepseek-ai/dsh-session'
+import { Context } from '@relay-harness/cordis'
+import type { JsonValue } from '@relay-harness/rlh-session'
 import TrackerRegistry, {
   TrackerIssueId,
   type TrackerIssue,

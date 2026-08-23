@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans. Current checkout — do not create a worktree unless the user asks. Steps use checkbox (`- [ ]`) syntax. Do **not** commit unless the user asks.
 
-**Goal:** Replace the thin Files / Browser work-loop rewrites with the reference behaviors, rebranded as `dshd`. Every Files/Preview method ships and works; the only skip is an import that would crash the app or disable an already-working related feature — in that case change the wiring, do not drop the capability.
+**Goal:** Replace the thin Files / Browser work-loop rewrites with the reference behaviors, rebranded as `rlhd`. Every Files/Preview method ships and works; the only skip is an import that would crash the app or disable an already-working related feature — in that case change the wiring, do not drop the capability.
 
-**Architecture:** Copy helpers into `ui-files` / `ui-preview` / `src/main`. Peel Effect/Atom/Schema to `Promise` + `{ ok: boolean }` + `window.shell`. Guest is a main-process `BrowserView` with the same picker posture as the reference (`contextIsolation: false`, `sandbox: true`, `nodeIntegration: false`). Chrome stays `ui-primitives` + `--dsw-alias-*` so official WebUI chrome keeps working. Strip every `t3code` / `T3-` / `@t3tools` / `persist:t3code-` marker from production source.
+**Architecture:** Copy helpers into `ui-files` / `ui-preview` / `src/main`. Peel Effect/Atom/Schema to `Promise` + `{ ok: boolean }` + `window.shell`. Guest is a main-process `BrowserView` with the same picker posture as the reference (`contextIsolation: false`, `sandbox: true`, `nodeIntegration: false`). Chrome stays `ui-primitives` + `--rlw-alias-*` so official WebUI chrome keeps working. Strip every `t3code` / `T3-` / `@t3tools` / `persist:t3code-` marker from production source.
 
 **Tech Stack:** Electron main (`workspace-fs.js`, `preview.js`), preload IPC, Harness client plugins (React + vitest/jsdom), node:test for main.
 
@@ -12,12 +12,12 @@
 
 ## Global Constraints
 
-- Official `dsh web` tokens / `ui-primitives` only in the slot tree. Do not add `@pierre`, lucide, shadcn, Tailwind, Effect, or `@t3tools` as dependencies (that disables official chrome). Port the **behaviors** onto existing primitives.
+- Official `rlh web` tokens / `ui-primitives` only in the slot tree. Do not add `@pierre`, lucide, shadcn, Tailwind, Effect, or `@t3tools` as dependencies (that disables official chrome). Port the **behaviors** onto existing primitives.
 - Product copy Chinese in `locales.ts`; English keys in lockstep (`satisfies Record<Key, string>`).
-- Rebrand table (verbatim): `persist:dshd-preview-` + sha256(scope).slice(0, 20); MIME `application/x-dshd-composer-mention`; localStorage `dshd.fileExplorerOpen` / `dshd.renderMarkdown` / `dshd.fileWordWrap`; comments English; no `t3code` / `T3-` / `@t3tools` in `src/` or `vendor/deepseek-harness/packages/`.
+- Rebrand table (verbatim): `persist:rlhd-preview-` + sha256(scope).slice(0, 20); MIME `application/x-rlhd-composer-mention`; localStorage `rlhd.fileExplorerOpen` / `rlhd.renderMarkdown` / `rlhd.fileWordWrap`; comments English; no `t3code` / `T3-` / `@t3tools` in `src/` or `vendor/relay-harness/packages/`.
 - Guest BrowserView: `contextIsolation: false`, `sandbox: true`, `nodeIntegration: false` (picker / react-grab). Harness **main window** stays `contextIsolation: true`.
 - Address bar follows `normalizePreviewUrl`: bare loopback → `http`, bare public host → `https`. Guest documents may be any http(s). Harness **main window** loopback wall stays.
-- Keep dshd extras: dirty-tab Keep/Discard/Save, `error.changed`, `previewHide` / `occluded`, token workspace file server.
+- Keep rlhd extras: dirty-tab Keep/Discard/Save, `error.changed`, `previewHide` / `occluded`, token workspace file server.
 - No silent drops. No fake buttons. No “cannot port” list. If an import would crash or disable a related live feature, change the wiring (IPC instead of WS, attach instead of `registerWebview`, textarea instead of Pierre) and still ship the capability.
 - Do not commit unless the user asks.
 - TDD: failing test first; watch RED; minimal production code; GREEN.
@@ -29,12 +29,12 @@
 
 These are **not** out of scope. They are the only places the import path changes so the app does not crash and live features stay usable.
 
-| Reference import | dshd wiring |
+| Reference import | rlhd wiring |
 |---|---|
 | Effect `PreviewManager.ts` | `webContents.*` on the existing BrowserView in `preview.js` |
 | `registerWebview` | `attach()` already holds `webContents`; do not invent a renderer webview id |
 | Preview WS `preview.open/list/reportStatus/automation.*` | Same names on `shell:preview-*` IPC (single window, no extra WS server) |
-| `@pierre` / lucide / shadcn JSX | `FileTree` / `Menu` / textarea / `--dsw-alias-*` |
+| `@pierre` / lucide / shadcn JSX | `FileTree` / `Menu` / textarea / `--rlw-alias-*` |
 | Atom `projectFilesQueryState` | `listDir` + `readFile` + `fileContentRevision` |
 | `detectComposerTrigger` `/` branch | Leave Harness `ui-commands` in charge of `/`; port `@` and `$` only |
 | Pierre `diffs-container` dismissal | Same outside-click / Escape on the Files `textarea` |
@@ -44,17 +44,17 @@ These are **not** out of scope. They are the only places the import path changes
 
 **Files (new, package-internal):**
 
-- `vendor/deepseek-harness/packages/client/ui-files/src/client/composerMention.ts` — serializers, MIME, `detectComposerTrigger` (`@` / `$` only)
-- `vendor/deepseek-harness/packages/client/ui-files/src/client/fileSaveCoordinator.ts` — debounce persist; `{ ok: boolean }`
-- `vendor/deepseek-harness/packages/client/ui-files/src/client/filePath.ts` — `fileBreadcrumbs`
-- `vendor/deepseek-harness/packages/client/ui-files/src/client/filePreviewMode.ts` — `isMarkdownPreviewFile`, `setMarkdownTaskChecked`
-- `vendor/deepseek-harness/packages/client/ui-files/src/client/fileContentRevision.ts`
-- `vendor/deepseek-harness/packages/client/ui-files/src/client/fileLineReveal.ts` — `resolveCenteredFileLineScrollTop`
-- `vendor/deepseek-harness/packages/client/ui-files/src/client/filePreview.ts` — html/pdf vs image extension sets
-- `vendor/deepseek-harness/packages/client/ui-files/src/client/fileTreeDragMention.ts`
-- `vendor/deepseek-harness/packages/client/ui-files/src/client/fileEditorDismissal.ts`
-- `vendor/deepseek-harness/packages/client/ui-files/src/client/fileCommentAnnotations.ts`
-- `vendor/deepseek-harness/packages/client/ui-files/src/client/projectFilePicker.ts` — `getProjectFilePickerMatches` + `normalizeSearchQuery`
+- `vendor/relay-harness/packages/client/ui-files/src/client/composerMention.ts` — serializers, MIME, `detectComposerTrigger` (`@` / `$` only)
+- `vendor/relay-harness/packages/client/ui-files/src/client/fileSaveCoordinator.ts` — debounce persist; `{ ok: boolean }`
+- `vendor/relay-harness/packages/client/ui-files/src/client/filePath.ts` — `fileBreadcrumbs`
+- `vendor/relay-harness/packages/client/ui-files/src/client/filePreviewMode.ts` — `isMarkdownPreviewFile`, `setMarkdownTaskChecked`
+- `vendor/relay-harness/packages/client/ui-files/src/client/fileContentRevision.ts`
+- `vendor/relay-harness/packages/client/ui-files/src/client/fileLineReveal.ts` — `resolveCenteredFileLineScrollTop`
+- `vendor/relay-harness/packages/client/ui-files/src/client/filePreview.ts` — html/pdf vs image extension sets
+- `vendor/relay-harness/packages/client/ui-files/src/client/fileTreeDragMention.ts`
+- `vendor/relay-harness/packages/client/ui-files/src/client/fileEditorDismissal.ts`
+- `vendor/relay-harness/packages/client/ui-files/src/client/fileCommentAnnotations.ts`
+- `vendor/relay-harness/packages/client/ui-files/src/client/projectFilePicker.ts` — `getProjectFilePickerMatches` + `normalizeSearchQuery`
 - `src/main/editors.js` — `EDITORS` table (no Effect Schema) + `openInEditor` / `listAvailableEditors` / `showItemInFolder`
 
 **Files (modify):** `apply.ts`, `FileTree.tsx`, `FilePreview.tsx`, `FilesPanel.tsx`, `filter.ts`, `locales.ts`, `FilePreview.module.css`, README pair, tests.
@@ -63,7 +63,7 @@ These are **not** out of scope. They are the only places the import path changes
 
 **Surfaces / terminal:** `stores.ts` (`revealLine`, `revealRequestId`), `apply.ts` (`openFile` options + `.pdf` in `BROWSER_DOCUMENTS`), `FileOwnerProps`, `ui-user-terminal` `resolveOpenPath` keep line and pass it through intercept.
 
-**Conversation:** `InputBar.tsx` drop handler for `application/x-dshd-composer-mention` (string repeated, not imported).
+**Conversation:** `InputBar.tsx` drop handler for `application/x-rlhd-composer-mention` (string repeated, not imported).
 
 **Primitives (optional callback only):** `MarkdownText` / `render.tsx` — checkboxes stay `disabled` unless `onTaskChecked` is passed.
 
@@ -74,7 +74,7 @@ These are **not** out of scope. They are the only places the import path changes
 - `ui-preview/src/client/viewport.ts` — copy `browserViewportLayout.ts` (fill vs preset vs freeform)
 - `src/main/preview-url.js` — CJS twin of `url.ts`
 - `src/main/preview-session.js` — partition hash, permissions, UA strip
-- `src/main/preview-guest-preload.js` — peeled `PickPreload.ts` (dshd CSS vars, dshd IPC channels)
+- `src/main/preview-guest-preload.js` — peeled `PickPreload.ts` (rlhd CSS vars, rlhd IPC channels)
 - `src/main/preview-pip-preload.js` — peeled PiP preload, `contextIsolation: true` on the PiP window
 - `src/main/preview.js` — http(s), IPC including pick / PiP / record / screenshot / automation / viewport bounds
 - preload + `shell-api.test.js` + `ui-preview` shell/locales/PreviewPanel
@@ -111,12 +111,12 @@ Browser track (9→14, 19–22)
 
 ---
 
-### Task 1: Composer mention serializers (`dshd` MIME)
+### Task 1: Composer mention serializers (`rlhd` MIME)
 
 **Files:**
 
-- Create: `vendor/deepseek-harness/packages/client/ui-files/src/client/composerMention.ts`
-- Test: `vendor/deepseek-harness/packages/client/ui-files/tests/composer-mention.client.spec.ts`
+- Create: `vendor/relay-harness/packages/client/ui-files/src/client/composerMention.ts`
+- Test: `vendor/relay-harness/packages/client/ui-files/tests/composer-mention.client.spec.ts`
 
 **Interfaces:**
 
@@ -124,14 +124,14 @@ Browser track (9→14, 19–22)
 - Produces:
 
 ```ts
-export const COMPOSER_MENTION_DRAG_TYPE = 'application/x-dshd-composer-mention'
+export const COMPOSER_MENTION_DRAG_TYPE = 'application/x-rlhd-composer-mention'
 export function serializeComposerMentionPath(path: string): string
 export function serializeComposerFileLink(path: string): string
 export function composerMentionFromTreePath(treePath: string): string | null
 export function dataTransferHasComposerMention(types: readonly string[]): boolean
 ```
 
-Copy function bodies from `C:\Ai\t3code\packages\shared\src\composerTrigger.ts` (`serializeComposerMentionPath` / `serializeComposerFileLink` only — do not copy `detectComposerTrigger`) and `C:\Ai\t3code\apps\web\src\components\chat\composerMentionDrag.ts` (`composerMentionFromTreePath`). Replace `application/x-t3code-composer-mention` with `application/x-dshd-composer-mention`. Do not copy Effect or `@t3tools` imports.
+Copy function bodies from `C:\Ai\t3code\packages\shared\src\composerTrigger.ts` (`serializeComposerMentionPath` / `serializeComposerFileLink` only — do not copy `detectComposerTrigger`) and `C:\Ai\t3code\apps\web\src\components\chat\composerMentionDrag.ts` (`composerMentionFromTreePath`). Replace `application/x-t3code-composer-mention` with `application/x-rlhd-composer-mention`. Do not copy Effect or `@t3tools` imports.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -187,15 +187,15 @@ describe('composerMentionFromTreePath', () => {
     expect(composerMentionFromTreePath('')).toBeNull()
     expect(composerMentionFromTreePath('///')).toBeNull()
   })
-  it('uses the dshd mention MIME', () => {
-    expect(COMPOSER_MENTION_DRAG_TYPE).toBe('application/x-dshd-composer-mention')
+  it('uses the rlhd mention MIME', () => {
+    expect(COMPOSER_MENTION_DRAG_TYPE).toBe('application/x-rlhd-composer-mention')
   })
 })
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run (cwd `vendor/deepseek-harness`): `pnpm --filter @deepseek-ai/dsh-client-ui-files exec vitest run tests/composer-mention.client.spec.ts`
+Run (cwd `vendor/relay-harness`): `pnpm --filter @relay-harness/rlh-client-ui-files exec vitest run tests/composer-mention.client.spec.ts`
 
 Expected: FAIL — module not found.
 
@@ -215,8 +215,8 @@ Same command. Expected: PASS.
 
 **Files:**
 
-- Create: `vendor/deepseek-harness/packages/client/ui-files/src/client/fileSaveCoordinator.ts`
-- Test: `vendor/deepseek-harness/packages/client/ui-files/tests/file-save-coordinator.client.spec.ts`
+- Create: `vendor/relay-harness/packages/client/ui-files/src/client/fileSaveCoordinator.ts`
+- Test: `vendor/relay-harness/packages/client/ui-files/tests/file-save-coordinator.client.spec.ts`
 
 **Interfaces:**
 
@@ -320,7 +320,7 @@ describe('FileSaveCoordinator', () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-`pnpm --filter @deepseek-ai/dsh-client-ui-files exec vitest run tests/file-save-coordinator.client.spec.ts`
+`pnpm --filter @relay-harness/rlh-client-ui-files exec vitest run tests/file-save-coordinator.client.spec.ts`
 
 Expected: FAIL — module not found.
 
@@ -366,13 +366,13 @@ export function isWorkspaceBrowserPreviewPath(path: string): boolean
 export function isWorkspaceImagePreviewPath(path: string): boolean
 ```
 
-Copy bodies from `C:\Ai\t3code\apps\web\src\components\files\filePath.ts`, `filePreviewMode.ts`, `fileContentRevision.ts`, `fileLineReveal.ts`, and `C:\Ai\t3code\packages\shared\src\filePreview.ts`. Breadcrumb fixture uses project name `dshd` (not `t3code`).
+Copy bodies from `C:\Ai\t3code\apps\web\src\components\files\filePath.ts`, `filePreviewMode.ts`, `fileContentRevision.ts`, `fileLineReveal.ts`, and `C:\Ai\t3code\packages\shared\src\filePreview.ts`. Breadcrumb fixture uses project name `rlhd` (not `t3code`).
 
 - [ ] **Step 1: Write failing tests** matching those reference fixtures. Breadcrumbs:
 
 ```ts
-expect(fileBreadcrumbs('dshd', 'apps/web/src/main.tsx')).toEqual([
-  { label: 'dshd', path: '', kind: 'project' },
+expect(fileBreadcrumbs('rlhd', 'apps/web/src/main.tsx')).toEqual([
+  { label: 'rlhd', path: '', kind: 'project' },
   { label: 'apps', path: 'apps', kind: 'directory' },
   { label: 'web', path: 'apps/web', kind: 'directory' },
   { label: 'src', path: 'apps/web/src', kind: 'directory' },
@@ -469,7 +469,7 @@ Also bump any existing “too large” assertion from 512 KiB to 1 MiB if presen
 - Modify: `ui-files/src/client/FileTree.tsx` — Copy mention menu; `draggable`; `data-item-path`; `createFileTreeDragMentionController`
 - Create: `ui-files/src/client/fileTreeDragMention.ts` (copy from reference; import MIME from `composerMention.ts`)
 - Modify: `ui-files/src/client/locales.ts` — `'copy.mention': '复制引用'` / `'Copy mention'`
-- Modify: `ui-conversation/src/client/skeleton/InputBar.tsx` — if `dataTransfer.types` includes the **literal** `'application/x-dshd-composer-mention'`, `preventDefault` and insert `getData(...)` into the composer (do not import ui-files)
+- Modify: `ui-conversation/src/client/skeleton/InputBar.tsx` — if `dataTransfer.types` includes the **literal** `'application/x-rlhd-composer-mention'`, `preventDefault` and insert `getData(...)` into the composer (do not import ui-files)
 - Tests: `ui-files/tests/apply.client.spec.ts`, `files-panel.client.spec.tsx`, `ui-conversation/tests/input-bar.client.spec.tsx`
 
 **Interfaces:**
@@ -484,7 +484,7 @@ Also bump any existing “too large” assertion from 512 KiB to 1 MiB if presen
 
 `files-panel.client.spec.tsx`: context menu includes Copy mention; choosing it calls `writeClipboard` with the file link.
 
-`input-bar.client.spec.tsx`: drop `{ types: ['application/x-dshd-composer-mention'], getData: () => '[a.ts](src/a.ts)' }` inserts that markdown into the composer. Image `Files` drop still works. A `t3code` MIME must **not** be handled.
+`input-bar.client.spec.tsx`: drop `{ types: ['application/x-rlhd-composer-mention'], getData: () => '[a.ts](src/a.ts)' }` inserts that markdown into the composer. Image `Files` drop still works. A `t3code` MIME must **not** be handled.
 
 - [ ] **Step 2: RED** — mention still uses backtick `@path`.
 
@@ -508,8 +508,8 @@ Also bump any existing “too large” assertion from 512 KiB to 1 MiB if presen
 
 - On draft change call `coordinator.change(draft)` with `persist: async (text) => writeFile(...)` then existing conflict reread (`error.changed` still wins: if disk diverged, persist returns `{ ok: false }` and the coordinator stays pending). Explicit Save / Ctrl+S / close-dialog Save still call the same write path.
 - Toolbar path label uses `fileBreadcrumbs(basename(cwd), relativePath)` (project crumb + segments). Clicking a directory crumb is out of scope (tree already lists dirs).
-- `isMarkdownPreviewFile(relativePath)` for Source/Rendered. Persist `localStorage['dshd.renderMarkdown']` as `'1' | '0'`. Default `'0'` (source), matching the reference.
-- Word wrap toggle: `localStorage['dshd.fileWordWrap']`; CSS `white-space: pre-wrap` vs `pre`. Tokens only.
+- `isMarkdownPreviewFile(relativePath)` for Source/Rendered. Persist `localStorage['rlhd.renderMarkdown']` as `'1' | '0'`. Default `'0'` (source), matching the reference.
+- Word wrap toggle: `localStorage['rlhd.fileWordWrap']`; CSS `white-space: pre-wrap` vs `pre`. Tokens only.
 - Rendered markdown: pass `onTaskChecked` that runs `setMarkdownTaskChecked` then `coordinator.change`. Conversation `MarkdownText` omits the callback.
 - Tree click: if `isWorkspaceBrowserPreviewPath`, still `openFile` (source tab) **and** the surfaces intercept already dual-opens html; add `.pdf` in Task 14. FilePreview image set uses `isWorkspaceImagePreviewPath` (svg stays image in Files; Browser dual-open for svg remains `openPath`).
 
@@ -615,7 +615,7 @@ export class PreviewUrlNormalizationError extends Error {
   readonly protocol?: string
 }
 export function normalizePreviewUrl(rawUrl: string): string
-export function newPreviewTabId(): string // prefix `dshd-tab_`
+export function newPreviewTabId(): string // prefix `rlhd-tab_`
 ```
 
 Copy logic from `C:\Ai\t3code\packages\shared\src\preview.ts`. Peel Schema: plain `class PreviewUrlNormalizationError extends Error`. Keep `LSOF_LOCAL_HOST_TOKENS` in main if Task 10 uses lsof; otherwise omit.
@@ -632,7 +632,7 @@ expect(isPreviewableUrl('http://127.0.0.1:3000')).toBe(true)
 expect(isPreviewableUrl('https://example.com')).toBe(false)
 ```
 
-`newPreviewTabId()` starts with `dshd-tab_`.
+`newPreviewTabId()` starts with `rlhd-tab_`.
 
 Main twin: same cases in node:test.
 
@@ -687,7 +687,7 @@ Keep TCP probe (200ms). Do **not** require lsof processName on Windows; Unix lso
 **Interfaces:**
 
 ```js
-const PREVIEW_PARTITION_PREFIX = 'persist:dshd-preview-'
+const PREVIEW_PARTITION_PREFIX = 'persist:rlhd-preview-'
 function previewPartitionForScope(scope = 'shared') // sha256 hex slice 0,20
 const ALLOWED_PREVIEW_PERMISSIONS = new Set([
   'clipboard-read', 'clipboard-sanitized-write', 'notifications', 'geolocation',
@@ -697,7 +697,7 @@ function configurePreviewSession(ses)
 
 `configurePreviewSession`: strip `/Electron\/[\d.]+ /` from UA; also strip `/\s*t3code\/[\d.]+/` **if present on a migrated machine**; `setPermissionRequestHandler` + `setPermissionCheckHandler` allow-list only.
 
-Guest `BrowserView` webPreferences (copy the reference picker posture, dshd names):
+Guest `BrowserView` webPreferences (copy the reference picker posture, rlhd names):
 
 ```js
 {
@@ -711,11 +711,11 @@ Guest `BrowserView` webPreferences (copy the reference picker posture, dshd name
 
 A test must pin `nodeIntegration === false` and `sandbox === true`. Do **not** change harness main-window isolation.
 
-Scope: session cwd or `'shared'`. Pass cwd into `previewOpen` from the client (`previewOpen({ url, bounds, scope: cwd })`). Preload must forward `scope`. Old constant `'dshd-preview'` partition is abandoned (cookies reset once).
+Scope: session cwd or `'shared'`. Pass cwd into `previewOpen` from the client (`previewOpen({ url, bounds, scope: cwd })`). Preload must forward `scope`. Old constant `'rlhd-preview'` partition is abandoned (cookies reset once).
 
 - [ ] **Step 1: Failing tests**
 
-`previewPartitionForScope('shared')` starts with `persist:dshd-preview-` and is 20 hex chars after the prefix. Different scopes differ.
+`previewPartitionForScope('shared')` starts with `persist:rlhd-preview-` and is 20 hex chars after the prefix. Different scopes differ.
 
 `previewRequestFilter({ url: 'https://example.com/', resourceType: 'mainFrame' })` → `{ cancel: false }`.
 
@@ -1018,13 +1018,13 @@ export type PreviewViewportSetting =
 - Modify: `PreviewPanel.tsx` — when device toolbar is on, compute letterboxed rect inside the occupant, call existing `previewResize(id, bounds)` with that guest rect (not the full occupant). Toolbar row: width × height fields + preset chips (copy the reference preset list if present; otherwise iPhone/iPad/Desktop numbers from `browserViewportLayout` / contracts).
 - Tests: `viewport.client.spec.ts` (copy layout unit tests from the reference), `preview-panel.client.spec.tsx`
 
-Homonym: dshd `previewResize` **is** the guest rectangle. Device mode is a smaller rectangle plus chrome around it. Fill mode uses the full occupant bounds as today.
+Homonym: rlhd `previewResize` **is** the guest rectangle. Device mode is a smaller rectangle plus chrome around it. Fill mode uses the full occupant bounds as today.
 
 - [ ] **Step 1: Failing tests** — preset `{ width: 375, height: 667 }` inside a 800×600 occupant yields a guest `setBounds` smaller than 800×600; fill uses the occupant rect; More 「显示设备工具栏」 toggles this.
 
 - [ ] **Step 2: RED**
 
-- [ ] **Step 3: Copy layout math. Tokens only for the letterbox (`--dsw-alias-bg-base`).
+- [ ] **Step 3: Copy layout math. Tokens only for the letterbox (`--rlw-alias-bg-base`).
 
 - [ ] **Step 4: GREEN**
 
@@ -1036,14 +1036,14 @@ Homonym: dshd `previewResize` **is** the guest rectangle. Device mode is a small
 
 **Files:**
 
-- Create: `src/main/preview-guest-preload.js` — peel `C:\Ai\t3code\apps\desktop\src\preview\PickPreload.ts`. Rename channels `t3code` → `dshd`, CSS `--t3-*` → `--dshd-preview-*`. Keep `react-grab/primitives` `getElementContext` **if** that package can be a desktop dependency without breaking the harness renderer; otherwise resolve component names as `null` but still return tag, selector, size, screenshot crop (picker still usable).
+- Create: `src/main/preview-guest-preload.js` — peel `C:\Ai\t3code\apps\desktop\src\preview\PickPreload.ts`. Rename channels `t3code` → `rlhd`, CSS `--t3-*` → `--rlhd-preview-*`. Keep `react-grab/primitives` `getElementContext` **if** that package can be a desktop dependency without breaking the harness renderer; otherwise resolve component names as `null` but still return tag, selector, size, screenshot crop (picker still usable).
 - Modify: `preview.js` — `pickElement(id)`, `cancelPickElement(id)`, `setAnnotationTheme(id, theme)` send IPC into the guest; `wc.capturePage` crop like the reference.
 - Modify: `ipc` / preload / `ui-preview` shell + PreviewPanel More 「选取元素」
 - Tests: `preview.test.js` fake `wc.send` / `wc.ipc`; guest preload unit tests for channel names (no `t3` strings)
 
 Guest already has isolation false + sandbox from Task 11. Preload uses `ipcRenderer` only.
 
-- [ ] **Step 1: Failing tests** — `pickElement` sends `dshd-preview-start-pick`; `cancelPickElement` sends cancel; completing a pick returns `{ annotation, screenshot? }`; theme send uses `--dshd-preview-primary` not `--t3-primary`.
+- [ ] **Step 1: Failing tests** — `pickElement` sends `rlhd-preview-start-pick`; `cancelPickElement` sends cancel; completing a pick returns `{ annotation, screenshot? }`; theme send uses `--rlhd-preview-primary` not `--t3-primary`.
 
 - [ ] **Step 2: RED**
 
@@ -1060,7 +1060,7 @@ Guest already has isolation false + sandbox from Task 11. Preload uses `ipcRende
 **Files:**
 
 - Create: `src/main/preview-pip-preload.js` — peel `preview-pip-preload.cjs`; `contextIsolation: true`, `sandbox: true`
-- Modify: `preview.js` — copy `openPictureInPicture` / `closePictureInPicture` / `fitPictureInPictureContentSize` from `Manager.ts` (BrowserWindow `alwaysOnTop`, `skipTaskbar`, load the data URL helper). Frame pump: `wc.capturePage` → JPEG → `pipWindow.webContents.send('dshd-preview-pip-frame', ...)`
+- Modify: `preview.js` — copy `openPictureInPicture` / `closePictureInPicture` / `fitPictureInPictureContentSize` from `Manager.ts` (BrowserWindow `alwaysOnTop`, `skipTaskbar`, load the data URL helper). Frame pump: `wc.capturePage` → JPEG → `pipWindow.webContents.send('rlhd-preview-pip-frame', ...)`
 - Modify: ipc / preload / PreviewPanel More pip item
 - Tests: `preview.test.js` with fake `BrowserWindow`; `fitPictureInPictureContentSize([480, 320], 16/9)` equals `[523, 294]` (reference fixture)
 
@@ -1121,8 +1121,8 @@ previewAutomationWaitFor(id, { selector?, text?, urlIncludes?, timeoutMs })
 
 **Files:**
 
-- Update in place: `vendor/deepseek-harness/.agents/notes/implemented/feature/2026-08-16-surfaces-terminal-work-loops.md` + `.zh.md` + `.i18n.yaml` — Files/Browser paragraphs must match shipped behavior (autosave, mention markdown, public https guest, More menu including PiP/device/pick/record, revealLine, comments into composer, open-in-editor). Present tense. Remove “stay out” sentences that this plan shipped.
-- Create triplet: `2026-08-19-files-browser-logic-port.md` / `.zh.md` / `.i18n.yaml` — decision: port behaviors, rebrand `dshd`, peel Effect, guest sandbox+no isolation for pick, main window isolation unchanged. No cannot-port table.
+- Update in place: `vendor/relay-harness/.agents/notes/implemented/feature/2026-08-16-surfaces-terminal-work-loops.md` + `.zh.md` + `.i18n.yaml` — Files/Browser paragraphs must match shipped behavior (autosave, mention markdown, public https guest, More menu including PiP/device/pick/record, revealLine, comments into composer, open-in-editor). Present tense. Remove “stay out” sentences that this plan shipped.
+- Create triplet: `2026-08-19-files-browser-logic-port.md` / `.zh.md` / `.i18n.yaml` — decision: port behaviors, rebrand `rlhd`, peel Effect, guest sandbox+no isolation for pick, main window isolation unchanged. No cannot-port table.
 - Update: `ui-files` / `ui-preview` README.md + README.zh.md to current behavior. Known Limitations only for things still actually missing after Tasks 1–22 (should be empty or lsof processName-on-Windows if Unix-only).
 - Root/desktop docs only if they still say “local URLs only” for the **guest**.
 
@@ -1131,16 +1131,16 @@ previewAutomationWaitFor(id, { selector?, text?, urlIncludes?, timeoutMs })
 Run from repo root (PowerShell):
 
 ```powershell
-rg -i "t3code|t3tools|application/x-t3code|persist:t3code" src vendor/deepseek-harness/packages --glob "!**/node_modules/**"
+rg -i "t3code|t3tools|application/x-t3code|persist:t3code" src vendor/relay-harness/packages --glob "!**/node_modules/**"
 ```
 
 Allowed: this spec/plan under `docs/superpowers/`, Agent Note that names the reference as an external tree. Forbidden: `src/`, `packages/client/**`.
 
 Also grep `T3-` in those trees.
 
-- [ ] **Step 2: If grep hits, rename. No leftover `tab_` prefix without `dshd-`.
+- [ ] **Step 2: If grep hits, rename. No leftover `tab_` prefix without `rlhd-`.
 
-- [ ] **Step 3: Write/update notes with `dsh-prose-standard` (actors, current state, no PR archaeology). Record sidecar yaml.
+- [ ] **Step 3: Write/update notes with `rlh-prose-standard` (actors, current state, no PR archaeology). Record sidecar yaml.
 
 - [ ] **Step 4: Re-run grep. Focused tests still GREEN.
 
@@ -1156,10 +1156,10 @@ From desktop root:
 node --test src/main/workspace-fs.test.js src/main/preview.test.js src/main/preview-url.test.js src/main/preview-session.test.js src/main/preview-workspace.test.js src/preload/shell-api.test.js
 ```
 
-From `vendor/deepseek-harness`:
+From `vendor/relay-harness`:
 
 ```powershell
-pnpm --filter @deepseek-ai/dsh-client-ui-files --filter @deepseek-ai/dsh-client-ui-preview --filter @deepseek-ai/dsh-client-ui-surfaces --filter @deepseek-ai/dsh-client-ui-user-terminal --filter @deepseek-ai/dsh-client-ui-conversation --filter @deepseek-ai/dsh-client-ui-primitives exec vitest run tests/composer-mention.client.spec.ts tests/file-save-coordinator.client.spec.ts tests/file-path.client.spec.ts tests/file-preview-mode.client.spec.ts tests/file-line-reveal.client.spec.ts tests/files-panel.client.spec.tsx tests/apply.client.spec.ts tests/filter.client.spec.ts tests/url.client.spec.ts tests/preview-panel.client.spec.tsx tests/preview-occlusion.client.spec.tsx tests/openpath-intercept.client.spec.ts tests/apply.client.spec.ts
+pnpm --filter @relay-harness/rlh-client-ui-files --filter @relay-harness/rlh-client-ui-preview --filter @relay-harness/rlh-client-ui-surfaces --filter @relay-harness/rlh-client-ui-user-terminal --filter @relay-harness/rlh-client-ui-conversation --filter @relay-harness/rlh-client-ui-primitives exec vitest run tests/composer-mention.client.spec.ts tests/file-save-coordinator.client.spec.ts tests/file-path.client.spec.ts tests/file-preview-mode.client.spec.ts tests/file-line-reveal.client.spec.ts tests/files-panel.client.spec.tsx tests/apply.client.spec.ts tests/filter.client.spec.ts tests/url.client.spec.ts tests/preview-panel.client.spec.tsx tests/preview-occlusion.client.spec.tsx tests/openpath-intercept.client.spec.ts tests/apply.client.spec.ts
 ```
 
 (Adjust vitest paths per package; run each filter separately if exec glob is package-local.)

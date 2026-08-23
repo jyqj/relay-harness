@@ -16,12 +16,12 @@ import {
   type KeyboardEvent, type FocusEvent,
 } from 'react'
 import clsx from 'clsx'
-import type { ModelReasoningEffort, ModelSelection } from '@deepseek-ai/dsh-api-remotes/client'
+import type { ModelReasoningEffort, ModelSelection } from '@relay-harness/rlh-api-remotes/client'
 import {
   FlipText, IconCheckOutline16, IconChevronDownOutline14, IconChevronRightOutline14,
   IconWarningOutline16, Toast, usePresence,
-} from '@deepseek-ai/dsh-client-ui-primitives'
-import type { PropsLocale } from '@deepseek-ai/dsh-client-ui-slots'
+} from '@relay-harness/rlh-client-ui-primitives'
+import type { PropsLocale } from '@relay-harness/rlh-client-ui-slots'
 import type { ModelSelectInjected } from './slots.ts'
 import css from './ModelSelect.module.css'
 
@@ -252,7 +252,7 @@ export function ModelSelect(
           role="menu"
           aria-label={t('menu.aria')}
           aria-busy={state.status === 'loading' || busy}
-          data-dsh-motion="popover"
+          data-rlh-motion="popover"
           data-state={motionState}
           aria-hidden={open ? undefined : true}
         >

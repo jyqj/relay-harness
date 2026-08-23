@@ -1,13 +1,13 @@
 /**
- * Package-owned invariant companion for `@deepseek-ai/dsh-client-connection`.
- * @module @deepseek-ai/dsh-client-connection/invariant
+ * Package-owned invariant companion for `@relay-harness/rlh-client-connection`.
+ * @module @relay-harness/rlh-client-connection/invariant
  */
 
 /* jscpd:ignore-start */
-import type { Context } from '@deepseek-ai/cordis'
-import type { InvariantInstaller } from '@deepseek-ai/dsh-invariants'
+import type { Context } from '@relay-harness/cordis'
+import type { InvariantInstaller } from '@relay-harness/rlh-invariants'
 
-const PACKAGE_NAME = '@deepseek-ai/dsh-client-connection'
+const PACKAGE_NAME = '@relay-harness/rlh-client-connection'
 
 /** Cordis companion plugin name. */
 export const name = 'client-connection-invariant'

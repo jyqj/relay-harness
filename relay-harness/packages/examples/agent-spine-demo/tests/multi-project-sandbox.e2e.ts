@@ -3,19 +3,19 @@ import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promis
 import { homedir } from 'node:os'
 import { basename, join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { Context } from '@deepseek-ai/cordis'
-import { SandboxBashExecutor } from '@deepseek-ai/dsh-bash-sandbox'
-import LocalSubprocessRuntime from '@deepseek-ai/dsh-subprocess-local'
-import * as FsPolicy from '@deepseek-ai/dsh-fs-observation-policy'
-import SandboxedFileSystem from '@deepseek-ai/dsh-fs-sandbox'
-import { CallId } from '@deepseek-ai/dsh-llm'
-import { LocalSandboxProvider } from '@deepseek-ai/dsh-sandbox-local'
-import { seatbeltProfileArgs } from '@deepseek-ai/dsh-sandbox-local/src/profiles.ts'
-import SandboxPolicyService from '@deepseek-ai/dsh-sandbox-policy'
-import { SessionId } from '@deepseek-ai/dsh-session'
-import * as ToolFs from '@deepseek-ai/dsh-tool-fs'
-import type { ToolResult } from '@deepseek-ai/dsh-tools'
-import { launcherPath } from '@deepseek-ai/node-addon-landlock-run'
+import { Context } from '@relay-harness/cordis'
+import { SandboxBashExecutor } from '@relay-harness/rlh-bash-sandbox'
+import LocalSubprocessRuntime from '@relay-harness/rlh-subprocess-local'
+import * as FsPolicy from '@relay-harness/rlh-fs-observation-policy'
+import SandboxedFileSystem from '@relay-harness/rlh-fs-sandbox'
+import { CallId } from '@relay-harness/rlh-llm'
+import { LocalSandboxProvider } from '@relay-harness/rlh-sandbox-local'
+import { seatbeltProfileArgs } from '@relay-harness/rlh-sandbox-local/src/profiles.ts'
+import SandboxPolicyService from '@relay-harness/rlh-sandbox-policy'
+import { SessionId } from '@relay-harness/rlh-session'
+import * as ToolFs from '@relay-harness/rlh-tool-fs'
+import type { ToolResult } from '@relay-harness/rlh-tools'
+import { launcherPath } from '@relay-harness/node-addon-landlock-run'
 import * as agentSpine from '../src/index.ts'
 
 const bwrapUsable = spawnSync('bwrap', [
@@ -32,7 +32,7 @@ let projectB: string
 const tempDirs: string[] = []
 
 async function projectDir(label: string): Promise<string> {
-  const dir = await mkdtemp(join(homedir(), `dsh-${label}-`))
+  const dir = await mkdtemp(join(homedir(), `rlh-${label}-`))
   tempDirs.push(dir)
   return dir
 }

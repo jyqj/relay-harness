@@ -205,7 +205,7 @@ describe('connection lifecycle', () => {
 
   it('does not call host.describe until the boot gate resolves', async () => {
     const gate = deferred<undefined>()
-    ;(globalThis as { __DSH_BOOT_GATE__?: Promise<void> }).__DSH_BOOT_GATE__ = gate.promise
+    ;(globalThis as { __RLH_BOOT_GATE__?: Promise<void> }).__RLH_BOOT_GATE__ = gate.promise
     const api = new FakeApiClient()
     const controller = new ConnectionController(api, {}, FAST)
     controller.start()
@@ -216,7 +216,7 @@ describe('connection lifecycle', () => {
       await vi.waitFor(() => { expect(api.callsOf('host.describe')).toHaveLength(1) })
     } finally {
       controller.stop()
-      delete (globalThis as { __DSH_BOOT_GATE__?: Promise<void> }).__DSH_BOOT_GATE__
+      delete (globalThis as { __RLH_BOOT_GATE__?: Promise<void> }).__RLH_BOOT_GATE__
     }
   })
 

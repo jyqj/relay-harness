@@ -4,18 +4,18 @@
  * else references RequestPayload<'session.*'> / ResponseValue<'session.*'>.
  */
 
-import type { MessageId } from '@deepseek-ai/dsh-llm/brand'
-import type { AttachmentIdType, ImageAttachmentLimits, ImageAttachmentRef, ImageMediaType } from '@deepseek-ai/dsh-attachment'
-import type { ContentBlock } from '@deepseek-ai/dsh-llm/types'
-import type { SessionEvent, SessionId, SessionOrigin } from '@deepseek-ai/dsh-session/types'
+import type { MessageId } from '@relay-harness/rlh-llm/brand'
+import type { AttachmentIdType, ImageAttachmentLimits, ImageAttachmentRef, ImageMediaType } from '@relay-harness/rlh-attachment'
+import type { ContentBlock } from '@relay-harness/rlh-llm/types'
+import type { SessionEvent, SessionId, SessionOrigin } from '@relay-harness/rlh-session/types'
 // The pure-type outlet: api/ is browser-importable, and the package root's
-// cordis Context merge (via dsh-agent) must not enter client aggregates.
-import type { SessionProjectionMap } from '@deepseek-ai/dsh-session-projection/types'
+// cordis Context merge (via rlh-agent) must not enter client aggregates.
+import type { SessionProjectionMap } from '@relay-harness/rlh-session-projection/types'
 import type { RpcId, RpcRequest, RpcResponse } from './rpc.ts'
 import type { ToolEventView } from './events.ts'
 import type { WorkspaceId } from './workspace.ts'
 
-declare module '@deepseek-ai/dsh-session-projection/types' {
+declare module '@relay-harness/rlh-session-projection/types' {
   interface SessionProjectionMap {
     /**
      * Session-list hints persisted by the projection cache. `blank: false`
@@ -43,7 +43,7 @@ export interface SessionListMetadata {
   lastPromptAt: number | null
 }
 
-declare module '@deepseek-ai/dsh-llm' {
+declare module '@relay-harness/rlh-llm' {
   interface MessageSourceMap {
     /**
      * The prompt's rpcId is passed through MessageSource into the `user/message` event
@@ -265,7 +265,7 @@ export interface SessionsApi {
    * id fails with `agent-preset-not-found`, and a preset whose composition
    * cannot be mounted fails with `agent-preset-invalid`.
    *
-   * `origin: 'dshbot'` stamps a desktop-plugin contact or room parent so the
+   * `origin: 'rlhbot'` stamps a desktop-plugin contact or room parent so the
    * workspace browser hides the row. Ordinary sessions omit it. Callers cannot
    * stamp `subagent`; that origin is owned by subagent start.
    */
@@ -274,7 +274,7 @@ export interface SessionsApi {
     cwd?: string
     sessionId?: SessionId
     agentPreset?: string
-    origin?: 'dshbot'
+    origin?: 'rlhbot'
   }>):
   Promise<RpcResponse<{ sessionId: SessionId; agentPreset?: string }>>
 

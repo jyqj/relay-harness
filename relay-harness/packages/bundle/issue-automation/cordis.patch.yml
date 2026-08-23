@@ -1,42 +1,42 @@
-# Opt-in issue automation layer. Apply after dsh-base and dsh-web-app.
+# Opt-in issue automation layer. Apply after rlh-base and rlh-web-app.
 # Required deployment values:
-# - DSH_ISSUE_WORKFLOW: absolute path to the repository-owned Markdown/YAML policy
-# - DSH_LINEAR_PROJECT_SLUG: Linear project slug
+# - RLH_ISSUE_WORKFLOW: absolute path to the repository-owned Markdown/YAML policy
+# - RLH_LINEAR_PROJECT_SLUG: Linear project slug
 # - LINEAR_API_KEY: host-held Linear credential (scrubbed from managed children)
 # Optional:
-# - DSH_ISSUE_WORKSPACE_ROOT: isolated workspace root
+# - RLH_ISSUE_WORKSPACE_ROOT: isolated workspace root
 
 - insert:
     - id: tracker
-      name: '@deepseek-ai/dsh-tracker'
+      name: '@relay-harness/rlh-tracker'
 
     - id: tracker-linear
-      name: '@deepseek-ai/dsh-tracker-linear'
+      name: '@relay-harness/rlh-tracker-linear'
       config:
-        projectSlug: !!js process.env.DSH_LINEAR_PROJECT_SLUG
+        projectSlug: !!js process.env.RLH_LINEAR_PROJECT_SLUG
         apiKeyEnv: LINEAR_API_KEY
 
     - id: issue-workflow
-      name: '@deepseek-ai/dsh-issue-workflow-file'
+      name: '@relay-harness/rlh-issue-workflow-file'
       config:
-        path: !!js process.env.DSH_ISSUE_WORKFLOW
+        path: !!js process.env.RLH_ISSUE_WORKFLOW
 
     - id: issue-workspace
-      name: '@deepseek-ai/dsh-issue-workspace-local'
+      name: '@relay-harness/rlh-issue-workspace-local'
       config:
-        root: !!js process.env.DSH_ISSUE_WORKSPACE_ROOT ?? process.cwd() + '/.dsh/issue-workspaces'
-        afterCreate: !!js process.env.DSH_ISSUE_AFTER_CREATE
-        beforeRun: !!js process.env.DSH_ISSUE_BEFORE_RUN
+        root: !!js process.env.RLH_ISSUE_WORKSPACE_ROOT ?? process.cwd() + '/.rlh/issue-workspaces'
+        afterCreate: !!js process.env.RLH_ISSUE_AFTER_CREATE
+        beforeRun: !!js process.env.RLH_ISSUE_BEFORE_RUN
 
     - id: issue-runner
-      name: '@deepseek-ai/dsh-issue-runner-agent'
+      name: '@relay-harness/rlh-issue-runner-agent'
       inject: [agentDefaultModel]
       config:
         provider: !!js ctx.agentDefaultModel.currentSelection().provider
         model: !!js ctx.agentDefaultModel.currentSelection().model
 
     - id: issue-orchestrator
-      name: '@deepseek-ai/dsh-issue-orchestrator'
+      name: '@relay-harness/rlh-issue-orchestrator'
 
     - id: ui-issue-orchestration
-      name: '@deepseek-ai/dsh-client-ui-issue-orchestration'
+      name: '@relay-harness/rlh-client-ui-issue-orchestration'

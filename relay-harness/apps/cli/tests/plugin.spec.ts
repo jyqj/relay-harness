@@ -10,7 +10,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { readProfileManifest, writeProfileManifest, type ProfileManifest } from '@deepseek-ai/dsh-app-boot'
+import { readProfileManifest, writeProfileManifest, type ProfileManifest } from '@relay-harness/rlh-app-boot'
 import { compatibilityFailureOf, reconcileBundleLayers, runPlugin } from '../src/plugin.ts'
 
 /** The slice of a spawnSync result runPlugin reads. */
@@ -23,7 +23,7 @@ vi.mock('node:child_process', () => ({ spawnSync: spawnSyncMock }))
 /** Temp homes staged by the runPlugin tests, cleaned after each test. */
 const tmpDirs: string[] = []
 const tmp = (): string => {
-  const dir = mkdtempSync(join(tmpdir(), 'dsh-plugin-'))
+  const dir = mkdtempSync(join(tmpdir(), 'rlh-plugin-'))
   tmpDirs.push(dir)
   return dir
 }
@@ -36,9 +36,9 @@ afterEach(() => {
   tmpDirs.length = 0
 })
 
-/** A dependency manifest; `dsh` omitted entirely means "no declaration". */
-function depManifest(dsh?: Record<string, unknown>): ProfileManifest {
-  return { name: 'dep', ...(dsh === undefined ? {} : { dsh }) }
+/** A dependency manifest; `rlh` omitted entirely means "no declaration". */
+function depManifest(rlh?: Record<string, unknown>): ProfileManifest {
+  return { name: 'dep', ...(rlh === undefined ? {} : { rlh }) }
 }
 
 /** Resolver over a name -> manifest table; absent names read as unresolvable. */
@@ -46,10 +46,10 @@ function resolver(table: Record<string, ProfileManifest | undefined>) {
   return (packageName: string): ProfileManifest | undefined => table[packageName]
 }
 
-const manifest = (dsh: Record<string, unknown>): ProfileManifest => ({
+const manifest = (rlh: Record<string, unknown>): ProfileManifest => ({
   name: 'p',
   dependencies: {},
-  dsh,
+  rlh,
 })
 
 describe('compatibilityFailureOf', () => {
@@ -69,15 +69,15 @@ describe('compatibilityFailureOf', () => {
   it('fails closed on a malformed declaration with the parse detail', () => {
     const failure = compatibilityFailureOf('pkg', depManifest({ compatibility: { features: 'editor.unsupported' } }))
     expect(failure?.kind).toBe('malformed')
-    expect(failure?.detail).toContain('pkg: dsh.compatibility.features must be a string array')
+    expect(failure?.detail).toContain('pkg: rlh.compatibility.features must be a string array')
   })
 })
 
 describe('reconcileBundleLayers', () => {
   it('activates bundle dependencies, preserving packages without a compatibility declaration', () => {
-    const before = manifest({ profile: { bundles: ['@deepseek-ai/dsh-base'] } })
+    const before = manifest({ profile: { bundles: ['@relay-harness/rlh-base'] } })
     const after: ProfileManifest = {
-      ...manifest({ profile: { bundles: ['@deepseek-ai/dsh-base'] } }),
+      ...manifest({ profile: { bundles: ['@relay-harness/rlh-base'] } }),
       dependencies: { 'plain-lib': '0.0.0', 'good-bundle': '0.0.0' },
     }
     const report = reconcileBundleLayers(before, after, resolver({
@@ -85,7 +85,7 @@ describe('reconcileBundleLayers', () => {
       'plain-lib': depManifest(),
     }))
     expect(report.failures).toEqual([])
-    expect(report.bundles).toEqual(['@deepseek-ai/dsh-base', 'good-bundle'])
+    expect(report.bundles).toEqual(['@relay-harness/rlh-base', 'good-bundle'])
     expect(report.plainAdditions).toEqual(['plain-lib'])
     expect(report.changed).toBe(true)
   })
@@ -152,14 +152,14 @@ describe('reconcileBundleLayers', () => {
   })
 
   it('removes a dependency that stopped being a bundle and keeps template bundles', () => {
-    const before = manifest({ profile: { bundles: ['@deepseek-ai/dsh-base', 'retired-bundle'] } })
+    const before = manifest({ profile: { bundles: ['@relay-harness/rlh-base', 'retired-bundle'] } })
     const after: ProfileManifest = {
-      ...manifest({ profile: { bundles: ['@deepseek-ai/dsh-base', 'retired-bundle'] } }),
+      ...manifest({ profile: { bundles: ['@relay-harness/rlh-base', 'retired-bundle'] } }),
       dependencies: { 'retired-bundle': '0.0.0' },
     }
     const report = reconcileBundleLayers(before, after, resolver({ 'retired-bundle': depManifest() }))
     expect(report.failures).toEqual([])
-    expect(report.bundles).toEqual(['@deepseek-ai/dsh-base'])
+    expect(report.bundles).toEqual(['@relay-harness/rlh-base'])
     expect(report.deactivated).toEqual(['retired-bundle'])
   })
 
@@ -208,9 +208,9 @@ describe('runPlugin', () => {
   it('returns nonzero and rolls back a newly-added incompatible dependency', () => {
     const home = tmp()
     const dir = stageProfile(home, 'tui', {
-      name: 'dsh-profile-tui',
+      name: 'rlh-profile-tui',
       dependencies: {},
-      dsh: { profile: { bundles: ['@deepseek-ai/dsh-base'] } },
+      rlh: { profile: { bundles: ['@relay-harness/rlh-base'] } },
     })
     // pnpm add succeeds and writes the dependency + package; pnpm remove
     // (the rollback) succeeds and removes it again.
@@ -223,7 +223,7 @@ describe('runPlugin', () => {
         writeFileSync(join(dir, 'node_modules', 'bad-plugin', 'package.json'), JSON.stringify({
           name: 'bad-plugin',
           version: '1.0.0',
-          dsh: {
+          rlh: {
             bundle: { patch: './cordis.patch.yml' },
             compatibility: { features: ['editor.unsupported'] },
           },
@@ -238,30 +238,30 @@ describe('runPlugin', () => {
       }
       throw new Error(`unexpected spawn: ${command} ${args.join(' ')}`)
     })
-    vi.stubEnv('DSH_HOME', home)
+    vi.stubEnv('RLH_HOME', home)
     const { code, stderr } = stderrOf(() => runPlugin('tui', ['add', 'bad-plugin']))
     expect(code).toBe(1)
     expect(stderr.join('')).toContain(
-      'bad-plugin requires host features this dsh does not support: editor.unsupported',
+      'bad-plugin requires host features this rlh does not support: editor.unsupported',
     )
-    expect(stderr.join('')).toContain('bad-plugin was not activated in dsh.profile.bundles')
+    expect(stderr.join('')).toContain('bad-plugin was not activated in rlh.profile.bundles')
     expect(stderr.join('')).toContain('bad-plugin was rolled back')
     // The rollback removed the dependency and the bundle list never gained it.
     const final = readProfileManifest('t', dir)
     expect(final.dependencies).toEqual({})
-    expect(final.dsh?.profile?.bundles).toEqual(['@deepseek-ai/dsh-base'])
+    expect(final.rlh?.profile?.bundles).toEqual(['@relay-harness/rlh-base'])
   })
 
   it('returns nonzero for a pre-existing incompatible dependency, keeping it installed but inactive', () => {
     const home = tmp()
     const dir = stageProfile(home, 'tui', {
-      name: 'dsh-profile-tui',
+      name: 'rlh-profile-tui',
       dependencies: { 'bad-plugin': '1.0.0' },
-      dsh: { profile: { bundles: ['@deepseek-ai/dsh-base', 'bad-plugin'] } },
+      rlh: { profile: { bundles: ['@relay-harness/rlh-base', 'bad-plugin'] } },
     }, {
       'bad-plugin': {
         name: 'bad-plugin',
-        dsh: {
+        rlh: {
           bundle: { patch: './cordis.patch.yml' },
           compatibility: { features: ['editor.unsupported'] },
         },
@@ -269,23 +269,23 @@ describe('runPlugin', () => {
     })
     // pnpm update succeeds; the dependency stays where it was.
     spawnSyncMock.mockReturnValue({ status: 0, error: undefined })
-    vi.stubEnv('DSH_HOME', home)
+    vi.stubEnv('RLH_HOME', home)
     const { code, stderr } = stderrOf(() => runPlugin('tui', ['update']))
     expect(code).toBe(1)
     expect(spawnSyncMock).toHaveBeenCalledTimes(1) // no rollback attempt for a pre-existing dependency
-    expect(stderr.join('')).toContain('bad-plugin requires host features this dsh does not support: editor.unsupported')
+    expect(stderr.join('')).toContain('bad-plugin requires host features this rlh does not support: editor.unsupported')
     expect(stderr.join('')).toContain('bad-plugin remains installed as an inactive dependency')
     const final = readProfileManifest('t', dir)
     expect(final.dependencies).toEqual({ 'bad-plugin': '1.0.0' }) // user dependency untouched
-    expect(final.dsh?.profile?.bundles).toEqual(['@deepseek-ai/dsh-base']) // deactivated
+    expect(final.rlh?.profile?.bundles).toEqual(['@relay-harness/rlh-base']) // deactivated
   })
 
   it('returns pnpm exit codes and reconciles a clean install without the gate', () => {
     const home = tmp()
     const dir = stageProfile(home, 'tui', {
-      name: 'dsh-profile-tui',
+      name: 'rlh-profile-tui',
       dependencies: {},
-      dsh: { profile: { bundles: ['@deepseek-ai/dsh-base'] } },
+      rlh: { profile: { bundles: ['@relay-harness/rlh-base'] } },
     })
     spawnSyncMock.mockImplementation((command, args) => {
       if (command === 'pnpm' && args[0] === 'add') {
@@ -296,31 +296,31 @@ describe('runPlugin', () => {
         writeFileSync(join(dir, 'node_modules', 'good-bundle', 'package.json'), JSON.stringify({
           name: 'good-bundle',
           version: '1.0.0',
-          dsh: { bundle: { patch: './cordis.patch.yml' } },
+          rlh: { bundle: { patch: './cordis.patch.yml' } },
         }))
         return { status: 0, error: undefined }
       }
       throw new Error(`unexpected spawn: ${command} ${args.join(' ')}`)
     })
-    vi.stubEnv('DSH_HOME', home)
+    vi.stubEnv('RLH_HOME', home)
     const { code } = stderrOf(() => runPlugin('tui', ['add', 'good-bundle']))
     expect(code).toBe(0)
     const final = readProfileManifest('t', dir)
-    expect(final.dsh?.profile?.bundles).toEqual(['@deepseek-ai/dsh-base', 'good-bundle'])
+    expect(final.rlh?.profile?.bundles).toEqual(['@relay-harness/rlh-base', 'good-bundle'])
   })
 
   it('passes through a pnpm failure exit code without reconciling', () => {
     const home = tmp()
     stageProfile(home, 'tui', {
-      name: 'dsh-profile-tui',
+      name: 'rlh-profile-tui',
       dependencies: {},
-      dsh: { profile: { bundles: ['@deepseek-ai/dsh-base'] } },
+      rlh: { profile: { bundles: ['@relay-harness/rlh-base'] } },
     })
     spawnSyncMock.mockReturnValue({ status: 7, error: undefined })
-    vi.stubEnv('DSH_HOME', home)
+    vi.stubEnv('RLH_HOME', home)
     const { code } = stderrOf(() => runPlugin('tui', ['add', 'x']))
     expect(code).toBe(7)
-    expect(readProfileManifest('t', join(home, 'profiles', 'tui')).dsh?.profile?.bundles)
-      .toEqual(['@deepseek-ai/dsh-base'])
+    expect(readProfileManifest('t', join(home, 'profiles', 'tui')).rlh?.profile?.bundles)
+      .toEqual(['@relay-harness/rlh-base'])
   })
 })

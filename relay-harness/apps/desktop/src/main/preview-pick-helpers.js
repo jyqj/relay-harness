@@ -1,22 +1,22 @@
 'use strict';
 
 const THEME_VARS = Object.freeze({
-  radius: '--dshd-preview-radius',
-  background: '--dshd-preview-background',
-  foreground: '--dshd-preview-foreground',
-  popover: '--dshd-preview-popover',
-  popoverForeground: '--dshd-preview-popover-foreground',
-  primary: '--dshd-preview-primary',
-  primaryForeground: '--dshd-preview-primary-foreground',
-  muted: '--dshd-preview-muted',
-  mutedForeground: '--dshd-preview-muted-foreground',
-  accent: '--dshd-preview-accent',
-  accentForeground: '--dshd-preview-accent-foreground',
-  border: '--dshd-preview-border',
-  input: '--dshd-preview-input',
-  ring: '--dshd-preview-ring',
-  fontSans: '--dshd-preview-font-sans',
-  fontMono: '--dshd-preview-font-mono',
+  radius: '--rlhd-preview-radius',
+  background: '--rlhd-preview-background',
+  foreground: '--rlhd-preview-foreground',
+  popover: '--rlhd-preview-popover',
+  popoverForeground: '--rlhd-preview-popover-foreground',
+  primary: '--rlhd-preview-primary',
+  primaryForeground: '--rlhd-preview-primary-foreground',
+  muted: '--rlhd-preview-muted',
+  mutedForeground: '--rlhd-preview-muted-foreground',
+  accent: '--rlhd-preview-accent',
+  accentForeground: '--rlhd-preview-accent-foreground',
+  border: '--rlhd-preview-border',
+  input: '--rlhd-preview-input',
+  ring: '--rlhd-preview-ring',
+  fontSans: '--rlhd-preview-font-sans',
+  fontMono: '--rlhd-preview-font-mono',
 });
 
 const DEFAULT_ANNOTATION_THEME = Object.freeze({
@@ -88,7 +88,7 @@ function htmlPreview(element) {
 }
 
 /**
- * Apply annotation theme fields onto `--dshd-preview-*` host variables.
+ * Apply annotation theme fields onto `--rlhd-preview-*` host variables.
  * @param {{ style: { colorScheme?: string, setProperty: Function } }} host
  * @param {Record<string, string> | null | undefined} theme
  */

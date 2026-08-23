@@ -7,8 +7,8 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import clsx from 'clsx'
-import { Button, IconRefreshOutline16, Tooltip } from '@deepseek-ai/dsh-client-ui-primitives'
-import type { PropsLocale } from '@deepseek-ai/dsh-client-ui-slots'
+import { Button, IconRefreshOutline16, Tooltip } from '@relay-harness/rlh-client-ui-primitives'
+import type { PropsLocale } from '@relay-harness/rlh-client-ui-slots'
 import { desktopShell, type UpdateInfo } from './desktop-shell.ts'
 import css from './UpdateAction.module.css'
 

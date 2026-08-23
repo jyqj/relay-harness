@@ -1,28 +1,28 @@
 /**
  * Agent-turn Consumer for proactive long-term-memory recall and settlement.
  *
- * @module @deepseek-ai/dsh-memory-agent
+ * @module @relay-harness/rlh-memory-agent
  */
 
-import type { Context } from '@deepseek-ai/cordis'
-import z from '@deepseek-ai/schemastery'
-import type { Agent, PreStepDecision } from '@deepseek-ai/dsh-agent'
-import { createUserMessage } from '@deepseek-ai/dsh-llm'
-import type { UserMessage } from '@deepseek-ai/dsh-llm'
-import type { Session, TurnEndReason } from '@deepseek-ai/dsh-session'
-import type LongTermMemory from '@deepseek-ai/dsh-memory'
+import type { Context } from '@relay-harness/cordis'
+import z from '@relay-harness/schemastery'
+import type { Agent, PreStepDecision } from '@relay-harness/rlh-agent'
+import { createUserMessage } from '@relay-harness/rlh-llm'
+import type { UserMessage } from '@relay-harness/rlh-llm'
+import type { Session, TurnEndReason } from '@relay-harness/rlh-session'
+import type LongTermMemory from '@relay-harness/rlh-memory'
 import type {
   MemoryId as MemoryIdValue,
   MemoryScope,
   MemorySearchHit,
   PreparedMemoryTurn,
-} from '@deepseek-ai/dsh-memory/types'
+} from '@relay-harness/rlh-memory/types'
 
 export const name = 'memory-agent'
 export const inject = ['longTermMemory']
 
 const DEFAULT_USER_ID = 'local'
-const DEFAULT_AGENT_ID = 'deepseek-harness'
+const DEFAULT_AGENT_ID = 'relay-harness'
 const DEFAULT_CANDIDATE_LIMIT = 10
 const DEFAULT_MAX_CONTEXT_CHARS = 3_200
 
@@ -43,7 +43,7 @@ export interface MemoryRecallSource {
   }[]
 }
 
-declare module '@deepseek-ai/dsh-llm' {
+declare module '@relay-harness/rlh-llm' {
   interface MessageSourceMap {
     'memory-recall': MemoryRecallSource
   }
@@ -53,7 +53,7 @@ declare module '@deepseek-ai/dsh-llm' {
 export interface Config {
   /** Stable user identity inside each workspace. Defaults to `local`. */
   userId?: string
-  /** Stable Agent identity shared across recallable sessions. Defaults to `deepseek-harness`. */
+  /** Stable Agent identity shared across recallable sessions. Defaults to `relay-harness`. */
   agentId?: string
   /** Explicit workspace identity; omission uses the session cwd, then `global`. */
   workspaceId?: string

@@ -168,7 +168,7 @@ class RelayClient extends EventEmitter {
       });
       const onReady = () => {
         socket.write(
-          `GET /__dsh__/host HTTP/1.1\r\nHost: ${target.host}\r\nAuthorization: Bearer ${token}\r\nConnection: Upgrade\r\nUpgrade: dsh-relay\r\n\r\n`,
+          `GET /__rlh__/host HTTP/1.1\r\nHost: ${target.host}\r\nAuthorization: Bearer ${token}\r\nConnection: Upgrade\r\nUpgrade: rlh-relay\r\n\r\n`,
         );
       };
       if (target.protocol === 'https:') {

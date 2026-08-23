@@ -93,7 +93,7 @@ describe('theme boot index transform', () => {
       fontFamilyComposer: '',
       fontFamilyTerminal: '',
     })
-    expect(payload.lightTokens['--dsw-alias-bg-base']).toBe('#f3faf7')
+    expect(payload.lightTokens['--rlw-alias-bg-base']).toBe('#f3faf7')
     expect(payload.darkTokens).toEqual({})
     const html = injectBootTheme(
       '<html><body><div id="root"></div></body></html>',
@@ -103,7 +103,7 @@ describe('theme boot index transform', () => {
     if (source === undefined) throw new Error('theme bootstrap script missing')
     runInNewContext(source, { document, matchMedia: globalThis.matchMedia })
     expect(document.documentElement.style.fontSize).toBe('18px')
-    expect(document.body.style.getPropertyValue('--dsw-alias-bg-base')).toBe('#f3faf7')
-    expect(document.body.style.getPropertyValue('--dsw-alias-glass-opacity')).toBe('70%')
+    expect(document.body.style.getPropertyValue('--rlw-alias-bg-base')).toBe('#f3faf7')
+    expect(document.body.style.getPropertyValue('--rlw-alias-glass-opacity')).toBe('70%')
   })
 })

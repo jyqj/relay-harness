@@ -45,7 +45,7 @@ describe('web e2e: titlebar cluster and surfaces empty five cards', () => {
 
   it('shows Session log, Git, and two panel toggles left of the frame edge', async () => {
     onTestFailed(() => saveFailureShot(page, 'web-e2e-desktop-chrome-titlebar'))
-    const cluster = page.locator('#dshd-shell-titlebar-trailing')
+    const cluster = page.locator('#rlhd-shell-titlebar-trailing')
     await cluster.waitFor({ timeout: 15_000 })
     const sessionLog = cluster.getByRole('button', { name: 'Session log' })
     const branch = cluster.getByRole('button', { name: 'Switch branch' })
@@ -72,7 +72,7 @@ describe('web e2e: titlebar cluster and surfaces empty five cards', () => {
       const current = boxes[index]!
       expect(current.x + 1).toBeGreaterThanOrEqual(previous.x + previous.width)
     }
-    const snapshot = await captureStableAria(page, '#dshd-shell-titlebar-trailing', scaffold.workspaceCwd)
+    const snapshot = await captureStableAria(page, '#rlhd-shell-titlebar-trailing', scaffold.workspaceCwd)
     await compareOrRefreshGolden(TITLEBAR_EXPECTED, snapshot, MODE)
     expect(snapshot).toContain('Session log')
     expect(snapshot).toContain('Switch branch')
@@ -86,13 +86,13 @@ describe('web e2e: titlebar cluster and surfaces empty five cards', () => {
   it('publishes complete platform UI exports to runtime-loaded plugins', async () => {
     const exportTypes = await page.evaluate(async () => {
       const modules = (window as Window & {
-        __DSH_MODULES__?: {
+        __RLH_MODULES__?: {
           import: (specifier: string, parentURL: string, attrs: Record<string, never>) => Promise<unknown>
         }
-      }).__DSH_MODULES__
+      }).__RLH_MODULES__
       if (modules === undefined) throw new Error('client module system missing')
       const primitives = await modules.import(
-        '@deepseek-ai/dsh-client-ui-primitives',
+        '@relay-harness/rlh-client-ui-primitives',
         '',
         {},
       ) as Record<string, unknown>
@@ -155,7 +155,7 @@ describe('web e2e: titlebar cluster and surfaces empty five cards', () => {
       await surfaces.click()
     }
     await expect.poll(() => surfaces.getAttribute('aria-pressed'), { timeout: 10_000 }).toBe('true')
-    const cluster = page.locator('#dshd-shell-titlebar-trailing')
+    const cluster = page.locator('#rlhd-shell-titlebar-trailing')
     const sessionLog = cluster.getByRole('button', { name: 'Session log' })
     const branch = cluster.getByRole('button', { name: 'Switch branch' })
     const git = cluster.getByRole('button', { name: 'Commit' })

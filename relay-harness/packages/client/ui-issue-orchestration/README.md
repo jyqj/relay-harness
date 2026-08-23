@@ -1,4 +1,4 @@
-# `@deepseek-ai/dsh-client-ui-issue-orchestration`
+# `@relay-harness/rlh-client-ui-issue-orchestration`
 
 English | [中文](README.zh.md)
 

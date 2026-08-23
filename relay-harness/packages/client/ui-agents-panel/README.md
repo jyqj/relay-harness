@@ -1,4 +1,4 @@
-# @deepseek-ai/dsh-client-ui-agents-panel
+# @relay-harness/rlh-client-ui-agents-panel
 
 English | [中文](README.zh.md)
 

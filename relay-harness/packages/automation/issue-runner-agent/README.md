@@ -1,8 +1,8 @@
-# `@deepseek-ai/dsh-issue-runner-agent`
+# `@relay-harness/rlh-issue-runner-agent`
 
 English | [中文](README.zh.md)
 
-Native DSH Agent runner. It creates one Session at the prepared cwd, installs the captured tracker tools before publication, sends the rendered issue prompt, rechecks tracker eligibility after each turn, and reuses the same Agent/Session for bounded continuation turns. The run result settles after Agent disposal.
+Native RLH Agent runner. It creates one Session at the prepared cwd, installs the captured tracker tools before publication, sends the rendered issue prompt, rechecks tracker eligibility after each turn, and reuses the same Agent/Session for bounded continuation turns. The run result settles after Agent disposal.
 
 ## Model Experience
 

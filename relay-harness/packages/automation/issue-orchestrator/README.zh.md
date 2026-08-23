@@ -1,4 +1,4 @@
-# `@deepseek-ai/dsh-issue-orchestrator`
+# `@relay-harness/rlh-issue-orchestrator`
 
 [English](README.md) | 中文
 

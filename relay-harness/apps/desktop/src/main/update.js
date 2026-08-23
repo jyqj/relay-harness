@@ -5,7 +5,7 @@ const { spawn } = require('child_process');
 const { app, shell } = require('electron');
 
 const GITHUB_OWNER = 'ChisaAlter';
-const GITHUB_REPO = 'Deepseek-Harness-Desktop';
+const GITHUB_REPO = 'Relay-Harness-Desktop';
 const RELEASES_LATEST = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/releases/latest`;
 const RELEASES_PAGE = `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases`;
 const REPO_URL = `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}`;
@@ -21,7 +21,7 @@ function currentVersion() {
 function githubHeaders(accept = 'application/vnd.github+json') {
   return {
     Accept: accept,
-    'User-Agent': `Deepseek-Harness-Desktop/${currentVersion()}`,
+    'User-Agent': `Relay-Harness-Desktop/${currentVersion()}`,
     'X-GitHub-Api-Version': '2022-11-28',
   };
 }
@@ -117,7 +117,7 @@ async function checkUpdate() {
 
 function downloadHeaders(firstHop) {
   const headers = {
-    'User-Agent': `Deepseek-Harness-Desktop/${currentVersion()}`,
+    'User-Agent': `Relay-Harness-Desktop/${currentVersion()}`,
   };
   if (firstHop) {
     headers.Accept = 'application/octet-stream';

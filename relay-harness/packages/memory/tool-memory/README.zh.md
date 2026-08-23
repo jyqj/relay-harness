@@ -1,4 +1,4 @@
-# `@deepseek-ai/dsh-tool-memory`
+# `@relay-harness/rlh-tool-memory`
 
 [English](README.md) | 中文
 
@@ -11,7 +11,7 @@ Provider 无关的记忆工具。每次调用都从调用 Agent 派生精确的�
 | Key | 默认值 | 契约 |
 |---|---:|---|
 | `userId` | `local` | 稳定用户 Scope。 |
-| `agentId` | `deepseek-harness` | 稳定 Agent Scope。 |
+| `agentId` | `relay-harness` | 稳定 Agent Scope。 |
 | `workspaceId` | 会话 cwd，其次 `global` | 可选的显式工作区 Scope。 |
 | `defaultSearchLimit` | `10` | `memory_search` 默认结果上限。 |
 

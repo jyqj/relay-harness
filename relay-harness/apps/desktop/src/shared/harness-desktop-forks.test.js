@@ -36,12 +36,12 @@ function makeFixture(t, npmVersion = '0.1.0-rc.5') {
   writeFile(root, 'packages/bundle/base/cordis.patch.yml', [
     '- insert:',
     '    - id: llm-vision-fallback',
-    "      name: '@deepseek-ai/dsh-llm-vision-fallback'",
+    "      name: '@relay-harness/rlh-llm-vision-fallback'",
     '      config:',
     '        maxOutputTokens: 2048',
     '        timeoutMs: 120000',
     '    - id: mcp-servers-file',
-    "      name: '@deepseek-ai/dsh-mcp-servers-file'",
+    "      name: '@relay-harness/rlh-mcp-servers-file'",
     '',
   ].join('\n'));
   const webRows = COMPOSITION_ROWS

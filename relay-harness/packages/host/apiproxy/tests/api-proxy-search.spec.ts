@@ -5,21 +5,21 @@
  */
 
 import { describe, expect, it, vi } from 'vitest'
-import { Context } from '@deepseek-ai/cordis'
+import { Context } from '@relay-harness/cordis'
 import { stat } from 'node:fs/promises'
-import AgentRegistry from '@deepseek-ai/dsh-agent'
-import { createUserMessage } from '@deepseek-ai/dsh-llm'
-import SessionStore from '@deepseek-ai/dsh-session'
-import type { SessionHeader, SessionId } from '@deepseek-ai/dsh-session'
-import UserQuestionService from '@deepseek-ai/dsh-user-questions'
+import AgentRegistry from '@relay-harness/rlh-agent'
+import { createUserMessage } from '@relay-harness/rlh-llm'
+import SessionStore from '@relay-harness/rlh-session'
+import type { SessionHeader, SessionId } from '@relay-harness/rlh-session'
+import UserQuestionService from '@relay-harness/rlh-user-questions'
 import {
   SessionQueryError,
   type SessionSearchHit,
   type SessionSearchRequest,
-} from '@deepseek-ai/dsh-session-query'
-import type { RpcRequest } from '@deepseek-ai/dsh-host-apiproxy/api'
-import { RpcId } from '@deepseek-ai/dsh-host-apiproxy/api'
-import { createApiProxy } from '@deepseek-ai/dsh-host-apiproxy'
+} from '@relay-harness/rlh-session-query'
+import type { RpcRequest } from '@relay-harness/rlh-host-apiproxy/api'
+import { RpcId } from '@relay-harness/rlh-host-apiproxy/api'
+import { createApiProxy } from '@relay-harness/rlh-host-apiproxy'
 
 vi.mock('node:fs/promises', async (importOriginal) => {
   const actual = await importOriginal<typeof import('node:fs/promises')>()

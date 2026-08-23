@@ -2,11 +2,11 @@ import { mkdtemp, readFile, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
-import { Context } from '@deepseek-ai/cordis'
+import { Context } from '@relay-harness/cordis'
 import { defaultMounter, McpServersFile } from '../src/service.ts'
 import type { ChildHandle, McpClientMounter } from '../src/service.ts'
-import { reportMcpClientStatus } from '@deepseek-ai/dsh-mcp-client'
-import type { Config as McpClientConfig } from '@deepseek-ai/dsh-mcp-client'
+import { reportMcpClientStatus } from '@relay-harness/rlh-mcp-client'
+import type { Config as McpClientConfig } from '@relay-harness/rlh-mcp-client'
 
 const contexts: Context[] = []
 
@@ -15,7 +15,7 @@ afterEach(async () => {
 })
 
 async function home(): Promise<string> {
-  return mkdtemp(join(tmpdir(), 'dsh-mcp-servers-'))
+  return mkdtemp(join(tmpdir(), 'rlh-mcp-servers-'))
 }
 
 function trackingMounter(mounted: McpClientConfig[]): McpClientMounter {
@@ -33,11 +33,11 @@ function trackingMounter(mounted: McpClientConfig[]): McpClientMounter {
 
 describe('McpServersFile', () => {
   it('exposes live child and composition connection health by serverName', async () => {
-    const dshHome = await home()
+    const rlhHome = await home()
     const ctx = new Context()
     contexts.push(ctx)
     const mounted: McpClientConfig[] = []
-    const service = new McpServersFile(ctx, { dshHome, watch: false })
+    const service = new McpServersFile(ctx, { rlhHome, watch: false })
     service.useMounter(trackingMounter(mounted))
     const stop = service.start()
     await service.upsert({
@@ -63,11 +63,11 @@ describe('McpServersFile', () => {
   })
 
   it('loads an absent file as empty and writes an upsert', async () => {
-    const dshHome = await home()
+    const rlhHome = await home()
     const ctx = new Context()
     contexts.push(ctx)
     const mounted: McpClientConfig[] = []
-    const service = new McpServersFile(ctx, { dshHome, watch: false })
+    const service = new McpServersFile(ctx, { rlhHome, watch: false })
     service.useMounter(trackingMounter(mounted))
     const stop = service.start()
     await service.upsert({
@@ -82,7 +82,7 @@ describe('McpServersFile', () => {
     expect(listed?.transport === 'stdio' && listed.env?.GITHUB_TOKEN).toBe('********')
     expect(mounted).toHaveLength(1)
     expect(mounted[0]).toMatchObject({ serverName: 'github', command: 'npx' })
-    const text = await readFile(join(dshHome, 'mcp-servers.yaml'), 'utf8')
+    const text = await readFile(join(rlhHome, 'mcp-servers.yaml'), 'utf8')
     expect(text).toContain('github')
     expect(text).toContain('abc')
     await service.setEnabled('github', false)
@@ -93,8 +93,8 @@ describe('McpServersFile', () => {
   })
 
   it('mounts enabled records from an existing file', async () => {
-    const dshHome = await home()
-    await writeFile(join(dshHome, 'mcp-servers.yaml'), `
+    const rlhHome = await home()
+    await writeFile(join(rlhHome, 'mcp-servers.yaml'), `
 servers:
   - id: http
     transport: streamable-http
@@ -104,7 +104,7 @@ servers:
     const ctx = new Context()
     contexts.push(ctx)
     const mounted: McpClientConfig[] = []
-    const service = new McpServersFile(ctx, { dshHome, watch: false })
+    const service = new McpServersFile(ctx, { rlhHome, watch: false })
     service.useMounter(trackingMounter(mounted))
     service.start()
     await service.upsert({
@@ -119,11 +119,11 @@ servers:
   })
 
   it('remounts when an enabled record changes', async () => {
-    const dshHome = await home()
+    const rlhHome = await home()
     const ctx = new Context()
     contexts.push(ctx)
     const mounted: McpClientConfig[] = []
-    const service = new McpServersFile(ctx, { dshHome, watch: false })
+    const service = new McpServersFile(ctx, { rlhHome, watch: false })
     service.useMounter(trackingMounter(mounted))
     service.start()
     await service.upsert({
@@ -145,11 +145,11 @@ servers:
   })
 
   it('remounts an enabled child without rewriting the document', async () => {
-    const dshHome = await home()
+    const rlhHome = await home()
     const ctx = new Context()
     contexts.push(ctx)
     const mounted: McpClientConfig[] = []
-    const service = new McpServersFile(ctx, { dshHome, watch: false })
+    const service = new McpServersFile(ctx, { rlhHome, watch: false })
     service.useMounter(trackingMounter(mounted))
     service.start()
     await service.upsert({
@@ -160,21 +160,21 @@ servers:
       command: 'npx',
     })
     const first = mounted[0]
-    const before = await readFile(join(dshHome, 'mcp-servers.yaml'), 'utf8')
+    const before = await readFile(join(rlhHome, 'mcp-servers.yaml'), 'utf8')
     await service.remount('github')
     expect(mounted).toHaveLength(1)
     expect(mounted[0]).not.toBe(first)
     expect(mounted[0]).toMatchObject({ serverName: 'github', command: 'npx' })
-    expect(await readFile(join(dshHome, 'mcp-servers.yaml'), 'utf8')).toBe(before)
+    expect(await readFile(join(rlhHome, 'mcp-servers.yaml'), 'utf8')).toBe(before)
     await expect(service.remount('missing')).rejects.toThrow(/not in the managed document/)
   })
 
   it('authorize writes a bearer header for an HTTP server and remounts', async () => {
-    const dshHome = await home()
+    const rlhHome = await home()
     const ctx = new Context()
     contexts.push(ctx)
     const mounted: McpClientConfig[] = []
-    const service = new McpServersFile(ctx, { dshHome, watch: false })
+    const service = new McpServersFile(ctx, { rlhHome, watch: false })
     service.useMounter(trackingMounter(mounted))
     service.useAuthorizeHttp(async (url) => {
       expect(url).toBe('https://mcp.example.test/mcp')
@@ -193,16 +193,16 @@ servers:
       transport: 'streamable-http',
       headers: { Authorization: 'Bearer tok-live' },
     })
-    expect(await readFile(join(dshHome, 'mcp-servers.yaml'), 'utf8')).toContain('tok-live')
+    expect(await readFile(join(rlhHome, 'mcp-servers.yaml'), 'utf8')).toContain('tok-live')
     stop()
   })
 
   it('authorize refuses stdio and unknown ids', async () => {
-    const dshHome = await home()
+    const rlhHome = await home()
     const ctx = new Context()
     contexts.push(ctx)
     const mounted: McpClientConfig[] = []
-    const service = new McpServersFile(ctx, { dshHome, watch: false })
+    const service = new McpServersFile(ctx, { rlhHome, watch: false })
     service.useMounter(trackingMounter(mounted))
     const stop = service.start()
     await service.upsert({

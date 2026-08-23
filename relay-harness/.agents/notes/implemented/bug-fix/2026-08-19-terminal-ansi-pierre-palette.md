@@ -6,7 +6,7 @@ English | [中文](2026-08-19-terminal-ansi-pierre-palette.zh.md)
 
 ## Problem
 
-CodeBuddy's slash menu marks the selected row with Ink `bold` plus `colors.info` (cyan) and unselected rows with dim / secondary. T3code's web terminal is Ghostty: it only overrides fg/bg/cursor from the app, leaves ANSI 1–15 on the engine's vivid palette, and does not remap contrast. T3code's Windows PTY `name` is `xterm-color`, so Ink emits 16-color SGR. Desktop xterm mapped cyan to `--dsw-alias-state-success-secondary` (green-400), blue to business-primary, and set `minimumContrastRatio` 4.5, which boosted dim rows toward the same luminance as normal text. Selection was then bold-on-nearly-the-same-color, which is invisible at 13px. Making the pane opaque did not restore the T3code look because the palette and contrast remapping were still wrong.
+CodeBuddy's slash menu marks the selected row with Ink `bold` plus `colors.info` (cyan) and unselected rows with dim / secondary. T3code's web terminal is Ghostty: it only overrides fg/bg/cursor from the app, leaves ANSI 1–15 on the engine's vivid palette, and does not remap contrast. T3code's Windows PTY `name` is `xterm-color`, so Ink emits 16-color SGR. Desktop xterm mapped cyan to `--rlw-alias-state-success-secondary` (green-400), blue to business-primary, and set `minimumContrastRatio` 4.5, which boosted dim rows toward the same luminance as normal text. Selection was then bold-on-nearly-the-same-color, which is invisible at 13px. Making the pane opaque did not restore the T3code look because the palette and contrast remapping were still wrong.
 
 ## Decision
 

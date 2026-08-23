@@ -1,10 +1,10 @@
 /**
  * Canonical filesystem resource identities for cross-tool read/write locking.
- * @module @deepseek-ai/dsh-tool-fs/resource
+ * @module @relay-harness/rlh-tool-fs/resource
  */
 
-import type { Context } from '@deepseek-ai/cordis'
-import type { ToolExecution, ToolResourceIntent } from '@deepseek-ai/dsh-tools'
+import type { Context } from '@relay-harness/cordis'
+import type { ToolExecution, ToolResourceIntent } from '@relay-harness/rlh-tools'
 import { sessionResolveOptions } from './session-cwd.ts'
 
 /**

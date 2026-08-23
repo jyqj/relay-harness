@@ -161,8 +161,8 @@ export const TRANSLATION_SCOPE_GLOB_EXCLUDES = [
   '**/.pytest_cache/**',
   'apps/web/dist/**',
   '.artifacts/**',
-  'python/sdk-runtime/src/deepseek_harness_runtime/runtime/dsh-jsonrpc-agent-*/**',
-  'python/sdk-runtime/src/deepseek_harness_runtime/runtime/node/**',
+  'python/sdk-runtime/src/relay_harness_runtime/runtime/rlh-jsonrpc-agent-*/**',
+  'python/sdk-runtime/src/relay_harness_runtime/runtime/node/**',
   'vendor/**',
 ]
 
@@ -173,8 +173,8 @@ function isTranslationSourceExcluded(file: string): boolean {
       || segment.startsWith('.doc-typecheck-')
     || segment.startsWith('.node-next-types-'))
     || file.startsWith('apps/web/dist/')
-    || file.startsWith('python/sdk-runtime/src/deepseek_harness_runtime/runtime/dsh-jsonrpc-agent-')
-    || file.startsWith('python/sdk-runtime/src/deepseek_harness_runtime/runtime/node/')
+    || file.startsWith('python/sdk-runtime/src/relay_harness_runtime/runtime/rlh-jsonrpc-agent-')
+    || file.startsWith('python/sdk-runtime/src/relay_harness_runtime/runtime/node/')
 }
 
 /** Whether one discovered Markdown or sidecar path belongs to the bilingual source corpus. */
@@ -304,7 +304,7 @@ export function parseTranslationMarkdown(content: string): Nodes {
   return fromMarkdown(content, { extensions: [gfm()], mdastExtensions: [gfmFromMarkdown()] })
 }
 
-const PUBLIC_REPOSITORY_BLOB_ROOT = 'https://github.com/deepseek-ai/deepseek-harness/blob/master/'
+const PUBLIC_REPOSITORY_BLOB_ROOT = 'https://github.com/jyqj/relay-harness/blob/master/'
 
 /** Return the accepted relative and public-repository links to one counterpart. */
 export function languageSwitcherTargets(counterpart: string): string[] {

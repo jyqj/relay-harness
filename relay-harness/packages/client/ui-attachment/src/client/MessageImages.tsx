@@ -1,4 +1,4 @@
-import type { MessageImagesProps } from '@deepseek-ai/dsh-client-ui-conversation/client'
+import type { MessageImagesProps } from '@relay-harness/rlh-client-ui-conversation/client'
 import { ImageGallery } from '../MessageImage.tsx'
 import { messageImageLabels } from './labels.ts'
 

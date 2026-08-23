@@ -1,4 +1,4 @@
-# `@deepseek-ai/dsh-tool-memory`
+# `@relay-harness/rlh-tool-memory`
 
 English | [中文](README.zh.md)
 
@@ -11,7 +11,7 @@ Provider-neutral memory tools. Every call derives the exact user/workspace/Agent
 | Key | Default | Contract |
 |---|---:|---|
 | `userId` | `local` | Stable user scope. |
-| `agentId` | `deepseek-harness` | Stable Agent scope. |
+| `agentId` | `relay-harness` | Stable Agent scope. |
 | `workspaceId` | session cwd, then `global` | Optional explicit workspace scope. |
 | `defaultSearchLimit` | `10` | Default `memory_search` result cap. |
 

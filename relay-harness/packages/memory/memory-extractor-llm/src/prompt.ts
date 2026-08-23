@@ -1,6 +1,6 @@
 /** Deterministic prompt and strict JSON parser for memory extraction. */
 
-import type { MemoryExtractionSource, MemoryKind } from '@deepseek-ai/dsh-memory/types'
+import type { MemoryExtractionSource, MemoryKind } from '@relay-harness/rlh-memory/types'
 
 const MEMORY_KINDS = ['preference', 'fact', 'constraint', 'decision', 'procedure', 'lesson'] as const
 

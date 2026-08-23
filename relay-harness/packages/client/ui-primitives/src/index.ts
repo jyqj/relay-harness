@@ -1,5 +1,5 @@
 /**
- * Cordis-free React primitives styled only through `--dsw-*` tokens.
+ * Cordis-free React primitives styled only through `--rlw-*` tokens.
  */
 
 export { StateDot } from './StateDot.tsx'

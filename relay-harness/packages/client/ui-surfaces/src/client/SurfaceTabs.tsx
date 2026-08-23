@@ -4,9 +4,9 @@ import {
   IconCloseOutline16,
   IconPlusOutline16,
   Menu,
-} from '@deepseek-ai/dsh-client-ui-primitives'
-import type { MenuEntry } from '@deepseek-ai/dsh-client-ui-primitives'
-import type { PropsLocale } from '@deepseek-ai/dsh-client-ui-slots'
+} from '@relay-harness/rlh-client-ui-primitives'
+import type { MenuEntry } from '@relay-harness/rlh-client-ui-primitives'
+import type { PropsLocale } from '@relay-harness/rlh-client-ui-slots'
 import { NS } from './locales.ts'
 import type { OpenableKind, Surface } from './stores.ts'
 import css from './SurfaceTabs.module.css'

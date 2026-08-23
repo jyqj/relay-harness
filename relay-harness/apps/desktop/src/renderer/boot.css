@@ -1,4 +1,4 @@
-@import '../shared/dsh-webui-tokens.css';
+@import '../shared/rlh-webui-tokens.css';
 
 :root {
   --caption-h: 48px;
@@ -18,7 +18,7 @@ body {
   height: 100%;
   background: var(--boot-bg);
   color: var(--boot-ink);
-  font-family: var(--dsw-font-family);
+  font-family: var(--rlw-font-family);
   font-size: 14px;
   line-height: 22px;
 }
@@ -119,7 +119,7 @@ body[data-harness-covered] .caption {
 
 .code,
 .stamp-code {
-  font-family: var(--ds-font-family-code);
+  font-family: var(--rl-font-family-code);
   font-size: 12px;
   line-height: 18px;
   letter-spacing: 0.16em;
@@ -151,7 +151,7 @@ body[data-harness-covered] .caption {
 body[data-state="idle"] .stamp,
 body[data-state="starting"] .stamp,
 body[data-state="stopping"] .stamp {
-  animation: pulse 1.2s var(--ds-ease-in-out) infinite;
+  animation: pulse 1.2s var(--rl-ease-in-out) infinite;
 }
 
 body[data-state="error"] .stamp,
@@ -172,7 +172,7 @@ body[data-state="error"] .stamp-code {
   width: 64px;
   height: 64px;
   color: var(--boot-ink);
-  animation: rise var(--ds-transition-duration) var(--ds-ease-in-out) both;
+  animation: rise var(--rl-transition-duration) var(--rl-ease-in-out) both;
 }
 
 .mark svg {
@@ -208,7 +208,7 @@ body[data-state="error"] .status {
   line-height: 24px;
   font-weight: 500;
   letter-spacing: 0.04em;
-  animation: rise var(--ds-transition-duration) var(--ds-ease-in-out) 80ms both;
+  animation: rise var(--rl-transition-duration) var(--rl-ease-in-out) 80ms both;
 }
 
 .status {
@@ -217,7 +217,7 @@ body[data-state="error"] .status {
   font-size: 14px;
   line-height: 22px;
   color: var(--boot-muted);
-  animation: rise var(--ds-transition-duration) var(--ds-ease-in-out) 120ms both;
+  animation: rise var(--rl-transition-duration) var(--rl-ease-in-out) 120ms both;
 }
 
 .status.ready {
@@ -234,7 +234,7 @@ body[data-state="error"] .status {
   color: var(--boot-muted);
   font-size: 12px;
   line-height: 18px;
-  animation: rise var(--ds-transition-duration) var(--ds-ease-in-out) 160ms both;
+  animation: rise var(--rl-transition-duration) var(--rl-ease-in-out) 160ms both;
 }
 
 .failure,
@@ -330,7 +330,7 @@ body[data-state="error"] .status {
   padding: 0;
   list-style: none;
   text-align: left;
-  font-family: var(--ds-font-family-code);
+  font-family: var(--rl-font-family-code);
   font-size: 14px;
   line-height: 22px;
   color: var(--boot-muted);
@@ -339,7 +339,7 @@ body[data-state="error"] .status {
 .log li {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
-  animation: fade var(--ds-transition-duration) var(--ds-ease-in-out);
+  animation: fade var(--rl-transition-duration) var(--rl-ease-in-out);
 }
 
 body[data-state="error"] .stage {

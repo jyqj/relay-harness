@@ -1,4 +1,4 @@
-# @deepseek-ai/dsh-tool-str-replace-editor
+# @relay-harness/rlh-tool-str-replace-editor
 
 English | [中文](README.zh.md)
 
@@ -15,7 +15,7 @@ Standalone model-facing `str_replace_editor` over `ctx.fs`. It can be composed w
 
 The schema provides `view`, `create`, `str_replace`, and `insert` over absolute paths. File views use one-based line numbers and preserve content tabs, so displayed text remains valid literal replacement input; directory views omit hidden, dependency, and Python-cache entries and descend two levels. A metadata miss from `view`, `str_replace`, or `insert` records confirmed absence before returning `FS_NOT_FOUND`, so a later `create` can recover an externally deleted path through the mounted policy's guarded-create flow; absence never authorizes `str_replace` or `insert`. Replacement requires one unique literal match and reports errors only in the public `old_str` vocabulary. Insert follows the selected zero-based insertion boundary without adding an implicit trailing newline. Mutations preserve tabs outside the requested edit.
 
-Every command resolves its absolute path to the provider's `FsTargetKey` before dispatch. `view` claims a read lock; `create`, `str_replace`, and `insert` claim a write lock in the shared `dsh-tools` `fs:` namespace, so they coordinate with `dsh-tool-fs` while unrelated files remain parallel.
+Every command resolves its absolute path to the provider's `FsTargetKey` before dispatch. `view` claims a read lock; `create`, `str_replace`, and `insert` claim a write lock in the shared `rlh-tools` `fs:` namespace, so they coordinate with `rlh-tool-fs` while unrelated files remain parallel.
 
 ## Model Experience
 

@@ -93,21 +93,21 @@ function isResolvedFontFamily(value: string): boolean {
 
 function resolvedFontFamily(el: HTMLElement): string {
   const probe = el.ownerDocument.createElement('span')
-  probe.style.fontFamily = 'var(--dsw-font-family-terminal, var(--ds-font-family-code))'
+  probe.style.fontFamily = 'var(--rlw-font-family-terminal, var(--rl-font-family-code))'
   el.appendChild(probe)
   const computed = getComputedStyle(probe).fontFamily.trim()
   probe.remove()
   if (isResolvedFontFamily(computed)) return computed
   const styles = getComputedStyle(el)
-  const terminal = styles.getPropertyValue('--dsw-font-family-terminal').trim()
+  const terminal = styles.getPropertyValue('--rlw-font-family-terminal').trim()
   if (isResolvedFontFamily(terminal)) return terminal
-  const code = styles.getPropertyValue('--ds-font-family-code').trim()
+  const code = styles.getPropertyValue('--rl-font-family-code').trim()
   if (isResolvedFontFamily(code)) return code
   return DEFAULT_TERMINAL_FONT_FAMILY
 }
 
 function resolvedFontSize(el: HTMLElement): number {
-  const raw = getComputedStyle(el).getPropertyValue('--dsw-font-size-code').trim()
+  const raw = getComputedStyle(el).getPropertyValue('--rlw-font-size-code').trim()
   const parsed = Number.parseFloat(raw)
   return Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_TERMINAL_FONT_SIZE
 }

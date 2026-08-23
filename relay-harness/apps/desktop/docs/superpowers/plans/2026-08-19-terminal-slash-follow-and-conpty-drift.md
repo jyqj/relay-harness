@@ -8,7 +8,7 @@
 
 **Tech Stack:** `@xterm/xterm` 6 DomRenderer, Electron `src/main/pty.js` node-pty, vitest/jsdom `ui-user-terminal` tests, node:test `pty.test.js`.
 
-**Spec:** User-visible contract from live screenshots plus [2026-08-19-terminal-tui-selected-row-bold-fill.md](../../vendor/deepseek-harness/.agents/notes/implemented/bug-fix/2026-08-19-terminal-tui-selected-row-bold-fill.md) and [2026-08-18-terminal-canvas-app-background.md](../../vendor/deepseek-harness/.agents/notes/implemented/bug-fix/2026-08-18-terminal-canvas-app-background.md). This plan supersedes heuristic-first selection in that TUI note.
+**Spec:** User-visible contract from live screenshots plus [2026-08-19-terminal-tui-selected-row-bold-fill.md](../../vendor/relay-harness/.agents/notes/implemented/bug-fix/2026-08-19-terminal-tui-selected-row-bold-fill.md) and [2026-08-18-terminal-canvas-app-background.md](../../vendor/relay-harness/.agents/notes/implemented/bug-fix/2026-08-18-terminal-canvas-app-background.md). This plan supersedes heuristic-first selection in that TUI note.
 
 ## Global Constraints
 
@@ -21,7 +21,7 @@
 - Windows PTY remains `powershell.exe -NoLogo -NoProfile`.
 - TDD: failing test first; watch RED; minimal production code; GREEN.
 - Work on the current workspace. Do not commit unless the user asks.
-- After CSS/TS changes: `pnpm --filter @deepseek-ai/dsh-client-ui-user-terminal bundle`, then `Get-Process electron | Stop-Process -Force` and `npm start` from repo root (single-instance lock). User must open a **new PTY**.
+- After CSS/TS changes: `pnpm --filter @relay-harness/rlh-client-ui-user-terminal bundle`, then `Get-Process electron | Stop-Process -Force` and `npm start` from repo root (single-instance lock). User must open a **new PTY**.
 
 ## Out of scope
 
@@ -33,23 +33,23 @@
 
 ## File map
 
-- Modify: `vendor/deepseek-harness/packages/client/ui-user-terminal/src/client/tui-selected-row.ts` — matchers, `selectSlashMenuRows` index-first for 2+ when `fallbackIndex` is passed.
-- Modify: `vendor/deepseek-harness/packages/client/ui-user-terminal/src/client/TerminalPane.tsx` — `keydown` (capture), clamp index, do not reset to 0 on every count flicker.
-- Modify: `vendor/deepseek-harness/packages/client/ui-user-terminal/tests/tui-selected-row.client.spec.ts` — screenshot-replica tests.
-- Modify: `vendor/deepseek-harness/packages/client/ui-user-terminal/tests/terminal-drawer.client.spec.tsx` — host `KeyboardEvent` moves the bar.
+- Modify: `vendor/relay-harness/packages/client/ui-user-terminal/src/client/tui-selected-row.ts` — matchers, `selectSlashMenuRows` index-first for 2+ when `fallbackIndex` is passed.
+- Modify: `vendor/relay-harness/packages/client/ui-user-terminal/src/client/TerminalPane.tsx` — `keydown` (capture), clamp index, do not reset to 0 on every count flicker.
+- Modify: `vendor/relay-harness/packages/client/ui-user-terminal/tests/tui-selected-row.client.spec.ts` — screenshot-replica tests.
+- Modify: `vendor/relay-harness/packages/client/ui-user-terminal/tests/terminal-drawer.client.spec.tsx` — host `KeyboardEvent` moves the bar.
 - Modify: `src/main/pty.js` + `src/main/pty.test.js` — drop `useConptyDll: true` to match the shipped note.
 - Modify: TUI selected-row Agent Note pair (Decision currently still describes heuristic-first; code is drifting).
 - Do not modify: `TerminalWorkspace.module.css` stacking (`isolation` / pane `z-index: 0` / overlay `z-index: 2`) unless a new test proves the bar is behind glyphs.
 
 ## Frozen (do not reopen)
 
-- Alpha-0 `theme.background`, `--dsw-alias-terminal-pane` 12% frost, no canvas CSS fill.
+- Alpha-0 `theme.background`, `--rlw-alias-terminal-pane` 12% frost, no canvas CSS fill.
 - Inverse `.xterm-bg-257` / `.xterm-fg-257` info-fill.
 - ConPTY DA1 one-shot handler in `conpty-da.ts` (keep even if the DLL is omitted; replay buffers still contain `CSI c`).
 
 ## Live evidence this plan is answering
 
-Screenshot 2026-08-19: blue bar on `> /mod` or on the first suggestion `/model`; Down does not move it onto `/model:lite`. CodeBuddy `InputSuggestionsMenu` uses Ink `bold` + `colors.info`, `showIndicator: false`, labels like `/model:lite`. `src/main/pty.js` still sets `useConptyDll: true` while [2026-08-18-terminal-conpty-oneshot-no-dll.md](../../vendor/deepseek-harness/.agents/notes/implemented/bug-fix/2026-08-18-terminal-conpty-oneshot-no-dll.md) says omit it.
+Screenshot 2026-08-19: blue bar on `> /mod` or on the first suggestion `/model`; Down does not move it onto `/model:lite`. CodeBuddy `InputSuggestionsMenu` uses Ink `bold` + `colors.info`, `showIndicator: false`, labels like `/model:lite`. `src/main/pty.js` still sets `useConptyDll: true` while [2026-08-18-terminal-conpty-oneshot-no-dll.md](../../vendor/relay-harness/.agents/notes/implemented/bug-fix/2026-08-18-terminal-conpty-oneshot-no-dll.md) says omit it.
 
 **Tick 1 (2026-08-19 13:06+08, vs tree):** Task 1 index-first is in `selectSlashMenuRows` (lines 81–84) and the screenshot test `uses the arrow index even when the first menu row is undimmed` exists. Task 2 is **not** done: `TerminalPane.tsx` still resets `slashIndex = 0` on any `slashCount` change (lines 116–121) and `keydown` is bubble-only (`addEventListener('keydown', onSlashArrow)` without `true`). Task 3 still has `useConptyDll: true`. Drawer test `moves the slash selected bar on ArrowDown` is absent. Do not mark Task 1 complete until Task 5 live fetch + new-PTY Down-arrow.
 
@@ -63,7 +63,7 @@ These attacks must stay true after implementation. Later `/loop` ticks re-run th
 4. **Double-step.** Do not attach both `term.onKey` and `host keydown` for arrows. One listener. Use `keydown` on the pane host with `capture: true` so the xterm textarea cannot hide the event.
 5. **Desync with CodeBuddy.** We paint our index; CodeBuddy paints its own. They stay aligned only if both start at 0 and both step once per ArrowDown. Missing a key leaves the bar one row off; double-step skips a row. No SGR sync to "correct" this — that is what pinned row 0.
 6. **Mouse / Home / End.** Out of scope unless a later tick shows users need it. Do not pretend arrows cover click-to-select.
-7. **jsdom ≠ Electron.** A passing `selectSlashMenuRows` test is not a live fix. Done means: bundled `lib/client.js` contains the index-first branch, `http://127.0.0.1:3080/plugins/@deepseek-ai/dsh-client-ui-user-terminal/client.js` matches, Electron was killed (not single-instance no-op), **new PTY**, Down moves the bar onto `/model:lite`.
+7. **jsdom ≠ Electron.** A passing `selectSlashMenuRows` test is not a live fix. Done means: bundled `lib/client.js` contains the index-first branch, `http://127.0.0.1:3080/plugins/@relay-harness/rlh-client-ui-user-terminal/client.js` matches, Electron was killed (not single-instance no-op), **new PTY**, Down moves the bar onto `/model:lite`.
 8. **DLL drift.** Tests currently `assert.equal(options.useConptyDll, true)`. The Agent Note says unset. Shipping both is a lie. This plan omits the DLL (T3code). Do not "fix" highlight by turning the DLL back on and guessing SGR.
 9. **Wallpaper.** Any import of `xterm.css` or canvas `background` fails the drawer CSS tests. Do not "help" by darkening frost.
 10. **Stale Agent Note.** Decision text still says bold → undimmed → minority fg → fallback. After this plan it must say: 2+ menu + caller index wins.
@@ -73,8 +73,8 @@ These attacks must stay true after implementation. Later `/loop` ticks re-run th
 ### Task 1: Index wins over undimmed (screenshot lock)
 
 **Files:**
-- Modify: `vendor/deepseek-harness/packages/client/ui-user-terminal/src/client/tui-selected-row.ts`
-- Test: `vendor/deepseek-harness/packages/client/ui-user-terminal/tests/tui-selected-row.client.spec.ts`
+- Modify: `vendor/relay-harness/packages/client/ui-user-terminal/src/client/tui-selected-row.ts`
+- Test: `vendor/relay-harness/packages/client/ui-user-terminal/tests/tui-selected-row.client.spec.ts`
 
 **Interfaces:**
 - Consumes: `SlashRowProbe`, `isSlashCommandRow`
@@ -128,8 +128,8 @@ Expected: all tests PASS. Update any `paintTuiSelectedRows(host)` 2-row cases to
 ### Task 2: Host ArrowDown moves the painted row
 
 **Files:**
-- Modify: `vendor/deepseek-harness/packages/client/ui-user-terminal/src/client/TerminalPane.tsx`
-- Test: `vendor/deepseek-harness/packages/client/ui-user-terminal/tests/terminal-drawer.client.spec.tsx`
+- Modify: `vendor/relay-harness/packages/client/ui-user-terminal/src/client/TerminalPane.tsx`
+- Test: `vendor/relay-harness/packages/client/ui-user-terminal/tests/terminal-drawer.client.spec.tsx`
 
 **Interfaces:**
 - Consumes: `paintTuiSelectedRows(host, overlay, slashIndex)`, `stepSlashIndex(count, index, delta)`
@@ -144,7 +144,7 @@ it('moves the slash selected bar on ArrowDown', async () => {
   mount({ cwd: '/work' })
   fireEvent.click(screen.getByRole('button', { name: 'New terminal' }))
   const log = await screen.findByRole('log', { name: 'pty-1' })
-  log.style.setProperty('--dsw-alias-button-info-fill', 'rgb(65, 118, 230)')
+  log.style.setProperty('--rlw-alias-button-info-fill', 'rgb(65, 118, 230)')
   log.innerHTML = [
     '<div class="xterm-rows">',
     '<div><span>&gt; /mod</span></div>',
@@ -154,13 +154,13 @@ it('moves the slash selected bar on ArrowDown', async () => {
   ].join('')
   await waitFor(() => {
     const rows = [...log.querySelectorAll('.xterm-rows > div')] as HTMLElement[]
-    expect(rows[1]?.hasAttribute('data-dsh-tui-selected')).toBe(true)
+    expect(rows[1]?.hasAttribute('data-rlh-tui-selected')).toBe(true)
   })
   fireEvent.keyDown(log, { key: 'ArrowDown' })
   await waitFor(() => {
     const rows = [...log.querySelectorAll('.xterm-rows > div')] as HTMLElement[]
-    expect(rows[1]?.hasAttribute('data-dsh-tui-selected')).toBe(false)
-    expect(rows[2]?.hasAttribute('data-dsh-tui-selected')).toBe(true)
+    expect(rows[1]?.hasAttribute('data-rlh-tui-selected')).toBe(false)
+    expect(rows[2]?.hasAttribute('data-rlh-tui-selected')).toBe(true)
   })
 })
 ```
@@ -224,7 +224,7 @@ assert.equal('useConptyDll' in options, false)
 
 - [ ] **Step 2: Run RED**
 
-Run: `node --test src/main/pty.test.js` from `C:\Ai\Deepseek-Harness-Desktop`
+Run: `node --test src/main/pty.test.js` from `C:\Ai\Relay-Harness-Desktop`
 
 Expected: FAIL — `useConptyDll` is still `true`.
 
@@ -247,7 +247,7 @@ Expected: PASS.
 ### Task 4: Agent Note matches shipped selection rules
 
 **Files:**
-- Modify: `vendor/deepseek-harness/.agents/notes/implemented/bug-fix/2026-08-19-terminal-tui-selected-row-bold-fill.md`
+- Modify: `vendor/relay-harness/.agents/notes/implemented/bug-fix/2026-08-19-terminal-tui-selected-row-bold-fill.md`
 - Modify: matching `.zh.md`
 - Pairing: `pnpm run verify-translation-pairing --write .agents/notes/implemented/bug-fix/2026-08-19-terminal-tui-selected-row-bold-fill.md`
 
@@ -259,7 +259,7 @@ Replace heuristic-first wording with: a 2+ slash menu uses the caller index; pro
 
 - [ ] **Step 2: Re-record pairing**
 
-Run from `vendor/deepseek-harness`:
+Run from `vendor/relay-harness`:
 
 `pnpm run verify-translation-pairing --write .agents/notes/implemented/bug-fix/2026-08-19-terminal-tui-selected-row-bold-fill.md`
 
@@ -273,11 +273,11 @@ Then the same command without `--write`. Expected: consistent.
 
 - [ ] **Step 1: Bundle**
 
-Run: `pnpm --filter @deepseek-ai/dsh-client-ui-user-terminal bundle` from `vendor/deepseek-harness`
+Run: `pnpm --filter @relay-harness/rlh-client-ui-user-terminal bundle` from `vendor/relay-harness`
 
 - [ ] **Step 2: Prove the served file, not just disk**
 
-After `Get-Process electron | Stop-Process -Force` and `npm start` from repo root, fetch `http://127.0.0.1:3080/plugins/@deepseek-ai/dsh-client-ui-user-terminal/client.js` and require all of:
+After `Get-Process electron | Stop-Process -Force` and `npm start` from repo root, fetch `http://127.0.0.1:3080/plugins/@relay-harness/rlh-client-ui-user-terminal/client.js` and require all of:
 
 - `PROMPT_LINE`
 - `fallbackIndex !== undefined` before `.xterm-dim` selection (index-first)

@@ -6,14 +6,14 @@
  */
 
 import { describe, expect, it } from 'vitest'
-import { Context } from '@deepseek-ai/cordis'
-import Loader from '@deepseek-ai/cordis-plugin-loader'
-import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
-import ToolRuntime from '@deepseek-ai/dsh-tools'
-import WebRuntime from '@deepseek-ai/dsh-web'
-import * as toolWeb from '@deepseek-ai/dsh-tool-web'
+import { Context } from '@relay-harness/cordis'
+import Loader from '@relay-harness/cordis-plugin-loader'
+import SystemPrompt from '@relay-harness/rlh-system-prompt'
+import ToolRuntime from '@relay-harness/rlh-tools'
+import WebRuntime from '@relay-harness/rlh-web'
+import * as toolWeb from '@relay-harness/rlh-tool-web'
 
-describe('dsh-tool-web real-load-path guard', () => {
+describe('rlh-tool-web real-load-path guard', () => {
   it('has no default export and keeps name/inject/Config through unwrapExports', () => {
     expect('default' in toolWeb).toBe(false)
 

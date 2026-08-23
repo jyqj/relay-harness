@@ -10,7 +10,7 @@
 
 import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
-import type { IApiClient, ModelProviderGroup, SettingsNamespaceView } from '@deepseek-ai/dsh-api-remotes/client'
+import type { IApiClient, ModelProviderGroup, SettingsNamespaceView } from '@relay-harness/rlh-api-remotes/client'
 import { messageOf } from './store.ts'
 import type { en } from './locales.ts'
 import styles from './ModelsSection.module.css'

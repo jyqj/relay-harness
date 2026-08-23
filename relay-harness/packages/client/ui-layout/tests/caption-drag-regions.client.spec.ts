@@ -25,7 +25,7 @@ const repoRoot = fileURLToPath(new URL('../../../..', import.meta.url))
 const FIXED_NO_DRAG_EXEMPT = new Set([
   // pointer-events: none background layer behind #root; a no-drag hole here
   // would cover the viewport and delete the caption band geometrically.
-  'packages/client/ui-theme/src/styles/wallpaper.css :: #dsh-wallpaper',
+  'packages/client/ui-theme/src/styles/wallpaper.css :: #rlh-wallpaper',
 ])
 
 /* Manual walk: fs recursive readdir follows pnpm's cyclic node_modules

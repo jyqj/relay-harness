@@ -1,11 +1,11 @@
 {
-  "name": "@deepseek-ai/dsh-tool-memory",
-  "description": "Model-facing governed search and write tools for DeepSeek Harness long-term memory",
+  "name": "@relay-harness/rlh-tool-memory",
+  "description": "Model-facing governed search and write tools for Relay Harness long-term memory",
   "version": "0.1.0-rc.8",
   "publishConfig": { "access": "public" },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+    "url": "git+https://github.com/jyqj/relay-harness.git",
     "directory": "packages/memory/tool-memory"
   },
   "type": "module",
@@ -20,18 +20,18 @@
   "files": ["lib/index.js", "lib/invariant.js", "lib/types/**/*.d.ts"],
   "license": "MIT",
   "peerDependencies": {
-    "@deepseek-ai/dsh-agent": "workspace:^",
-    "@deepseek-ai/dsh-invariants": "workspace:^",
-    "@deepseek-ai/dsh-memory": "workspace:^",
-    "@deepseek-ai/dsh-tools": "workspace:^",
-    "@deepseek-ai/cordis": "workspace:^"
+    "@relay-harness/rlh-agent": "workspace:^",
+    "@relay-harness/rlh-invariants": "workspace:^",
+    "@relay-harness/rlh-memory": "workspace:^",
+    "@relay-harness/rlh-tools": "workspace:^",
+    "@relay-harness/cordis": "workspace:^"
   },
-  "dependencies": { "@deepseek-ai/schemastery": "workspace:^" },
+  "dependencies": { "@relay-harness/schemastery": "workspace:^" },
   "devDependencies": {
-    "@deepseek-ai/dsh-agent": "workspace:^",
-    "@deepseek-ai/dsh-invariants": "workspace:^",
-    "@deepseek-ai/dsh-memory": "workspace:^",
-    "@deepseek-ai/dsh-tools": "workspace:^",
-    "@deepseek-ai/cordis": "workspace:^"
+    "@relay-harness/rlh-agent": "workspace:^",
+    "@relay-harness/rlh-invariants": "workspace:^",
+    "@relay-harness/rlh-memory": "workspace:^",
+    "@relay-harness/rlh-tools": "workspace:^",
+    "@relay-harness/cordis": "workspace:^"
   }
 }

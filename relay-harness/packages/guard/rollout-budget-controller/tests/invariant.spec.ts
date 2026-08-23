@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { Context } from '@deepseek-ai/cordis'
-import InvariantRegistry from '@deepseek-ai/dsh-invariants'
+import { Context } from '@relay-harness/cordis'
+import InvariantRegistry from '@relay-harness/rlh-invariants'
 import * as RolloutBudgetInvariant from '../src/invariant.ts'
 
 describe('rollout-budget-controller invariant companion', () => {

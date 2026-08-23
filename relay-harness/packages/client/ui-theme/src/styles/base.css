@@ -1,36 +1,36 @@
 /* Base variables referenced by the token sheets and component CSS but defined
  * upstream (deepsuite theme/global.css) — supplied here so the composite
- * --dsw-font-* variables resolve and motion rides the upstream curve. Code
+ * --rlw-font-* variables resolve and motion rides the upstream curve. Code
  * font stack deliberately omits a bare `monospace` tail (Windows CJK falls
  * back to SimSun otherwise). */
 :root {
-  --dsw-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC',
+  --rlw-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC',
     'Hiragino Sans GB', 'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial, sans-serif;
-  --ds-font-family-code: 'SF Mono', 'JetBrains Mono', 'Fira Code', Consolas,
+  --rl-font-family-code: 'SF Mono', 'JetBrains Mono', 'Fira Code', Consolas,
     'Liberation Mono', Menlo, Courier, 'PingFang SC', 'Microsoft YaHei';
-  --ds-ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
-  --ds-transition-duration: 0.2s;
-  --ds-transition-duration-fast: 0.1s;
-  --ds-transition-duration-slow: 0.3s;
-  --ds-motion-duration-overlay: var(--ds-transition-duration);
-  --ds-motion-duration-overlay-out: var(--ds-transition-duration-fast);
-  --ds-motion-duration-popover: 0.16s;
-  --ds-motion-duration-swap: var(--ds-transition-duration-fast);
-  --ds-motion-duration-flip: 0.4s;
-  --ds-motion-distance-overlay: 8px;
-  --ds-motion-distance-popover: 4px;
-  --ds-motion-scale-overlay: 0.96;
+  --rl-ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --rl-transition-duration: 0.2s;
+  --rl-transition-duration-fast: 0.1s;
+  --rl-transition-duration-slow: 0.3s;
+  --rl-motion-duration-overlay: var(--rl-transition-duration);
+  --rl-motion-duration-overlay-out: var(--rl-transition-duration-fast);
+  --rl-motion-duration-popover: 0.16s;
+  --rl-motion-duration-swap: var(--rl-transition-duration-fast);
+  --rl-motion-duration-flip: 0.4s;
+  --rl-motion-distance-overlay: 8px;
+  --rl-motion-distance-popover: 4px;
+  --rl-motion-scale-overlay: 0.96;
 }
 
 @media (prefers-reduced-motion: reduce) {
   :root {
-    --ds-transition-duration: 0s;
-    --ds-transition-duration-fast: 0s;
-    --ds-transition-duration-slow: 0s;
-    --ds-motion-duration-overlay: 0s;
-    --ds-motion-duration-overlay-out: 0s;
-    --ds-motion-duration-popover: 0s;
-    --ds-motion-duration-swap: 0s;
-    --ds-motion-duration-flip: 0s;
+    --rl-transition-duration: 0s;
+    --rl-transition-duration-fast: 0s;
+    --rl-transition-duration-slow: 0s;
+    --rl-motion-duration-overlay: 0s;
+    --rl-motion-duration-overlay-out: 0s;
+    --rl-motion-duration-popover: 0s;
+    --rl-motion-duration-swap: 0s;
+    --rl-motion-duration-flip: 0s;
   }
 }

@@ -1,10 +1,10 @@
 /** WorkspaceRuntime projects the Workspace object manager for UI consumers. */
 
-import type { Context } from '@deepseek-ai/cordis'
+import type { Context } from '@relay-harness/cordis'
 import type {
   DirectoryListing, IApiClient, RpcError,
   SessionId, WorkspaceId, WorkspaceView,
-} from '@deepseek-ai/dsh-api-remotes/client'
+} from '@relay-harness/rlh-api-remotes/client'
 import type { SnapshotStore } from '../contract/store.ts'
 import { createSnapshotStore } from '../contract/store.ts'
 import type { SessionsPort, SessionsPortList, SessionsPortSummary } from '../contract/sessions-port.ts'
@@ -419,7 +419,7 @@ export class WorkspaceRuntime implements IWorkspaces {
 
 /** True when New Session may land on this empty-log row. */
 function reusableBlank(summary: SessionsPortSummary): boolean {
-  return summary.blank && summary.origin !== 'dshbot' && summary.origin !== 'subagent'
+  return summary.blank && summary.origin !== 'rlhbot' && summary.origin !== 'subagent'
 }
 
 /** True when the persisted current id still names a live conversation. */

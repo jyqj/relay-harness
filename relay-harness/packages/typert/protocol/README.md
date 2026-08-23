@@ -1,4 +1,4 @@
-# @deepseek-ai/dsh-typert-protocol
+# @relay-harness/rlh-typert-protocol
 
 English | [中文](README.zh.md)
 

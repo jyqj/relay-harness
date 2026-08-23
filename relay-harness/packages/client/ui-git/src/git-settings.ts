@@ -1,6 +1,6 @@
 /** Git titlebar visibility stored in the Host user-settings document. */
 
-import z from '@deepseek-ai/schemastery'
+import z from '@relay-harness/schemastery'
 
 /** Settings namespace owned by the git plugin. */
 export const GIT_SETTINGS_NAMESPACE = 'ui-git'

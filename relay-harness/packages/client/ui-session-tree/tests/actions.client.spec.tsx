@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
-import type { SessionId } from '@deepseek-ai/dsh-client-runtime/client'
+import type { SessionId } from '@relay-harness/rlh-client-runtime/client'
 import { SessionTreeTitlebarAction, type SessionTreeTitlebarActionProps } from '../src/client/SessionTreeTitlebarAction.tsx'
 import { en } from '../src/client/locales.ts'
 

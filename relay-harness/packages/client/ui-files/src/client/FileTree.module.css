@@ -25,7 +25,7 @@
   border: none;
   border-radius: 8px;
   background: transparent;
-  color: var(--dsw-alias-label-primary);
+  color: var(--rlw-alias-label-primary);
   font-size: 12px;
   line-height: 18px;
   text-align: left;
@@ -33,15 +33,15 @@
 }
 
 .row:hover {
-  background: var(--dsw-alias-interactive-bg-hover);
+  background: var(--rlw-alias-interactive-bg-hover);
 }
 
 .twist {
   display: inline-flex;
   width: 12px;
   flex-shrink: 0;
-  color: var(--dsw-alias-label-tertiary);
-  transition: transform var(--ds-transition-duration-fast) var(--ds-ease-in-out);
+  color: var(--rlw-alias-label-tertiary);
+  transition: transform var(--rl-transition-duration-fast) var(--rl-ease-in-out);
 }
 
 .twistOpen {
@@ -50,7 +50,7 @@
 
 .icon {
   flex-shrink: 0;
-  color: var(--dsw-alias-label-secondary);
+  color: var(--rlw-alias-label-secondary);
 }
 
 .name {
@@ -71,7 +71,7 @@
   border: none;
   border-radius: 8px;
   background: transparent;
-  color: var(--dsw-alias-label-secondary);
+  color: var(--rlw-alias-label-secondary);
   font-size: 12px;
   line-height: 18px;
   cursor: pointer;
@@ -84,8 +84,8 @@
 }
 
 .mention:hover {
-  background: var(--dsw-alias-interactive-bg-hover);
-  color: var(--dsw-alias-label-primary);
+  background: var(--rlw-alias-interactive-bg-hover);
+  color: var(--rlw-alias-label-primary);
 }
 
 .item > ul {

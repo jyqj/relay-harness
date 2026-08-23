@@ -26,8 +26,8 @@ function normalizeSettingsSection(sectionId) {
 /**
  * Build the in-page script that opens the settings dialog and navigates to a
  * section. Must stay in sync with the web UI contract:
- * [data-dsh-settings-trigger] opens the dialog and
- * [data-dsh-settings-section="<id>"] is the nav row.
+ * [data-rlh-settings-trigger] opens the dialog and
+ * [data-rlh-settings-section="<id>"] is the nav row.
  *
  * @param {string} section - normalized section id; '' keeps the default.
  * @returns {string} script for webContents.executeJavaScript.
@@ -36,7 +36,7 @@ function buildSettingsSectionScript(section) {
   const id = JSON.stringify(section);
   return `
     (() => {
-      const trigger = document.querySelector('[data-dsh-settings-trigger]');
+      const trigger = document.querySelector('[data-rlh-settings-trigger]');
       if (!trigger) return false;
       if (trigger.getAttribute('aria-expanded') !== 'true') trigger.click();
       const id = ${id};
@@ -44,7 +44,7 @@ function buildSettingsSectionScript(section) {
       return new Promise((resolve) => {
         let n = 0;
         const tick = () => {
-          const nav = document.querySelector('[data-dsh-settings-section="' + id + '"]');
+          const nav = document.querySelector('[data-rlh-settings-section="' + id + '"]');
           if (nav) {
             nav.click();
             resolve(true);

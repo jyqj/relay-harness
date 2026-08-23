@@ -18,24 +18,24 @@
  * disposed by then, and the release that wakes the parent's own settlement
  * watcher has already run. See {@link SubagentContinuationManager.notifySettlement}.
  *
- * @module @deepseek-ai/dsh-subagent
+ * @module @relay-harness/rlh-subagent
  */
 
 import { randomUUID } from 'node:crypto'
-import type { Context } from '@deepseek-ai/cordis'
+import type { Context } from '@relay-harness/cordis'
 import type {
   Agent,
   AgentHandle,
   AgentOptions,
   AgentSetupCommit,
   CreateAgentOptions,
-} from '@deepseek-ai/dsh-agent'
-import { boundContextSummary, createUserMessage, errorChain } from '@deepseek-ai/dsh-llm'
-import type { ContentBlock, MessageId, MessageSource } from '@deepseek-ai/dsh-llm'
-import { SessionId } from '@deepseek-ai/dsh-session'
-import type { SessionEvent } from '@deepseek-ai/dsh-session'
-import type { SessionPersistence } from '@deepseek-ai/dsh-session-persistence'
-import type { ToolRestriction } from '@deepseek-ai/dsh-tools'
+} from '@relay-harness/rlh-agent'
+import { boundContextSummary, createUserMessage, errorChain } from '@relay-harness/rlh-llm'
+import type { ContentBlock, MessageId, MessageSource } from '@relay-harness/rlh-llm'
+import { SessionId } from '@relay-harness/rlh-session'
+import type { SessionEvent } from '@relay-harness/rlh-session'
+import type { SessionPersistence } from '@relay-harness/rlh-session-persistence'
+import type { ToolRestriction } from '@relay-harness/rlh-tools'
 import { foldSubagentDescriptor, snapshotSubagentDescriptor } from './descriptor.ts'
 import type { SubagentDescriptorData } from './descriptor.ts'
 import {
@@ -90,7 +90,7 @@ export interface SubagentSettledMessageSource {
   readonly senderSessionId: SessionId
 }
 
-declare module '@deepseek-ai/dsh-llm' {
+declare module '@relay-harness/rlh-llm' {
   interface MessageSourceMap {
     coordinator: CoordinatorMessageSource
     'subagent-report': SubagentReportMessageSource
@@ -1561,7 +1561,7 @@ export class SubagentContinuationManager {
     const persistence = this.ctx.get('sessionPersistence')
     if (persistence === undefined) {
       throw new SubagentError(
-        'continuable subagents require session persistence (load a dsh-session-persistence backend)',
+        'continuable subagents require session persistence (load a rlh-session-persistence backend)',
         'PERSISTENCE_UNAVAILABLE',
       )
     }

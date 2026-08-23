@@ -1,6 +1,6 @@
-import type { Context } from '@deepseek-ai/cordis'
-import { setSandboxMode } from '@deepseek-ai/dsh-sandbox-policy'
-import type {} from '@deepseek-ai/dsh-agent'
+import type { Context } from '@relay-harness/cordis'
+import { setSandboxMode } from '@relay-harness/rlh-sandbox-policy'
+import type {} from '@relay-harness/rlh-agent'
 
 export const name = 'parent-sandbox-override'
 

@@ -2,13 +2,13 @@ import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { Context } from '@deepseek-ai/cordis'
-import { LocalBashExecutor } from '@deepseek-ai/dsh-bash-local'
-import LocalSubprocessRuntime from '@deepseek-ai/dsh-subprocess-local'
-import { MAX_TIMER_DELAY_MS } from '@deepseek-ai/dsh-timeout'
-import type { ShellProcess } from '@deepseek-ai/dsh-shell'
+import { Context } from '@relay-harness/cordis'
+import { LocalBashExecutor } from '@relay-harness/rlh-bash-local'
+import LocalSubprocessRuntime from '@relay-harness/rlh-subprocess-local'
+import { MAX_TIMER_DELAY_MS } from '@relay-harness/rlh-timeout'
+import type { ShellProcess } from '@relay-harness/rlh-shell'
 
-const spillDir = mkdtempSync(join(tmpdir(), 'dsh-bash-exec-spec-'))
+const spillDir = mkdtempSync(join(tmpdir(), 'rlh-bash-exec-spec-'))
 
 async function setup(config: ConstructorParameters<typeof LocalBashExecutor>[1] = {}) {
   const ctx = new Context()
@@ -130,31 +130,31 @@ describe('LocalBashExecutor.run', () => {
 
   it('rejects on spawn failure (bad workdir)', async () => {
     const { bash } = await setup()
-    await expect(bash.run(bash.resolve({ command: 'true', workdir: '/nonexistent-dsh' }))).rejects.toThrow(/ENOENT/)
+    await expect(bash.run(bash.resolve({ command: 'true', workdir: '/nonexistent-rlh' }))).rejects.toThrow(/ENOENT/)
   })
 
-  it('resolve() carries stdin/env/dshEnv onto the spec, and run() threads them to the command', async () => {
+  it('resolve() carries stdin/env/rlhEnv onto the spec, and run() threads them to the command', async () => {
     const { bash } = await setup()
     const spec = bash.resolve({
-      command: 'cat; echo "[$SEAM_VAR][$DSH_SEAM_VAR]"',
+      command: 'cat; echo "[$SEAM_VAR][$RLH_SEAM_VAR]"',
       stdin: 'piped\n',
       env: { SEAM_VAR: 'env-ok' },
-      dshEnv: { DSH_SEAM_VAR: 'dsh-ok' },
+      rlhEnv: { RLH_SEAM_VAR: 'rlh-ok' },
     })
     // resolve() keeps the optional input/environment fields verbatim.
     expect(spec.stdin).toBe('piped\n')
     expect(spec.env).toEqual({ SEAM_VAR: 'env-ok' })
-    expect(spec.dshEnv).toEqual({ DSH_SEAM_VAR: 'dsh-ok' })
+    expect(spec.rlhEnv).toEqual({ RLH_SEAM_VAR: 'rlh-ok' })
     const result = await bash.run(spec)
-    expect(result.stdout.text).toBe('piped\n[env-ok][dsh-ok]\n')
+    expect(result.stdout.text).toBe('piped\n[env-ok][rlh-ok]\n')
   })
 
-  it('resolve() omits stdin/env/dshEnv when the request supplies none', async () => {
+  it('resolve() omits stdin/env/rlhEnv when the request supplies none', async () => {
     const { bash } = await setup()
     const spec = bash.resolve({ command: 'true' })
     expect('stdin' in spec).toBe(false)
     expect('env' in spec).toBe(false)
-    expect('dshEnv' in spec).toBe(false)
+    expect('rlhEnv' in spec).toBe(false)
   })
 })
 
@@ -173,12 +173,12 @@ describe('LocalBashExecutor.start (background process handles)', () => {
   it('threads stdin and extra env into a background process', async () => {
     const { bash } = await setup()
     const proc = bash.start(bash.resolve({
-      command: 'cat; echo "[$BG_VAR][$DSH_BG_VAR]"',
+      command: 'cat; echo "[$BG_VAR][$RLH_BG_VAR]"',
       stdin: 'bg-stdin\n',
       env: { BG_VAR: 'bg-env' },
-      dshEnv: { DSH_BG_VAR: 'bg-dsh-env' },
+      rlhEnv: { RLH_BG_VAR: 'bg-rlh-env' },
     }))
-    const output = await readUntil(proc, '[bg-env][bg-dsh-env]')
+    const output = await readUntil(proc, '[bg-env][bg-rlh-env]')
     expect(output).toContain('bg-stdin')
     await proc.done
     expect(proc.exitCode).toBe(0)
@@ -290,7 +290,7 @@ describe('LocalBashExecutor.start (background process handles)', () => {
 
   it('a background spawn failure settles as killed with the error readable on stderr', async () => {
     const { bash } = await setup()
-    const proc = bash.start(bash.resolve({ command: 'true', workdir: '/nonexistent-dsh' }))
+    const proc = bash.start(bash.resolve({ command: 'true', workdir: '/nonexistent-rlh' }))
     // done resolves (never rejects) even though the process never ran.
     await expect(proc.done).resolves.toBeUndefined()
     expect(proc.status).toBe('killed')

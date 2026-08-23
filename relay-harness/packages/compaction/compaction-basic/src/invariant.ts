@@ -1,13 +1,13 @@
 /**
- * Package-owned invariant companion for `@deepseek-ai/dsh-compaction-basic`.
- * @module @deepseek-ai/dsh-compaction-basic/invariant
+ * Package-owned invariant companion for `@relay-harness/rlh-compaction-basic`.
+ * @module @relay-harness/rlh-compaction-basic/invariant
  */
 
 /* jscpd:ignore-start */
-import type { Context } from '@deepseek-ai/cordis'
-import type { InvariantInstaller } from '@deepseek-ai/dsh-invariants'
+import type { Context } from '@relay-harness/cordis'
+import type { InvariantInstaller } from '@relay-harness/rlh-invariants'
 
-const PACKAGE_NAME = '@deepseek-ai/dsh-compaction-basic'
+const PACKAGE_NAME = '@relay-harness/rlh-compaction-basic'
 
 /** Cordis companion plugin name. */
 export const name = 'compaction-basic-invariant'

@@ -1,4 +1,4 @@
-# `@deepseek-ai/dsh-issue-workflow`
+# `@relay-harness/rlh-issue-workflow`
 
 English | [中文](README.zh.md)
 

@@ -1,4 +1,4 @@
-# `@deepseek-ai/dsh-memory-sqlite`
+# `@relay-harness/rlh-memory-sqlite`
 
 English | [中文](README.zh.md)
 

@@ -12,11 +12,11 @@ Treating Session search as memory would make raw history a current fact store. C
 
 ## Decision
 
-Long-term memory is a capability seam under `packages/memory`: `@deepseek-ai/dsh-memory` defines `ctx.longTermMemory` and `ctx.memoryExtractionQueue`; `memory-sqlite` provides canonical revisions, retrieval, and extraction jobs; `memory-agent` consumes recall during Agent turns; `memory-extractor-llm` captures and extracts completed turns; `tool-memory` exposes governed model operations. The standard preset mounts recall and tools, while the base bundle owns one canonical provider at `$DSH_HOME/memory/memory.db` and explicitly enables extraction only for standard sessions.
+Long-term memory is a capability seam under `packages/memory`: `@relay-harness/rlh-memory` defines `ctx.longTermMemory` and `ctx.memoryExtractionQueue`; `memory-sqlite` provides canonical revisions, retrieval, and extraction jobs; `memory-agent` consumes recall during Agent turns; `memory-extractor-llm` captures and extracts completed turns; `tool-memory` exposes governed model operations. The standard preset mounts recall and tools, while the base bundle owns one canonical provider at `$RLH_HOME/memory/memory.db` and explicitly enables extraction only for standard sessions.
 
 SessionEvent remains the conversation evidence source. Each memory revision cites a Session id and earlier event seqs; the canonical memory journal records the decision made from that evidence. Current rows and FTS are materialized views. A tombstone removes recall eligibility without deleting its prior revisions or evidence.
 
-Every operation addresses workspace, user, and stable Agent Scope. Session ids identify evidence and prepared turns, not long-term visibility. The standard preset uses the session cwd, local OS user, and `deepseek-harness` Agent id, so matching sessions share memory while different workspaces or users do not.
+Every operation addresses workspace, user, and stable Agent Scope. Session ids identify evidence and prepared turns, not long-term visibility. The standard preset uses the session cwd, local OS user, and `relay-harness` Agent id, so matching sessions share memory while different workspaces or users do not.
 
 Kinds are preference, fact, constraint, decision, procedure, and lesson. Live task state stays outside memory. Status is candidate, active, disputed, superseded, or tombstoned. Active state requires user-stated or successful-tool-result evidence; agent proposals and external observations cannot become active at the provider operation. Provider-side secret scanning applies to every Consumer.
 
@@ -36,7 +36,7 @@ The auxiliary LLM returns proposals, never authoritative writes. Strict JSON par
 
 **Adopt ALTM's complete L0-L4, graph, persona, and autonomous-governance stack.** Rejected for the default: its prepare/commit/abort, Scope, evidence, lifecycle signals, and rank-fusion ideas are useful, but a mandatory Python service, graph, and persona pipeline would add independent truth and deployment complexity before the first-party seam existed.
 
-**Adopt dsh-meow's seven tables and first-message prefix.** Rejected as the core contract: its practical Hooks and transcript disclosure informed the Consumer, but fixed tables, sidecar seen state, full first-turn injection, and direct model mutation do not provide append-only evidence governance.
+**Adopt rlh-meow's seven tables and first-message prefix.** Rejected as the core contract: its practical Hooks and transcript disclosure informed the Consumer, but fixed tables, sidecar seen state, full first-turn injection, and direct model mutation do not provide append-only evidence governance.
 
 **Store memory recall only in request-local state.** Rejected: a replay could not reconstruct what the model saw, violating the Session log invariant.
 

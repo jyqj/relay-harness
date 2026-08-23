@@ -6,14 +6,14 @@
  * real engine instance (same create path as production).
  */
 import { beforeEach, describe, expect, it } from 'vitest'
-import { LAYOUT_PERSIST_KEY } from '@deepseek-ai/dsh-client-ui-layout/src/client/persist.ts'
-import { createLayoutStore } from '@deepseek-ai/dsh-client-ui-layout/src/client/stores.ts'
+import { LAYOUT_PERSIST_KEY } from '@relay-harness/rlh-client-ui-layout/src/client/persist.ts'
+import { createLayoutStore } from '@relay-harness/rlh-client-ui-layout/src/client/stores.ts'
 import {
   DETAILS_DEFAULT, DETAILS_MAX, DETAILS_MIN,
   SIDEBAR_DEFAULT, SIDEBAR_MAX, SIDEBAR_MIN,
   SURFACES_DEFAULT, SURFACES_MAX, SURFACES_MIN,
   TERMINAL_DRAWER_MIN,
-} from '@deepseek-ai/dsh-client-ui-layout/src/client/columns.ts'
+} from '@relay-harness/rlh-client-ui-layout/src/client/columns.ts'
 
 beforeEach(() => { localStorage.clear() })
 

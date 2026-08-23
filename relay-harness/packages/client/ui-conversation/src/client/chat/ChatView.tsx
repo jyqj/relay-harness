@@ -14,8 +14,8 @@
 // lifecycle updates replace only their own row without remounting it.
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import type { ConversationTimelineSnapshot } from '@deepseek-ai/dsh-client-runtime/client'
-import { Button, IconChevronDownOutline14, Modal } from '@deepseek-ai/dsh-client-ui-primitives'
+import type { ConversationTimelineSnapshot } from '@relay-harness/rlh-client-runtime/client'
+import { Button, IconChevronDownOutline14, Modal } from '@relay-harness/rlh-client-ui-primitives'
 import type { ChatViewSlotProps, RenderMessageImages } from '../contract/slots.ts'
 import { PendingSteeringBubble } from './MessageItem.tsx'
 import { ChatNodeSeat } from './ChatNodeSeat.tsx'
@@ -165,7 +165,7 @@ export function ChatView({
   const inbox = useSession(s => s.queue)
   // Workspace root off the session list row: path summaries display relative to it.
   const cwd = useSessions(s => s.byId[sessionId]?.cwd)
-  const hideRoomChrome = useSessions(s => s.byId[sessionId]?.agentPreset === 'dshbot-room')
+  const hideRoomChrome = useSessions(s => s.byId[sessionId]?.agentPreset === 'rlhbot-room')
   const running = useSession(s => s.running)
   const openState = useSession(s => s.openState)
   const openError = useSession(s => s.openError)

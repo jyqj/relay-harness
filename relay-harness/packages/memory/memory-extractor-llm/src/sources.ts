@@ -1,13 +1,13 @@
 /** Completed-turn projection into bounded, evidence-carrying extraction sources. */
 
 import { createHash } from 'node:crypto'
-import { memoryContainsSecret, memoryExcludesDerivedTool } from '@deepseek-ai/dsh-memory'
+import { memoryContainsSecret, memoryExcludesDerivedTool } from '@relay-harness/rlh-memory'
 import type {
   MemoryExtractionRoute,
   MemoryExtractionSource,
-} from '@deepseek-ai/dsh-memory/types'
-import type { ContentBlock } from '@deepseek-ai/dsh-llm'
-import type { Session, SessionEvent } from '@deepseek-ai/dsh-session'
+} from '@relay-harness/rlh-memory/types'
+import type { ContentBlock } from '@relay-harness/rlh-llm'
+import type { Session, SessionEvent } from '@relay-harness/rlh-session'
 import {
   MEMORY_EXTRACTION_PROMPT_VERSION,
   MEMORY_EXTRACTION_SYSTEM_PROMPT,

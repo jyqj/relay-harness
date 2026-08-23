@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 import { writeFileSync } from 'node:fs'
 
-const port = Number(process.env.DSH_CDP_PORT || 9333)
-const outPath = process.env.DSH_CDP_OUT || ''
+const port = Number(process.env.RLH_CDP_PORT || 9333)
+const outPath = process.env.RLH_CDP_OUT || ''
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 
 async function main() {

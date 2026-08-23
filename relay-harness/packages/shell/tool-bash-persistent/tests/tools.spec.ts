@@ -1,10 +1,10 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { Context } from '@deepseek-ai/cordis'
-import { CallId } from '@deepseek-ai/dsh-llm'
-import { Session, SessionId } from '@deepseek-ai/dsh-session'
-import AgentRegistry, { Inbox } from '@deepseek-ai/dsh-agent'
-import type { Agent } from '@deepseek-ai/dsh-agent'
-import TerminalSessionService from '@deepseek-ai/dsh-terminal'
+import { Context } from '@relay-harness/cordis'
+import { CallId } from '@relay-harness/rlh-llm'
+import { Session, SessionId } from '@relay-harness/rlh-session'
+import AgentRegistry, { Inbox } from '@relay-harness/rlh-agent'
+import type { Agent } from '@relay-harness/rlh-agent'
+import TerminalSessionService from '@relay-harness/rlh-terminal'
 import type {
   TerminalBackend,
   TerminalBackendSession,
@@ -14,10 +14,10 @@ import type {
   TerminalSessionStatus,
   TerminalSignal,
   TerminalWaitReason,
-} from '@deepseek-ai/dsh-terminal'
-import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
-import ToolRuntime from '@deepseek-ai/dsh-tools'
-import * as ToolBashPersistent from '@deepseek-ai/dsh-tool-bash-persistent'
+} from '@relay-harness/rlh-terminal'
+import SystemPrompt from '@relay-harness/rlh-system-prompt'
+import ToolRuntime from '@relay-harness/rlh-tools'
+import * as ToolBashPersistent from '@relay-harness/rlh-tool-bash-persistent'
 
 const contexts: Context[] = []
 let callNumber = 0
@@ -133,8 +133,8 @@ class StubPtySession implements TerminalBackendSession {
     if (this.mode === 'wait-for-abort' || this.mode === 'end-on-abort') {
       const done = new Promise<ReturnType<StubPtySession['result']>>((resolve) => {
         request.signal?.addEventListener('abort', () => {
-          const start = /__DSH_PERSISTENT_BASH_START_[^_]+(?:-[^_]+)*__/.exec(request.text)?.[0]
-          const end = /__DSH_PERSISTENT_BASH_END_[^:]+:/.exec(request.text)?.[0]
+          const start = /__RLH_PERSISTENT_BASH_START_[^_]+(?:-[^_]+)*__/.exec(request.text)?.[0]
+          const end = /__RLH_PERSISTENT_BASH_END_[^:]+:/.exec(request.text)?.[0]
           const output = this.mode === 'end-on-abort'
             ? `${start ?? ''}\ninterrupted\n${end ?? ''}130\n${this.motd}`
             : 'partial output'
@@ -151,7 +151,7 @@ class StubPtySession implements TerminalBackendSession {
     }
     if (this.mode === 'prompt-after-idle') {
       if (request.text.length > 0) {
-        const start = /__DSH_PERSISTENT_BASH_START_[^_]+(?:-[^_]+)*__/.exec(request.text)?.[0]
+        const start = /__RLH_PERSISTENT_BASH_START_[^_]+(?:-[^_]+)*__/.exec(request.text)?.[0]
         const output = `${start ?? ''}\npartial syntax output\n`
         this.scrollback += output
         return this.operation(Promise.resolve(this.result(output, 'inferred_idle')))
@@ -168,8 +168,8 @@ class StubPtySession implements TerminalBackendSession {
     }
     const sent = request.text.length > 0 ? request.text : this.pendingText
     this.pendingText = ''
-    const start = /__DSH_PERSISTENT_BASH_START_[^_]+(?:-[^_]+)*__/.exec(sent)?.[0]
-    const end = /__DSH_PERSISTENT_BASH_END_[^:]+:/.exec(sent)?.[0]
+    const start = /__RLH_PERSISTENT_BASH_START_[^_]+(?:-[^_]+)*__/.exec(sent)?.[0]
+    const end = /__RLH_PERSISTENT_BASH_END_[^:]+:/.exec(sent)?.[0]
     if (this.mode === 'incremental-fallback') {
       const incremental = `${start ?? ''}\nincrement\n${this.motd}`
       return this.operation(Promise.resolve(this.result(this.motd, 'stdin_read')), incremental)
@@ -474,7 +474,7 @@ describe('tool-bash-persistent', () => {
     expect(result).toContain('bash: syntax error')
     // The backend owns the prompt text, so the fallback retains it verbatim.
     expect(result.endsWith('stub> ')).toBe(true)
-    expect(result).not.toContain('DSH_PERSISTENT_BASH_START')
+    expect(result).not.toContain('RLH_PERSISTENT_BASH_START')
   })
 
   it('does not attribute old scrollback truncation to a complete current command', async () => {

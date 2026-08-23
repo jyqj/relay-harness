@@ -1,4 +1,4 @@
-# `@deepseek-ai/dsh-memory-agent`
+# `@relay-harness/rlh-memory-agent`
 
 English | [中文](README.zh.md)
 
@@ -11,7 +11,7 @@ The Consumer retains the prepared handle until the durable final `turn/end`. Com
 | Key | Default | Contract |
 |---|---:|---|
 | `userId` | `local` | Stable user scope. |
-| `agentId` | `deepseek-harness` | Stable Agent scope shared across sessions. |
+| `agentId` | `relay-harness` | Stable Agent scope shared across sessions. |
 | `workspaceId` | session cwd, then `global` | Optional explicit stable workspace scope. |
 | `candidateLimit` | `10` | Provider candidates before packing. |
 | `maxContextChars` | `3200` | Complete recall message cap in Unicode code points, including safety framing. |

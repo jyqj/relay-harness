@@ -6,11 +6,11 @@ English | [中文](2026-08-20-mcp-settings-stale-health.zh.md)
 
 ## Problem
 
-The Settings MCP page listed servers from a one-shot `mcpServers.list` snapshot. After `dsh-mcp-client`'s reconnect supervisor exhausted its attempt budget, `connection.health` stayed `failed` until the child fiber was disposed. Refresh only listed again, so every given-up row stayed on 连接失败. The last attempt error lived only in a tooltip, so an HTTP 401 looked like a generic management failure.
+The Settings MCP page listed servers from a one-shot `mcpServers.list` snapshot. After `rlh-mcp-client`'s reconnect supervisor exhausted its attempt budget, `connection.health` stayed `failed` until the child fiber was disposed. Refresh only listed again, so every given-up row stayed on 连接失败. The last attempt error lived only in a tooltip, so an HTTP 401 looked like a generic management failure.
 
 ## Decision
 
-`mcpServersFile.remount(id)` disposes and remounts one managed child without rewriting `$DSH_HOME/mcp-servers.yaml`. Host Remote `mcpServers.retry` is loopback-only and refuses a composition id. The Settings page polls `list` every 2s while any row is `connecting` or `reconnecting`, shows `connection.lastError` on the row, and Refresh remounts managed rows whose health is `failed` before listing again.
+`mcpServersFile.remount(id)` disposes and remounts one managed child without rewriting `$RLH_HOME/mcp-servers.yaml`. Host Remote `mcpServers.retry` is loopback-only and refuses a composition id. The Settings page polls `list` every 2s while any row is `connecting` or `reconnecting`, shows `connection.lastError` on the row, and Refresh remounts managed rows whose health is `failed` before listing again.
 
 ## Alternatives considered
 

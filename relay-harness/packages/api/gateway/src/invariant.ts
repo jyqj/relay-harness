@@ -1,13 +1,13 @@
 /**
- * Package-owned invariant companion for `@deepseek-ai/dsh-api-gateway`.
- * @module @deepseek-ai/dsh-api-gateway/invariant
+ * Package-owned invariant companion for `@relay-harness/rlh-api-gateway`.
+ * @module @relay-harness/rlh-api-gateway/invariant
  */
 
 /* jscpd:ignore-start */
-import type { Context } from '@deepseek-ai/cordis'
-import type { InvariantInstaller } from '@deepseek-ai/dsh-invariants'
+import type { Context } from '@relay-harness/cordis'
+import type { InvariantInstaller } from '@relay-harness/rlh-invariants'
 
-const PACKAGE_NAME = '@deepseek-ai/dsh-api-gateway'
+const PACKAGE_NAME = '@relay-harness/rlh-api-gateway'
 
 /** Cordis companion plugin name. */
 export const name = 'api-gateway-invariant'

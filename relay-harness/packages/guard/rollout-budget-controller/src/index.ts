@@ -3,16 +3,16 @@
  * and every local descendant, remind each Agent as thresholds are crossed, and
  * reject further model/tool work after exhaustion.
  *
- * @module @deepseek-ai/dsh-rollout-budget-controller
+ * @module @relay-harness/rlh-rollout-budget-controller
  */
 
-import type { Context } from '@deepseek-ai/cordis'
-import z from '@deepseek-ai/schemastery'
-import type { Agent } from '@deepseek-ai/dsh-agent'
-import { createUserMessage, HarnessError } from '@deepseek-ai/dsh-llm'
-import type { MessageSource, TokenUsage } from '@deepseek-ai/dsh-llm'
-import type { Session, SessionEvent, SessionId } from '@deepseek-ai/dsh-session'
-import type {} from '@deepseek-ai/dsh-tools'
+import type { Context } from '@relay-harness/cordis'
+import z from '@relay-harness/schemastery'
+import type { Agent } from '@relay-harness/rlh-agent'
+import { createUserMessage, HarnessError } from '@relay-harness/rlh-llm'
+import type { MessageSource, TokenUsage } from '@relay-harness/rlh-llm'
+import type { Session, SessionEvent, SessionId } from '@relay-harness/rlh-session'
+import type {} from '@relay-harness/rlh-tools'
 
 export const name = 'rollout-budget-controller'
 export const inject = ['agents', 'sessions', 'tools']
@@ -91,7 +91,7 @@ function resolveConfig(config: Config): ResolvedConfig {
   }
 }
 
-/** Weighted usage matching DSH's disjoint uncached-input accounting. */
+/** Weighted usage matching RLH's disjoint uncached-input accounting. */
 function weightedUsage(usage: TokenUsage, config: ResolvedConfig): number {
   return Math.max(0, usage.outputTokens) * config.samplingTokenWeight
     + Math.max(0, usage.inputTokens) * config.prefillTokenWeight

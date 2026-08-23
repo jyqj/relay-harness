@@ -5,13 +5,13 @@
  * per-project/session directory layout, header-line (de)serialization, and the
  * truncation-repair offset computation.
  *
- * @module dsh-session-persistence-jsonl/format
+ * @module rlh-session-persistence-jsonl/format
  */
 
 import { join } from 'node:path'
-import { decodeStorageRecord, isSessionOrigin, packChunkRuns, SESSION_FORMAT_VERSION } from '@deepseek-ai/dsh-session'
-import type { SessionEvent, SessionHeader, SessionId, SessionOrigin, StorageRecord } from '@deepseek-ai/dsh-session'
-import { SessionFormatUnsupportedError, sessionFormatVersionRefusal } from '@deepseek-ai/dsh-session-persistence'
+import { decodeStorageRecord, isSessionOrigin, packChunkRuns, SESSION_FORMAT_VERSION } from '@relay-harness/rlh-session'
+import type { SessionEvent, SessionHeader, SessionId, SessionOrigin, StorageRecord } from '@relay-harness/rlh-session'
+import { SessionFormatUnsupportedError, sessionFormatVersionRefusal } from '@relay-harness/rlh-session-persistence'
 
 /** Physical encoding selected for JSONL session artifacts. */
 export type JsonlCompression = 'zstd' | 'none'

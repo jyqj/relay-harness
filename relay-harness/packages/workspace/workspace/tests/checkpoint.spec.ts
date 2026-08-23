@@ -25,7 +25,7 @@ afterEach(() => {
 })
 
 function workspace(): { root: string; id: ReturnType<typeof WorkspaceId> } {
-  const root = mkdtempSync(join(tmpdir(), 'dsh-workspace-checkpoint-'))
+  const root = mkdtempSync(join(tmpdir(), 'rlh-workspace-checkpoint-'))
   roots.push(root)
   return { root, id: WorkspaceId('workspace-1') }
 }
@@ -33,7 +33,7 @@ function workspace(): { root: string; id: ReturnType<typeof WorkspaceId> } {
 function checkpointPath(root: string, workspaceId: string, checkpointId: string): string {
   const workspaceDir = createHash('sha256').update(workspaceId).digest('hex').slice(0, 32)
   const checkpointFile = createHash('sha256').update(checkpointId).digest('hex') + '.json'
-  return join(root, '.dsh', 'rewind-checkpoints', workspaceDir, checkpointFile)
+  return join(root, '.rlh', 'rewind-checkpoints', workspaceDir, checkpointFile)
 }
 
 describe('workspace checkpoints', () => {
@@ -43,7 +43,7 @@ describe('workspace checkpoints', () => {
     const first = await createWorkspaceCheckpoint(root, id, ['new.txt', 'present.bin', 'present.bin'])
     expect(first.paths).toEqual(['new.txt', 'present.bin'])
     expect(first.bytes).toBe(4)
-    expect(readFileSync(join(root, '.dsh', 'rewind-checkpoints', '.gitignore'), 'utf8')).toBe('*\n')
+    expect(readFileSync(join(root, '.rlh', 'rewind-checkpoints', '.gitignore'), 'utf8')).toBe('*\n')
 
     writeFileSync(join(root, 'present.bin'), 'changed')
     writeFileSync(join(root, 'new.txt'), 'created later')
@@ -180,7 +180,7 @@ describe('workspace checkpoints', () => {
 
   it('rejects a non-file checkpoint-store ignore marker', async () => {
     const { root, id } = workspace()
-    const marker = join(root, '.dsh', 'rewind-checkpoints', '.gitignore')
+    const marker = join(root, '.rlh', 'rewind-checkpoints', '.gitignore')
     mkdirSync(marker, { recursive: true })
     await expect(createWorkspaceCheckpoint(root, id, ['missing']))
       .rejects.toThrow(/\.gitignore is not a regular file/)
@@ -191,7 +191,7 @@ describe('workspace checkpoints', () => {
     await expect(createWorkspaceCheckpoint(root, id, ['missing']))
       .rejects.toThrow(/\.gitignore is not a regular file/)
     rmSync(marker)
-    const storeRoot = join(root, '.dsh', 'rewind-checkpoints')
+    const storeRoot = join(root, '.rlh', 'rewind-checkpoints')
     chmodSync(storeRoot, 0o500)
     try {
       await expect(createWorkspaceCheckpoint(root, id, ['missing'])).rejects.toThrow()
@@ -208,7 +208,7 @@ describe('workspace checkpoints', () => {
     writeFileSync(join(root, 'file'), 'v2')
     const second = await createWorkspaceCheckpoint(root, id, ['file'])
     writeFileSync(join(root, 'file'), 'v3')
-    const directory = join(root, '.dsh', 'rewind-checkpoints', createHash('sha256').update(id).digest('hex').slice(0, 32))
+    const directory = join(root, '.rlh', 'rewind-checkpoints', createHash('sha256').update(id).digest('hex').slice(0, 32))
     mkdirSync(join(directory, 'nested'))
     writeFileSync(join(directory, 'note.txt'), 'ignore')
     writeFileSync(join(directory, 'corrupt.json'), 'not-json')

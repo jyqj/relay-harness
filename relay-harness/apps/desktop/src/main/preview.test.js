@@ -405,7 +405,7 @@ test('previewOpen succeeds for http://127.0.0.1 and attaches an isolated view', 
   assert.equal(typeof result.id, 'string');
   assert.equal(result.url, 'http://127.0.0.1:4173');
   assert.equal(fake.views.length, 1);
-  assert.match(fake.views[0].partition, /^persist:dshd-preview-[0-9a-f]{20}$/);
+  assert.match(fake.views[0].partition, /^persist:rlhd-preview-[0-9a-f]{20}$/);
   assert.equal(fake.views[0].extraHeaders, null);
   assert.deepEqual(fake.loads, [{ id: result.id, url: 'http://127.0.0.1:4173', options: null }]);
 });
@@ -426,10 +426,10 @@ test('previewOpen hashes the persist partition from scope', async () => {
   const opened = await preview.open({ url: 'https://example.com', scope: '/tmp/proj' });
   assert.equal(opened.ok, true);
   assert.equal(opened.url, new URL('https://example.com').href);
-  assert.match(fake.views[0].partition, /^persist:dshd-preview-[0-9a-f]{20}$/);
+  assert.match(fake.views[0].partition, /^persist:rlhd-preview-[0-9a-f]{20}$/);
   const empty = await preview.open({ url: 'https://example.com', scope: '' });
   assert.equal(empty.ok, true);
-  assert.match(fake.views[1].partition, /^persist:dshd-preview-[0-9a-f]{20}$/);
+  assert.match(fake.views[1].partition, /^persist:rlhd-preview-[0-9a-f]{20}$/);
   assert.notEqual(fake.views[0].partition, fake.views[1].partition);
 });
 
@@ -678,7 +678,7 @@ test('Cmd+R before-input-event prevents default and reloads', async () => {
 test('stop, screenshot, title, and loading bind on the fake guest', async () => {
   const seen = [];
   const fake = fakeAttach();
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'dshd-preview-shot-bind-'));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'rlhd-preview-shot-bind-'));
   const preview = createPreviewController({
     attach: fake.attach,
     onState: (state) => { seen.push(state); },
@@ -712,7 +712,7 @@ test('stop, screenshot, title, and loading bind on the fake guest', async () => 
 });
 
 test('captureScreenshot writes a png under preview-recordings', async () => {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'dshd-preview-shot-'));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'rlhd-preview-shot-'));
   const fake = fakeAttach();
   const preview = createPreviewController({ attach: fake.attach, userDataPath: dir });
   const opened = await preview.open({ url: 'http://127.0.0.1:3000' });
@@ -899,19 +899,19 @@ function sampleAnnotation() {
   };
 }
 
-test('pickElement sends dshd-preview-start-pick with a theme', async () => {
+test('pickElement sends rlhd-preview-start-pick with a theme', async () => {
   const fake = fakeAttach();
   const preview = createPreviewController({ attach: fake.attach });
   const opened = await preview.open({ url: 'http://127.0.0.1:3000' });
   const wc = fake.views[0].webContents;
   const pending = preview.pickElement(opened.id);
   await Promise.resolve();
-  const start = wc.sent.find((entry) => entry[0] === 'dshd-preview-start-pick');
+  const start = wc.sent.find((entry) => entry[0] === 'rlhd-preview-start-pick');
   assert.ok(start, 'start-pick was sent');
   assert.equal(typeof start[1], 'object');
   assert.equal(typeof start[1].primary, 'string');
   assert.equal(JSON.stringify(start).includes(leftoverPrimaryCss), false);
-  wc.ipc.emit('dshd-preview-element-picked', null);
+  wc.ipc.emit('rlhd-preview-element-picked', null);
   const result = await pending;
   assert.equal(result.ok, false);
   assert.equal(result.message, 'cancelled');
@@ -925,7 +925,7 @@ test('completing a pick captures the crop, returns annotation and screenshot, th
   const pending = preview.pickElement(opened.id);
   await Promise.resolve();
   wc.ipc.emit(
-    'dshd-preview-element-picked',
+    'rlhd-preview-element-picked',
     sampleAnnotation(),
     { x: 10.2, y: 20.8, width: 40.2, height: 12.1 },
     'attach',
@@ -935,16 +935,16 @@ test('completing a pick captures the crop, returns annotation and screenshot, th
   assert.equal(result.annotation.comment, 'nudge');
   assert.equal(result.screenshot.dataUrl.startsWith('data:image/png;base64,'), true);
   assert.deepEqual(wc.captureRects.at(-1), { x: 10, y: 20, width: 41, height: 13 });
-  assert.ok(wc.sent.some((entry) => entry[0] === 'dshd-preview-annotation-captured'));
+  assert.ok(wc.sent.some((entry) => entry[0] === 'rlhd-preview-annotation-captured'));
 });
 
-test('cancelPickElement sends dshd-preview-cancel-pick', async () => {
+test('cancelPickElement sends rlhd-preview-cancel-pick', async () => {
   const fake = fakeAttach();
   const preview = createPreviewController({ attach: fake.attach });
   const opened = await preview.open({ url: 'http://127.0.0.1:3000' });
   const wc = fake.views[0].webContents;
   await preview.cancelPickElement(opened.id);
-  assert.ok(wc.sent.some((entry) => entry[0] === 'dshd-preview-cancel-pick'));
+  assert.ok(wc.sent.some((entry) => entry[0] === 'rlhd-preview-cancel-pick'));
 });
 
 test('setAnnotationTheme sends the theme object to that guest only without leftover primary CSS', async () => {
@@ -954,18 +954,18 @@ test('setAnnotationTheme sends the theme object to that guest only without lefto
   const second = await preview.open({ url: 'http://127.0.0.1:5173' });
   const theme = { primary: 'rgb(1, 2, 3)', background: 'white' };
   await preview.setAnnotationTheme(first.id, theme);
-  const firstSent = fake.views[0].webContents.sent.find((entry) => entry[0] === 'dshd-preview-annotation-theme');
+  const firstSent = fake.views[0].webContents.sent.find((entry) => entry[0] === 'rlhd-preview-annotation-theme');
   assert.deepEqual(firstSent[1], theme);
   assert.equal(JSON.stringify(firstSent).includes(leftoverPrimaryCss), false);
   assert.equal(
-    fake.views[1].webContents.sent.some((entry) => entry[0] === 'dshd-preview-annotation-theme'),
+    fake.views[1].webContents.sent.some((entry) => entry[0] === 'rlhd-preview-annotation-theme'),
     false,
   );
   const pending = preview.pickElement(first.id);
   await Promise.resolve();
-  const start = fake.views[0].webContents.sent.find((entry) => entry[0] === 'dshd-preview-start-pick');
+  const start = fake.views[0].webContents.sent.find((entry) => entry[0] === 'rlhd-preview-start-pick');
   assert.equal(start[1].primary, 'rgb(1, 2, 3)');
-  fake.views[0].webContents.ipc.emit('dshd-preview-element-picked', null);
+  fake.views[0].webContents.ipc.emit('rlhd-preview-element-picked', null);
   await pending;
   void second;
 });
@@ -977,7 +977,7 @@ test('non-positive crop rects capture the full page', async () => {
   const wc = fake.views[0].webContents;
   const pending = preview.pickElement(opened.id);
   await Promise.resolve();
-  wc.ipc.emit('dshd-preview-element-picked', sampleAnnotation(), { x: 0, y: 0, width: 0, height: 10 }, 'attach');
+  wc.ipc.emit('rlhd-preview-element-picked', sampleAnnotation(), { x: 0, y: 0, width: 0, height: 10 }, 'attach');
   const result = await pending;
   assert.equal(result.ok, true);
   assert.equal(wc.captureRects.at(-1), undefined);
@@ -1231,7 +1231,7 @@ test('startRecording while PiP is open does not create a second capture interval
 });
 
 test('saveRecording writes under preview-recordings', async () => {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'dshd-preview-rec-'));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'rlhd-preview-rec-'));
   const fake = fakeAttach();
   const preview = createPreviewController({ attach: fake.attach, userDataPath: dir });
   const opened = await preview.open({ url: 'http://127.0.0.1:3000' });

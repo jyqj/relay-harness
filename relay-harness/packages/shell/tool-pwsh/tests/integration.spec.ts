@@ -1,5 +1,5 @@
 /**
- * Integration tests: the REAL `@deepseek-ai/dsh-pwsh-local` executor plus the
+ * Integration tests: the REAL `@relay-harness/rlh-pwsh-local` executor plus the
  * `pwsh` tool, exercised through `ctx.tools.execute()` with a real PowerShell
  * process. These verify the world — actual commands run, stdout/stderr come
  * back, exit codes render, timeouts abort, background jobs settle through the
@@ -14,16 +14,16 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { spawnSync } from 'node:child_process'
-import { Context } from '@deepseek-ai/cordis'
-import { CallId } from '@deepseek-ai/dsh-llm'
-import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
-import ToolRuntime, { TOOL_ABORTED } from '@deepseek-ai/dsh-tools'
-import LocalJobRegistry from '@deepseek-ai/dsh-jobs-local'
-import * as ToolTasks from '@deepseek-ai/dsh-tool-jobs'
-import LocalSubprocessRuntime from '@deepseek-ai/dsh-subprocess-local'
-import { PwshLocalExecutor, resolvePwshPath } from '@deepseek-ai/dsh-pwsh-local'
-import * as ToolPwsh from '@deepseek-ai/dsh-tool-pwsh'
-import * as BashEnvPlugin from '@deepseek-ai/dsh-shell-env'
+import { Context } from '@relay-harness/cordis'
+import { CallId } from '@relay-harness/rlh-llm'
+import SystemPrompt from '@relay-harness/rlh-system-prompt'
+import ToolRuntime, { TOOL_ABORTED } from '@relay-harness/rlh-tools'
+import LocalJobRegistry from '@relay-harness/rlh-jobs-local'
+import * as ToolTasks from '@relay-harness/rlh-tool-jobs'
+import LocalSubprocessRuntime from '@relay-harness/rlh-subprocess-local'
+import { PwshLocalExecutor, resolvePwshPath } from '@relay-harness/rlh-pwsh-local'
+import * as ToolPwsh from '@relay-harness/rlh-tool-pwsh'
+import * as BashEnvPlugin from '@relay-harness/rlh-shell-env'
 
 const testToolSignal = new AbortController().signal
 
@@ -54,7 +54,7 @@ function text(result: { content: { type: string; text?: string }[] }): string {
 
 describe.skipIf(!hasPwsh)('pwsh tool over the real pwsh executor', () => {
   beforeEach(async () => {
-    dir = await mkdtemp(join(tmpdir(), 'dsh-tool-pwsh-'))
+    dir = await mkdtemp(join(tmpdir(), 'rlh-tool-pwsh-'))
     await writeFile(join(dir, 'greeting.txt'), 'hello pwsh\n')
 
     ctx = new Context()

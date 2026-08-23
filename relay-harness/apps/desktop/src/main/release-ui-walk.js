@@ -65,8 +65,8 @@ const QA_REQUIRED_STEPS = [
   'market.section',
   'market.discover',
   'market.installed',
-  'plugin.dshbot.tab',
-  'plugin.dshbot.page',
+  'plugin.rlhbot.tab',
+  'plugin.rlhbot.page',
 ];
 
 /**
@@ -90,7 +90,7 @@ async function runReleaseUiWalk(wc, helpers) {
 
   const openSurface = async (kind) => {
     await pageScript(wc, `
-      window.dispatchEvent(new CustomEvent('dshd-open-surface', { detail: { kind: args.kind } }));
+      window.dispatchEvent(new CustomEvent('rlhd-open-surface', { detail: { kind: args.kind } }));
       return true;
     `, { kind });
   };
@@ -125,11 +125,11 @@ async function runReleaseUiWalk(wc, helpers) {
   const composer = await pageEval(wc, () => {
     const card = document.querySelector('[data-composer-card]');
     return {
-      card: dshShown(card),
-      textarea: Boolean(card && dshShown(card.querySelector('textarea'))),
-      commands: Boolean(dshFind('^commands$|^命令$')),
-      send: Boolean(dshFind('send message|发送消息')),
-      access: Boolean(dshFind('access mode|访问模式')),
+      card: rlhShown(card),
+      textarea: Boolean(card && rlhShown(card.querySelector('textarea'))),
+      commands: Boolean(rlhFind('^commands$|^命令$')),
+      send: Boolean(rlhFind('send message|发送消息')),
+      access: Boolean(rlhFind('access mode|访问模式')),
     };
   });
   rec('composer.card', composer?.card, '');
@@ -142,12 +142,12 @@ async function runReleaseUiWalk(wc, helpers) {
     const ta = document.querySelector('[data-composer-card] textarea');
     if (!ta) return false;
     ta.focus();
-    return dshSetValue(ta, '$fo');
+    return rlhSetValue(ta, '$fo');
   });
   await sleep(500);
   const skillMenu = await pageEval(wc, () => ({
-    foo: Boolean(dshFind('foo-skill')),
-    menuitem: Boolean(document.querySelector('[role="menuitem"]') && dshShown(document.querySelector('[role="menuitem"]'))),
+    foo: Boolean(rlhFind('foo-skill')),
+    menuitem: Boolean(document.querySelector('[role="menuitem"]') && rlhShown(document.querySelector('[role="menuitem"]'))),
     typed: (document.querySelector('[data-composer-card] textarea') || {}).value || '',
   }));
   rec(
@@ -162,7 +162,7 @@ async function runReleaseUiWalk(wc, helpers) {
     const ta = document.querySelector('[data-composer-card] textarea');
     if (!ta) return false;
     ta.focus();
-    return dshSetValue(ta, '@');
+    return rlhSetValue(ta, '@');
   });
   await sleep(700);
   const pathSource = await pageEval(wc, () => ({
@@ -178,7 +178,7 @@ async function runReleaseUiWalk(wc, helpers) {
   );
   await pageEval(wc, () => {
     const ta = document.querySelector('[data-composer-card] textarea');
-    return ta ? dshSetValue(ta, '') : false;
+    return ta ? rlhSetValue(ta, '') : false;
   });
 
   const remoteSnap = typeof helpers.probeRemote === 'function'
@@ -195,9 +195,9 @@ async function runReleaseUiWalk(wc, helpers) {
     remoteSnap ? `listening=${remoteSnap.listening}` : 'helpers.probeRemote missing',
   );
   const remoteFooter = await pageEval(wc, () => {
-    const trigger = document.querySelector('[data-dsh-remote-trigger], [data-sidebar-action="remote"]');
-    if (trigger && dshShown(trigger)) return 'trigger';
-    return dshFind('^remote$|^远程$') ? 'label' : null;
+    const trigger = document.querySelector('[data-rlh-remote-trigger], [data-sidebar-action="remote"]');
+    if (trigger && rlhShown(trigger)) return 'trigger';
+    return rlhFind('^remote$|^远程$') ? 'label' : null;
   });
   rec('remote.footerAbsent', remoteFooter == null, remoteFooter || 'no remote footer', true);
 
@@ -212,14 +212,14 @@ async function runReleaseUiWalk(wc, helpers) {
   }
 
   const titlebar = await pageEval(wc, () => {
-    const bar = document.querySelector('#dshd-shell-titlebar-trailing');
+    const bar = document.querySelector('#rlhd-shell-titlebar-trailing');
     return {
-      sessionLog: Boolean(dshFind('session log|会话日志', bar)),
-      branch: Boolean(dshFind('switch branch|切换分支', bar)),
-      commit: Boolean(dshFind('^commit|提交', bar)),
-      git: Boolean(dshFind('git actions|git 操作', bar)),
-      terminal: Boolean(dshFind('terminal|终端', bar)),
-      surfaces: Boolean(dshFind('right panel|surfaces|右侧栏', bar)),
+      sessionLog: Boolean(rlhFind('session log|会话日志', bar)),
+      branch: Boolean(rlhFind('switch branch|切换分支', bar)),
+      commit: Boolean(rlhFind('^commit|提交', bar)),
+      git: Boolean(rlhFind('git actions|git 操作', bar)),
+      terminal: Boolean(rlhFind('terminal|终端', bar)),
+      surfaces: Boolean(rlhFind('right panel|surfaces|右侧栏', bar)),
     };
   });
   rec('titlebar.sessionLog', titlebar?.sessionLog, '');
@@ -231,8 +231,8 @@ async function runReleaseUiWalk(wc, helpers) {
 
   await helpers.clickTitlebarButton(wc, 'switch branch|切换分支');
   const branchMenu = await waitUntil(() => pageEval(wc, () => {
-    const bar = document.querySelector('#dshd-shell-titlebar-trailing');
-    const btn = bar && dshFind('switch branch|切换分支', bar);
+    const bar = document.querySelector('#rlhd-shell-titlebar-trailing');
+    const btn = bar && rlhFind('switch branch|切换分支', bar);
     return Boolean((btn && btn.getAttribute('aria-expanded') === 'true') || document.querySelector('[role="menu"]'));
   }), 5_000);
   rec('titlebar.branchMenu', Boolean(branchMenu), branchMenu ? 'opened' : 'did not open');
@@ -244,16 +244,16 @@ async function runReleaseUiWalk(wc, helpers) {
   await dismiss();
   const drawerOpen = await pageEval(wc, () => {
     const root = document.querySelector('[data-terminal-owner="drawer"]');
-    return Boolean(root && dshShown(root) && root.getBoundingClientRect().height > 8);
+    return Boolean(root && rlhShown(root) && root.getBoundingClientRect().height > 8);
   });
   if (!drawerOpen) {
     await helpers.clickTitlebarButton(wc, helpers.terminalPattern);
   }
   const drawer = await waitUntil(() => pageEval(wc, () => {
     const root = document.querySelector('[data-terminal-owner="drawer"]');
-    if (!root || !dshShown(root) || root.getBoundingClientRect().height < 8) return null;
+    if (!root || !rlhShown(root) || root.getBoundingClientRect().height < 8) return null;
     return {
-      newTerminal: Boolean(dshFind('new terminal|新建终端', root)),
+      newTerminal: Boolean(rlhFind('new terminal|新建终端', root)),
     };
   }), 10_000);
   rec('terminal.drawer', Boolean(drawer), drawer ? '' : 'drawer did not open');
@@ -274,13 +274,13 @@ async function runReleaseUiWalk(wc, helpers) {
     const frameEl = document.querySelector('[class*="frame"]');
     if (!frameEl || frameEl.getAttribute('data-surfaces-collapsed') === 'true') return null;
     const empty = document.querySelector('[data-surfaces-empty]');
-    const cards = empty && dshShown(empty)
+    const cards = empty && rlhShown(empty)
       ? Array.from(empty.querySelectorAll('button')).map((el) => ({
-        label: dshLabel(el).slice(0, 60),
+        label: rlhLabel(el).slice(0, 60),
         disabled: el.disabled,
       }))
       : [];
-    return { empty: Boolean(empty && dshShown(empty)), cards };
+    return { empty: Boolean(empty && rlhShown(empty)), cards };
   }), 10_000);
   rec('surfaces.open', Boolean(surfaces), surfaces ? '' : 'surfaces column stayed collapsed');
 
@@ -293,7 +293,7 @@ async function runReleaseUiWalk(wc, helpers) {
     const clickedFiles = await pageEval(wc, () => {
       const empty = document.querySelector('[data-surfaces-empty]');
       const btn = empty && Array.from(empty.querySelectorAll('button')).find((el) =>
-        /^(files|文件)(\s|$)/i.test(dshLabel(el)) && !el.disabled);
+        /^(files|文件)(\s|$)/i.test(rlhLabel(el)) && !el.disabled);
       if (!btn) return false;
       btn.click();
       return true;
@@ -308,13 +308,13 @@ async function runReleaseUiWalk(wc, helpers) {
 
   const files = await waitUntil(() => pageEval(wc, () => {
     const panel = document.querySelector('[data-files-panel]');
-    if (!panel || !dshShown(panel)) return null;
+    if (!panel || !rlhShown(panel)) return null;
     const text = panel.innerText || '';
     const readme = /README\.md/i.test(text);
     const note = /note\.md/i.test(text);
     if (!readme && !note) return null;
     return {
-      search: Boolean(dshFind('search files|搜索文件', panel)),
+      search: Boolean(rlhFind('search files|搜索文件', panel)),
       readme,
       note,
       text: text.slice(0, 160),
@@ -325,7 +325,7 @@ async function runReleaseUiWalk(wc, helpers) {
     if (!panel) return null;
     const text = panel.innerText || '';
     return {
-      search: Boolean(dshFind('search files|搜索文件', panel)),
+      search: Boolean(rlhFind('search files|搜索文件', panel)),
       readme: /README\.md/i.test(text),
       note: /note\.md/i.test(text),
       text: text.slice(0, 160),
@@ -338,7 +338,7 @@ async function runReleaseUiWalk(wc, helpers) {
   const mention = filesSnap
     ? await waitUntil(() => pageEval(wc, () => {
       const panel = document.querySelector('[data-files-panel]');
-      return panel && dshFind('mention in composer|引用到输入框', panel);
+      return panel && rlhFind('mention in composer|引用到输入框', panel);
     }), 10_000)
     : null;
   rec('files.mentionVisible', Boolean(mention), mention ? 'visible' : 'mention control missing');
@@ -347,9 +347,9 @@ async function runReleaseUiWalk(wc, helpers) {
       const panel = document.querySelector('[data-files-panel]');
       if (!panel) return false;
       const row = Array.from(panel.querySelectorAll('li')).find((el) =>
-        dshShown(el) && /^note\.md$/i.test((el.querySelector('span') && el.querySelector('span').textContent) || dshLabel(el)));
-      const btn = (row && dshFind('mention in composer|引用到输入框', row))
-        || dshFind('mention in composer|引用到输入框', panel);
+        rlhShown(el) && /^note\.md$/i.test((el.querySelector('span') && el.querySelector('span').textContent) || rlhLabel(el)));
+      const btn = (row && rlhFind('mention in composer|引用到输入框', row))
+        || rlhFind('mention in composer|引用到输入框', panel);
       if (!btn || btn.disabled) return false;
       btn.click();
       return true;
@@ -367,10 +367,10 @@ async function runReleaseUiWalk(wc, helpers) {
   if (filesSnap?.search) {
     await pageEval(wc, () => {
       const panel = document.querySelector('[data-files-panel]');
-      const input = panel && (dshFind('search files|搜索文件', panel) || panel.querySelector('input'));
+      const input = panel && (rlhFind('search files|搜索文件', panel) || panel.querySelector('input'));
       if (!input) return false;
       input.focus();
-      return dshSetValue(input, 'note');
+      return rlhSetValue(input, 'note');
     });
     const filtered = await waitUntil(() => pageEval(wc, () => {
       const panel = document.querySelector('[data-files-panel]');
@@ -382,7 +382,7 @@ async function runReleaseUiWalk(wc, helpers) {
   await openSurface('agents');
   const agents = await waitUntil(() => pageEval(wc, () => {
     const panel = document.querySelector('[data-agents-panel]');
-    if (!panel || !dshShown(panel)) return null;
+    if (!panel || !rlhShown(panel)) return null;
     const text = panel.innerText || '';
     return { empty: /no agents yet|还没有子代理/i.test(text) };
   }), 10_000);
@@ -392,30 +392,30 @@ async function runReleaseUiWalk(wc, helpers) {
   await openSurface('diff');
   const diff = await waitUntil(() => pageEval(wc, () => {
     const panel = document.querySelector('[data-diff-panel]');
-    if (!panel || !dshShown(panel)) return null;
+    if (!panel || !rlhShown(panel)) return null;
     const text = panel.innerText || '';
     if (/差异仅适用于|only available in Git/i.test(text)) return null;
     return { text: text.slice(0, 120) };
   }), 12_000);
   const diffSnap = diff || await pageEval(wc, () => {
     const panel = document.querySelector('[data-diff-panel]');
-    return panel && dshShown(panel) ? { text: (panel.innerText || '').slice(0, 120) } : null;
+    return panel && rlhShown(panel) ? { text: (panel.innerText || '').slice(0, 120) } : null;
   });
   rec('diff.panel', Boolean(diffSnap) && !/差异仅适用于|only available in Git/i.test(diffSnap?.text || ''), diffSnap?.text || '');
 
   await openSurface('preview');
   const browser = await waitUntil(() => pageEval(wc, () => {
     const panel = document.querySelector('[data-preview-panel]');
-    if (!panel || !dshShown(panel)) return null;
+    if (!panel || !rlhShown(panel)) return null;
     const unavailable = panel.querySelector('[data-preview-unavailable]');
     const toolbar = panel.querySelector('[data-preview-toolbar]');
     const url = Boolean(
-      dshFind('search or enter url|搜索或输入 url', panel)
+      rlhFind('search or enter url|搜索或输入 url', panel)
       || panel.querySelector('input'),
     );
     return {
-      unavailable: Boolean(unavailable && dshShown(unavailable)),
-      toolbar: Boolean(toolbar && dshShown(toolbar)),
+      unavailable: Boolean(unavailable && rlhShown(unavailable)),
+      toolbar: Boolean(toolbar && rlhShown(toolbar)),
       url,
     };
   }), 10_000);
@@ -425,26 +425,26 @@ async function runReleaseUiWalk(wc, helpers) {
   await openSurface('terminal');
   const termSurface = await waitUntil(() => pageEval(wc, () => {
     const root = document.querySelector('[data-terminal-owner="surface"]');
-    return Boolean(root && dshShown(root) && root.getBoundingClientRect().height > 8);
+    return Boolean(root && rlhShown(root) && root.getBoundingClientRect().height > 8);
   }), 10_000);
   rec('terminal.surface', Boolean(termSurface), '');
 
   await dismiss();
   const settingsTrigger = await pageEval(wc, () =>
-    Boolean(document.querySelector('[data-dsh-settings-trigger]')));
+    Boolean(document.querySelector('[data-rlh-settings-trigger]')));
   rec('settings.trigger', settingsTrigger, '');
 
   const appearanceOpened = await openSettings('appearance');
   const appearance = await waitUntil(() => pageEval(wc, () => {
-    const dialog = dshDialog();
+    const dialog = rlhDialog();
     if (!dialog) return null;
-    const nav = document.querySelector('[data-dsh-settings-section="appearance"]');
+    const nav = document.querySelector('[data-rlh-settings-section="appearance"]');
     const text = dialog.innerText || '';
     return {
       nav: Boolean(nav),
-      heading: Boolean(dshHeading('wallpaper|背景图', dialog)),
-      choose: Boolean(dshFind('choose image|选择图片', dialog)),
-      browse: Boolean(dshFind('browse gallery|浏览图库', dialog)),
+      heading: Boolean(rlhHeading('wallpaper|背景图', dialog)),
+      choose: Boolean(rlhFind('choose image|选择图片', dialog)),
+      browse: Boolean(rlhFind('browse gallery|浏览图库', dialog)),
       bingDaily: /Bing daily wallpapers|Bing 每日壁纸/.test(text),
       catalogUrls: /Wallpaper catalog URLs|壁纸目录地址/.test(text),
       placeholder: Boolean(dialog.querySelector('input[placeholder="https://example.com/wallpapers.json"]')),
@@ -464,10 +464,10 @@ async function runReleaseUiWalk(wc, helpers) {
     await clickNamed(wc, 'browse gallery|浏览图库');
   }
   const gallery = await waitUntil(() => pageEval(wc, () => {
-    const galleryDialog = dshDialogNamed('browse gallery|浏览图库');
+    const galleryDialog = rlhDialogNamed('browse gallery|浏览图库');
     if (!galleryDialog) return null;
     return {
-      sources: Boolean(dshFind('^sources$|^图源$', galleryDialog)),
+      sources: Boolean(rlhFind('^sources$|^图源$', galleryDialog)),
       items: (galleryDialog.innerText || '').slice(0, 80),
     };
   }), 15_000);
@@ -477,10 +477,10 @@ async function runReleaseUiWalk(wc, helpers) {
   if (gallery?.sources) {
     await clickNamed(wc, '^sources$|^图源$');
     const sourcesPane = await waitUntil(() => pageEval(wc, () => {
-      const galleryDialog = dshDialogNamed('browse gallery|浏览图库');
+      const galleryDialog = rlhDialogNamed('browse gallery|浏览图库');
       if (!galleryDialog) return null;
       return {
-        addSource: Boolean(dshFind('add source|新增图源', galleryDialog)),
+        addSource: Boolean(rlhFind('add source|新增图源', galleryDialog)),
         hint: /Categories come from here|分类来自这里/i.test(galleryDialog.innerText || ''),
       };
     }), 8_000);
@@ -494,12 +494,12 @@ async function runReleaseUiWalk(wc, helpers) {
 
   const mcpOpened = await openSettings('mcp');
   const mcp = await waitUntil(() => pageEval(wc, () => {
-    const dialog = dshDialog();
+    const dialog = rlhDialog();
     if (!dialog) return null;
     return {
-      heading: Boolean(dshHeading('mcp servers|mcp 服务器', dialog)),
-      search: Boolean(dshFind('search name|搜索名称', dialog) || dialog.querySelector('input[type="search"], [role="searchbox"]')),
-      add: Boolean(dshFind('add server|添加服务器', dialog)),
+      heading: Boolean(rlhHeading('mcp servers|mcp 服务器', dialog)),
+      search: Boolean(rlhFind('search name|搜索名称', dialog) || dialog.querySelector('input[type="search"], [role="searchbox"]')),
+      add: Boolean(rlhFind('add server|添加服务器', dialog)),
     };
   }), 10_000);
   rec('mcp.heading', Boolean(mcpOpened && mcp?.heading), mcpOpened ? '' : 'mcp section missing');
@@ -508,11 +508,11 @@ async function runReleaseUiWalk(wc, helpers) {
 
   const skillsOpened = await openSettings('skills');
   const skills = await waitUntil(() => pageEval(wc, () => {
-    const dialog = dshDialog();
+    const dialog = rlhDialog();
     if (!dialog) return null;
     return {
-      heading: Boolean(dshHeading('^skills$|^技能$', dialog)),
-      add: Boolean(dshFind('add skill|添加技能', dialog)),
+      heading: Boolean(rlhHeading('^skills$|^技能$', dialog)),
+      add: Boolean(rlhFind('add skill|添加技能', dialog)),
     };
   }), 10_000);
   rec('skills.heading', Boolean(skillsOpened && skills?.heading), '');
@@ -520,22 +520,22 @@ async function runReleaseUiWalk(wc, helpers) {
 
   const pluginsOpened = await openSettings('plugins');
   const plugins = await waitUntil(() => pageEval(wc, () => {
-    const dialog = dshDialog();
-    const nav = document.querySelector('[data-dsh-settings-section="plugins"]');
+    const dialog = rlhDialog();
+    const nav = document.querySelector('[data-rlh-settings-section="plugins"]');
     return {
       nav: Boolean(nav && nav.getAttribute('aria-current') === 'true'),
-      heading: Boolean(dialog && dshHeading('^plugins$|^插件$', dialog)),
+      heading: Boolean(dialog && rlhHeading('^plugins$|^插件$', dialog)),
     };
   }), 10_000);
   rec('plugins.heading', Boolean(pluginsOpened && (plugins?.heading || plugins?.nav)), '');
 
   const marketOpened = await openSettings('market');
   const market = await waitUntil(() => pageEval(wc, () => {
-    const nav = document.querySelector('[data-dsh-settings-section="market"]');
-    const dialog = dshDialog();
+    const nav = document.querySelector('[data-rlh-settings-section="market"]');
+    const dialog = rlhDialog();
     const text = dialog ? (dialog.innerText || '') : '';
     return {
-      nav: Boolean(nav && (nav.getAttribute('aria-current') === 'true' || dshShown(nav))),
+      nav: Boolean(nav && (nav.getAttribute('aria-current') === 'true' || rlhShown(nav))),
       discover: /discover|发现/i.test(text),
     };
   }), 10_000);
@@ -544,23 +544,23 @@ async function runReleaseUiWalk(wc, helpers) {
 
   await clickNamed(wc, '^installed$|^已安装$');
   const installed = await waitUntil(() => pageEval(wc, () => {
-    const dialog = dshDialog();
+    const dialog = rlhDialog();
     if (!dialog) return null;
     const tab = Array.from(dialog.querySelectorAll('[role="tab"]')).find((el) =>
-      /installed|已安装/i.test(dshLabel(el)));
+      /installed|已安装/i.test(rlhLabel(el)));
     const selected = Boolean(tab && tab.getAttribute('aria-selected') === 'true');
     const text = dialog.innerText || '';
     if (!selected && !/installed|已安装/i.test(text)) return null;
     return {
       selected,
-      dshbot: /\bdshbot\b/i.test(text),
+      rlhbot: /\bdshbot\b/i.test(text),
     };
   }), 8_000);
   rec('market.installed', Boolean(installed), installed ? '' : 'Installed tab missing');
   rec(
-    'plugin.dshbot.market',
-    Boolean(installed?.dshbot),
-    installed?.dshbot ? 'listed on Installed' : 'preset Cordis plugin, not a market catalog row',
+    'plugin.rlhbot.market',
+    Boolean(installed?.rlhbot),
+    installed?.rlhbot ? 'listed on Installed' : 'preset Cordis plugin, not a market catalog row',
     true,
   );
 
@@ -569,21 +569,21 @@ async function runReleaseUiWalk(wc, helpers) {
 
   const botsClicked = await pageEval(wc, () => {
     const tab = Array.from(document.querySelectorAll('[role="tab"]')).find((el) =>
-      dshShown(el) && /(bots|机器人)/i.test(dshLabel(el)));
+      rlhShown(el) && /(bots|机器人)/i.test(rlhLabel(el)));
     if (!tab) return false;
     tab.click();
     return true;
   });
   const bots = await waitUntil(() => pageEval(wc, () => {
     const tab = Array.from(document.querySelectorAll('[role="tab"]')).find((el) =>
-      /(bots|机器人)/i.test(dshLabel(el)));
+      /(bots|机器人)/i.test(rlhLabel(el)));
     const selected = Boolean(tab && tab.getAttribute('aria-selected') === 'true');
     const text = document.body.innerText || '';
     const page = /no bots yet|还没有机器人|new bot|添加新 bot|add bot/i.test(text);
     return selected || page ? { selected, page } : null;
   }), 8_000);
-  rec('plugin.dshbot.tab', Boolean(botsClicked || bots), botsClicked ? 'plugin sidebar contribution' : 'dshbot plugin tab missing');
-  rec('plugin.dshbot.page', Boolean(bots?.page || bots?.selected), '');
+  rec('plugin.rlhbot.tab', Boolean(botsClicked || bots), botsClicked ? 'plugin sidebar contribution' : 'rlhbot plugin tab missing');
+  rec('plugin.rlhbot.page', Boolean(bots?.page || bots?.selected), '');
   } catch (error) {
     rec('walk.uncaught', false, error && error.stack ? error.stack : String(error));
   }

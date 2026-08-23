@@ -1,4 +1,4 @@
-# @deepseek-ai/dsh-client-ui-settings-plugin-inventory
+# @relay-harness/rlh-client-ui-settings-plugin-inventory
 
 English | [中文](README.zh.md)
 

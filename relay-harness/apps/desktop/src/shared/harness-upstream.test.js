@@ -20,7 +20,7 @@ const {
 } = require('./harness-upstream');
 
 const RC5_PIN = {
-  repo: 'https://github.com/deepseek-ai/deepseek-harness.git',
+  repo: 'https://github.com/jyqj/relay-harness.git',
   ref: '47f943859bef60e4160492346772ded9b24f765a',
   sha: '47f943859bef60e4160492346772ded9b24f765a',
   npm: '0.1.0-rc.5',
@@ -92,7 +92,7 @@ test('assertRc5Witness checks the squash tree only for the rc.5 pin', () => {
   assert.doesNotThrow(() => assertRc5Witness(gitFn, {
     ...RC5_PIN,
     sha: '99f6f02fecdb7dff40c3fbc9470f5907c29f74ca',
-    ref: 'dsh-v0.1.0-rc.7',
+    ref: 'rlh-v0.1.0-rc.7',
     npm: '0.1.0-rc.7',
   }));
   const mismatch = (args) => ({

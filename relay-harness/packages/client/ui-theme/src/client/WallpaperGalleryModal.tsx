@@ -2,7 +2,7 @@
  * Wallpaper gallery dialog: leftover thumbnail grid plus an in-window source pane.
  */
 import { useEffect, useState } from 'react'
-import { Button, Modal } from '@deepseek-ai/dsh-client-ui-primitives'
+import { Button, Modal } from '@relay-harness/rlh-client-ui-primitives'
 import type { WallpaperSource } from '../theme-settings.ts'
 import type { ThemeKey } from './locales.ts'
 import type { WallpaperCatalogItem } from './wallpaper-shell.ts'

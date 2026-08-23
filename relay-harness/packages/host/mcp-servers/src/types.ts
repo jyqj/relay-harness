@@ -1,11 +1,11 @@
 /**
  * Wire types for the MCP server Settings Remote.
- * @module @deepseek-ai/dsh-host-mcp-servers/types
+ * @module @relay-harness/rlh-host-mcp-servers/types
  */
 
-import type { ChildFiberPhase, McpServerRecord } from '@deepseek-ai/dsh-mcp-servers-file/types'
+import type { ChildFiberPhase, McpServerRecord } from '@relay-harness/rlh-mcp-servers-file/types'
 
-export type { McpServerRecord } from '@deepseek-ai/dsh-mcp-servers-file/types'
+export type { McpServerRecord } from '@relay-harness/rlh-mcp-servers-file/types'
 
 /** Whether the row comes from the managed file or a composition plugin. */
 export type McpServerOrigin = 'managed' | 'composition'

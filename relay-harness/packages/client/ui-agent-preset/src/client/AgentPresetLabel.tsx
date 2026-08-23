@@ -9,11 +9,11 @@
  */
 
 import { useEffect } from 'react'
-import type { SnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
-import type { InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
-import { IconAgentPresetOutline16 } from '@deepseek-ai/dsh-client-ui-primitives'
+import type { SnapshotStore } from '@relay-harness/rlh-client-runtime/client'
+import type { InjectFace, PropsLocale, PropsRuntime } from '@relay-harness/rlh-client-ui-slots'
+import { IconAgentPresetOutline16 } from '@relay-harness/rlh-client-ui-primitives'
 // Type-only: pulls the ui-conversation SlotMap merge (the header actions).
-import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
+import type {} from '@relay-harness/rlh-client-ui-conversation/client'
 import type { AgentPresetSettingsState } from './settings-store.ts'
 import { presetDisplayText } from './locales.ts'
 import css from './AgentPresetLabel.module.css'
@@ -51,10 +51,10 @@ export function AgentPresetLabel({
     // Deployments that compose no presets never label anything, so the roster
     // is only worth a request once a session reports one. Desktop-plugin
     // contacts hide the composition name: it is an implementation detail.
-    if (preset !== undefined && origin !== 'dshbot') void load()
+    if (preset !== undefined && origin !== 'rlhbot') void load()
   }, [preset, origin, load])
 
-  if (preset === undefined || origin === 'dshbot') return null
+  if (preset === undefined || origin === 'rlhbot') return null
 
   const option = options.find(entry => entry.id === preset)
   const text = option === undefined ? undefined : presetDisplayText(option, t)

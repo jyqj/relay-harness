@@ -1,17 +1,17 @@
 /**
  * File-backed managed MCP server catalog and child mcp-client reconciler.
- * @module @deepseek-ai/dsh-mcp-servers-file/service
+ * @module @relay-harness/rlh-mcp-servers-file/service
  */
 
 import { mkdir, readFile } from 'node:fs/promises'
 import { dirname, join, resolve } from 'node:path'
 import { watch as chokidarWatch, type FSWatcher } from 'chokidar'
-import { Context, Service } from '@deepseek-ai/cordis'
-import { withFileLock, writeFileAtomic } from '@deepseek-ai/dsh-atomic-write'
-import { canonicalizeWatchPath, resolveDshHome } from '@deepseek-ai/dsh-home-paths'
-import * as mcpClient from '@deepseek-ai/dsh-mcp-client'
-import { mcpClientStatus, type McpClientStatus } from '@deepseek-ai/dsh-mcp-client'
-import type { Config as McpClientConfig } from '@deepseek-ai/dsh-mcp-client'
+import { Context, Service } from '@relay-harness/cordis'
+import { withFileLock, writeFileAtomic } from '@relay-harness/rlh-atomic-write'
+import { canonicalizeWatchPath, resolveRlhHome } from '@relay-harness/rlh-home-paths'
+import * as mcpClient from '@relay-harness/rlh-mcp-client'
+import { mcpClientStatus, type McpClientStatus } from '@relay-harness/rlh-mcp-client'
+import type { Config as McpClientConfig } from '@relay-harness/rlh-mcp-client'
 import {
   EMPTY_DOCUMENT,
   maskRecordSecrets,
@@ -27,10 +27,10 @@ import type { ChildFiberPhase, McpServerRecord, McpServersDocument, McpServerUps
 
 /** Plugin configuration fields used by the file service. */
 export interface McpServersFileOptions {
-  /** Absolute or home-relative document path. Defaults to `$DSH_HOME/mcp-servers.yaml`. */
+  /** Absolute or home-relative document path. Defaults to `$RLH_HOME/mcp-servers.yaml`. */
   path?: string
   /** Harness home used when `path` is omitted. */
-  dshHome?: string
+  rlhHome?: string
   /** Watch the document and remount children after an external write. */
   watch?: boolean
   /** Chokidar stability window in milliseconds. */
@@ -53,7 +53,7 @@ export interface ChildHandle {
   readonly phase: () => ChildFiberPhase
 }
 
-declare module '@deepseek-ai/cordis' {
+declare module '@relay-harness/cordis' {
   interface Context {
     mcpServersFile: McpServersFile
   }
@@ -65,7 +65,7 @@ declare module '@deepseek-ai/cordis' {
  * @returns the resolved filename, watch flag, and debounce.
  */
 export function resolveSpec(config: McpServersFileOptions = {}): ResolvedSpec {
-  const filename = resolve(config.path ?? join(resolveDshHome(config.dshHome), 'mcp-servers.yaml'))
+  const filename = resolve(config.path ?? join(resolveRlhHome(config.rlhHome), 'mcp-servers.yaml'))
   return {
     filename,
     watch: config.watch ?? true,
@@ -104,7 +104,7 @@ export function defaultMounter(ctx: Context, config: McpClientConfig): ChildHand
   }
 }
 
-/** Owns `$DSH_HOME/mcp-servers.yaml` and the live mcp-client children it describes. */
+/** Owns `$RLH_HOME/mcp-servers.yaml` and the live mcp-client children it describes. */
 export class McpServersFile extends Service {
   private document: McpServersDocument = EMPTY_DOCUMENT
   private readonly children = new Map<string, { fingerprint: string; handle: ChildHandle }>()

@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, truncateSync
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
-import { WorkflowRunId } from '@deepseek-ai/dsh-workflow'
+import { WorkflowRunId } from '@relay-harness/rlh-workflow'
 import {
   MAX_WORKFLOW_JOURNAL_BYTES,
   WorkflowJournal,
@@ -16,7 +16,7 @@ afterEach(() => {
 })
 
 function path(): string {
-  const root = mkdtempSync(join(tmpdir(), 'dsh-workflow-journal-'))
+  const root = mkdtempSync(join(tmpdir(), 'rlh-workflow-journal-'))
   roots.push(root)
   return join(root, 'journal.jsonl')
 }

@@ -1,7 +1,7 @@
 /**
  * Co-located workspace file checkpoints and transactional rewind.
  *
- * @module @deepseek-ai/dsh-workspace
+ * @module @relay-harness/rlh-workspace
  */
 
 import { createHash, randomUUID } from 'node:crypto'
@@ -39,7 +39,7 @@ interface CheckpointRecord {
 /** Stable checkpoint-storage directory for one workspace id. */
 function storeDir(root: string, workspaceId: WorkspaceId): string {
   const safeId = createHash('sha256').update(workspaceId).digest('hex').slice(0, 32)
-  return resolve(root, '.dsh', 'rewind-checkpoints', safeId)
+  return resolve(root, '.rlh', 'rewind-checkpoints', safeId)
 }
 
 /** Stable filename that never joins caller-controlled checkpoint bytes. */

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import type { SessionId } from '@deepseek-ai/dsh-client-runtime/client'
+import type { SessionId } from '@relay-harness/rlh-client-runtime/client'
 import type { PreviewPanelProps } from '../src/client/PreviewPanel.tsx'
 import { PreviewPanel } from '../src/client/PreviewPanel.tsx'
 import { en, zh } from '../src/client/locales.ts'
@@ -492,8 +492,8 @@ describe('PreviewPanel', () => {
     })
   })
 
-  it('opens a pending URL from sessionStorage and a later dshd-open-surface event', async () => {
-    sessionStorage.setItem('dshd-pending-preview-url', 'http://127.0.0.1:4173')
+  it('opens a pending URL from sessionStorage and a later rlhd-open-surface event', async () => {
+    sessionStorage.setItem('rlhd-pending-preview-url', 'http://127.0.0.1:4173')
     const b = mount()
     stubHostRect({ x: 800, y: 40, width: 400, height: 600 })
     await waitFor(() => {
@@ -501,9 +501,9 @@ describe('PreviewPanel', () => {
         url: 'http://127.0.0.1:4173/',
       }))
     })
-    expect(sessionStorage.getItem('dshd-pending-preview-url')).toBeNull()
-    window.dispatchEvent(new CustomEvent('dshd-open-surface', { detail: { kind: 'preview' } }))
-    window.dispatchEvent(new CustomEvent('dshd-open-surface', { detail: { url: 'http://127.0.0.1:3000' } }))
+    expect(sessionStorage.getItem('rlhd-pending-preview-url')).toBeNull()
+    window.dispatchEvent(new CustomEvent('rlhd-open-surface', { detail: { kind: 'preview' } }))
+    window.dispatchEvent(new CustomEvent('rlhd-open-surface', { detail: { url: 'http://127.0.0.1:3000' } }))
     await waitFor(() => {
       expect(b.previewNavigate).toHaveBeenCalledWith('pv-1', 'http://127.0.0.1:3000/')
     })

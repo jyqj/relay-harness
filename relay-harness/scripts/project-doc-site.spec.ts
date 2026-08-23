@@ -22,7 +22,7 @@ afterEach(() => {
 })
 
 function fixture(): { root: string; pages: DocsPage[] } {
-  const root = mkdtempSync(join(tmpdir(), 'dsh-doc-site-'))
+  const root = mkdtempSync(join(tmpdir(), 'rlh-doc-site-'))
   roots.push(root)
   mkdirSync(join(root, 'docs'), { recursive: true })
   mkdirSync(join(root, 'packages'), { recursive: true })
@@ -76,7 +76,7 @@ describe('publishableImage', () => {
     // Publication copies the bytes onto the site, so a reference reaching a
     // build-machine file must not be treated as an image the repository owns.
     const { root } = fixture()
-    const outside = mkdtempSync(join(tmpdir(), 'dsh-doc-site-outside-'))
+    const outside = mkdtempSync(join(tmpdir(), 'rlh-doc-site-outside-'))
     roots.push(outside)
     writeFileSync(join(outside, 'secret.png'), 'not really a png\n')
     symlinkSync(join(outside, 'secret.png'), join(root, 'packages/linked.png'))
@@ -114,7 +114,7 @@ describe('rewriteMarkdown', () => {
       repositoryRef: 'abc123',
     })).toBe(
       '[B](./reference/b.md#part) '
-      + '[source](https://github.com/deepseek-ai/deepseek-harness/blob/abc123/packages/tool.ts#L2) '
+      + '[source](https://github.com/jyqj/relay-harness/blob/abc123/packages/tool.ts#L2) '
       + '[web](https://example.com)\n',
     )
   })
@@ -140,7 +140,7 @@ describe('rewriteMarkdown', () => {
       pages,
       repoRoot: root,
       repositoryRef: 'abc123',
-    })).toBe('![logo](https://raw.githubusercontent.com/deepseek-ai/deepseek-harness/abc123/packages/logo.svg)\n')
+    })).toBe('![logo](https://raw.githubusercontent.com/deepseek-ai/relay-harness/abc123/packages/logo.svg)\n')
   })
 
   it('hands an image to the placer and uses the URL it returns', () => {
@@ -219,7 +219,7 @@ describe('rewriteMarkdown', () => {
       repositoryRef: 'abc123',
     })).toBe(
       '[title](./reference/b.md "b.md") '
-      + '[escaped](https://github.com/deepseek-ai/deepseek-harness/blob/abc123/docs/x(y).md)\n',
+      + '[escaped](https://github.com/jyqj/relay-harness/blob/abc123/docs/x(y).md)\n',
     )
   })
 
@@ -270,7 +270,7 @@ describe('docsPages locale routes', () => {
       expect(projected).toContain('layout: false')
       expect(projected).toContain('http-equiv: refresh')
       expect(projected).toContain('content: 0; url=./guide/quickstart')
-      expect(projected).not.toContain('# DeepSeek Harness')
+      expect(projected).not.toContain('# Relay Harness')
     }
   })
 
@@ -486,7 +486,7 @@ describe('projectedPageContent', () => {
   })
 
   it('drops the repository badge every page links from its footer', () => {
-    const badge = '[![](https://img.shields.io/badge/powered_by-dsh-4D6BFE?style=flat-square)](https://github.com/deepseek-ai/deepseek-harness)'
+    const badge = '[![](https://img.shields.io/badge/powered_by-rlh-4D6BFE?style=flat-square)](https://github.com/jyqj/relay-harness)'
     expect(projectedPageContent(`# Guide\n\nBody.\n\n${badge}\n`, page('zh-guide')))
       .toBe('# Guide\n\nBody.\n')
   })

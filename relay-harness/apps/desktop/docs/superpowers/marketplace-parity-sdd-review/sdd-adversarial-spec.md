@@ -51,7 +51,7 @@ Nothing tells the user the plugin is already in the web profile. Nothing points 
 > 包名：npm spec 用 spec；github 用安装后 `package.json` 的 `name`，若读不到则失败并 remove。
 
 **Spec:**
-> add 成功但新包没有可加载的 dsh 入口：当场卸掉并返回失败，避免下次启动卡死。
+> add 成功但新包没有可加载的 rlh 入口：当场卸掉并返回失败，避免下次启动卡死。
 
 What shipped:
 
@@ -86,7 +86,7 @@ function resolveInstalledNames(spec, before, after) {
 
 Cheap misses this allows:
 
-1. **Reinstall / no new profile key:** `dsh plugin add` succeeds, profile already had the name → `namesAddedByInstall` is `[]` → github/`#path:` spec is not a package name → `names.length === 0` → `{ ok: false, error: '该包不是可加载的 dsh 插件' }` **without `remove`**, and IPC will **not** `startHarness()`. A successful add is reported as “not loadable”.
+1. **Reinstall / no new profile key:** `rlh plugin add` succeeds, profile already had the name → `namesAddedByInstall` is `[]` → github/`#path:` spec is not a package name → `names.length === 0` → `{ ok: false, error: '该包不是可加载的 rlh 插件' }` **without `remove`**, and IPC will **not** `startHarness()`. A successful add is reported as “not loadable”.
 2. **Add wrote `node_modules` but profile list did not grow:** same path: fail, leave the tree, no `remove`.
 3. npm-only rollback works without a profile delta because `isValidPackageName(spec)` falls back to the spec. GitHub does not. The npm “no entry → remove” test (`marketplace-install.test.js` ~325–331) therefore does not prove the github path.
 
@@ -189,7 +189,7 @@ All install successes use rows where `npm` equals the last token, or `npm` is nu
 > `DROPPED` 对 id 和算出的包名都要比。
 > 裁定：list 过滤；getMarketplacePlugin 返回原始映射行（含 dropped）
 
-`DROPPED` is only package names (`plugins.js` 7–10). The only dropped fixture is `omdsh-dev/dsh-genui` / `@dsh-external/dsh-genui`. List hide can be explained entirely by `packageName`. `isDropped`’s `DROPPED.includes(item.id)` (`marketplace-catalog.js` 98–100) could be deleted without reddening tests. There is no row whose **id** is in `DROPPED` while `packageName` is not.
+`DROPPED` is only package names (`plugins.js` 7–10). The only dropped fixture is `omdsh-dev/rlh-genui` / `@rlh-external/rlh-genui`. List hide can be explained entirely by `packageName`. `isDropped`’s `DROPPED.includes(item.id)` (`marketplace-catalog.js` 98–100) could be deleted without reddening tests. There is no row whose **id** is in `DROPPED` while `packageName` is not.
 
 `getMarketplacePlugin` returning the dropped row **is** proven (`marketplace-catalog.test.js` 379–392). Install reject of that id **is** proven (`marketplace-install.test.js` 214–220).
 
@@ -226,7 +226,7 @@ Phase 2–4 UI (screenshot fetch, in-tab themes, updates, backup, diagnostics) i
 
 That fallback is a **main-process** duty. The tab additionally refuses to replace state when the payload is empty:
 
-```157:163:vendor/deepseek-harness/packages/client/ui-settings-plugin-inventory/src/client/MarketplaceSettingsTab.tsx
+```157:163:vendor/relay-harness/packages/client/ui-settings-plugin-inventory/src/client/MarketplaceSettingsTab.tsx
       const next = dedupeItems(catalog.items ?? [])
       if (next.length > 0) {
         setItems(next)
@@ -268,7 +268,7 @@ Not counted as creep: `#path:` card↔installed matching (`installedName` + last
 
 **Class:** Wrong
 
-```66:74:vendor/deepseek-harness/packages/client/ui-settings-plugin-inventory/src/client/MarketplaceSettingsTab.tsx
+```66:74:vendor/relay-harness/packages/client/ui-settings-plugin-inventory/src/client/MarketplaceSettingsTab.tsx
 function installedName(item: MarketplaceItem, installed: Map<string, string>): string {
   if (item.packageName && installed.has(item.packageName)) return item.packageName
   const ownerRepo = `${item.owner}/${githubRepoName(item.repo)}`
@@ -281,7 +281,7 @@ function installedName(item: MarketplaceItem, installed: Map<string, string>): s
 }
 ```
 
-`spec.includes('owner/dsh-loop')` is true for `github:owner/dsh-loop-extra#abc`. A shorter catalog id can steal Installed / Uninstall from a longer repo. `#path:` sibling distinction is tested (`marketplace.client.spec.tsx` 321–361); prefix collision is not.
+`spec.includes('owner/rlh-loop')` is true for `github:owner/rlh-loop-extra#abc`. A shorter catalog id can steal Installed / Uninstall from a longer repo. `#path:` sibling distinction is tested (`marketplace.client.spec.tsx` 321–361); prefix collision is not.
 
 ### C2. Pending marketplace jump is cleared before the jump succeeds; consume only runs on `revealHarnessView`
 
@@ -316,7 +316,7 @@ Happy path itself matches the plan override (queue one jump). See D1 for the spe
 
 TTL hit does not fetch, then returns `WARNING_CACHE` = `插件目录无法在线更新，已使用本地缓存。` (`marketplace-catalog.js` 12, 261–267). The directory did not fail; it was skipped because it is less than an hour old. Letter of the spec is satisfied. Opening the tab within TTL always shows a failure banner. Not asked to lie about an online failure.
 
-### C4. GitHub reinstall / missing profile delta reported as “不是可加载的 dsh 插件”
+### C4. GitHub reinstall / missing profile delta reported as “不是可加载的 rlh 插件”
 
 Covered under A2. Restating because an implementer will point at the github rollback tests and call Task 2.8 done. Those tests only cover “new profile name + bare package.json → remove”. They do not cover the plan’s specified name source (`package.json` `name`) or the fail-closed `remove` when that name cannot be read.
 
@@ -373,7 +373,7 @@ These Phase 1 items are present and, unless noted above, proven:
 | `CACHE_VERSION` 3; v2 disk ignored | `marketplace-catalog.js` 7, 151; test `CACHE_VERSION 2 disk files are ignored` |
 | locale `zh` / `en`, default `zh`, `zh*` → `zh` | `resolveLocale`; catalog locale test; `catalogLocale` + inject |
 | list hides DROPPED; `getMarketplacePlugin` returns dropped | catalog test 379–392 |
-| Host `installPlugin` / `isValidGithubSpec` still github-only, no `#path:` | `install-dsh-plugin-client.js` unchanged; install tests reject `file:` and `#path:` |
+| Host `installPlugin` / `isValidGithubSpec` still github-only, no `#path:` | `install-rlh-plugin-client.js` unchanged; install tests reject `file:` and `#path:` |
 | Marketplace `#path:` allowed without `isValidGithubSpec` | `isValidMarketplacePathSpec`; path install test |
 | Shared in-flight mutex | `withPluginLock`; test covers marketplace install vs uninstall vs `installPlugin` |
 | IPC constructs `{ allowBuilds, token, onProgress }`, does not spread renderer options | `ipc.js` 154–160; `ipc.test.js` 276–293, 321–337 |
@@ -385,9 +385,9 @@ These Phase 1 items are present and, unless noted above, proven:
 | Inject adds locale; no `seedInstallDraft` | `index.ts` 52–63; `browser-plugin.client.spec.tsx` 106–167 |
 | `marketplace-categories.js` deleted | files absent |
 | Agent Note + README + design-language marketplace.css warning | committed in slice; surfaces note now pins boot.html not `marketplace/index.html` |
-| No dshmarket, no npm↔repo anti-squat, no apiproxy drive-by | grep-clean in this diff |
+| No rlhmarket, no npm↔repo anti-squat, no apiproxy drive-by | grep-clean in this diff |
 
-`isValidGithubSpec` still rejects `#path:` because the ref `path:/...` contains `:` (`install-dsh-plugin-client.js` 22–42). Host was not widened.
+`isValidGithubSpec` still rejects `#path:` because the ref `path:/...` contains `:` (`install-rlh-plugin-client.js` 22–42). Host was not widened.
 
 ---
 

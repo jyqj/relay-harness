@@ -10,7 +10,7 @@ CodeBuddy 斜杠菜单用 Ink 的 `bold` 加 `colors.info` 标记选中行，且
 
 ## 决策
 
-PTY 井是不透明的。设计表上 `--dsw-alias-terminal-pane` 为 `var(--dsw-alias-bg-base)`；`mixWallpaperSurfaces` 把它保持为不透明的画布回退（浅色 `--dsw-static-neutral-bluish-00`，深色 `--dsw-static-neutral-bluish-950`）或家族的实心 `--dsw-alias-bg-base`，从不对 transparent 做 `color-mix`。`.paneTerminal` 铺该 token，没有 `backdrop-filter`。`readXtermTheme` 把 `theme.background` 设为无 alpha 的画布 RGB。`TerminalPane` 以 `allowTransparency: false` 构造 xterm，避免半透明填充被换成 `#000000`。壁纸仍混合会话画布和侧栏；终端井不参与。窗格仍不重涂 `.xterm-bold`，也不画猜出来的选中条。反色单元格保留 `.xterm-bg-257`／`.xterm-fg-257` token 覆盖。`minimumContrastRatio` 为 1；ANSI 青／蓝为 Pierre，见 [PTY 的 ANSI 颜色跟随 T3code Pierre，而不是 UI 状态 token](2026-08-19-terminal-ansi-pierre-palette.md)。
+PTY 井是不透明的。设计表上 `--rlw-alias-terminal-pane` 为 `var(--rlw-alias-bg-base)`；`mixWallpaperSurfaces` 把它保持为不透明的画布回退（浅色 `--rlw-static-neutral-bluish-00`，深色 `--rlw-static-neutral-bluish-950`）或家族的实心 `--rlw-alias-bg-base`，从不对 transparent 做 `color-mix`。`.paneTerminal` 铺该 token，没有 `backdrop-filter`。`readXtermTheme` 把 `theme.background` 设为无 alpha 的画布 RGB。`TerminalPane` 以 `allowTransparency: false` 构造 xterm，避免半透明填充被换成 `#000000`。壁纸仍混合会话画布和侧栏；终端井不参与。窗格仍不重涂 `.xterm-bold`，也不画猜出来的选中条。反色单元格保留 `.xterm-bg-257`／`.xterm-fg-257` token 覆盖。`minimumContrastRatio` 为 1；ANSI 青／蓝为 Pierre，见 [PTY 的 ANSI 颜色跟随 T3code Pierre，而不是 UI 状态 token](2026-08-19-terminal-ansi-pierre-palette.md)。
 
 ## 曾考虑的替代方案
 
@@ -20,7 +20,7 @@ PTY 井是不透明的。设计表上 `--dsw-alias-terminal-pane` 为 `var(--dsw
 
 **单元格继续 alpha-0，只靠 `minimumContrastRatio`。** 否决：对着画布 RGB 提对比并不能在 TUI 从未画背景时重建选中行。
 
-**窗格铺 `--dsw-alias-bg-layer-2`。** 否决：layer-2 是抬起对话框标记；井跟随画布家族，而不是叠一层对话框。
+**窗格铺 `--rlw-alias-bg-layer-2`。** 否决：layer-2 是抬起对话框标记；井跟随画布家族，而不是叠一层对话框。
 
 ## 后果
 
@@ -28,8 +28,8 @@ PTY 井是不透明的。设计表上 `--dsw-alias-terminal-pane` 为 `var(--dsw
 
 ## 测试
 
-`readXtermTheme` 钉住由 `--dsw-alias-bg-base` 得到的不透明 `rgb(...)` `theme.background`（含 `color-mix` 与 `color(srgb …)` 标记）。抽屉套件钉住 `allowTransparency: false`，以及 `.paneTerminal` 背景 `--dsw-alias-terminal-pane` 且无 `backdrop-filter`。`mixWallpaperSurfaces` 钉住浅色井为 `var(--dsw-static-neutral-bluish-00)`，自定义 hex 画布为该 hex。`theme.client.spec.ts` 钉住壁纸混合后的这些不透明窗格值。`wallpaper.css` 不含 `--dsw-terminal-pane-blur`。
+`readXtermTheme` 钉住由 `--rlw-alias-bg-base` 得到的不透明 `rgb(...)` `theme.background`（含 `color-mix` 与 `color(srgb …)` 标记）。抽屉套件钉住 `allowTransparency: false`，以及 `.paneTerminal` 背景 `--rlw-alias-terminal-pane` 且无 `backdrop-filter`。`mixWallpaperSurfaces` 钉住浅色井为 `var(--rlw-static-neutral-bluish-00)`，自定义 hex 画布为该 hex。`theme.client.spec.ts` 钉住壁纸混合后的这些不透明窗格值。`wallpaper.css` 不含 `--rlw-terminal-pane-blur`。
 
 ## 相关
 
-[终端画布使用应用背景](2026-08-18-terminal-canvas-app-background.md) 拥有透明工作区根、壁纸压暗，以及嵌套铬不在会话画布上重涂 `--dsw-alias-bg-base` 的规则。[终端窗格以最小对比度如实渲染 TUI](2026-08-19-terminal-verbatim-tui-contrast-and-follow.md) 拥有已删除的行画笔与反色单元格 CSS。[PTY 的 ANSI 颜色跟随 T3code Pierre，而不是 UI 状态 token](2026-08-19-terminal-ansi-pierre-palette.md) 拥有 ANSI 1–15 与 `minimumContrastRatio`。
+[终端画布使用应用背景](2026-08-18-terminal-canvas-app-background.md) 拥有透明工作区根、壁纸压暗，以及嵌套铬不在会话画布上重涂 `--rlw-alias-bg-base` 的规则。[终端窗格以最小对比度如实渲染 TUI](2026-08-19-terminal-verbatim-tui-contrast-and-follow.md) 拥有已删除的行画笔与反色单元格 CSS。[PTY 的 ANSI 颜色跟随 T3code Pierre，而不是 UI 状态 token](2026-08-19-terminal-ansi-pierre-palette.md) 拥有 ANSI 1–15 与 `minimumContrastRatio`。

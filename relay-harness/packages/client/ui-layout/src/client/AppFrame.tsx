@@ -17,7 +17,7 @@
  */
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
-import type { PropsRenderSlots, PropsRuntime, PropsStore } from '@deepseek-ai/dsh-client-ui-slots'
+import type { PropsRenderSlots, PropsRuntime, PropsStore } from '@relay-harness/rlh-client-ui-slots'
 import { computeColumns, PHONE_DRAWER, PHONE_MAX, SIDEBAR_AUTO_COLLAPSE, SIDEBAR_DEFAULT, SIDEBAR_MIN } from './columns.ts'
 import type { createLayoutStore } from './stores.ts'
 import { resolveTitlebarDensity, titlebarConversationReserve } from './titlebar-density.ts'
@@ -327,7 +327,7 @@ export function AppFrame({
           ? `0px minmax(0, 1fr) 0px ${cols.surfaces}px`
           : `${cols.sidebar}px minmax(0, 1fr) ${cols.details}px ${cols.surfaces}px`,
         gridTemplateRows: `auto minmax(0, 1fr) ${panels.terminalDrawer}px`,
-        '--dshd-titlebar-conversation-reserve': `${conversationReserve}px`,
+        '--rlhd-titlebar-conversation-reserve': `${conversationReserve}px`,
       } as CSSProperties}
       data-sidebar-collapsed={sidebarCollapsed || undefined}
       data-details-collapsed={detailsOpen ? undefined : true}
@@ -341,7 +341,7 @@ export function AppFrame({
       data-titlebar-over-conversation={clusterOverConversation || undefined}
       data-dragging={dragging || undefined}
     >
-      <div className={css.captionDrag} data-dshd-caption="band" aria-hidden="true" />
+      <div className={css.captionDrag} data-rlhd-caption="band" aria-hidden="true" />
       {phone && sidebarCollapsed && (
         <button
           type="button"
@@ -394,7 +394,7 @@ export function AppFrame({
         className={css.titlebarTrailing}
         data-titlebar-trailing
         data-titlebar-trailing-over-surfaces={cols.surfaces === 0 || undefined}
-        id="dshd-shell-titlebar-trailing"
+        id="rlhd-shell-titlebar-trailing"
       >
         {renderSlot('shell.titlebar.trailing', {
           surfaces: panels.surfaces,

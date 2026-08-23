@@ -3,7 +3,7 @@
   flex-direction: column;
   height: 100%;
   min-width: 0;
-  background: var(--dsw-alias-bg-base);
+  background: var(--rlw-alias-bg-base);
 }
 
 .toolbar {
@@ -21,7 +21,7 @@
   margin: 0;
   font-size: 12px;
   line-height: 18px;
-  color: var(--dsw-alias-label-tertiary);
+  color: var(--rlw-alias-label-tertiary);
   overflow: hidden;
 }
 
@@ -40,13 +40,13 @@
 }
 
 .crumbFile {
-  color: var(--dsw-alias-label-primary);
+  color: var(--rlw-alias-label-primary);
 }
 
 .crumbSep {
   flex: none;
   margin: 0 4px;
-  color: var(--dsw-alias-label-caption);
+  color: var(--rlw-alias-label-caption);
 }
 
 .iconButton {
@@ -59,13 +59,13 @@
   border: none;
   border-radius: 8px;
   background: transparent;
-  color: var(--dsw-alias-label-secondary);
+  color: var(--rlw-alias-label-secondary);
   cursor: pointer;
 }
 
 .iconButton:hover {
-  background: var(--dsw-alias-interactive-bg-hover);
-  color: var(--dsw-alias-label-primary);
+  background: var(--rlw-alias-interactive-bg-hover);
+  color: var(--rlw-alias-label-primary);
 }
 
 .body {
@@ -79,14 +79,14 @@
   margin: 0 0 8px;
   font-size: 12px;
   line-height: 18px;
-  color: var(--dsw-alias-label-tertiary);
+  color: var(--rlw-alias-label-tertiary);
 }
 
 .saveError {
   margin: 0 0 8px;
   font-size: 12px;
   line-height: 18px;
-  color: var(--dsw-alias-state-error-primary);
+  color: var(--rlw-alias-state-error-primary);
 }
 
 .code,
@@ -97,8 +97,8 @@
   padding: 0;
   border: none;
   background: transparent;
-  font: var(--dsw-font-markdown-code-block);
-  color: var(--dsw-alias-label-primary);
+  font: var(--rlw-font-markdown-code-block);
+  color: var(--rlw-alias-label-primary);
   white-space: pre;
   overflow: auto;
   resize: none;

@@ -17,7 +17,7 @@ const {
 } = require('./pty.js');
 
 // One shared workspace root for the whole suite; cwd checks resolve inside it.
-const ws = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-pty-ws-'));
+const ws = fs.mkdtempSync(path.join(os.tmpdir(), 'rlh-pty-ws-'));
 setWorkspaceAuthority(createWorkspaceAuthority({ workspace: ws }));
 
 function fakeSpawn() {
@@ -59,8 +59,8 @@ test('ptyCreate write echoes through onPtyData then ptyKill emits exit', async (
 });
 
 test('ptyCreate accepts a second authorized root and rejects an outsider', async () => {
-  const extra = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-pty-extra-'));
-  const outsider = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-pty-out-'));
+  const extra = fs.mkdtempSync(path.join(os.tmpdir(), 'rlh-pty-extra-'));
+  const outsider = fs.mkdtempSync(path.join(os.tmpdir(), 'rlh-pty-out-'));
   setWorkspaceAuthority(createWorkspaceAuthority({
     workspace: ws,
     extraWorkspaces: [extra],

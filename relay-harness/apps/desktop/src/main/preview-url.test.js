@@ -11,11 +11,11 @@ const {
   PreviewUrlNormalizationError,
 } = require('./preview-url');
 
-test('newPreviewTabId returns a unique id with the dshd-tab_ prefix', () => {
+test('newPreviewTabId returns a unique id with the rlhd-tab_ prefix', () => {
   const a = newPreviewTabId();
   const b = newPreviewTabId();
   assert.notEqual(a, b);
-  assert.equal(a.startsWith('dshd-tab_'), true);
+  assert.equal(a.startsWith('rlhd-tab_'), true);
 });
 
 test('isLoopbackHost accepts loopback tokens', () => {

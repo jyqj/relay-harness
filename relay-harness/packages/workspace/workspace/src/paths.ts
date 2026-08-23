@@ -1,6 +1,6 @@
 /**
  * Path canonicalization for workspace identity.
- * @module @deepseek-ai/dsh-workspace/src/paths
+ * @module @relay-harness/rlh-workspace/src/paths
  */
 
 import { realpath } from 'node:fs/promises'

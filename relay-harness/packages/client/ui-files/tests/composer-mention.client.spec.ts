@@ -52,14 +52,14 @@ describe('composerMentionFromTreePath', () => {
     expect(composerMentionFromTreePath('')).toBeNull()
     expect(composerMentionFromTreePath('///')).toBeNull()
   })
-  it('uses the dshd mention MIME', () => {
-    expect(COMPOSER_MENTION_DRAG_TYPE).toBe('application/x-dshd-composer-mention')
+  it('uses the rlhd mention MIME', () => {
+    expect(COMPOSER_MENTION_DRAG_TYPE).toBe('application/x-rlhd-composer-mention')
   })
 })
 
 describe('dataTransferHasComposerMention', () => {
-  it('accepts only the dshd mention MIME', () => {
-    expect(dataTransferHasComposerMention(['application/x-dshd-composer-mention'])).toBe(true)
+  it('accepts only the rlhd mention MIME', () => {
+    expect(dataTransferHasComposerMention(['application/x-rlhd-composer-mention'])).toBe(true)
     expect(dataTransferHasComposerMention(['text/plain'])).toBe(false)
   })
 })

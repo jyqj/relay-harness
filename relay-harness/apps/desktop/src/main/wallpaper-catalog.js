@@ -1,6 +1,6 @@
 /** Fetch and parse wallpaper catalogs (Bing today/year, Wallhaven SFW, custom JSON). */
 
-const USER_AGENT = 'Deepseek-Harness-Desktop';
+const USER_AGENT = 'Relay-Harness-Desktop';
 const MAX_CATALOG_BYTES = 4_000_000;
 const MAX_IMAGE_BYTES = 12 * 1024 * 1024;
 const MAX_ITEMS_PER_SOURCE = 500;
@@ -11,16 +11,16 @@ const IMAGE_TIMEOUT_MS = 20000;
 const ALLOWED_IMAGE_TYPES = new Set(['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif']);
 
 function allowHttp() {
-  return process.env.DSHD_WALLPAPER_ALLOW_HTTP === '1';
+  return process.env.RLHD_WALLPAPER_ALLOW_HTTP === '1';
 }
 
 /**
- * Built-in Bing archive pages. A `DSHD_BING_WALLPAPER_URL` override is one URL,
+ * Built-in Bing archive pages. A `RLHD_BING_WALLPAPER_URL` override is one URL,
  * or two pages when it contains `{idx}` (replaced with `0` and `8`).
  * @returns {string[]}
  */
 function bingCatalogUrls() {
-  const override = process.env.DSHD_BING_WALLPAPER_URL;
+  const override = process.env.RLHD_BING_WALLPAPER_URL;
   if (typeof override === 'string' && override.length > 0) {
     if (override.includes('{idx}')) {
       return [override.split('{idx}').join('0'), override.split('{idx}').join('8')];
@@ -34,13 +34,13 @@ function bingCatalogUrls() {
 }
 
 /**
- * Bing year-archive URL. `DSHD_BING_ARCHIVE_URL` may replace the template;
+ * Bing year-archive URL. `RLHD_BING_ARCHIVE_URL` may replace the template;
  * `{year}` is substituted with the requested year.
  * @param {number} year
  * @returns {string}
  */
 function bingArchiveUrl(year) {
-  const override = process.env.DSHD_BING_ARCHIVE_URL;
+  const override = process.env.RLHD_BING_ARCHIVE_URL;
   const template = typeof override === 'string' && override.length > 0
     ? override
     : 'https://bing.npanuhin.me/CN-zh.{year}.json';
@@ -48,13 +48,13 @@ function bingArchiveUrl(year) {
 }
 
 /**
- * Wallhaven search URL. `DSHD_WALLHAVEN_SEARCH_URL` may replace the base.
+ * Wallhaven search URL. `RLHD_WALLHAVEN_SEARCH_URL` may replace the base.
  * `purity=100` is always set; `query.purity` is ignored.
  * @param {{ q?: string, categories?: string, page?: number }} query
  * @returns {string}
  */
 function wallhavenSearchUrl(query) {
-  const override = process.env.DSHD_WALLHAVEN_SEARCH_URL;
+  const override = process.env.RLHD_WALLHAVEN_SEARCH_URL;
   const base = typeof override === 'string' && override.length > 0
     ? override
     : 'https://wallhaven.cc/api/v1/search';

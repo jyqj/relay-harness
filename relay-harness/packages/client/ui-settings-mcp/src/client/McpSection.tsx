@@ -3,7 +3,7 @@
  */
 
 import { useEffect, useId, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from 'react'
-import type { McpServerEntry, McpServerRecord, McpServerSnapshot } from '@deepseek-ai/dsh-api-remotes/client'
+import type { McpServerEntry, McpServerRecord, McpServerSnapshot } from '@relay-harness/rlh-api-remotes/client'
 import {
   Button,
   IconChevronDownOutline14,
@@ -19,8 +19,8 @@ import {
   StateDot,
   Switch,
   type StateDotState,
-} from '@deepseek-ai/dsh-client-ui-primitives'
-import type { InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
+} from '@relay-harness/rlh-client-ui-primitives'
+import type { InjectFace, PropsLocale, PropsRuntime } from '@relay-harness/rlh-client-ui-slots'
 import type { McpSettingsKey } from './locales.ts'
 import styles from './McpSection.module.css'
 

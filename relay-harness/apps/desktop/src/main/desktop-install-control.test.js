@@ -8,7 +8,7 @@ const {
   desktopInstallReady,
   desktopInstallEnv,
 } = require('./desktop-install-control');
-const { DshManager } = require('./dsh');
+const { RlhManager } = require('./rlh');
 
 async function postInstall(url, token, body) {
   return fetch(new URL('/install', url), {
@@ -139,10 +139,10 @@ describe('desktop install control', { concurrency: false }, () => {
     });
     await desktopInstallReady();
     const injected = desktopInstallEnv();
-    assert.match(injected.DSH_DESKTOP_INSTALL_URL, /^http:\/\/127\.0\.0\.1:\d+$/);
-    assert.equal(injected.DSH_DESKTOP_INSTALL_TOKEN.length, 64);
-    const env = new DshManager({ loadConfig: () => ({}) }).spawnEnv({}, null);
-    assert.equal(env.DSH_DESKTOP_INSTALL_URL, injected.DSH_DESKTOP_INSTALL_URL);
-    assert.equal(env.DSH_DESKTOP_INSTALL_TOKEN, injected.DSH_DESKTOP_INSTALL_TOKEN);
+    assert.match(injected.RLH_DESKTOP_INSTALL_URL, /^http:\/\/127\.0\.0\.1:\d+$/);
+    assert.equal(injected.RLH_DESKTOP_INSTALL_TOKEN.length, 64);
+    const env = new RlhManager({ loadConfig: () => ({}) }).spawnEnv({}, null);
+    assert.equal(env.RLH_DESKTOP_INSTALL_URL, injected.RLH_DESKTOP_INSTALL_URL);
+    assert.equal(env.RLH_DESKTOP_INSTALL_TOKEN, injected.RLH_DESKTOP_INSTALL_TOKEN);
   });
 });

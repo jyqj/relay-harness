@@ -11,10 +11,10 @@
   - img
 - button "Edit":
   - img
-- button "Context injection @deepseek-ai/dsh-system-prompt":
+- button "Context injection @relay-harness/rlh-system-prompt":
   - img
   - img
-  - text: Context injection @deepseek-ai/dsh-system-prompt
+  - text: Context injection @relay-harness/rlh-system-prompt
 - button "Think The user wants me to use the ask_user_question tool to ask them a specific question with the given parameters. Let me do exactly that.":
   - img
   - img

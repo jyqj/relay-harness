@@ -2,13 +2,13 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
-import { Button } from '@deepseek-ai/dsh-client-ui-primitives'
-import type { PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
+import { Button } from '@relay-harness/rlh-client-ui-primitives'
+import type { PropsLocale, PropsRuntime } from '@relay-harness/rlh-client-ui-slots'
 import { desktopShell, type UpdateInfo } from './desktop-shell.ts'
 import css from './AboutSection.module.css'
 
-const HARNESS_URL = 'https://github.com/deepseek-ai/deepseek-harness'
-const REPO_URL = 'https://github.com/ChisaAlter/Deepseek-Harness-Desktop'
+const HARNESS_URL = 'https://github.com/jyqj/relay-harness'
+const REPO_URL = 'https://github.com/jyqj/relay-harness'
 const RELEASES_URL = `${REPO_URL}/releases`
 
 type UpdateStatus = 'idle' | 'checking' | 'none' | 'current' | 'available' | 'error' | 'download' | 'install'

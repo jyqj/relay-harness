@@ -13,7 +13,7 @@ const DEFAULTS = {
   port: 3080,
   apiKey: '',
   baseUrl: '',
-  dshBin: '',
+  rlhBin: '',
   nodeBin: '',
   closeToTray: DEFAULT_CLOSE_TO_TRAY,
   openAtLogin: false,
@@ -189,7 +189,7 @@ function isUnsafeWorkspace(dir) {
 
 function defaultWorkspace() {
   if (app.isPackaged) {
-    return path.join(app.getPath('documents'), 'Deepseek-Harness-Desktop');
+    return path.join(app.getPath('documents'), 'Relay-Harness-Desktop');
   }
   return projectRoot();
 }

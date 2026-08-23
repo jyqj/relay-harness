@@ -1,6 +1,6 @@
 # 生产验收执行报告 · 2026-08-21
 
-**结论：不可交付（有条件阻塞）。** 安装包可启动、Composer/PTY/图库/市场/dshbot/Remote 负向与网关多轮大多通过；`qa:source` 自动化仍有 Surfaces/终端抽屉失败项，且实机终端出现 `libghostty-vt (404)`，需修复或豁免后再签字。
+**结论：不可交付（有条件阻塞）。** 安装包可启动、Composer/PTY/图库/市场/rlhbot/Remote 负向与网关多轮大多通过；`qa:source` 自动化仍有 Surfaces/终端抽屉失败项，且实机终端出现 `libghostty-vt (404)`，需修复或豁免后再签字。
 
 ---
 
@@ -9,8 +9,8 @@
 | 项 | 值 |
 | --- | --- |
 | 日期 | 2026-08-21 |
-| 产物 | 本机已装 `Deepseek-Harness-Desktop`（Local\\Programs） |
-| About/UA | `Deepseek-Harness-Desktop/0.2.6` · Electron 43.4.0 |
+| 产物 | 本机已装 `Relay-Harness-Desktop`（Local\\Programs） |
+| About/UA | `Relay-Harness-Desktop/0.2.6` · Electron 43.4.0 |
 | exe SHA256 | `E96B5E3CF0B472AB6CD728393B823D58252E77C088FD99478D82EE370C01D877` |
 | version 文件 | `43.4.0`（Electron 版本文件，非产品 tag 文案） |
 | 模型 | `deepseek-official` / `grok-4.6` @ `https://ayase.cn/v1`（本机已有配置） |
@@ -27,7 +27,7 @@
 | --- | --- | --- |
 | A | `npm run qa:source` | **FAIL**（8 个必过步骤） |
 | B | `npm run qa:composer` | **PASS**（11/11） |
-| C | `DSH_SMOKE_EXE=<安装包exe> npm run smoke:packaged` | **PASS** |
+| C | `RLH_SMOKE_EXE=<安装包exe> npm run smoke:packaged` | **PASS** |
 | D | `node scripts/run-acceptance-appendix-a.mjs`（网关多轮） | **PASS**（5/5） |
 | E | CDP 安装包实例：Surfaces/终端探活 | 终端/差异/代理可点；Browser URL 输入未找到 |
 | F | CDP 安装包实例：应用内发送一轮对话 | **PASS**（`INAPP_T1 … 456`，工具 Workspace Write，思考 High） |
@@ -131,7 +131,7 @@ CDP 完成一轮连通+验证码；工具轮（读 README / 跑命令 / 五轮�
 | --- | --- | --- |
 | TC-APP-001～003,005～006,008 | Pass/Partial | qa:source appearance/gallery/noSourceDump |
 | TC-APP-004,007,009～011 | N/A | 未深测清除/主题库/禁源人工 |
-| TC-EXT-001～003,007 | Pass | market + dshbot tab/page |
+| TC-EXT-001～003,007 | Pass | market + rlhbot tab/page |
 | TC-EXT-002 | Pass | 市场在设置内（walk） |
 | TC-EXT-004～006 | N/A | 未装卸插件/MCP 实装 |
 | TC-DESK-001 | Partial | config `closeToTray:true`；未点关窗 |
@@ -149,7 +149,7 @@ CDP 完成一轮连通+验证码；工具轮（读 README / 跑命令 / 五轮�
 | 安装包可启动 + 四栏 + PTY | Pass |
 | Composer 官方边界 + Mention/终端送对话 | Pass |
 | Remote stub 负向 | Pass |
-| 图库/外观无源倾倒 + dshbot | Pass |
+| 图库/外观无源倾倒 + rlhbot | Pass |
 | 附录 A 网关多轮 | Pass |
 | 应用内完整附录 A（含工具卡） | **未完成** |
 | `qa:source` 全绿 | **Fail** |

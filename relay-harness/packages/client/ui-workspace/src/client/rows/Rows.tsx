@@ -11,9 +11,9 @@ import {
   HoverCard, IconArchiveOutline20, IconBranchOutline16, IconEditOutline16,
   IconEllipsisOutline16, IconFolderClose16, IconFolderOpen16, IconPlusOutline16,
   IconTrashOutline16, IconTriangleRightFill14, Menu, StateDot, usePresence,
-} from '@deepseek-ai/dsh-client-ui-primitives'
-import type { StateDotState } from '@deepseek-ai/dsh-client-ui-primitives'
-import { abbreviateHomePath } from '@deepseek-ai/dsh-client-runtime/client'
+} from '@relay-harness/rlh-client-ui-primitives'
+import type { StateDotState } from '@relay-harness/rlh-client-ui-primitives'
+import { abbreviateHomePath } from '@relay-harness/rlh-client-runtime/client'
 import type { WorkspaceBrowserProps } from '../contract/slots.ts'
 import type { GroupNode, SearchResultNode, SessionNode } from '../tree.ts'
 import { relativeTime } from '../tree.ts'
@@ -110,7 +110,7 @@ export function GroupSessionRun({ open, children }: { open: boolean; children: R
   return (
     <div
       className={css.sessionRunFade}
-      data-dsh-motion="fade"
+      data-rlh-motion="fade"
       data-state={state}
       aria-hidden={open ? undefined : true}
     >

@@ -18,7 +18,7 @@ import {
   terminalNavigationShortcutData,
 } from './ghostty/terminalKeyShortcuts.ts'
 import css from './TerminalWorkspace.module.css'
-import type { PropsLocale } from '@deepseek-ai/dsh-client-ui-slots'
+import type { PropsLocale } from '@relay-harness/rlh-client-ui-slots'
 
 export interface TerminalPaneProps {
   /** The PTY session id backing this pane. */

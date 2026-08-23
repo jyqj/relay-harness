@@ -18,7 +18,7 @@
   border: none;
   border-radius: 12px;
   background: transparent;
-  color: var(--dsw-alias-label-tertiary);
+  color: var(--rlw-alias-label-tertiary);
   font: inherit;
   font-size: 14px;
   line-height: 22px;
@@ -27,11 +27,11 @@
 }
 
 .trigger:hover {
-  background: var(--dsw-alias-interactive-bg-hover);
+  background: var(--rlw-alias-interactive-bg-hover);
 }
 
 .trigger[data-on] {
-  color: var(--dsw-alias-label-primary);
+  color: var(--rlw-alias-label-primary);
 }
 
 .triggerLabel {
@@ -62,7 +62,7 @@
 .mask {
   position: absolute;
   inset: 0;
-  background: var(--dsw-alias-bg-mask-1);
+  background: var(--rlw-alias-bg-mask-1);
 }
 
 .panel {
@@ -78,13 +78,13 @@
   max-width: calc(100vw - 24px);
   padding: 20px 20px 24px;
   box-sizing: border-box;
-  border: 1px solid var(--dsw-alias-border-l1);
+  border: 1px solid var(--rlw-alias-border-l1);
   border-radius: 16px;
   /* Raised layer follows the glass slider; the wallpaper canvas cap must
      not punch through this popup. */
-  background: var(--dsw-alias-bg-layer-2);
-  box-shadow: var(--dsw-shadow-lv2);
-  color: var(--dsw-alias-label-primary);
+  background: var(--rlw-alias-bg-layer-2);
+  box-shadow: var(--rlw-shadow-lv2);
+  color: var(--rlw-alias-label-primary);
 }
 
 .heading {
@@ -111,17 +111,17 @@
   margin: 0;
   font-size: 13px;
   line-height: 18px;
-  color: var(--dsw-alias-label-tertiary);
+  color: var(--rlw-alias-label-tertiary);
   text-align: center;
 }
 
 .retry {
   height: 32px;
   padding: 0 12px;
-  border: 1px solid var(--dsw-alias-border-l2);
+  border: 1px solid var(--rlw-alias-border-l2);
   border-radius: 8px;
   background: transparent;
-  color: var(--dsw-alias-label-primary);
+  color: var(--rlw-alias-label-primary);
   font: inherit;
   font-size: 13px;
   cursor: pointer;
@@ -133,8 +133,8 @@
   padding: 12px;
   box-sizing: border-box;
   border-radius: 12px;
-  background: var(--dsw-alias-bg-layer-1);
-  color: var(--dsw-alias-label-primary);
+  background: var(--rlw-alias-bg-layer-1);
+  color: var(--rlw-alias-label-primary);
 }
 
 .qr :global(svg) {
@@ -153,10 +153,10 @@
   margin: 0;
   padding: 0 12px;
   box-sizing: border-box;
-  border: 1px solid var(--dsw-alias-border-l2);
+  border: 1px solid var(--rlw-alias-border-l2);
   border-radius: 8px;
   background: transparent;
-  color: var(--dsw-alias-label-primary);
+  color: var(--rlw-alias-label-primary);
   font: inherit;
   font-size: 14px;
   line-height: 22px;
@@ -164,12 +164,12 @@
 }
 
 .devices:hover {
-  background: var(--dsw-alias-interactive-bg-hover);
+  background: var(--rlw-alias-interactive-bg-hover);
 }
 
 .devicesChevron {
   display: inline-flex;
-  color: var(--dsw-alias-label-tertiary);
+  color: var(--rlw-alias-label-tertiary);
 }
 
 .deviceLayer {
@@ -194,13 +194,13 @@
   overflow: auto;
   /* Elevated surface (bg-layer-2) that scrolls: rebind the shared scrollbar
      thumb to the l2 rung, or the dark palette renders the l1 thumb here. */
-  --dsh-scrollbar-thumb: var(--dsw-alias-scrollbar-bg-l2);
-  --dsh-scrollbar-thumb-hover: var(--dsw-alias-scrollbar-hover-l2);
-  border: 1px solid var(--dsw-alias-border-l1);
+  --rlh-scrollbar-thumb: var(--rlw-alias-scrollbar-bg-l2);
+  --rlh-scrollbar-thumb-hover: var(--rlw-alias-scrollbar-hover-l2);
+  border: 1px solid var(--rlw-alias-border-l1);
   border-radius: 16px;
-  background: var(--dsw-alias-bg-layer-2);
-  box-shadow: var(--dsw-shadow-lv2);
-  color: var(--dsw-alias-label-primary);
+  background: var(--rlw-alias-bg-layer-2);
+  box-shadow: var(--rlw-shadow-lv2);
+  color: var(--rlw-alias-label-primary);
 }
 
 .deviceList {
@@ -239,19 +239,19 @@
 .online {
   font-size: 11px;
   line-height: 16px;
-  color: var(--dsw-alias-label-secondary);
+  color: var(--rlw-alias-label-secondary);
 }
 
 .deviceDetail {
   font-size: 12px;
   line-height: 18px;
-  color: var(--dsw-alias-label-secondary);
+  color: var(--rlw-alias-label-secondary);
 }
 
 .deviceSeen {
   font-size: 12px;
   line-height: 18px;
-  color: var(--dsw-alias-label-tertiary);
+  color: var(--rlw-alias-label-tertiary);
 }
 
 .unbind {
@@ -259,10 +259,10 @@
   height: 28px;
   margin-top: 2px;
   padding: 0 10px;
-  border: 1px solid var(--dsw-alias-border-l3);
+  border: 1px solid var(--rlw-alias-border-l3);
   border-radius: 8px;
   background: transparent;
-  color: var(--dsw-alias-label-primary);
+  color: var(--rlw-alias-label-primary);
   font: inherit;
   font-size: 12px;
   cursor: pointer;

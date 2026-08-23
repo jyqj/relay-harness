@@ -1,16 +1,16 @@
 import { describe, expect, it } from 'vitest'
-import { Context } from '@deepseek-ai/cordis'
-import LlmRuntime, { createUserMessage, CallId, LlmError, MessageSource, ProviderRequestId, StreamChunk  } from '@deepseek-ai/dsh-llm'
-import SessionStore, { Session, SessionEvent, SessionId, TurnEndReason, type UserMessage } from '@deepseek-ai/dsh-session'
-import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
-import ToolRuntime, { defineContentToolFixture, type PostToolDecision } from '@deepseek-ai/dsh-tools'
-import AgentRegistry, { type Agent } from '@deepseek-ai/dsh-agent'
-import AgentLoop from '@deepseek-ai/dsh-agent-loop'
+import { Context } from '@relay-harness/cordis'
+import LlmRuntime, { createUserMessage, CallId, LlmError, MessageSource, ProviderRequestId, StreamChunk  } from '@relay-harness/rlh-llm'
+import SessionStore, { Session, SessionEvent, SessionId, TurnEndReason, type UserMessage } from '@relay-harness/rlh-session'
+import SystemPrompt from '@relay-harness/rlh-system-prompt'
+import ToolRuntime, { defineContentToolFixture, type PostToolDecision } from '@relay-harness/rlh-tools'
+import AgentRegistry, { type Agent } from '@relay-harness/rlh-agent'
+import AgentLoop from '@relay-harness/rlh-agent-loop'
 import { ReactLoopAgent } from '../src/agent.ts'
-import InvariantRegistry from '@deepseek-ai/dsh-invariants'
-import * as SessionInvariant from '@deepseek-ai/dsh-session/invariant'
-import * as AgentInvariant from '@deepseek-ai/dsh-agent/invariant'
-import * as AgentLoopInvariant from '@deepseek-ai/dsh-agent-loop/invariant'
+import InvariantRegistry from '@relay-harness/rlh-invariants'
+import * as SessionInvariant from '@relay-harness/rlh-session/invariant'
+import * as AgentInvariant from '@relay-harness/rlh-agent/invariant'
+import * as AgentLoopInvariant from '@relay-harness/rlh-agent-loop/invariant'
 import { MockAdapter, textResponse, toolCallResponse } from './mock-adapter.ts'
 
 async function mountInvariants(ctx: Context): Promise<void> {
@@ -810,7 +810,7 @@ describe('turn and step boundary recovery', () => {
     expect(adapter.requests).toHaveLength(1)
     expect(errors.map(error => error.message)).toEqual([
       'reject first step-end',
-      'invariant violated by "@deepseek-ai/dsh-session": turn/end 1 while step 1 is still open',
+      'invariant violated by "@relay-harness/rlh-session": turn/end 1 while step 1 is still open',
     ])
     expect(boundaryCounts(agent)).toMatchObject({
       turnStart: 1,

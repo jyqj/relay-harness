@@ -16,8 +16,8 @@ const {
 } = require('./plugins');
 
 test('healDanglingBundles removes only unresolved user bundles and preserves dependencies', () => {
-  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-home-'));
-  const install = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-install-'));
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'rlh-home-'));
+  const install = fs.mkdtempSync(path.join(os.tmpdir(), 'rlh-install-'));
   try {
     const profileDir = path.join(home, 'profiles', 'web');
     const installPackage = path.join(install, 'apps', 'cli', 'package.json');
@@ -29,14 +29,14 @@ test('healDanglingBundles removes only unresolved user bundles and preserves dep
     fs.mkdirSync(profileDir, { recursive: true });
     fs.writeFileSync(path.join(profileDir, 'package.json'), `${JSON.stringify({
       dependencies: { 'from-install': '1.0.0', ghost: '1.0.0' },
-      dsh: { profile: { bundles: ['@deepseek-ai/dsh-base', 'from-install', 'ghost'] } },
+      rlh: { profile: { bundles: ['@relay-harness/rlh-base', 'from-install', 'ghost'] } },
     }, null, 2)}\n`, 'utf8');
 
     const result = healDanglingBundles({ profileDir, installAnchor: installPackage });
     assert.equal(result.ok, true);
     assert.deepEqual(result.removed, ['ghost']);
     const manifest = JSON.parse(fs.readFileSync(path.join(profileDir, 'package.json'), 'utf8'));
-    assert.deepEqual(manifest.dsh.profile.bundles, ['@deepseek-ai/dsh-base', 'from-install']);
+    assert.deepEqual(manifest.rlh.profile.bundles, ['@relay-harness/rlh-base', 'from-install']);
     assert.equal(manifest.dependencies.ghost, '1.0.0');
   } finally {
     fs.rmSync(home, { recursive: true, force: true });
@@ -45,29 +45,29 @@ test('healDanglingBundles removes only unresolved user bundles and preserves dep
 });
 
 function sourceDir() {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-host-'));
-  fs.writeFileSync(path.join(dir, 'install-dsh-plugin.mjs'), 'export const name = "dshd-desktop-plugin-install"\n', 'utf8');
-  fs.writeFileSync(path.join(dir, 'install-dsh-plugin-client.js'), 'module.exports = {}\n', 'utf8');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'rlh-host-'));
+  fs.writeFileSync(path.join(dir, 'install-rlh-plugin.mjs'), 'export const name = "rlhd-desktop-plugin-install"\n', 'utf8');
+  fs.writeFileSync(path.join(dir, 'install-rlh-plugin-client.js'), 'module.exports = {}\n', 'utf8');
   return dir;
 }
 
 test('ensureDesktopInstallPlugin copies the Host plugin and upserts the managed patch', () => {
-  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-home-'));
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'rlh-home-'));
   const source = sourceDir();
   try {
     const profileDir = path.join(home, 'profiles', 'web');
     const first = ensureDesktopInstallPlugin({ sourceDir: source, profileDir });
     assert.equal(first.ok, true);
-    const dest = path.join(profileDir, 'desktop-plugins', 'install-dsh-plugin');
-    assert.equal(fs.existsSync(path.join(dest, 'install-dsh-plugin.mjs')), true);
+    const dest = path.join(profileDir, 'desktop-plugins', 'install-rlh-plugin');
+    assert.equal(fs.existsSync(path.join(dest, 'install-rlh-plugin.mjs')), true);
     const patch = fs.readFileSync(path.join(profileDir, 'cordis.patch.yml'), 'utf8');
     assert.ok(patch.includes(DESKTOP_INSTALL_BEGIN));
     assert.ok(patch.includes(DESKTOP_INSTALL_END));
-    assert.ok(patch.includes('id: dshd-desktop-plugin-install'));
+    assert.ok(patch.includes('id: rlhd-desktop-plugin-install'));
     assert.ok(patch.includes(first.href));
-    fs.writeFileSync(path.join(source, 'install-dsh-plugin.mjs'), 'export const name = "updated"\n', 'utf8');
+    fs.writeFileSync(path.join(source, 'install-rlh-plugin.mjs'), 'export const name = "updated"\n', 'utf8');
     ensureDesktopInstallPlugin({ sourceDir: source, profileDir });
-    assert.equal(fs.readFileSync(path.join(dest, 'install-dsh-plugin.mjs'), 'utf8'), 'export const name = "updated"\n');
+    assert.equal(fs.readFileSync(path.join(dest, 'install-rlh-plugin.mjs'), 'utf8'), 'export const name = "updated"\n');
     const again = fs.readFileSync(path.join(profileDir, 'cordis.patch.yml'), 'utf8');
     assert.equal(again.split(DESKTOP_INSTALL_BEGIN).length, 2);
   } finally {
@@ -77,13 +77,13 @@ test('ensureDesktopInstallPlugin copies the Host plugin and upserts the managed 
 });
 
 test('ensureDesktopInstallPlugin replaces the shipped empty [] patch instead of appending', () => {
-  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-home-'));
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'rlh-home-'));
   const source = sourceDir();
   try {
     const profileDir = path.join(home, 'profiles', 'web');
     fs.mkdirSync(profileDir, { recursive: true });
     fs.writeFileSync(path.join(profileDir, 'cordis.patch.yml'), [
-      '# Your patch layer for this dsh profile, applied after every bundle layer:',
+      '# Your patch layer for this rlh profile, applied after every bundle layer:',
       '# a top-level YAML array of loader patch entries (id-targeted config',
       '# overrides, disables, and insert lists; `!!js` expressions allowed).',
       '[]',
@@ -93,7 +93,7 @@ test('ensureDesktopInstallPlugin replaces the shipped empty [] patch instead of 
     const patch = fs.readFileSync(path.join(profileDir, 'cordis.patch.yml'), 'utf8');
     assert.equal(/^\s*\[\]\s*$/m.test(patch), false);
     assert.match(patch, /^# Your patch layer/m);
-    assert.match(patch, /\n- insert:\n {4}- id: dshd-desktop-plugin-install/);
+    assert.match(patch, /\n- insert:\n {4}- id: rlhd-desktop-plugin-install/);
   } finally {
     fs.rmSync(home, { recursive: true, force: true });
     fs.rmSync(source, { recursive: true, force: true });
@@ -101,12 +101,12 @@ test('ensureDesktopInstallPlugin replaces the shipped empty [] patch instead of 
 });
 
 test('ensureDesktopInstallPlugin strips the legacy desktop-install patch block', () => {
-  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-home-'));
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'rlh-home-'));
   const source = sourceDir();
   try {
     const profileDir = path.join(home, 'profiles', 'web');
     fs.mkdirSync(profileDir, { recursive: true });
-    const href = 'file:///C:/Users/test/.dsh/profiles/web/desktop-plugins/install-dsh-plugin/install-dsh-plugin.mjs';
+    const href = 'file:///C:/Users/test/.rlh/profiles/web/desktop-plugins/install-rlh-plugin/install-rlh-plugin.mjs';
     fs.writeFileSync(path.join(profileDir, 'cordis.patch.yml'), [
       '- id: message-edit',
       '  disabled: true',
@@ -119,7 +119,7 @@ test('ensureDesktopInstallPlugin strips the legacy desktop-install patch block',
       '',
       DESKTOP_INSTALL_BEGIN,
       '- insert:',
-      '    - id: dshd-desktop-plugin-install',
+      '    - id: rlhd-desktop-plugin-install',
       `      name: "${href}"`,
       DESKTOP_INSTALL_END,
       '',
@@ -130,9 +130,9 @@ test('ensureDesktopInstallPlugin strips the legacy desktop-install patch block',
     const patch = fs.readFileSync(path.join(profileDir, 'cordis.patch.yml'), 'utf8');
     assert.equal(patch.includes(LEGACY_DESKTOP_INSTALL_BEGIN), false);
     assert.equal(patch.includes('id: dsh-desktop-plugin-install'), false);
-    assert.equal(patch.split('install-dsh-plugin.mjs').length - 1, 1);
+    assert.equal(patch.split('install-rlh-plugin.mjs').length - 1, 1);
     assert.ok(patch.includes(DESKTOP_INSTALL_BEGIN));
-    assert.ok(patch.includes('id: dshd-desktop-plugin-install'));
+    assert.ok(patch.includes('id: rlhd-desktop-plugin-install'));
   } finally {
     fs.rmSync(home, { recursive: true, force: true });
     fs.rmSync(source, { recursive: true, force: true });
@@ -140,8 +140,8 @@ test('ensureDesktopInstallPlugin strips the legacy desktop-install patch block',
 });
 
 test('ensureDesktopInstallPlugin fails closed when a source file is missing', () => {
-  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-home-'));
-  const source = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-host-missing-'));
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'rlh-home-'));
+  const source = fs.mkdtempSync(path.join(os.tmpdir(), 'rlh-host-missing-'));
   try {
     const result = ensureDesktopInstallPlugin({
       sourceDir: source,
@@ -157,23 +157,23 @@ test('ensureDesktopInstallPlugin fails closed when a source file is missing', ()
 
 function copyRealPlugin(dir) {
   const hostDir = path.join(__dirname, '..', 'host');
-  fs.copyFileSync(path.join(hostDir, 'install-dsh-plugin.mjs'), path.join(dir, 'install-dsh-plugin.mjs'));
+  fs.copyFileSync(path.join(hostDir, 'install-rlh-plugin.mjs'), path.join(dir, 'install-rlh-plugin.mjs'));
   fs.copyFileSync(
-    path.join(hostDir, 'install-dsh-plugin-client.js'),
-    path.join(dir, 'install-dsh-plugin-client.js'),
+    path.join(hostDir, 'install-rlh-plugin-client.js'),
+    path.join(dir, 'install-rlh-plugin-client.js'),
   );
-  return pathToFileURL(path.join(dir, 'install-dsh-plugin.mjs')).href;
+  return pathToFileURL(path.join(dir, 'install-rlh-plugin.mjs')).href;
 }
 
-/** A harness tree whose `@deepseek-ai/dsh-tools` resolves without `pnpm install`. */
+/** A harness tree whose `@relay-harness/rlh-tools` resolves without `pnpm install`. */
 function makeFakeHarnessRoot(dir) {
-  const toolsDir = path.join(dir, 'node_modules', '@deepseek-ai', 'dsh-tools');
+  const toolsDir = path.join(dir, 'node_modules', '@relay-harness', 'rlh-tools');
   fs.mkdirSync(path.join(dir, 'apps', 'cli'), { recursive: true });
   fs.mkdirSync(toolsDir, { recursive: true });
   fs.writeFileSync(path.join(dir, 'package.json'), '{}\n', 'utf8');
   fs.writeFileSync(path.join(dir, 'apps', 'cli', 'package.json'), '{}\n', 'utf8');
   fs.writeFileSync(path.join(toolsDir, 'package.json'), JSON.stringify({
-    name: '@deepseek-ai/dsh-tools',
+    name: '@relay-harness/rlh-tools',
     version: '0.0.0',
     type: 'module',
     exports: { '.': './index.js' },
@@ -183,13 +183,13 @@ function makeFakeHarnessRoot(dir) {
 }
 
 describe('desktop install plugin module', { concurrency: false }, () => {
-  test('a $DSH_HOME copy of the desktop plugin loads without a static dsh-tools import', async (t) => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-plugin-iso-'));
+  test('a $RLH_HOME copy of the desktop plugin loads without a static rlh-tools import', async (t) => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'rlh-plugin-iso-'));
     t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
     const previous = {
-      DSH_DESKTOP_INSTALL_URL: process.env.DSH_DESKTOP_INSTALL_URL,
-      DSH_DESKTOP_INSTALL_TOKEN: process.env.DSH_DESKTOP_INSTALL_TOKEN,
-      DSH_HARNESS_ROOT: process.env.DSH_HARNESS_ROOT,
+      RLH_DESKTOP_INSTALL_URL: process.env.RLH_DESKTOP_INSTALL_URL,
+      RLH_DESKTOP_INSTALL_TOKEN: process.env.RLH_DESKTOP_INSTALL_TOKEN,
+      RLH_HARNESS_ROOT: process.env.RLH_HARNESS_ROOT,
     };
     t.after(() => {
       for (const [key, value] of Object.entries(previous)) {
@@ -197,17 +197,17 @@ describe('desktop install plugin module', { concurrency: false }, () => {
         else process.env[key] = value;
       }
     });
-    delete process.env.DSH_DESKTOP_INSTALL_URL;
-    delete process.env.DSH_DESKTOP_INSTALL_TOKEN;
-    delete process.env.DSH_HARNESS_ROOT;
+    delete process.env.RLH_DESKTOP_INSTALL_URL;
+    delete process.env.RLH_DESKTOP_INSTALL_TOKEN;
+    delete process.env.RLH_HARNESS_ROOT;
     const mod = await import(copyRealPlugin(dir));
-    assert.equal(mod.name, 'dshd-desktop-plugin-install');
+    assert.equal(mod.name, 'rlhd-desktop-plugin-install');
     let registered = false;
     await mod.apply({ tools: { register() { registered = true; } } });
     assert.equal(registered, false);
 
-    process.env.DSH_DESKTOP_INSTALL_URL = 'http://127.0.0.1:1';
-    process.env.DSH_DESKTOP_INSTALL_TOKEN = 'token';
+    process.env.RLH_DESKTOP_INSTALL_URL = 'http://127.0.0.1:1';
+    process.env.RLH_DESKTOP_INSTALL_TOKEN = 'token';
     const errors = [];
     const previousError = console.error;
     console.error = (...args) => { errors.push(args.map(String).join(' ')); };
@@ -217,16 +217,16 @@ describe('desktop install plugin module', { concurrency: false }, () => {
       console.error = previousError;
     }
     assert.equal(registered, false);
-    assert.match(errors.join('\n'), /skipped install_dsh_plugin/);
+    assert.match(errors.join('\n'), /skipped install_rlh_plugin/);
   });
 
-  test('the desktop plugin registers install_dsh_plugin from DSH_HARNESS_ROOT', async (t) => {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-plugin-root-'));
+  test('the desktop plugin registers install_rlh_plugin from RLH_HARNESS_ROOT', async (t) => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'rlh-plugin-root-'));
     t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
     const previous = {
-      DSH_DESKTOP_INSTALL_URL: process.env.DSH_DESKTOP_INSTALL_URL,
-      DSH_DESKTOP_INSTALL_TOKEN: process.env.DSH_DESKTOP_INSTALL_TOKEN,
-      DSH_HARNESS_ROOT: process.env.DSH_HARNESS_ROOT,
+      RLH_DESKTOP_INSTALL_URL: process.env.RLH_DESKTOP_INSTALL_URL,
+      RLH_DESKTOP_INSTALL_TOKEN: process.env.RLH_DESKTOP_INSTALL_TOKEN,
+      RLH_HARNESS_ROOT: process.env.RLH_HARNESS_ROOT,
     };
     t.after(() => {
       for (const [key, value] of Object.entries(previous)) {
@@ -234,15 +234,15 @@ describe('desktop install plugin module', { concurrency: false }, () => {
         else process.env[key] = value;
       }
     });
-    process.env.DSH_DESKTOP_INSTALL_URL = 'http://127.0.0.1:1';
-    process.env.DSH_DESKTOP_INSTALL_TOKEN = 'token';
-    const harness = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-harness-root-'));
+    process.env.RLH_DESKTOP_INSTALL_URL = 'http://127.0.0.1:1';
+    process.env.RLH_DESKTOP_INSTALL_TOKEN = 'token';
+    const harness = fs.mkdtempSync(path.join(os.tmpdir(), 'rlh-harness-root-'));
     t.after(() => fs.rmSync(harness, { recursive: true, force: true }));
-    process.env.DSH_HARNESS_ROOT = makeFakeHarnessRoot(harness);
+    process.env.RLH_HARNESS_ROOT = makeFakeHarnessRoot(harness);
     const mod = await import(copyRealPlugin(dir));
     const tools = [];
     await mod.apply({ tools: { register(tool) { tools.push(tool); } } });
     assert.equal(tools.length, 1);
-    assert.equal(tools[0].name, 'install_dsh_plugin');
+    assert.equal(tools[0].name, 'install_rlh_plugin');
   });
 });

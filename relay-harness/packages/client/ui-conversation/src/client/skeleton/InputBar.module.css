@@ -2,7 +2,7 @@
 /* Floating capsule input (figma Input_Bottom 75:8208): card floats above the
    viewport bottom inside the centered message column; textarea on top, action
    row below, primary action controls bottom-right. Input width rides the
-   column (--dsh-composer-card-max-width = chat content + 32px, 16px per side,
+   column (--rlh-composer-card-max-width = chat content + 32px, 16px per side,
    is a cap, not a fixed size — layout rule: the box shrinks with the center
    column keeping its clearance). Hero variant = the same card centered in the
    empty state; the transition between the two is a position move of one
@@ -16,7 +16,7 @@
      the sides narrow with the shared width axis); the bottom gradient mask
      is owned by the chat scroller. No top pad: the composer stack's gap owns
      the space above; the status strip still carries its own margin. */
-  padding: 0 var(--dsh-composer-side-clearance) 8px;
+  padding: 0 var(--rlh-composer-side-clearance) 8px;
 }
 
 @media (max-width: 767px) {
@@ -45,17 +45,17 @@
   /* No bottom pad in the centered hero, but the side clearance must survive:
      the hero wrapper is full-width on narrow viewports, so this padding is
      the only thing keeping the card off the edges there. */
-  padding: 0 var(--dsh-composer-side-clearance);
+  padding: 0 var(--rlh-composer-side-clearance);
 }
 
 .notice {
   width: 100%;
-  max-width: var(--dsh-composer-card-max-width);
+  max-width: var(--rlh-composer-card-max-width);
   margin-bottom: 6px;
   padding: 4px 8px;
   border-radius: 8px;
-  background: var(--dsw-alias-interactive-bg-hover);
-  color: var(--dsw-alias-label-secondary);
+  background: var(--rlw-alias-interactive-bg-hover);
+  color: var(--rlw-alias-label-secondary);
   font-size: 12px;
   line-height: 18px;
 }
@@ -69,16 +69,16 @@
      top pad on the card before .InputText. */
   gap: 12px;
   width: 100%;
-  max-width: var(--dsh-composer-card-max-width);
+  max-width: var(--rlh-composer-card-max-width);
   padding-top: 10px;
   /* Input stroke: black/0.10 light, white/0.06 dark (figma darkmode note says
      the input border is one notch weaker than buttons) — exactly the
      l2-darkmode-thin pair. Fill: the input surface token (elevated in dark). */
-  border: 1px solid var(--dsw-alias-border-l2-darkmode-thin);
+  border: 1px solid var(--rlw-alias-border-l2-darkmode-thin);
   border-radius: 22px;
-  background: var(--dsw-specific-input-major);
-  font-family: var(--dsw-font-family-composer, var(--dsw-font-family));
-  box-shadow: var(--dsw-shadow-lv2);
+  background: var(--rlw-specific-input-major);
+  font-family: var(--rlw-font-family-composer, var(--rlw-font-family));
+  box-shadow: var(--rlw-shadow-lv2);
   font-size: 16px;
   line-height: 24px;
   /* Elevated surface in dark, same as the menus: the draft scrollport inside
@@ -86,15 +86,15 @@
      pair. Declared on the card because the elevation belongs to the surface,
      and the custom properties inherit down to the box that actually scrolls
      (see ui-theme styles/scrollbar.css for the rebinding contract). */
-  --dsh-scrollbar-thumb: var(--dsw-alias-scrollbar-bg-l2);
-  --dsh-scrollbar-thumb-hover: var(--dsw-alias-scrollbar-hover-l2);
+  --rlh-scrollbar-thumb: var(--rlw-alias-scrollbar-bg-l2);
+  --rlh-scrollbar-thumb-hover: var(--rlw-alias-scrollbar-hover-l2);
 }
 
 /* Border beam (Beam / jakubantalik): a traveling colorful filament on the
    composer capsule while send / think / stream is live. Layers are pointer-
    inert overlays so they never fight the draft, menus, or the workspace
    dashed-ring ::after. */
-@property --dsh-composer-beam-angle {
+@property --rlh-composer-beam-angle {
   syntax: '<angle>';
   inherits: true;
   initial-value: 0deg;
@@ -112,12 +112,12 @@
 }
 
 .cardBeam {
-  animation: dsh-composer-beam-spin 1.96s linear infinite;
+  animation: rlh-composer-beam-spin 1.96s linear infinite;
 }
 
 .cardBeam .beamStroke {
   opacity: 1;
-  animation: dsh-composer-beam-hue 12s ease-in-out infinite;
+  animation: rlh-composer-beam-hue 12s ease-in-out infinite;
 }
 
 .beamStroke {
@@ -125,7 +125,7 @@
   padding: 1.5px;
   background:
     conic-gradient(
-      from var(--dsh-composer-beam-angle),
+      from var(--rlh-composer-beam-angle),
       transparent 0%,
       transparent 54%,
       rgba(255, 255, 255, 0.12) 58%,
@@ -135,7 +135,7 @@
       transparent 100%
     ),
     conic-gradient(
-      from var(--dsh-composer-beam-angle),
+      from var(--rlh-composer-beam-angle),
       rgb(255, 50, 100),
       rgb(40, 140, 255),
       rgb(50, 200, 80),
@@ -148,7 +148,7 @@
   clip-path: inset(0 round 22px);
   -webkit-mask:
     conic-gradient(
-      from var(--dsh-composer-beam-angle),
+      from var(--rlh-composer-beam-angle),
       transparent 0%,
       transparent 30%,
       rgba(255, 255, 255, 0.12) 36%,
@@ -165,7 +165,7 @@
   -webkit-mask-composite: source-in, xor;
   mask:
     conic-gradient(
-      from var(--dsh-composer-beam-angle),
+      from var(--rlh-composer-beam-angle),
       transparent 0%,
       transparent 30%,
       rgba(255, 255, 255, 0.12) 36%,
@@ -192,7 +192,7 @@
   box-shadow: inset 0 0 9px 1px rgba(255, 255, 255, 0.22);
   clip-path: inset(0 round 22px);
   -webkit-mask-image: conic-gradient(
-    from var(--dsh-composer-beam-angle),
+    from var(--rlh-composer-beam-angle),
     transparent 0%,
     transparent 30%,
     rgba(255, 255, 255, 0.12) 36%,
@@ -203,7 +203,7 @@
     transparent 100%
   );
   mask-image: conic-gradient(
-    from var(--dsh-composer-beam-angle),
+    from var(--rlh-composer-beam-angle),
     transparent 0%,
     transparent 30%,
     rgba(255, 255, 255, 0.12) 36%,
@@ -217,14 +217,14 @@
 
 .cardBeam .beamInner {
   opacity: 0.42;
-  animation: dsh-composer-beam-hue 12s ease-in-out infinite;
+  animation: rlh-composer-beam-hue 12s ease-in-out infinite;
 }
 
 .beamBloom {
   z-index: 2;
   padding: 1.5px;
   background: conic-gradient(
-    from var(--dsh-composer-beam-angle),
+    from var(--rlh-composer-beam-angle),
     transparent 0%,
     transparent 58%,
     rgba(255, 255, 255, 0.08) 64%,
@@ -244,16 +244,16 @@
 
 .cardBeam .beamBloom {
   opacity: 0.28;
-  animation: dsh-composer-beam-hue-bloom 12s ease-in-out infinite;
+  animation: rlh-composer-beam-hue-bloom 12s ease-in-out infinite;
 }
 
-@keyframes dsh-composer-beam-spin {
+@keyframes rlh-composer-beam-spin {
   to {
-    --dsh-composer-beam-angle: 360deg;
+    --rlh-composer-beam-angle: 360deg;
   }
 }
 
-@keyframes dsh-composer-beam-hue {
+@keyframes rlh-composer-beam-hue {
   0%,
   100% {
     filter: hue-rotate(-30deg) brightness(1.3) saturate(1.2);
@@ -263,7 +263,7 @@
   }
 }
 
-@keyframes dsh-composer-beam-hue-bloom {
+@keyframes rlh-composer-beam-hue-bloom {
   0%,
   100% {
     filter: blur(8px) hue-rotate(-30deg) brightness(1.3) saturate(1.2);
@@ -301,7 +301,7 @@
   position: absolute;
   inset: -1px;
   border-radius: 22px;
-  background: var(--dsw-alias-border-l4);
+  background: var(--rlw-alias-border-l4);
   transition: background-color 100ms ease;
   -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='100%25' height='100%25' fill='none' rx='22' ry='22' stroke='black' stroke-width='2' stroke-dasharray='4 4'/%3E%3C/svg%3E");
   mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='100%25' height='100%25' fill='none' rx='22' ry='22' stroke='black' stroke-width='2' stroke-dasharray='4 4'/%3E%3C/svg%3E");
@@ -316,7 +316,7 @@
 }
 
 .cardWorkspaceTrigger:hover::after {
-  background: var(--dsw-alias-state-business-primary);
+  background: var(--rlw-alias-state-business-primary);
 }
 
 .accessory {
@@ -343,7 +343,7 @@
    frames late and the words visibly trail the caret. The 14-line cap lives here
    because this is the box the cap describes. */
 .scroll {
-  max-height: var(--dsh-composer-text-max-height);
+  max-height: var(--rlh-composer-text-max-height);
   overflow-y: auto;
 }
 
@@ -374,18 +374,18 @@
   position: absolute;
   inset: 0;
   overflow: hidden;
-  color: var(--dsw-alias-label-primary);
+  color: var(--rlw-alias-label-primary);
   pointer-events: none;
 }
 
 .backdropDisabled,
 .backdropDisabled :is(.hlToken, .hint, .textRef, .chip, .chipInvalid) {
-  color: var(--dsw-alias-label-tertiary);
+  color: var(--rlw-alias-label-tertiary);
 }
 
 .hlToken {
   background-color: transparent;
-  color: var(--dsw-alias-state-warn-label);
+  color: var(--rlw-alias-state-warn-label);
 }
 
 .hlSegment {
@@ -395,7 +395,7 @@
 }
 
 .hint {
-  color: var(--dsw-alias-label-caption);
+  color: var(--rlw-alias-label-caption);
 }
 
 /* Machine pending dot (adjudicating / submitting). */
@@ -403,7 +403,7 @@
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--dsw-alias-state-business-primary);
+  background: var(--rlw-alias-state-business-primary);
   animation: input-pending 1s ease-in-out infinite alternate;
 }
 
@@ -429,7 +429,7 @@
   color: transparent;
   -webkit-text-fill-color: transparent;
   /* Business blue, not brand-primary: that token resolves to ink in this sheet. */
-  caret-color: var(--dsw-alias-state-business-primary);
+  caret-color: var(--rlw-alias-state-business-primary);
 }
 
 .input,
@@ -442,7 +442,7 @@
   /* figma .InputText 34:10434: pl 16 / pr 12 / pt 4. Backdrop MUST share these
      metrics or the highlight ranges drift off the glyphs. */
   padding: 4px 12px 0 16px;
-  font-family: var(--dsw-font-family);
+  font-family: var(--rlw-font-family);
   font-size: inherit;
   /* Three consumers, not two: the mirror sizes the stack, the layers must break
      lines identically, and the caret reveal parses this value to step one line
@@ -466,8 +466,8 @@
 
 /* figma 34:10434: #ADB2B8 light / #81858C dark — the caption pair exactly. */
 .input::placeholder {
-  color: var(--dsw-alias-label-caption);
-  -webkit-text-fill-color: var(--dsw-alias-label-caption);
+  color: var(--rlw-alias-label-caption);
+  -webkit-text-fill-color: var(--rlw-alias-label-caption);
   user-select: none;
 }
 
@@ -553,13 +553,13 @@
   height: 28px;
   border: none;
   border-radius: 999px;
-  background: var(--dsw-specific-selector);
-  color: var(--dsw-alias-label-primary);
+  background: var(--rlw-specific-selector);
+  color: var(--rlw-alias-label-primary);
   cursor: pointer;
 }
 
 .add:hover:not(:disabled) {
-  background: var(--dsw-alias-interactive-bg-hover-solid);
+  background: var(--rlw-alias-interactive-bg-hover-solid);
 }
 
 .add:disabled {
@@ -581,7 +581,7 @@
   background-repeat: no-repeat;
   background-position: right 4px center;
   background-size: 12px 12px;
-  color: var(--dsw-alias-label-secondary);
+  color: var(--rlw-alias-label-secondary);
   font-size: 13px;
   line-height: 20px;
   font-weight: 500;
@@ -591,7 +591,7 @@
 }
 
 .select:hover:not(:disabled) {
-  background-color: var(--dsw-alias-interactive-bg-hover);
+  background-color: var(--rlw-alias-interactive-bg-hover);
 }
 
 .select:disabled {
@@ -610,7 +610,7 @@
   height: 34px;
   border: none;
   border-radius: 999px;
-  background: var(--dsw-alias-button-info-fill);
+  background: var(--rlw-alias-button-info-fill);
   /* Static white, not the foreground token: the arrow stays white on the blue
      fill in both themes (design 34:10465). */
   color: #fff;
@@ -623,7 +623,7 @@
 }
 
 .primary:hover:not(:disabled) {
-  background: var(--dsw-alias-button-info-hover);
+  background: var(--rlw-alias-button-info-hover);
 }
 
 .primary:disabled {
@@ -647,7 +647,7 @@
    Chip family colors; clone keeps rounded ends on soft-wrap fragments. */
 .textRef {
   background-color: transparent;
-  color: var(--dsw-alias-state-business-primary);
+  color: var(--rlw-alias-state-business-primary);
   box-decoration-break: clone;
   -webkit-box-decoration-break: clone;
 }
@@ -676,7 +676,7 @@
    reserves the icon's advance while the backdrop paints the domain glyph. */
 .chip {
   position: relative;
-  color: var(--dsw-alias-state-business-primary);
+  color: var(--rlw-alias-state-business-primary);
   background: transparent;
   -webkit-box-decoration-break: clone;
   box-decoration-break: clone;
@@ -700,5 +700,5 @@
 .chipInvalid {
   text-decoration: line-through;
   opacity: 0.7;
-  color: var(--dsw-alias-state-error-primary);
+  color: var(--rlw-alias-state-error-primary);
 }

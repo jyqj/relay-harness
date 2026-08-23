@@ -13,13 +13,13 @@
  * projections. Direct driving is deliberate: this spec owns only the
  * source's own contract.
  */
-import { Context } from '@deepseek-ai/cordis'
+import { Context } from '@relay-harness/cordis'
 import { describe, expect, it, vi } from 'vitest'
-import type { SessionId } from '@deepseek-ai/dsh-client-runtime/client'
-import { SlotRegistry } from '@deepseek-ai/dsh-client-runtime/client'
-import { InputTriggerService } from '@deepseek-ai/dsh-client-ui-input-trigger/client'
-import { TestRemote } from '@deepseek-ai/dsh-client-test-runtime'
-import type { ClientSessionContext, InputTriggerSource } from '@deepseek-ai/dsh-client-ui-input-trigger/client'
+import type { SessionId } from '@relay-harness/rlh-client-runtime/client'
+import { SlotRegistry } from '@relay-harness/rlh-client-runtime/client'
+import { InputTriggerService } from '@relay-harness/rlh-client-ui-input-trigger/client'
+import { TestRemote } from '@relay-harness/rlh-client-test-runtime'
+import type { ClientSessionContext, InputTriggerSource } from '@relay-harness/rlh-client-ui-input-trigger/client'
 import { apply, inject } from '../src/client/index.ts'
 import { SkillRow as SkillToolRow } from '../src/client/SkillRow.tsx'
 
@@ -190,9 +190,9 @@ describe('candidates: sessionId addressing', () => {
     ])
   })
 
-  it('returns no candidates in a dshbot-room session', async () => {
+  it('returns no candidates in a rlhbot-room session', async () => {
     const { list, payloads } = countingList()
-    const { source } = await bench(list, undefined, undefined, { s1: { agentPreset: 'dshbot-room' } })
+    const { source } = await bench(list, undefined, undefined, { s1: { agentPreset: 'rlhbot-room' } })
     await expect(source.candidates(proj('s1'), req('co'))).resolves.toEqual([])
     expect(payloads).toEqual([])
     expect(source.lexicon!(proj('s1'))).toEqual([])

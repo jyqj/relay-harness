@@ -38,9 +38,9 @@ test('guest preload and helpers keep ipcRenderer and omit leftover brand markers
   }
   const preload = readSource('preview-guest-preload.js');
   assert.match(preload, /globalThis\.ipcRenderer = ipcRenderer/);
-  assert.match(preload, /data-dshd-annotation-ui/);
-  assert.match(preload, /data-dshd-annotation-tool/);
-  assert.match(preload, /--dshd-preview-primary/);
+  assert.match(preload, /data-rlhd-annotation-ui/);
+  assert.match(preload, /data-rlhd-annotation-tool/);
+  assert.match(preload, /--rlhd-preview-primary/);
   assert.doesNotMatch(preload, /react-grab/);
 });
 
@@ -84,7 +84,7 @@ test('captureElement fills tag, selector, htmlPreview and nulls react-grab field
   assert.equal(typeof payload.pickedAt, 'string');
 });
 
-test('theme helper writes --dshd-preview-primary and never leftover primary CSS', () => {
+test('theme helper writes --rlhd-preview-primary and never leftover primary CSS', () => {
   const props = {};
   const host = {
     style: {
@@ -113,7 +113,7 @@ test('theme helper writes --dshd-preview-primary and never leftover primary CSS'
     fontSans: 'system-ui',
     fontMono: 'monospace',
   });
-  assert.equal(props['--dshd-preview-primary'], 'rgb(1, 2, 3)');
+  assert.equal(props['--rlhd-preview-primary'], 'rgb(1, 2, 3)');
   assert.equal(props[`${leftoverCss}primary`], undefined);
   assert.equal(host.style.colorScheme, 'light');
 });

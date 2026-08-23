@@ -1,4 +1,4 @@
-# `@deepseek-ai/dsh-issue-workspace`
+# `@relay-harness/rlh-issue-workspace`
 
 English | [中文](README.zh.md)
 

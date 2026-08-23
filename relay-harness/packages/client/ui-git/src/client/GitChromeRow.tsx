@@ -1,8 +1,8 @@
 /** Interface Settings row for the titlebar Git cluster visibility. */
 import { useId, type ChangeEvent } from 'react'
-import type { SnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
-import type { InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
-import { Switch } from '@deepseek-ai/dsh-client-ui-primitives'
+import type { SnapshotStore } from '@relay-harness/rlh-client-runtime/client'
+import type { InjectFace, PropsLocale, PropsRuntime } from '@relay-harness/rlh-client-ui-slots'
+import { Switch } from '@relay-harness/rlh-client-ui-primitives'
 import { NS } from './locales.ts'
 import css from './GitChromeRow.module.css'
 

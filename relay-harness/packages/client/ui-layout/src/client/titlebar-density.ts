@@ -34,7 +34,7 @@ export function resolveTitlebarDensity(
  * Details sits to the right of conversation in the same titlebar span; a
  * closed details column contributes 0.
  * @param clusterVisible - false on phone and compact-header frames (cluster is `display: none`).
- * @param trailingWidth - measured `#dshd-shell-titlebar-trailing` width in px.
+ * @param trailingWidth - measured `#rlhd-shell-titlebar-trailing` width in px.
  * @param detailsWidth - solved details column width in px (0 when closed).
  * @returns the conversation header reserve, never negative.
  */

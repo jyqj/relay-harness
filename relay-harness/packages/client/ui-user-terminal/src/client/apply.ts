@@ -1,8 +1,8 @@
 /** Registers the bottom-drawer and right-panel Terminal shells on separate stores. */
-import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
-import type {} from '@deepseek-ai/dsh-client-locale/client'
-import type {} from '@deepseek-ai/dsh-client-ui-surfaces/client'
-import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
+import type { ClientContext } from '@relay-harness/rlh-client-runtime/client'
+import type {} from '@relay-harness/rlh-client-locale/client'
+import type {} from '@relay-harness/rlh-client-ui-surfaces/client'
+import type {} from '@relay-harness/rlh-client-ui-layout/client'
 import { appendToDraft } from './draft.ts'
 import { OPEN_SURFACE_EVENT, PENDING_PREVIEW_URL_KEY } from './links.ts'
 import { formatTerminalDraft } from './selection.ts'
@@ -19,7 +19,7 @@ export type { TerminalKey } from './locales.ts'
 export type { TerminalShellInjected } from './shell.ts'
 export { createTerminalSessionStore, MAX_TERMINALS_PER_GROUP } from './stores.ts'
 
-declare module '@deepseek-ai/dsh-client-ui-slots' {
+declare module '@relay-harness/rlh-client-ui-slots' {
   interface LocaleNamespaceMap {
     /** User-terminal drawer and surface copy. */
     terminal: TerminalKey

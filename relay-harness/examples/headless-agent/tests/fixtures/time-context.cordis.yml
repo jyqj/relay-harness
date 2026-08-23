@@ -4,16 +4,16 @@
 
 # Managed child-process groups for the bash executor (spawn/kill/output plumbing).
 - id: subprocess
-  name: '@deepseek-ai/dsh-subprocess-local'
+  name: '@relay-harness/rlh-subprocess-local'
 
 - id: bash
-  name: '@deepseek-ai/dsh-bash-local'
+  name: '@relay-harness/rlh-bash-local'
 
 - id: time-context
-  name: '@deepseek-ai/dsh-time-context'
+  name: '@relay-harness/rlh-time-context'
 
 - id: agent-spine
-  name: '@deepseek-ai/dsh-agent-spine-demo'
+  name: '@relay-harness/rlh-agent-spine-demo'
   config:
     agents:
       - id: main
@@ -24,10 +24,10 @@
     workspaceContext: false
 
 - id: persistence
-  name: '@deepseek-ai/dsh-session-persistence-jsonl'
+  name: '@relay-harness/rlh-session-persistence-jsonl'
   config:
     root: './.sessions'
     compression: 'none'
 
 - id: checkpoint-policy
-  name: '@deepseek-ai/dsh-session-checkpoint-policy'
+  name: '@relay-harness/rlh-session-checkpoint-policy'

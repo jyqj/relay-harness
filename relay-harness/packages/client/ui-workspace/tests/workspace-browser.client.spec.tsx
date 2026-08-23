@@ -1,12 +1,12 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, createEvent, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { bindSnapshotSelector } from '@deepseek-ai/dsh-client-test-runtime'
+import { bindSnapshotSelector } from '@relay-harness/rlh-client-test-runtime'
 import type {
   SessionId, SessionListState, SessionSummary, WorkspaceId, WorkspaceListState, WorkspaceView,
-} from '@deepseek-ai/dsh-client-runtime/client'
-import { makeTranslate } from '@deepseek-ai/dsh-client-test-runtime'
-import { zh as commonZh } from '@deepseek-ai/dsh-client-locale/src/locales/zh.ts'
+} from '@relay-harness/rlh-client-runtime/client'
+import { makeTranslate } from '@relay-harness/rlh-client-test-runtime'
+import { zh as commonZh } from '@relay-harness/rlh-client-locale/src/locales/zh.ts'
 import type { WorkspaceBrowserProps } from '../src/client/contract/slots.ts'
 import { createWorkspaceViewStore, FLAT_SESSION_ORDER_KEY } from '../src/client/stores.ts'
 import { UNGROUPED_KEY } from '../src/client/tree.ts'
@@ -247,7 +247,7 @@ describe('WorkspaceBrowser', () => {
     expect(open).toHaveBeenCalledWith(sid('alpha-s'))
     // Collapse keeps the row mounted through the fade exit (`aria-hidden`).
     fireEvent.click(screen.getByText('alpha'))
-    expect(screen.getByText('alpha-s').closest('[data-dsh-motion]')?.getAttribute('aria-hidden')).toBe('true')
+    expect(screen.getByText('alpha-s').closest('[data-rlh-motion]')?.getAttribute('aria-hidden')).toBe('true')
   })
 
   it('shows five sessions by default and clears transient show-all when the Workspace collapses', () => {
@@ -450,7 +450,7 @@ describe('WorkspaceBrowser', () => {
     rerender(b, { useSessions: hook({ ...first, current: sid('b') }) })
     expect(screen.getByText('b')).toBeTruthy()
     fireEvent.click(screen.getByText('alpha'))
-    expect(screen.getByText('b').closest('[data-dsh-motion]')?.getAttribute('aria-hidden')).toBe('true')
+    expect(screen.getByText('b').closest('[data-rlh-motion]')?.getAttribute('aria-hidden')).toBe('true')
   })
 
   it('shows only the current blank session as the localized New Session, excluded from search', () => {

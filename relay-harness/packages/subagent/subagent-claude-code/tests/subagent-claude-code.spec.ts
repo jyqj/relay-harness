@@ -10,8 +10,8 @@ import type {
   SDKResultMessage,
   SpawnOptions,
 } from '@anthropic-ai/claude-agent-sdk'
-import { Context } from '@deepseek-ai/cordis'
-import Loader from '@deepseek-ai/cordis-plugin-loader'
+import { Context } from '@relay-harness/cordis'
+import Loader from '@relay-harness/cordis-plugin-loader'
 import * as yaml from 'js-yaml'
 import {
   afterEach,
@@ -22,17 +22,17 @@ import {
   type Mock,
   vi,
 } from 'vitest'
-import type { Agent } from '@deepseek-ai/dsh-agent'
-import type { InvariantInstaller } from '@deepseek-ai/dsh-invariants'
-import type { ContentBlock } from '@deepseek-ai/dsh-llm'
-import SubagentRuntime from '@deepseek-ai/dsh-subagent'
+import type { Agent } from '@relay-harness/rlh-agent'
+import type { InvariantInstaller } from '@relay-harness/rlh-invariants'
+import type { ContentBlock } from '@relay-harness/rlh-llm'
+import SubagentRuntime from '@relay-harness/rlh-subagent'
 import type {
   SubprocessHandle,
   SubprocessOutcome,
   SubprocessSpawnSpec,
-} from '@deepseek-ai/dsh-subprocess'
-import LocalSubprocessRuntime from '@deepseek-ai/dsh-subprocess-local'
-import { MAX_TIMER_DELAY_MS } from '@deepseek-ai/dsh-timeout'
+} from '@relay-harness/rlh-subprocess'
+import LocalSubprocessRuntime from '@relay-harness/rlh-subprocess-local'
+import { MAX_TIMER_DELAY_MS } from '@relay-harness/rlh-timeout'
 import * as claudeCode from '../src/index.ts'
 import * as invariant from '../src/invariant.ts'
 import {
@@ -346,9 +346,9 @@ describe('task admission and package contracts', () => {
     const manifest = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8')) as {
       dependencies?: Record<string, string>
       files?: string[]
-      dsh?: { bundle?: { patch?: string } }
+      rlh?: { bundle?: { patch?: string } }
     }
-    expect(manifest.dsh?.bundle?.patch).toBe('./cordis.patch.yml')
+    expect(manifest.rlh?.bundle?.patch).toBe('./cordis.patch.yml')
     expect(manifest.files).toContain('cordis.patch.yml')
     expect(manifest.dependencies).toHaveProperty(
       '@anthropic-ai/claude-agent-sdk',
@@ -359,7 +359,7 @@ describe('task admission and package contracts', () => {
       '^1.29.0',
     )
     expect(manifest.dependencies).toHaveProperty('zod', '^4.4.3')
-    expect(manifest.dependencies).not.toHaveProperty('@deepseek-ai/dsh-subagent-codex')
+    expect(manifest.dependencies).not.toHaveProperty('@relay-harness/rlh-subagent-codex')
 
     const sdkRoot = dirname(fileURLToPath(
       import.meta.resolve('@anthropic-ai/claude-agent-sdk'),
@@ -390,13 +390,13 @@ describe('task admission and package contracts', () => {
       )
     }
 
-    const parsed = yaml.load(readFileSync(resolve(root, manifest.dsh!.bundle!.patch!), 'utf8'))
+    const parsed = yaml.load(readFileSync(resolve(root, manifest.rlh!.bundle!.patch!), 'utf8'))
     const rows = Array.isArray(parsed)
       ? (parsed as Array<{ insert?: Array<{ id?: string; name?: string }> }>).flatMap(entry => entry.insert ?? [])
       : []
     expect(rows).toEqual([{
       id: 'subagent-claude-code',
-      name: '@deepseek-ai/dsh-subagent-claude-code',
+      name: '@relay-harness/rlh-subagent-claude-code',
     }])
     expect(JSON.stringify(rows)).not.toContain('tool-subagent')
   })
@@ -453,7 +453,7 @@ describe('task admission and package contracts', () => {
     const spawnSpecs: SubprocessSpawnSpec[] = []
     vi.spyOn(ctx.subprocess, 'spawn').mockImplementation((spec) => {
       spawnSpecs.push(spec)
-      return spec.env?.DSH_CLAUDE_INSTANCE === 'safe'
+      return spec.env?.RLH_CLAUDE_INSTANCE === 'safe'
         ? safeChild.handle
         : bypassChild.handle
     })
@@ -480,13 +480,13 @@ describe('task admission and package contracts', () => {
     ctx.on('subagent/provider-removed', providerName => void removed.push(providerName))
     const safeFiber = await ctx.plugin(claudeCode, {
       providerName: 'claude-safe',
-      env: { DSH_CLAUDE_INSTANCE: 'safe' },
+      env: { RLH_CLAUDE_INSTANCE: 'safe' },
       permissionMode: 'dontAsk',
       disposeGraceMs: 11,
     })
     const bypassFiber = await ctx.plugin(claudeCode, {
       providerName: 'claude-bypass',
-      env: { DSH_CLAUDE_INSTANCE: 'bypass' },
+      env: { RLH_CLAUDE_INSTANCE: 'bypass' },
       permissionMode: 'bypassPermissions',
       disposeGraceMs: 29,
     })
@@ -514,14 +514,14 @@ describe('task admission and package contracts', () => {
       stopReason: 'aborted',
     })
     expect(queryOptions.map(options => ({
-      instance: options.env?.DSH_CLAUDE_INSTANCE,
+      instance: options.env?.RLH_CLAUDE_INSTANCE,
       permissionMode: options.permissionMode,
     }))).toEqual([
       { instance: 'safe', permissionMode: 'dontAsk' },
       { instance: 'bypass', permissionMode: 'bypassPermissions' },
     ])
     expect(spawnSpecs.map(spec => ({
-      instance: spec.env?.DSH_CLAUDE_INSTANCE,
+      instance: spec.env?.RLH_CLAUDE_INSTANCE,
       graceMs: spec.graceMs,
     }))).toEqual([
       { instance: 'safe', graceMs: 11 },
@@ -595,8 +595,8 @@ describe('task admission and package contracts', () => {
       providerName: 'claude-diagnostic',
       env: {
         ANTHROPIC_API_KEY: 'provider-fake-key',
-        CLAUDE_CONFIG_DIR: '/private/tmp/dsh-claude-code-unit-config',
-        HOME: '/private/tmp/dsh-claude-code-unit-home',
+        CLAUDE_CONFIG_DIR: '/private/tmp/rlh-claude-code-unit-config',
+        HOME: '/private/tmp/rlh-claude-code-unit-home',
       },
       permissionMode: 'auto',
       disposeGraceMs: 29,
@@ -707,7 +707,7 @@ describe('task admission and package contracts', () => {
     const ctx = { invariants: { register } } as unknown as Context
     await expect(invariant.apply(ctx)).resolves.toBe(dispose)
     expect(register).toHaveBeenCalledWith(
-      '@deepseek-ai/dsh-subagent-claude-code',
+      '@relay-harness/rlh-subagent-claude-code',
       expect.any(Function),
     )
     const install = register.mock.calls[0]![1]
@@ -836,7 +836,7 @@ describe('query options and result mapping', () => {
   it('builds the fixed unattended options over the scrubbed environment', async () => {
     vi.stubEnv('HOST_VISIBLE', 'visible')
     vi.stubEnv('HOST_SECRET_TOKEN', 'must-not-leak')
-    vi.stubEnv('DSH_INTERNAL', 'must-not-leak')
+    vi.stubEnv('RLH_INTERNAL', 'must-not-leak')
     const child = fakeChild()
     const spawn = vi.fn(() => child.handle)
     const captured: SubprocessHandle[] = []
@@ -876,7 +876,7 @@ describe('query options and result mapping', () => {
       ANTHROPIC_API_KEY: 'explicit-fake-key',
     })
     expect(options.env).not.toHaveProperty('HOST_SECRET_TOKEN')
-    expect(options.env).not.toHaveProperty('DSH_INTERNAL')
+    expect(options.env).not.toHaveProperty('RLH_INTERNAL')
     expect(options).not.toHaveProperty('settingSources')
 
     const callbackSignal = new AbortController().signal

@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { Context } from '@deepseek-ai/cordis'
-import { CallId } from '@deepseek-ai/dsh-llm'
-import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
-import ToolRuntime, { defineTool, TOOL_ABORTED_BEFORE_DISPATCH } from '@deepseek-ai/dsh-tools'
-import type { ToolResourceIntent } from '@deepseek-ai/dsh-tools'
+import { Context } from '@relay-harness/cordis'
+import { CallId } from '@relay-harness/rlh-llm'
+import SystemPrompt from '@relay-harness/rlh-system-prompt'
+import ToolRuntime, { defineTool, TOOL_ABORTED_BEFORE_DISPATCH } from '@relay-harness/rlh-tools'
+import type { ToolResourceIntent } from '@relay-harness/rlh-tools'
 import { ToolResourceLockManager } from '../src/resource-lock.ts'
 
 async function setup(): Promise<Context> {

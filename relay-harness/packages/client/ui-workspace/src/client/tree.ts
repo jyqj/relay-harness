@@ -7,7 +7,7 @@ import {
   indexSubagentDescendants, type PendingInteractionStatus, type SessionId, type SessionListState,
   type SessionSearchResultItem, type SessionSummary, type SubagentDescendantSummary,
   type WorkspaceId, type WorkspaceView,
-} from '@deepseek-ai/dsh-client-runtime/client'
+} from '@relay-harness/rlh-client-runtime/client'
 
 /** Group key for Sessions outside every Workspace. */
 export const UNGROUPED_KEY = ''
@@ -116,7 +116,7 @@ function byRecency(a: SessionSummary, b: SessionSummary): number {
  * unarchiving restores position.
  */
 function sessionVisible(session: SessionSummary, current: SessionId | undefined, archived: ReadonlySet<SessionId>): boolean {
-  return session.origin !== 'subagent' && session.origin !== 'dshbot'
+  return session.origin !== 'subagent' && session.origin !== 'rlhbot'
     && !archived.has(session.id)
     && (!session.blank || session.id === current)
 }

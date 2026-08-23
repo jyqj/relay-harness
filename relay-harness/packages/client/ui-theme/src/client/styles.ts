@@ -1,4 +1,4 @@
-import type { Context } from '@deepseek-ai/cordis'
+import type { Context } from '@relay-harness/cordis'
 import base from '../styles/base.css?inline'
 import motion from '../styles/motion.css?inline'
 import designPlatform from '../styles/design-platform.css?inline'
@@ -7,7 +7,7 @@ import scrollbar from '../styles/scrollbar.css?inline'
 import gradientShadowText from '../styles/gradient-shadow-text.css?inline'
 import shiki from '../styles/shiki.css?inline'
 
-const PLUGIN_ID = '@deepseek-ai/dsh-client-ui-theme'
+const PLUGIN_ID = '@relay-harness/rlh-client-ui-theme'
 
 // motion.css follows base.css (it reads that sheet's duration and easing
 // tokens); wallpaper.css follows the token sheets so chrome can mix those

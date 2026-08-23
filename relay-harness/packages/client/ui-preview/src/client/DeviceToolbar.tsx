@@ -1,6 +1,6 @@
 /** Device toolbar and 10px resize rails inside the preview host. */
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent, type PointerEvent, type ReactElement } from 'react'
-import { Button, Input, Menu, Switch, type MenuEntry } from '@deepseek-ai/dsh-client-ui-primitives'
+import { Button, Input, Menu, Switch, type MenuEntry } from '@relay-harness/rlh-client-ui-primitives'
 import type { PreviewKey } from './locales.ts'
 import {
   BROWSER_VIEWPORT_RESIZE_RAIL_SIZE,

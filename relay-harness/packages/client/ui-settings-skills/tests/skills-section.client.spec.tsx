@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import type { SessionId, SessionListState } from '@deepseek-ai/dsh-client-runtime/client'
-import type { SkillInventoryDetail, SkillInventoryEntry } from '@deepseek-ai/dsh-api-remotes/client'
+import type { SessionId, SessionListState } from '@relay-harness/rlh-client-runtime/client'
+import type { SkillInventoryDetail, SkillInventoryEntry } from '@relay-harness/rlh-api-remotes/client'
 import { SkillsSection } from '../src/client/SkillsSection.tsx'
 import type { SkillsSectionInjected, SkillsSectionProps } from '../src/client/SkillsSection.tsx'
 import { en, type SkillsSettingsKey } from '../src/client/locales.ts'
@@ -15,9 +15,9 @@ const writableSkill = {
   name: 'demo-skill',
   description: 'Reviews a proposed change',
   whenToUse: 'Use before merging code',
-  source: 'user-dsh',
+  source: 'user-rlh',
   provider: 'filesystem',
-  path: '/home/me/.dsh/skills/demo-skill/SKILL.md',
+  path: '/home/me/.rlh/skills/demo-skill/SKILL.md',
   writable: true,
   modelInvocable: true,
   userInvocable: true,
@@ -192,7 +192,7 @@ describe('SkillsSection', () => {
 
   it('reloads for the active project and ignores a late response from the previous project', async () => {
     const first = deferred<{ skills: readonly typeof writableSkill[] }>()
-    const projectSkill = { ...writableSkill, name: 'project-skill', source: 'project-dsh' as const }
+    const projectSkill = { ...writableSkill, name: 'project-skill', source: 'project-rlh' as const }
     const list = vi.fn((scope: { cwd?: string }) => scope.cwd === '/work/one'
       ? first.promise
       : Promise.resolve({ skills: [projectSkill] }))
@@ -209,7 +209,7 @@ describe('SkillsSection', () => {
   })
 
   it('keeps the last known cwd when the sessions store rebuilds without the entry', async () => {
-    const projectSkill = { ...writableSkill, name: 'flicker-project', source: 'project-dsh' as const }
+    const projectSkill = { ...writableSkill, name: 'flicker-project', source: 'project-rlh' as const }
     const list = vi.fn(async (scope: { cwd?: string }) => ({ skills: scope.cwd === undefined ? [] : [projectSkill] }))
     const settled = sessionHook(sessionState('/work/x'))
     const { rerender } = render(<SkillsSection {...props({ list, useSessions: settled })} />)
@@ -226,7 +226,7 @@ describe('SkillsSection', () => {
 
   it('reloads when the active session changes without changing cwd', async () => {
     const first = deferred<{ skills: readonly typeof writableSkill[] }>()
-    const secondSkill = { ...writableSkill, name: 'second-session-skill', source: 'project-dsh' as const }
+    const secondSkill = { ...writableSkill, name: 'second-session-skill', source: 'project-rlh' as const }
     const list = vi.fn((scope: { sessionId?: SessionId }) => scope.sessionId === 'session-one'
       ? first.promise
       : Promise.resolve({ skills: [secondSkill] }))
@@ -249,7 +249,7 @@ describe('SkillsSection', () => {
   it('ignores a save that finishes after the active project changes', async () => {
     const updateRequest = deferred<undefined>()
     const update = vi.fn(() => updateRequest.promise)
-    const projectSkill = { ...writableSkill, name: 'project-skill', source: 'project-dsh' as const }
+    const projectSkill = { ...writableSkill, name: 'project-skill', source: 'project-rlh' as const }
     const list = vi.fn((scope: { cwd?: string }) => Promise.resolve({
       skills: scope.cwd === '/work/one' ? [writableSkill] : [projectSkill],
     }))
@@ -312,7 +312,7 @@ describe('SkillsSection', () => {
         description: 'Does work',
         whenToUse: 'Use for releases',
         content: 'Instructions',
-        root: 'project-dsh',
+        root: 'project-rlh',
         modelInvocable: false,
         userInvocable: true,
         sessionId: 'session-1',

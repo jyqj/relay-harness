@@ -1,13 +1,13 @@
 {
-  "name": "@deepseek-ai/dsh-pwsh-sandbox",
-  "description": "Sandbox-consuming implementation of the DeepSeek Harness PowerShell executor seam (confines every command via ctx.sandbox, reports denial/enforcement result facts)",
+  "name": "@relay-harness/rlh-pwsh-sandbox",
+  "description": "Sandbox-consuming implementation of the Relay Harness PowerShell executor seam (confines every command via ctx.sandbox, reports denial/enforcement result facts)",
   "version": "0.1.0-rc.8",
   "publishConfig": {
     "access": "public"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+    "url": "git+https://github.com/jyqj/relay-harness.git",
     "directory": "packages/shell/pwsh-sandbox"
   },
   "type": "module",
@@ -32,21 +32,21 @@
   ],
   "license": "MIT",
   "peerDependencies": {
-    "@deepseek-ai/dsh-shell": "workspace:^",
-    "@deepseek-ai/dsh-invariants": "workspace:^",
-    "@deepseek-ai/dsh-pwsh-local": "workspace:^",
-    "@deepseek-ai/dsh-sandbox": "workspace:^",
-    "@deepseek-ai/dsh-sandbox-policy": "workspace:^",
-    "@deepseek-ai/cordis": "workspace:^"
+    "@relay-harness/rlh-shell": "workspace:^",
+    "@relay-harness/rlh-invariants": "workspace:^",
+    "@relay-harness/rlh-pwsh-local": "workspace:^",
+    "@relay-harness/rlh-sandbox": "workspace:^",
+    "@relay-harness/rlh-sandbox-policy": "workspace:^",
+    "@relay-harness/cordis": "workspace:^"
   },
   "devDependencies": {
-    "@deepseek-ai/dsh-shell": "workspace:^",
-    "@deepseek-ai/dsh-invariants": "workspace:^",
-    "@deepseek-ai/dsh-pwsh-local": "workspace:^",
-    "@deepseek-ai/dsh-sandbox": "workspace:^",
-    "@deepseek-ai/dsh-sandbox-local": "workspace:^",
-    "@deepseek-ai/dsh-sandbox-policy": "workspace:^",
-    "@deepseek-ai/dsh-subprocess-local": "workspace:^",
-    "@deepseek-ai/cordis": "workspace:^"
+    "@relay-harness/rlh-shell": "workspace:^",
+    "@relay-harness/rlh-invariants": "workspace:^",
+    "@relay-harness/rlh-pwsh-local": "workspace:^",
+    "@relay-harness/rlh-sandbox": "workspace:^",
+    "@relay-harness/rlh-sandbox-local": "workspace:^",
+    "@relay-harness/rlh-sandbox-policy": "workspace:^",
+    "@relay-harness/rlh-subprocess-local": "workspace:^",
+    "@relay-harness/cordis": "workspace:^"
   }
 }

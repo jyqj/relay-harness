@@ -47,12 +47,12 @@ const THEMES = Object.entries(FAMILY_SEEDS).flatMap(([id, family]) => ([
   tokensFromSeeds(id, family.name, 'light', family.light),
 ]));
 
-function dshHome() {
-  const fromEnv = process.env.DSH_HOME;
+function rlhHome() {
+  const fromEnv = process.env.RLH_HOME;
   if (typeof fromEnv === 'string' && fromEnv.trim()) {
     return path.resolve(fromEnv.trim());
   }
-  return path.join(os.homedir(), '.dsh');
+  return path.join(os.homedir(), '.rlh');
 }
 
 function parseScalar(raw) {
@@ -130,7 +130,7 @@ function parseSimpleYaml(text) {
 }
 
 function readHarnessThemeSettings() {
-  const file = path.join(dshHome(), 'settings.yaml');
+  const file = path.join(rlhHome(), 'settings.yaml');
   try {
     const doc = parseSimpleYaml(fs.readFileSync(file, 'utf8'));
     return doc['ui-theme'] && typeof doc['ui-theme'] === 'object' ? doc['ui-theme'] : {};

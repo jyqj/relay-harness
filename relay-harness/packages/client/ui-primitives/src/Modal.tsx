@@ -62,14 +62,14 @@ export function Modal({
     <div
       className={css.root}
       role="presentation"
-      data-dsh-motion="overlay"
+      data-rlh-motion="overlay"
       data-state={state}
       aria-hidden={open ? undefined : true}
     >
-      <div className={css.mask} data-dsh-motion-part="mask" aria-hidden="true" onClick={onClose} />
+      <div className={css.mask} data-rlh-motion-part="mask" aria-hidden="true" onClick={onClose} />
       <div
         className={clsx(css.dialog, className)}
-        data-dsh-motion-part="panel"
+        data-rlh-motion-part="panel"
         role="dialog"
         aria-modal="true"
         aria-label={title}

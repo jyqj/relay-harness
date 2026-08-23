@@ -16,7 +16,7 @@ Status: implemented
 
 `ToolRuntime` 持有一张公平读写锁表，由原生调用、直接 `execute()` 调用和 Code Mode 嵌套分派共享。它会以 write 覆盖 read 的规则规范化重复 claim，按 key 排序后获取，并只在工具主体周围持有全部 lease。同 key read 可以重叠；writer 排除 reader 与 writer；排队中的 writer 会阻止后来的 reader 插队。取消会同步移除排队 waiter，按逆序释放已获取的多 key lease，且绝不调用等待中的主体。action 失败与取消都会释放全部 lease。
 
-`dsh-tool-fs` 通过 `ctx.fs.resolve()` 解析 read、write 与 edit claim，使用和主体相同的逐会话 cwd 语义，再把提供方 `FsTargetKey` 放入 `fs:` namespace。read claim 为共享，mutation claim 为独占。`dsh-tool-str-replace-editor` 使用同一 namespace 与提供方 key，其中 `view` 为 read，三个变更命令为 write。既有文件系统 intent／CAS policy 仍在锁内运行。因此，同一会话对同一文件的两次编辑可以串行地全部落地：第二个 policy 决策会观察到第一次提交后的版本，而不是因可避免的陈旧版本竞态失败。
+`rlh-tool-fs` 通过 `ctx.fs.resolve()` 解析 read、write 与 edit claim，使用和主体相同的逐会话 cwd 语义，再把提供方 `FsTargetKey` 放入 `fs:` namespace。read claim 为共享，mutation claim 为独占。`rlh-tool-str-replace-editor` 使用同一 namespace 与提供方 key，其中 `view` 为 read，三个变更命令为 write。既有文件系统 intent／CAS policy 仍在锁内运行。因此，同一会话对同一文件的两次编辑可以串行地全部落地：第二个 policy 决策会观察到第一次提交后的版本，而不是因可避免的陈旧版本竞态失败。
 
 请求工具快照会连同定义的其他部分一起捕获资源 resolver。注册表替换不能改变已采样调用的资源行为。
 
@@ -28,7 +28,7 @@ Status: implemented
 
 **锁定原始路径字符串。** 不予采用，因为相对／绝对 alias、symlink 与提供方规范化可以用不同拼写指向同一目标。文件系统工具锁定解析后的 `FsTargetKey`。
 
-**只在 `dsh-tool-fs` 内放置锁。** 不予采用，因为独立字符串替换编辑器与未来工具必须和同一批文件协调，Code Mode 也必须共享原生锁语义。
+**只在 `rlh-tool-fs` 内放置锁。** 不予采用，因为独立字符串替换编辑器与未来工具必须和同一批文件协调，Code Mode 也必须共享原生锁语义。
 
 **在有序 prepare 阶段获取资源。** 不予采用，因为被同 key 阻塞的调用会占住 scheduler 的有序 lane，使后续独立 key 无法补入池。意图解析仍保持有序；获取发生在重叠的 dispatch 阶段、紧邻主体之前。
 

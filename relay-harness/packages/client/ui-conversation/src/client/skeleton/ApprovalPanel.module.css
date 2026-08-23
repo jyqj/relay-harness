@@ -10,7 +10,7 @@
   align-items: center;
   /* Sides = clearance + 16px so the card lands on the shared content width
      (input card - 32) at every viewport. */
-  padding: 8px calc(var(--dsh-composer-side-clearance) + 16px) 12px;
+  padding: 8px calc(var(--rlh-composer-side-clearance) + 16px) 12px;
 }
 
 .card {
@@ -19,18 +19,18 @@
      The amber strip keeps the top radius so the band still follows the card. */
   overflow: visible;
   width: 100%;
-  max-width: var(--dsh-chat-content-width);
-  border: 1px solid var(--dsw-alias-state-warn-secondary);
+  max-width: var(--rlh-chat-content-width);
+  border: 1px solid var(--rlw-alias-state-warn-secondary);
   border-radius: 20px;
-  background: var(--dsw-specific-input-major);
-  box-shadow: var(--dsw-shadow-lv2);
+  background: var(--rlw-specific-input-major);
+  box-shadow: var(--rlw-shadow-lv2);
   /* Elevated surface in dark, same as the menus: `.body` inside scrolls once
      the justification or command passes the cap, so the thumb takes the l2
      pair. Declared on the card because the elevation belongs to the surface,
      and the custom properties inherit down to the region that actually
      scrolls (see ui-theme styles/scrollbar.css for the rebinding contract). */
-  --dsh-scrollbar-thumb: var(--dsw-alias-scrollbar-bg-l2);
-  --dsh-scrollbar-thumb-hover: var(--dsw-alias-scrollbar-hover-l2);
+  --rlh-scrollbar-thumb: var(--rlw-alias-scrollbar-bg-l2);
+  --rlh-scrollbar-thumb-hover: var(--rlw-alias-scrollbar-hover-l2);
 }
 
 /* Tinted full-width header band. */
@@ -40,8 +40,8 @@
   gap: 8px;
   padding: 10px 16px;
   border-radius: 19px 19px 0 0;
-  background: var(--dsw-alias-state-warn-tertiary);
-  color: var(--dsw-alias-state-warn-primary);
+  background: var(--rlw-alias-state-warn-tertiary);
+  color: var(--rlw-alias-state-warn-primary);
   font-size: 13px;
   line-height: 18px;
 }
@@ -50,7 +50,7 @@
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--dsw-alias-state-warn-primary);
+  background: var(--rlw-alias-state-warn-primary);
 }
 
 /* Scroll region: an agent's justification and its command are unbounded model
@@ -66,7 +66,7 @@
      area counts its padding inside the same number, and the two seats are
      only interchangeable if they occupy the same box. */
   box-sizing: border-box;
-  max-height: var(--dsh-composer-text-max-height);
+  max-height: var(--rlh-composer-text-max-height);
   overflow-y: auto;
   padding: 12px 16px 0;
 }
@@ -81,15 +81,15 @@
 
 /* The model's justification is the panel's message, not a footnote. */
 .headline {
-  color: var(--dsw-alias-label-primary);
+  color: var(--rlw-alias-label-primary);
   font-size: 15px;
   font-weight: 500;
   line-height: 24px;
 }
 
 .command {
-  color: var(--dsw-alias-label-tertiary);
-  font-family: var(--ds-font-family-code);
+  color: var(--rlw-alias-label-tertiary);
+  font-family: var(--rl-font-family-code);
   font-size: 13px;
   line-height: 20px;
   word-break: break-all;
@@ -109,7 +109,7 @@
 }
 
 .reject:hover:not(:disabled) {
-  background: var(--dsw-alias-interactive-bg-hover-danger);
-  color: var(--dsw-alias-state-error-primary);
+  background: var(--rlw-alias-interactive-bg-hover-danger);
+  color: var(--rlw-alias-state-error-primary);
   border-color: transparent;
 }

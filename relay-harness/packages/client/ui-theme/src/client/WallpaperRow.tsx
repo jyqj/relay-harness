@@ -2,7 +2,7 @@
  * Appearance wallpaper row: pick or browse, crop to window aspect, then frost and pixelate.
  */
 import { useRef, useState } from 'react'
-import { Button } from '@deepseek-ai/dsh-client-ui-primitives'
+import { Button } from '@relay-harness/rlh-client-ui-primitives'
 import {
   DEFAULT_WALLPAPER_EFFECT, MAX_WALLPAPER_EFFECT, MIN_WALLPAPER_EFFECT,
   MAX_WALLPAPER_FILE_BYTES, WALLPAPER_EFFECT_STEP, WALLPAPER_HIGH_GLASS_HINT,

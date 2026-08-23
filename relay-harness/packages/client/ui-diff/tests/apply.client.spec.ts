@@ -1,8 +1,8 @@
 /** Diff plugin injects the panel into surfaces.diff. */
-import { Context } from '@deepseek-ai/cordis'
+import { Context } from '@relay-harness/cordis'
 import { describe, expect, it } from 'vitest'
-import { SlotRegistry } from '@deepseek-ai/dsh-client-runtime/client'
-import { LocaleRuntime } from '@deepseek-ai/dsh-client-locale/client'
+import { SlotRegistry } from '@relay-harness/rlh-client-runtime/client'
+import { LocaleRuntime } from '@relay-harness/rlh-client-locale/client'
 import { apply, inject } from '../src/client/index.ts'
 import { DiffPanel } from '../src/client/DiffPanel.tsx'
 import type { DiffShellInjected } from '../src/client/shell.ts'

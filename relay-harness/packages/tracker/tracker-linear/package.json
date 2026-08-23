@@ -1,9 +1,9 @@
 {
-  "name": "@deepseek-ai/dsh-tracker-linear",
-  "description": "Linear GraphQL tracker and host-tool provider for DeepSeek Harness issue automation",
+  "name": "@relay-harness/rlh-tracker-linear",
+  "description": "Linear GraphQL tracker and host-tool provider for Relay Harness issue automation",
   "version": "0.1.0-rc.8",
   "publishConfig": { "access": "public" },
-  "repository": { "type": "git", "url": "git+https://github.com/deepseek-ai/deepseek-harness.git", "directory": "packages/tracker/tracker-linear" },
+  "repository": { "type": "git", "url": "git+https://github.com/jyqj/relay-harness.git", "directory": "packages/tracker/tracker-linear" },
   "type": "module",
   "main": "lib/index.js",
   "types": "lib/types/index.d.ts",
@@ -16,19 +16,19 @@
   "files": ["lib/index.js", "lib/invariant.js", "lib/types/**/*.d.ts"],
   "license": "MIT",
   "peerDependencies": {
-    "@deepseek-ai/dsh-invariants": "workspace:^",
-    "@deepseek-ai/dsh-session": "workspace:^",
-    "@deepseek-ai/dsh-tools": "workspace:^",
-    "@deepseek-ai/dsh-tracker": "workspace:^",
-    "@deepseek-ai/cordis": "workspace:^",
-    "@deepseek-ai/schemastery": "workspace:^"
+    "@relay-harness/rlh-invariants": "workspace:^",
+    "@relay-harness/rlh-session": "workspace:^",
+    "@relay-harness/rlh-tools": "workspace:^",
+    "@relay-harness/rlh-tracker": "workspace:^",
+    "@relay-harness/cordis": "workspace:^",
+    "@relay-harness/schemastery": "workspace:^"
   },
-  "dependencies": { "@deepseek-ai/schemastery": "workspace:^" },
+  "dependencies": { "@relay-harness/schemastery": "workspace:^" },
   "devDependencies": {
-    "@deepseek-ai/dsh-invariants": "workspace:^",
-    "@deepseek-ai/dsh-session": "workspace:^",
-    "@deepseek-ai/dsh-tools": "workspace:^",
-    "@deepseek-ai/dsh-tracker": "workspace:^",
-    "@deepseek-ai/cordis": "workspace:^"
+    "@relay-harness/rlh-invariants": "workspace:^",
+    "@relay-harness/rlh-session": "workspace:^",
+    "@relay-harness/rlh-tools": "workspace:^",
+    "@relay-harness/rlh-tracker": "workspace:^",
+    "@relay-harness/cordis": "workspace:^"
   }
 }

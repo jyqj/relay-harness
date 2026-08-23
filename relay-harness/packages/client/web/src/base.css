@@ -10,7 +10,7 @@ body,
 
 body {
   font-family: var(
-    --dsw-font-family,
+    --rlw-font-family,
     -apple-system,
     BlinkMacSystemFont,
     'Segoe UI',
@@ -26,8 +26,8 @@ body {
      Firefox macOS equivalent; other engines ignore both lines. */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  color: var(--dsw-alias-label-primary, #0f1115);
-  background: var(--dsw-alias-bg-base, #fff);
+  color: var(--rlw-alias-label-primary, #0f1115);
+  background: var(--rlw-alias-bg-base, #fff);
 }
 
 /* Form controls don't inherit the body font (UA sheets pin their families —

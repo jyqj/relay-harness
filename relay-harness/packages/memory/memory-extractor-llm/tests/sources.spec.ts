@@ -3,8 +3,8 @@ import {
   CallId,
   createToolResultMessage,
   createUserMessage,
-} from '@deepseek-ai/dsh-llm'
-import { Session, SessionId } from '@deepseek-ai/dsh-session'
+} from '@relay-harness/rlh-llm'
+import { Session, SessionId } from '@relay-harness/rlh-session'
 import { collectExtractionSources } from '../src/sources.ts'
 
 function sessionWithRoute(): Session {

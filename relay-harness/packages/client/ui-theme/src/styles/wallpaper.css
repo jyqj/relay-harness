@@ -1,6 +1,6 @@
-/* Wallpaper layer + translucent chrome. Activated by html[data-dsh-wallpaper]. */
+/* Wallpaper layer + translucent chrome. Activated by html[data-rlh-wallpaper]. */
 
-#dsh-wallpaper {
+#rlh-wallpaper {
   position: fixed;
   inset: 0;
   z-index: 0;
@@ -15,7 +15,7 @@
  * The background-image is the pre-decode fallback painted until the bitmap
  * lands (and permanently under jsdom, which has no 2d context).
  */
-#dsh-wallpaper-inner {
+#rlh-wallpaper-inner {
   position: absolute;
   left: -48px;
   top: -48px;
@@ -25,24 +25,24 @@
   background-repeat: no-repeat;
   background-size: cover;
   image-rendering: pixelated;
-  filter: blur(var(--dsh-wallpaper-blur, 0px));
+  filter: blur(var(--rlh-wallpaper-blur, 0px));
 }
 
-html[data-dsh-wallpaper],
-html[data-dsh-wallpaper] body,
-html[data-dsh-wallpaper] #root {
+html[data-rlh-wallpaper],
+html[data-rlh-wallpaper] body,
+html[data-rlh-wallpaper] #root {
   background: transparent;
 }
 
-#dsh-wallpaper::after {
+#rlh-wallpaper::after {
   content: '';
   position: absolute;
   inset: 0;
-  background: var(--dsw-alias-bg-mask-1);
+  background: var(--rlw-alias-bg-mask-1);
   pointer-events: none;
 }
 
-html[data-dsh-wallpaper] #root {
+html[data-rlh-wallpaper] #root {
   position: relative;
   z-index: 1;
 }

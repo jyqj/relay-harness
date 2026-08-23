@@ -12,7 +12,7 @@
 
 ## Global Constraints
 
-- Official `dsh web` tokens / `ui-primitives` only. Do not paste T3 JSX, lucide, shadcn, Tailwind, or `@pierre`.
+- Official `rlh web` tokens / `ui-primitives` only. Do not paste T3 JSX, lucide, shadcn, Tailwind, or `@pierre`.
 - Copy T3 git argv, parsers, and Git-action state machine. Swap only the Electron/`runGit` shell.
 - Keep NTFS reserved-name filtering, gone-upstream (`# branch.ab` missing), and `aheadUnreliable`.
 - Product copy Chinese except titlebar action labels and `resolveDefaultBranchActionDialogCopy`, which stay T3 English.
@@ -24,9 +24,9 @@
 
 ## File map
 
-- `vendor/deepseek-harness/packages/client/ui-git/src/client/git-logic.ts` — required `workingTree`; T3 disabled-reason; T3 CTA (no GitHub gate).
-- `vendor/deepseek-harness/packages/client/ui-git/src/client/GitActionsControl.tsx` — live `workingTree.files`; drop `commitFiles` state and `gitChangedFiles` inject.
-- `vendor/deepseek-harness/packages/client/ui-git/src/client/apply.ts` — drop `gitChangedFiles` from `GitShell`.
+- `vendor/relay-harness/packages/client/ui-git/src/client/git-logic.ts` — required `workingTree`; T3 disabled-reason; T3 CTA (no GitHub gate).
+- `vendor/relay-harness/packages/client/ui-git/src/client/GitActionsControl.tsx` — live `workingTree.files`; drop `commitFiles` state and `gitChangedFiles` inject.
+- `vendor/relay-harness/packages/client/ui-git/src/client/apply.ts` — drop `gitChangedFiles` from `GitShell`.
 - Tests: `git-logic.client.spec.ts`, `git-actions.client.spec.tsx`, `apply.client.spec.ts`.
 - `src/main/git.js` — delete `shortStatusPath`, `gitChangedFiles`, `parseNumstat`, `countUntrackedInsertions`; `gitReadPullRequest` uses `gitStatus().refName`.
 - `src/main/git-pullrequest.js` — `lookupOpenPullRequest(cwd, refName)` / `readPullRequest(cwd, refName)`; no `status -sb`.
@@ -39,10 +39,10 @@
 ### Task 1: Live `workingTree` + required field
 
 **Files:**
-- Modify: `vendor/deepseek-harness/packages/client/ui-git/src/client/git-logic.ts`
-- Modify: `vendor/deepseek-harness/packages/client/ui-git/src/client/GitActionsControl.tsx`
-- Test: `vendor/deepseek-harness/packages/client/ui-git/tests/git-logic.client.spec.ts`
-- Test: `vendor/deepseek-harness/packages/client/ui-git/tests/git-actions.client.spec.tsx`
+- Modify: `vendor/relay-harness/packages/client/ui-git/src/client/git-logic.ts`
+- Modify: `vendor/relay-harness/packages/client/ui-git/src/client/GitActionsControl.tsx`
+- Test: `vendor/relay-harness/packages/client/ui-git/tests/git-logic.client.spec.ts`
+- Test: `vendor/relay-harness/packages/client/ui-git/tests/git-actions.client.spec.tsx`
 
 **Interfaces:**
 - Consumes: desktop `gitStatus` already returns `workingTree: { files, insertions, deletions }` on every payload, including `notARepoStatus`.
@@ -69,7 +69,7 @@ function status(overrides: Omit<Partial<VcsStatus>, 'sourceControlProvider'> & {
 }
 ```
 
-If `workingTree` is still optional, TypeScript will not force this. After making it required, a helper that omits it must fail `pnpm --filter @deepseek-ai/dsh-client-ui-git exec vitest run tests/git-logic.client.spec.ts`.
+If `workingTree` is still optional, TypeScript will not force this. After making it required, a helper that omits it must fail `pnpm --filter @relay-harness/rlh-client-ui-git exec vitest run tests/git-logic.client.spec.ts`.
 
 In `git-actions.client.spec.tsx`, add this case next to `opens the commit review dialog from status.workingTree files like T3`:
 
@@ -101,7 +101,7 @@ it('commit dialog file list follows live status.workingTree while open', async (
 Run:
 
 ```powershell
-pnpm --filter @deepseek-ai/dsh-client-ui-git exec vitest run tests/git-actions.client.spec.tsx tests/git-logic.client.spec.ts
+pnpm --filter @relay-harness/rlh-client-ui-git exec vitest run tests/git-actions.client.spec.tsx tests/git-logic.client.spec.ts
 ```
 
 Expected: the new live-list test still shows `a.ts` after focus (snapshot state), or times out waiting for `b.ts`.
@@ -142,7 +142,7 @@ If TypeScript reports missing `workingTree` in other test helpers (`git-actions.
 - [ ] **Step 5: Commit only if the user asked**
 
 ```bash
-git add vendor/deepseek-harness/packages/client/ui-git/src/client/git-logic.ts vendor/deepseek-harness/packages/client/ui-git/src/client/GitActionsControl.tsx vendor/deepseek-harness/packages/client/ui-git/tests/git-logic.client.spec.ts vendor/deepseek-harness/packages/client/ui-git/tests/git-actions.client.spec.tsx
+git add vendor/relay-harness/packages/client/ui-git/src/client/git-logic.ts vendor/relay-harness/packages/client/ui-git/src/client/GitActionsControl.tsx vendor/relay-harness/packages/client/ui-git/tests/git-logic.client.spec.ts vendor/relay-harness/packages/client/ui-git/tests/git-actions.client.spec.tsx
 ```
 
 ---
@@ -150,9 +150,9 @@ git add vendor/deepseek-harness/packages/client/ui-git/src/client/git-logic.ts v
 ### Task 2: T3 disabled-reason and toast CTA
 
 **Files:**
-- Modify: `vendor/deepseek-harness/packages/client/ui-git/src/client/git-logic.ts`
-- Modify: `vendor/deepseek-harness/packages/client/ui-git/src/client/GitActionsControl.tsx`
-- Test: `vendor/deepseek-harness/packages/client/ui-git/tests/git-logic.client.spec.ts`
+- Modify: `vendor/relay-harness/packages/client/ui-git/src/client/git-logic.ts`
+- Modify: `vendor/relay-harness/packages/client/ui-git/src/client/GitActionsControl.tsx`
+- Test: `vendor/relay-harness/packages/client/ui-git/tests/git-logic.client.spec.ts`
 
 **Interfaces:**
 - Consumes: Task 1 required `workingTree` (helpers already pass it).
@@ -254,7 +254,7 @@ describe('Create PR in the menu', () => {
 Run:
 
 ```powershell
-pnpm --filter @deepseek-ai/dsh-client-ui-git exec vitest run tests/git-logic.client.spec.ts
+pnpm --filter @relay-harness/rlh-client-ui-git exec vitest run tests/git-logic.client.spec.ts
 ```
 
 Expected: FAIL on `aheadOfDefaultCount: 2` / `aheadCount: 0` if the extra `&& (gitStatus.aheadOfDefaultCount ?? 0) === 0` still skips the T3 sentence, or FAIL compiling after `supportsGitHubChangeRequests` is removed from the import list.
@@ -322,7 +322,7 @@ Remove the `supportsGitHubChangeRequests` import.
 Run:
 
 ```powershell
-pnpm --filter @deepseek-ai/dsh-client-ui-git exec vitest run tests/git-logic.client.spec.ts tests/git-actions.client.spec.tsx
+pnpm --filter @relay-harness/rlh-client-ui-git exec vitest run tests/git-logic.client.spec.ts tests/git-actions.client.spec.tsx
 ```
 
 Expected: PASS.
@@ -463,10 +463,10 @@ Expected: PASS, including the new source-grep and detached-HEAD cases. Existing 
 - Modify: `src/main/git.test.js`
 - Modify: `src/main/ipc.js`
 - Modify: `src/preload/index.js`
-- Modify: `vendor/deepseek-harness/packages/client/ui-git/src/client/GitActionsControl.tsx`
-- Modify: `vendor/deepseek-harness/packages/client/ui-git/src/client/apply.ts`
-- Test: `vendor/deepseek-harness/packages/client/ui-git/tests/apply.client.spec.ts`
-- Test: `vendor/deepseek-harness/packages/client/ui-git/tests/git-actions.client.spec.tsx`
+- Modify: `vendor/relay-harness/packages/client/ui-git/src/client/GitActionsControl.tsx`
+- Modify: `vendor/relay-harness/packages/client/ui-git/src/client/apply.ts`
+- Test: `vendor/relay-harness/packages/client/ui-git/tests/apply.client.spec.ts`
+- Test: `vendor/relay-harness/packages/client/ui-git/tests/git-actions.client.spec.tsx`
 
 **Interfaces:**
 - Consumes: Task 1 live `workingTree`. Diff panel keeps `gitStatusEntries` / `gitDiff` (unchanged).
@@ -525,7 +525,7 @@ Run:
 
 ```powershell
 node --test src/main/git.test.js
-pnpm --filter @deepseek-ai/dsh-client-ui-git exec vitest run tests/apply.client.spec.ts tests/git-actions.client.spec.tsx
+pnpm --filter @relay-harness/rlh-client-ui-git exec vitest run tests/apply.client.spec.ts tests/git-actions.client.spec.tsx
 ```
 
 Expected: FAIL compile or runtime until `gitChangedFiles` is removed from inject (`'gitChangedFiles' in injected` is `true`), and/or `gitChangedFiles is not a function` after the destructure drop.
@@ -548,7 +548,7 @@ Run:
 
 ```powershell
 node --test src/main/git.test.js
-pnpm --filter @deepseek-ai/dsh-client-ui-git exec vitest run tests/apply.client.spec.ts tests/git-actions.client.spec.tsx tests/git-logic.client.spec.ts
+pnpm --filter @relay-harness/rlh-client-ui-git exec vitest run tests/apply.client.spec.ts tests/git-actions.client.spec.tsx tests/git-logic.client.spec.ts
 ```
 
 Expected: PASS.
@@ -556,7 +556,7 @@ Expected: PASS.
 Grep:
 
 ```powershell
-rg "gitChangedFiles|shell:git-changed-files" src vendor/deepseek-harness/packages/client/ui-git
+rg "gitChangedFiles|shell:git-changed-files" src vendor/relay-harness/packages/client/ui-git
 ```
 
 Expected: no matches.
@@ -568,11 +568,11 @@ Expected: no matches.
 ### Task 5: Docs match shipped behavior
 
 **Files:**
-- Modify: `vendor/deepseek-harness/packages/client/ui-git/README.md`
-- Modify: `vendor/deepseek-harness/packages/client/ui-git/README.zh.md`
-- Modify: `vendor/deepseek-harness/.agents/notes/implemented/feature/2026-08-16-git-action-progress-toast.md`
-- Modify: `vendor/deepseek-harness/.agents/notes/implemented/feature/2026-08-16-git-action-progress-toast.zh.md`
-- Modify: `vendor/deepseek-harness/.agents/notes/implemented/feature/2026-08-16-git-action-progress-toast.i18n.yaml` (via `--write`)
+- Modify: `vendor/relay-harness/packages/client/ui-git/README.md`
+- Modify: `vendor/relay-harness/packages/client/ui-git/README.zh.md`
+- Modify: `vendor/relay-harness/.agents/notes/implemented/feature/2026-08-16-git-action-progress-toast.md`
+- Modify: `vendor/relay-harness/.agents/notes/implemented/feature/2026-08-16-git-action-progress-toast.zh.md`
+- Modify: `vendor/relay-harness/.agents/notes/implemented/feature/2026-08-16-git-action-progress-toast.i18n.yaml` (via `--write`)
 
 **Interfaces:**
 - Consumes: Tasks 1–4 shipped facts.
@@ -598,7 +598,7 @@ Keep Windows overlays, `aheadUnreliable`, gone upstream, and `gh` fail-closed as
 
 - [ ] **Step 3: Re-record translation pairing**
 
-From `vendor/deepseek-harness`:
+From `vendor/relay-harness`:
 
 ```powershell
 pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-08-16-git-action-progress-toast.md

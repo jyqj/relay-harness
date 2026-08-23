@@ -14,7 +14,7 @@ Status: implemented
 
 `SubagentRuntime` 持有一个由普通 `start()` 与每次可继续物化共用的 `SubagentAdmissionController`。workflow 与 team 也通过同一服务委派，因此无需面向 consumer 的专门集成就会进入同一张表。controller 解析直属 parent 当前最高的 live 持久祖先，并把 child 同时计入该 root 与直属 parent id。不同 root 的状态彼此独立。
 
-`maxActivePerRoot` 与 `maxActivePerParent` 是可选正数配置。省略即表示该 scope 无界，使 Service Definition 继续作为可复用的组合原语。发布的基础 bundle 设置 `maxActivePerRoot: 4` 与 `overflow: reject`，沿用 Codex multi-agent v2 的四 thread 默认值，同时把上限应用到 DSH 与 transport 无关的 child 生命周期。容量饱和会在提供方启动或 Agent 物化前以 `CAPACITY_EXCEEDED` 拒绝。
+`maxActivePerRoot` 与 `maxActivePerParent` 是可选正数配置。省略即表示该 scope 无界，使 Service Definition 继续作为可复用的组合原语。发布的基础 bundle 设置 `maxActivePerRoot: 4` 与 `overflow: reject`，沿用 Codex multi-agent v2 的四 thread 默认值，同时把上限应用到 RLH 与 transport 无关的 child 生命周期。容量饱和会在提供方启动或 Agent 物化前以 `CAPACITY_EXCEEDED` 拒绝。
 
 `overflow: queue` 是显式的替代部署策略。每个 root 持有一个队列；提升会选择同时满足 root 与直属 parent 上限的最早 waiter，因此某个达到 sibling 上限的 parent 不会阻塞另一个合格 sibling parent。调用方取消会移除 waiter。runtime 关闭会拒绝排队与未来获取，但不会撤销已发布 child。
 

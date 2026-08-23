@@ -1,4 +1,4 @@
-import { defineStore, type EngineStoreHandle } from '@deepseek-ai/dsh-client-runtime/client'
+import { defineStore, type EngineStoreHandle } from '@relay-harness/rlh-client-runtime/client'
 
 /** Pi-inspired projection modes. Tool records remain folded into their Turn. */
 export type SessionTreeFilterMode = 'default' | 'no-tools' | 'user-only' | 'labeled-only' | 'all'
@@ -48,7 +48,7 @@ export function createSessionTreeStore(): EngineStoreHandle<SessionTreeState, Se
       query: '',
       selectedCardId: null,
     }),
-    persist: 'dsh.session-tree.layout.v1',
+    persist: 'rlh.session-tree.layout.v1',
     actions: {
       setViewport: (draft, viewport) => { draft.viewport = viewport },
       setPosition: (draft, cardId, position) => { draft.positions[cardId] = position },

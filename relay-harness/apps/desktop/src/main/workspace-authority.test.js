@@ -11,7 +11,7 @@ const {
 } = require('./workspace-authority');
 
 function makeRoot() {
-  return fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-auth-'));
+  return fs.mkdtempSync(path.join(os.tmpdir(), 'rlh-auth-'));
 }
 
 /** Production authority returns realpath, so macOS `/var` fixtures must compare against `/private/var`. */
@@ -138,7 +138,7 @@ test('resolveAuthorizedCwd accepts a workspace configured through a directory li
   // were realpath'd, so a /var -> /private/var prefix (or any linked root)
   // made every temp-dir workspace resolve to null.
   const root = makeRoot();
-  const link = path.join(os.tmpdir(), `dsh-auth-root-link-${process.pid}-${Date.now()}`);
+  const link = path.join(os.tmpdir(), `rlh-auth-root-link-${process.pid}-${Date.now()}`);
   try {
     fs.mkdirSync(path.join(root, 'sub'));
     try {
@@ -174,7 +174,7 @@ test('PTY authority can include the Host-owned no-workspace scratch cwd', () => 
   const home = makeRoot();
   const boot = makeRoot();
   const previousConfig = require.cache[require.resolve('./config')];
-  const previousHome = process.env.DSH_HOME;
+  const previousHome = process.env.RLH_HOME;
   try {
     const scratch = scratchWorkspacePath(home);
     fs.mkdirSync(scratch);
@@ -184,7 +184,7 @@ test('PTY authority can include the Host-owned no-workspace scratch cwd', () => 
       loaded: true,
       exports: { loadConfig: () => ({ workspace: boot }) },
     };
-    process.env.DSH_HOME = home;
+    process.env.RLH_HOME = home;
 
     const ptyAuthority = loadWorkspaceAuthority({ allowScratchCwd: true });
     assert.equal(ptyAuthority.resolveAuthorizedCwd(scratch), canonical(scratch));
@@ -193,8 +193,8 @@ test('PTY authority can include the Host-owned no-workspace scratch cwd', () => 
   } finally {
     if (previousConfig) require.cache[require.resolve('./config')] = previousConfig;
     else delete require.cache[require.resolve('./config')];
-    if (previousHome === undefined) delete process.env.DSH_HOME;
-    else process.env.DSH_HOME = previousHome;
+    if (previousHome === undefined) delete process.env.RLH_HOME;
+    else process.env.RLH_HOME = previousHome;
     fs.rmSync(home, { recursive: true, force: true });
     fs.rmSync(boot, { recursive: true, force: true });
   }

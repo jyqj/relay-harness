@@ -11,7 +11,7 @@ Relay 是一个面向普通用户的通用 Agent：用户只需用自然语言�
 - **长期记忆**：记住用户真正需要长期保留的信息；具体实现路径待专项讨论。
 - **模型路由外置**：agent 只消费中转调度项目的接口，不设计其内部路由算法。
 
-- [Harness 实现](relay-harness/README.md) — 基于 DeepSeek Harness 的 agent runtime 与桌面/Web 壳层
+- [Harness 实现](relay-harness/README.md) — Relay Harness（rlh）agent runtime 与 CLI/桌面/Web 壳层（[ADR-0005](docs/adr/0005-adopt-ts-harness-runtime.md)）
 - [文档地图](docs/README.md)
 - [领域上下文](docs/CONTEXT.md)
 - [产品体验](docs/product/product-experience.md)

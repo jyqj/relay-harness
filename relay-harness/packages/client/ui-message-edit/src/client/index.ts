@@ -4,14 +4,14 @@
  * child session cut before the message, opens it, and submits the edited
  * text. The fork/open/draft/submit transaction and the failure notice live in
  * the editor inject face; the pencil only gates visibility and calls startEdit.
- * @module @deepseek-ai/dsh-client-ui-message-edit/client
+ * @module @relay-harness/rlh-client-ui-message-edit/client
  */
 
-import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
+import type { ClientContext } from '@relay-harness/rlh-client-runtime/client'
 // Type-only: pulls the ui-conversation SlotMap merge (user-actions / user-editor).
-import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
+import type {} from '@relay-harness/rlh-client-ui-conversation/client'
 // Type-only: pulls the locale plugin's Context merge (ctx.locale).
-import type {} from '@deepseek-ai/dsh-client-locale/client'
+import type {} from '@relay-harness/rlh-client-locale/client'
 import { MessageEditAction } from './MessageEditAction.tsx'
 import { MessageEditEditor } from './MessageEditEditor.tsx'
 import type { MessageEditInjected } from './slots.ts'

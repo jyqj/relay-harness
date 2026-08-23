@@ -2,10 +2,10 @@
  * Git progress toast: top-right card with spinner, title,
  * elapsed subtitle, and dismiss. Stays up through hooks; success/error
  * replace the same card.
- * @module @deepseek-ai/dsh-client-ui-git/client/GitProgressToast
+ * @module @relay-harness/rlh-client-ui-git/client/GitProgressToast
  */
 
-import { IconCheckOutline16, IconCloseOutline16, IconWarningOutline16 } from '@deepseek-ai/dsh-client-ui-primitives'
+import { IconCheckOutline16, IconCloseOutline16, IconWarningOutline16 } from '@relay-harness/rlh-client-ui-primitives'
 import { useEffect, useState } from 'react'
 import { formatElapsedDescription } from './git-logic.ts'
 import css from './GitProgressToast.module.css'

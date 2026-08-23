@@ -10,17 +10,17 @@ import type {
   AssistantMessageNode, CommandNode, CompactionSummaryNode, ConversationNode, ConversationSnapshot,
   ModelRetryNode, RunningToolCall, SessionId, SessionListState, ToolCallBlock, ToolResultNode, TurnErrorNode,
   TurnMaxTokensNode, UserMessageNode, WorkspaceListState,
-} from '@deepseek-ai/dsh-client-runtime/client'
-import { bindSnapshotSelector } from '@deepseek-ai/dsh-client-test-runtime'
+} from '@relay-harness/rlh-client-runtime/client'
+import { bindSnapshotSelector } from '@relay-harness/rlh-client-test-runtime'
 import {
   createSnapshotStore, EMPTY_CONVERSATION_VIEWS, PendingWait,
-} from '@deepseek-ai/dsh-client-runtime/client'
-import { RpcId } from '@deepseek-ai/dsh-client-connection/client'
+} from '@relay-harness/rlh-client-runtime/client'
+import { RpcId } from '@relay-harness/rlh-client-connection/client'
 import type {
   ChatNode, ChatNodeOwnerProps, ChatNodeViewProps, ChatViewSlotProps, SelectionTarget, UseChatNodeTurnData,
-} from '@deepseek-ai/dsh-client-ui-conversation/client'
-import { makeTranslate } from '@deepseek-ai/dsh-client-test-runtime'
-import { zh as commonZh } from '@deepseek-ai/dsh-client-locale/src/locales/zh.ts'
+} from '@relay-harness/rlh-client-ui-conversation/client'
+import { makeTranslate } from '@relay-harness/rlh-client-test-runtime'
+import { zh as commonZh } from '@relay-harness/rlh-client-locale/src/locales/zh.ts'
 import { createChatStore } from '../src/client/stores.ts'
 import { ChatView } from '../src/client/chat/ChatView.tsx'
 import { zh } from '../src/client/locales.ts'
@@ -924,25 +924,25 @@ describe('ChatView', () => {
     expect(view.getByRole('status').textContent).toBe('Deep diving...')
   })
 
-  it('skips Deep diving status in a dshbot-room session', () => {
-    const h = makeHarness({ runningCalls: [runningCall('r1')], running: true }, { agentPreset: 'dshbot-room' })
+  it('skips Deep diving status in a rlhbot-room session', () => {
+    const h = makeHarness({ runningCalls: [runningCall('r1')], running: true }, { agentPreset: 'rlhbot-room' })
     const view = render(<h.ChatView {...h.props} />)
     expect(view.queryByRole('status')).toBeNull()
   })
 
-  it('hides context injection rows in a dshbot-room session', () => {
+  it('hides context injection rows in a rlhbot-room session', () => {
     const h = makeHarness({
       nodes: [{
         kind: 'context', seq: 1, time: 1_000, content: [], source: null,
         provenance: { role: 'inject', label: 'fixture' },
         form: null,
       }],
-    }, { agentPreset: 'dshbot-room' })
+    }, { agentPreset: 'rlhbot-room' })
     const view = render(<h.ChatView {...h.props} />)
     expect(view.queryByRole('button', { name: /上下文注入/ })).toBeNull()
   })
 
-  it('hides turn-tail chrome in a dshbot-room session', () => {
+  it('hides turn-tail chrome in a rlhbot-room session', () => {
     const h = makeHarness({
       nodes: [
         user(1, 'hi'),
@@ -952,7 +952,7 @@ describe('ChatView', () => {
       ],
       turnTimings: new Map([[1, { startTime: 1_000, endTime: 20_000 }]]),
       turnEnds: new Map([[1, 20]]),
-    }, { agentPreset: 'dshbot-room' })
+    }, { agentPreset: 'rlhbot-room' })
     const view = render(<h.ChatView {...h.props} />)
     expect(view.queryByText(/用时/)).toBeNull()
     expect(view.queryByRole('button', { name: '在新对话中分支' })).toBeNull()

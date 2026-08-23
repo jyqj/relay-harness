@@ -4,9 +4,9 @@
  * matchers, snake_case payloads without a trailing newline, no hook environment
  * or command substitution, and no pre-tool approval or rewrite path; only
  * blocking decisions are honored. Shared execution and parsing live in
- * `dsh-hook-protocol`; see the
+ * `rlh-hook-protocol`; see the
  * [hook-bridges Agent Note](../../../../.agents/notes/implemented/feature/2026-06-30-hook-bridges.md).
- * @module @deepseek-ai/dsh-hooks-codex
+ * @module @relay-harness/rlh-hooks-codex
  */
 
 // Each dialect bridge keeps its complete dependency list visible at the entry
@@ -14,14 +14,14 @@
 /* jscpd:ignore-start */
 import { readFileSync, statSync } from 'node:fs'
 import { dirname, isAbsolute, join, resolve } from 'node:path'
-import type { Context } from '@deepseek-ai/cordis'
-import z from '@deepseek-ai/schemastery'
-import type { Agent, PreStepDecision } from '@deepseek-ai/dsh-agent'
-import { createUserMessage } from '@deepseek-ai/dsh-llm'
-import type { ContentBlock, MessageSource } from '@deepseek-ai/dsh-llm'
-import type { UserMessage } from '@deepseek-ai/dsh-session'
-import type {} from '@deepseek-ai/dsh-session-persistence'
-import type { PostToolDecision, PreToolDecision, ToolExecution, ToolExecutionResult } from '@deepseek-ai/dsh-tools'
+import type { Context } from '@relay-harness/cordis'
+import z from '@relay-harness/schemastery'
+import type { Agent, PreStepDecision } from '@relay-harness/rlh-agent'
+import { createUserMessage } from '@relay-harness/rlh-llm'
+import type { ContentBlock, MessageSource } from '@relay-harness/rlh-llm'
+import type { UserMessage } from '@relay-harness/rlh-session'
+import type {} from '@relay-harness/rlh-session-persistence'
+import type { PostToolDecision, PreToolDecision, ToolExecution, ToolExecutionResult } from '@relay-harness/rlh-tools'
 import {
   appendHookInvoked,
   appendHookResult,
@@ -34,7 +34,7 @@ import {
   type HookOutput,
   type MatcherGroup,
   type MergedHookOutcome,
-} from '@deepseek-ai/dsh-hook-protocol'
+} from '@relay-harness/rlh-hook-protocol'
 import { parseCodexConfig, type CodexHookConfig } from './config.ts'
 /* jscpd:ignore-end */
 

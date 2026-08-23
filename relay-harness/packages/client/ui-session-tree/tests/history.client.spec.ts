@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import type { HistoryEntry, IApiClient, SessionId } from '@deepseek-ai/dsh-client-connection/client'
+import type { HistoryEntry, IApiClient, SessionId } from '@relay-harness/rlh-client-connection/client'
 import { readCompleteHistory } from '../src/client/history.ts'
 
 const sid = 'session' as SessionId

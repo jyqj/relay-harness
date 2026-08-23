@@ -17,7 +17,7 @@ function operationCancelled(message = 'Harness 启动已取消') {
 }
 
 function isCancellation(error) {
-  return error?.code === 'DSH_CANCELLED' || error?.code === 'HARNESS_OPERATION_CANCELLED';
+  return error?.code === 'RLH_CANCELLED' || error?.code === 'HARNESS_OPERATION_CANCELLED';
 }
 
 function emptyPluginRecovery() {
@@ -27,7 +27,7 @@ function emptyPluginRecovery() {
 class HarnessController extends EventEmitter {
   constructor(options) {
     super();
-    this.dsh = options.dsh;
+    this.rlh = options.rlh;
     this.remote = options.remote;
     this.loadConfig = options.loadConfig;
     this.createMainWindow = options.createMainWindow;
@@ -43,9 +43,9 @@ class HarnessController extends EventEmitter {
     this.resolveLaunchTarget = options.resolveLaunchTarget;
     this.stripDroppedPlugins = options.stripDroppedPlugins;
     this.ensureDesktopInstallPlugin = options.ensureDesktopInstallPlugin || (() => {});
-    this.ensureDshMarketPlugin = options.ensureDshMarketPlugin
+    this.ensureRlhMarketPlugin = options.ensureRlhMarketPlugin
       || (async () => ({ ok: true, added: false }));
-    this.ensureDshbotPlugin = options.ensureDshbotPlugin
+    this.ensureRlhbotPlugin = options.ensureRlhbotPlugin
       || (async () => ({ ok: true, added: false }));
     this.ensureWorkspace = options.ensureWorkspace;
     this.setTimer = options.setTimer || setTimeout;
@@ -75,7 +75,7 @@ class HarnessController extends EventEmitter {
       ...((this.loadConfig() || {}).pluginRecovery || {}),
     };
 
-    this.onDshState = (snapshot) => {
+    this.onRlhState = (snapshot) => {
       this.sendState(snapshot);
       if (!this.shuttingDown && snapshot?.state === 'error' && snapshot?.failure?.phase === 'runtime') {
         this.operationGeneration += 1;
@@ -83,13 +83,13 @@ class HarnessController extends EventEmitter {
           ? this.beginPluginTreeRecovery()
           : this.beginRuntimeRecovery();
         task.catch((error) => {
-          this.dsh.log(`恢复流程失败：${errorMessage(error)}`, 'error');
+          this.rlh.log(`恢复流程失败：${errorMessage(error)}`, 'error');
         });
       }
     };
-    this.onDshLog = (line) => this.sendToBoot('shell:log', line);
-    this.dsh.on('state', this.onDshState);
-    this.dsh.on('log', this.onDshLog);
+    this.onRlhLog = (line) => this.sendToBoot('shell:log', line);
+    this.rlh.on('state', this.onRlhState);
+    this.rlh.on('log', this.onRlhLog);
   }
 
   policy() {
@@ -101,10 +101,10 @@ class HarnessController extends EventEmitter {
     };
   }
 
-  snapshot(dshSnapshot = this.dsh.snapshot()) {
+  snapshot(rlhSnapshot = this.rlh.snapshot()) {
     const policy = this.policy();
     return {
-      ...dshSnapshot,
+      ...rlhSnapshot,
       pluginRecovery: { ...this.pluginRecovery },
       recovery: {
         ...this.recovery,
@@ -114,8 +114,8 @@ class HarnessController extends EventEmitter {
     };
   }
 
-  sendState(dshSnapshot) {
-    const snapshot = this.snapshot(dshSnapshot);
+  sendState(rlhSnapshot) {
+    const snapshot = this.snapshot(rlhSnapshot);
     this.sendToBoot('shell:state', snapshot);
     this.emit('state', snapshot);
     return snapshot;
@@ -174,7 +174,7 @@ class HarnessController extends EventEmitter {
   }
 
   looksLikePluginTreeFailure(error = null) {
-    const snapshot = this.dsh.snapshot();
+    const snapshot = this.rlh.snapshot();
     return [
       errorMessage(error),
       snapshot?.error,
@@ -211,7 +211,7 @@ class HarnessController extends EventEmitter {
   async beginPluginTreeRecovery() {
     if (this.pluginRecoveryTask) return this.pluginRecoveryTask;
     const task = (async () => {
-      this.writePluginSkip(this.dsh.snapshot().failure || this.dsh.snapshot().error);
+      this.writePluginSkip(this.rlh.snapshot().failure || this.rlh.snapshot().error);
       await this.ensureBootVisible();
       if (this.shuttingDown) throw operationCancelled();
       return this.replaceOperation({ showBoot: false });
@@ -261,7 +261,7 @@ class HarnessController extends EventEmitter {
     this.recoveryTimer = this.setTimer(() => {
       this.recoveryTimer = null;
       this.runAutomaticRestart(attempt).catch((error) => {
-        this.dsh.log(`自动恢复失败：${errorMessage(error)}`, 'error');
+        this.rlh.log(`自动恢复失败：${errorMessage(error)}`, 'error');
       });
     }, delay);
     return snapshot;
@@ -301,7 +301,7 @@ class HarnessController extends EventEmitter {
     this.setRecovery({ status: 'monitoring', attempt, nextRetryAt: null, reason: '' });
     this.stableTimer = this.setTimer(() => {
       this.stableTimer = null;
-      if (this.shuttingDown || this.dsh.state !== 'ready') {
+      if (this.shuttingDown || this.rlh.state !== 'ready') {
         return;
       }
       this.setRecovery({ status: 'inactive', attempt: 0, nextRetryAt: null, reason: '' });
@@ -337,7 +337,7 @@ class HarnessController extends EventEmitter {
   async replaceOperation({ showBoot }) {
     const previousOperation = this.operation;
     this.operationGeneration += 1;
-    await this.dsh.stop();
+    await this.rlh.stop();
     await this.ensureBootVisible().catch(() => {});
     await previousOperation?.catch(() => {});
     if (this.shuttingDown) {
@@ -365,12 +365,12 @@ class HarnessController extends EventEmitter {
 
   setStartupFailure(error) {
     const message = errorMessage(error);
-    const current = this.dsh.snapshot();
+    const current = this.rlh.snapshot();
     if (current.failure?.phase === 'runtime') {
       return;
     }
     if (current.state !== 'error' || current.failure?.phase !== 'startup') {
-      this.dsh.setState('error', {
+      this.rlh.setState('error', {
         error: message,
         failure: {
           phase: 'startup',
@@ -380,7 +380,7 @@ class HarnessController extends EventEmitter {
           occurredAt: new Date(this.now()).toISOString(),
         },
       });
-      this.dsh.log(message, 'error');
+      this.rlh.log(message, 'error');
     }
   }
 
@@ -390,84 +390,84 @@ class HarnessController extends EventEmitter {
       await this.showBoot();
     }
     this.assertOperationCurrent(generation);
-    this.dsh.setState('starting', { error: '', failure: null });
+    this.rlh.setState('starting', { error: '', failure: null });
     const target = await this.resolveLaunchTarget();
     try {
       this.stripDroppedPlugins();
     } catch (error) {
-      this.dsh.log(`插件清理失败：${errorMessage(error)}`, 'app');
+      this.rlh.log(`插件清理失败：${errorMessage(error)}`, 'app');
     }
     try {
       const healed = this.healDanglingBundles();
       if (healed?.removed?.length) {
-        this.dsh.log(`已修复悬挂插件 bundle：${healed.removed.join(', ')}`, 'app');
+        this.rlh.log(`已修复悬挂插件 bundle：${healed.removed.join(', ')}`, 'app');
       }
     } catch (error) {
-      this.dsh.log(`插件 bundle 修复失败：${errorMessage(error)}`, 'app');
+      this.rlh.log(`插件 bundle 修复失败：${errorMessage(error)}`, 'app');
     }
     const desktopInstall = this.ensureDesktopInstallPlugin();
     if (desktopInstall && desktopInstall.ok === false) {
       throw new Error(`桌面安装插件写入失败：${desktopInstall.reason || 'unknown'}`);
     }
     try {
-      const market = await this.ensureDshMarketPlugin();
+      const market = await this.ensureRlhMarketPlugin();
       this.assertOperationCurrent(generation);
       if (market && market.ok === false) {
-        this.dsh.log(`预置 dshmarket 失败：${market.error || 'unknown'}`, 'app');
+        this.rlh.log(`预置 rlhmarket 失败：${market.error || 'unknown'}`, 'app');
       }
     } catch (error) {
-      this.dsh.log(`预置 dshmarket 失败：${errorMessage(error)}`, 'app');
+      this.rlh.log(`预置 rlhmarket 失败：${errorMessage(error)}`, 'app');
     }
     try {
-      const dshbot = await this.ensureDshbotPlugin();
+      const rlhbot = await this.ensureRlhbotPlugin();
       this.assertOperationCurrent(generation);
-      if (dshbot && dshbot.ok === false) {
-        this.dsh.log(`预置 dshbot 失败：${dshbot.error || 'unknown'}`, 'app');
+      if (rlhbot && rlhbot.ok === false) {
+        this.rlh.log(`预置 rlhbot 失败：${rlhbot.error || 'unknown'}`, 'app');
       }
     } catch (error) {
-      this.dsh.log(`预置 dshbot 失败：${errorMessage(error)}`, 'app');
+      this.rlh.log(`预置 rlhbot 失败：${errorMessage(error)}`, 'app');
     }
     const startOptions = {
       ...target,
       skipUserPlugins,
       patchFiles: skipUserPlugins && desktopInstall?.patchFile ? [desktopInstall.patchFile] : [],
     };
-    const url = await this.dsh.start(startOptions);
+    const url = await this.rlh.start(startOptions);
       this.assertOperationCurrent(generation);
-      if (this.dsh.state !== 'ready') {
+      if (this.rlh.state !== 'ready') {
         throw operationCancelled('Harness 在打开界面前已停止');
       }
       const { workspace } = this.loadConfig();
       try {
         await this.ensureWorkspace(url, workspace);
-        this.dsh.log(`已注册工作区 ${workspace}`);
+        this.rlh.log(`已注册工作区 ${workspace}`);
       } catch (error) {
-        this.dsh.log(`工作区自动注册跳过：${errorMessage(error)}`, 'app');
+        this.rlh.log(`工作区自动注册跳过：${errorMessage(error)}`, 'app');
       }
       this.assertOperationCurrent(generation);
-      if (this.dsh.state !== 'ready') {
+      if (this.rlh.state !== 'ready') {
         throw operationCancelled('Harness 在打开界面前已停止');
       }
     try {
       await this.showHarness(url);
       this.assertOperationCurrent(generation);
-      if (this.dsh.state !== 'ready') {
+      if (this.rlh.state !== 'ready') {
         throw operationCancelled('Harness 在界面加载期间已停止');
       }
     } catch (error) {
-      if (isCancellation(error) || this.dsh.failure?.phase === 'runtime') {
+      if (isCancellation(error) || this.rlh.failure?.phase === 'runtime') {
         await this.ensureBootVisible().catch(() => {});
         throw isCancellation(error)
           ? error
           : operationCancelled('Harness 在界面加载期间已停止');
       }
-      await this.dsh.stop();
+      await this.rlh.stop();
       throw new Error(`Web UI 加载失败：${errorMessage(error)}`);
     }
     try {
       await this.remote?.sync?.();
     } catch (error) {
-      this.dsh.log(`手机 Remote 同步失败：${errorMessage(error)}`, 'app');
+      this.rlh.log(`手机 Remote 同步失败：${errorMessage(error)}`, 'app');
     }
     if (this.loadConfig().openDevTools) {
       const harnessWc = this.getHarnessWebContents(win);
@@ -482,7 +482,7 @@ class HarnessController extends EventEmitter {
       return await this.performStartOnce({ showBoot, generation, skipUserPlugins });
     } catch (error) {
       if (!skipUserPlugins && !this.shuttingDown && !isCancellation(error) && this.looksLikePluginTreeFailure(error)) {
-        await this.dsh.stop().catch(() => {});
+        await this.rlh.stop().catch(() => {});
         this.writePluginSkip(error);
         try {
           return await this.performStartOnce({ showBoot: false, generation, skipUserPlugins: true });
@@ -514,8 +514,8 @@ class HarnessController extends EventEmitter {
     if (!win) {
       return Promise.resolve(null);
     }
-    if (this.dsh.state === 'ready' && this.dsh.baseUrl) {
-      return this.showHarness(this.dsh.baseUrl);
+    if (this.rlh.state === 'ready' && this.rlh.baseUrl) {
+      return this.showHarness(this.rlh.baseUrl);
     }
     return this.start();
   }
@@ -564,13 +564,13 @@ class HarnessController extends EventEmitter {
     const currentOperation = this.operation;
     const currentRestart = this.restartOperation;
     await Promise.allSettled([
-      this.dsh.stop(),
+      this.rlh.stop(),
       this.remote?.stop?.(),
       currentOperation,
       currentRestart,
     ].filter(Boolean));
-    this.dsh.off('state', this.onDshState);
-    this.dsh.off('log', this.onDshLog);
+    this.rlh.off('state', this.onRlhState);
+    this.rlh.off('log', this.onRlhLog);
   }
 }
 

@@ -7,25 +7,25 @@
  * addresses the session's agent by sessionId — sessions are always
  * agent-backed.
  */
-import { Service } from '@deepseek-ai/cordis'
-import type { Context } from '@deepseek-ai/cordis'
+import { Service } from '@relay-harness/cordis'
+import type { Context } from '@relay-harness/cordis'
 // Type-only: pulls the ctx.remote merge and the forwarded-event key face
 // (`commands/change` rides the allowlist) into this program.
-import type {} from '@deepseek-ai/dsh-api-remotes/client'
-import type { CommandResult } from '@deepseek-ai/dsh-commands/types'
-import type { ClientContext, ISessions, SessionId } from '@deepseek-ai/dsh-client-runtime/client'
-import type { TranslateNS } from '@deepseek-ai/dsh-client-locale/client'
+import type {} from '@relay-harness/rlh-api-remotes/client'
+import type { CommandResult } from '@relay-harness/rlh-commands/types'
+import type { ClientContext, ISessions, SessionId } from '@relay-harness/rlh-client-runtime/client'
+import type { TranslateNS } from '@relay-harness/rlh-client-locale/client'
 import type {
   CandidateRequest, ClientSessionContext, CommandClaim, PickOutcome, InputTriggerCandidate, InputTriggerPick,
   SubmitEnvelope, SubmitImageAttachment, SubmitOutcome,
-} from '@deepseek-ai/dsh-client-ui-input-trigger/client'
+} from '@relay-harness/rlh-client-ui-input-trigger/client'
 import type { CommandContribution, CommandDecoration, CommandUiContract } from './contract.ts'
 import type { CommandDescriptor } from './directory.ts'
 import { CommandDirectory } from './directory.ts'
 import { PopupSelectController } from './popup.ts'
 import type { TokenSegment } from './popup.ts'
 
-declare module '@deepseek-ai/cordis' {
+declare module '@relay-harness/cordis' {
   interface Events {
     /**
      * This browser client completed one admitted Host command execution.
@@ -247,7 +247,7 @@ export class CommandUiRuntime extends Service implements CommandUiContract {
 
   /** Menu candidates: host catalog + contribution availability, then position filtering and fuzzy name ranking. */
   private async candidates(session: ClientSessionContext, req: CandidateRequest): Promise<readonly InputTriggerCandidate[]> {
-    if (this.isDshbotRoom(session)) return []
+    if (this.isRlhbotRoom(session)) return []
     const list = await this.directory.ensureReady(session.sessionId, req.signal)
     const rows: InputTriggerCandidate[] = []
     const seen = new Set<string>()
@@ -296,7 +296,7 @@ export class CommandUiRuntime extends Service implements CommandUiContract {
 
   /** Decision table, space column: hot-key sync check; only host leadingInput claims. */
   private matchSpace(session: ClientSessionContext, token: string): PickOutcome {
-    if (this.isDshbotRoom(session)) return undefined
+    if (this.isRlhbotRoom(session)) return undefined
     if (!token.startsWith('/')) return undefined
     const name = token.slice(1)
     if (this.live.contributions.has(name)) return undefined // popup kinds never claim on space
@@ -323,7 +323,7 @@ export class CommandUiRuntime extends Service implements CommandUiContract {
     signal: AbortSignal,
     envelope: SubmitEnvelope,
   ): Promise<PickOutcome> {
-    if (this.isDshbotRoom(session)) return undefined
+    if (this.isRlhbotRoom(session)) return undefined
     const trimmed = line.trim()
     if (!trimmed.startsWith('/')) return undefined
     const ws = trimmed.search(/\s/)
@@ -490,7 +490,7 @@ export class CommandUiRuntime extends Service implements CommandUiContract {
     return sessions
   }
 
-  private isDshbotRoom(session: ClientSessionContext): boolean {
-    return this.sessions().list.getSnapshot().byId[session.sessionId]?.agentPreset === 'dshbot-room'
+  private isRlhbotRoom(session: ClientSessionContext): boolean {
+    return this.sessions().list.getSnapshot().byId[session.sessionId]?.agentPreset === 'rlhbot-room'
   }
 }

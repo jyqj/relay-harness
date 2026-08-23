@@ -5,10 +5,10 @@
  * capacity. */
 
 import { useEffect, useRef, useState } from 'react'
-import type { UseProjection } from '@deepseek-ai/dsh-client-runtime/client'
+import type { UseProjection } from '@relay-harness/rlh-client-runtime/client'
 // Type-only: the `contextPressure` / `contextBreakdown` projection key merges.
-import type {} from '@deepseek-ai/dsh-token-meter/client'
-import { Tooltip, usePresence } from '@deepseek-ai/dsh-client-ui-primitives'
+import type {} from '@relay-harness/rlh-token-meter/client'
+import { Tooltip, usePresence } from '@relay-harness/rlh-client-ui-primitives'
 import type { ComposerBarProps } from '../contract/slots.ts'
 import { contextOccupancy, formatTokens } from '../chat/StatsLine.tsx'
 import css from './ContextMeter.module.css'
@@ -123,7 +123,7 @@ function ContextMeterControl({ context, breakdown, t }: ContextMeterControlProps
           className={css.panel}
           role="dialog"
           aria-label={t('context.used')}
-          data-dsh-motion="popover"
+          data-rlh-motion="popover"
           data-state={state}
           aria-hidden={open ? undefined : true}
         >

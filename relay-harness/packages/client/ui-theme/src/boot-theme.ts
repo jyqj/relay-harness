@@ -69,7 +69,7 @@ function bootThemeScript(payload: ThemeBootPayload): string {
   for (const [name, value] of Object.entries(tokens)) {
     document.body.style.setProperty(name, value)
   }
-  document.body.style.setProperty('--dsw-alias-glass-opacity', glassOpacity + '%')
+  document.body.style.setProperty('--rlw-alias-glass-opacity', glassOpacity + '%')
 })()</script>`
 }
 

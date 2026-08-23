@@ -6,13 +6,13 @@
  * generated description is appended through `Session.append`, whose owning
  * package asserts the log invariants.
  *
- * @module @deepseek-ai/dsh-llm-vision-fallback/invariant
+ * @module @relay-harness/rlh-llm-vision-fallback/invariant
  */
 
-import type { Context } from '@deepseek-ai/cordis'
-import type { InvariantInstaller } from '@deepseek-ai/dsh-invariants'
+import type { Context } from '@relay-harness/cordis'
+import type { InvariantInstaller } from '@relay-harness/rlh-invariants'
 
-const PACKAGE_NAME = '@deepseek-ai/dsh-llm-vision-fallback'
+const PACKAGE_NAME = '@relay-harness/rlh-llm-vision-fallback'
 
 /** Cordis companion plugin name. */
 export const name = 'llm-vision-fallback-invariant'

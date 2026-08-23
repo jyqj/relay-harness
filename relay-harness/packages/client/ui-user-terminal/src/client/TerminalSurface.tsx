@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import type { InjectFace, PropsLocale, PropsRuntime, PropsStore } from '@deepseek-ai/dsh-client-ui-slots'
+import type { InjectFace, PropsLocale, PropsRuntime, PropsStore } from '@relay-harness/rlh-client-ui-slots'
 import { NS } from './locales.ts'
 import type { TerminalShellInjected } from './shell.ts'
 import type { createTerminalSessionStore } from './stores.ts'

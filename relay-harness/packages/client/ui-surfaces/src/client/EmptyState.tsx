@@ -7,8 +7,8 @@ import {
   IconGlobeOutline14,
   IconPanelBottomOutline16,
   Tooltip,
-} from '@deepseek-ai/dsh-client-ui-primitives'
-import type { PropsLocale } from '@deepseek-ai/dsh-client-ui-slots'
+} from '@relay-harness/rlh-client-ui-primitives'
+import type { PropsLocale } from '@relay-harness/rlh-client-ui-slots'
 import { NS } from './locales.ts'
 import type { OpenableKind } from './stores.ts'
 import css from './EmptyState.module.css'

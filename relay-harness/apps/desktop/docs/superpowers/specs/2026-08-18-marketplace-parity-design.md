@@ -1,18 +1,18 @@
-# 插件市场对齐 dsh-market
+# 插件市场对齐 rlh-market
 
-Deepseek-Harness-Desktop 把现有插件市场升级到 [dsh-market](https://github.com/dsh-market/dsh-market)（`dshmarket` 1.12.1）的产品行为，但不预装该插件，也不复制它的 `MarketSection.tsx` 或 HTTP 路由。
+Relay-Harness-Desktop 把现有插件市场升级到 [rlh-market](https://github.com/rlh-market/rlh-market)（`rlhmarket` 1.12.1）的产品行为，但不预装该插件，也不复制它的 `MarketSection.tsx` 或 HTTP 路由。
 
-视觉语言仍是官方 `dsh web`：只用 `ui-primitives` 和 `--dsw-alias-*`。见 [design-language.md](../../design-language.md)。
+视觉语言仍是官方 `rlh web`：只用 `ui-primitives` 和 `--rlw-alias-*`。见 [design-language.md](../../design-language.md)。
 
 ## 决定
 
 唯一界面是设置页 `settings.plugins.tab` / id `marketplace`。
 
-桌面端不在首次启动时安装 `dshmarket`。
+桌面端不在首次启动时安装 `rlhmarket`。
 桌面端不再保留第二个 Electron 市场窗口。
-桌面端不再回退到 GitHub `topic:dsh-plugin` 搜索。
+桌面端不再回退到 GitHub `topic:rlh-plugin` 搜索。
 
-目录、安装白名单和后续管理能力对齐 dsh-market 的约定。实现落在现有 Electron IPC 和 `MarketplaceSettingsTab`。
+目录、安装白名单和后续管理能力对齐 rlh-market 的约定。实现落在现有 Electron IPC 和 `MarketplaceSettingsTab`。
 
 ## 分轮
 
@@ -38,8 +38,8 @@ Deepseek-Harness-Desktop 把现有插件市场升级到 [dsh-market](https://git
 
 ## 目录
 
-`src/main/marketplace-catalog.js` 拉取 `https://awesome-dsh-plugin.com/plugins.json`。
-测试可用 `DSHD_MARKETPLACE_REGISTRY_URL` 指向 fixture。
+`src/main/marketplace-catalog.js` 拉取 `https://awesome-rlh-plugin.com/plugins.json`。
+测试可用 `RLHD_MARKETPLACE_REGISTRY_URL` 指向 fixture。
 渲染层不能设置这个变量。
 
 超时 4 秒。
@@ -70,7 +70,7 @@ TTL 1 小时。
 | `stars` | `stars` 或 `0` |
 | `packageName` | `npm` 或 `''` |
 | `homepage` | `url` |
-| `installSpec` | 与 dsh-market `installTargetFor` 相同：合法 `npm` 包名；否则从 GitHub `url` 得到 `github:owner/repo` 或 `/tree/<ref>/<posix>` → `github:owner/repo#path:/<posix>`；再否则仅当 `install` 最后 token 已是允许规格时才用它。last-token npm 必须等于该行 `npm` 字段（`npm` 为 null 时得到空 `installSpec`）。tarball / git / file URL 不会成为 `installSpec` |
+| `installSpec` | 与 rlh-market `installTargetFor` 相同：合法 `npm` 包名；否则从 GitHub `url` 得到 `github:owner/repo` 或 `/tree/<ref>/<posix>` → `github:owner/repo#path:/<posix>`；再否则仅当 `install` 最后 token 已是允许规格时才用它。last-token npm 必须等于该行 `npm` 字段（`npm` 为 null 时得到空 `installSpec`）。tarball / git / file URL 不会成为 `installSpec` |
 | `isBundle` | `true`，除非 `deprecated` 为 true |
 | `category` | registry 的 `category` |
 | `added` | `added` |
@@ -93,9 +93,9 @@ TTL 1 小时。
 `installMarketplacePlugin(id)` 是设置页路径。
 渲染层只在 `shell:install-marketplace-plugin` 上传目录 `id`（`owner/name`）。
 主进程在当前目录（内存，否则磁盘，否则快照）里查出这一行，再算出规格。
-不是这次查找得到的规格，到不了 `dsh plugin add`。
+不是这次查找得到的规格，到不了 `rlh plugin add`。
 
-`installPlugin(spec)` 仍只接受 github（`isValidGithubSpec`），给 Host 的 `install_dsh_plugin` 控制通道（`desktop-install-control.js`）用。
+`installPlugin(spec)` 仍只接受 github（`isValidGithubSpec`），给 Host 的 `install_rlh_plugin` 控制通道（`desktop-install-control.js`）用。
 设置页不调用它。
 
 允许算出的规格：
@@ -106,18 +106,18 @@ TTL 1 小时。
 
 进 CLI 之前拒绝：`file:`、`link:`、tarball URL、git URL、未知 id、`DROPPED` 包、非法 `allowBuilds`。空 `installSpec` 的卡片不提供安装按钮。
 
-安装仍通过现有 Node + pnpm shim 跑 `dsh plugin --profile web add <spec>`。
+安装仍通过现有 Node + pnpm shim 跑 `rlh plugin --profile web add <spec>`。
 `allowBuilds` 仍是 `needsAllowBuilds` 之后的显式确认。
-add 成功但新包没有可加载的 dsh 入口：当场卸掉并返回失败，避免下次启动卡死。
+add 成功但新包没有可加载的 rlh 入口：当场卸掉并返回失败，避免下次启动卡死。
 
 `MarketplaceSettingsTab` 注入 `installMarketplacePlugin(id)` 和 `uninstallPlugin(name)`。
 安装路径不再是 `seedInstallDraft`。
 
 设置页安装/卸载成功后，对应 IPC 调用 `startHarness()` 重启 Harness。
 若 profile 已写入而 `startHarness()` 抛错，安装、Host `install-plugin`、卸载共用同一包装：仍返回 `ok: true`，并带 `harnessStarted: false` 与对应文案（写入后不要再安装一次；移除后不要再卸载一次）。界面不把它当成失败、不自动再 add 或 remove。
-市场自己不拉起 Electron，也不拉脱离的 `dsh` 进程。
+市场自己不拉起 Electron，也不拉脱离的 `rlh` 进程。
 
-第一轮不搬 dsh-market 的 hoist / release-age / fetchTimeout 重试，也不做一键安装 pnpm。
+第一轮不搬 rlh-market 的 hoist / release-age / fetchTimeout 重试，也不做一键安装 pnpm。
 
 ## 退役的界面
 
@@ -189,7 +189,7 @@ profile 已经改成功但 `startHarness()` 失败：安装与卸载 IPC 都返�
 
 第一轮只跑相关的：
 
-- 目录映射 fixture：中英简介、`installSpec` 跟 dsh-market `installTargetFor`（npm 字段优先于 tarball `install` 命令；GitHub URL 含 `/tree/` 时得到 `#path:`；last-token npm 必须等于行 `npm`；行无 `npm` 时 last-token 包名为空）、退役条目 `isBundle: false`、官方分类标签。
+- 目录映射 fixture：中英简介、`installSpec` 跟 rlh-market `installTargetFor`（npm 字段优先于 tarball `install` 命令；GitHub URL 含 `/tree/` 时得到 `#path:`；last-token npm 必须等于行 `npm`；行无 `npm` 时 last-token 包名为空）、退役条目 `isBundle: false`、官方分类标签。
 - `#path:` 的 `..` / `:` / `\` 拒绝测试用 GitHub blob URL（owner/repo 匹配，但不是仓库首页），钉住 posix 校验。
 - 在线拉取失败依次落到缓存、快照。
 - `installMarketplacePlugin(id)` 查 fixture 目录；拒绝未知 id；收录的 npm 与 github 能过闸；`file:` / tarball 不可能从目录 id 查出，因此到不了 CLI。
@@ -209,21 +209,21 @@ profile 已经改成功但 `startHarness()` 失败：安装与卸载 IPC 都返�
 ## 同一变更里的文档
 
 - 目录与安装决定写一条 Agent Note。
-- README / README.en.md：市场是 awesome-dsh-plugin 精选目录，不是 GitHub topic。
+- README / README.en.md：市场是 awesome-rlh-plugin 精选目录，不是 GitHub topic。
 - `AGENTS.md` / 设计语言里仍说 `marketplace.css` 有平行色板的句子：独立页删掉后一并删掉这些警告。
 
 ## 文件（第一轮）
 
 主进程：`src/main/marketplace-catalog.js`、`src/main/marketplace-install.js`、`src/main/ipc.js`、`src/main/window.js`、`src/main/ipc-authorization.js`、`src/preload/index.js`、新的快照 JSON，以及钉这些模块的测试。
 
-客户端：`vendor/deepseek-harness/packages/client/ui-settings-plugin-inventory/src/client/{MarketplaceSettingsTab.tsx,desktop-shell.ts,index.ts,locales.ts}` 和 `tests/marketplace.client.spec.tsx`。
+客户端：`vendor/relay-harness/packages/client/ui-settings-plugin-inventory/src/client/{MarketplaceSettingsTab.tsx,desktop-shell.ts,index.ts,locales.ts}` 和 `tests/marketplace.client.spec.tsx`。
 
 删除：`src/renderer/marketplace/*` 和市场窗口接线。
 
 ## 不在范围内
 
-- 安装或内置 `dshmarket` npm 包。
-- 复制 dsh-market 的 React、CSS 或 `/dsh-market/*` HTTP 路由。
+- 安装或内置 `rlhmarket` npm 包。
+- 复制 rlh-market 的 React、CSS 或 `/rlh-market/*` HTTP 路由。
 - 用社区主题插件替换桌面自带外观。
 - 给没有打包 shim 的机器一键下载 pnpm。
 - 让市场重启 Electron。

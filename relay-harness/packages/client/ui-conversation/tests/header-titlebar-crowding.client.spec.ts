@@ -24,7 +24,7 @@ function declarations(selector: string): Map<string, string> | undefined {
 
 describe('ConversationRoot.module.css titlebar crowding', () => {
   it('pads the header by the conversation reserve AppFrame publishes', () => {
-    expect(css).toContain('max(28px, calc(var(--dshd-titlebar-conversation-reserve, 0px) + 8px))')
+    expect(css).toContain('max(28px, calc(var(--rlhd-titlebar-conversation-reserve, 0px) + 8px))')
   })
 
   it('hides header actions at cozy and compact density', () => {

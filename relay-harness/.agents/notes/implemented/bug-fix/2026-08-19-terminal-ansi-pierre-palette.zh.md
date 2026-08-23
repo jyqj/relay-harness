@@ -6,7 +6,7 @@ Status: implemented
 
 ## 问题
 
-CodeBuddy 斜杠菜单用 Ink 的 `bold` 加 `colors.info`（青色）标记选中行，未选中行用 dim／secondary。T3code 的 web 终端是 Ghostty：只从应用覆盖 fg/bg/cursor，ANSI 1–15 留在引擎的鲜艳色板，并且不重映射对比度。T3code 在 Windows 上的 PTY `name` 是 `xterm-color`，因此 Ink 发出 16 色 SGR。桌面 xterm 把青色映射到 `--dsw-alias-state-success-secondary`（green-400），蓝色映射到 business-primary，并把 `minimumContrastRatio` 设为 4.5，于是 dim 行被提升到与正常文字接近的亮度。选中态只剩几乎同色上的粗体，13px 下看不见。把窗格涂实并不能恢复 T3code 的观感，因为色板和对比度重映射仍然是错的。
+CodeBuddy 斜杠菜单用 Ink 的 `bold` 加 `colors.info`（青色）标记选中行，未选中行用 dim／secondary。T3code 的 web 终端是 Ghostty：只从应用覆盖 fg/bg/cursor，ANSI 1–15 留在引擎的鲜艳色板，并且不重映射对比度。T3code 在 Windows 上的 PTY `name` 是 `xterm-color`，因此 Ink 发出 16 色 SGR。桌面 xterm 把青色映射到 `--rlw-alias-state-success-secondary`（green-400），蓝色映射到 business-primary，并把 `minimumContrastRatio` 设为 4.5，于是 dim 行被提升到与正常文字接近的亮度。选中态只剩几乎同色上的粗体，13px 下看不见。把窗格涂实并不能恢复 T3code 的观感，因为色板和对比度重映射仍然是错的。
 
 ## 决策
 

@@ -22,7 +22,7 @@ import {
   FishLogo,
   IconAgentPresetOutline16, IconNewChatOutline16, IconPanelLeftOutline16,
   Tooltip,
-} from '@deepseek-ai/dsh-client-ui-primitives'
+} from '@relay-harness/rlh-client-ui-primitives'
 import type { SidebarRootComponentProps } from './contract/slots.ts'
 import { SESSIONS_TAB_ID } from './stores.ts'
 import css from './SidebarRoot.module.css'
@@ -151,7 +151,7 @@ export function SidebarRoot({
               </span>
               <span className={css.brandName}>
                 {renderSlot('sidebar.brand.name', {}, {
-                  fallback: <span className={css.fallbackBrandName}>DSH Local Build</span>,
+                  fallback: <span className={css.fallbackBrandName}>RLH Local Build</span>,
                 })}
               </span>
             </span>
@@ -171,9 +171,9 @@ export function SidebarRoot({
                 {renderSlot('sidebar.brand.name', {}, {
                   fallback: (
                     <>
-                      <span className={css.fallbackBrandName}>DSH Local Build</span>
-                      {process.env.DSH_CLIENT_COMMIT_HASH
-                        ? <span className={css.buildRevision}>{process.env.DSH_CLIENT_COMMIT_HASH}</span>
+                      <span className={css.fallbackBrandName}>RLH Local Build</span>
+                      {process.env.RLH_CLIENT_COMMIT_HASH
+                        ? <span className={css.buildRevision}>{process.env.RLH_CLIENT_COMMIT_HASH}</span>
                         : null}
                     </>
                   ),

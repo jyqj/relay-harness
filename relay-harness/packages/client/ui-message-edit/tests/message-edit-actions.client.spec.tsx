@@ -6,9 +6,9 @@
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render } from '@testing-library/react'
-import { makeTranslate } from '@deepseek-ai/dsh-client-test-runtime'
-import { zh as commonZh } from '@deepseek-ai/dsh-client-locale/src/locales/zh.ts'
-import type { ConversationNode } from '@deepseek-ai/dsh-client-runtime/client'
+import { makeTranslate } from '@relay-harness/rlh-client-test-runtime'
+import { zh as commonZh } from '@relay-harness/rlh-client-locale/src/locales/zh.ts'
+import type { ConversationNode } from '@relay-harness/rlh-client-runtime/client'
 import { MessageEditAction } from '../src/client/MessageEditAction.tsx'
 import type { MessageEditActionProps } from '../src/client/slots.ts'
 import { zh } from '../src/client/locales.ts'

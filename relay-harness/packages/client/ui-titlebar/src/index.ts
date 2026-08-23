@@ -1,7 +1,7 @@
 /** Host loader entry for the browser-only titlebar plugin. */
 
-import type { Context } from '@deepseek-ai/cordis'
-import { settingsNamespace } from '@deepseek-ai/dsh-settings'
+import type { Context } from '@relay-harness/cordis'
+import { settingsNamespace } from '@relay-harness/rlh-settings'
 import { TITLEBAR_SETTINGS_NAMESPACE, TitlebarSettingsSchema } from './titlebar-settings.ts'
 
 export {

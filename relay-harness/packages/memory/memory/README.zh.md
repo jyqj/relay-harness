@@ -1,4 +1,4 @@
-# `@deepseek-ai/dsh-memory`
+# `@relay-harness/rlh-memory`
 
 [English](README.md) | 中文
 
@@ -8,7 +8,7 @@
 
 ## 模型体验
 
-间接地，通过 `@deepseek-ai/dsh-memory-agent` 召回消息、`@deepseek-ai/dsh-memory-extractor-llm` 辅助请求和 `@deepseek-ai/dsh-tool-memory` 工具调用产生影响。
+间接地，通过 `@relay-harness/rlh-memory-agent` 召回消息、`@relay-harness/rlh-memory-extractor-llm` 辅助请求和 `@relay-harness/rlh-tool-memory` 工具调用产生影响。
 
 #### KV 缓存影响
 

@@ -8,7 +8,7 @@
  * @module
  */
 
-import type { Context } from '@deepseek-ai/cordis'
+import type { Context } from '@relay-harness/cordis'
 
 /** Connection phases a supervised mcp-client instance moves through. */
 export type McpConnectionHealth = 'connecting' | 'connected' | 'reconnecting' | 'failed'

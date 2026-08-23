@@ -6,9 +6,9 @@ English | [中文](2026-08-18-terminal-conpty-oneshot-no-dll.zh.md)
 
 ## Problem
 
-Closing and reopening a Windows terminal types `[?61;4c` (often twice) at the live PowerShell prompt. The session buffer still contains ConPTY's handshake `CSI c`. DSH disposes xterm on pane unmount and `term.write`s that buffer into a new parser, which answers DA1 on stdin after handshake is over, so PowerShell echoes the bytes. The same PTY also stored diagnostic shell writes, so remount replays that junk as if it were history.
+Closing and reopening a Windows terminal types `[?61;4c` (often twice) at the live PowerShell prompt. The session buffer still contains ConPTY's handshake `CSI c`. RLH disposes xterm on pane unmount and `term.write`s that buffer into a new parser, which answers DA1 on stdin after handshake is over, so PowerShell echoes the bytes. The same PTY also stored diagnostic shell writes, so remount replays that junk as if it were history.
 
-T3code (`ChisaTerminal`) does not set `useConptyDll`, caches the xterm instance across remounts, and has no CSI `c` handler. DSH's T3code port added `useConptyDll: true`, which is what makes ConPTY 1.22+ send `CSI c`.
+T3code (`ChisaTerminal`) does not set `useConptyDll`, caches the xterm instance across remounts, and has no CSI `c` handler. RLH's T3code port added `useConptyDll: true`, which is what makes ConPTY 1.22+ send `CSI c`.
 
 ## Decision
 

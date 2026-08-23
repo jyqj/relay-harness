@@ -12,7 +12,7 @@ const require = createRequire(import.meta.url)
 const { assertReleaseQaResult } = require('../src/main/release-ui-walk.js')
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
-const timeoutMs = Number(process.env.DSH_SMOKE_TIMEOUT_MS) || 420_000
+const timeoutMs = Number(process.env.RLH_SMOKE_TIMEOUT_MS) || 420_000
 
 function electronExecutable() {
   if (process.env.ELECTRON_PATH && existsSync(process.env.ELECTRON_PATH)) {
@@ -85,8 +85,8 @@ function printStepTable(qa) {
   }
 }
 
-const dirs = createSmokeDirs('dsh-source-qa-')
-const keepRequested = process.env.DSH_SMOKE_KEEP === '1'
+const dirs = createSmokeDirs('rlh-source-qa-')
+const keepRequested = process.env.RLH_SMOKE_KEEP === '1'
 let keepArtifacts = keepRequested
 
 try {
@@ -99,9 +99,9 @@ try {
   console.log(`Source release QA: ${executable}`)
   const outcome = await run(executable, ['.', `--user-data-dir=${dirs.userData}`, '--no-first-run'], {
     ...process.env,
-    DSH_HOME: dirs.dshHome,
-    DSH_SMOKE: '1',
-    DSH_QA: '1',
+    RLH_HOME: dirs.rlhHome,
+    RLH_SMOKE: '1',
+    RLH_QA: '1',
   })
 
   if (!existsSync(dirs.resultPath)) {
@@ -119,8 +119,8 @@ try {
 } finally {
   if (keepArtifacts) {
     console.log(`QA artifacts kept at ${dirs.smokeRoot}`)
-    if (existsSync(path.join(dirs.userData, 'dshd-qa.png'))) {
-      console.log(`Screenshot: ${path.join(dirs.userData, 'dshd-qa.png')}`)
+    if (existsSync(path.join(dirs.userData, 'rlhd-qa.png'))) {
+      console.log(`Screenshot: ${path.join(dirs.userData, 'rlhd-qa.png')}`)
     }
   } else if (!keepRequested) {
     try {

@@ -2,7 +2,7 @@
 
 [English](README.md) | 中文
 
-扫描桌面端**远程**弹窗里的二维码，会打开本目录独立的 `mobile/web` SPA，而不是官方四栏 `dsh web` 界面。
+扫描桌面端**远程**弹窗里的二维码，会打开本目录独立的 `mobile/web` SPA，而不是官方四栏 `rlh web` 界面。
 
 ## Web
 

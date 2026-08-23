@@ -8,7 +8,7 @@ const { createWorkspaceAuthority } = require('./workspace-authority');
 const { createWorkspacePreviewController } = require('./preview-workspace.js');
 
 function makeTempDir() {
-  return fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-preview-ws-'));
+  return fs.mkdtempSync(path.join(os.tmpdir(), 'rlh-preview-ws-'));
 }
 
 function controllerFor(cwd) {

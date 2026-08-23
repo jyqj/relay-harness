@@ -1,4 +1,4 @@
-# @deepseek-ai/dsh-llm-circuit-breaker
+# @relay-harness/rlh-llm-circuit-breaker
 
 [English](README.md) | 中文
 
@@ -15,7 +15,7 @@
 | `halfOpenMaxProbes` | `1` | 并发 recovery probe。 |
 | `failureCodes` | `EMPTY_RESPONSE,RATE_LIMIT,SERVER,TIMEOUT,TRANSPORT` | 计为 breaker failure 的错误。其他失败响应计为成功 connectivity sample。 |
 
-时间与阈值默认值沿用吸收的 client-side 先行 preset。DSH failure-code set 替代其 HTTP-only `401` preset，因为 DSH adapter 已把 transport 与 provider failure 规范化为这些 provider-neutral code。基础 bundle 不加载本包；部署显式 opt in。
+时间与阈值默认值沿用吸收的 client-side 先行 preset。RLH failure-code set 替代其 HTTP-only `401` preset，因为 RLH adapter 已把 transport 与 provider failure 规范化为这些 provider-neutral code。基础 bundle 不加载本包；部署显式 opt in。
 
 ## 状态机
 

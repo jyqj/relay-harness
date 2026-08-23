@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { HoverCard } from '@deepseek-ai/dsh-client-ui-primitives'
+import { HoverCard } from '@relay-harness/rlh-client-ui-primitives'
 import { POINTER_GRACE_MS } from '../src/pointer-grace.ts'
 import { PRESENCE_EXIT_MS } from '../src/usePresence.ts'
 
@@ -22,7 +22,7 @@ function stubAnchorRect(anchor: HTMLElement, rect: { top: number; right: number 
 function expectCardClosed(): void {
   const node = screen.queryByText('card body')
   if (node === null) return
-  expect(node.closest('[data-dsh-motion]')?.getAttribute('aria-hidden')).toBe('true')
+  expect(node.closest('[data-rlh-motion]')?.getAttribute('aria-hidden')).toBe('true')
 }
 
 /** Flush the two enter frames so pending rAF timers do not inflate getTimerCount. */

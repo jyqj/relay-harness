@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
-import type { SessionId, SessionListState, SubagentCatalogSnapshot } from '@deepseek-ai/dsh-client-runtime/client'
+import type { SessionId, SessionListState, SubagentCatalogSnapshot } from '@relay-harness/rlh-client-runtime/client'
 import type { AgentsPanelProps } from '../src/client/AgentsPanel.tsx'
 import { AgentsPanel } from '../src/client/AgentsPanel.tsx'
 import { en } from '../src/client/locales.ts'

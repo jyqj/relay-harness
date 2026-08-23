@@ -1,8 +1,8 @@
 /**
- * Shared rendering helpers for the shell tools (`dsh-tool-bash`,
- * `dsh-tool-pwsh`): the exit-status marker contract the tools' renderers
+ * Shared rendering helpers for the shell tools (`rlh-tool-bash`,
+ * `rlh-tool-pwsh`): the exit-status marker contract the tools' renderers
  * emit and the presentation layer parses back.
- * @module @deepseek-ai/dsh-shell/render
+ * @module @relay-harness/rlh-shell/render
  */
 
 /**

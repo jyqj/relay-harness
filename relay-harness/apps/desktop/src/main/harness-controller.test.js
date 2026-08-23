@@ -40,7 +40,7 @@ class FakeClock {
   }
 }
 
-class FakeDsh extends EventEmitter {
+class FakeRlh extends EventEmitter {
   constructor() {
     super();
     this.state = 'idle';
@@ -84,7 +84,7 @@ class FakeDsh extends EventEmitter {
     this.startOptions.push(options);
     const result = this.startResults.length ? this.startResults.shift() : 'http://127.0.0.1:3080';
     if (result instanceof Error) {
-      if (result.pluginTree) this.log('plugin tree failed to load', 'dsh');
+      if (result.pluginTree) this.log('plugin tree failed to load', 'rlh');
       this.setState('error', {
         error: result.message,
         failure: { phase: 'startup', message: result.message },
@@ -100,7 +100,7 @@ class FakeDsh extends EventEmitter {
     this.setState('idle', { error: '', failure: null });
   }
 
-  crash(message = 'dsh exited') {
+  crash(message = 'rlh exited') {
     this.setState('error', {
       error: message,
       failure: {
@@ -120,7 +120,7 @@ function settle() {
 
 function fixture(overrides = {}) {
   const clock = new FakeClock();
-  const dsh = new FakeDsh();
+  const rlh = new FakeRlh();
   const events = [];
   const window = {
     url: 'file:///boot.html',
@@ -157,7 +157,7 @@ function fixture(overrides = {}) {
     },
   };
   const controller = new HarnessController({
-    dsh,
+    rlh,
     remote,
     loadConfig: () => config,
     createMainWindow: () => window,
@@ -187,7 +187,7 @@ function fixture(overrides = {}) {
   });
   return {
     clock,
-    dsh,
+    rlh,
     events,
     window,
     remote,
@@ -209,83 +209,83 @@ test('writes the desktop install plugin before launching Harness', async () => {
   assert.deepEqual(calls, ['ensure']);
 });
 
-test('awaits the dshmarket preset after the desktop install plugin and before Harness start', async () => {
+test('awaits the rlhmarket preset after the desktop install plugin and before Harness start', async () => {
   const order = [];
   const f = fixture({
     ensureDesktopInstallPlugin: () => {
       order.push('desktop-install');
       return { ok: true };
     },
-    ensureDshMarketPlugin: async () => {
-      order.push('dshmarket');
+    ensureRlhMarketPlugin: async () => {
+      order.push('rlhmarket');
       return { ok: true, added: true };
     },
   });
-  const origStart = f.dsh.start.bind(f.dsh);
-  f.dsh.start = async (options) => {
+  const origStart = f.rlh.start.bind(f.rlh);
+  f.rlh.start = async (options) => {
     order.push('start');
     return origStart(options);
   };
   await f.controller.start();
-  assert.deepEqual(order, ['desktop-install', 'dshmarket', 'start']);
+  assert.deepEqual(order, ['desktop-install', 'rlhmarket', 'start']);
 });
 
-test('logs and continues when the dshmarket preset fails', async () => {
+test('logs and continues when the rlhmarket preset fails', async () => {
   const f = fixture({
-    ensureDshMarketPlugin: async () => ({ ok: false, error: 'offline' }),
+    ensureRlhMarketPlugin: async () => ({ ok: false, error: 'offline' }),
   });
   await f.controller.start();
-  assert.equal(f.dsh.startCalls, 1);
-  assert.ok(f.dsh.logs.some((line) => /dshmarket/.test(line) && /offline/.test(line)));
+  assert.equal(f.rlh.startCalls, 1);
+  assert.ok(f.rlh.logs.some((line) => /rlhmarket/.test(line) && /offline/.test(line)));
 });
 
-test('awaits the dshbot preset after dshmarket and before Harness start', async () => {
+test('awaits the rlhbot preset after rlhmarket and before Harness start', async () => {
   const order = [];
   const f = fixture({
     ensureDesktopInstallPlugin: () => {
       order.push('desktop-install');
       return { ok: true };
     },
-    ensureDshMarketPlugin: async () => {
-      order.push('dshmarket');
+    ensureRlhMarketPlugin: async () => {
+      order.push('rlhmarket');
       return { ok: true, added: true };
     },
-    ensureDshbotPlugin: async () => {
-      order.push('dshbot');
+    ensureRlhbotPlugin: async () => {
+      order.push('rlhbot');
       return { ok: true, added: true };
     },
   });
-  const origStart = f.dsh.start.bind(f.dsh);
-  f.dsh.start = async (options) => {
+  const origStart = f.rlh.start.bind(f.rlh);
+  f.rlh.start = async (options) => {
     order.push('start');
     return origStart(options);
   };
   await f.controller.start();
-  assert.deepEqual(order, ['desktop-install', 'dshmarket', 'dshbot', 'start']);
+  assert.deepEqual(order, ['desktop-install', 'rlhmarket', 'rlhbot', 'start']);
 });
 
-test('logs and continues when the dshbot preset fails', async () => {
+test('logs and continues when the rlhbot preset fails', async () => {
   const f = fixture({
-    ensureDshbotPlugin: async () => ({ ok: false, error: 'offline' }),
+    ensureRlhbotPlugin: async () => ({ ok: false, error: 'offline' }),
   });
   await f.controller.start();
-  assert.equal(f.dsh.startCalls, 1);
-  assert.ok(f.dsh.logs.some((line) => /dshbot/.test(line) && /offline/.test(line)));
+  assert.equal(f.rlh.startCalls, 1);
+  assert.ok(f.rlh.logs.some((line) => /rlhbot/.test(line) && /offline/.test(line)));
 });
 
 test('plugin-tree startup failure retries once with the official template overlay', async () => {
-  const first = Object.assign(new Error('dsh exited'), { pluginTree: true });
+  const first = Object.assign(new Error('rlh exited'), { pluginTree: true });
   const f = fixture({
     ensureDesktopInstallPlugin: () => ({ ok: true, patchFile: 'C:/desktop-install.yml' }),
   });
-  f.dsh.startResults.push(first);
+  f.rlh.startResults.push(first);
   await f.controller.start();
 
-  assert.equal(f.dsh.startCalls, 2);
-  assert.equal(f.dsh.startOptions[0].skipUserPlugins, false);
-  assert.deepEqual(f.dsh.startOptions[0].patchFiles, []);
-  assert.equal(f.dsh.startOptions[1].skipUserPlugins, true);
-  assert.deepEqual(f.dsh.startOptions[1].patchFiles, ['C:/desktop-install.yml']);
+  assert.equal(f.rlh.startCalls, 2);
+  assert.equal(f.rlh.startOptions[0].skipUserPlugins, false);
+  assert.deepEqual(f.rlh.startOptions[0].patchFiles, []);
+  assert.equal(f.rlh.startOptions[1].skipUserPlugins, true);
+  assert.deepEqual(f.rlh.startOptions[1].patchFiles, ['C:/desktop-install.yml']);
   assert.equal(f.controller.snapshot().pluginRecovery.skipUserPlugins, true);
 });
 
@@ -302,9 +302,9 @@ test('sticky plugin recovery starts skip mode and retryFullPlugins clears it', a
     },
   });
   await f2.controller.start();
-  assert.equal(f2.dsh.startOptions[0].skipUserPlugins, true);
+  assert.equal(f2.rlh.startOptions[0].skipUserPlugins, true);
   await f2.controller.retryFullPlugins();
-  assert.equal(f2.dsh.startOptions.at(-1).skipUserPlugins, false);
+  assert.equal(f2.rlh.startOptions.at(-1).skipUserPlugins, false);
   assert.equal(f2.controller.snapshot().pluginRecovery.skipUserPlugins, false);
 });
 
@@ -312,7 +312,7 @@ test('runtime crash returns to boot, disconnects Remote, and schedules one resta
   const f = fixture();
   await f.controller.start();
   f.events.length = 0;
-  f.dsh.crash();
+  f.rlh.crash();
   await settle();
 
   assert.equal(f.window.url, 'file:///boot.html');
@@ -335,7 +335,7 @@ test('runtime crash during aborted Harness navigation preserves the runtime fail
   });
   const start = f.controller.start();
   await settle();
-  f.dsh.crash('crashed while loading');
+  f.rlh.crash('crashed while loading');
   rejectNavigation(aborted);
   await assert.rejects(start, { code: 'HARNESS_OPERATION_CANCELLED' });
   await settle();
@@ -349,8 +349,8 @@ test('runtime crash during aborted Harness navigation preserves the runtime fail
 test('automatic recovery uses exponential delays and exhausts the configured budget', async () => {
   const f = fixture();
   await f.controller.start();
-  f.dsh.startResults.push(new Error('first failed'), new Error('second failed'), new Error('third failed'));
-  f.dsh.crash();
+  f.rlh.startResults.push(new Error('first failed'), new Error('second failed'), new Error('third failed'));
+  f.rlh.crash();
   await settle();
 
   assert.equal(f.controller.snapshot().recovery.nextRetryAt - f.clock.time, 1000);
@@ -372,13 +372,13 @@ test('automatic recovery uses exponential delays and exhausts the configured bud
 test('successful recovery retains the crash budget until the stable window completes', async () => {
   const f = fixture();
   await f.controller.start();
-  f.dsh.crash();
+  f.rlh.crash();
   await settle();
   await f.clock.tick(1000);
 
   assert.equal(f.controller.snapshot().recovery.status, 'monitoring');
   assert.equal(f.controller.snapshot().recovery.attempt, 1);
-  assert.equal(f.dsh.state, 'ready');
+  assert.equal(f.rlh.state, 'ready');
   await f.clock.tick(59_999);
   assert.equal(f.controller.snapshot().recovery.status, 'monitoring');
   await f.clock.tick(1);
@@ -389,10 +389,10 @@ test('successful recovery retains the crash budget until the stable window compl
 test('a second crash during monitoring consumes the next attempt', async () => {
   const f = fixture();
   await f.controller.start();
-  f.dsh.crash();
+  f.rlh.crash();
   await settle();
   await f.clock.tick(1000);
-  f.dsh.crash('again');
+  f.rlh.crash('again');
   await settle();
 
   assert.equal(f.controller.snapshot().recovery.status, 'scheduled');
@@ -404,16 +404,16 @@ test('a second crash during monitoring consumes the next attempt', async () => {
 test('cancel and manual restart prevent the scheduled timer from starting another process', async () => {
   const f = fixture();
   await f.controller.start();
-  f.dsh.crash();
+  f.rlh.crash();
   await settle();
-  const startsBefore = f.dsh.startCalls;
+  const startsBefore = f.rlh.startCalls;
   f.controller.cancelRecovery();
   await f.clock.tick(5000);
-  assert.equal(f.dsh.startCalls, startsBefore);
+  assert.equal(f.rlh.startCalls, startsBefore);
   assert.equal(f.controller.snapshot().recovery.status, 'cancelled');
 
   await f.controller.restart();
-  assert.equal(f.dsh.startCalls, startsBefore + 1);
+  assert.equal(f.rlh.startCalls, startsBefore + 1);
   assert.equal(f.controller.snapshot().recovery.status, 'inactive');
 });
 
@@ -431,9 +431,9 @@ test('manual restart invalidates a recovery task that is still waiting for boot 
     },
   });
   f.window.url = 'http://127.0.0.1:3080';
-  f.dsh.state = 'ready';
-  f.dsh.baseUrl = f.window.url;
-  f.dsh.crash();
+  f.rlh.state = 'ready';
+  f.rlh.baseUrl = f.window.url;
+  f.rlh.crash();
   await settle();
 
   const restart = f.controller.restart();
@@ -443,23 +443,23 @@ test('manual restart invalidates a recovery task that is still waiting for boot 
 
   assert.equal(f.controller.snapshot().recovery.status, 'inactive');
   assert.equal(f.clock.timers.size, 0);
-  assert.equal(f.dsh.state, 'ready');
+  assert.equal(f.rlh.state, 'ready');
 });
 
 test('restart during startup cancels the old operation and starts a fresh generation', async () => {
   let releaseStart;
   const f = fixture();
-  const originalStart = f.dsh.start.bind(f.dsh);
+  const originalStart = f.rlh.start.bind(f.rlh);
   let first = true;
-  f.dsh.start = async () => {
+  f.rlh.start = async () => {
     if (first) {
       first = false;
-      f.dsh.startCalls += 1;
+      f.rlh.startCalls += 1;
       await new Promise((resolve) => {
         releaseStart = resolve;
       });
       const error = new Error('cancelled');
-      error.code = 'DSH_CANCELLED';
+      error.code = 'RLH_CANCELLED';
       throw error;
     }
     return originalStart();
@@ -469,11 +469,11 @@ test('restart during startup cancels the old operation and starts a fresh genera
   await settle();
   const restart = f.controller.restart();
   releaseStart();
-  await assert.rejects(initial, { code: 'DSH_CANCELLED' });
+  await assert.rejects(initial, { code: 'RLH_CANCELLED' });
   await restart;
 
-  assert.equal(f.dsh.startCalls, 2);
-  assert.equal(f.dsh.state, 'ready');
+  assert.equal(f.rlh.startCalls, 2);
+  assert.equal(f.rlh.state, 'ready');
   assert.equal(f.window.url, 'http://127.0.0.1:3080');
 });
 
@@ -484,8 +484,8 @@ test('concurrent manual restarts share one operation', async () => {
   const second = f.controller.restart();
   assert.equal(first, second);
   await Promise.all([first, second]);
-  assert.equal(f.dsh.startCalls, 2);
-  assert.equal(f.dsh.stopCalls, 1);
+  assert.equal(f.rlh.startCalls, 2);
+  assert.equal(f.rlh.stopCalls, 1);
 });
 
 test('reload reopens the ready Web UI through showHarness', async () => {
@@ -501,13 +501,13 @@ test('reload reopens the ready Web UI through showHarness', async () => {
 test('shutdown cancels recovery and does not navigate or restart afterward', async () => {
   const f = fixture();
   await f.controller.start();
-  f.dsh.crash();
+  f.rlh.crash();
   await settle();
-  const startsBefore = f.dsh.startCalls;
+  const startsBefore = f.rlh.startCalls;
   await f.controller.shutdown();
   await f.clock.tick(10_000);
 
-  assert.equal(f.dsh.startCalls, startsBefore);
+  assert.equal(f.rlh.startCalls, startsBefore);
   assert.equal(f.remote.stopCalls, 1);
   assert.equal(f.clock.timers.size, 0);
 });
@@ -515,7 +515,7 @@ test('shutdown cancels recovery and does not navigate or restart afterward', asy
 test('disabling auto restart cancels a pending recovery immediately', async () => {
   const f = fixture();
   await f.controller.start();
-  f.dsh.crash();
+  f.rlh.crash();
   await settle();
   f.setConfig({ harnessAutoRestart: false });
   f.controller.refreshPolicy();

@@ -1,9 +1,9 @@
-# Deepseek-Harness-Desktop 全代码审查报告
+# Relay-Harness-Desktop 全代码审查报告
 
 - 审查日期：2026-08-17
 - 审查对象：main @ 88d028a（package.json 0.2.1）
 - 审查方法：4 路并行深审（主进程安全 / 渲染层与设计合规 / 构建发布与 CI / vendor 集成与文档）+ 本地测试实跑验证 + 关键结论抽查复核
-- 规模基线：自有代码 140 个跟踪文件、约 19,665 行（js/mjs/css/html）；vendor subtree 7,843 个文件（`@deepseek-ai/dsh-root` 0.1.0-rc.5）；31 个测试文件、259 个测试
+- 规模基线：自有代码 140 个跟踪文件、约 19,665 行（js/mjs/css/html）；vendor subtree 7,843 个文件（`@relay-harness/rlh-root` 0.1.0-rc.5）；31 个测试文件、259 个测试
 
 ---
 
@@ -54,7 +54,7 @@
 > 状态说明（维护者 2026-08-17 确认）：中继功能暂未启用、后续再开发。默认 `remoteEnabled: false`（`config.js:21`）、默认 `remoteMode: 'lan'`（`config.js:24`）、README 声明远程入口已隐藏、mobile 端未实现——当前发布版本不存在此攻击面，需手动改配置并切到 relay 模式才会暴露。以下发现转为**重新启用中继前的硬性前置条件**，不计入当前 P0。
 
 **C-1 中继（relay）宿主端点完全无认证，且默认中继走明文 HTTP**
-- `src/relay/server.js:170-178` — `handleUpgrade` 只校验路径 `/__dsh__/host` + 升级头 `dsh-relay`，无任何 token。任何能连到中继的人发起同款 upgrade 即可成为"宿主"，并经 `attachHost`（`server.js:71-96`）踢掉真宿主、接管全部流量。
+- `src/relay/server.js:170-178` — `handleUpgrade` 只校验路径 `/__rlh__/host` + 升级头 `rlh-relay`，无任何 token。任何能连到中继的人发起同款 upgrade 即可成为"宿主"，并经 `attachHost`（`server.js:71-96`）踢掉真宿主、接管全部流量。
 - `src/main/relay-client.js:36-43, 283-321` — 桌面到中继为明文 socket，手机的全部 Harness 会话流量原样经中继转发。
 - `src/main/config.js:25` — 默认 `remoteRelayUrl: 'http://125.124.85.212:8411'`（明文 IP+HTTP，已抽查证实）。
 - 影响：配对 token（`#offer=`）、会话内容对中继运营者/中间人完全可见；可在中继上冒名抢占宿主做会话劫持/DoS。
@@ -73,12 +73,12 @@
 - 修复：按页面角色拆分 preload（Harness 视图收窄）；敏感 handler 校验 senderFrame URL 必须是当前授权回环 origin 且拒绝子 frame。
 
 **H-4 `shell:install-plugin` 绕过 github spec 白名单**
-- `src/main/ipc.js:120-132` → `marketplace-install.js:214-234`：只过滤退役名单，registry 包名/tarball URL/git URL/`file://` 均可直达 `pnpm add`（`marketplace-install.js:151,229`）。对比桌面安装通道 `install-dsh-plugin-client.js:8-19` 有严格 `isValidGithubSpec`，IPC 路径绕开了这道闸。渲染层提供的 `allowBuilds` 数组还直接写入 `pnpm-workspace.yaml`（`ipc.js:124`、`marketplace-install.js:102-121`）。
+- `src/main/ipc.js:120-132` → `marketplace-install.js:214-234`：只过滤退役名单，registry 包名/tarball URL/git URL/`file://` 均可直达 `pnpm add`（`marketplace-install.js:151,229`）。对比桌面安装通道 `install-rlh-plugin-client.js:8-19` 有严格 `isValidGithubSpec`，IPC 路径绕开了这道闸。渲染层提供的 `allowBuilds` 数组还直接写入 `pnpm-workspace.yaml`（`ipc.js:124`、`marketplace-install.js:102-121`）。
 - 修复：`installPlugin` 入口统一复用 `isValidGithubSpec`；allowBuilds 写入前过 `parseAllowBuilds` 同款白名单。
 
 **H-5 `shell:save-config` 无字段白名单 → 任意可执行文件运行原语**
-- `src/main/ipc.js:55-69` 接受任意字段含 `dshBin`/`nodeBin`；`dsh.js:528-583,711-715` 直接以 `config.dshBin` spawn，`.cmd/.bat` 走 `shell:true`（`dsh.js:313-321`）；`shell:restart`（`ipc.js:92-95`）即可触发。
-- 修复：patch 字段级白名单 + 类型校验；`dshBin/nodeBin` 不接受渲染层设置。
+- `src/main/ipc.js:55-69` 接受任意字段含 `rlhBin`/`nodeBin`；`rlh.js:528-583,711-715` 直接以 `config.rlhBin` spawn，`.cmd/.bat` 走 `shell:true`（`rlh.js:313-321`）；`shell:restart`（`ipc.js:92-95`）即可触发。
+- 修复：patch 字段级白名单 + 类型校验；`rlhBin/nodeBin` 不接受渲染层设置。
 
 **H-6 `will-download` 强制保存路径，文件名未净化**
 - `src/main/index.js:244-248` — `item.getFilename()` 直接 join Downloads 并 `setSavePath`。恶意 `Content-Disposition`（`..\..\...\payload.exe`）可写任意位置，且剥夺用户确认。
@@ -90,7 +90,7 @@
 - **M-8 LAN Remote 登录无 Origin/CSRF 校验、无限流；rotateToken 不吊销设备 token**：`remote.js:506-522, 260-283`；设备 cookie 有效期 1 年（`remote-auth.js:5,76`）；默认绑 `0.0.0.0`（`remote.js:454`）。（远程面整体默认关闭，与 C-1 同属冻结项，随功能开发一并处理。）
 - **M-9 自更新无签名/哈希校验**：`update.js:195-231` 下载 NSIS 后直接 spawn，重定向最多跟 8 跳。建议校验资产 SHA-256 + 限定重定向域。
 - **M-10 allowBuilds 写 YAML 无注入防护**：`marketplace-install.js:102-121`（放大 H-4）。
-- **M-11 端口清理可能误杀用户 node 进程**：`dsh.js:283-297, 396-406` 仅按镜像名判定即 `taskkill /T /F`。应结合命令行参数判定归属。
+- **M-11 端口清理可能误杀用户 node 进程**：`rlh.js:283-297, 396-406` 仅按镜像名判定即 `taskkill /T /F`。应结合命令行参数判定归属。
 - **M-12**（并入 §4 B-高1）workspace-authority realpath 缺陷。
 
 ### 1.4 Low / Info（摘要）
@@ -128,7 +128,7 @@
 - **R-3 marketplace innerHTML 转义不一致**（`marketplace.js:79-136`）：`data-id`/`stars`/`data-cat` 未转义，当前靠 GitHub 命名字符集兜底；catalog 字段一旦扩展即成真 XSS。统一过 `escapeAttr/escapeHtml`。
 - **R-4 DOM 嗅探式注入对官方重构脆化**（`harness-chrome-inject.js:71-99, 260-372`）：类名启发式 + MutationObserver 高频重测量 + `shell:chrome-metrics` 高频 IPC。优先用官方 data 属性；measure 前先 diff 采样值。
 - **R-5 主题实时同步缺口**：官方页内换主题只写 `settings.yaml`，桌面壳无 watcher，boot/marketplace 停留旧主题（`ipc.js:56-62`）。
-- **R-6 关闭键 hover 色 `#e81123` 写死**（`window-controls.css:40-41`）：违反 design-language 例外条款"原生控件颜色跟随主题 token"，应改 `--dsw-alias-state-error-primary`。
+- **R-6 关闭键 hover 色 `#e81123` 写死**（`window-controls.css:40-41`）：违反 design-language 例外条款"原生控件颜色跟随主题 token"，应改 `--rlw-alias-state-error-primary`。
 - **R-7 marketplace 模态不完整**：无焦点 trap/ESC（`marketplace.js:163-181`）。
 - **R-8 几何残差**：输入/按钮 10px 圆角、sheet 16px、gap 10px（规范为 8/14-18/24/8 或 12），`marketplace.css:124-147, 268`。
 
@@ -136,14 +136,14 @@
 
 - R-9 `font-weight: 650` 违反规则 8（`marketplace.css:208`）。
 - R-10 图标 12px 低于密集标题栏下限 14px（`window-controls.css:29-33`、`harness-chrome-inject.js:13-16`）。
-- R-11 closing-overlay 阴影少一层（对齐 `--dsw-shadow-lv3` 完整三层，`closing-overlay.js:31`）。
-- R-12 marketplace 残留未用 `--danger` 变量；`--bg/--fg/--accent` 等通用命名宜注释认领或直引 `--dsw-alias-*`（`marketplace.css:9-14`）。
+- R-11 closing-overlay 阴影少一层（对齐 `--rlw-shadow-lv3` 完整三层，`closing-overlay.js:31`）。
+- R-12 marketplace 残留未用 `--danger` 变量；`--bg/--fg/--accent` 等通用命名宜注释认领或直引 `--rlw-alias-*`（`marketplace.css:9-14`）。
 - R-15 boot/marketplace 的 onState/onLog 订阅未保存 unsubscribe 函数（单例页面可接受）。
 
 ### 2.4 设计合规总体评价
 
 - **boot 页是干净的 instrument 画布**：只引用 `--boot-*` + 官方字体/动效 token，零 hex 字面量，`--boot-*` 全仓零扩散；boot.js 全程 `textContent/replaceChildren`。
-- **marketplace 平行色板已清零**：0 个 hex/rgb 字面量，8 个别名 100% 映射 `--dsw-alias-*`（commit 2d988f5 完成迁移）。**但 AGENTS.md:14 与 design-language.md:76、motion.md:141 仍声称其携带平行色板——文档已滞后于代码**。
+- **marketplace 平行色板已清零**：0 个 hex/rgb 字面量，8 个别名 100% 映射 `--rlw-alias-*`（commit 2d988f5 完成迁移）。**但 AGENTS.md:14 与 design-language.md:76、motion.md:141 仍声称其携带平行色板——文档已滞后于代码**。
 - **注入 chrome 全程 token 化**，主题跟随官方页面变量，未发明第二皮肤。
 - **themes.js 与官方七族种子逐项一致**，语义上是复用官方 Appearance 系统而非平行主题。
 - 未发现可利用的高危 XSS 注入点。
@@ -156,7 +156,7 @@
 
 **v0.2.0（真发布 → 下架）**：安装包确实上过 Releases。两个真实运行时缺陷：① 注入拖拽条（56px 整条 drag）吞掉 Web UI 标题栏点击，除最小化/关闭外全部点不了；② 单个 MCP 子进程失败拖垮整个 Host。修复见 fffc93f；8eccd92 把 README 下载指引改回 v0.1.3，GitHub Release 已删但 tag 保留。
 
-**v0.2.1（从未上线 → 流水线死亡）**：fffc93f 重组 release.yml 为 windows/macos/release 三 job 后推 tag，macos job 的 `npm test` **202 pass / 57 fail**（workspace-authority/git/pty/dsh 系列全挂），windows 与 release job 被连带 cancel——没有任何产物发布。根因即 B-高1 的 realpath 缺陷（macOS `/var→/private/var` 符号链接使 `containedIn` 判否）。随后删 tag、README 再退回 v0.1.3。
+**v0.2.1（从未上线 → 流水线死亡）**：fffc93f 重组 release.yml 为 windows/macos/release 三 job 后推 tag，macos job 的 `npm test` **202 pass / 57 fail**（workspace-authority/git/pty/rlh 系列全挂），windows 与 release job 被连带 cancel——没有任何产物发布。根因即 B-高1 的 realpath 缺陷（macOS `/var→/private/var` 符号链接使 `containedIn` 判否）。随后删 tag、README 再退回 v0.1.3。
 
 ### 3.2 High
 
@@ -171,7 +171,7 @@
 - **P-中2 pnpm 三方版本不一致**：CI 钉 11.7.0、vendor packageManager 11.8.0、桌面 dependencies 11.8.0。统一到 11.8.0。
 - **P-中3 setup-harness 无校验不可复现**：`git clone --depth 1 --branch master` 不锁 SHA、`pnpm install` 无 `--frozen-lockfile`。
 - **P-中4 测试文件混入 asar**：`files: ["src/**/*"]` 把 42 个 `*.test.js` 打进产物；`pnpm` 在 dependencies 里同时进 asar 与 resources（实为构建期用途，应降 devDependency）。
-- **P-中5 DSH_SMOKE 冒烟探针未接入门禁**：`index.js:112-174` 已实现完整探针（含真实 pty round-trip），但 run-final-gates/release.yml 都不跑它——v0.2.0 那种"标题栏不可点"正是一条冒烟就能拦住的缺陷。
+- **P-中5 RLH_SMOKE 冒烟探针未接入门禁**：`index.js:112-174` 已实现完整探针（含真实 pty round-trip），但 run-final-gates/release.yml 都不跑它——v0.2.0 那种"标题栏不可点"正是一条冒烟就能拦住的缺陷。
 
 ### 3.4 Low / 卫生
 
@@ -184,12 +184,12 @@
 
 ## 4. vendor 集成与供应链
 
-- **V-高1 subtree split 元数据损坏，上游同步工作流实际不可用**：全历史只有 d2df50d 一处 squash footer，其 split hash 47f9438 不在本仓库对象库，实测 `git subtree split --prefix=vendor/deepseek-harness` 失败；README 承诺的"每次快照带 git-subtree-split"不存在。`sync-upstream.js` 首次 pull 即会受阻。需重建 subtree 元数据或改三方 merge + 显式记录上游 SHA 文件。
-- **V-高2 运行时下载兜底无校验无版本锁定**：`dsh.js:574-582` npx `@deepseek-ai/dsh@latest`（无 pin、无 checksum）；`setup-harness.js:24` clone master 不锁 SHA。
+- **V-高1 subtree split 元数据损坏，上游同步工作流实际不可用**：全历史只有 d2df50d 一处 squash footer，其 split hash 47f9438 不在本仓库对象库，实测 `git subtree split --prefix=vendor/relay-harness` 失败；README 承诺的"每次快照带 git-subtree-split"不存在。`sync-upstream.js` 首次 pull 即会受阻。需重建 subtree 元数据或改三方 merge + 显式记录上游 SHA 文件。
+- **V-高2 运行时下载兜底无校验无版本锁定**：`rlh.js:574-582` npx `@relay-harness/rlh@latest`（无 pin、无 checksum）；`setup-harness.js:24` clone master 不锁 SHA。
 - **V-中1 打包运行时只有结构检查无校验和**：`harness-extract.js:65-90` 只查两个文件存在；after-pack 生成的 tar 无 sha256 manifest。
 - **V-中2 无本地定制清单**：二次开发直接写 vendor 树，无 `vendor-patches/` 或 diff 清单（.gitignore 还残留旧工作流痕迹），冲突时难清点定制面。
 - **V-中3 版本漂移脆弱**：after-pack 的 feature 断言锚在业务特性字符串上，上游 pre-release 一动即断言失败（是护栏也是脆点）。
-- **正面项**：插件安装控制通道（`install-dsh-plugin-client.js` + `desktop-install-control.js`）是整个集成面安全设计最好的部分——github spec 白名单、64KB body 上限、Bearer token、限权明确。三重启动链/端口抢占/进程清理与 README 语义一致。
+- **正面项**：插件安装控制通道（`install-rlh-plugin-client.js` + `desktop-install-control.js`）是整个集成面安全设计最好的部分——github spec 白名单、64KB body 上限、Bearer token、限权明确。三重启动链/端口抢占/进程清理与 README 语义一致。
 
 ---
 
@@ -199,9 +199,9 @@
 - **D-中1 "平行色板"声明过期**：AGENTS.md:14、design-language.md:76、motion.md:141 三处仍在警告 marketplace.css 平行色板，实际已清零。
 - **D-中2 "Empty-state cards are not done" 与代码矛盾**：AGENTS.md:20 声称空态五卡未做，但 vendor `ui-surfaces/EmptyState.tsx` 存在、`SurfacesRoot.tsx:350` 在无 surface 时渲染空态卡、且有专门测试断言。agent/开发者会基于错误前提决策。
 - **D-中3 第二份 superpowers plan 无状态标记**：`2026-08-15-surfaces-workbench-depth.md` 无集成状态 blockquote（第一份有），完成度证据只存在于 vendor note。
-- **D-低1** `dsh.js:571` npx 兜底文案"Node.js 18+"与 engines `^22.19.0||>=24` 不符。
-- **D-低2 mobile/**：诚实标注"原生 App 还没做"，属薄 WebView 壳 + 手动粘贴配对 URL；app.json 配了 `dsh:` scheme 但无 Linking 代码、无二维码扫描。是半成品但文档说得清；建议补 roadmap 并把"扫码"表述改为"系统相机扫 URL，本 App 只负责打开"。
-- **抽查属实的承诺**：MCP 写 `~/.dsh/mcp-servers.yaml`、技能写 `~/.dsh/skills`、市场只认 GitHub `dsh-plugin` 话题、工作区自动注册、API Key 经 `DEEPSEEK_API_KEY` 注入——均在代码中核实。
+- **D-低1** `rlh.js:571` npx 兜底文案"Node.js 18+"与 engines `^22.19.0||>=24` 不符。
+- **D-低2 mobile/**：诚实标注"原生 App 还没做"，属薄 WebView 壳 + 手动粘贴配对 URL；app.json 配了 `rlh:` scheme 但无 Linking 代码、无二维码扫描。是半成品但文档说得清；建议补 roadmap 并把"扫码"表述改为"系统相机扫 URL，本 App 只负责打开"。
+- **抽查属实的承诺**：MCP 写 `~/.rlh/mcp-servers.yaml`、技能写 `~/.rlh/skills`、市场只认 GitHub `rlh-plugin` 话题、工作区自动注册、API Key 经 `DEEPSEEK_API_KEY` 注入——均在代码中核实。
 
 ---
 
@@ -213,7 +213,7 @@
 - **根因（已实证）**：本机 `C:\Users\48818\.git` 存在一个游离 git 仓库（2026-08-17 02:20 创建）。git 从临时目录向上发现它，把整个用户主目录当成仓库，`git status --porcelain` exit 0 返回空 → "非仓库"断言失败。
 - 两个含义：① **本机环境需处理**——home 下的游离 `.git` 会污染主目录下一切 git 操作（不止本测试）；② **测试自身脆弱**——依赖"os.tmpdir() 不在仓库内"这一环境假设。建议测试里设 `GIT_CEILING_DIRECTORIES=<tmp根>` 或 `GIT_DIR=/dev/null` 隔离；应用侧的 git 探测同理可考虑 ceiling 语义，避免用户 home 有游离 `.git` 时误判工作区。
 - macOS CI：57 fail（realpath 符号链接问题，见 B-高1），已实际炸掉 v0.2.1 发布。
-- 覆盖缺口：vendor 侧仅 `test.yml` 的 `vendor-gui` job 覆盖，本地 `npm test` 不 gate vendor；渲染层（boot/marketplace/theme）无自动化测试；`DSH_SMOKE` 未接入。
+- 覆盖缺口：vendor 侧仅 `test.yml` 的 `vendor-gui` job 覆盖，本地 `npm test` 不 gate vendor；渲染层（boot/marketplace/theme）无自动化测试；`RLH_SMOKE` 未接入。
 
 ---
 
@@ -231,7 +231,7 @@
 5. preload 按窗口角色拆分 + IPC senderFrame 校验（H-3）。
 6. `install-plugin` 复用 `isValidGithubSpec`；`save-config` 字段白名单；`will-download` 净化（H-4/5/6）。
 7. CSP 放行内联 style（或 insertCSS），修主题失效（R-1）。
-8. release.yml 改"windows 必需、mac 软依赖"；DSH_SMOKE 接入门禁；release-notes 模板化 + tag 校验；pnpm 统一 11.8.0。
+8. release.yml 改"windows 必需、mac 软依赖"；RLH_SMOKE 接入门禁；release-notes 模板化 + tag 校验；pnpm 统一 11.8.0。
 9. asar 排除 `**/*.test.js`；pnpm 降 devDependency。
 
 **第三批（P2，常规打磨）**
@@ -243,7 +243,7 @@
 
 ## 8. 总体评价
 
-这个代码库呈现出清晰的"高工程质量 + 快速迭代留下的系统性缺口"双重面貌。做得最好的三块：**生命周期编排**（dsh.js 的单飞/代际守卫在 Electron 应用里属上乘）、**设计语言纪律**（平行色板清零、boot 例外零扩散、注入 chrome 全 token 化）、**本地安全基线**（沙箱/隔离/导航守卫/参数化子进程全套）。最危险的三块：**preload 信任模型**（把整机能力打包给一切回环内容，随插件生态扩大而放大）、**发布工程**（版本叙事三向矛盾、macOS 阻塞链、发布文案与产物脱节，已经连续两次翻车）、**冻结中的远程面**（中继零认证 + 明文——当前未启用不构成现实攻击面，但重新开发时须把认证与 TLS 作为设计输入，而非事后补丁）。修完 P0 三项后，这个项目就具备了重新发布 0.2.2 的基本条件。
+这个代码库呈现出清晰的"高工程质量 + 快速迭代留下的系统性缺口"双重面貌。做得最好的三块：**生命周期编排**（rlh.js 的单飞/代际守卫在 Electron 应用里属上乘）、**设计语言纪律**（平行色板清零、boot 例外零扩散、注入 chrome 全 token 化）、**本地安全基线**（沙箱/隔离/导航守卫/参数化子进程全套）。最危险的三块：**preload 信任模型**（把整机能力打包给一切回环内容，随插件生态扩大而放大）、**发布工程**（版本叙事三向矛盾、macOS 阻塞链、发布文案与产物脱节，已经连续两次翻车）、**冻结中的远程面**（中继零认证 + 明文——当前未启用不构成现实攻击面，但重新开发时须把认证与 TLS 作为设计输入，而非事后补丁）。修完 P0 三项后，这个项目就具备了重新发布 0.2.2 的基本条件。
 
 ---
 

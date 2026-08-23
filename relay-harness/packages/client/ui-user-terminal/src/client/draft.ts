@@ -1,6 +1,6 @@
 /** Append a terminal mention into the current session composer draft. */
 
-import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
+import type { ClientContext } from '@relay-harness/rlh-client-runtime/client'
 
 /** Structural conversation face; this package must not value-import ui-conversation. */
 interface ConversationDraftFace {

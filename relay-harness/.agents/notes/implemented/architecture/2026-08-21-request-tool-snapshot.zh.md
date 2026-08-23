@@ -18,7 +18,7 @@ Status: implemented
 
 Code Mode 继承外层执行的快照。因此，其生成 SDK、后端、binding 名称、分类器与嵌套调度器使用同一捕获视图；注册表或后端替换只影响下一次模型请求。快照会让定义与后端对象保持存活，直到步骤结算，并在拒绝、空步骤、失败、取消、普通完成与工具结算的所有路径释放。注册项 disposal 会立即从后续捕获中移除工具，但不能改写已接受请求。
 
-该机制只供 `dsh-tools` 与 `dsh-agent-loop` 内部协作：`TOOL_RUNTIME_REQUESTS`、`TOOL_REQUEST_SNAPSHOT` 与绑定快照的 scheduler 是 symbol key 的集成点，不是插件扩展 surface。普通检查调用方看到的公开注册表 API 仍是当前实时目录。
+该机制只供 `rlh-tools` 与 `rlh-agent-loop` 内部协作：`TOOL_RUNTIME_REQUESTS`、`TOOL_REQUEST_SNAPSHOT` 与绑定快照的 scheduler 是 symbol key 的集成点，不是插件扩展 surface。普通检查调用方看到的公开注册表 API 仍是当前实时目录。
 
 ## Alternatives considered
 

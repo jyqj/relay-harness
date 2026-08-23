@@ -52,7 +52,7 @@ test('harnessHasGhosttyAssets accepts packages/ or node_modules layout', (t) => 
 test('ensureGhosttyAssetsInHarness copies into node_modules package when sources exist', (t) => {
   const harness = fs.mkdtempSync(path.join(os.tmpdir(), 'ghostty-ensure-'));
   t.after(() => fs.rmSync(harness, { recursive: true, force: true }));
-  const pkg = path.join(harness, 'node_modules', '@deepseek-ai', 'dsh-client-ui-user-terminal');
+  const pkg = path.join(harness, 'node_modules', '@relay-harness', 'rlh-client-ui-user-terminal');
   const vendor = path.join(pkg, 'src', 'client', 'ghostty', 'vendor');
   const fonts = path.join(pkg, 'src', 'client', 'ghostty', 'fonts');
   fs.mkdirSync(vendor, { recursive: true });
@@ -72,7 +72,7 @@ test('ensureGhosttyAssetsInHarness mirrors assets from packages/ into node_modul
   const harness = fs.mkdtempSync(path.join(os.tmpdir(), 'ghostty-mirror-'));
   t.after(() => fs.rmSync(harness, { recursive: true, force: true }));
   const packagesRoot = path.join(harness, 'packages', 'client', 'ui-user-terminal');
-  const nmRoot = path.join(harness, 'node_modules', '@deepseek-ai', 'dsh-client-ui-user-terminal');
+  const nmRoot = path.join(harness, 'node_modules', '@relay-harness', 'rlh-client-ui-user-terminal');
   fs.mkdirSync(path.join(packagesRoot, 'lib', 'assets'), { recursive: true });
   fs.mkdirSync(path.join(nmRoot, 'lib'), { recursive: true });
   fs.writeFileSync(path.join(packagesRoot, 'lib', 'client.js'), 'export {}\n');

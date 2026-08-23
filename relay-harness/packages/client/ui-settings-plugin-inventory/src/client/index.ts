@@ -1,15 +1,15 @@
 /** Host plugin inventory Settings tab. */
 
-import type {} from '@deepseek-ai/dsh-client-locale/client'
-import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
-import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
+import type {} from '@relay-harness/rlh-client-locale/client'
+import type { ClientContext } from '@relay-harness/rlh-client-runtime/client'
+import type {} from '@relay-harness/rlh-client-ui-settings/client'
 import { PluginInventorySettingsTab, type PluginInventorySettingsTabInjected } from './PluginInventorySettingsTab.tsx'
 import { en, zh, type PluginInventoryLocaleKey } from './locales.ts'
 
 export type { PluginInventorySettingsTabInjected, PluginInventorySettingsTabProps } from './PluginInventorySettingsTab.tsx'
 export type { PluginInventoryLocaleKey } from './locales.ts'
 
-declare module '@deepseek-ai/dsh-client-ui-slots' {
+declare module '@relay-harness/rlh-client-ui-slots' {
   interface LocaleNamespaceMap {
     /** Plugin inventory copy. */
     'settings.pluginInventory': PluginInventoryLocaleKey

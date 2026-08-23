@@ -1,6 +1,6 @@
 # Marketplace 审查收口修复计划
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:test-driven-development. Stay in the `feat/marketplace-parity` worktree: `C:\Ai\Deepseek-Harness-Desktop\.worktrees\marketplace-parity`. Tasks are coupled — execute inline in this session (not a fresh worktree, not SDD-per-task). Do not commit unless Trent asks.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:test-driven-development. Stay in the `feat/marketplace-parity` worktree: `C:\Ai\Relay-Harness-Desktop\.worktrees\marketplace-parity`. Tasks are coupled — execute inline in this session (not a fresh worktree, not SDD-per-task). Do not commit unless Trent asks.
 
 **Goal:** Close every remaining production-delivery review finding that is a real defect or a test that does not pin the rule it names.
 
@@ -13,12 +13,12 @@
 ## Global Constraints
 
 - Worktree only. Do not edit the main checkout. Do not `pnpm install` in the worktree vendor tree.
-- Do not preinstall `dshmarket`. Do not implement Phase 2–4. Do not split `marketplace-install.js`. Do not invent a Tab atom. Keep `screenshots` mapping.
+- Do not preinstall `rlhmarket`. Do not implement Phase 2–4. Do not split `marketplace-install.js`. Do not invent a Tab atom. Keep `screenshots` mapping.
 - Do not widen Host `isValidGithubSpec` / `installPlugin` to `#path:` or tarballs.
 - TDD: failing test first (except Task 4 test-pin: prove red by temporarily dropping the posix check, then restore).
 - Do not commit unless Trent asks. Do not push.
-- Frontend: `ui-primitives` + `--dsw-alias-*`. Product copy Chinese. Comments English contracts.
-- Desktop tests from worktree root. Client tests: `node "C:\Ai\Deepseek-Harness-Desktop\vendor\deepseek-harness\node_modules\vitest\vitest.mjs" run packages/client/ui-settings-plugin-inventory` with cwd worktree `vendor/deepseek-harness`.
+- Frontend: `ui-primitives` + `--rlw-alias-*`. Product copy Chinese. Comments English contracts.
+- Desktop tests from worktree root. Client tests: `node "C:\Ai\Relay-Harness-Desktop\vendor\relay-harness\node_modules\vitest\vitest.mjs" run packages/client/ui-settings-plugin-inventory` with cwd worktree `vendor/relay-harness`.
 
 ## Pushback (do not implement)
 
@@ -35,7 +35,7 @@
 - Modify: `src/main/marketplace-install.test.js` — `#path:` fixtures use GitHub blob URLs.
 - Modify: `src/main/ipc.js` — shared one-statement restart helper for marketplace install, Host install, uninstall.
 - Modify: `src/main/ipc.test.js` — uninstall + Host install `startHarness` throw.
-- Modify: `src/host/install-dsh-plugin-client.js` + `.test.js` — JSDoc / test name for git+https allowBuilds keys.
+- Modify: `src/host/install-rlh-plugin-client.js` + `.test.js` — JSDoc / test name for git+https allowBuilds keys.
 - Modify: Settings tab, locales, desktop-shell JSDoc, client tests.
 - Modify: spec + Agent Note pair + i18n sidecars for facts this wave changes.
 
@@ -55,10 +55,10 @@
 
 ```js
 test('last-token npm fallback is empty when the row has no registry npm field', async () => {
-  process.env.DSHD_MARKETPLACE_REGISTRY_URL = FIXTURE_URL;
+  process.env.RLHD_MARKETPLACE_REGISTRY_URL = FIXTURE_URL;
   mockFetch(async () => jsonResponse({
-    name: 'awesome-dsh-plugin',
-    url: 'https://awesome-dsh-plugin.com',
+    name: 'awesome-rlh-plugin',
+    url: 'https://awesome-rlh-plugin.com',
     categories: { ui: { en: 'UI', zh: 'UI' } },
     plugins: [{
       name: 'stray-npm',
@@ -68,7 +68,7 @@ test('last-token npm fallback is empty when the row has no registry npm field', 
       description: { en: 'x', zh: 'x' },
       npm: null,
       stars: 0,
-      install: 'dsh plugin --profile web add lodash',
+      install: 'rlh plugin --profile web add lodash',
       added: '2026-08-18',
     }],
   }));
@@ -143,9 +143,9 @@ it('clears cards when a successful empty catalog arrives even if listInstalled t
     .mockResolvedValueOnce({ plugins: [] })
     .mockRejectedValueOnce(new Error('profile unreadable'))
   renderTab({ listMarketplace, listInstalled })
-  await waitFor(() => { expect(screen.getByText('dsh-loop')).toBeTruthy() })
+  await waitFor(() => { expect(screen.getByText('rlh-loop')).toBeTruthy() })
   fireEvent.click(screen.getByRole('button', { name: en.marketRefresh }))
-  await waitFor(() => { expect(screen.queryByText('dsh-loop')).toBeNull() })
+  await waitFor(() => { expect(screen.queryByText('rlh-loop')).toBeNull() })
   expect(screen.getByText(en.marketError)).toBeTruthy()
 })
 ```
@@ -249,12 +249,12 @@ Client:
 ```ts
 it('explains uninstall already happened when Harness did not start', async () => {
   renderTab({
-    listInstalled: vi.fn(async () => ({ plugins: [{ name: '@dsh-external/dsh-loop', spec: 'github:owner/dsh-loop#abc' }] })),
+    listInstalled: vi.fn(async () => ({ plugins: [{ name: '@rlh-external/rlh-loop', spec: 'github:owner/rlh-loop#abc' }] })),
     uninstallPlugin: vi.fn(async () => ({ ok: true, harnessStarted: false })),
   })
-  await waitFor(() => { expect(screen.getByText('dsh-loop')).toBeTruthy() })
+  await waitFor(() => { expect(screen.getByText('rlh-loop')).toBeTruthy() })
   pickMenu(en.marketStatus, en.marketInstalled)
-  const detail = openCard('dsh-loop')
+  const detail = openCard('rlh-loop')
   fireEvent.click(within(detail).getByRole('button', { name: en.marketRemove }))
   fireEvent.click(within(screen.getByRole('dialog', { name: en.marketRemoveTitle })).getByRole('button', { name: en.marketRemoveOk }))
   await waitFor(() => { expect(screen.getByRole('dialog', { name: en.marketUninstallHarnessDownTitle })).toBeTruthy() })
@@ -315,7 +315,7 @@ Install harness-down dialog body: `t('marketHarnessDownBody')` (locale), not `re
 - Test name: `allowBuilds accepts package, github.com/owner/repo, and name@git+https keys`
 - `desktop-shell.ts`: field JSDoc `false when the profile write committed and Harness did not start; do not retry the write.`
 - Spec: last-token npm must equal the row `npm` field; Settings applies catalog when `listInstalled` throws; uninstall `startHarness` throw is `harnessStarted: false`.
-- Agent Note EN/ZH + testing bullets. Re-record both `.i18n.yaml` via `git hash-object -w` + `git update-ref refs/dsh/translation-pairing/snapshots/<hash> <hash>`.
+- Agent Note EN/ZH + testing bullets. Re-record both `.i18n.yaml` via `git hash-object -w` + `git update-ref refs/rlh/translation-pairing/snapshots/<hash> <hash>`.
 
 - [x] **Step 1: Edit pairs in one pass**
 - [x] **Step 2: Re-record sidecars**
@@ -324,7 +324,7 @@ Install harness-down dialog body: `t('marketHarnessDownBody')` (locale), not `re
 
 ### Task 6: Verification
 
-- [x] **Step 1:** `node --test src/main/marketplace-catalog.test.js src/main/marketplace-install.test.js src/main/ipc.test.js src/main/window-marketplace.test.js src/host/install-dsh-plugin-client.test.js`
+- [x] **Step 1:** `node --test src/main/marketplace-catalog.test.js src/main/marketplace-install.test.js src/main/ipc.test.js src/main/window-marketplace.test.js src/host/install-rlh-plugin-client.test.js`
 - [x] **Step 2:** vitest `packages/client/ui-settings-plugin-inventory`
 - [x] **Step 3:** `npm test` from the worktree
 - [x] **Step 4:** Do not claim done without this run's exit code 0

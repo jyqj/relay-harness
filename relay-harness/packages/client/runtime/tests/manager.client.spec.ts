@@ -4,7 +4,7 @@
  */
 
 import { describe, expect, it, vi } from 'vitest'
-import type { SessionId } from '@deepseek-ai/dsh-api-remotes/client'
+import type { SessionId } from '@relay-harness/rlh-api-remotes/client'
 import { SessionManager } from '../src/client/sessions/manager.ts'
 import { FakeApiClient, deferred, err, fakeRemote, ok } from './fake-api.client.ts'
 import { entries, ev, plainTurn } from './event-script.client.ts'
@@ -746,14 +746,14 @@ describe('remaining branches', () => {
 
   it('create forwards origin and agentPreset and stamps them on the optimistic row', async () => {
     const api = new FakeApiClient()
-    api.onCreate = () => Promise.resolve(ok({ sessionId: S1, agentPreset: 'dshbot-room' }))
+    api.onCreate = () => Promise.resolve(ok({ sessionId: S1, agentPreset: 'rlhbot-room' }))
     const manager = new SessionManager(api, fakeRemote())
-    await manager.create({ origin: 'dshbot', agentPreset: 'dshbot-room', sessionId: S1 })
+    await manager.create({ origin: 'rlhbot', agentPreset: 'rlhbot-room', sessionId: S1 })
     expect(api.callsOf('session.create')).toEqual([
-      { origin: 'dshbot', agentPreset: 'dshbot-room', sessionId: S1 },
+      { origin: 'rlhbot', agentPreset: 'rlhbot-room', sessionId: S1 },
     ])
     expect(manager.getListSnapshot().items[0]).toMatchObject({
-      sessionId: S1, origin: 'dshbot', agentPreset: 'dshbot-room',
+      sessionId: S1, origin: 'rlhbot', agentPreset: 'rlhbot-room',
     })
   })
 

@@ -10,11 +10,11 @@ import {
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const packageJson = JSON.parse(readFileSync(path.join(root, 'package.json'), 'utf8'))
 const distDir = path.join(root, 'dist')
-const timeoutMs = Number(process.env.DSH_SMOKE_TIMEOUT_MS) || 300_000
+const timeoutMs = Number(process.env.RLH_SMOKE_TIMEOUT_MS) || 300_000
 
 function packagedExecutable() {
-  if (process.env.DSH_SMOKE_EXE) {
-    return path.resolve(process.env.DSH_SMOKE_EXE)
+  if (process.env.RLH_SMOKE_EXE) {
+    return path.resolve(process.env.RLH_SMOKE_EXE)
   }
   if (process.platform === 'win32') {
     return path.join(distDir, 'win-unpacked', `${packageJson.productName}.exe`)
@@ -70,8 +70,8 @@ function run(executable, args, env) {
   })
 }
 
-const dirs = createSmokeDirs('dsh-packaged-smoke-')
-const keepArtifacts = process.env.DSH_SMOKE_KEEP === '1'
+const dirs = createSmokeDirs('rlh-packaged-smoke-')
+const keepArtifacts = process.env.RLH_SMOKE_KEEP === '1'
 
 try {
   const executable = packagedExecutable()
@@ -86,8 +86,8 @@ try {
   console.log(`Packaged smoke: ${executable}`)
   const outcome = await run(executable, [`--user-data-dir=${dirs.userData}`, '--no-first-run'], {
     ...process.env,
-    DSH_HOME: dirs.dshHome,
-    DSH_SMOKE: '1',
+    RLH_HOME: dirs.rlhHome,
+    RLH_SMOKE: '1',
   })
 
   if (!existsSync(dirs.resultPath)) {

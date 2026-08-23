@@ -1,21 +1,21 @@
 /**
  * Basic replay-aware compaction backend.
  *
- * @module @deepseek-ai/dsh-compaction-basic
+ * @module @relay-harness/rlh-compaction-basic
  */
 
-import { Context } from '@deepseek-ai/cordis'
-import z from '@deepseek-ai/schemastery'
-import { CompactionEngine, ManualCompactionError } from '@deepseek-ai/dsh-compaction'
-import type { CompactionResult, CompactionTrigger } from '@deepseek-ai/dsh-compaction'
-import type { TokenMeter } from '@deepseek-ai/dsh-token-meter'
-import type { Session } from '@deepseek-ai/dsh-session'
-import { CONTEXT_WINDOW_EXCEEDED_CODE, assertNever } from '@deepseek-ai/dsh-llm'
-import type { LlmCallConfig } from '@deepseek-ai/dsh-llm'
-import type { Agent, PreStepDecision } from '@deepseek-ai/dsh-agent'
-import type { CommandId } from '@deepseek-ai/dsh-commands/brand'
+import { Context } from '@relay-harness/cordis'
+import z from '@relay-harness/schemastery'
+import { CompactionEngine, ManualCompactionError } from '@relay-harness/rlh-compaction'
+import type { CompactionResult, CompactionTrigger } from '@relay-harness/rlh-compaction'
+import type { TokenMeter } from '@relay-harness/rlh-token-meter'
+import type { Session } from '@relay-harness/rlh-session'
+import { CONTEXT_WINDOW_EXCEEDED_CODE, assertNever } from '@relay-harness/rlh-llm'
+import type { LlmCallConfig } from '@relay-harness/rlh-llm'
+import type { Agent, PreStepDecision } from '@relay-harness/rlh-agent'
+import type { CommandId } from '@relay-harness/rlh-commands/brand'
 // Type-only: makes the optional sibling service available to `ctx.get()`.
-import type {} from '@deepseek-ai/dsh-compaction-tool-result-pruner'
+import type {} from '@relay-harness/rlh-compaction-tool-result-pruner'
 import {
   resolveCompactSpec,
   resolveConfig,

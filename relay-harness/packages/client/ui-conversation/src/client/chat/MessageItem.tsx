@@ -7,9 +7,9 @@ import { memo, useCallback, useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import type {
   ModelRetryNode, TurnErrorNode, UserMessageNode,
-} from '@deepseek-ai/dsh-client-runtime/client'
-import { JsonBlock, MessageText, StateDot } from '@deepseek-ai/dsh-client-ui-primitives'
-import type { PropsRenderSlots } from '@deepseek-ai/dsh-client-ui-slots'
+} from '@relay-harness/rlh-client-runtime/client'
+import { JsonBlock, MessageText, StateDot } from '@relay-harness/rlh-client-ui-primitives'
+import type { PropsRenderSlots } from '@relay-harness/rlh-client-ui-slots'
 import type { ChatNodeOwnerProps, ChatNodeViewProps, ChatViewSlotProps } from '../contract/slots.ts'
 import { ReferenceIcon } from '../reference/ReferenceIcon.tsx'
 import { CompactionItem } from './CompactionItem.tsx'
@@ -349,7 +349,7 @@ export const SteeringMessageNodeView = memo(function SteeringMessageNodeView({
 export const ContextMessageNodeView = memo(function ContextMessageNodeView({
   node, t, useSessions, sessionId,
 }: ChatNodeViewProps<'context'>) {
-  const hide = useSessions(s => s.byId[sessionId]?.agentPreset === 'dshbot-room')
+  const hide = useSessions(s => s.byId[sessionId]?.agentPreset === 'rlhbot-room')
   if (hide) return null
   const data = node.data
   return (

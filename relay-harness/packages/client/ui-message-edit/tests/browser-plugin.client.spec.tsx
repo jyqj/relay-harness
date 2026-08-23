@@ -8,11 +8,11 @@
  * registration rides the plugin fiber (HMR safety).
  * The node half is exercised over the same Context.
  */
-import { Context } from '@deepseek-ai/cordis'
+import { Context } from '@relay-harness/cordis'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup } from '@testing-library/react'
-import { SlotRegistry, type SessionId } from '@deepseek-ai/dsh-client-runtime/client'
-import { LocaleRuntime } from '@deepseek-ai/dsh-client-locale/client'
+import { SlotRegistry, type SessionId } from '@relay-harness/rlh-client-runtime/client'
+import { LocaleRuntime } from '@relay-harness/rlh-client-locale/client'
 import type { MessageEditInjected } from '../src/client/slots.ts'
 import { apply, inject } from '../src/client/index.ts'
 import { apply as nodeApply } from '../src/index.ts'

@@ -1,14 +1,14 @@
 /**
  * Linear GraphQL tracker provider with paged reads and a session-bound raw GraphQL tool.
- * @module @deepseek-ai/dsh-tracker-linear
+ * @module @relay-harness/rlh-tracker-linear
  */
 
-import { Context } from '@deepseek-ai/cordis'
-import z from '@deepseek-ai/schemastery'
-import { TrackerIssueId, type TrackerIssue, type TrackerProvider, type TrackerToolBinding, type TrackerToolContext, type TrackerToolResult } from '@deepseek-ai/dsh-tracker'
-import type { TrackerIssueId as TrackerIssueIdValue } from '@deepseek-ai/dsh-tracker/types'
-import type { JsonValue } from '@deepseek-ai/dsh-session'
-import type { ObjectJsonSchema } from '@deepseek-ai/dsh-tools'
+import { Context } from '@relay-harness/cordis'
+import z from '@relay-harness/schemastery'
+import { TrackerIssueId, type TrackerIssue, type TrackerProvider, type TrackerToolBinding, type TrackerToolContext, type TrackerToolResult } from '@relay-harness/rlh-tracker'
+import type { TrackerIssueId as TrackerIssueIdValue } from '@relay-harness/rlh-tracker/types'
+import type { JsonValue } from '@relay-harness/rlh-session'
+import type { ObjectJsonSchema } from '@relay-harness/rlh-tools'
 
 const ISSUE_PAGE_SIZE = 50
 const DEFAULT_ENDPOINT = 'https://api.linear.app/graphql'
@@ -25,20 +25,20 @@ const ISSUE_FIELDS = `
   }
 `
 
-const POLL_QUERY = `query DshLinearPoll($projectSlug: String!, $stateNames: [String!]!, $first: Int!, $relationFirst: Int!, $after: String) {
+const POLL_QUERY = `query RlhLinearPoll($projectSlug: String!, $stateNames: [String!]!, $first: Int!, $relationFirst: Int!, $after: String) {
   issues(filter: {project: {slugId: {eq: $projectSlug}}, state: {name: {in: $stateNames}}}, first: $first, after: $after) {
     nodes { ${ISSUE_FIELDS} }
     pageInfo { hasNextPage endCursor }
   }
 }`
 
-const IDS_QUERY = `query DshLinearIssuesById($ids: [ID!]!, $projectSlug: String!, $first: Int!, $relationFirst: Int!) {
+const IDS_QUERY = `query RlhLinearIssuesById($ids: [ID!]!, $projectSlug: String!, $first: Int!, $relationFirst: Int!) {
   issues(filter: {id: {in: $ids}, project: {slugId: {eq: $projectSlug}}}, first: $first) {
     nodes { ${ISSUE_FIELDS} }
   }
 }`
 
-const VIEWER_QUERY = 'query DshLinearViewer { viewer { id } }'
+const VIEWER_QUERY = 'query RlhLinearViewer { viewer { id } }'
 
 /** Linear endpoint, scope, routing, auth, and provider-name configuration. */
 export interface Config {

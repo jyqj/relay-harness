@@ -26,7 +26,7 @@ test('mobile web production files do not import the desktop shell or official cl
   const banned = [
     /from\s+['"]\.\.\/\.\.\/src\//,
     /require\(\s*['"]\.\.\/\.\.\/src\//,
-    /@deepseek-ai\/dsh-client-/,
+    /@relay-harness\/rlh-client-/,
   ];
   const hits = [];
   for (const file of files) {

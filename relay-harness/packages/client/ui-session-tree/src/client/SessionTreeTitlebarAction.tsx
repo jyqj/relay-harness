@@ -1,5 +1,5 @@
-import type { InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
-import type { SessionId } from '@deepseek-ai/dsh-client-connection/client'
+import type { InjectFace, PropsLocale, PropsRuntime } from '@relay-harness/rlh-client-ui-slots'
+import type { SessionId } from '@relay-harness/rlh-client-connection/client'
 import css from './SessionTreeAction.module.css'
 
 /** Root titlebar action face. */

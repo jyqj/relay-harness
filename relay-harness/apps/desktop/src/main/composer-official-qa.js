@@ -69,7 +69,7 @@ function makeRecorder(steps) {
     };
     if (optional) row.optional = true;
     steps.push(row);
-    console.log(`[DSH_QA_COMPOSER] ${ok ? 'PASS' : (optional ? 'SKIP' : 'FAIL')} ${name}${row.detail ? ` — ${row.detail}` : ''}`);
+    console.log(`[RLH_QA_COMPOSER] ${ok ? 'PASS' : (optional ? 'SKIP' : 'FAIL')} ${name}${row.detail ? ` — ${row.detail}` : ''}`);
   };
 }
 
@@ -78,13 +78,13 @@ function tripwireHits(pageErrors) {
 }
 
 async function clearComposer(wc) {
-  const marker = `__dshd_clear_${Date.now()}__`;
+  const marker = `__rlhd_clear_${Date.now()}__`;
   for (let attempt = 0; attempt < 4; attempt += 1) {
     await pageScript(wc, `
       const ta = document.querySelector('[data-composer-card] textarea');
       if (!ta) return false;
       ta.focus();
-      return dshSetValue(ta, args.marker);
+      return rlhSetValue(ta, args.marker);
     `, { marker });
     const marked = await waitUntil(async () => {
       const value = await readComposer(wc);
@@ -157,19 +157,19 @@ async function ensureSurfacesOpen(wc, helpers) {
 
 async function openFilesSurface(wc) {
   await pageScript(wc, `
-    window.dispatchEvent(new CustomEvent('dshd-open-surface', { detail: { kind: 'files' } }));
+    window.dispatchEvent(new CustomEvent('rlhd-open-surface', { detail: { kind: 'files' } }));
     return true;
   `);
   await sleep(300);
   await pageEval(wc, () => {
     const tab = Array.from(document.querySelectorAll('button')).find((el) =>
-      dshShown(el) && /^(files|文件)$/i.test(dshLabel(el).trim()));
+      rlhShown(el) && /^(files|文件)$/i.test(rlhLabel(el).trim()));
     if (tab) tab.click();
     return Boolean(tab);
   });
   const panel = await waitUntil(() => pageEval(wc, () => {
     const el = document.querySelector('[data-files-panel]');
-    return el && dshShown(el) ? true : null;
+    return el && rlhShown(el) ? true : null;
   }), 15_000);
   return Boolean(panel);
 }
@@ -178,7 +178,7 @@ async function openTerminalDrawer(wc, helpers) {
   for (let attempt = 0; attempt < 3; attempt += 1) {
     const open = await pageEval(wc, () => {
       const root = document.querySelector('[data-terminal-owner="drawer"]');
-      return Boolean(root && dshShown(root) && root.getBoundingClientRect().height > 8);
+      return Boolean(root && rlhShown(root) && root.getBoundingClientRect().height > 8);
     });
     if (open) break;
     await helpers.clickTitlebarButton(wc, helpers.terminalPattern);
@@ -186,7 +186,7 @@ async function openTerminalDrawer(wc, helpers) {
   }
   const drawer = await waitUntil(() => pageEval(wc, () => {
     const root = document.querySelector('[data-terminal-owner="drawer"]');
-    return root && dshShown(root) && root.getBoundingClientRect().height > 8 ? true : null;
+    return root && rlhShown(root) && root.getBoundingClientRect().height > 8 ? true : null;
   }), 10_000);
   if (!drawer) return false;
   const hasPane = await pageEval(wc, () => {
@@ -196,7 +196,7 @@ async function openTerminalDrawer(wc, helpers) {
   if (!hasPane) {
     await pageEval(wc, () => {
       const root = document.querySelector('[data-terminal-owner="drawer"]');
-      const btn = root && dshFind('new terminal|新建终端', root);
+      const btn = root && rlhFind('new terminal|新建终端', root);
       if (!btn || btn.disabled) return false;
       btn.click();
       return true;
@@ -257,7 +257,7 @@ async function runComposerOfficialQa(wc, helpers) {
 
   const composerReady = await waitUntil(() => pageEval(wc, () => {
     const ta = document.querySelector('[data-composer-card] textarea');
-    return ta && !ta.disabled && dshShown(ta) ? true : null;
+    return ta && !ta.disabled && rlhShown(ta) ? true : null;
   }), 20_000);
   const workspaceOk = helpers.workspaceConnected !== false && Boolean(composerReady);
   rec(
@@ -291,9 +291,9 @@ async function runComposerOfficialQa(wc, helpers) {
       const panel = document.querySelector('[data-files-panel]');
       if (!panel) return false;
       const row = Array.from(panel.querySelectorAll('li')).find((el) =>
-        dshShown(el) && /note\.md/i.test((el.querySelector('span') && el.querySelector('span').textContent) || dshLabel(el)));
-      const btn = (row && dshFind('mention in composer|引用到输入框', row))
-        || dshFind('mention in composer|引用到输入框', panel);
+        rlhShown(el) && /note\.md/i.test((el.querySelector('span') && el.querySelector('span').textContent) || rlhLabel(el)));
+      const btn = (row && rlhFind('mention in composer|引用到输入框', row))
+        || rlhFind('mention in composer|引用到输入框', panel);
       if (!btn || btn.disabled) return false;
       btn.click();
       return true;
@@ -309,7 +309,7 @@ async function runComposerOfficialQa(wc, helpers) {
       Boolean(clearedBeforeMention)
         && Boolean(clicked)
         && /\[note\.md\]\(note\.md\)/.test(String(mentionDraft))
-        && !/__dshd_clear_/.test(String(mentionDraft)),
+        && !/__rlhd_clear_/.test(String(mentionDraft)),
       clicked
         ? `cleared=${clearedBeforeMention}; draft=${JSON.stringify(mentionDraft)}`
         : 'Mention control missing or disabled',
@@ -334,7 +334,7 @@ async function runComposerOfficialQa(wc, helpers) {
     const panel = document.querySelector('[data-files-panel]');
     if (!panel) return false;
     const row = panel.querySelector('[data-item-path="note.md"]');
-    if (!row || !dshShown(row)) return false;
+    if (!row || !rlhShown(row)) return false;
     row.click();
     return true;
   });
@@ -343,7 +343,7 @@ async function runComposerOfficialQa(wc, helpers) {
       await ensureSurfacesOpen(wc, helpers);
       return pageEval(wc, () => {
         const tab = Array.from(document.querySelectorAll('button')).find((el) =>
-          dshShown(el) && /^note\.md$/i.test(dshLabel(el).trim()));
+          rlhShown(el) && /^note\.md$/i.test(rlhLabel(el).trim()));
         if (tab) tab.click();
         const root = document.querySelector('[data-file-preview]');
         if (!root) return null;
@@ -351,7 +351,7 @@ async function runComposerOfficialQa(wc, helpers) {
         if (box.width < 40 || box.height < 40) return null;
         if (!root.querySelector('textarea')) {
           const source = Array.from(root.querySelectorAll('button')).find((el) =>
-            dshShown(el) && /^(source|源码)$/i.test(dshLabel(el).trim()));
+            rlhShown(el) && /^(source|源码)$/i.test(rlhLabel(el).trim()));
           if (source) source.click();
         }
         const ta = root.querySelector('textarea');
@@ -376,12 +376,12 @@ async function runComposerOfficialQa(wc, helpers) {
     await sleep(400);
     const add = await waitUntil(() => pageEval(wc, () => {
       const root = document.querySelector('[data-file-preview]');
-      return root && dshFind('add to chat|添加到对话', root);
+      return root && rlhFind('add to chat|添加到对话', root);
     }), 5_000);
     if (add) {
       await pageEval(wc, () => {
         const root = document.querySelector('[data-file-preview]');
-        const btn = root && dshFind('add to chat|添加到对话', root);
+        const btn = root && rlhFind('add to chat|添加到对话', root);
         if (!btn || btn.disabled) return false;
         btn.click();
         return true;
@@ -396,7 +396,7 @@ async function runComposerOfficialQa(wc, helpers) {
       Boolean(clearedBeforePreview)
         && /L1 to L2 `note\.md`/.test(previewDraft)
         && /```text[\s\S]*composer official qa[\s\S]*```/.test(previewDraft)
-        && !/__dshd_clear_/.test(previewDraft),
+        && !/__rlhd_clear_/.test(previewDraft),
       previewDraft
         ? `cleared=${clearedBeforePreview}; draft=${JSON.stringify(previewDraft).slice(0, 240)}`
         : (add ? 'clicked but draft missing L-range/fence' : 'Add to chat missing after selection'),
@@ -408,10 +408,10 @@ async function runComposerOfficialQa(wc, helpers) {
         if (!root) return { root: false };
         return {
           root: true,
-          shown: dshShown(root),
+          shown: rlhShown(root),
           textareas: root.querySelectorAll('textarea').length,
-          buttons: Array.from(root.querySelectorAll('button')).map((el) => dshLabel(el)).slice(0, 8),
-          tabs: Array.from(document.querySelectorAll('[data-surfaces-tabs] button')).map((el) => dshLabel(el)).slice(0, 8),
+          buttons: Array.from(root.querySelectorAll('button')).map((el) => rlhLabel(el)).slice(0, 8),
+          tabs: Array.from(document.querySelectorAll('[data-surfaces-tabs] button')).map((el) => rlhLabel(el)).slice(0, 8),
         };
       }))}`
       : 'could not open note.md row');
@@ -430,16 +430,16 @@ async function runComposerOfficialQa(wc, helpers) {
     const ta = document.querySelector('[data-composer-card] textarea');
     if (!ta) return false;
     ta.focus();
-    return dshSetValue(ta, '$fo');
+    return rlhSetValue(ta, '$fo');
   });
   await sleep(600);
   const dollar = await pageEval(wc, () => ({
     typed: (document.querySelector('[data-composer-card] textarea') || {}).value || '',
-    foo: Boolean(dshFind('foo-skill')),
+    foo: Boolean(rlhFind('foo-skill')),
     // Any leftover chrome menu is irrelevant; only a local $ skill hit fails this case.
     skillHits: Array.from(document.querySelectorAll('[role="menuitem"]'))
-      .filter(dshShown)
-      .map((el) => dshLabel(el))
+      .filter(rlhShown)
+      .map((el) => rlhLabel(el))
       .filter((label) => /skill|技能|foo/i.test(label))
       .slice(0, 5),
   }));
@@ -455,7 +455,7 @@ async function runComposerOfficialQa(wc, helpers) {
     const ta = document.querySelector('[data-composer-card] textarea');
     if (!ta) return false;
     ta.focus();
-    return dshSetValue(ta, '@');
+    return rlhSetValue(ta, '@');
   });
   await sleep(800);
   const at = await pageEval(wc, () => ({
@@ -476,11 +476,11 @@ async function runComposerOfficialQa(wc, helpers) {
   let terminalDraft = '';
   const drawer = await openTerminalDrawer(wc, helpers);
   if (drawer && wc.debugger.isAttached()) {
-    const marker = `dshd-composer-qa-${Date.now()}`;
+    const marker = `rlhd-composer-qa-${Date.now()}`;
     const host = await waitUntil(() => pageEval(wc, () => {
       const root = document.querySelector('[data-terminal-owner="drawer"]');
       const pane = root && root.querySelector('[data-terminal-pane]');
-      if (!pane || !dshShown(pane)) return null;
+      if (!pane || !rlhShown(pane)) return null;
       const target = pane.querySelector('canvas')
         || pane.querySelector('[contenteditable]')
         || pane.querySelector('textarea')
@@ -530,12 +530,12 @@ async function runComposerOfficialQa(wc, helpers) {
       await sleep(500);
       const addChat = await waitUntil(() => pageEval(wc, () => {
         const root = document.querySelector('[data-terminal-owner="drawer"]');
-        return root && dshFind('add to chat|加入对话|添加到对话', root);
+        return root && rlhFind('add to chat|加入对话|添加到对话', root);
       }), 6_000);
       if (addChat) {
         await pageEval(wc, () => {
           const root = document.querySelector('[data-terminal-owner="drawer"]');
-          const btn = root && dshFind('add to chat|加入对话|添加到对话', root);
+          const btn = root && rlhFind('add to chat|加入对话|添加到对话', root);
           if (!btn || btn.disabled) return false;
           btn.click();
           return true;
@@ -549,7 +549,7 @@ async function runComposerOfficialQa(wc, helpers) {
         'case.terminal.addToChat',
         Boolean(clearedBeforeTerminal)
           && /```terminal[\s\S]*```/.test(terminalDraft)
-          && !/__dshd_clear_/.test(terminalDraft),
+          && !/__rlhd_clear_/.test(terminalDraft),
         terminalDraft
           ? `cleared=${clearedBeforeTerminal}; draft=${JSON.stringify(terminalDraft).slice(0, 240)}`
           : (addChat ? 'clicked but draft missing fence' : 'selection bar / Add to chat missing after drag-select'),
@@ -563,7 +563,7 @@ async function runComposerOfficialQa(wc, helpers) {
           height: root.getBoundingClientRect().height,
           panes: root.querySelectorAll('[data-terminal-pane]').length,
           canvas: root.querySelectorAll('canvas').length,
-          buttons: Array.from(root.querySelectorAll('button')).map((el) => dshLabel(el)).slice(0, 6),
+          buttons: Array.from(root.querySelectorAll('button')).map((el) => rlhLabel(el)).slice(0, 6),
           body: (root.innerText || '').slice(0, 120),
         };
       }))}`);

@@ -1,4 +1,4 @@
-# @deepseek-ai/dsh-token-budget-controller
+# @relay-harness/rlh-token-budget-controller
 
 [English](README.md) | 中文
 
@@ -9,13 +9,13 @@
 - **每轮上限** —— 每轮次至多 `maxContinuations` 条继续提示；轮次号变化时计数重置。
 - **收益递减检测** —— 每次 continuation 的实际产出（该步的 `usage.outputTokens`）与 `minUsefulDeltaTokens` 比较；连续 `maxLowDeltaStreak` 次产出不足的 continuation 之后，控制器停止注入，因为对每条提示都只回以近乎空输出的模型已经没有内容可说。未上报 usage 的 continuation 按产出充足计——这类情形仅由每轮上限约束。
 
-以普通 `stop` finish 结束的轮次不属于本控制器的管辖范围，交由其他停止边界监听器（包括 `@deepseek-ai/dsh-behavior-correction`）处理。
+以普通 `stop` finish 结束的轮次不属于本控制器的管辖范围，交由其他停止边界监听器（包括 `@relay-harness/rlh-behavior-correction`）处理。
 
 ## 配置
 
 ```yaml
 - id: token-budget-controller
-  name: '@deepseek-ai/dsh-token-budget-controller'
+  name: '@relay-harness/rlh-token-budget-controller'
   config:
     maxContinuations: 8        # default; continue nudges allowed per turn
     minUsefulDeltaTokens: 500  # default; output tokens below which a continuation is unproductive

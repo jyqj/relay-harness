@@ -26,7 +26,7 @@
       {
         "name": "workspace.path",
         "ok": true,
-        "detail": "C:\\Users\\48818\\AppData\\Local\\Temp\\dsh-source-qa-ySHMSg\\workspace",
+        "detail": "C:\\Users\\48818\\AppData\\Local\\Temp\\rlh-source-qa-ySHMSg\\workspace",
         "optional": true
       },
       {
@@ -49,7 +49,7 @@
       {
         "name": "workspace.connected",
         "ok": true,
-        "detail": "C:\\Users\\48818\\AppData\\Local\\Temp\\dsh-source-qa-ySHMSg\\workspace"
+        "detail": "C:\\Users\\48818\\AppData\\Local\\Temp\\rlh-source-qa-ySHMSg\\workspace"
       }
     ],
     "titlebarHits": {
@@ -81,7 +81,7 @@
         {
           "name": "workspace.connected",
           "ok": true,
-          "detail": "C:\\Users\\48818\\AppData\\Local\\Temp\\dsh-source-qa-ySHMSg\\workspace"
+          "detail": "C:\\Users\\48818\\AppData\\Local\\Temp\\rlh-source-qa-ySHMSg\\workspace"
         },
         {
           "name": "frame.fourColumn",
@@ -365,18 +365,18 @@
           "detail": ""
         },
         {
-          "name": "plugin.dshbot.market",
+          "name": "plugin.rlhbot.market",
           "ok": false,
           "detail": "preset Cordis plugin, not a market catalog row",
           "optional": true
         },
         {
-          "name": "plugin.dshbot.tab",
+          "name": "plugin.rlhbot.tab",
           "ok": true,
           "detail": "plugin sidebar contribution"
         },
         {
-          "name": "plugin.dshbot.page",
+          "name": "plugin.rlhbot.page",
           "ok": true,
           "detail": ""
         }

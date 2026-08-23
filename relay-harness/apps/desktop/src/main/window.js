@@ -14,16 +14,16 @@ const {
 
 const PLUGIN_BOOT_TIMEOUT_MS = 90_000;
 const PLUGIN_BOOT_PROBE = `(() => {
-  const boot = document.querySelector('[data-dshd-boot-status]');
-  const status = boot ? boot.getAttribute('data-dshd-boot-status') : null;
-  const hasApp = Boolean(document.querySelector('[data-dsh-settings-trigger], [class*="frame"]'));
+  const boot = document.querySelector('[data-rlhd-boot-status]');
+  const status = boot ? boot.getAttribute('data-rlhd-boot-status') : null;
+  const hasApp = Boolean(document.querySelector('[data-rlh-settings-trigger], [class*="frame"]'));
   return {
-    ready: boot ? Number(boot.getAttribute('data-dshd-boot-ready')) || 0 : 0,
-    total: boot ? Number(boot.getAttribute('data-dshd-boot-total')) || 0 : 0,
+    ready: boot ? Number(boot.getAttribute('data-rlhd-boot-ready')) || 0 : 0,
+    total: boot ? Number(boot.getAttribute('data-rlhd-boot-total')) || 0 : 0,
     pending: !hasApp,
     failed: status === 'failed',
     hasApp,
-    error: boot ? String(boot.getAttribute('data-dshd-boot-error') || '') : '',
+    error: boot ? String(boot.getAttribute('data-rlhd-boot-error') || '') : '',
   };
 })()`;
 
@@ -69,7 +69,7 @@ function createMainWindow() {
     }),
     webPreferences: {
       preload: preloadFile(),
-      additionalArguments: ['--dshd-shell-role=boot'],
+      additionalArguments: ['--rlhd-shell-role=boot'],
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
@@ -309,7 +309,7 @@ function ensureHarnessView(win) {
   harnessView = new BrowserView({
     webPreferences: {
       preload: preloadFile(),
-      additionalArguments: ['--dshd-shell-role=harness'],
+      additionalArguments: ['--rlhd-shell-role=harness'],
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
@@ -333,8 +333,8 @@ function ensureHarnessView(win) {
   harnessView.webContents.on('did-finish-load', applyChrome);
   harnessView.webContents.on('dom-ready', applyChrome);
   harnessView.webContents.on('did-navigate-in-page', applyChrome);
-  if (!win._dshHarnessResizeBound) {
-    win._dshHarnessResizeBound = true;
+  if (!win._rlhHarnessResizeBound) {
+    win._rlhHarnessResizeBound = true;
     const relayout = () => layoutHarnessView(win);
     win.on('resize', relayout);
     win.on('maximize', relayout);

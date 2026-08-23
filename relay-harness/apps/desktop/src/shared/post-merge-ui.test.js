@@ -41,7 +41,7 @@ const UI_FEATURES = [
   {
     name: 'Files composer mention MIME',
     file: 'packages/client/ui-files/src/client/composerMention.ts',
-    includes: ["'application/x-dshd-composer-mention'"],
+    includes: ["'application/x-rlhd-composer-mention'"],
   },
   {
     name: 'InputBar has no local $ skill menu',
@@ -51,12 +51,12 @@ const UI_FEATURES = [
   {
     name: 'InputBar mention drop',
     file: 'packages/client/ui-conversation/src/client/skeleton/InputBar.tsx',
-    includes: ['application/x-dshd-composer-mention'],
+    includes: ['application/x-rlhd-composer-mention'],
   },
   {
-    name: 'dshbot composer chrome hide',
+    name: 'rlhbot composer chrome hide',
     file: 'packages/client/ui-conversation/src/client/skeleton/InputBar.tsx',
-    includes: ["agentPreset === 'dshbot-room'", "origin === 'dshbot'"],
+    includes: ["agentPreset === 'rlhbot-room'", "origin === 'rlhbot'"],
   },
   {
     name: 'Appearance wallpaper pick/browse row',
@@ -194,8 +194,8 @@ test('main process boots the disabled remote stub', () => {
   assert.doesNotMatch(index, /new RemoteGateway/);
 });
 
-test('dshbot plugin remains inside the desktop app', () => {
-  const manifest = JSON.parse(readRel(DESKTOP_ROOT, 'vendor/dshbot/package.json'));
+test('rlhbot plugin remains inside the desktop app', () => {
+  const manifest = JSON.parse(readRel(DESKTOP_ROOT, 'vendor/rlhbot/package.json'));
   assert.equal(typeof manifest.name, 'string');
   assert.ok(manifest.name.length > 0);
 });

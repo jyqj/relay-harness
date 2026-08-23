@@ -14,17 +14,17 @@
  * tears its scope down immediately unless it is the staged one, whose scope
  * survives frozen (read-only view) until the stage moves on.
  */
-import type { Context, Fiber } from '@deepseek-ai/cordis'
+import type { Context, Fiber } from '@relay-harness/cordis'
 import type {
   IApiClient, RpcError, RpcResult, SessionId, SubagentAddress, JobView, WorkspaceId,
-} from '@deepseek-ai/dsh-api-remotes/client'
+} from '@relay-harness/rlh-api-remotes/client'
 // Value import from the inline-safe wire layer (not the connection plugin):
 // plugin-to-plugin value imports are a bundle purity error.
-import { SESSION_SEARCH_RESULT_LIMIT } from '@deepseek-ai/dsh-host-apiproxy/api'
+import { SESSION_SEARCH_RESULT_LIMIT } from '@relay-harness/rlh-host-apiproxy/api'
 import type {
   HostObservable, SessionMaybeProvideInfo, SessionProvideInfo,
-} from '@deepseek-ai/dsh-client-ui-slots'
-import type { SessionProjectionMap } from '@deepseek-ai/dsh-session-projection/types'
+} from '@relay-harness/rlh-client-ui-slots'
+import type { SessionProjectionMap } from '@relay-harness/rlh-session-projection/types'
 import type { SnapshotStore } from '../contract/store.ts'
 import { createSnapshotStore } from '../contract/store.ts'
 import type { SessionFace } from '../contract/session.ts'
@@ -56,7 +56,7 @@ export interface SessionSummary {
   /** Number of source events inherited by a fork child. */
   seedLength?: number
   /** Coarse durable origin for navigation filtering; not a continuation capability. */
-  origin?: 'subagent' | 'dshbot'
+  origin?: 'subagent' | 'rlhbot'
   running: boolean
   /** User interaction currently blocking this session (sidebar amber-dot state). */
   pendingInteraction?: PendingInteractionStatus
@@ -146,7 +146,7 @@ export interface SessionBinding {
 }
 
 // Scope primitives live in ../agents/scope.ts (the client mirror of host
-// dsh-scope, keyed by Agent identity); re-exported here so existing
+// rlh-scope, keyed by Agent identity); re-exported here so existing
 // consumers keep their import site.
 export { scopeOf } from '../agents/scope.ts'
 
@@ -285,7 +285,7 @@ export class SessionRuntime implements ISessions {
   ) {
     this.selection = createSnapshotStore<SessionSelection>(
       {},
-      { persist: { name: 'dsh.sessions.current' } })
+      { persist: { name: 'rlh.sessions.current' } })
     const restored = this.selection.getSnapshot()
     const conversationEvents = rootCtx.get('conversationEvents')
     const conversationViews = rootCtx.get('conversationViews')
@@ -490,7 +490,7 @@ export class SessionRuntime implements ISessions {
     workspaceId?: WorkspaceId
     cwd?: string
     sessionId?: SessionId
-    origin?: 'dshbot'
+    origin?: 'rlhbot'
     agentPreset?: string
   } = {}): Promise<SessionId> {
     const result = await this.manager.create(opts)

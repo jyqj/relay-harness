@@ -17,7 +17,7 @@ export interface DirectoryEntry {
 
 /** host.listDirectory response value: one directory level plus its ancestry. */
 export interface DirectoryListing {
-  /** Absolute path of the listed directory (`\\.\dsh-computer` on the Win32 volume picker). */
+  /** Absolute path of the listed directory (`\\.\rlh-computer` on the Win32 volume picker). */
   path: string
   /** The host account's home directory (a jump target, not a crumb ceiling). */
   home: string
@@ -45,7 +45,7 @@ export interface HostApi {
    * home = the host account home directory (Web display abbreviation on POSIX);
    * canOpenPath = whether this deployment can hand a path to a user-visible native desktop;
    * scratchCwd = Host-owned directory for Sessions that are not Workspace members
-   * (`$DSH_HOME/no-workspace` or `~/.dsh/no-workspace`), created if absent.
+   * (`$RLH_HOME/no-workspace` or `~/.rlh/no-workspace`), created if absent.
    */
   describe(request: RpcRequest<{}>): Promise<RpcResponse<{
     version: string
@@ -69,7 +69,7 @@ export interface HostApi {
 
   /**
    * List one directory level for the in-app browser; an absent path lists the
-   * host account's home directory. On Win32, `\\.\dsh-computer` lists accessible
+   * host account's home directory. On Win32, `\\.\rlh-computer` lists accessible
    * drive roots. Only served under the `browse` capability; unreadable or
    * missing targets fail with `directory-unreadable`. The carrier's request
    * signal follows the caller, stopping the backend's scan on disconnect or
@@ -84,7 +84,7 @@ export interface HostApi {
    * Create one child directory under an existing parent (the browser's
    * "New folder"). Only served under the `browse` capability; an existing
    * child fails with `directory-exists`, every other filesystem failure with
-   * `directory-create-failed`. Win32 `\\.\dsh-computer` is not a parent.
+   * `directory-create-failed`. Win32 `\\.\rlh-computer` is not a parent.
    */
   createDirectory(
     request: RpcRequest<{ path: string; name: string }>,

@@ -1,13 +1,13 @@
 /**
- * Package-owned invariant companion for `@deepseek-ai/dsh-client-ui-plan`.
- * @module @deepseek-ai/dsh-client-ui-plan/invariant
+ * Package-owned invariant companion for `@relay-harness/rlh-client-ui-plan`.
+ * @module @relay-harness/rlh-client-ui-plan/invariant
  */
 
 /* jscpd:ignore-start */
-import type { Context } from '@deepseek-ai/cordis'
-import type { InvariantInstaller } from '@deepseek-ai/dsh-invariants'
+import type { Context } from '@relay-harness/cordis'
+import type { InvariantInstaller } from '@relay-harness/rlh-invariants'
 
-const PACKAGE_NAME = '@deepseek-ai/dsh-client-ui-plan'
+const PACKAGE_NAME = '@relay-harness/rlh-client-ui-plan'
 
 /** Cordis companion plugin name. */
 export const name = 'client-ui-plan-invariant'
@@ -16,7 +16,7 @@ export const inject = ['invariants']
 
 /**
  * No runtime invariant: plan state and boundary ownership are
- * audited by dsh-plan-mode, while the control is a slot effect whose
+ * audited by rlh-plan-mode, while the control is a slot effect whose
  * declaration, registration, and teardown are exercised by this package.
  */
 const install: InvariantInstaller = () => {}

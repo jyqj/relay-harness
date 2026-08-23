@@ -9,7 +9,7 @@ const {
   normalizeRendererConfigPatch,
 } = require('./config');
 const { getMainWindow, openHarnessSettings, openMarketplace, openRemote } = require('./window');
-const { resolveNodeBin, resolveDshBin, sourceHarnessStatus } = require('./dsh');
+const { resolveNodeBin, resolveRlhBin, sourceHarnessStatus } = require('./rlh');
 const { listThemes, resolveTheme } = require('../shared/themes');
 const { applyAppTheme } = require('./chrome');
 const { checkUpdate, installUpdate, currentVersion, REPO_URL, RELEASES_PAGE } = require('./update');
@@ -42,12 +42,12 @@ function configPayload(config) {
       systemDark: Boolean(nativeTheme && nativeTheme.shouldUseDarkColors),
     }),
     nodeDetected: resolveNodeBin(config),
-    dshDetected: (() => {
+    rlhDetected: (() => {
       const source = sourceHarnessStatus();
       if (source.present) {
         return source.built ? `源码 ${source.root}` : `源码未构建 ${source.root}`;
       }
-      return resolveDshBin(config);
+      return resolveRlhBin(config);
     })(),
     appVersion: currentVersion(),
     repoUrl: REPO_URL,
@@ -99,7 +99,7 @@ async function restartAfterProfileWrite(event, result, startHarness, downError, 
   return { ...result, harnessStarted: true };
 }
 
-function registerIpc({ dsh, harness, startHarness, remote }) {
+function registerIpc({ rlh, harness, startHarness, remote }) {
   const handle = (channel, roles, listener) => {
     ipcMain.handle(channel, (event, ...args) => {
       assertIpcSender(event, roles);
@@ -108,7 +108,7 @@ function registerIpc({ dsh, harness, startHarness, remote }) {
   };
   const authorizeHarness = (event) => assertIpcSender(event, HARNESS_ONLY);
 
-  handle('shell:get-state', BOOT_ONLY, () => (harness ? harness.snapshot() : dsh.snapshot()));
+  handle('shell:get-state', BOOT_ONLY, () => (harness ? harness.snapshot() : rlh.snapshot()));
 
   handle('shell:get-config', ALL_SURFACES, () => configPayload(loadConfig()));
 
@@ -152,25 +152,25 @@ function registerIpc({ dsh, harness, startHarness, remote }) {
 
   handle('shell:restart', BOOT_ONLY, async () => {
     await (harness ? harness.retryFullPlugins() : startHarness());
-    return harness ? harness.snapshot() : dsh.snapshot();
+    return harness ? harness.snapshot() : rlh.snapshot();
   });
 
   handle('shell:retry-full-plugins', ALL_SURFACES, async () => {
     await (harness ? harness.retryFullPlugins() : startHarness());
-    return harness ? harness.snapshot() : dsh.snapshot();
+    return harness ? harness.snapshot() : rlh.snapshot();
   });
 
   handle('shell:cancel-restart', BOOT_ONLY, () => (
-    harness ? harness.cancelRecovery() : dsh.snapshot()
+    harness ? harness.cancelRecovery() : rlh.snapshot()
   ));
 
   handle('shell:save-boot-log', BOOT_ONLY, async () => {
-    const snapshot = harness ? harness.snapshot() : dsh.snapshot();
+    const snapshot = harness ? harness.snapshot() : rlh.snapshot();
     const dump = formatBootLogDump({
       version: currentVersion(),
       savedAt: new Date().toISOString(),
       snapshot,
-      logs: Array.isArray(dsh.logs) ? dsh.logs : [],
+      logs: Array.isArray(rlh.logs) ? rlh.logs : [],
     });
     return saveBootLog({
       dialog,

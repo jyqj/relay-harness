@@ -21,16 +21,16 @@ export function createSmokeDirs(prefix) {
   const smokeRoot = mkdtempSync(path.join(os.tmpdir(), prefix))
   const userData = path.join(smokeRoot, 'user-data')
   const workspace = path.join(smokeRoot, 'workspace')
-  const dshHome = path.join(smokeRoot, 'dsh-home')
+  const rlhHome = path.join(smokeRoot, 'rlh-home')
   mkdirSync(userData, { recursive: true })
   mkdirSync(workspace, { recursive: true })
-  mkdirSync(dshHome, { recursive: true })
+  mkdirSync(rlhHome, { recursive: true })
   return {
     smokeRoot,
     userData,
     workspace,
-    dshHome,
-    resultPath: path.join(userData, 'dshd-smoke.json'),
+    rlhHome,
+    resultPath: path.join(userData, 'rlhd-smoke.json'),
   }
 }
 
@@ -61,7 +61,7 @@ export function initGitWorkspace(workspace) {
   git(['init'])
   git(['add', '.'])
   git([
-    '-c', 'user.name=dsh-smoke',
+    '-c', 'user.name=rlh-smoke',
     '-c', 'user.email=smoke@example.test',
     'commit',
     '-m',
@@ -92,7 +92,7 @@ export function assertSmokeResult(outcome, result) {
     && Number(hits.branch) > 0
     && Number(hits.git) > 0
     && result.result?.titlebarHits?.error == null
-    && (process.env.DSH_THEME_SMOKE !== '1' || result.result?.themeSmoke?.ok === true)
+    && (process.env.RLH_THEME_SMOKE !== '1' || result.result?.themeSmoke?.ok === true)
     && Array.isArray(result.pageErrors)
     && result.pageErrors.length === 0
   if (outcome.code !== 0 || result.ok !== true || !uiOk || result.ptyStatus !== 'echoed:ok') {

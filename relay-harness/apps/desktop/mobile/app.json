@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "Deepseek Harness",
-    "slug": "dsh-mobile",
+    "name": "Relay Harness",
+    "slug": "rlh-mobile",
     "version": "0.1.0",
     "orientation": "default",
     "userInterfaceStyle": "automatic",
-    "scheme": "dsh",
+    "scheme": "rlh",
     "splash": {
       "backgroundColor": "#111113"
     },

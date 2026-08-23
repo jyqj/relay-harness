@@ -33,7 +33,7 @@ function createTrace2Monitor(onHook) {
   const emit = typeof onHook === 'function' ? onHook : () => {};
   const traceFilePath = path.join(
     os.tmpdir(),
-    `dshd-git-trace2-${process.pid}-${Date.now()}-${Math.random().toString(16).slice(2)}.json`,
+    `rlhd-git-trace2-${process.pid}-${Date.now()}-${Math.random().toString(16).slice(2)}.json`,
   );
   fs.writeFileSync(traceFilePath, '');
   let processedChars = 0;

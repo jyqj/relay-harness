@@ -6,11 +6,11 @@ Status: implemented
 
 ## 问题
 
-Electron GUI 原本位于独立的 MIT 许可仓库 [Deepseek-Harness-Desktop](https://github.com/ChisaAlter/Deepseek-Harness-Desktop)，并携带一份完整的 Harness fork。开发 Agent 及其 GUI 时必须编辑两个 checkout，并同步重复的 `vendor/deepseek-harness` 源码树。
+Electron GUI 原本位于独立的 MIT 许可仓库 [Relay-Harness-Desktop](https://github.com/jyqj/relay-harness)，并携带一份完整的 Harness fork。开发 Agent 及其 GUI 时必须编辑两个 checkout，并同步重复的 `vendor/relay-harness` 源码树。
 
 ## 决定
 
-将私有 Electron 壳作为 `deepseek-harness-desktop` workspace 导入 `apps/desktop/`。以双方共同的 `141eb6fef83422698aef7a981029e843e8161534` 为基线，把桌面 Harness fork 合并到 monorepo 正常的 `packages/`、`apps/web/`、文档和 composition 路径。源码启动时，Harness 根目录解析为 monorepo 根目录；打包构建仍在 `resources/vendor/deepseek-harness` 下组装并归档独立运行时。
+将私有 Electron 壳作为 `relay-harness-desktop` workspace 导入 `apps/desktop/`。以双方共同的 `141eb6fef83422698aef7a981029e843e8161534` 为基线，把桌面 Harness fork 合并到 monorepo 正常的 `packages/`、`apps/web/`、文档和 composition 路径。源码启动时，Harness 根目录解析为 monorepo 根目录；打包构建仍在 `resources/vendor/relay-harness` 下组装并归档独立运行时。
 
 删除原有的嵌套 Harness 同步命令。`apps/desktop/vendor/` 只保留桌面端内置插件和上游导入 pin。桌面开发、测试和分发由根脚本统一管理：
 
@@ -31,7 +31,7 @@ pnpm run dist:desktop:mac
 
 ## 结果
 
-标题栏、Files、Git、Diff、surfaces、preview、终端、MCP 设置和 Skills 设置等桌面 UI 包成为普通 Harness workspace，其测试和类型声明参与 Harness 的统一构建。Electron 独有的 main/preload/renderer 代码保留在 `apps/desktop/`；手机远程和内置 `dshmarket`/`dshbot` 资源仍由该应用负责。
+标题栏、Files、Git、Diff、surfaces、preview、终端、MCP 设置和 Skills 设置等桌面 UI 包成为普通 Harness workspace，其测试和类型声明参与 Harness 的统一构建。Electron 独有的 main/preload/renderer 代码保留在 `apps/desktop/`；手机远程和内置 `rlhmarket`/`rlhbot` 资源仍由该应用负责。
 
 ## 测试
 

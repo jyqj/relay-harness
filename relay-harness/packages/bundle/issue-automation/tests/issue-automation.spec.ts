@@ -1,6 +1,6 @@
 import { describe, it } from 'vitest'
-import { Context } from '@deepseek-ai/cordis'
-import InvariantRegistry from '@deepseek-ai/dsh-invariants'
+import { Context } from '@relay-harness/cordis'
+import InvariantRegistry from '@relay-harness/rlh-invariants'
 import { apply } from '../src/index.ts'
 import * as Invariant from '../src/invariant.ts'
 

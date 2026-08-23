@@ -178,7 +178,7 @@ export function Tooltip({ label, side = 'right', delayMs = 0, disabled = false, 
         <span
           ref={bubble}
           className={css.bubble}
-          data-dsh-motion="fade"
+          data-rlh-motion="fade"
           data-state={state}
           data-side={placement}
           aria-hidden={visible ? undefined : true}

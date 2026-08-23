@@ -17,8 +17,8 @@
    * rebind the scrollbar indirection to the elevation pair here, on the
    * surface, so it inherits down to whichever descendant scrolls (the
    * rebinding contract in ui-theme styles/scrollbar.css). */
-  --dsh-scrollbar-thumb: var(--dsw-alias-scrollbar-bg-l2);
-  --dsh-scrollbar-thumb-hover: var(--dsw-alias-scrollbar-hover-l2);
+  --rlh-scrollbar-thumb: var(--rlw-alias-scrollbar-bg-l2);
+  --rlh-scrollbar-thumb-hover: var(--rlw-alias-scrollbar-hover-l2);
 }
 
 /* Card-scope wrapper hosting the path editor's Escape and focus-leave
@@ -35,7 +35,7 @@
   gap: 8px;
   flex: none;
   padding: 16px 14px 8px 24px;
-  border-bottom: 1px solid var(--dsw-alias-border-l3);
+  border-bottom: 1px solid var(--rlw-alias-border-l3);
 }
 
 .titleRow {
@@ -54,7 +54,7 @@
   font-size: 16px;
   line-height: 24px;
   font-weight: 510;
-  color: var(--dsw-alias-label-primary);
+  color: var(--rlw-alias-label-primary);
 }
 
 .homeJump {
@@ -67,18 +67,18 @@
   font-size: 14px;
   line-height: 22px;
   font-weight: 500;
-  color: var(--dsw-alias-label-secondary);
+  color: var(--rlw-alias-label-secondary);
   cursor: pointer;
 }
 
 .homeJump:hover:enabled {
-  background: var(--dsw-alias-interactive-bg-hover);
-  color: var(--dsw-alias-label-primary);
+  background: var(--rlw-alias-interactive-bg-hover);
+  color: var(--rlw-alias-label-primary);
 }
 
 .homeJump:disabled {
   cursor: default;
-  color: var(--dsw-alias-label-tertiary);
+  color: var(--rlw-alias-label-tertiary);
 }
 
 /* The bar IS the editor's box in both modes: it carries the rounded outline
@@ -103,7 +103,7 @@
 .crumbBar:has(.crumbEditZone:enabled:hover),
 .crumbBar:has(.crumbEditZone:focus-visible),
 .crumbBar:has(.pathInput) {
-  border-color: var(--dsw-alias-border-l2);
+  border-color: var(--rlw-alias-border-l2);
 }
 
 /* Deep chains scroll inside the trail (the effect pins the tail into view)
@@ -155,17 +155,17 @@
   font-size: 13px;
   line-height: 20px;
   font-weight: 500;
-  color: var(--dsw-alias-label-tertiary);
+  color: var(--rlw-alias-label-tertiary);
   cursor: pointer;
 }
 
 .crumb:hover {
-  color: var(--dsw-alias-label-primary);
+  color: var(--rlw-alias-label-primary);
 }
 
 .crumbChevron {
   flex: none;
-  color: var(--dsw-alias-label-tertiary);
+  color: var(--rlw-alias-label-tertiary);
 }
 
 /* The empty remainder of the bar: a real click target that flips the bar into
@@ -188,12 +188,12 @@
 
 .crumbEditGlyph {
   flex: none;
-  color: var(--dsw-alias-label-tertiary);
+  color: var(--rlw-alias-label-tertiary);
 }
 
 .crumbEditZone:enabled:hover .crumbEditGlyph,
 .crumbEditZone:focus-visible .crumbEditGlyph {
-  color: var(--dsw-alias-label-primary);
+  color: var(--rlw-alias-label-primary);
 }
 
 .crumbEditZone:disabled {
@@ -201,7 +201,7 @@
 }
 
 .crumbEditZone:disabled .crumbEditGlyph {
-  color: var(--dsw-alias-label-caption);
+  color: var(--rlw-alias-label-caption);
 }
 
 /* Chrome-free: the bar around it draws the box (border, radius, padding). */
@@ -216,7 +216,7 @@
   background: transparent;
   font-size: 13px;
   line-height: 20px;
-  color: var(--dsw-alias-label-primary);
+  color: var(--rlw-alias-label-primary);
 }
 
 /* Miller content: symmetric 16px vertical padding so the divider clears the
@@ -254,7 +254,7 @@
 .divider {
   flex: none;
   width: 1px;
-  background: var(--dsw-alias-border-l3);
+  background: var(--rlw-alias-border-l3);
 }
 
 .rowSeat {
@@ -278,23 +278,23 @@
 }
 
 .row:hover {
-  background: var(--dsw-alias-interactive-bg-hover);
+  background: var(--rlw-alias-interactive-bg-hover);
 }
 
 /* Selection: pill fill + the open-folder glyph in the info accent. */
 .rowSelected,
 .rowSelected:hover {
-  background: var(--dsw-alias-interactive-bg-active, var(--dsw-alias-interactive-bg-hover));
+  background: var(--rlw-alias-interactive-bg-active, var(--rlw-alias-interactive-bg-hover));
 }
 
 .rowIcon {
   flex: none;
-  color: var(--dsw-alias-label-secondary);
+  color: var(--rlw-alias-label-secondary);
 }
 
 .rowIconSelected {
   flex: none;
-  color: var(--dsw-alias-button-info-fill);
+  color: var(--rlw-alias-button-info-fill);
 }
 
 .rowName {
@@ -306,12 +306,12 @@
   font-size: 13px;
   line-height: 20px;
   font-weight: 500;
-  color: var(--dsw-alias-label-primary);
+  color: var(--rlw-alias-label-primary);
 }
 
 .rowChevron {
   flex: none;
-  color: var(--dsw-alias-label-tertiary);
+  color: var(--rlw-alias-label-tertiary);
 }
 
 .status,
@@ -326,11 +326,11 @@
 }
 
 .status {
-  color: var(--dsw-alias-label-secondary);
+  color: var(--rlw-alias-label-secondary);
 }
 
 .error {
-  color: var(--dsw-alias-state-error-primary);
+  color: var(--rlw-alias-state-error-primary);
 }
 
 /* The slow-scan indicator floats over the content's bottom-RIGHT corner on
@@ -347,7 +347,7 @@
   right: 16px;
   bottom: 8px;
   padding: 2px 8px;
-  background: var(--dsw-alias-bg-layer-2);
+  background: var(--rlw-alias-bg-layer-2);
 }
 
 /* Footer: l3 separator on top, symmetric padding so the row sits vertically
@@ -361,7 +361,7 @@
   gap: 8px;
   flex: none;
   padding: 16px 24px;
-  border-top: 1px solid var(--dsw-alias-border-l3);
+  border-top: 1px solid var(--rlw-alias-border-l3);
 }
 
 /* Show-hidden toggle: a subtle fixed-label text button left of the gap;
@@ -378,22 +378,22 @@
   font-size: 13px;
   line-height: 20px;
   font-weight: 500;
-  color: var(--dsw-alias-label-secondary);
+  color: var(--rlw-alias-label-secondary);
   cursor: pointer;
   white-space: nowrap;
 }
 
 .showHiddenToggle:hover {
-  color: var(--dsw-alias-label-primary);
+  color: var(--rlw-alias-label-primary);
 }
 
 .showHiddenToggle:disabled {
-  color: var(--dsw-alias-label-caption);
+  color: var(--rlw-alias-label-caption);
   cursor: default;
 }
 
 .showHiddenToggleActive {
-  color: var(--dsw-alias-label-primary);
+  color: var(--rlw-alias-label-primary);
 }
 
 .footerGap {
@@ -423,14 +423,14 @@
   font-size: 16px;
   line-height: 24px;
   font-weight: 510;
-  color: var(--dsw-alias-label-primary);
+  color: var(--rlw-alias-label-primary);
 }
 
 .createIn {
   margin: 0;
   font-size: 14px;
   line-height: 22px;
-  color: var(--dsw-alias-label-primary);
+  color: var(--rlw-alias-label-primary);
 }
 
 .createInput {
@@ -438,17 +438,17 @@
   width: 100%;
   height: 44px;
   padding: 7px 14px;
-  border: 1px solid var(--dsw-alias-border-l2);
+  border: 1px solid var(--rlw-alias-border-l2);
   border-radius: 22px;
   outline: none;
   background: transparent;
   font-size: 14px;
   line-height: 22px;
-  color: var(--dsw-alias-label-primary);
+  color: var(--rlw-alias-label-primary);
 }
 
 .createInput::placeholder {
-  color: var(--dsw-alias-label-caption);
+  color: var(--rlw-alias-label-caption);
 }
 
 .createActions {

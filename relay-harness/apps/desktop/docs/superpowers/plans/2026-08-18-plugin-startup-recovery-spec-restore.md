@@ -13,11 +13,11 @@
 ## Global Constraints
 
 - Restore the spec. Do not amend the spec to match the weaker code.
-- Do not auto-disable loader ids; no quarantine JSON; no second port; no temp `$DSH_HOME`; no boot uninstall.
-- One Loader per `$DSH_HOME`. Ready means the `dsh web:` line.
+- Do not auto-disable loader ids; no quarantine JSON; no second port; no temp `$RLH_HOME`; no boot uninstall.
+- One Loader per `$RLH_HOME`. Ready means the `rlh web:` line.
 - Product copy Chinese; comments English. Boot page stays the instrument canvas with one Retry.
 - Heal must **not** run `reconcileBundleLayers`.
-- Do not import `@deepseek-ai/dsh-app-boot` into Electron main (CJS + `electron` in `paths.js`). Replicate `resolveBundleDir`’s two-anchor `createRequire` walk in `plugins.js`.
+- Do not import `@relay-harness/rlh-app-boot` into Electron main (CJS + `electron` in `paths.js`). Replicate `resolveBundleDir`’s two-anchor `createRequire` walk in `plugins.js`.
 - Do not commit unless asked.
 - Do not edit `.cursor/plans/plugin_startup_recovery_d1ae9b0d.plan.md`.
 - Out of scope: wallpaper, terminal, git, titlebar, appearance.
@@ -28,7 +28,7 @@
 - `src/main/plugin-tree-failure.js` + `.test.js` — tighten `client-modules:`.
 - `src/main/harness-controller.js` + `.test.js` — always `--patch`; fail-loud ensure; `retryFullPlugins`; production exit-string classification.
 - `src/main/index.js` + `src/main/ipc.js` — pass `installAnchor` / `addedSpec`; Retry via controller.
-- `vendor/deepseek-harness/packages/boot/app-boot/src/profile.ts` + `tests/profile.spec.ts` — skip `normalizeShippedProfile` on `bundles: 'template'`.
+- `vendor/relay-harness/packages/boot/app-boot/src/profile.ts` + `tests/profile.spec.ts` — skip `normalizeShippedProfile` on `bundles: 'template'`.
 - Agent Note triplet `2026-08-18-skip-user-plugins-recovery-boot`.
 - `MarketplaceSettingsTab.module.css` — stop restyling `Button`.
 
@@ -41,7 +41,7 @@
 - Modify: `src/main/index.js` (pass `installAnchor`)
 - Test: `src/main/plugins.test.js`
 
-**Spec:** 用户 bundle 名：目录或 `resolveBundleDir` 失败则从 `dsh.profile.bundles` 去掉；官方模板名永不因解析不到被删。
+**Spec:** 用户 bundle 名：目录或 `resolveBundleDir` 失败则从 `rlh.profile.bundles` 去掉；官方模板名永不因解析不到被删。
 
 Vendor `resolveBundleDir` (`profile.ts:352-362`): installation anchor first (`apps/cli/package.json`), then `profileDir/package.json`, via `createRequire(anchor).resolve.paths` + `existsSync(join(candidate, 'package.json'))`.
 
@@ -54,8 +54,8 @@ const { createRequire } = require('module');
 const Module = require('module');
 
 test('healDanglingBundles keeps a non-template name resolvable from the install anchor', () => {
-  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-home-'));
-  const install = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-install-'));
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'rlh-home-'));
+  const install = fs.mkdtempSync(path.join(os.tmpdir(), 'rlh-install-'));
   try {
     const profileDir = path.join(home, 'profiles', 'web');
     fs.mkdirSync(profileDir, { recursive: true });
@@ -66,14 +66,14 @@ test('healDanglingBundles keeps a non-template name resolvable from the install 
     fs.mkdirSync(kept, { recursive: true });
     fs.writeFileSync(path.join(kept, 'package.json'), '{"name":"from-install"}\n');
     fs.writeFileSync(path.join(profileDir, 'package.json'), `${JSON.stringify({
-      name: 'dsh-profile-web',
+      name: 'rlh-profile-web',
       dependencies: { 'from-install': '1.0.0', ghost: '1.0.0' },
-      dsh: { profile: { bundles: [...WEB_TEMPLATE_BUNDLES, 'from-install', 'ghost'] } },
+      rlh: { profile: { bundles: [...WEB_TEMPLATE_BUNDLES, 'from-install', 'ghost'] } },
     }, null, 2)}\n`);
     const result = healDanglingBundles({ profileDir, installAnchor: installPkg });
     assert.equal(result.ok, true);
     const manifest = JSON.parse(fs.readFileSync(path.join(profileDir, 'package.json'), 'utf8'));
-    assert.deepEqual(manifest.dsh.profile.bundles, [...WEB_TEMPLATE_BUNDLES, 'from-install']);
+    assert.deepEqual(manifest.rlh.profile.bundles, [...WEB_TEMPLATE_BUNDLES, 'from-install']);
     assert.equal(manifest.dependencies.ghost, '1.0.0');
   } finally {
     fs.rmSync(home, { recursive: true, force: true });
@@ -135,7 +135,7 @@ Do not `require('./paths')` from `plugins.js` at load time (electron). Tests alw
 ### Task 2: Recovery always `--patch` overlay; ensure fail-loud
 
 **Files:**
-- Modify: `src/main/harness-controller.js` (`dshStartOptions`, `prepareProfile`, constructor `overlayExists`)
+- Modify: `src/main/harness-controller.js` (`rlhStartOptions`, `prepareProfile`, constructor `overlayExists`)
 - Modify: `src/main/harness-controller.test.js`
 - Modify: `src/main/plugins.js` only if `ensureDesktopInstallPlugin` should throw instead of `{ ok: false }` — prefer controller fail-loud so CLI-less tests keep `{ ok: false }`.
 
@@ -150,10 +150,10 @@ Add:
 ```js
 test('prepareProfile fails loud when desktop-install overlay cannot be written', async () => {
   const f = fixture({
-    ensureDesktopInstallPlugin: () => ({ ok: false, reason: 'missing-source:install-dsh-plugin.mjs' }),
+    ensureDesktopInstallPlugin: () => ({ ok: false, reason: 'missing-source:install-rlh-plugin.mjs' }),
   });
   await assert.rejects(() => f.controller.start(), /桌面安装插件/);
-  assert.equal(f.dsh.startCalls, 0);
+  assert.equal(f.rlh.startCalls, 0);
   assert.equal(f.controller.snapshot().pluginRecovery.skipUserPlugins, false);
 });
 ```
@@ -165,7 +165,7 @@ Keep `full plugin-tree failure retries once…` asserting `patchFiles: ['C:/over
 
 - [ ] **Step 3: Implement**
 
-`dshStartOptions`: if skip, always `options.patchFiles = [overlay]` when `overlay` is non-empty. Remove `overlayExists`.
+`rlhStartOptions`: if skip, always `options.patchFiles = [overlay]` when `overlay` is non-empty. Remove `overlayExists`.
 
 `prepareProfile`:
 
@@ -187,7 +187,7 @@ Fixture `ensureDesktopInstallPlugin` default `() => ({ ok: true })`. Remove `ove
 ### Task 3: `bundles: 'template'` must not write the manifest
 
 **Files:**
-- Modify: `vendor/deepseek-harness/packages/boot/app-boot/src/profile.ts`
+- Modify: `vendor/relay-harness/packages/boot/app-boot/src/profile.ts`
 - Test: `packages/boot/app-boot/tests/profile.spec.ts`
 - Docs: Agent Note triplet + `LoadProfileOptions` JSDoc (already claims never writes — make it true)
 
@@ -200,12 +200,12 @@ Headless installation-owned 3-tuple currently writes on any `loadProfile`:
 ```ts
 it('template load does not rewrite an installation-owned headless tuple', () => {
   const anchor = stageInstallation({
-    '@deepseek-ai/dsh-base': { patch: '[]\n' },
-    '@deepseek-ai/dsh-headless': { patch: '[]\n' },
+    '@relay-harness/rlh-base': { patch: '[]\n' },
+    '@relay-harness/rlh-headless': { patch: '[]\n' },
   })
   const home = tmp()
   const dir = resolveProfileDir('headless', home)
-  const owned = ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app', '@deepseek-ai/dsh-headless']
+  const owned = ['@relay-harness/rlh-base', '@relay-harness/rlh-web-app', '@relay-harness/rlh-headless']
   initProfile(dir, owned)
   const before = readFileSync(join(dir, 'package.json'), 'utf8')
   loadProfile('t', 'headless', anchor, home, { bundles: 'template', userLayer: false })
@@ -213,10 +213,10 @@ it('template load does not rewrite an installation-owned headless tuple', () => 
 })
 
 it('template load with no PROFILE_TEMPLATES entry uses DEFAULT_PROFILE_BUNDLES', () => {
-  const anchor = stageInstallation({ '@deepseek-ai/dsh-base': { patch: '[]\n' } })
+  const anchor = stageInstallation({ '@relay-harness/rlh-base': { patch: '[]\n' } })
   const home = tmp()
   const dir = resolveProfileDir('custom', home)
-  initProfile(dir, ['@deepseek-ai/dsh-base', 'ghost-bundle'])
+  initProfile(dir, ['@relay-harness/rlh-base', 'ghost-bundle'])
   const profile = loadProfile('t', 'custom', anchor, home, { bundles: 'template', userLayer: false })
   expect(profile.layers.map(layer => layer.packageName)).toEqual([...DEFAULT_PROFILE_BUNDLES])
 })
@@ -224,7 +224,7 @@ it('template load with no PROFILE_TEMPLATES entry uses DEFAULT_PROFILE_BUNDLES',
 
 Use the same `stageInstallation` / `initProfile` helpers as the existing web template test. If `initProfile` for `custom` is illegal, write the profile `package.json` the same way other tests create a bare profile.
 
-- [ ] **Step 2: Run** from `vendor/deepseek-harness`:  
+- [ ] **Step 2: Run** from `vendor/relay-harness`:  
   `pnpm exec vitest run packages/boot/app-boot/tests/profile.spec.ts`  
   Expected: FAIL — `normalizeShippedProfile` rewrites headless; `DEFAULT_PROFILE_BUNDLES` branch untested or unused.
 
@@ -243,7 +243,7 @@ Do not call `normalizeShippedProfile` when `bundles === 'template'`.
 
 - [ ] **Step 4: Re-run** profile.spec.ts — PASS.
 
-- [ ] **Step 5: Agent Note** — Decision already says it never writes `dsh.profile.bundles`. Keep that sentence. If any line implies normalize still runs on skip, rewrite to: template load reads the on-disk manifest only to leave it untouched, then resolves `PROFILE_TEMPLATES` / `DEFAULT_PROFILE_BUNDLES`. Re-record the i18n sidecar (`pnpm run verify-translation-pairing --write` on the note pair). Note files must stay LF.
+- [ ] **Step 5: Agent Note** — Decision already says it never writes `rlh.profile.bundles`. Keep that sentence. If any line implies normalize still runs on skip, rewrite to: template load reads the on-disk manifest only to leave it untouched, then resolves `PROFILE_TEMPLATES` / `DEFAULT_PROFILE_BUNDLES`. Re-record the i18n sidecar (`pnpm run verify-translation-pairing --write` on the note pair). Note files must stay LF.
 
 ---
 
@@ -251,12 +251,12 @@ Do not call `normalizeShippedProfile` when `bundles === 'template'`.
 
 **Files:**
 - Modify: `src/main/plugin-tree-failure.js` + `.test.js`
-- Modify: `src/main/harness-controller.test.js` (FakeDsh full-fail path)
-- Keep: per-spawn `this.logs = []` in `dsh.js` `_start` / FakeDsh `start`
+- Modify: `src/main/harness-controller.test.js` (FakeRlh full-fail path)
+- Keep: per-spawn `this.logs = []` in `rlh.js` `_start` / FakeRlh `start`
 
 **Spec:** plugin-tree 包括 stderr / 退出信息中的 listed markers；`client-modules:` 是**组合失败**（含 `ClientPackageCompositionError`）。HTTP 已通随后 tree fail exit 1 不得 `ready`、不得 `beginRuntimeRecovery`。
 
-Production `_onChildExit` message is `dsh 进程结束（code …）`. Classification must use **this spawn’s** logs, not the throw message.
+Production `_onChildExit` message is `rlh 进程结束（code …）`. Classification must use **this spawn’s** logs, not the throw message.
 
 - [ ] **Step 1: Failing tests**
 
@@ -268,20 +268,20 @@ assert.equal(isPluginTreeFailure('client-modules: composition failed'), true);
 assert.equal(isPluginTreeFailure('client-modules: bundle route'), false);
 ```
 
-Controller: change `full plugin-tree failure retries once with skip-user-plugins` so FakeDsh on error does:
+Controller: change `full plugin-tree failure retries once with skip-user-plugins` so FakeRlh on error does:
 
 ```js
 this.log('plugin tree failed to load');
 this.setState('error', {
-  error: 'dsh 进程结束（code 1, signal none）',
-  failure: { phase: 'startup', message: 'dsh 进程结束（code 1, signal none）' },
+  error: 'rlh 进程结束（code 1, signal none）',
+  failure: { phase: 'startup', message: 'rlh 进程结束（code 1, signal none）' },
 });
-throw new Error('dsh 进程结束（code 1, signal none）');
+throw new Error('rlh 进程结束（code 1, signal none）');
 ```
 
-Do this in FakeDsh.start for every `Error` result (mirrors production), **after** `this.logs = []`. The recovery path must still classify via the log line. Runtime `crash('plugin tree failed to load')` stays as the explicit runtime-marker case.
+Do this in FakeRlh.start for every `Error` result (mirrors production), **after** `this.logs = []`. The recovery path must still classify via the log line. Runtime `crash('plugin tree failed to load')` stays as the explicit runtime-marker case.
 
-Keep `dsh.test.js` `HTTP 200 is not ready until the dsh web: line` and `plugin-tree stderr without dsh web: never becomes ready`. Do not assert `beginRuntimeRecovery` inside DshManager; controller covers cancel-auto-restart.
+Keep `rlh.test.js` `HTTP 200 is not ready until the rlh web: line` and `plugin-tree stderr without rlh web: never becomes ready`. Do not assert `beginRuntimeRecovery` inside RlhManager; controller covers cancel-auto-restart.
 
 - [ ] **Step 2: Run** plugin-tree-failure + harness-controller tests.  
   Expected: FAIL on `bundle route` (today `includes('client-modules:')` is true). Full-fail skip spawn may still pass because logs are scanned — that is desired. If it fails, the classifier is not looking at this spawn’s logs.
@@ -333,10 +333,10 @@ test('retryFullPlugins clears sticky skip and spawns a full composition', async 
     },
   });
   await f.controller.start();
-  assert.equal(f.dsh.startOptions.at(-1).skipUserPlugins, true);
+  assert.equal(f.rlh.startOptions.at(-1).skipUserPlugins, true);
   await f.controller.retryFullPlugins();
   assert.equal(f.controller.snapshot().pluginRecovery.skipUserPlugins, false);
-  assert.equal(Boolean(f.dsh.startOptions.at(-1).skipUserPlugins), false);
+  assert.equal(Boolean(f.rlh.startOptions.at(-1).skipUserPlugins), false);
 });
 ```
 
@@ -358,11 +358,11 @@ retryFullPlugins() {
 ```js
 handle('shell:restart', BOOT_ONLY, async () => {
   await (harness ? harness.retryFullPlugins() : startHarness());
-  return harness ? harness.snapshot() : dsh.snapshot();
+  return harness ? harness.snapshot() : rlh.snapshot();
 });
 handle('shell:retry-full-plugins', [IPC_ROLES.HARNESS, IPC_ROLES.BOOT], async () => {
   await (harness ? harness.retryFullPlugins() : startHarness());
-  return harness ? harness.snapshot() : dsh.snapshot();
+  return harness ? harness.snapshot() : rlh.snapshot();
 });
 ```
 
@@ -392,9 +392,9 @@ test('addedPluginName prefers the row whose spec matches the install pin', () =>
     { plugins: [] },
     { plugins: [
       { name: 'transitive', spec: '1.0.0' },
-      { name: 'loop', spec: 'github:owner/dsh-loop#abc' },
+      { name: 'loop', spec: 'github:owner/rlh-loop#abc' },
     ] },
-    'github:owner/dsh-loop#abc',
+    'github:owner/rlh-loop#abc',
   ), 'loop');
 });
 ```
@@ -437,7 +437,7 @@ IPC: `restartAfterInstall(before, result.installed, result.spec)`.
 ### Task 7: Marketplace notice must not restyle `Button`
 
 **Files:**
-- Modify: `vendor/deepseek-harness/packages/client/ui-settings-plugin-inventory/src/client/MarketplaceSettingsTab.module.css`
+- Modify: `vendor/relay-harness/packages/client/ui-settings-plugin-inventory/src/client/MarketplaceSettingsTab.module.css`
 - Keep: notice as first child; `Button variant="ghost" size="sm"`; copy 第三方插件已跳过 / 重试完整启动
 - Test: existing `places the skip notice above the marketplace toolbar` still passes
 
@@ -445,7 +445,7 @@ IPC: `restartAfterInstall(before, result.installed, result.spec)`.
 
 - [ ] **Step 1:** Remove `.skipNotice button` / `:hover` rules that set `height: 32px`, `border-radius: 8px`, and color-only hover. Compose `.skipNotice` from `.banner` (shared fill/padding) plus `display: flex` / `justify-content: space-between` / `gap`. Do not force button height.
 
-- [ ] **Step 2:** Run from `vendor/deepseek-harness`:  
+- [ ] **Step 2:** Run from `vendor/relay-harness`:  
   `pnpm exec vitest run packages/client/ui-settings-plugin-inventory/tests/marketplace.client.spec.tsx packages/client/ui-settings-plugin-inventory/tests/browser-plugin.client.spec.tsx`  
   Expected: PASS (behavior unchanged). If a test queried a class name, fix the test to keep role/text assertions.
 
@@ -476,7 +476,7 @@ await this.ensureBootVisible().catch(() => {
 Desktop:
 
 ```
-node --test src/main/plugins.test.js src/main/plugin-tree-failure.test.js src/main/dsh.test.js src/main/harness-controller.test.js src/main/config.test.js src/main/desktop-install-control.test.js src/main/marketplace-install.test.js src/main/ipc-authorization.test.js src/preload/shell-api.test.js
+node --test src/main/plugins.test.js src/main/plugin-tree-failure.test.js src/main/rlh.test.js src/main/harness-controller.test.js src/main/config.test.js src/main/desktop-install-control.test.js src/main/marketplace-install.test.js src/main/ipc-authorization.test.js src/preload/shell-api.test.js
 ```
 
 Vendor:
@@ -485,7 +485,7 @@ Vendor:
 pnpm exec vitest run packages/boot/app-boot/tests/profile.spec.ts apps/cli/tests/args.spec.ts apps/cli/tests/profile-boot.spec.ts apps/cli/tests/dump-config.spec.ts packages/client/ui-settings-plugin-inventory/tests/marketplace.client.spec.tsx packages/client/ui-settings-plugin-inventory/tests/browser-plugin.client.spec.tsx
 ```
 
-from `vendor/deepseek-harness`.
+from `vendor/relay-harness`.
 
 Agent Note pairing: `pnpm run verify-translation-pairing -- packages/boot/app-boot/README.md` only if README changed; for the note: `pnpm run verify-translation-pairing -- .agents/notes/implemented/architecture/2026-08-18-skip-user-plugins-recovery-boot.md` after `--write`.
 
@@ -497,7 +497,7 @@ Agent Note pairing: `pnpm run verify-translation-pairing -- packages/boot/app-bo
 | Overlay `--patch` mandatory; missing overlay fail-loud | 2 |
 | `bundles: 'template'` does not write the manifest | 3 |
 | `DEFAULT_PROFILE_BUNDLES` fallback | 3 |
-| Ready = `dsh web:`; HTTP then tree fail never ready | 4 + existing dsh tests |
+| Ready = `rlh web:`; HTTP then tree fail never ready | 4 + existing rlh tests |
 | Cancel runtime auto-restart; this-spawn logs | 4 |
 | `client-modules:` = composition failure | 4 |
 | Boot Retry / market retry-full clears skip | 5 |

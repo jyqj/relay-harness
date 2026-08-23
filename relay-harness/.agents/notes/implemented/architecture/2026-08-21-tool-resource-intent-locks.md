@@ -16,7 +16,7 @@ Resource identity must come from the provider-resolved target, not a guessed arg
 
 `ToolRuntime` owns one fair read/write lock table shared by native calls, direct `execute()` calls, and Code Mode nested dispatches. It normalizes duplicate claims with write dominance, sorts keys before acquiring them, and holds every lease only around the tool body. Same-key reads overlap; a writer excludes readers and writers; a queued writer prevents later readers from bypassing it. Cancellation removes a queued waiter synchronously, releases already-acquired multi-key leases in reverse order, and never invokes the waiting body. Action failure and cancellation release every lease.
 
-`dsh-tool-fs` resolves read, write, and edit claims through `ctx.fs.resolve()` with the same per-session cwd semantics as the body, then namespaces the provider `FsTargetKey` under `fs:`. Read claims are shared and mutation claims exclusive. `dsh-tool-str-replace-editor` uses the same namespace and provider key, with `view` as read and its three mutation commands as write. The existing filesystem intent/CAS policy still runs inside the lock. Consequently, two same-session edits can both land serially: the second policy decision observes the first committed version instead of failing with an avoidable stale-version race.
+`rlh-tool-fs` resolves read, write, and edit claims through `ctx.fs.resolve()` with the same per-session cwd semantics as the body, then namespaces the provider `FsTargetKey` under `fs:`. Read claims are shared and mutation claims exclusive. `rlh-tool-str-replace-editor` uses the same namespace and provider key, with `view` as read and its three mutation commands as write. The existing filesystem intent/CAS policy still runs inside the lock. Consequently, two same-session edits can both land serially: the second policy decision observes the first committed version instead of failing with an avoidable stale-version race.
 
 The request tool snapshot captures the resource resolver with the rest of its definition. Registry replacement cannot change a sampled call's resource behavior.
 
@@ -28,7 +28,7 @@ The request tool snapshot captures the resource resolver with the rest of its de
 
 **Lock raw path strings.** Rejected because relative/absolute aliases, symlinks, and provider normalization can name the same target differently. Filesystem tools lock the resolved `FsTargetKey`.
 
-**Place locks only inside `dsh-tool-fs`.** Rejected because the standalone string-replace editor and future tools must coordinate with the same files, and Code Mode must share native locking semantics.
+**Place locks only inside `rlh-tool-fs`.** Rejected because the standalone string-replace editor and future tools must coordinate with the same files, and Code Mode must share native locking semantics.
 
 **Acquire resources during ordered prepare.** Rejected because a blocked same-key call would hold the scheduler's ordered lane and prevent later independent keys from filling the pool. Intent resolution stays ordered; acquisition occurs in the overlapping dispatch stage immediately before the body.
 

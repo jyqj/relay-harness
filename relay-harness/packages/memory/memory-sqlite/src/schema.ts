@@ -7,7 +7,7 @@ import { mkdir, open } from 'node:fs/promises'
 import { hostname } from 'node:os'
 import { dirname, resolve } from 'node:path'
 
-/** SQLite application id for canonical DSH memory stores (`DSHM`). */
+/** SQLite application id for canonical RLH memory stores (`RLHM`). */
 export const MEMORY_SQLITE_APPLICATION_ID = 0x4453484D
 /** Canonical schema version. Unlike derived indexes, unknown versions fail closed. */
 export const MEMORY_SQLITE_SCHEMA_VERSION = 3

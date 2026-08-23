@@ -101,7 +101,7 @@ export function DisclosureRow({
         {(keepContentWhenOpen || !open) && collapsedContent}
       </div>
       {mounted && children != null && (
-        <div data-dsh-motion="fade" data-state={state} aria-hidden={open ? undefined : true}>{children}</div>
+        <div data-rlh-motion="fade" data-state={state} aria-hidden={open ? undefined : true}>{children}</div>
       )}
     </div>
   )

@@ -1,7 +1,7 @@
 /**
- * Node half of the client module system (`dsh.client` dual-face package): scans
- * the host Loader's entries for packages declaring `dsh.client`, composes the
- * `window.__DSH_BOOT__` entry graph (wire single source: {@link WebBootEntry}
+ * Node half of the client module system (`rlh.client` dual-face package): scans
+ * the host Loader's entries for packages declaring `rlh.client`, composes the
+ * `window.__RLH_BOOT__` entry graph (wire single source: {@link WebBootEntry}
  * in `./client/manifest.ts`) in module-graph order, serves
  * `/plugins/<id>/client.js` and its source map plus `/plugins/<id>/assets/*`
  * sibling files (Ghostty wasm/font), taps the index render to inject the boot
@@ -19,7 +19,7 @@
  * expires — plugin-set changes take effect on restart; bundle content
  * changes reach the graph only through
  * {@link ClientModuleRegistry.rebuilt}.
- * @module @deepseek-ai/dsh-client-modules
+ * @module @relay-harness/rlh-client-modules
  */
 
 import { createHash } from 'node:crypto'
@@ -28,11 +28,11 @@ import { readFile } from 'node:fs/promises'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { createRequire } from 'node:module'
 import { dirname, join } from 'node:path'
-import { Service } from '@deepseek-ai/cordis'
-import type { Context } from '@deepseek-ai/cordis'
-import type {} from '@deepseek-ai/cordis-plugin-loader'
-import type {} from '@deepseek-ai/dsh-host-webserver'
-import { missingHostFeatures, parseCompatibilityFeatures } from '@deepseek-ai/dsh-app-boot/features'
+import { Service } from '@relay-harness/cordis'
+import type { Context } from '@relay-harness/cordis'
+import type {} from '@relay-harness/cordis-plugin-loader'
+import type {} from '@relay-harness/rlh-host-webserver'
+import { missingHostFeatures, parseCompatibilityFeatures } from '@relay-harness/rlh-app-boot/features'
 import { optionalStringArray, stripClientSuffix } from './client/manifest.ts'
 import type { WebBootEntry, WebBootGraph } from './client/manifest.ts'
 
@@ -41,15 +41,15 @@ export type {
   BootManifest, BootModuleRow, BootPluginRow, WebBootEntry, WebBootGraph,
 } from './client/manifest.ts'
 
-declare module '@deepseek-ai/cordis' {
+declare module '@relay-harness/cordis' {
   interface Context {
     /** The web plugin table (provided by the client-modules node half). */
     clientModules: ClientModuleRegistry
   }
 }
 
-/** package.json `dsh.client` declaration fields, validated one by one after reading the file. */
-interface DshClientDeclaration {
+/** package.json `rlh.client` declaration fields, validated one by one after reading the file. */
+interface RlhClientDeclaration {
   inject?: string[]
   platform: string
   /** Boot phase-one prefetch mark; absent means lazy (fetched on demand). */
@@ -72,7 +72,7 @@ interface WebBootRowFields {
   immediately: boolean
 }
 
-/** Resolved package metadata for one `dsh.client` package (cached per name, never expires). */
+/** Resolved package metadata for one `rlh.client` package (cached per name, never expires). */
 interface PkgMeta extends WebBootRowFields {
   clientPath: string
 }
@@ -106,8 +106,8 @@ class ClientCompatibilityError extends Error {
   ) {
     super(
       [
-        `client-modules: ${packageName} requires host features this dsh host does not support: ${missing.join(', ')}`,
-        '  the package is not part of the boot graph — update dsh to a host that provides them, or remove the plugin',
+        `client-modules: ${packageName} requires host features this rlh host does not support: ${missing.join(', ')}`,
+        '  the package is not part of the boot graph — update rlh to a host that provides them, or remove the plugin',
       ].join('\n'),
     )
   }
@@ -139,20 +139,20 @@ interface WebPluginRecord {
   meta: PkgMeta
 }
 
-/** Narrow an unknown parsed JSON value to the `dsh.client` declaration, throwing on malformed fields. */
-function parseDshClient(pkgName: string, value: unknown): DshClientDeclaration | undefined {
+/** Narrow an unknown parsed JSON value to the `rlh.client` declaration, throwing on malformed fields. */
+function parseRlhClient(pkgName: string, value: unknown): RlhClientDeclaration | undefined {
   if (value === undefined) return undefined
   if (typeof value !== 'object' || value === null) {
-    throw new Error(`client-modules: ${pkgName} has a non-object dsh.client declaration`)
+    throw new Error(`client-modules: ${pkgName} has a non-object rlh.client declaration`)
   }
   const decl = value as Record<string, unknown>
   if (typeof decl.platform !== 'string') {
-    throw new Error(`client-modules: ${pkgName} dsh.client.platform must be a string`)
+    throw new Error(`client-modules: ${pkgName} rlh.client.platform must be a string`)
   }
-  const inject = optionalStringArray(pkgName, 'dsh.client.inject', decl.inject)
-  const external = optionalStringArray(pkgName, 'dsh.client.external', decl.external)
+  const inject = optionalStringArray(pkgName, 'rlh.client.inject', decl.inject)
+  const external = optionalStringArray(pkgName, 'rlh.client.external', decl.external)
   if (decl.immediately !== undefined && typeof decl.immediately !== 'boolean') {
-    throw new Error(`client-modules: ${pkgName} dsh.client.immediately must be a boolean`)
+    throw new Error(`client-modules: ${pkgName} rlh.client.immediately must be a boolean`)
   }
   return {
     platform: decl.platform,
@@ -223,7 +223,7 @@ export function orderByModuleGraph(entries: readonly WebBootEntry[]): WebBootEnt
       if (dependency === entry) {
         throw new Error(
           `client-modules: "${entry.id}" requests module "${name}" that it answers itself `
-          + '— a row must not declare its own package in dsh.client.external',
+          + '— a row must not declare its own package in rlh.client.external',
         )
       }
       if (dependency !== undefined) visit(dependency)
@@ -237,10 +237,10 @@ export function orderByModuleGraph(entries: readonly WebBootEntry[]): WebBootEnt
 }
 
 /** Bootstrap package whose ordinary client bundle supplies the module-system implementation. */
-const CLIENT_MODULES_ID = '@deepseek-ai/dsh-client-modules'
+const CLIENT_MODULES_ID = '@relay-harness/rlh-client-modules'
 
 /** Dynamic package whose ordinary client bundle must be registered before plugin boot starts. */
-const CLIENT_RUNTIME_ID = '@deepseek-ai/dsh-client-runtime'
+const CLIENT_RUNTIME_ID = '@relay-harness/rlh-client-runtime'
 
 /** Ordinary dynamic bundles the HTML parser executes before the Vite shell. */
 const PARSER_PRELOAD_IDS = [CLIENT_MODULES_ID, CLIENT_RUNTIME_ID] as const
@@ -295,7 +295,7 @@ window.__ModuleLoader__={
     .filter((entry): entry is WebBootEntry => entry !== undefined)
     .map(entry => `<script src="${escapeHtmlAttribute(entry.url)}"></script>`)
     .join('')
-  const script = `${queue}${preload}<script>window.__DSH_BOOT__ = ${json}</script>`
+  const script = `${queue}${preload}<script>window.__RLH_BOOT__ = ${json}</script>`
   const head = html.indexOf('<head>')
   if (head !== -1) return `${html.slice(0, head + 6)}${script}${html.slice(head + 6)}`
   // Headless fixture pages may lack <head>; prepending keeps the read-before-shell ordering.
@@ -303,7 +303,7 @@ window.__ModuleLoader__={
 }
 
 /**
- * The web plugin table service: incremental `dsh.client` scan + wire composition
+ * The web plugin table service: incremental `rlh.client` scan + wire composition
  * + bundle route + index tap. Construction runs the activation scan
  * synchronously — a malformed declaration or missing bundle among the
  * already-loaded entries aggregates into one loud throw (FAILED fiber; the
@@ -314,7 +314,7 @@ export class ClientModuleRegistry extends Service {
 
   private readonly table = new Map<string, WebPluginRecord>()
   // Negative verdicts (unresolvable specifier — builtins like cordis:include,
-  // subpath rows — or a package without a web `dsh.client` declaration) are
+  // subpath rows — or a package without a web `rlh.client` declaration) are
   // cached as null and never expire: plugin-set changes take effect on restart.
   private readonly pkgMeta = new Map<string, PkgMeta | null>()
   private readonly rebuildListeners = new Set<(id: string, rev: string) => void>()
@@ -378,7 +378,7 @@ export class ClientModuleRegistry extends Service {
 
   /**
    * Current composed entry graph (stable object between changes).
-   * @returns the graph served as `window.__DSH_BOOT__`.
+   * @returns the graph served as `window.__RLH_BOOT__`.
    */
   graph(): WebBootGraph {
     return this.composed
@@ -470,31 +470,31 @@ export class ClientModuleRegistry extends Service {
       return null
     }
     const pkg = JSON.parse(readFileSync(pkgPath, 'utf8')) as Record<string, unknown>
-    const dsh = pkg.dsh
-    const decl = parseDshClient(
+    const rlh = pkg.rlh
+    const decl = parseRlhClient(
       pkgName,
-      dsh !== null && typeof dsh === 'object' ? (dsh as Record<string, unknown>).client : undefined,
+      rlh !== null && typeof rlh === 'object' ? (rlh as Record<string, unknown>).client : undefined,
     )
     if (decl === undefined || decl.platform !== 'web') {
       this.pkgMeta.set(pkgName, null)
       return null
     }
     // Host-feature gate before the package enters the boot graph: a
-    // malformed dsh.compatibility declaration (parseCompatibilityFeatures
+    // malformed rlh.compatibility declaration (parseCompatibilityFeatures
     // names the package) or unsupported required features reject the package
     // before any bundle is read or served. The activation pass aggregates
     // these throws into ClientPackageCompositionError.
-    const dshCompatibility = dsh !== null && typeof dsh === 'object'
-      ? (dsh as Record<string, unknown>).compatibility
+    const rlhCompatibility = rlh !== null && typeof rlh === 'object'
+      ? (rlh as Record<string, unknown>).compatibility
       : undefined
-    const required = parseCompatibilityFeatures(pkgName, dshCompatibility)
+    const required = parseCompatibilityFeatures(pkgName, rlhCompatibility)
     if (required !== undefined) {
       const missing = missingHostFeatures(required)
       if (missing.length > 0) throw new ClientCompatibilityError(pkgName, missing)
     }
     const clientRel = clientExportOf(pkgName, pkg.exports)
     if (clientRel === undefined) {
-      throw new Error(`client-modules: ${pkgName} declares dsh.client but exports no "./client" bundle`)
+      throw new Error(`client-modules: ${pkgName} declares rlh.client but exports no "./client" bundle`)
     }
     const meta: PkgMeta = {
       clientPath: join(dirname(pkgPath), clientRel),

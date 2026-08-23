@@ -202,7 +202,7 @@ class RelayServer {
   }
 
   handleUpgrade(req, socket, head) {
-    if ((req.url || '').startsWith('/__dsh__/host') && String(req.headers.upgrade || '').toLowerCase() === 'dsh-relay') {
+    if ((req.url || '').startsWith('/__rlh__/host') && String(req.headers.upgrade || '').toLowerCase() === 'rlh-relay') {
       if (!relayHostAuthorized(req.headers, this.hostToken)) {
         socket.write('HTTP/1.1 401 Unauthorized\r\nConnection: close\r\n\r\n');
         socket.destroy();
@@ -213,7 +213,7 @@ class RelayServer {
         socket.destroy();
         return;
       }
-      socket.write('HTTP/1.1 101 Switching Protocols\r\nUpgrade: dsh-relay\r\nConnection: Upgrade\r\n\r\n');
+      socket.write('HTTP/1.1 101 Switching Protocols\r\nUpgrade: rlh-relay\r\nConnection: Upgrade\r\n\r\n');
       if (head && head.length) {
         socket.unshift(head);
       }
@@ -259,11 +259,11 @@ async function main(argv = process.argv.slice(2)) {
   const certFlag = argv.findIndex((item) => item === '--cert');
   const keyFlag = argv.findIndex((item) => item === '--key');
   const tokenFlag = argv.findIndex((item) => item === '--host-token');
-  const certPath = certFlag >= 0 ? argv[certFlag + 1] : process.env.DSH_RELAY_TLS_CERT;
-  const keyPath = keyFlag >= 0 ? argv[keyFlag + 1] : process.env.DSH_RELAY_TLS_KEY;
-  const hostToken = tokenFlag >= 0 ? argv[tokenFlag + 1] : process.env.DSH_RELAY_HOST_TOKEN;
+  const certPath = certFlag >= 0 ? argv[certFlag + 1] : process.env.RLH_RELAY_TLS_CERT;
+  const keyPath = keyFlag >= 0 ? argv[keyFlag + 1] : process.env.RLH_RELAY_TLS_KEY;
+  const hostToken = tokenFlag >= 0 ? argv[tokenFlag + 1] : process.env.RLH_RELAY_HOST_TOKEN;
   if (!certPath || !keyPath) {
-    throw new Error('relay requires --cert and --key (or DSH_RELAY_TLS_CERT/DSH_RELAY_TLS_KEY)');
+    throw new Error('relay requires --cert and --key (or RLH_RELAY_TLS_CERT/RLH_RELAY_TLS_KEY)');
   }
   const server = new RelayServer({
     hostToken,
@@ -273,7 +273,7 @@ async function main(argv = process.argv.slice(2)) {
     },
   });
   const bound = await server.listen(Number.isInteger(port) ? port : DEFAULT_PORT);
-  process.stdout.write(`dsh relay listening on ${bound}\n`);
+  process.stdout.write(`rlh relay listening on ${bound}\n`);
 }
 
 if (require.main === module) {

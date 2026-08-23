@@ -2,11 +2,11 @@
 
 English | [中文](memory.zh.md)
 
-Long-term memory stores governed knowledge across Agent sessions without replacing the append-only SessionEvent evidence that produced it. [`@deepseek-ai/dsh-memory`](../../packages/memory/memory) owns the provider-neutral `ctx.longTermMemory` and `ctx.memoryExtractionQueue` seams; [`memory-sqlite`](../../packages/memory/memory-sqlite) is the shipped single owner; [`memory-agent`](../../packages/memory/memory-agent), [`memory-extractor-llm`](../../packages/memory/memory-extractor-llm), and [`tool-memory`](../../packages/memory/tool-memory) are independent Consumers.
+Long-term memory stores governed knowledge across Agent sessions without replacing the append-only SessionEvent evidence that produced it. [`@relay-harness/rlh-memory`](../../packages/memory/memory) owns the provider-neutral `ctx.longTermMemory` and `ctx.memoryExtractionQueue` seams; [`memory-sqlite`](../../packages/memory/memory-sqlite) is the shipped single owner; [`memory-agent`](../../packages/memory/memory-agent), [`memory-extractor-llm`](../../packages/memory/memory-extractor-llm), and [`tool-memory`](../../packages/memory/tool-memory) are independent Consumers.
 
 ## Scope and identity
 
-Every operation supplies one exact `MemoryScope`: workspace, user, and stable Agent identity. Session ids are evidence and turn-settlement identities, not long-term Scope; sessions with the same Scope may recall one another. The standard preset derives workspace from the session cwd, uses the local OS user name, and fixes the Agent id to `deepseek-harness`.
+Every operation supplies one exact `MemoryScope`: workspace, user, and stable Agent identity. Session ids are evidence and turn-settlement identities, not long-term Scope; sessions with the same Scope may recall one another. The standard preset derives workspace from the session cwd, uses the local OS user name, and fixes the Agent id to `relay-harness`.
 
 `MemoryId` identifies one logical memory. `revision` increases while the id remains stable. The provider retains each complete revision and separately materializes the current entry and its recall indexes.
 

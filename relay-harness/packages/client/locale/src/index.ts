@@ -1,7 +1,7 @@
 /** Host registration for the browser locale preference. */
 
-import type { Context } from '@deepseek-ai/cordis'
-import { settingsNamespace } from '@deepseek-ai/dsh-settings'
+import type { Context } from '@relay-harness/cordis'
+import { settingsNamespace } from '@relay-harness/rlh-settings'
 import { LOCALE_SETTINGS_NAMESPACE, LocaleSettingsSchema } from './locale-settings.ts'
 
 export {

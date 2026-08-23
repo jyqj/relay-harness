@@ -40,8 +40,8 @@ describe('AppFrame.module.css titlebar trailing cluster', () => {
     expect(trailing?.get('max-width')).toBe('100%')
     expect(trailing?.get('-webkit-app-region')).toBe('no-drag')
     expect(trailing?.get('display')).toBe('flex')
-    expect(trailing?.get('margin-right')).toBe('var(--dshd-wco-controls, 8px)')
-    expect(css).not.toContain('--dshd-wco-pad')
+    expect(trailing?.get('margin-right')).toBe('var(--rlhd-wco-controls, 8px)')
+    expect(css).not.toContain('--rlhd-wco-pad')
   })
 
   it('keeps the phone menu clickable beside the blank caption', () => {

@@ -5,8 +5,8 @@
   display: grid;
   grid-template-rows: 48px minmax(0, 1fr);
   overflow: hidden;
-  background: var(--dsw-alias-bg-base);
-  color: var(--dsw-alias-label-primary);
+  background: var(--rlw-alias-bg-base);
+  color: var(--rlw-alias-label-primary);
   pointer-events: auto;
   -webkit-app-region: no-drag;
 }
@@ -16,8 +16,8 @@
   align-items: center;
   gap: 7px;
   padding: 7px 12px;
-  border-bottom: 1px solid var(--dsw-alias-border-l2);
-  background: var(--dsw-specific-sidebar-fill);
+  border-bottom: 1px solid var(--rlw-alias-border-l2);
+  background: var(--rlw-specific-sidebar-fill);
 }
 
 .toolbar strong {
@@ -28,11 +28,11 @@
 .toolbar input {
   width: min(320px, 28vw);
   height: 32px;
-  border: 1px solid var(--dsw-alias-border-l2);
+  border: 1px solid var(--rlw-alias-border-l2);
   border-radius: 8px;
-  background: var(--dsw-alias-bg-base);
+  background: var(--rlw-alias-bg-base);
   padding: 0 10px;
-  color: var(--dsw-alias-label-primary);
+  color: var(--rlw-alias-label-primary);
 }
 
 .toolbar select,
@@ -40,34 +40,34 @@
 .inspector button,
 .card button {
   min-height: 30px;
-  border: 1px solid var(--dsw-alias-border-l2);
+  border: 1px solid var(--rlw-alias-border-l2);
   border-radius: 7px;
   background: transparent;
   padding: 0 9px;
-  color: var(--dsw-alias-label-secondary);
+  color: var(--rlw-alias-label-secondary);
   cursor: pointer;
 }
 
 .toolbar button:hover,
 .inspector button:hover,
 .card button:hover {
-  background: var(--dsw-alias-interactive-bg-hover);
-  color: var(--dsw-alias-label-primary);
+  background: var(--rlw-alias-interactive-bg-hover);
+  color: var(--rlw-alias-label-primary);
 }
 
 .primary {
-  background: var(--dsw-static-deepseek-500) !important;
-  border-color: var(--dsw-static-deepseek-500) !important;
-  color: var(--dsw-static-neutral-bluish-00) !important;
+  background: var(--rlw-static-relay-500) !important;
+  border-color: var(--rlw-static-relay-500) !important;
+  color: var(--rlw-static-neutral-bluish-00) !important;
 }
 
 .danger {
-  color: var(--dsw-alias-state-error-primary) !important;
+  color: var(--rlw-alias-state-error-primary) !important;
 }
 
 .zoom {
   min-width: 42px;
-  color: var(--dsw-alias-label-tertiary);
+  color: var(--rlw-alias-label-tertiary);
   text-align: center;
 }
 
@@ -77,8 +77,8 @@
   min-height: 0;
   overflow: hidden;
   background:
-    radial-gradient(circle, var(--dsw-alias-border-l2) 1px, transparent 1px) 0 0 / 22px 22px,
-    var(--dsw-alias-bg-base);
+    radial-gradient(circle, var(--rlw-alias-border-l2) 1px, transparent 1px) 0 0 / 22px 22px,
+    var(--rlw-alias-bg-base);
   cursor: grab;
   touch-action: none;
 }
@@ -104,17 +104,17 @@
 
 .connectors path {
   fill: none;
-  stroke: var(--dsw-alias-border-l3);
+  stroke: var(--rlw-alias-border-l3);
   stroke-width: 2;
 }
 
 .connectors path[data-branch] {
-  stroke: var(--dsw-static-deepseek-500);
+  stroke: var(--rlw-static-relay-500);
   stroke-dasharray: 6 5;
 }
 
 .connectors path[data-current-path] {
-  stroke: var(--dsw-static-deepseek-500);
+  stroke: var(--rlw-static-relay-500);
   stroke-width: 3;
 }
 
@@ -125,25 +125,25 @@
   width: 300px;
   height: 224px;
   grid-template-rows: auto auto minmax(42px, auto) minmax(0, 1fr) auto auto;
-  border: 1px solid var(--dsw-alias-border-l2);
+  border: 1px solid var(--rlw-alias-border-l2);
   border-radius: 10px;
-  background: var(--dsw-alias-bg-base);
-  box-shadow: var(--dsw-shadow-lv1);
+  background: var(--rlw-alias-bg-base);
+  box-shadow: var(--rlw-shadow-lv1);
   overflow: visible;
 }
 
 .card:hover,
 .card[data-selected] {
-  border-color: var(--dsw-static-deepseek-500);
-  box-shadow: var(--dsw-shadow-lv2);
+  border-color: var(--rlw-static-relay-500);
+  box-shadow: var(--rlw-shadow-lv2);
 }
 
 .card[data-current] {
-  outline: 2px solid var(--dsw-static-deepseek-200);
+  outline: 2px solid var(--rlw-static-relay-200);
 }
 
 .card[data-current-path] {
-  border-color: var(--dsw-static-deepseek-200);
+  border-color: var(--rlw-static-relay-200);
 }
 
 .dragHandle {
@@ -154,8 +154,8 @@
   min-height: 18px !important;
   transform: translateX(-50%);
   padding: 0 !important;
-  background: var(--dsw-alias-bg-base) !important;
-  color: var(--dsw-alias-label-tertiary) !important;
+  background: var(--rlw-alias-bg-base) !important;
+  color: var(--rlw-alias-label-tertiary) !important;
   cursor: grab !important;
   line-height: 12px;
 }
@@ -173,7 +173,7 @@
   height: 8px;
   flex: none;
   border-radius: 50%;
-  background: var(--dsw-static-deepseek-500);
+  background: var(--rlw-static-relay-500);
 }
 
 .sessionTitle {
@@ -182,7 +182,7 @@
   overflow: hidden;
   border: 0 !important;
   padding: 0 !important;
-  color: var(--dsw-alias-label-primary) !important;
+  color: var(--rlw-alias-label-primary) !important;
   font-weight: 650;
   text-align: left;
   text-overflow: ellipsis;
@@ -190,7 +190,7 @@
 }
 
 .running {
-  color: var(--dsw-alias-state-business-primary);
+  color: var(--rlw-alias-state-business-primary);
   font-size: 11px;
 }
 
@@ -200,9 +200,9 @@
   margin: 0 11px 5px;
   overflow: hidden;
   border-radius: 999px;
-  background: var(--dsw-alias-button-info-fill);
+  background: var(--rlw-alias-button-info-fill);
   padding: 2px 8px;
-  color: var(--dsw-alias-label-primary);
+  color: var(--rlw-alias-label-primary);
   font-size: 11px;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -213,7 +213,7 @@
 .context {
   margin: 0 11px;
   overflow: hidden;
-  color: var(--dsw-alias-label-primary);
+  color: var(--rlw-alias-label-primary);
   font-size: 13px;
   line-height: 1.45;
   white-space: pre-wrap;
@@ -224,17 +224,17 @@
 }
 
 .answer {
-  color: var(--dsw-alias-label-secondary);
+  color: var(--rlw-alias-label-secondary);
 }
 
 .context {
-  color: var(--dsw-alias-label-tertiary);
+  color: var(--rlw-alias-label-tertiary);
   font-size: 11px;
 }
 
 .tools {
   margin: 4px 11px;
-  color: var(--dsw-alias-label-tertiary);
+  color: var(--rlw-alias-label-tertiary);
   font-size: 11px;
 }
 
@@ -243,14 +243,14 @@
 }
 
 .tools div[data-error] {
-  color: var(--dsw-alias-state-error-primary);
+  color: var(--rlw-alias-state-error-primary);
 }
 
 .card footer {
   display: flex;
   gap: 5px;
   padding: 7px 9px;
-  border-top: 1px solid var(--dsw-alias-border-l1);
+  border-top: 1px solid var(--rlw-alias-border-l1);
 }
 
 .card footer button {
@@ -268,11 +268,11 @@
   display: grid;
   width: min(410px, calc(100vw - 32px));
   gap: 9px;
-  border: 1px solid var(--dsw-alias-border-l2);
+  border: 1px solid var(--rlw-alias-border-l2);
   border-radius: 12px;
-  background: var(--dsw-specific-menu);
+  background: var(--rlw-specific-menu);
   padding: 12px;
-  box-shadow: var(--dsw-shadow-lv3);
+  box-shadow: var(--rlw-shadow-lv3);
 }
 
 .inspectorHead {
@@ -286,7 +286,7 @@
   grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
   gap: 8px;
-  color: var(--dsw-alias-label-secondary);
+  color: var(--rlw-alias-label-secondary);
   font-size: 12px;
 }
 
@@ -294,11 +294,11 @@
 .inspector textarea {
   box-sizing: border-box;
   width: 100%;
-  border: 1px solid var(--dsw-alias-border-l2);
+  border: 1px solid var(--rlw-alias-border-l2);
   border-radius: 8px;
-  background: var(--dsw-alias-bg-base);
+  background: var(--rlw-alias-bg-base);
   padding: 7px 9px;
-  color: var(--dsw-alias-label-primary);
+  color: var(--rlw-alias-label-primary);
 }
 
 .inspector textarea {
@@ -313,7 +313,7 @@
 }
 
 .cut {
-  color: var(--dsw-alias-label-tertiary);
+  color: var(--rlw-alias-label-tertiary);
   font-size: 11px;
 }
 
@@ -325,17 +325,17 @@
   top: 60px;
   left: 50%;
   transform: translateX(-50%);
-  border: 1px solid var(--dsw-alias-border-l2);
+  border: 1px solid var(--rlw-alias-border-l2);
   border-radius: 9px;
-  background: var(--dsw-specific-menu);
+  background: var(--rlw-specific-menu);
   padding: 8px 12px;
-  box-shadow: var(--dsw-shadow-lv2);
-  color: var(--dsw-alias-label-secondary);
+  box-shadow: var(--rlw-shadow-lv2);
+  color: var(--rlw-alias-label-secondary);
   font-size: 12px;
 }
 
 .error {
-  color: var(--dsw-alias-state-error-primary);
+  color: var(--rlw-alias-state-error-primary);
 }
 
 .error button {

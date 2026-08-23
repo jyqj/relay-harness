@@ -1,4 +1,4 @@
-import type { HistoryEntry, IApiClient, SessionId } from '@deepseek-ai/dsh-client-connection/client'
+import type { HistoryEntry, IApiClient, SessionId } from '@relay-harness/rlh-client-connection/client'
 
 /** Protocol batch size; pagination continues until the complete log is read. */
 const HISTORY_PAGE_MESSAGES = 100

@@ -1,12 +1,12 @@
 # 手机 Web 客户端（先做 Web）
 
-手机是电脑上 Harness Host 的伴侣，不是另一套带自己 API Key 的 Agent。系统相机 / 浏览器扫桌面「远程」弹窗里的**同一条**二维码，打开的是 `mobile/web` 这套独立 SPA，不是官方四栏 `dsh web`，也不是 Electron `src/renderer` 的套皮。
+手机是电脑上 Harness Host 的伴侣，不是另一套带自己 API Key 的 Agent。系统相机 / 浏览器扫桌面「远程」弹窗里的**同一条**二维码，打开的是 `mobile/web` 这套独立 SPA，不是官方四栏 `rlh web`，也不是 Electron `src/renderer` 的套皮。
 
 本规格只覆盖 **Web v1**。Android 应用内扫码、原生页、iOS 另开计划。
 
 视觉以已认可的稿为准：`docs/superpowers/mocks/2026-08-20-mobile-phone.html`。不要把 Markdown 链接丢给用户当预览；本地预览用：
 
-`Start-Process "C:\Ai\Deepseek-Harness-Desktop\docs\superpowers\mocks\2026-08-20-mobile-phone.html"`
+`Start-Process "C:\Ai\Relay-Harness-Desktop\docs\superpowers\mocks\2026-08-20-mobile-phone.html"`
 
 ## 目标
 
@@ -15,8 +15,8 @@
 ## 非目标（本规格不做）
 
 - 复用 `src/main` / `src/renderer` / `src/preload` 的 UI 代码
-- 用 WebView 套官方 `dsh web` 插件树
-- `import` `@deepseek-ai/dsh-client-*`、Cordis slot、CSS Modules `ui-primitives`
+- 用 WebView 套官方 `rlh web` 插件树
+- `import` `@relay-harness/rlh-client-*`、Cordis slot、CSS Modules `ui-primitives`
 - `import` `../../src/` 桌面壳（协议在 `mobile/` 内自写一份）
 - Git / Files / Browser / 终端 surface、斜杠命令 UI、附件、iOS
 - Android 应用内扫码（同一 URL，以后原生页消化，不进 SPA WebView）
@@ -40,14 +40,14 @@
 
 - 二维码仍是 `pairingUrl()`：中继 `https://<relay>/#offer=...`，局域网 `http://<lan>:3180/#offer=...`。token **只在 hash**。
 - `#offer=` → `POST /__remote__/login`（现有 `loginPage()` 脚本可保留；SPA 也必须能自己 POST，避免只开 `/` 时卡住）。
-- Cookie `dsh_remote`，`credentials: 'include'`。
-- `dsh web` 仍只听 `127.0.0.1:3080`。手机只打 3180 / 中继。
+- Cookie `rlh_remote`，`credentials: 'include'`。
+- `rlh web` 仍只听 `127.0.0.1:3080`。手机只打 3180 / 中继。
 - 中继只允许 `normalizeRelayOrigin` 后的 HTTPS。流量经过中继运营方；HTTPS 是跳加密，不是会话内容 E2E。v1 接受。
-- 不要写死中继 IP。Host 已占用 `/__dsh__/host` 时 409。
+- 不要写死中继 IP。Host 已占用 `/__rlh__/host` 时 409。
 
 ## Host 协议（与官方客户端同线）
 
-对照：`vendor/deepseek-harness/packages/host/apiproxy/src/fetch/client.ts`、`packages/client/connection/src/client/web-api-client.ts`。
+对照：`vendor/relay-harness/packages/host/apiproxy/src/fetch/client.ts`、`packages/client/connection/src/client/web-api-client.ts`。
 
 Unary：
 
@@ -70,7 +70,7 @@ v1 方法（点号名为线上真名）：
 
 ## 屏幕（对照稿）
 
-390 逻辑宽、官方 `--dsw-alias-*` 色板、中文文案。没有 56px 桌面轨。
+390 逻辑宽、官方 `--rlw-alias-*` 色板、中文文案。没有 56px 桌面轨。
 
 1. **连接** — 配对说明、主机名/中继状态（有则显示）、粘贴 URL、「进入会话」。已有有效 cookie 可跳过登录直握手。
 2. **对话** — 顶栏汉堡 + 标题 + 运行态；消息流；底栏胶囊输入 + info 蓝发送。汉堡打开抽屉：搜索、新会话、会话行（标题、时间、running）、底栏 **设置**。
@@ -95,13 +95,13 @@ v1 方法（点号名为线上真名）：
 
 ## 设计语言例外
 
-手机 Web **不能**挂官方 CSS Modules `ui-primitives`。允许把 `--dsw-alias-*` 抄进 `mobile/web/tokens.css`（可从 `src/shared/dsh-webui-tokens.css` 抄值，不要 import 桌面渲染进程）。禁止 Pierre / lucide / Tailwind / marketplace 色值。产品文案中文。启动页仪器画布不得扩散到本 SPA。
+手机 Web **不能**挂官方 CSS Modules `ui-primitives`。允许把 `--rlw-alias-*` 抄进 `mobile/web/tokens.css`（可从 `src/shared/rlh-webui-tokens.css` 抄值，不要 import 桌面渲染进程）。禁止 Pierre / lucide / Tailwind / marketplace 色值。产品文案中文。启动页仪器画布不得扩散到本 SPA。
 
 在 `docs/design-language.md` 增加这一条例外，与启动页并列。
 
 ## 测试义务
 
-- `mobile/web/**/*.test.js`：offer、unary 信封、握手顺序、WS 帧、折叠、import fence（源码不得出现 `from '../../src/`、`require('../../src/`、`@deepseek-ai/dsh-client-`）
+- `mobile/web/**/*.test.js`：offer、unary 信封、握手顺序、WS 帧、折叠、import fence（源码不得出现 `from '../../src/`、`require('../../src/`、`@relay-harness/rlh-client-`）
 - `src/main/remote.test.js`：登录后 `GET /` 是手机 SPA，不是官方 boot HTML；`POST /api/session.list` 仍进上游
 - `src/main/config.test.js`：`REMOTE_FEATURE_ENABLED === true`；非 HTTPS 中继 origin 仍被丢掉
 

@@ -1,8 +1,8 @@
-# `@deepseek-ai/dsh-issue-workspace-local`
+# `@relay-harness/rlh-issue-workspace-local`
 
 [English](README.md) | 中文
 
-本地 Provider：生成经过清洗且抗碰撞的目录 key，规范化 root 与目标路径，拒绝符号链接逃逸，保留复用 Workspace，清理新建后设置失败的目录，并通过 `ctx.subprocess` 运行有界 hook，同时以显式 `DSH_*` 环境字段传入 Issue 元数据。
+本地 Provider：生成经过清洗且抗碰撞的目录 key，规范化 root 与目标路径，拒绝符号链接逃逸，保留复用 Workspace，清理新建后设置失败的目录，并通过 `ctx.subprocess` 运行有界 hook，同时以显式 `RLH_*` 环境字段传入 Issue 元数据。
 
 ## 模型体验
 

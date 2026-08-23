@@ -7,8 +7,8 @@
 
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { bindSnapshotSelector } from '@deepseek-ai/dsh-client-test-runtime'
-import { createSnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
+import { bindSnapshotSelector } from '@relay-harness/rlh-client-test-runtime'
+import { createSnapshotStore } from '@relay-harness/rlh-client-runtime/client'
 import { AgentLoopCard } from '../src/client/AgentLoopCard.tsx'
 import type { AgentLoopCardProps } from '../src/client/AgentLoopCard.tsx'
 import { BashCard } from '../src/client/BashCard.tsx'
@@ -111,8 +111,8 @@ describe('PluginsSettingsSection', () => {
 
     const configurable = screen.getByRole('tab', { name: en.configurableTab })
     const all = screen.getByRole('tab', { name: 'Plugin list' })
-    expect(configurable.getAttribute('data-dsh-settings-plugin-tab')).toBe('configurable')
-    expect(all.getAttribute('data-dsh-settings-plugin-tab')).toBe('all')
+    expect(configurable.getAttribute('data-rlh-settings-plugin-tab')).toBe('configurable')
+    expect(all.getAttribute('data-rlh-settings-plugin-tab')).toBe('all')
     expect(configurable.getAttribute('aria-selected')).toBe('true')
     expect(screen.getByText('configurable')).toBeTruthy()
     expect(screen.queryByText('all')).toBeNull()

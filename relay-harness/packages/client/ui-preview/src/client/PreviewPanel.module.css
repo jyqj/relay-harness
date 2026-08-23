@@ -3,7 +3,7 @@
   flex-direction: column;
   height: 100%;
   min-width: 0;
-  background: var(--dsw-alias-bg-base);
+  background: var(--rlw-alias-bg-base);
 }
 
 .toolbar {
@@ -11,7 +11,7 @@
   gap: 4px;
   align-items: center;
   padding: 8px 12px;
-  border-bottom: 1px solid var(--dsw-alias-border-l2);
+  border-bottom: 1px solid var(--rlw-alias-border-l2);
 }
 
 .nav {
@@ -31,13 +31,13 @@
   border: none;
   border-radius: 8px;
   background: transparent;
-  color: var(--dsw-alias-label-secondary);
+  color: var(--rlw-alias-label-secondary);
   cursor: pointer;
 }
 
 .icon:hover:not(:disabled) {
-  background: var(--dsw-alias-interactive-bg-hover);
-  color: var(--dsw-alias-label-primary);
+  background: var(--rlw-alias-interactive-bg-hover);
+  color: var(--rlw-alias-label-primary);
 }
 
 .icon:disabled {
@@ -63,14 +63,14 @@
   width: 100%;
   font-size: 12px;
   line-height: 18px;
-  color: var(--dsw-alias-label-tertiary);
+  color: var(--rlw-alias-label-tertiary);
 }
 
 .host {
   flex: 1;
   min-height: 0;
   position: relative;
-  background: var(--dsw-alias-bg-base);
+  background: var(--rlw-alias-bg-base);
 }
 
 .deviceToolbar {
@@ -86,8 +86,8 @@
   height: 32px;
   padding: 0 8px;
   overflow-x: auto;
-  border-bottom: 1px solid var(--dsw-alias-border-l2);
-  background: var(--dsw-alias-bg-base);
+  border-bottom: 1px solid var(--rlw-alias-border-l2);
+  background: var(--rlw-alias-bg-base);
 }
 
 .deviceDims {
@@ -116,15 +116,15 @@
   flex: none;
   font-size: 12px;
   line-height: 18px;
-  color: var(--dsw-alias-label-tertiary);
+  color: var(--rlw-alias-label-tertiary);
 }
 
 .rail {
   position: absolute;
   z-index: 2;
   padding: 0;
-  border: 1px solid var(--dsw-alias-border-l2);
-  background: var(--dsw-alias-bg-layer-1);
+  border: 1px solid var(--rlw-alias-border-l2);
+  background: var(--rlw-alias-bg-layer-1);
 }
 
 .railWest,
@@ -148,7 +148,7 @@
   margin: 16px 16px 0;
   font-size: 12px;
   line-height: 18px;
-  color: var(--dsw-alias-label-tertiary);
+  color: var(--rlw-alias-label-tertiary);
   text-align: center;
 }
 
@@ -157,9 +157,9 @@
   padding: 8px 12px;
   font-size: 12px;
   line-height: 18px;
-  color: var(--dsw-alias-label-secondary);
+  color: var(--rlw-alias-label-secondary);
   text-align: center;
-  border: 1px solid var(--dsw-alias-border-l2);
+  border: 1px solid var(--rlw-alias-border-l2);
   border-radius: 8px;
-  background: var(--dsw-alias-bg-base);
+  background: var(--rlw-alias-bg-base);
 }

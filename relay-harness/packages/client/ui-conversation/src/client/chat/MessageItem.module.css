@@ -19,17 +19,17 @@
 .bubble {
   /* 525px cap inside the 736 column; percentage keeps narrow windows sane. */
   max-width: 100%;
-  background: var(--dsw-specific-bubble);
+  background: var(--rlw-specific-bubble);
   border-radius: 22px;
   /* 44px single-line bubble: 24 line + 10 vertical padding each side. */
   padding: 10px 16px;
   font-size: 16px;
   line-height: 24px;
-  color: var(--dsw-alias-label-primary);
+  color: var(--rlw-alias-label-primary);
 }
 
 .referenceSummary {
-  color: var(--dsw-alias-label-tertiary);
+  color: var(--rlw-alias-label-tertiary);
   font-size: 12px;
   line-height: 18px;
 }
@@ -64,7 +64,7 @@
 }
 
 .compactionButton:not(:disabled):hover {
-  background: var(--dsw-alias-interactive-bg-hover);
+  background: var(--rlw-alias-interactive-bg-hover);
 }
 
 .compactionLeading {
@@ -74,7 +74,7 @@
   width: 16px;
   height: 16px;
   margin-right: 6px;
-  color: var(--dsw-alias-label-secondary);
+  color: var(--rlw-alias-label-secondary);
 }
 
 .compactionContextIcon,
@@ -103,7 +103,7 @@
   flex: none;
   font-size: 14px;
   line-height: 24px;
-  color: var(--dsw-alias-label-primary-dimmed);
+  color: var(--rlw-alias-label-primary-dimmed);
 }
 
 .compactionSep {
@@ -112,14 +112,14 @@
   height: 2px;
   margin: 0 8px;
   border-radius: 1px;
-  background: var(--dsw-alias-label-caption);
+  background: var(--rlw-alias-label-caption);
 }
 
 .compactionSummary {
   flex: 1 1 auto;
   min-width: 0;
   overflow: hidden;
-  color: var(--dsw-alias-label-tertiary);
+  color: var(--rlw-alias-label-tertiary);
   font-size: 14px;
   line-height: 24px;
   text-overflow: ellipsis;
@@ -128,13 +128,13 @@
 
 .compactionBody {
   padding: 4px 0 4px 22px;
-  color: var(--dsw-alias-label-tertiary);
+  color: var(--rlw-alias-label-tertiary);
   font-size: 14px;
   line-height: 24px;
 }
 
 .retryRow {
-  color: var(--dsw-alias-label-tertiary);
+  color: var(--rlw-alias-label-tertiary);
   font-size: 13px;
   line-height: 20px;
 }
@@ -168,11 +168,11 @@
 }
 
 .retrySummary:hover {
-  color: var(--dsw-alias-label-secondary);
+  color: var(--rlw-alias-label-secondary);
 }
 
 .retrySummary:focus-visible {
-  outline: 1.5px solid var(--dsw-alias-button-info-fill);
+  outline: 1.5px solid var(--rlw-alias-button-info-fill);
   outline-offset: 2px;
 }
 
@@ -184,11 +184,11 @@
   background:
     linear-gradient(
       90deg,
-      var(--dsw-alias-label-tertiary) 0%,
-      var(--dsw-alias-label-tertiary) 40%,
-      var(--dsw-alias-label-secondary) 50%,
-      var(--dsw-alias-label-tertiary) 60%,
-      var(--dsw-alias-label-tertiary) 100%
+      var(--rlw-alias-label-tertiary) 0%,
+      var(--rlw-alias-label-tertiary) 40%,
+      var(--rlw-alias-label-secondary) 50%,
+      var(--rlw-alias-label-tertiary) 60%,
+      var(--rlw-alias-label-tertiary) 100%
     );
   background-position: 100% 50%;
   background-size: 200% 100%;
@@ -212,7 +212,7 @@
 }
 
 .retryDetailLabel {
-  color: var(--dsw-alias-label-secondary);
+  color: var(--rlw-alias-label-secondary);
 }
 
 .turnErrorRow {
@@ -236,22 +236,22 @@
 
 .turnErrorTitle {
   margin-right: 6px;
-  color: var(--dsw-alias-state-error-primary);
+  color: var(--rlw-alias-state-error-primary);
   font-weight: 600;
 }
 
 .turnErrorMessage {
-  color: var(--dsw-alias-label-secondary);
+  color: var(--rlw-alias-label-secondary);
 }
 
 .turnErrorCode {
-  color: var(--dsw-alias-label-tertiary);
-  font: var(--dsw-font-markdown-code-block-small);
+  color: var(--rlw-alias-label-tertiary);
+  font: var(--rlw-font-markdown-code-block-small);
 }
 
 .maxTokensTitle {
   margin-right: 6px;
-  color: var(--dsw-alias-state-warn-primary);
+  color: var(--rlw-alias-state-warn-primary);
   font-weight: 600;
 }
 
@@ -280,7 +280,7 @@
   align-items: center;
   gap: 4px;
   margin: 0 2px;
-  color: var(--dsw-alias-state-business-primary);
+  color: var(--rlw-alias-state-business-primary);
   font-weight: 500;
   white-space: nowrap;
   vertical-align: baseline;

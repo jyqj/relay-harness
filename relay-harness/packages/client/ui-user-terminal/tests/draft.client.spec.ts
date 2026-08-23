@@ -1,7 +1,7 @@
 /**
  * appendToDraft writes through ctx.get('conversation') without importing the plugin.
  */
-import { Context } from '@deepseek-ai/cordis'
+import { Context } from '@relay-harness/cordis'
 import { describe, expect, it, vi } from 'vitest'
 import { appendToDraft } from '../src/client/draft.ts'
 

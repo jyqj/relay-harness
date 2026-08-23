@@ -1,6 +1,6 @@
-import type { ObservableSnapshot, SessionId, SnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
-import { Button, Modal } from '@deepseek-ai/dsh-client-ui-primitives'
-import type { InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
+import type { ObservableSnapshot, SessionId, SnapshotStore } from '@relay-harness/rlh-client-runtime/client'
+import { Button, Modal } from '@relay-harness/rlh-client-ui-primitives'
+import type { InjectFace, PropsLocale, PropsRuntime } from '@relay-harness/rlh-client-ui-slots'
 import type { SessionLogDownloadState } from './controller.ts'
 import { NS } from './locales.ts'
 

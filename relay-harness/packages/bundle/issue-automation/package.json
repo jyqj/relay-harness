@@ -1,9 +1,9 @@
 {
-  "name": "@deepseek-ai/dsh-issue-automation",
+  "name": "@relay-harness/rlh-issue-automation",
   "description": "Opt-in tracker-driven issue automation bundle over the Web profile",
   "version": "0.1.0-rc.8",
   "publishConfig": { "access": "public" },
-  "repository": { "type": "git", "url": "git+https://github.com/deepseek-ai/deepseek-harness.git", "directory": "packages/bundle/issue-automation" },
+  "repository": { "type": "git", "url": "git+https://github.com/jyqj/relay-harness.git", "directory": "packages/bundle/issue-automation" },
   "type": "module",
   "main": "lib/index.js",
   "types": "lib/types/index.d.ts",
@@ -16,24 +16,24 @@
   },
   "files": ["lib/index.js", "lib/invariant.js", "cordis.patch.yml", "lib/types/**/*.d.ts"],
   "license": "MIT",
-  "dsh": { "bundle": { "patch": "./cordis.patch.yml" } },
+  "rlh": { "bundle": { "patch": "./cordis.patch.yml" } },
   "dependencies": {
-    "@deepseek-ai/dsh-client-ui-issue-orchestration": "workspace:^",
-    "@deepseek-ai/dsh-issue-orchestrator": "workspace:^",
-    "@deepseek-ai/dsh-issue-runner-agent": "workspace:^",
-    "@deepseek-ai/dsh-issue-workflow-file": "workspace:^",
-    "@deepseek-ai/dsh-issue-workspace-local": "workspace:^",
-    "@deepseek-ai/dsh-tracker": "workspace:^",
-    "@deepseek-ai/dsh-tracker-linear": "workspace:^"
+    "@relay-harness/rlh-client-ui-issue-orchestration": "workspace:^",
+    "@relay-harness/rlh-issue-orchestrator": "workspace:^",
+    "@relay-harness/rlh-issue-runner-agent": "workspace:^",
+    "@relay-harness/rlh-issue-workflow-file": "workspace:^",
+    "@relay-harness/rlh-issue-workspace-local": "workspace:^",
+    "@relay-harness/rlh-tracker": "workspace:^",
+    "@relay-harness/rlh-tracker-linear": "workspace:^"
   },
   "peerDependencies": {
-    "@deepseek-ai/dsh-agent-default-model": "workspace:^",
-    "@deepseek-ai/dsh-invariants": "workspace:^",
-    "@deepseek-ai/cordis": "workspace:^"
+    "@relay-harness/rlh-agent-default-model": "workspace:^",
+    "@relay-harness/rlh-invariants": "workspace:^",
+    "@relay-harness/cordis": "workspace:^"
   },
   "devDependencies": {
-    "@deepseek-ai/dsh-agent-default-model": "workspace:^",
-    "@deepseek-ai/dsh-invariants": "workspace:^",
-    "@deepseek-ai/cordis": "workspace:^"
+    "@relay-harness/rlh-agent-default-model": "workspace:^",
+    "@relay-harness/rlh-invariants": "workspace:^",
+    "@relay-harness/cordis": "workspace:^"
   }
 }

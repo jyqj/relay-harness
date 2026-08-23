@@ -1,7 +1,7 @@
-import { createUserMessage, type StreamChunk } from '@deepseek-ai/dsh-llm'
+import { createUserMessage, type StreamChunk } from '@relay-harness/rlh-llm'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { PROTOCOL_VERSION } from '@agentclientprotocol/sdk'
-import { SessionId } from '@deepseek-ai/dsh-session'
+import { SessionId } from '@relay-harness/rlh-session'
 import {
   errorResponse,
   makeBridgeHarness,

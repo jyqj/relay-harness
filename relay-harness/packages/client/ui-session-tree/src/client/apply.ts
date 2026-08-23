@@ -1,10 +1,10 @@
 /** Native Session Tree registration and service orchestration. */
 
-import type { ConnectionHandle, SessionId, WorkspaceId } from '@deepseek-ai/dsh-client-connection/client'
-import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
-import type {} from '@deepseek-ai/dsh-client-locale/client'
-import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
-import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
+import type { ConnectionHandle, SessionId, WorkspaceId } from '@relay-harness/rlh-client-connection/client'
+import type { ClientContext } from '@relay-harness/rlh-client-runtime/client'
+import type {} from '@relay-harness/rlh-client-locale/client'
+import type {} from '@relay-harness/rlh-client-ui-conversation/client'
+import type {} from '@relay-harness/rlh-client-ui-layout/client'
 import { SessionTreeAction, type SessionTreeActionInjected } from './SessionTreeAction.tsx'
 import { SessionTreeCanvas, type SessionTreeCanvasInjected } from './SessionTreeCanvas.tsx'
 import { SessionTreeTitlebarAction, type SessionTreeTitlebarActionInjected } from './SessionTreeTitlebarAction.tsx'

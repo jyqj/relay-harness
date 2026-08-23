@@ -1,4 +1,4 @@
-# @deepseek-ai/dsh-tool-subagent
+# @relay-harness/rlh-tool-subagent
 
 English | [中文](README.zh.md)
 

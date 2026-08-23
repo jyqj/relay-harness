@@ -1,13 +1,13 @@
 {
-  "name": "@deepseek-ai/dsh-llm-deepseek",
-  "description": "DeepSeek chat-completions adapter for the DeepSeek Harness LLM seam",
+  "name": "@relay-harness/rlh-llm-deepseek",
+  "description": "DeepSeek chat-completions adapter for the Relay Harness LLM seam",
   "version": "0.1.0-rc.8",
   "publishConfig": {
     "access": "public"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+    "url": "git+https://github.com/jyqj/relay-harness.git",
     "directory": "packages/llm/llm-deepseek"
   },
   "type": "module",
@@ -32,29 +32,29 @@
   ],
   "license": "MIT",
   "peerDependencies": {
-    "@deepseek-ai/dsh-attachment": "workspace:^",
-    "@deepseek-ai/dsh-credentials": "workspace:^",
-    "@deepseek-ai/dsh-launch-environment": "workspace:^",
-    "@deepseek-ai/dsh-invariants": "workspace:^",
-    "@deepseek-ai/dsh-llm": "workspace:^",
-    "@deepseek-ai/dsh-settings": "workspace:^",
-    "@deepseek-ai/dsh-timeout": "workspace:^",
-    "@deepseek-ai/dsh-anonymous-user-id": "workspace:^",
-    "@deepseek-ai/cordis": "workspace:^"
+    "@relay-harness/rlh-attachment": "workspace:^",
+    "@relay-harness/rlh-credentials": "workspace:^",
+    "@relay-harness/rlh-launch-environment": "workspace:^",
+    "@relay-harness/rlh-invariants": "workspace:^",
+    "@relay-harness/rlh-llm": "workspace:^",
+    "@relay-harness/rlh-settings": "workspace:^",
+    "@relay-harness/rlh-timeout": "workspace:^",
+    "@relay-harness/rlh-anonymous-user-id": "workspace:^",
+    "@relay-harness/cordis": "workspace:^"
   },
   "dependencies": {
     "eventsource-parser": "^3.1.0",
-    "@deepseek-ai/schemastery": "workspace:^"
+    "@relay-harness/schemastery": "workspace:^"
   },
   "devDependencies": {
-    "@deepseek-ai/dsh-attachment": "workspace:^",
-    "@deepseek-ai/dsh-credentials": "workspace:^",
-    "@deepseek-ai/dsh-launch-environment": "workspace:^",
-    "@deepseek-ai/dsh-invariants": "workspace:^",
-    "@deepseek-ai/dsh-llm": "workspace:^",
-    "@deepseek-ai/dsh-settings": "workspace:^",
-    "@deepseek-ai/dsh-timeout": "workspace:^",
-    "@deepseek-ai/dsh-anonymous-user-id": "workspace:^",
-    "@deepseek-ai/cordis": "workspace:^"
+    "@relay-harness/rlh-attachment": "workspace:^",
+    "@relay-harness/rlh-credentials": "workspace:^",
+    "@relay-harness/rlh-launch-environment": "workspace:^",
+    "@relay-harness/rlh-invariants": "workspace:^",
+    "@relay-harness/rlh-llm": "workspace:^",
+    "@relay-harness/rlh-settings": "workspace:^",
+    "@relay-harness/rlh-timeout": "workspace:^",
+    "@relay-harness/rlh-anonymous-user-id": "workspace:^",
+    "@relay-harness/cordis": "workspace:^"
   }
 }

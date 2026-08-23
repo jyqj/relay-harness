@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'vitest'
-import { Context } from '@deepseek-ai/cordis'
-import SessionStore, { Session, SessionId } from '@deepseek-ai/dsh-session'
-import type { SandboxMode } from '@deepseek-ai/dsh-sandbox'
-import type { ApprovalPolicy } from '@deepseek-ai/dsh-user-approval'
+import { Context } from '@relay-harness/cordis'
+import SessionStore, { Session, SessionId } from '@relay-harness/rlh-session'
+import type { SandboxMode } from '@relay-harness/rlh-sandbox'
+import type { ApprovalPolicy } from '@relay-harness/rlh-user-approval'
 import PermissionPresetService, {
   CUSTOM_PRESET, effectivePermissionPreset, PERMISSION_SETTINGS_NAMESPACE,
-} from '@deepseek-ai/dsh-permission-presets'
-import type { Config } from '@deepseek-ai/dsh-permission-presets'
-import { SettingsProvider } from '@deepseek-ai/dsh-settings'
-import type { SettingsNamespace } from '@deepseek-ai/dsh-settings'
+} from '@relay-harness/rlh-permission-presets'
+import type { Config } from '@relay-harness/rlh-permission-presets'
+import { SettingsProvider } from '@relay-harness/rlh-settings'
+import type { SettingsNamespace } from '@relay-harness/rlh-settings'
 
 /** Writable memory provider for the permission/settings lifecycle specs. */
 class MemorySettings extends SettingsProvider {

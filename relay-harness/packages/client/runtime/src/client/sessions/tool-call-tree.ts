@@ -1,5 +1,5 @@
-import type { SessionEvent } from '@deepseek-ai/dsh-session/types'
-import type {} from '@deepseek-ai/dsh-tools/types'
+import type { SessionEvent } from '@relay-harness/rlh-session/types'
+import type {} from '@relay-harness/rlh-tools/types'
 import type {
   ConversationNode, RunningToolCall, ToolCallBlock, ToolResultNode,
 } from './conversation.ts'

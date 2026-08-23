@@ -6,15 +6,15 @@
  * the deviation. Advisory and bounded: per-turn and consecutive caps always
  * let the turn close. Configuration and detection semantics live in the
  * package README.
- * @module @deepseek-ai/dsh-behavior-correction
+ * @module @relay-harness/rlh-behavior-correction
  */
 
-import type { Context } from '@deepseek-ai/cordis'
-import z from '@deepseek-ai/schemastery'
-import type { Agent } from '@deepseek-ai/dsh-agent'
-import { assertNever, createUserMessage } from '@deepseek-ai/dsh-llm'
-import type { MessageSource } from '@deepseek-ai/dsh-llm'
-import type { AssistantMessage } from '@deepseek-ai/dsh-session'
+import type { Context } from '@relay-harness/cordis'
+import z from '@relay-harness/schemastery'
+import type { Agent } from '@relay-harness/rlh-agent'
+import { assertNever, createUserMessage } from '@relay-harness/rlh-llm'
+import type { MessageSource } from '@relay-harness/rlh-llm'
+import type { AssistantMessage } from '@relay-harness/rlh-session'
 
 export const name = 'behavior-correction'
 

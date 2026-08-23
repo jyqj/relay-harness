@@ -1,6 +1,6 @@
 /**
  * On-disk and in-memory records for the managed MCP server document.
- * @module @deepseek-ai/dsh-mcp-servers-file/types
+ * @module @relay-harness/rlh-mcp-servers-file/types
  */
 
 /** Automatic reconnect policy stored beside one managed server. */
@@ -40,7 +40,7 @@ export interface McpHttpServerRecord extends McpServerRecordBase {
   readonly headers?: Readonly<Record<string, string>>
 }
 
-/** One managed MCP server persisted in `$DSH_HOME/mcp-servers.yaml`. */
+/** One managed MCP server persisted in `$RLH_HOME/mcp-servers.yaml`. */
 export type McpServerRecord = McpStdioServerRecord | McpHttpServerRecord
 
 /** Fiber phase mirrored from a live child mcp-client plugin. */

@@ -22,25 +22,25 @@ test('assertReleaseQaResult fails on a required step miss or omission', () => {
     /files\.panel/,
   );
   const steps = QA_REQUIRED_STEPS
-    .filter((name) => name !== 'plugin.dshbot.tab')
+    .filter((name) => name !== 'plugin.rlhbot.tab')
     .map((name) => ({ name, ok: true, detail: '' }));
   assert.throws(
     () => assertReleaseQaResult({ qa: { ok: true, failed: [], steps } }),
-    /plugin\.dshbot\.tab/,
+    /plugin\.rlhbot\.tab/,
   );
 });
 
 test('release walk helpers stay injectable into the harness page', () => {
-  assert.match(PAGE_HELPERS, /function dshShown/);
-  assert.match(PAGE_HELPERS, /function dshFind/);
-  assert.match(PAGE_HELPERS, /function dshSetValue/);
-  assert.match(PAGE_HELPERS, /function dshDialogNamed/);
+  assert.match(PAGE_HELPERS, /function rlhShown/);
+  assert.match(PAGE_HELPERS, /function rlhFind/);
+  assert.match(PAGE_HELPERS, /function rlhSetValue/);
+  assert.match(PAGE_HELPERS, /function rlhDialogNamed/);
   assert.ok(QA_REQUIRED_STEPS.includes('workspace.connected'));
   assert.ok(QA_REQUIRED_STEPS.includes('workspace.picker'));
   assert.ok(QA_REQUIRED_STEPS.includes('gallery.sources'));
   assert.ok(QA_REQUIRED_STEPS.includes('market.discover'));
   assert.ok(QA_REQUIRED_STEPS.includes('browser.url'));
-  assert.ok(QA_REQUIRED_STEPS.includes('plugin.dshbot.tab'));
+  assert.ok(QA_REQUIRED_STEPS.includes('plugin.rlhbot.tab'));
   assert.ok(QA_REQUIRED_STEPS.includes('market.installed'));
   assert.ok(QA_REQUIRED_STEPS.includes('files.mentionAppended'));
   assert.ok(QA_REQUIRED_STEPS.includes('files.mentionVisible'));

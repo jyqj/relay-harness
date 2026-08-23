@@ -6,12 +6,12 @@
   min-width: 0;
   height: 100%;
   overflow: hidden;
-  background: var(--dsw-alias-bg-base);
+  background: var(--rlw-alias-bg-base);
   /* Collapse/expand animates the tracks on the deepsuite sider curve
-     (--ds-ease-in-out / --ds-transition-duration-slow, ui-theme base.css). */
+     (--rl-ease-in-out / --rl-transition-duration-slow, ui-theme base.css). */
   transition:
-    grid-template-columns var(--ds-transition-duration-slow) var(--ds-ease-in-out),
-    grid-template-rows var(--ds-transition-duration-slow) var(--ds-ease-in-out);
+    grid-template-columns var(--rl-transition-duration-slow) var(--rl-ease-in-out),
+    grid-template-rows var(--rl-transition-duration-slow) var(--rl-ease-in-out);
 }
 
 /* Dragging writes widths at pointer cadence; easing them would detach the
@@ -31,7 +31,7 @@
   grid-row: 1 / -1;
   min-width: 0;
   overflow: hidden;
-  background: var(--dsw-specific-sidebar-fill);
+  background: var(--rlw-specific-sidebar-fill);
 }
 
 .centerCol {
@@ -53,7 +53,7 @@
   min-width: 0;
   min-height: 0;
   overflow: hidden;
-  border-top: 1px solid var(--dsw-alias-border-l2);
+  border-top: 1px solid var(--rlw-alias-border-l2);
 }
 
 .detailsCol {
@@ -61,7 +61,7 @@
   grid-row: 2 / -1;
   min-width: 0;
   overflow: hidden;
-  border-left: 1px solid var(--dsw-alias-border-l2);
+  border-left: 1px solid var(--rlw-alias-border-l2);
 }
 
 .surfacesCol {
@@ -69,7 +69,7 @@
   grid-row: 1 / -1;
   min-width: 0;
   overflow: hidden;
-  border-left: 1px solid var(--dsw-alias-border-l2);
+  border-left: 1px solid var(--rlw-alias-border-l2);
 }
 
 /* The details subtree stays mounted at zero width, so its border must not paint
@@ -103,7 +103,7 @@
   -webkit-app-region: no-drag;
   /* Rides the same curve as the tracks so the pill stays on the moving
      border during collapse/expand; paused while dragging (frame rule). */
-  transition: left var(--ds-transition-duration-slow) var(--ds-ease-in-out);
+  transition: left var(--rl-transition-duration-slow) var(--rl-ease-in-out);
 }
 
 .frame[data-dragging] .handle {
@@ -127,14 +127,14 @@
   height: 32px;
   border-radius: 10px;
   box-sizing: border-box;
-  background: var(--dsw-alias-button-floating-fill);
-  border: 1px solid var(--dsw-alias-border-l2-darkmode-thin);
+  background: var(--rlw-alias-button-floating-fill);
+  border: 1px solid var(--rlw-alias-border-l2-darkmode-thin);
   /* Hover affordance: the details pill hides until the pointer is over its
      column, the strip itself, or a drag. */
   opacity: 0;
   transition:
-    opacity var(--ds-transition-duration-slow) var(--ds-ease-in-out),
-    background var(--ds-transition-duration-slow) var(--ds-ease-in-out);
+    opacity var(--rl-transition-duration-slow) var(--rl-ease-in-out),
+    background var(--rl-transition-duration-slow) var(--rl-ease-in-out);
 }
 
 .detailsCol:hover ~ .handle[data-side='details']::after,
@@ -150,8 +150,8 @@
 .handle[data-side='details'][data-dragging='true']::after,
 .handle[data-side='surfaces']:hover::after,
 .handle[data-side='surfaces'][data-dragging='true']::after {
-  background: var(--dsw-alias-button-floating-hover);
-  border-color: var(--dsw-alias-border-l3);
+  background: var(--rlw-alias-button-floating-hover);
+  border-color: var(--rlw-alias-border-l3);
 }
 
 /* First grid child so column paint order keeps this band behind Session log,
@@ -212,7 +212,7 @@
   bottom: 1px;
   left: 0;
   height: 1px;
-  background: var(--dsw-alias-border-l2);
+  background: var(--rlw-alias-border-l2);
   pointer-events: none;
 }
 
@@ -229,7 +229,7 @@
   max-width: 100%;
   height: 32px;
   margin-top: 12px;
-  margin-right: var(--dshd-wco-controls, 8px);
+  margin-right: var(--rlhd-wco-controls, 8px);
   -webkit-app-region: no-drag;
 }
 
@@ -263,15 +263,15 @@
   padding: 0;
   border: none;
   border-radius: 12px;
-  background: var(--dsw-alias-button-floating-fill);
-  color: var(--dsw-alias-label-primary);
-  box-shadow: var(--dsw-shadow-lv2);
+  background: var(--rlw-alias-button-floating-fill);
+  color: var(--rlw-alias-label-primary);
+  box-shadow: var(--rlw-shadow-lv2);
   cursor: pointer;
   -webkit-app-region: no-drag;
 }
 
 .phoneMenu:hover {
-  background: var(--dsw-alias-button-floating-hover);
+  background: var(--rlw-alias-button-floating-hover);
 }
 
 .phoneBackdrop {
@@ -280,8 +280,8 @@
   z-index: 10;
   padding: 0;
   border: none;
-  background: var(--dsw-alias-bg-mask-1);
-  backdrop-filter: var(--dsw-mask-blur);
+  background: var(--rlw-alias-bg-mask-1);
+  backdrop-filter: var(--rlw-mask-blur);
   cursor: pointer;
   /* Close-on-tap must win over the caption band it covers. */
   -webkit-app-region: no-drag;
@@ -296,14 +296,14 @@
   width: min(320px, calc(100% - 48px));
   pointer-events: none;
   transform: translateX(-100%);
-  transition: transform var(--ds-transition-duration-slow) var(--ds-ease-in-out);
+  transition: transform var(--rl-transition-duration-slow) var(--rl-ease-in-out);
   padding-top: env(safe-area-inset-top, 0px);
   /* Opaque canvas under sidebar-fill: wallpaper glass must mix with the
      drawer, not with the dimmed conversation showing through. */
-  background-color: var(--dsw-alias-bg-base);
+  background-color: var(--rlw-alias-bg-base);
   background-image: linear-gradient(
-    var(--dsw-specific-sidebar-fill),
-    var(--dsw-specific-sidebar-fill)
+    var(--rlw-specific-sidebar-fill),
+    var(--rlw-specific-sidebar-fill)
   );
 }
 
@@ -322,9 +322,9 @@
   z-index: 13;
   width: auto;
   pointer-events: none;
-  background: var(--dsw-alias-bg-base);
+  background: var(--rlw-alias-bg-base);
   transform: translateX(100%);
-  transition: transform var(--ds-transition-duration-slow) var(--ds-ease-in-out);
+  transition: transform var(--rl-transition-duration-slow) var(--rl-ease-in-out);
   padding-top: env(safe-area-inset-top, 0px);
 }
 

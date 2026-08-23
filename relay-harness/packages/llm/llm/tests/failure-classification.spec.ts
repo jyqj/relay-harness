@@ -5,8 +5,8 @@ import {
   QUOTA_EXCEEDED_CODE,
   TRANSIENT_FAILURE_CODES,
   classifyLlmFailure,
-} from '@deepseek-ai/dsh-llm'
-import type { LlmFailure } from '@deepseek-ai/dsh-llm'
+} from '@relay-harness/rlh-llm'
+import type { LlmFailure } from '@relay-harness/rlh-llm'
 
 /**
  * Behavior suite for structured failure classification: precedence

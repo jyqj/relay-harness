@@ -44,22 +44,22 @@ describe('WorkspaceBrowser.module.css list', () => {
   })
 
   it('counts the themed scrollbar inside the shell trailing inset', () => {
-    expect(root?.get('--dsh-session-list-edge-inset')).toBe('var(--dsh-sidebar-inline-padding)')
-    expect(root?.get('--dsh-session-list-scrollbar-width')).toBe('8px')
-    expect(root?.get('--dsh-session-list-scrollbar-offset')).toBe('2px')
-    expect(root?.get('padding-right')).toBe('var(--dsh-session-list-edge-inset)')
+    expect(root?.get('--rlh-session-list-edge-inset')).toBe('var(--rlh-sidebar-inline-padding)')
+    expect(root?.get('--rlh-session-list-scrollbar-width')).toBe('8px')
+    expect(root?.get('--rlh-session-list-scrollbar-offset')).toBe('2px')
+    expect(root?.get('padding-right')).toBe('var(--rlh-session-list-edge-inset)')
     expect(listArea?.get('margin-left')).toBe('-4px')
     expect(listArea?.get('padding-left')).toBe('4px')
-    expect(listArea?.get('margin-right')).toBe('calc(-1 * var(--dsh-session-list-edge-inset))')
-    expect(declarations('.fade')?.get('right')).toBe('var(--dsh-session-list-edge-inset)')
-    expect(list?.get('margin-right')).toBe('var(--dsh-session-list-scrollbar-offset)')
+    expect(listArea?.get('margin-right')).toBe('calc(-1 * var(--rlh-session-list-edge-inset))')
+    expect(declarations('.fade')?.get('right')).toBe('var(--rlh-session-list-edge-inset)')
+    expect(list?.get('margin-right')).toBe('var(--rlh-session-list-scrollbar-offset)')
     expect(list?.get('margin-left')).toBe('-4px')
     expect(list?.get('padding-left')).toBe('4px')
     expect(list?.get('padding-right')).toBe([
       'calc(',
-      'var(--dsh-session-list-edge-inset)',
-      '- var(--dsh-session-list-scrollbar-width)',
-      '- var(--dsh-session-list-scrollbar-offset)',
+      'var(--rlh-session-list-edge-inset)',
+      '- var(--rlh-session-list-scrollbar-width)',
+      '- var(--rlh-session-list-scrollbar-offset)',
       ')',
     ].join(' '))
     expect(declarations('.list::-webkit-scrollbar')).toBeUndefined()
@@ -109,7 +109,7 @@ describe('WorkspaceBrowser.module.css list', () => {
     expect(rowDeclarations('.flatSessionRowWithoutStatus .title')?.get('margin-left')).toBe('0')
     expect(rowDeclarations('.searchResultRow')?.get('min-height')).toBe('48px')
     expect(rowDeclarations('.sessionRow.selected')?.get('background'))
-      .toBe('var(--dsw-alias-interactive-bg-hover)')
+      .toBe('var(--rlw-alias-interactive-bg-hover)')
   })
 
   it('pins both rail controls to the shared left anchor during the column slide', () => {

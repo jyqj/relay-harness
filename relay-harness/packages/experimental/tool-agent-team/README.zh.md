@@ -1,4 +1,4 @@
-# @deepseek-ai/dsh-experimental-tool-agent-team
+# @relay-harness/rlh-experimental-tool-agent-team
 
 [English](README.md) | 中文
 
@@ -8,7 +8,7 @@
 
 ```yaml
 - id: tool-agent-team
-  name: '@deepseek-ai/dsh-experimental-tool-agent-team'
+  name: '@relay-harness/rlh-experimental-tool-agent-team'
   config:
     freshProvider: spawn
     forkProvider: fork

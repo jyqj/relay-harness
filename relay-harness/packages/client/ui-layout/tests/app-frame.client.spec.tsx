@@ -13,13 +13,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, render } from '@testing-library/react'
 import { useSyncExternalStore } from 'react'
-import { AppFrame } from '@deepseek-ai/dsh-client-ui-layout/src/client/AppFrame.tsx'
-import type { AppFrameProps } from '@deepseek-ai/dsh-client-ui-layout/src/client/AppFrame.tsx'
-import { PHONE_DRAWER, SIDEBAR_AUTO_COLLAPSE, SIDEBAR_COLLAPSED, SIDEBAR_DEFAULT } from '@deepseek-ai/dsh-client-ui-layout/src/client/columns.ts'
-import { createLayoutStore } from '@deepseek-ai/dsh-client-ui-layout/src/client/stores.ts'
+import { AppFrame } from '@relay-harness/rlh-client-ui-layout/src/client/AppFrame.tsx'
+import type { AppFrameProps } from '@relay-harness/rlh-client-ui-layout/src/client/AppFrame.tsx'
+import { PHONE_DRAWER, SIDEBAR_AUTO_COLLAPSE, SIDEBAR_COLLAPSED, SIDEBAR_DEFAULT } from '@relay-harness/rlh-client-ui-layout/src/client/columns.ts'
+import { createLayoutStore } from '@relay-harness/rlh-client-ui-layout/src/client/stores.ts'
 import type {
   SessionId, SessionListState, WorkspaceListState,
-} from '@deepseek-ai/dsh-client-runtime/client'
+} from '@relay-harness/rlh-client-runtime/client'
 
 // Session selection controls for the SessionProvider and useSessions stubs.
 const selectedSession = { current: 's-test' as SessionId | undefined }
@@ -179,7 +179,7 @@ beforeEach(() => {
     dispatchEvent: () => true,
   })) as unknown as typeof window.matchMedia
   Element.prototype.getBoundingClientRect = function () {
-    if (this instanceof HTMLElement && this.id === 'dshd-shell-titlebar-trailing') {
+    if (this instanceof HTMLElement && this.id === 'rlhd-shell-titlebar-trailing') {
       return {
         width: trailingClusterWidth, height: 32, top: 12, left: 0,
         right: trailingClusterWidth, bottom: 44, x: 0, y: 12, toJSON: () => ({}),
@@ -368,7 +368,7 @@ describe('AppFrame', () => {
     expect(drawerTrack(frame)).toBe(0)
     expect(frame.querySelector('[data-titlebar-trailing]')).toBeTruthy()
     expect(frame.querySelector('[data-titlebar-row]')).toBeTruthy()
-    expect(frame.querySelector('#dshd-shell-titlebar-trailing')).toBeTruthy()
+    expect(frame.querySelector('#rlhd-shell-titlebar-trailing')).toBeTruthy()
     expect(slotCalls.find(c => c.key === 'shell.titlebar.trailing')?.props).toEqual({
       surfaces: 0, terminalDrawer: 0, density: 'full',
     })
@@ -390,14 +390,14 @@ describe('AppFrame', () => {
     const { frame, instance } = mountFrame()
     expect(frame.style.gridTemplateRows.startsWith('auto minmax(0, 1fr)')).toBe(true)
     expect(frame.querySelector('[data-titlebar-row]')).toBeTruthy()
-    expect(frame.firstElementChild?.getAttribute('data-dshd-caption')).toBe('band')
+    expect(frame.firstElementChild?.getAttribute('data-rlhd-caption')).toBe('band')
     expect(frame.hasAttribute('data-surfaces-inset')).toBe(false)
     const trailing = frame.querySelector('[data-titlebar-trailing]')!
     expect(trailing.hasAttribute('data-titlebar-trailing-over-surfaces')).toBe(true)
     act(() => { instance.actions.openSurfaces() })
     expect(frame.hasAttribute('data-surfaces-inset')).toBe(false)
     expect(frame.hasAttribute('data-surfaces-collapsed')).toBe(false)
-    expect(frame.querySelector('[data-dshd-caption="band"]')).toBeTruthy()
+    expect(frame.querySelector('[data-rlhd-caption="band"]')).toBeTruthy()
     expect(trailing.hasAttribute('data-titlebar-trailing-over-surfaces')).toBe(false)
     act(() => { instance.actions.closeSurfaces() })
     expect(frame.hasAttribute('data-surfaces-collapsed')).toBe(true)
@@ -431,7 +431,7 @@ describe('AppFrame — titlebar density and conversation reserve', () => {
     act(() => { fireResize?.(); vi.advanceTimersByTime(20) })
     expect(frame.getAttribute('data-titlebar-density')).toBe('full')
     expect(frame.hasAttribute('data-titlebar-over-conversation')).toBe(true)
-    expect(frame.style.getPropertyValue('--dshd-titlebar-conversation-reserve')).toBe('400px')
+    expect(frame.style.getPropertyValue('--rlhd-titlebar-conversation-reserve')).toBe('400px')
   })
 
   it('drops the conversation reserve when details is at least as wide as the cluster', () => {
@@ -441,7 +441,7 @@ describe('AppFrame — titlebar density and conversation reserve', () => {
     act(() => { fireResize?.(); vi.advanceTimersByTime(20) })
     expect(frame.hasAttribute('data-titlebar-over-conversation')).toBe(false)
     expect(frame.getAttribute('data-titlebar-density')).toBe('full')
-    expect(frame.style.getPropertyValue('--dshd-titlebar-conversation-reserve')).toBe('0px')
+    expect(frame.style.getPropertyValue('--rlhd-titlebar-conversation-reserve')).toBe('0px')
   })
 
   it('collapses to cozy when an open surfaces column pins the center below 720', () => {
@@ -462,7 +462,7 @@ describe('AppFrame — titlebar density and conversation reserve', () => {
     expect(frame.hasAttribute('data-compact-header')).toBe(true)
     expect(frame.hasAttribute('data-titlebar-over-conversation')).toBe(false)
     expect(frame.getAttribute('data-titlebar-density')).toBe('full')
-    expect(frame.style.getPropertyValue('--dshd-titlebar-conversation-reserve')).toBe('0px')
+    expect(frame.style.getPropertyValue('--rlhd-titlebar-conversation-reserve')).toBe('0px')
   })
 })
 
@@ -542,7 +542,7 @@ describe('AppFrame — phone overlay shell', () => {
     expect(slotCalls.filter(c => c.key === 'sidebar').at(-1)!.props).toEqual({ collapsed: true, width: 0 })
     expect(frame.querySelectorAll('[class*="handle"]')).toHaveLength(0)
     expect(getByRole('button', { name: 'Open sidebar' })).toBeTruthy()
-    expect(frame.querySelector('#dshd-shell-titlebar-trailing')).toBeTruthy()
+    expect(frame.querySelector('#rlhd-shell-titlebar-trailing')).toBeTruthy()
     expect(frame.hasAttribute('data-compact-header')).toBe(true)
   })
 

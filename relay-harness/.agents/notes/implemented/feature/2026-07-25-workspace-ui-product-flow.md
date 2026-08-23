@@ -24,7 +24,7 @@ The Host provides the following GUI wiring on the Workspace entity:
 | `workspace.delete({ workspaceId })` | Removes the Workspace registration while retaining its directory and session logs; its Sessions become Tasks |
 | `session.create({ workspaceId, sessionId? })` | Resolves cwd from the Workspace, idempotently creates a Session with an optional preallocated id, and attaches it |
 | `session.create({ cwd })` | Remains available to non-Workspace callers and creates a Session that is not a Workspace member |
-| `host.describe.scratchCwd` | Host-owned `$DSH_HOME/no-workspace` (or `~/.dsh/no-workspace`); created if absent; cwd for Sessions that are not Workspace members |
+| `host.describe.scratchCwd` | Host-owned `$RLH_HOME/no-workspace` (or `~/.rlh/no-workspace`); created if absent; cwd for Sessions that are not Workspace members |
 
 The Host stream pushes Workspace and Session deltas, including `host/workspace-removed`, and the Client refreshes the `workspace.list` and `session.list` baselines separately after reconnecting. Registration-deletion ownership and safety are defined in the [Workspace registration deletion Agent Note](2026-07-27-workspace-registration-deletion.md).
 

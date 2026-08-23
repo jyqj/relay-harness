@@ -1,6 +1,6 @@
 const crypto = require('crypto');
 
-const COOKIE_NAME = 'dsh_remote';
+const COOKIE_NAME = 'rlh_remote';
 const TOKEN_BYTES = 16;
 const DEVICE_COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
 
@@ -44,7 +44,7 @@ function tokenFromHeaders(headers, url) {
     return cookies[COOKIE_NAME];
   }
   try {
-    const parsed = new URL(url, 'http://dsh.remote');
+    const parsed = new URL(url, 'http://rlh.remote');
     return parsed.searchParams.get('token') || '';
   } catch {
     return '';

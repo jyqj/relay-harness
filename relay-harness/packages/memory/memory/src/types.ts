@@ -1,8 +1,8 @@
 /** Public long-term-memory value types shared by providers and consumers. */
 
-import type { Branded } from '@deepseek-ai/dsh-brand'
-import type { CallId } from '@deepseek-ai/dsh-llm/brand'
-import type { SessionId } from '@deepseek-ai/dsh-session/types'
+import type { Branded } from '@relay-harness/rlh-brand'
+import type { CallId } from '@relay-harness/rlh-llm/brand'
+import type { SessionId } from '@relay-harness/rlh-session/types'
 
 /** Stable identity of one logical memory across append-only revisions. */
 export type MemoryId = Branded<'MemoryId'>

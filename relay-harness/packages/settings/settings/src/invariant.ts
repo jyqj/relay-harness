@@ -1,13 +1,13 @@
 /**
- * Package-owned invariant companion for `@deepseek-ai/dsh-settings`.
- * @module @deepseek-ai/dsh-settings/invariant
+ * Package-owned invariant companion for `@relay-harness/rlh-settings`.
+ * @module @relay-harness/rlh-settings/invariant
  */
 
-import type { Context } from '@deepseek-ai/cordis'
-import type { InvariantFailure, InvariantInstaller } from '@deepseek-ai/dsh-invariants'
+import type { Context } from '@relay-harness/cordis'
+import type { InvariantFailure, InvariantInstaller } from '@relay-harness/rlh-invariants'
 import { deepEqualJson } from './index.ts'
 
-const PACKAGE_NAME = '@deepseek-ai/dsh-settings'
+const PACKAGE_NAME = '@relay-harness/rlh-settings'
 
 /** Cordis companion plugin name. */
 export const name = 'settings-invariant'

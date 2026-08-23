@@ -1,4 +1,4 @@
-# @deepseek-ai/dsh-llm-circuit-breaker
+# @relay-harness/rlh-llm-circuit-breaker
 
 English | [中文](README.zh.md)
 
@@ -15,7 +15,7 @@ An opt-in provider-local sliding-window circuit breaker for Agent model requests
 | `halfOpenMaxProbes` | `1` | Concurrent recovery probes. |
 | `failureCodes` | `EMPTY_RESPONSE,RATE_LIMIT,SERVER,TIMEOUT,TRANSPORT` | Failures counted as breaker failures. Other failed responses count as successful connectivity samples. |
 
-The timing and threshold defaults follow the imported client-side prior-art preset. The DSH failure-code set replaces its HTTP-only `401` preset because DSH adapters already normalize transport and provider failures into these provider-neutral codes. The package is not loaded by the base bundle; deployments opt in deliberately.
+The timing and threshold defaults follow the imported client-side prior-art preset. The RLH failure-code set replaces its HTTP-only `401` preset because RLH adapters already normalize transport and provider failures into these provider-neutral codes. The package is not loaded by the base bundle; deployments opt in deliberately.
 
 ## State machine
 

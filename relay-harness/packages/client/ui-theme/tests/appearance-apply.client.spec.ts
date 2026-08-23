@@ -7,11 +7,11 @@ import { WALLPAPER_ATTR, WALLPAPER_LAYER_ID } from '../src/wallpaper.ts'
 
 afterEach(() => {
   document.documentElement.style.fontSize = ''
-  document.documentElement.style.removeProperty('--dsw-font-family')
-  document.documentElement.style.removeProperty('--ds-font-family-code')
-  document.documentElement.style.removeProperty('--dsw-font-size-code')
-  document.documentElement.style.removeProperty('--dsw-font-family-composer')
-  document.documentElement.style.removeProperty('--dsw-font-family-terminal')
+  document.documentElement.style.removeProperty('--rlw-font-family')
+  document.documentElement.style.removeProperty('--rl-font-family-code')
+  document.documentElement.style.removeProperty('--rlw-font-size-code')
+  document.documentElement.style.removeProperty('--rlw-font-family-composer')
+  document.documentElement.style.removeProperty('--rlw-font-family-terminal')
 })
 
 describe('font stack helpers', () => {
@@ -44,11 +44,11 @@ describe('applyAppearanceDocumentExtras', () => {
       fontFamilyTerminal: 'IBM Plex Mono',
     })
     expect(document.documentElement.style.fontSize).toBe('18px')
-    expect(document.documentElement.style.getPropertyValue('--dsw-font-family')).toContain('Inter')
-    expect(document.documentElement.style.getPropertyValue('--ds-font-family-code')).toContain('JetBrains Mono')
-    expect(document.documentElement.style.getPropertyValue('--dsw-font-size-code')).toBe('14px')
-    expect(document.documentElement.style.getPropertyValue('--dsw-font-family-composer')).toContain('Georgia')
-    expect(document.documentElement.style.getPropertyValue('--dsw-font-family-terminal')).toContain('IBM Plex Mono')
+    expect(document.documentElement.style.getPropertyValue('--rlw-font-family')).toContain('Inter')
+    expect(document.documentElement.style.getPropertyValue('--rl-font-family-code')).toContain('JetBrains Mono')
+    expect(document.documentElement.style.getPropertyValue('--rlw-font-size-code')).toBe('14px')
+    expect(document.documentElement.style.getPropertyValue('--rlw-font-family-composer')).toContain('Georgia')
+    expect(document.documentElement.style.getPropertyValue('--rlw-font-family-terminal')).toContain('IBM Plex Mono')
   })
 
   it('falls back to product defaults when sizes are zero', () => {
@@ -59,7 +59,7 @@ describe('applyAppearanceDocumentExtras', () => {
       fontSizeCode: 0,
     })
     expect(document.documentElement.style.fontSize).toBe('16px')
-    expect(document.documentElement.style.getPropertyValue('--dsw-font-size-code')).toBe('13px')
+    expect(document.documentElement.style.getPropertyValue('--rlw-font-size-code')).toBe('13px')
   })
 
   it('paints and clears the wallpaper layer from appearance extras', () => {
@@ -75,7 +75,7 @@ describe('applyAppearanceDocumentExtras', () => {
     })
     expect(document.documentElement.hasAttribute(WALLPAPER_ATTR)).toBe(true)
     expect(document.getElementById(WALLPAPER_LAYER_ID)).not.toBeNull()
-    expect(document.documentElement.style.getPropertyValue('--dsh-wallpaper-blur')).toBe('20px')
+    expect(document.documentElement.style.getPropertyValue('--rlh-wallpaper-blur')).toBe('20px')
     applyAppearanceDocumentExtras({
       fontFamilySans: '',
       fontFamilyCode: '',

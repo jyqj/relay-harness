@@ -12,12 +12,12 @@ import {
   PROFILE_PATCH_FILENAME,
   PROFILE_TEMPLATES,
   PROFILES_DIR,
-} from '@deepseek-ai/dsh-app-boot'
+} from '@relay-harness/rlh-app-boot'
 import { dumpConfigLayers } from '../src/dump-config.ts'
 
 const tmpDirs: string[] = []
 const tmp = (): string => {
-  const dir = mkdtempSync(join(tmpdir(), 'dsh-dump-config-'))
+  const dir = mkdtempSync(join(tmpdir(), 'rlh-dump-config-'))
   tmpDirs.push(dir)
   return dir
 }
@@ -31,7 +31,7 @@ afterEach(() => {
 describe('dumpConfigLayers', () => {
   it('skip-user-plugins lists template bundles and --patch, not user YAML', () => {
     const home = tmp()
-    vi.stubEnv('DSH_HOME', home)
+    vi.stubEnv('RLH_HOME', home)
     const dir = join(home, PROFILES_DIR, 'web')
     initProfile(dir, [...PROFILE_TEMPLATES.web ?? [], 'ghost-bundle'])
     writeFileSync(join(dir, PROFILE_PATCH_FILENAME), 'not: a list\n')

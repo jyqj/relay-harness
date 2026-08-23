@@ -1,10 +1,10 @@
-# @deepseek-ai/dsh-rollout-budget-controller
+# @relay-harness/rlh-rollout-budget-controller
 
 [English](README.md) | 中文
 
 这是一个 opt-in 的共享 rollout 预算，覆盖一个 root Agent 及其所有本地后代。它不是工具。插件会对每个自身 suffix 的 `assistant/message.usage` 只统计一次，使用可配置权重计费输出与未缓存输入，在每个 Agent 的下一次模型请求中插入阈值提醒，在耗尽后拒绝后续 pre-step，并拒绝由跨越上限的响应请求的工具 effect。
 
-该 controller 与 [`dsh-token-budget-controller`](../token-budget-controller/README.md) 相互独立：后者会在单次请求触及 `max-tokens` 后继续一条响应；本包限制跨多个请求与 subagent 的聚合模型开销。
+该 controller 与 [`rlh-token-budget-controller`](../token-budget-controller/README.md) 相互独立：后者会在单次请求触及 `max-tokens` 后继续一条响应；本包限制跨多个请求与 subagent 的聚合模型开销。
 
 ## 配置
 
@@ -12,7 +12,7 @@
 
 ```yaml
 - id: rollout-budget-controller
-  name: '@deepseek-ai/dsh-rollout-budget-controller'
+  name: '@relay-harness/rlh-rollout-budget-controller'
   config:
     limitTokens: 200000
     reminderAtRemainingTokens: [50000, 20000, 5000]
@@ -26,7 +26,7 @@
 
 当前最高的 live 持久祖先是记账 root。root 会话与每个本地 child／grandchild 都解析到同一个进程局部 ledger；无关 root 保持隔离。Fork seed 不会重复计费：低于 `SessionHeader.seedLength` 的事件属于祖先已统计的 prefix，而每个会话自身 suffix 会按事件序号消费一次。因此，重新扫描 live 或已恢复 Session 不会重复 usage。
 
-加权 usage 为 `outputTokens × samplingTokenWeight + inputTokens × prefillTokenWeight`。DSH 把 `inputTokens` 定义为未缓存输入，因此刻意不计 `cacheReadTokens` 与 `cacheWriteTokens`。提供方报告的负 bucket 会钳制到零。
+加权 usage 为 `outputTokens × samplingTokenWeight + inputTokens × prefillTokenWeight`。RLH 把 `inputTokens` 定义为未缓存输入，因此刻意不计 `cacheReadTokens` 与 `cacheWriteTokens`。提供方报告的负 bucket 会钳制到零。
 
 耗尽会在下一个 effect 边界 fail closed。跨越上限的响应会保留。该响应中的任何工具调用都会到达全局单调工具 guard，并在不调用主体的情况下以拒绝结算；之后任何 Agent pre-step 都会在下一次模型请求前抛出 `RolloutBudgetError`（`ROLLOUT_BUDGET_EXCEEDED`）。没有 Agent 的直接工具执行缺少 root 身份，因此不属于该策略。
 

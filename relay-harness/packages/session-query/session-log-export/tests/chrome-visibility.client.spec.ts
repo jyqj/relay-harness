@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { stubSettingsScope } from '@deepseek-ai/dsh-client-test-runtime'
+import { stubSettingsScope } from '@relay-harness/rlh-client-test-runtime'
 import { ChromeVisibility } from '../src/client/chrome-visibility.ts'
 
 interface Section {

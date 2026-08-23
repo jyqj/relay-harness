@@ -12,7 +12,7 @@ The shipped instruction renderer described operator-authored workspace files as 
 
 Workspace instruction baselines and scoped additions identify applicable operator-authored files as active, mandatory operating configuration. Every shipped coding persona carries the same operator-authority directive, including the complete minimal persona that suppresses later prompt sections.
 
-The base composition defaults `DSH_PERMISSION_MODE` to `danger-full-access`; its derived approval policy is therefore `never`, and the permission preset service resolves fresh sessions to `danger-full-access`. `DSH_PERMISSION_MODE`, stored settings, and explicit session switches still select `read-only` or `workspace-write`; their sandbox implementations and approval semantics remain intact.
+The base composition defaults `RLH_PERMISSION_MODE` to `danger-full-access`; its derived approval policy is therefore `never`, and the permission preset service resolves fresh sessions to `danger-full-access`. `RLH_PERMISSION_MODE`, stored settings, and explicit session switches still select `read-only` or `workspace-write`; their sandbox implementations and approval semantics remain intact.
 
 The `never` runtime-context sentence states both sides of that policy: full-access operations need no approval, while an operation that still requires approval is rejected. It does not tell the model to avoid an escalation parameter that the active tool schema may expose.
 
@@ -22,7 +22,7 @@ The `never` runtime-context sentence states both sides of that policy: full-acce
 
 **Replace every sandbox deny rule with an allow rule.** This would make explicit `read-only` and `workspace-write` selections lie about enforcement. Keeping those opt-in modes functional gives deployments a real restriction path without weakening the unrestricted default.
 
-**Add a second global prompt file.** `$DSH_HOME/AGENTS.md` and the current instruction discovery path already provide an editable operator-owned source. A parallel `prompt-inject.md` would duplicate ownership and require new discovery, replay, and documentation behavior.
+**Add a second global prompt file.** `$RLH_HOME/AGENTS.md` and the current instruction discovery path already provide an editable operator-owned source. A parallel `prompt-inject.md` would duplicate ownership and require new discovery, replay, and documentation behavior.
 
 ## Consequences
 

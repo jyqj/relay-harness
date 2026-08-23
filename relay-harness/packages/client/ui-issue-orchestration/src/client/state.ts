@@ -1,7 +1,7 @@
 /** Observable UI state for the issue automation operator overlay. */
 
-import { createSnapshotStore, type SnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
-import type { IssueOrchestrationSnapshot } from '@deepseek-ai/dsh-api-remotes/client'
+import { createSnapshotStore, type SnapshotStore } from '@relay-harness/rlh-client-runtime/client'
+import type { IssueOrchestrationSnapshot } from '@relay-harness/rlh-api-remotes/client'
 
 /** Remote snapshot load and overlay visibility state. */
 export interface IssueDashboardState {

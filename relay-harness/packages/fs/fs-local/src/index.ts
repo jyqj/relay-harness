@@ -1,15 +1,15 @@
 /**
  * Host-filesystem implementation of `ctx.fs`. Realpath-derived target identity makes aliases
  * share stale guards, and writes through a symlink update its target without replacing the link.
- * @module @deepseek-ai/dsh-fs-local
+ * @module @relay-harness/rlh-fs-local
  */
 
-import { Context } from '@deepseek-ai/cordis'
+import { Context } from '@relay-harness/cordis'
 import { constants as bufferConstants } from 'node:buffer'
 import { isAbsolute, relative, resolve, sep } from 'node:path'
 import { pathToFileURL } from 'node:url'
-import z from '@deepseek-ai/schemastery'
-import { FileSystem, FsError, FsVersion } from '@deepseek-ai/dsh-fs'
+import z from '@relay-harness/schemastery'
+import { FileSystem, FsError, FsVersion } from '@relay-harness/rlh-fs'
 import type {
   FsDirEntry,
   FsEditOutcome,
@@ -19,7 +19,7 @@ import type {
   FsTarget,
   FsWriteIntent,
   FsWriteOutcome,
-} from '@deepseek-ai/dsh-fs'
+} from '@relay-harness/rlh-fs'
 import {
   applyLiteralEdit,
   listDirectory,

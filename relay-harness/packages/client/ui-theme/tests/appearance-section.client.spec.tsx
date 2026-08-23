@@ -2,12 +2,12 @@
 /** Appearance section: color-scheme tiles, two-ball library, editor, glass, type. */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react'
-import { createSnapshotStore, type SessionListState, type WorkspaceListState } from '@deepseek-ai/dsh-client-runtime/client'
-import { bindSnapshotSelector } from '@deepseek-ai/dsh-client-test-runtime'
-import { writeClipboard } from '@deepseek-ai/dsh-client-ui-primitives'
+import { createSnapshotStore, type SessionListState, type WorkspaceListState } from '@relay-harness/rlh-client-runtime/client'
+import { bindSnapshotSelector } from '@relay-harness/rlh-client-test-runtime'
+import { writeClipboard } from '@relay-harness/rlh-client-ui-primitives'
 
-vi.mock('@deepseek-ai/dsh-client-ui-primitives', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@deepseek-ai/dsh-client-ui-primitives')>()
+vi.mock('@relay-harness/rlh-client-ui-primitives', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@relay-harness/rlh-client-ui-primitives')>()
   return { ...actual, writeClipboard: vi.fn(async () => true) }
 })
 vi.mock('../src/wallpaper.ts', async (importOriginal) => {
@@ -325,7 +325,7 @@ describe('AppearanceSection', () => {
     expect(b.setTypography).toHaveBeenCalledWith({ fontSizeCode: 14 })
 
     fireEvent.click(screen.getByRole('button', { name: '高级' }))
-    expect(localStorage.getItem('dsh:typography-advanced')).toBe('1')
+    expect(localStorage.getItem('rlh:typography-advanced')).toBe('1')
     expect(screen.getByText(COPY['type.composerHint'])).toBeDefined()
     expect(screen.getByText(COPY['type.terminalHint'])).toBeDefined()
     const extras = screen.getAllByPlaceholderText('系统默认')

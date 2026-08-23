@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
-import type { Agent } from '@deepseek-ai/dsh-agent'
-import { SessionId } from '@deepseek-ai/dsh-session'
+import type { Agent } from '@relay-harness/rlh-agent'
+import { SessionId } from '@relay-harness/rlh-session'
 import { SubagentAdmissionController } from '../src/admission.ts'
 
 function parent(id: string): Agent {

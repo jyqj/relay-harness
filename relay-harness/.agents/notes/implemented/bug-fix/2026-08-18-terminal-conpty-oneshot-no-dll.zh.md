@@ -6,9 +6,9 @@ Status: implemented
 
 ## Problem
 
-关闭再打开 Windows 终端会在当前 PowerShell 提示符打出 `[?61;4c`（常常两次）。会话缓冲区里仍留着 ConPTY 握手的 `CSI c`。DSH 在窗格卸载时销毁 xterm，再把这段缓冲 `term.write` 进新解析器，于是在握手结束后把 DA1 写到 stdin，PowerShell 就把它回显出来。同一 PTY 还会存下诊断用的 shell 写入，重挂载时那些垃圾会像历史输出一样重放。
+关闭再打开 Windows 终端会在当前 PowerShell 提示符打出 `[?61;4c`（常常两次）。会话缓冲区里仍留着 ConPTY 握手的 `CSI c`。RLH 在窗格卸载时销毁 xterm，再把这段缓冲 `term.write` 进新解析器，于是在握手结束后把 DA1 写到 stdin，PowerShell 就把它回显出来。同一 PTY 还会存下诊断用的 shell 写入，重挂载时那些垃圾会像历史输出一样重放。
 
-T3code（`ChisaTerminal`）不设 `useConptyDll`，跨重挂载缓存 xterm 实例，也没有 CSI `c` 处理器。DSH 在移植 T3code 时加了 `useConptyDll: true`，这才会让 ConPTY 1.22+ 发出 `CSI c`。
+T3code（`ChisaTerminal`）不设 `useConptyDll`，跨重挂载缓存 xterm 实例，也没有 CSI `c` 处理器。RLH 在移植 T3code 时加了 `useConptyDll: true`，这才会让 ConPTY 1.22+ 发出 `CSI c`。
 
 ## Decision
 

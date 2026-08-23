@@ -7,7 +7,7 @@ const { createWorkspaceAuthority } = require('./workspace-authority');
 const { listDir, readFile, readFileMedia, writeFile, setWorkspaceAuthority } = require('./workspace-fs.js');
 
 function makeTempDir() {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-fs-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'rlh-fs-'));
   // Pin the workspace authority so cwd checks pass inside this test root.
   setWorkspaceAuthority(createWorkspaceAuthority({ workspace: dir }));
   return dir;
@@ -49,9 +49,9 @@ test('readFile returns utf8 text and rejects a path outside cwd', async () => {
 });
 
 test('listDir accepts a second authorized root and rejects an outsider', async () => {
-  const boot = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-fs-boot-'));
-  const extra = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-fs-extra-'));
-  const outsider = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-fs-out-'));
+  const boot = fs.mkdtempSync(path.join(os.tmpdir(), 'rlh-fs-boot-'));
+  const extra = fs.mkdtempSync(path.join(os.tmpdir(), 'rlh-fs-extra-'));
+  const outsider = fs.mkdtempSync(path.join(os.tmpdir(), 'rlh-fs-out-'));
   setWorkspaceAuthority(createWorkspaceAuthority({
     workspace: boot,
     extraWorkspaces: [extra],

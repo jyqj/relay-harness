@@ -1,4 +1,4 @@
-# @deepseek-ai/dsh-tool-ralph
+# @relay-harness/rlh-tool-ralph
 
 [English](README.md) | 中文
 

@@ -1,9 +1,9 @@
-/** Package-owned invariant companion for `@deepseek-ai/dsh-tracker`. */
+/** Package-owned invariant companion for `@relay-harness/rlh-tracker`. */
 
-import type { Context } from '@deepseek-ai/cordis'
-import type { InvariantFailure, InvariantInstaller } from '@deepseek-ai/dsh-invariants'
+import type { Context } from '@relay-harness/cordis'
+import type { InvariantFailure, InvariantInstaller } from '@relay-harness/rlh-invariants'
 
-const PACKAGE_NAME = '@deepseek-ai/dsh-tracker'
+const PACKAGE_NAME = '@relay-harness/rlh-tracker'
 
 /** Cordis companion plugin name. */
 export const name = 'tracker-invariant'

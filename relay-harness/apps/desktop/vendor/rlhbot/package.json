@@ -1,0 +1,51 @@
+{
+  "name": "rlhbot",
+  "description": "Desktop sidebar bots and group rooms for Relay Harness.",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "lib/index.js",
+  "license": "MIT",
+  "private": true,
+  "peerDependencies": {
+    "@relay-harness/cordis": "^4.0.1",
+    "@relay-harness/rlh-settings": "^0.1.0-rc.7",
+    "@relay-harness/rlh-system-prompt": "^0.1.0-rc.7",
+    "@relay-harness/rlh-tools": "^0.1.0-rc.7",
+    "@relay-harness/rlh-subagent": "^0.1.0-rc.7",
+    "@relay-harness/rlh-agent": "^0.1.0-rc.7",
+    "@relay-harness/rlh-session": "^0.1.0-rc.7",
+    "@relay-harness/rlh-llm": "^0.1.0-rc.7"
+  },
+  "rlh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "inject": [
+        "@relay-harness/rlh-client-connection",
+        "@relay-harness/rlh-client-runtime",
+        "@relay-harness/rlh-client-locale",
+        "@relay-harness/rlh-client-ui-sidebar",
+        "@relay-harness/rlh-client-ui-settings",
+        "@relay-harness/rlh-client-ui-primitives",
+        "@relay-harness/rlh-client-ui-layout",
+        "@relay-harness/rlh-client-ui-conversation",
+        "@relay-harness/rlh-client-ui-input-trigger"
+      ],
+      "platform": "web"
+    }
+  },
+  "exports": {
+    ".": "./lib/index.js",
+    "./ask-participant": "./lib/ask-participant.js",
+    "./client": "./client/client.js",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "client",
+    "presets",
+    "cordis.patch.yml"
+  ]
+}

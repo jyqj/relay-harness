@@ -3,11 +3,11 @@
  * is transport-neutral: one-shot providers and continuable Activations acquire
  * the same leases, so alternate consumers cannot bypass deployment capacity.
  *
- * @module @deepseek-ai/dsh-subagent
+ * @module @relay-harness/rlh-subagent
  */
 
-import type { Agent } from '@deepseek-ai/dsh-agent'
-import type { SessionId } from '@deepseek-ai/dsh-session'
+import type { Agent } from '@relay-harness/rlh-agent'
+import type { SessionId } from '@relay-harness/rlh-session'
 import { SubagentError } from './error.ts'
 
 /** Capacity policy resolved at the SubagentRuntime config boundary. */

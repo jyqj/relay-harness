@@ -3,15 +3,15 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { Context } from '@deepseek-ai/cordis'
-import Loader from '@deepseek-ai/cordis-plugin-loader'
-import Include from '@deepseek-ai/cordis-plugin-include'
-import AgentRegistry, { Inbox } from '@deepseek-ai/dsh-agent'
-import type { Agent, AgentStatus } from '@deepseek-ai/dsh-agent'
-import CommandRuntime from '@deepseek-ai/dsh-commands'
-import SessionStore, { SessionId } from '@deepseek-ai/dsh-session'
-import * as CommandFeedback from '@deepseek-ai/dsh-command-feedback'
-import { getOrCreateAnonymousUserId } from '@deepseek-ai/dsh-anonymous-user-id'
+import { Context } from '@relay-harness/cordis'
+import Loader from '@relay-harness/cordis-plugin-loader'
+import Include from '@relay-harness/cordis-plugin-include'
+import AgentRegistry, { Inbox } from '@relay-harness/rlh-agent'
+import type { Agent, AgentStatus } from '@relay-harness/rlh-agent'
+import CommandRuntime from '@relay-harness/rlh-commands'
+import SessionStore, { SessionId } from '@relay-harness/rlh-session'
+import * as CommandFeedback from '@relay-harness/rlh-command-feedback'
+import { getOrCreateAnonymousUserId } from '@relay-harness/rlh-anonymous-user-id'
 
 let root: string | undefined
 let context: Context | undefined
@@ -52,14 +52,14 @@ function agent(ctx: Context): Agent {
 
 describe('/feedback real Loader composition through cordis.yml', () => {
   it('boots cordis.yml and records feedback without model-visible output', async () => {
-    root = await mkdtemp(join(tmpdir(), 'dsh-command-feedback-loader-'))
-    vi.stubEnv('DSH_HOME', root)
+    root = await mkdtemp(join(tmpdir(), 'rlh-command-feedback-loader-'))
+    vi.stubEnv('RLH_HOME', root)
     const configPath = join(root, 'cordis.yml')
     await writeFile(configPath, [
-      "- name: '@deepseek-ai/dsh-agent'",
-      "- name: '@deepseek-ai/dsh-session'",
-      "- name: '@deepseek-ai/dsh-commands'",
-      "- name: '@deepseek-ai/dsh-command-feedback'",
+      "- name: '@relay-harness/rlh-agent'",
+      "- name: '@relay-harness/rlh-session'",
+      "- name: '@relay-harness/rlh-commands'",
+      "- name: '@relay-harness/rlh-command-feedback'",
       '',
     ].join('\n'))
 
@@ -68,10 +68,10 @@ describe('/feedback real Loader composition through cordis.yml', () => {
     await context.plugin(Loader)
     context.loader.builtins.include = Include
     const modules = new Map<string, unknown>([
-      ['@deepseek-ai/dsh-agent', AgentRegistry],
-      ['@deepseek-ai/dsh-session', SessionStore],
-      ['@deepseek-ai/dsh-commands', CommandRuntime],
-      ['@deepseek-ai/dsh-command-feedback', CommandFeedback],
+      ['@relay-harness/rlh-agent', AgentRegistry],
+      ['@relay-harness/rlh-session', SessionStore],
+      ['@relay-harness/rlh-commands', CommandRuntime],
+      ['@relay-harness/rlh-command-feedback', CommandFeedback],
     ])
     context.loader.internal = {
       version: 'v2',
@@ -90,7 +90,7 @@ describe('/feedback real Loader composition through cordis.yml', () => {
     expect(context.commands.list(owner).map(command => command.name)).toContain('feedback')
 
     const accepted = await context.commands.execute(owner, '/feedback the diff view is unreadable', [], signal)
-    const userId = getOrCreateAnonymousUserId({ env: { DSH_HOME: root } })
+    const userId = getOrCreateAnonymousUserId({ env: { RLH_HOME: root } })
     expect(accepted?.result).toEqual({
       kind: 'success',
       text: `Feedback recorded for session feedback-loader-agent\nAnonymous user: ${userId}. Session sharing is not configured.`,

@@ -2,30 +2,30 @@
  * The model-facing `workflow` tool: run a JavaScript orchestration script that fans out
  * subagents, and return the script's final value. It owns the model-facing schema and run lifecycle; script
  * parsing, execution, caps, and cancellation live behind `ctx.workflowEngine`
- * (`@deepseek-ai/dsh-workflow`), so a hardened engine swaps in without touching what the model
+ * (`@relay-harness/rlh-workflow`), so a hardened engine swaps in without touching what the model
  * sees. Execution awaits `run.result` and always disposes the run; non-completed reasons become tool
  * errors, and background collection remains deferred. Presentation is an args-only generic card
  * titled from `meta.name`. Explicit-ask usage guidance is registered as the tool's own prompt
  * section rather than deployment persona prose.
- * @module @deepseek-ai/dsh-tool-workflow
+ * @module @relay-harness/rlh-tool-workflow
  */
 
-import type { Context } from '@deepseek-ai/cordis'
-import z from '@deepseek-ai/schemastery'
-import { defineTool } from '@deepseek-ai/dsh-tools'
-import type { ToolCallView, ToolResultView } from '@deepseek-ai/dsh-tools'
-import type { ContentBlock } from '@deepseek-ai/dsh-llm'
-import type { JsonValue, Session, SessionEventMap } from '@deepseek-ai/dsh-session'
-import { WorkflowRunId } from '@deepseek-ai/dsh-workflow'
+import type { Context } from '@relay-harness/cordis'
+import z from '@relay-harness/schemastery'
+import { defineTool } from '@relay-harness/rlh-tools'
+import type { ToolCallView, ToolResultView } from '@relay-harness/rlh-tools'
+import type { ContentBlock } from '@relay-harness/rlh-llm'
+import type { JsonValue, Session, SessionEventMap } from '@relay-harness/rlh-session'
+import { WorkflowRunId } from '@relay-harness/rlh-workflow'
 import type {
   WorkflowResult, WorkflowRun, WorkflowStopReason,
-} from '@deepseek-ai/dsh-workflow'
+} from '@relay-harness/rlh-workflow'
 import type {
   ToolWorkflowAgentEndData, ToolWorkflowAgentStartData,
   ToolWorkflowRunEndData, ToolWorkflowRunStartData,
 } from './types.ts'
 // Declaration merge only: makes ctx.systemPrompt visible for the section registration.
-import type {} from '@deepseek-ai/dsh-system-prompt'
+import type {} from '@relay-harness/rlh-system-prompt'
 
 export const name = 'tool-workflow'
 export const inject = ['tools', 'workflowEngine', 'systemPrompt']

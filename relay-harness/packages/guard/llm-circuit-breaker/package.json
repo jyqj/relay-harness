@@ -1,11 +1,11 @@
 {
-  "name": "@deepseek-ai/dsh-llm-circuit-breaker",
+  "name": "@relay-harness/rlh-llm-circuit-breaker",
   "description": "Provider-local sliding-window circuit breaker for Agent LLM requests",
   "version": "0.1.0-rc.8",
   "publishConfig": { "access": "public" },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+    "url": "git+https://github.com/jyqj/relay-harness.git",
     "directory": "packages/guard/llm-circuit-breaker"
   },
   "type": "module",
@@ -19,25 +19,25 @@
   },
   "files": ["lib/index.js", "lib/invariant.js", "lib/types/**/*.d.ts"],
   "license": "MIT",
-  "dependencies": { "@deepseek-ai/schemastery": "workspace:^" },
+  "dependencies": { "@relay-harness/schemastery": "workspace:^" },
   "peerDependencies": {
-    "@deepseek-ai/dsh-agent": "workspace:^",
-    "@deepseek-ai/dsh-invariants": "workspace:^",
-    "@deepseek-ai/dsh-llm": "workspace:^",
-    "@deepseek-ai/dsh-session": "workspace:^",
-    "@deepseek-ai/cordis": "workspace:^"
+    "@relay-harness/rlh-agent": "workspace:^",
+    "@relay-harness/rlh-invariants": "workspace:^",
+    "@relay-harness/rlh-llm": "workspace:^",
+    "@relay-harness/rlh-session": "workspace:^",
+    "@relay-harness/cordis": "workspace:^"
   },
   "devDependencies": {
-    "@deepseek-ai/cordis-plugin-include": "workspace:^",
-    "@deepseek-ai/cordis-plugin-loader": "workspace:^",
-    "@deepseek-ai/dsh-agent": "workspace:^",
-    "@deepseek-ai/dsh-agent-loop": "workspace:^",
-    "@deepseek-ai/dsh-agent-loop-testkit": "workspace:^",
-    "@deepseek-ai/dsh-invariants": "workspace:^",
-    "@deepseek-ai/dsh-llm": "workspace:^",
-    "@deepseek-ai/dsh-session": "workspace:^",
-    "@deepseek-ai/dsh-system-prompt": "workspace:^",
-    "@deepseek-ai/dsh-tools": "workspace:^",
-    "@deepseek-ai/cordis": "workspace:^"
+    "@relay-harness/cordis-plugin-include": "workspace:^",
+    "@relay-harness/cordis-plugin-loader": "workspace:^",
+    "@relay-harness/rlh-agent": "workspace:^",
+    "@relay-harness/rlh-agent-loop": "workspace:^",
+    "@relay-harness/rlh-agent-loop-testkit": "workspace:^",
+    "@relay-harness/rlh-invariants": "workspace:^",
+    "@relay-harness/rlh-llm": "workspace:^",
+    "@relay-harness/rlh-session": "workspace:^",
+    "@relay-harness/rlh-system-prompt": "workspace:^",
+    "@relay-harness/rlh-tools": "workspace:^",
+    "@relay-harness/cordis": "workspace:^"
   }
 }

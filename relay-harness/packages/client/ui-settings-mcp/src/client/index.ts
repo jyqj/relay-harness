@@ -2,10 +2,10 @@
  * MCP settings section plugin, browser half.
  */
 
-import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
-import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
-import type {} from '@deepseek-ai/dsh-client-locale/client'
-import type {} from '@deepseek-ai/dsh-api-remotes/client'
+import type { ClientContext } from '@relay-harness/rlh-client-runtime/client'
+import type {} from '@relay-harness/rlh-client-ui-settings/client'
+import type {} from '@relay-harness/rlh-client-locale/client'
+import type {} from '@relay-harness/rlh-api-remotes/client'
 import { McpSection } from './McpSection.tsx'
 import type { McpSectionInjected } from './McpSection.tsx'
 import { en, zh, type McpSettingsKey } from './locales.ts'
@@ -13,7 +13,7 @@ import { en, zh, type McpSettingsKey } from './locales.ts'
 export type { McpSectionInjected, McpSectionProps } from './McpSection.tsx'
 export type { McpSettingsKey } from './locales.ts'
 
-declare module '@deepseek-ai/dsh-client-ui-slots' {
+declare module '@relay-harness/rlh-client-ui-slots' {
   interface LocaleNamespaceMap {
     /** MCP settings copy. */
     'settings.mcp': McpSettingsKey

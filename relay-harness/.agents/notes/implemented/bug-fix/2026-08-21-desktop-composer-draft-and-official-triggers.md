@@ -12,7 +12,7 @@ Files Mention, terminal Add to chat, and Browser save-into-chat write the compos
 
 `appendToDraft` in ui-files, ui-preview, and ui-user-terminal reads `ctx.get('sessions')` and returns false when the service is missing. Plugin-level `inject` does not add `sessions`, so the panels still mount without a session.
 
-ui-files does not register a `path` input-trigger source. Composer `@` is official ui-reference (`name: 'reference'`). Files Mention and `application/x-dshd-composer-mention` drag remain. dshbot's `@` member source (`name: 'dshbot'`) is unchanged.
+ui-files does not register a `path` input-trigger source. Composer `@` is official ui-reference (`name: 'reference'`). Files Mention and `application/x-rlhd-composer-mention` drag remain. rlhbot's `@` member source (`name: 'rlhbot'`) is unchanged.
 
 InputBar has no `listSkillNames` and no local `$` menu. Skills use official `/` via ui-skill.
 

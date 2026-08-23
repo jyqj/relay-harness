@@ -12,8 +12,8 @@
 import { useEffect, useRef } from 'react'
 import { useSyncExternalStore } from 'react'
 import clsx from 'clsx'
-import { IconCheckOutline16, RiskConfirmation, useAnchoredMaxHeight, usePresence } from '@deepseek-ai/dsh-client-ui-primitives'
-import type { PropsLocale } from '@deepseek-ai/dsh-client-ui-slots'
+import { IconCheckOutline16, RiskConfirmation, useAnchoredMaxHeight, usePresence } from '@relay-harness/rlh-client-ui-primitives'
+import type { PropsLocale } from '@relay-harness/rlh-client-ui-slots'
 import { filterOptions } from './popup.ts'
 import type { PopupSelectController } from './popup.ts'
 import css from './PopupSelectView.module.css'
@@ -114,7 +114,7 @@ export function PopupSelectView({ popup, t }: PopupSelectViewProps) {
           ref={cardRef}
           className={css.card}
           style={{ maxHeight }}
-          data-dsh-motion="popover"
+          data-rlh-motion="popover"
           data-state={motionState}
           aria-hidden={state.open ? undefined : true}
           aria-label={t('overlay.aria', { command: String(view.command) })}

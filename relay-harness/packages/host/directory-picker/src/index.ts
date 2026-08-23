@@ -8,10 +8,10 @@
  * can reach). Consumers switch on `capability().kind`; the union is
  * merge-extensible, and the documented default for an unknown kind is to
  * hide the picking affordance rather than fail.
- * @module @deepseek-ai/dsh-host-directory-picker
+ * @module @relay-harness/rlh-host-directory-picker
  */
 
-import { Context, Service } from '@deepseek-ai/cordis'
+import { Context, Service } from '@relay-harness/cordis'
 
 /** The native interaction: one OS directory chooser on the host display. */
 export interface DirectoryPickerNativeCapability {
@@ -39,7 +39,7 @@ export interface DirectoryEntry {
  * (`C:\`, `D:\`, …). Not a real filesystem directory; `createDirectory` against
  * it fails. POSIX `list` of this path is not fully qualified.
  */
-export const WINDOWS_VOLUME_ROOT = '\\\\.\\dsh-computer'
+export const WINDOWS_VOLUME_ROOT = '\\\\.\\rlh-computer'
 
 /** One directory level plus its ancestry, as a browse backend reports it. */
 export interface DirectoryListing {
@@ -124,7 +124,7 @@ export class DirectoryPickerError extends Error {
   }
 }
 
-declare module '@deepseek-ai/cordis' {
+declare module '@relay-harness/cordis' {
   interface Context {
     directoryPicker: DirectoryPicker
   }
