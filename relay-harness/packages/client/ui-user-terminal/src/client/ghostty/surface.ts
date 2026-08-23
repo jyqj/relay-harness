@@ -16,6 +16,7 @@ import { isMonospaceFamily } from "./appearanceFonts.ts";
 import { symbolsFontUrl } from "./assets.ts";
 import { isMacPlatform } from "./platform.ts";
 
+/** Point size a terminal uses when the settings name none. */
 export const DEFAULT_TERMINAL_FONT_SIZE = 12;
 const MIN_TERMINAL_FONT_SIZE = 6;
 const MAX_TERMINAL_FONT_SIZE = 32;
@@ -30,6 +31,7 @@ const TERMINAL_GLYPH_FALLBACKS =
 // The platform's own monospace faces; concrete names only, because an
 // unknown keyword (like ui-monospace) makes canvas font shorthand parsing
 // reject the whole string.
+/** Font stack a terminal uses when the settings name no usable family. */
 export const DEFAULT_TERMINAL_FONT_FAMILY =
   '"SF Mono", "SFMono-Regular", Menlo, Consolas, "Liberation Mono", ' + TERMINAL_GLYPH_FALLBACKS;
 const CONTENT_PADDING = 4;
@@ -92,6 +94,13 @@ function uncheckedTerminalFontFamily(family?: string): string {
     : `${custom}, ${TERMINAL_GLYPH_FALLBACKS}`;
 }
 
+/**
+ * The font stack to draw with, given a configured family. A proportional face
+ * is refused outright, and whatever survives keeps the glyph fallbacks so
+ * prompt symbols stay covered.
+ * @param family - the configured family or list, as typed.
+ * @returns a canvas-safe `font-family` value.
+ */
 export function terminalFontFamily(family?: string): string {
   // Quote non-ident names ("3270 Nerd Font", "M+ 1m"): an unquoted one makes
   // the whole canvas font string invalid and the assignment silently no-ops.
@@ -105,7 +114,15 @@ export function terminalFontFamily(family?: string): string {
   return uncheckedTerminalFontFamily(custom);
 }
 
-/** Load every style the renderer can request, then validate the actual face. */
+/**
+ * Load every style the renderer can request, then validate the actual face.
+ * The family is only checked for monospace *after* loading, since measuring a
+ * face the browser has not fetched yet reports the fallback's metrics.
+ * @param family - the configured family or list, as typed.
+ * @param size - point size to load the face at.
+ * @param environment - font loader and resolver, injected by tests.
+ * @returns the font stack to draw with, once the faces are loaded.
+ */
 export async function loadTerminalFontFamily(
   family: string | undefined,
   size: number,
@@ -129,6 +146,11 @@ export async function loadTerminalFontFamily(
   return (environment?.resolve ?? terminalFontFamily)(family);
 }
 
+/**
+ * The point size to draw at, clamped to a legible range.
+ * @param size - the configured size, if any.
+ * @returns a size within the supported range.
+ */
 export function terminalFontSize(size?: number): number {
   if (size === undefined || !Number.isFinite(size)) return DEFAULT_TERMINAL_FONT_SIZE;
   return Math.max(MIN_TERMINAL_FONT_SIZE, Math.min(MAX_TERMINAL_FONT_SIZE, Math.round(size)));
@@ -138,6 +160,8 @@ export function terminalFontSize(size?: number): number {
  * Whether the cursor should keep toggling. An unfocused surface draws a steady
  * hollow cursor instead of blinking, and a reduced-motion reader gets a steady
  * cursor too rather than a permanently animating element.
+ * @param state - focus, the program's cursor modes, and the motion preference.
+ * @returns whether the cursor should keep toggling.
  */
 export function shouldBlinkTerminalCursor(state: {
   readonly focused: boolean;
@@ -154,6 +178,12 @@ export function shouldBlinkTerminalCursor(state: {
  * exists the prompt lives on the bottom row, so the grid anchors to the bottom
  * edge instead: the sub-row remainder moves above row 0 and resizing within a
  * row boundary keeps the prompt pinned instead of snapping up and down.
+ * @param mountHeight - the mount's height in pixels.
+ * @param padding - inset on each side, in pixels.
+ * @param rows - grid height in cells.
+ * @param cellHeight - cell height in pixels.
+ * @param anchorBottom - whether scrollback exists, pinning the grid downward.
+ * @returns the vertical origin of row 0, in pixels.
  */
 export function terminalContentOriginY(
   mountHeight: number,
@@ -167,12 +197,23 @@ export function terminalContentOriginY(
   return padding + Math.max(0, slack);
 }
 
+/** Where to draw the scrollbar thumb, and how far it can travel. */
 export interface TerminalScrollbarGeometry {
+  /** Thumb height in pixels. */
   readonly thumbHeight: number;
+  /** Thumb offset from the top of the track, in pixels. */
   readonly thumbTop: number;
+  /** Largest scrollback offset the track addresses, in rows. */
   readonly maxOffset: number;
 }
 
+/**
+ * Where the scrollbar thumb belongs for a given scrollback state. The thumb
+ * has a floor so a very long scrollback still leaves something to grab.
+ * @param state - the terminal's scrollback geometry.
+ * @param trackHeight - the track's height in pixels.
+ * @returns the thumb geometry, or null when there is nothing to scroll.
+ */
 export function terminalScrollbarGeometry(
   state: GhosttyScrollbar,
   trackHeight: number,
@@ -194,6 +235,14 @@ export function terminalScrollbarGeometry(
   };
 }
 
+/**
+ * The scrollback offset a thumb drag has reached.
+ * @param state - the terminal's scrollback geometry.
+ * @param trackHeight - the track's height in pixels.
+ * @param pointerY - the pointer's y within the track, in pixels.
+ * @param pointerOffset - where inside the thumb the drag grabbed it.
+ * @returns the offset to scroll to, in rows.
+ */
 export function terminalScrollbarOffsetAtPointer(
   state: GhosttyScrollbar,
   trackHeight: number,
@@ -208,6 +257,11 @@ export function terminalScrollbarOffsetAtPointer(
   return Math.round((thumbTop / travel) * geometry.maxOffset);
 }
 
+/**
+ * The grid cell under a pointer.
+ * @param options - the canvas box, the pointer, and the grid's geometry.
+ * @returns the cell, or null when the pointer is outside the grid.
+ */
 export function terminalGridCellAt(options: {
   bounds: { left: number; top: number };
   clientX: number;
@@ -243,6 +297,13 @@ function terminalColumnOffset(row: GhosttySnapshot["rowData"][number], column: n
   return offset;
 }
 
+/**
+ * The URL under one grid cell.
+ * @param rows - the viewport's rows.
+ * @param rowIndex - the row to look in.
+ * @param column - the column to look at.
+ * @returns the URL, or null when the cell is not on one.
+ */
 export function terminalLinkAtPosition(
   rows: GhosttySnapshot["rowData"],
   rowIndex: number,
@@ -251,8 +312,11 @@ export function terminalLinkAtPosition(
   return terminalLinkAtPositionWithRange(rows, rowIndex, column)?.text ?? null;
 }
 
+/** A detected link and the cells it covers, for hover underlining. */
 export interface TerminalLinkWithRange {
+  /** The URL. */
   readonly text: string;
+  /** The cells the URL is drawn across. */
   readonly range: GhosttyCellRange;
 }
 
@@ -264,6 +328,15 @@ function terminalColumnAtOffset(row: GhosttySnapshot["rowData"][number], offset:
   return Math.max(0, row.cells.length - 1);
 }
 
+/**
+ * The URL under one grid cell, with the cells it covers. Soft-wrapped rows are
+ * rejoined before matching, and a link that runs off either end of the
+ * viewport is refused rather than activated from its visible fragment.
+ * @param rows - the viewport's rows.
+ * @param rowIndex - the row to look in.
+ * @param column - the column to look at.
+ * @returns the URL and its cell span, or null when the cell is not on one.
+ */
 export function terminalLinkAtPositionWithRange(
   rows: GhosttySnapshot["rowData"],
   rowIndex: number,
@@ -324,26 +397,55 @@ export function terminalLinkAtPositionWithRange(
   return null;
 }
 
-export function terminalLinkAtColumn(row: GhosttySnapshot["rowData"][number], column: number) {
+/**
+ * The URL under one cell of a single row, ignoring soft wrapping.
+ * @param row - the row to look in.
+ * @param column - the column to look at.
+ * @returns the URL, or null when the cell is not on one.
+ */
+export function terminalLinkAtColumn(
+  row: GhosttySnapshot["rowData"][number],
+  column: number,
+): string | null {
   return terminalLinkAtPosition([row], 0, column);
 }
 
+/**
+ * Whether a key event asks to copy — Command-C on Apple platforms,
+ * Control-Shift-C elsewhere, since plain Control-C must reach the program.
+ * @param event - the key event.
+ * @param platform - platform token, defaulting to the browser's.
+ * @returns whether the selection should be copied.
+ */
 export function isTerminalCopyShortcut(
   event: Pick<KeyboardEvent, "ctrlKey" | "key" | "metaKey" | "shiftKey">,
   platform = navigator.platform,
-) {
+): boolean {
   if (event.key.toLowerCase() !== "c") return false;
   return isMacPlatform(platform) ? event.metaKey : event.ctrlKey && event.shiftKey;
 }
 
+/**
+ * Whether a key event asks to paste, by the same rule as copy.
+ * @param event - the key event.
+ * @param platform - platform token, defaulting to the browser's.
+ * @returns whether the clipboard should be pasted.
+ */
 export function isTerminalPasteShortcut(
   event: Pick<KeyboardEvent, "ctrlKey" | "key" | "metaKey" | "shiftKey">,
   platform = navigator.platform,
-) {
+): boolean {
   if (event.key.toLowerCase() !== "v") return false;
   return isMacPlatform(platform) ? event.metaKey : event.ctrlKey && event.shiftKey;
 }
 
+/**
+ * Whether an input event is an IME committing composed text, which the
+ * terminal forwards; other input types come from the hidden textarea's own
+ * editing and are dropped.
+ * @param event - the input event.
+ * @returns whether the event carries committed composition text.
+ */
 export function isTerminalCompositionCommitInput(event: Pick<InputEvent, "inputType">): boolean {
   return (
     event.inputType === "" ||
@@ -352,12 +454,26 @@ export function isTerminalCompositionCommitInput(event: Pick<InputEvent, "inputT
   );
 }
 
+/**
+ * Whether a key event is AltGr producing a character, which must be sent as
+ * text rather than encoded as an Alt-modified key.
+ * @param event - the key event.
+ * @returns whether the event is AltGr text.
+ */
 export function isTerminalAltGraphText(
   event: Pick<KeyboardEvent, "getModifierState" | "key">,
 ): boolean {
   return event.getModifierState("AltGraph") && [...event.key].length === 1;
 }
 
+/**
+ * Whether a mouse event goes to the program rather than to selection. Any
+ * modifier overrides tracking, which is how a user selects text inside a
+ * full-screen program that has grabbed the mouse.
+ * @param tracking - whether the program has mouse tracking on.
+ * @param event - the mouse event's modifier state.
+ * @returns whether to forward the event to the program.
+ */
 export function shouldReportTerminalMouse(
   tracking: boolean,
   event: Pick<MouseEvent, "ctrlKey" | "metaKey" | "shiftKey">,
@@ -365,6 +481,16 @@ export function shouldReportTerminalMouse(
   return tracking && !event.shiftKey && !event.ctrlKey && !event.metaKey;
 }
 
+/**
+ * How many whole rows a wheel event scrolls. The sub-row part is carried in
+ * the remainder so a trackpad's fine deltas accumulate instead of rounding
+ * away to nothing.
+ * @param event - the wheel event.
+ * @param cellHeight - cell height in pixels.
+ * @param viewportRows - grid height in cells, for page-mode deltas.
+ * @param remainder - the sub-row carry from the previous event.
+ * @returns the rows to scroll and the new carry.
+ */
 export function terminalWheelDeltaRows(
   event: Pick<WheelEvent, "deltaY" | "deltaMode">,
   cellHeight: number,
@@ -383,6 +509,13 @@ export function terminalWheelDeltaRows(
   return { rows, remainder: total - rows };
 }
 
+/**
+ * The arrow-key bytes a wheel scroll sends on the alternate screen, where a
+ * program like `less` expects cursor keys rather than a viewport scroll.
+ * @param rows - rows scrolled; negative is up.
+ * @param applicationCursorKeys - whether DECCKM is set.
+ * @returns the bytes to write to the pty.
+ */
 export function terminalWheelArrowData(rows: number, applicationCursorKeys: boolean): string {
   if (rows === 0) return "";
   const sequence =
@@ -396,6 +529,13 @@ export function terminalWheelArrowData(rows: number, applicationCursorKeys: bool
   return sequence.repeat(Math.abs(rows));
 }
 
+/**
+ * Whether a pointer event carries the link modifier — Command on Apple
+ * platforms, Control elsewhere.
+ * @param event - the pointer event's modifier state.
+ * @param platform - platform token, defaulting to the browser's.
+ * @returns whether the gesture targets a link.
+ */
 export function isTerminalLinkPointerGesture(
   event: Pick<MouseEvent, "ctrlKey" | "metaKey">,
   platform = navigator.platform,
@@ -405,6 +545,14 @@ export function isTerminalLinkPointerGesture(
     : event.ctrlKey && !event.metaKey;
 }
 
+/**
+ * Whether to underline the link under the pointer. While a program owns the
+ * mouse, the hover only appears once the link modifier is held, so ordinary
+ * pointer motion inside that program is left alone.
+ * @param mouseTracking - whether the program has mouse tracking on.
+ * @param linkModifierActive - whether the link modifier is held.
+ * @returns whether to show the hover.
+ */
 export function shouldShowTerminalLinkHover(
   mouseTracking: boolean,
   linkModifierActive: boolean,
@@ -412,6 +560,11 @@ export function shouldShowTerminalLinkHover(
   return !mouseTracking || linkModifierActive;
 }
 
+/**
+ * Translate a DOM mouse button index into Ghostty's numbering.
+ * @param button - `MouseEvent.button`.
+ * @returns the Ghostty button, or null for a button it does not encode.
+ */
 export function ghosttyMouseButton(button: number): number | null {
   switch (button) {
     case 0:
@@ -429,13 +582,26 @@ export function ghosttyMouseButton(button: number): number | null {
   }
 }
 
+/** A run of clicks close enough in time and space to count as one gesture. */
 export interface TerminalSelectionClickSequence {
+  /** How many clicks the run holds, wrapping back to 1 after a triple. */
   readonly count: number;
+  /** Timestamp of the latest click. */
   readonly time: number;
+  /** Client x of the latest click. */
   readonly x: number;
+  /** Client y of the latest click. */
   readonly y: number;
 }
 
+/**
+ * Fold a click into the running sequence, so a second click selects a word and
+ * a third selects a line. A click too slow or too far from the last one starts
+ * a new sequence.
+ * @param previous - the sequence so far, or null.
+ * @param event - the new click.
+ * @returns the updated sequence.
+ */
 export function advanceTerminalSelectionClickSequence(
   previous: TerminalSelectionClickSequence | null,
   event: Pick<PointerEvent, "clientX" | "clientY" | "timeStamp">,
@@ -452,27 +618,50 @@ export function advanceTerminalSelectionClickSequence(
   };
 }
 
+/** The selection's span in viewport cells. */
 export interface GhosttySelectionPosition {
+  /** First cell of the selection. */
   readonly start: { readonly x: number; readonly y: number };
+  /** Last cell of the selection. */
   readonly end: { readonly x: number; readonly y: number };
 }
 
+/** Wiring for a `GhosttyTerminalSurface`. */
 export interface GhosttyTerminalSurfaceOptions {
+  /** Default colors. */
   readonly theme: GhosttyTheme;
+  /** Requested font; omitted fields fall back to the defaults. */
   readonly font?: GhosttyTerminalFont;
+  /** Receives bytes to write to the pty. */
   readonly onData: (data: string) => void;
+  /** Reports the grid size after a fit, so the pty can be resized to match. */
   readonly onResize: (cols: number, rows: number) => void;
+  /** Fires whenever the selection changes. */
   readonly onSelectionChange: () => void;
+  /** Receives text a copy shortcut yielded. */
   readonly onCopy: (text: string) => void;
+  /** Returning true consumes a key before the terminal encodes it. */
   readonly beforeKey: (event: KeyboardEvent) => boolean;
+  /** Fires when a link is activated. */
   readonly onLinkActivate: (text: string, event: MouseEvent) => void;
 }
 
+/**
+ * A terminal attached to the DOM: the canvas it draws on, the hidden textarea
+ * that collects keyboard and IME input, the scrollbar, and every listener
+ * binding those to a {@link GhosttyTerminalCore}. Owns the render loop, the
+ * font loading, and the selection and link gestures.
+ */
 export class GhosttyTerminalSurface {
+  /** The canvas the grid is drawn on. */
   readonly canvas: HTMLCanvasElement;
+  /** The hidden textarea that receives keyboard, IME, and paste input. */
   readonly input: HTMLTextAreaElement;
+  /** The scrollbar track element. */
   readonly scrollbar: HTMLDivElement;
+  /** Current grid width in cells. */
   cols = 1;
+  /** Current grid height in cells. */
   rows = 1;
 
   private readonly mount: HTMLElement;
@@ -572,6 +761,12 @@ export class GhosttyTerminalSurface {
     this.resizeObserver.observe(mount);
   }
 
+  /**
+   * Build the DOM, load the runtime and the font, and bind every listener.
+   * @param mount - the element to fill; the surface appends its own children.
+   * @param options - colors, font, and the callbacks the surface reports through.
+   * @returns the attached surface, which the caller must dispose.
+   */
   static async create(
     mount: HTMLElement,
     options: GhosttyTerminalSurfaceOptions,
@@ -645,6 +840,10 @@ export class GhosttyTerminalSurface {
     return surface;
   }
 
+  /**
+   * Feed pty output to the terminal and schedule a render.
+   * @param data - bytes from the pty.
+   */
   write(data: string): void {
     if (this.disposed) return;
     this.core.write(data);
@@ -655,6 +854,10 @@ export class GhosttyTerminalSurface {
     this.requestRender();
   }
 
+  /**
+   * Reset and replay a whole session's output, the path a reattach takes.
+   * @param data - the full output to replay.
+   */
   resetAndWrite(data: string): void {
     if (this.disposed) return;
     this.core.resetAndWrite(data);
@@ -666,6 +869,10 @@ export class GhosttyTerminalSurface {
     this.requestRender();
   }
 
+  /**
+   * Replace the default colors and repaint.
+   * @param theme - the new defaults.
+   */
   setTheme(theme: GhosttyTheme): void {
     if (this.disposed) return;
     this.theme = theme;
@@ -674,6 +881,11 @@ export class GhosttyTerminalSurface {
     this.requestRender();
   }
 
+  /**
+   * Load a new font and refit the grid to its metrics. Overlapping calls are
+   * versioned, so the newest request wins whatever order the loads finish in.
+   * @param font - the requested family and size.
+   */
   async setFont(font: GhosttyTerminalFont): Promise<void> {
     if (this.disposed) return;
     const fontSize = terminalFontSize(font.size);
@@ -736,6 +948,11 @@ export class GhosttyTerminalSurface {
     this.applyFontMetrics();
   };
 
+  /**
+   * Resize the canvas and grid to the mount, at the current device pixel
+   * ratio, and report the new grid size so the pty can follow.
+   * @returns whether anything changed.
+   */
   fit(): boolean {
     if (this.disposed) return false;
     const width = this.mount.clientWidth;
@@ -795,18 +1012,31 @@ export class GhosttyTerminalSurface {
     }, 150);
   }
 
+  /** Move keyboard focus to the terminal. */
   focus(): void {
     this.input.focus({ preventScroll: true });
   }
 
+  /**
+   * Whether anything is selected.
+   * @returns true when a selection exists.
+   */
   hasSelection(): boolean {
     return this.core.selectionText().length > 0;
   }
 
+  /**
+   * The selected text, with soft-wrapped rows rejoined.
+   * @returns the text, empty when nothing is selected.
+   */
   getSelection(): string {
     return this.core.selectionText();
   }
 
+  /**
+   * The selection's span in viewport cells.
+   * @returns the span, or null when nothing is selected.
+   */
   getSelectionPosition(): GhosttySelectionPosition | null {
     if (!this.selectionAnchorScreen || !this.selectionEndScreen || !this.hasSelection())
       return null;
@@ -819,6 +1049,10 @@ export class GhosttyTerminalSurface {
       : { start: this.selectionEndScreen, end: this.selectionAnchorScreen };
   }
 
+  /**
+   * Where the selection ends on screen, for anchoring a popover to it.
+   * @returns the end point in client coordinates, or null without a selection.
+   */
   getSelectionEndClientRect(): { readonly right: number; readonly bottom: number } | null {
     const position = this.getSelectionPosition();
     if (!position) return null;
@@ -831,6 +1065,7 @@ export class GhosttyTerminalSurface {
     };
   }
 
+  /** Drop the selection and stop any drag in progress. */
   clearSelection(): void {
     this.core.clearSelection();
     this.selectionEnd = null;
@@ -845,6 +1080,7 @@ export class GhosttyTerminalSurface {
     this.requestRender();
   }
 
+  /** Return the viewport to the live end of the scrollback. */
   scrollToBottom(): void {
     this.core.scrollToBottom();
     this.forceFullRender = true;
@@ -852,10 +1088,18 @@ export class GhosttyTerminalSurface {
     this.requestRender();
   }
 
+  /**
+   * Whether the viewport is at the live end, where new output appears.
+   * @returns false while the user is scrolled back.
+   */
   isAtBottom(): boolean {
     return this.core.isViewportActive();
   }
 
+  /**
+   * Detach every listener, stop the render loop, and free the terminal.
+   * Idempotent.
+   */
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;

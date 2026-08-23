@@ -57,7 +57,8 @@ const PROTECTED: RegExp[] = [
   /@dsh-external\/[\w.-]+/g,
   /github:[\w.-]+\/dsh-[\w./#:-]+/g,
   /github\.com\/[\w.-]+\/dsh-[\w./#:-]+/g,
-  /\bdsh-(?:composer-expand|status-rotator|aionui-panel|spotlight|genui|skins|web-ui|wallpaper-engine|whale-desktop-launcher|plugin-hub)\b/g,
+  /\bdsh-(?:composer-expand|status-rotator|aionui-panel|spotlight|genui|skins|web-ui)\b/g,
+  /\bdsh-(?:wallpaper-engine|whale-desktop-launcher|plugin-hub)\b/g,
   // External ecosystem projects (not this repository's brand).
   /github\.com\/dataelement\/dsh-desktop/g,
   /github\.com\/bobby-sheng\/dshget-data/g,
