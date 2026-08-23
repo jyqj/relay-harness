@@ -212,7 +212,7 @@ declare module '@relay-harness/rlh-client-ui-slots' {
     'conversation.hero.workspace': { kind: 'single'; scope: 'root'; owner: EmptyWorkspaceOwnerProps }
     /**
      * Brand mark leading the blank-session headline. Declared by this
-     * package's `conversation` entry; the shell supplies a fish fallback.
+     * package's `conversation` entry; the shell supplies the Relay Harness mark as fallback.
      */
     'conversation.hero.brand.mark': { kind: 'single'; scope: 'root'; owner: HeroBrandMarkOwnerProps }
     /**

@@ -1,4 +1,4 @@
-import { BrandWordmark, FishLogo } from '@relay-harness/rlh-client-ui-primitives'
+import { BrandWordmark, RelayMark } from '@relay-harness/rlh-client-ui-primitives'
 import type { HeroBrandMarkOwnerProps } from '@relay-harness/rlh-client-ui-conversation/client'
 import type { SidebarBrandMarkOwnerProps } from '@relay-harness/rlh-client-ui-sidebar/client'
 
@@ -7,10 +7,10 @@ type OfficialBrandMarkProps = HeroBrandMarkOwnerProps & SidebarBrandMarkOwnerPro
 /**
  * Render the official mark with the presentation requested by its host surface.
  * @param props - Host-supplied mark presentation.
- * @returns the official whale mark.
+ * @returns the official Relay Harness mark.
  */
 export function OfficialBrandMark({ size, className }: OfficialBrandMarkProps) {
-  return <FishLogo size={size} className={className} />
+  return <RelayMark size={size} className={className} />
 }
 
 /**

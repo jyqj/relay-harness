@@ -126,7 +126,7 @@ These transitions consume `--rl-transition-*` / `--rl-ease-in-out` without `data
 | Sidebar / column collapse | `AppFrame` transitions `grid-template-columns` / `rows`, handle `left`, and icon offset; pauses while dragging; stops under reduced motion |
 | Switch | `Switch` thumb `transform` over `--rl-transition-duration-fast` |
 | Button, field, and row hover | Interactive color tokens, not an enter/exit recipe |
-| Empty-session Hero fish | On hover when motion is not reduced, a `--rl-transition-duration-slow` nudge |
+| Empty-session Hero mark | On hover when motion is not reduced, a `--rl-transition-duration-slow` nudge |
 
 ### Exceptions
 

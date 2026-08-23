@@ -1,0 +1,10 @@
+<!--
+  Relay Harness mark: an origin node handing a signal forward through two
+  chevrons. Drawn on a 50x50 grid with stroke geometry so one file scales from
+  the 16px tray image to the 1024px release icon.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 50 50" fill="none">
+  <circle cx="10.5" cy="25" r="5.5" fill="currentColor"/>
+  <path d="M21.5 13 31.5 25 21.5 37" stroke="currentColor" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M33.5 13 43.5 25 33.5 37" stroke="currentColor" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

@@ -126,7 +126,7 @@ composer 上四个浮层共用此时长：加号斜杠菜单、权限 `Menu`、�
 | 侧栏 / 栏开合 | `AppFrame` 过渡 `grid-template-columns` / `rows`、把手 `left`、图标位移；拖拽中暂停；减弱动效时停下 |
 | 开关 | `Switch` 滑块 `transform`，`--rl-transition-duration-fast` |
 | 按钮、输入、行 hover | 交互色 token，不是进出场 recipe |
-| 空会话 Hero 小鱼 | 悬停且未减弱动效时，`--rl-transition-duration-slow` 轻摆 |
+| 空会话 Hero 标志 | 悬停且未减弱动效时，`--rl-transition-duration-slow` 轻推 |
 
 ### 独立例外
 

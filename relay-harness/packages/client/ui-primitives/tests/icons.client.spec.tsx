@@ -54,16 +54,16 @@ describe('ic_ds_ icon set', () => {
   })
 })
 
-describe('FishLogo', () => {
-  it('renders the fish path in currentColor at the native ratio', () => {
-    const { container } = render(<primitives.FishLogo />)
+describe('RelayMark', () => {
+  it('renders the node and both chevrons in currentColor at the native ratio', () => {
+    const { container } = render(<primitives.RelayMark />)
     const svg = container.querySelector('svg')!
     expect(svg.getAttribute('width')).toBe('24')
-    expect(Number(svg.getAttribute('height'))).toBeCloseTo(17.66, 1)
-    expect(svg.getAttribute('viewBox')).toBe('0 0 23.16 17.04')
-    expect(container.querySelectorAll('path')).toHaveLength(1)
+    expect(Number(svg.getAttribute('height'))).toBeCloseTo(16.67, 1)
+    expect(svg.getAttribute('viewBox')).toBe('0 0 40.6 28.2')
+    expect(container.querySelectorAll('circle')).toHaveLength(1)
+    expect(container.querySelectorAll('path')).toHaveLength(2)
     expect(container.innerHTML).toContain('currentColor')
-    expect(container.innerHTML).not.toContain('M0 0L23.16')
   })
 })
 
@@ -71,11 +71,21 @@ describe('BrandWordmark', () => {
   it('can render the name artwork with or without its leading mark', () => {
     const view = render(<primitives.BrandWordmark />)
     const svg = view.container.querySelector('svg')!
-    expect(svg.getAttribute('width')).toBe('182')
-    expect(svg.getAttribute('viewBox')).toBe('0 0 182 24')
+    expect(svg.getAttribute('width')).toBe('130.65')
+    expect(svg.getAttribute('viewBox')).toBe('0 0 130.65 24')
+    expect(view.container.querySelectorAll('circle')).toHaveLength(1)
 
+    // Dropping the mark crops it out of the box rather than reflowing the word,
+    // so the artwork stays pixel-aligned with the full lockup beside it.
     view.rerender(<primitives.BrandWordmark includeMark={false} />)
-    expect(svg.getAttribute('width')).toBe('156')
-    expect(svg.getAttribute('viewBox')).toBe('26 0 156 24')
+    expect(svg.getAttribute('width')).toBe('104.65')
+    expect(svg.getAttribute('viewBox')).toBe('26 0 104.65 24')
+    expect(view.container.querySelectorAll('circle')).toHaveLength(0)
+  })
+
+  it('draws the word as outlines so no host font can reflow it', () => {
+    const { container } = render(<primitives.BrandWordmark />)
+    expect(container.querySelector('text')).toBeNull()
+    expect(container.innerHTML).not.toContain('font-family')
   })
 })
