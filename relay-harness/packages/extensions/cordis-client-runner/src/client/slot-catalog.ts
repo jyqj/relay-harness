@@ -1413,6 +1413,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
       'client-ui-conversation EnterBehaviorRow id \'composer-enter\'',
       'client-ui-permission-presets PermissionRow id \'permission\'',
       'client-ui-settings-general CloseBehaviorRow id \'close-behavior\'',
+      'client-ui-settings-general SimpleModeRow id \'simple-mode\'',
       'client-ui-settings-general HarnessRestartRow id \'harness-restart\'',
     ],
     replaceRisk: 'none',
