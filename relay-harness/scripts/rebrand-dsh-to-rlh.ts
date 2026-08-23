@@ -41,6 +41,9 @@ const PROTECTED: RegExp[] = [
   /`dsh` (?:→|->) `rlh`/g,
   /rebrand of DeepSeek Harness/g,
   /DeepSeek Harness 更名而来/g,
+  // A vendored plugin's upstream coordinate names the package the drop came
+  // from, which lives on npm under its author's name and not ours.
+  /"upstream":\s*"npm:[\w.@/-]+"/g,
   // Third-party plugin registry: live HTTP endpoints and community plugin pages.
   /(?:https?:\/\/)?awesome-dsh-plugin\.com[^\s"'`),\]]*/g,
   /github\.com\/awesome-dsh-plugin\/awesome-dsh-plugin/g,
