@@ -139,8 +139,16 @@ function isFrozenArchiveArtifact(path: string): boolean {
   return path.slice(prefix.length).includes('/') || path.endsWith('manifest.json')
 }
 
+/**
+ * The Agent Note recording this migration. It has to spell both vocabularies
+ * to say what changed, so every rule would collapse its before/after columns.
+ */
+const RENAME_NOTE = '.agents/notes/implemented/process/2026-08-23-relay-harness-rename'
+
 function isExcluded(path: string): boolean {
-  return path === 'pnpm-lock.yaml' || path === SELF || isFrozenArchiveArtifact(path)
+  if (path === 'pnpm-lock.yaml' || path === SELF) return true
+  if (path.startsWith(RENAME_NOTE)) return true
+  return isFrozenArchiveArtifact(path)
 }
 
 function isBinaryPath(path: string): boolean {
