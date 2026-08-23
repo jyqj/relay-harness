@@ -48,6 +48,6 @@
   "devDependencies": {
     "@relay-harness/cordis": "workspace:^",
     "@relay-harness/rlh-invariants": "workspace:^",
-    "tsx": "^4.19.2"
+    "tsx": "^4.23.12"
   }
 }

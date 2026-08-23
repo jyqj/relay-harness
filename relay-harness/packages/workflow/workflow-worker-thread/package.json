@@ -64,6 +64,6 @@
     "@relay-harness/rlh-tools": "workspace:^",
     "@relay-harness/rlh-workflow": "workspace:^",
     "@relay-harness/cordis": "workspace:^",
-    "tsx": "^4.19.2"
+    "tsx": "^4.23.12"
   }
 }

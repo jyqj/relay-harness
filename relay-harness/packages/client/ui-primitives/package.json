@@ -27,11 +27,11 @@
   },
   "license": "MIT",
   "dependencies": {
-    "@shikijs/langs": "^4.3.1",
+    "@shikijs/langs": "^4.4.3",
     "@types/mdast": "^4.0.4",
     "anser": "^2.3.5",
     "clsx": "^2.0.0",
-    "katex": "^0.16.47",
+    "katex": "^0.18.4",
     "mdast-util-from-markdown": "^2.0.3",
     "mdast-util-gfm": "^3.1.0",
     "mdast-util-math": "^3.0.0",
@@ -46,7 +46,7 @@
     "micromark-util-types": "^2.0.2",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "shiki": "^4.3.1"
+    "shiki": "^4.4.3"
   },
   "devDependencies": {
     "@relay-harness/rlh-invariants": "workspace:^",
