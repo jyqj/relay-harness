@@ -122,10 +122,19 @@ const BINARY_EXTENSIONS = new Set([
   'exe', 'dll', 'dylib', 'so', 'a', 'o', 'bin', 'sqlite', 'db', 'pack', 'idx', 'gguf',
 ])
 
+/**
+ * Frozen archive artifacts: the sealed triplets under each kind directory plus
+ * the manifest that hashes them. `archived/AGENTS.md` is instruction prose, not
+ * a sealed artifact, so it follows the rename like any other active document.
+ */
+function isFrozenArchiveArtifact(path: string): boolean {
+  const prefix = '.agents/notes/archived/'
+  if (!path.startsWith(prefix)) return false
+  return path.slice(prefix.length).includes('/') || path.endsWith('manifest.json')
+}
+
 function isExcluded(path: string): boolean {
-  return path === 'pnpm-lock.yaml'
-    || path === SELF
-    || path.includes('.agents/notes/archived/')
+  return path === 'pnpm-lock.yaml' || path === SELF || isFrozenArchiveArtifact(path)
 }
 
 function isBinaryPath(path: string): boolean {

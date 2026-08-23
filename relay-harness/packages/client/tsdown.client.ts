@@ -24,9 +24,9 @@ import { clientBuildEnvironmentDefines } from '../../scripts/client-build-enviro
  * (which requires @tsdown/css). The suffix matters: tsdown's guard matches ids
  * ending in `.css`, so the virtual id must not.
  */
-const CSS_VIRTUAL_PREFIX = '\0dsh-css:'
-const GLOBAL_CSS_VIRTUAL_PREFIX = '\0dsh-global-css:'
-const INLINE_CSS_VIRTUAL_PREFIX = '\0dsh-inline-css:'
+const CSS_VIRTUAL_PREFIX = '\0rlh-css:'
+const GLOBAL_CSS_VIRTUAL_PREFIX = '\0rlh-global-css:'
+const INLINE_CSS_VIRTUAL_PREFIX = '\0rlh-inline-css:'
 const CSS_VIRTUAL_SUFFIX = '.mjs'
 const INLINE_CSS_QUERY = '?inline'
 
