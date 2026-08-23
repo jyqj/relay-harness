@@ -3,7 +3,7 @@
   flex-direction: column;
   height: 100%;
   min-width: 0;
-  background: var(--dsw-alias-bg-base);
+  background: var(--rlw-alias-bg-base);
 }
 
 .body {
@@ -11,8 +11,8 @@
   min-height: 0;
   overflow: auto;
   padding: 8px 12px 16px;
-  --dsh-scrollbar-thumb: var(--dsw-alias-scrollbar-bg-l2);
-  --dsh-scrollbar-thumb-hover: var(--dsw-alias-scrollbar-hover-l2);
+  --rlh-scrollbar-thumb: var(--rlw-alias-scrollbar-bg-l2);
+  --rlh-scrollbar-thumb-hover: var(--rlw-alias-scrollbar-hover-l2);
 }
 
 .empty {
@@ -30,7 +30,7 @@
   font-size: 14px;
   line-height: 22px;
   font-weight: 500;
-  color: var(--dsw-alias-label-primary);
+  color: var(--rlw-alias-label-primary);
 }
 
 .emptyBody {
@@ -38,7 +38,7 @@
   max-width: 220px;
   font-size: 12px;
   line-height: 18px;
-  color: var(--dsw-alias-label-tertiary);
+  color: var(--rlw-alias-label-tertiary);
 }
 
 .list {
@@ -57,7 +57,7 @@
   min-height: 36px;
   padding: 0;
   border-radius: 8px;
-  background: var(--dsw-alias-bg-layer-2);
+  background: var(--rlw-alias-bg-layer-2);
 }
 
 .open {
@@ -76,7 +76,7 @@
 }
 
 .open:hover {
-  background: var(--dsw-alias-interactive-bg-hover);
+  background: var(--rlw-alias-interactive-bg-hover);
 }
 
 .label {
@@ -85,7 +85,7 @@
   overflow: hidden;
   font-size: 14px;
   line-height: 22px;
-  color: var(--dsw-alias-label-primary);
+  color: var(--rlw-alias-label-primary);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -94,7 +94,7 @@
   flex-shrink: 0;
   font-size: 12px;
   line-height: 18px;
-  color: var(--dsw-alias-label-tertiary);
+  color: var(--rlw-alias-label-tertiary);
 }
 
 .jobs {
@@ -106,5 +106,5 @@
   font-size: 12px;
   line-height: 18px;
   font-weight: 500;
-  color: var(--dsw-alias-label-secondary);
+  color: var(--rlw-alias-label-secondary);
 }

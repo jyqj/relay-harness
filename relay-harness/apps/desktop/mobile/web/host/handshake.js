@@ -1,3 +1,4 @@
+// @ts-check
 async function handshake({ call, connectEvents }) {
   const host = await call('host.describe', {});
   if (!host?.ok) {

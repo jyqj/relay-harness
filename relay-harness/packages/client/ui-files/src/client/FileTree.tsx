@@ -6,8 +6,8 @@ import {
   IconFolderClose16,
   IconFolderOpen16,
   Menu,
-} from '@deepseek-ai/dsh-client-ui-primitives'
-import type { MenuEntry } from '@deepseek-ai/dsh-client-ui-primitives'
+} from '@relay-harness/rlh-client-ui-primitives'
+import type { MenuEntry } from '@relay-harness/rlh-client-ui-primitives'
 import { createFileTreeDragMentionController, type FileTreeDragMentionController } from './fileTreeDragMention.ts'
 import { filterEntries } from './filter.ts'
 import type { DirEntry } from './shell.ts'

@@ -18,7 +18,7 @@ The snapshot exposes a staged scheduler whose prepare path records the selected 
 
 Code Mode inherits the outer execution's snapshot. Its generated SDK, backend, binding names, classifiers, and nested scheduler therefore use the same captured view; a registry or backend replacement affects the next sampling request only. The snapshot keeps definition and backend objects alive until the step settles and releases them on every reject, empty-step, failure, cancellation, ordinary completion, and tool-settlement path. Registration disposal removes a tool from future captures immediately; it cannot rewrite an already accepted request.
 
-This mechanism is internal to `dsh-tools` and `dsh-agent-loop`: `TOOL_RUNTIME_REQUESTS`, `TOOL_REQUEST_SNAPSHOT`, and the snapshot-bound scheduler are symbol-keyed integration points rather than plugin extension surfaces. The public registry API still presents the current live catalog to ordinary inspection callers.
+This mechanism is internal to `rlh-tools` and `rlh-agent-loop`: `TOOL_RUNTIME_REQUESTS`, `TOOL_REQUEST_SNAPSHOT`, and the snapshot-bound scheduler are symbol-keyed integration points rather than plugin extension surfaces. The public registry API still presents the current live catalog to ordinary inspection callers.
 
 ## Alternatives considered
 

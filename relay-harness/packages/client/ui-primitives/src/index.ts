@@ -1,5 +1,5 @@
 /**
- * Cordis-free React primitives styled only through `--dsw-*` tokens.
+ * Cordis-free React primitives styled only through `--rlw-*` tokens.
  */
 
 export { StateDot } from './StateDot.tsx'
@@ -28,7 +28,7 @@ export { OnboardingSurface } from './OnboardingSurface.tsx'
 export { RiskConfirmation } from './RiskConfirmation.tsx'
 export type { RiskConfirmationProps } from './RiskConfirmation.tsx'
 export { ConnectionBanner } from './ConnectionBanner.tsx'
-export { FishLogo } from './FishLogo.tsx'
+export { RelayMark, RELAY_MARK_RATIO, RELAY_MARK_VIEWBOX, relayMarkShapes } from './RelayMark.tsx'
 export { BrandWordmark } from './BrandWordmark.tsx'
 export type { BrandWordmarkProps } from './BrandWordmark.tsx'
 export { Tooltip } from './Tooltip.tsx'

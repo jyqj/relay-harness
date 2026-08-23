@@ -1,16 +1,16 @@
 /**
- * Browser theme registry over the `--dsw-*` token stylesheets. The service
+ * Browser theme registry over the `--rlw-*` token stylesheets. The service
  * owns the live color-scheme preference (`light`/`dark`/`system`), the
  * light/dark theme-family halves, and derived alias tokens; it resolves
  * `system` through `prefers-color-scheme` and publishes immutable snapshots.
  * It never touches the DOM — ui-layout's presenter consumes the resolved
  * snapshot. Durable fields live in the Host `ui-theme` settings section.
  */
-import type { Context } from '@deepseek-ai/cordis'
-import type { BoundActions } from '@deepseek-ai/dsh-client-ui-slots'
-import type { ClientContext, SettingsScope } from '@deepseek-ai/dsh-client-runtime/client'
-import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
-import type {} from '@deepseek-ai/dsh-client-locale/client'
+import type { Context } from '@relay-harness/cordis'
+import type { BoundActions } from '@relay-harness/rlh-client-ui-slots'
+import type { ClientContext, SettingsScope } from '@relay-harness/rlh-client-runtime/client'
+import type {} from '@relay-harness/rlh-client-ui-settings/client'
+import type {} from '@relay-harness/rlh-client-locale/client'
 import type { AppearanceSectionInjected } from './AppearanceSection.tsx'
 import { AppearanceSection } from './AppearanceSection.tsx'
 import { applyAppearanceDocumentExtras } from '../appearance-apply.ts'
@@ -47,14 +47,14 @@ export type { ThemeFamily, ThemeSeeds, ThemeTokens as FamilyThemeTokens } from '
 /** Namespace owning this feature's settings copy. */
 export const SETTINGS_NS = 'settings.theme'
 
-declare module '@deepseek-ai/dsh-client-ui-slots' {
+declare module '@relay-harness/rlh-client-ui-slots' {
   interface LocaleNamespaceMap {
     /** The Appearance settings page copy. */
     'settings.theme': ThemeKey
   }
 }
 
-/** Theme token dictionary: --dsw-alias-* overrides keyed by variable name. */
+/** Theme token dictionary: --rlw-alias-* overrides keyed by variable name. */
 export type ThemeTokens = FamilyTokens
 
 /**
@@ -150,7 +150,7 @@ export interface ThemeTokenInspection {
   cssVariable?: string
 }
 
-declare module '@deepseek-ai/cordis' {
+declare module '@relay-harness/cordis' {
   interface Context {
     theme: ThemeRuntime
   }
@@ -171,20 +171,20 @@ const BUILTIN_THEMES: readonly ThemeDefinition[] = Object.freeze([
 ])
 
 const BUILTIN_INSPECT_TOKENS: readonly ThemeTokenInspection[] = Object.freeze([
-  { name: '--dsw-alias-bg-base', description: 'Application base background.', valueType: 'CSS color', requiresLightAndDark: true, cssVariable: '--dsw-alias-bg-base' },
-  { name: '--dsw-alias-bg-layer-1', description: 'Primary raised surface background.', valueType: 'CSS color', requiresLightAndDark: true, cssVariable: '--dsw-alias-bg-layer-1' },
-  { name: '--dsw-alias-bg-layer-2', description: 'Secondary nested surface background.', valueType: 'CSS color', requiresLightAndDark: true, cssVariable: '--dsw-alias-bg-layer-2' },
-  { name: '--dsw-alias-bg-overlay', description: 'Overlay and popover background.', valueType: 'CSS color', requiresLightAndDark: true, cssVariable: '--dsw-alias-bg-overlay' },
-  { name: '--dsw-alias-border-l1', description: 'Primary subtle border.', valueType: 'CSS color', requiresLightAndDark: true, cssVariable: '--dsw-alias-border-l1' },
-  { name: '--dsw-alias-border-l2', description: 'Secondary stronger border.', valueType: 'CSS color', requiresLightAndDark: true, cssVariable: '--dsw-alias-border-l2' },
-  { name: '--dsw-alias-brand-primary', description: 'Primary brand accent.', valueType: 'CSS color', requiresLightAndDark: true, cssVariable: '--dsw-alias-brand-primary' },
-  { name: '--dsw-alias-label-primary', description: 'Primary text color.', valueType: 'CSS color', requiresLightAndDark: true, cssVariable: '--dsw-alias-label-primary' },
-  { name: '--dsw-alias-label-secondary', description: 'Secondary text color.', valueType: 'CSS color', requiresLightAndDark: true, cssVariable: '--dsw-alias-label-secondary' },
-  { name: '--dsw-alias-state-error-primary', description: 'Primary error state color.', valueType: 'CSS color', requiresLightAndDark: true, cssVariable: '--dsw-alias-state-error-primary' },
-  { name: '--dsw-alias-state-success-primary', description: 'Primary success state color.', valueType: 'CSS color', requiresLightAndDark: true, cssVariable: '--dsw-alias-state-success-primary' },
-  { name: '--dsw-alias-state-warn-primary', description: 'Primary warning state color.', valueType: 'CSS color', requiresLightAndDark: true, cssVariable: '--dsw-alias-state-warn-primary' },
-  { name: '--dsw-specific-sidebar-fill', description: 'Sidebar column and title-row background.', valueType: 'CSS color', requiresLightAndDark: true, cssVariable: '--dsw-specific-sidebar-fill' },
-  { name: '--dsw-alias-glass-opacity', description: 'Overlay and composer solidity percent.', valueType: 'CSS percentage', requiresLightAndDark: true, cssVariable: '--dsw-alias-glass-opacity' },
+  { name: '--rlw-alias-bg-base', description: 'Application base background.', valueType: 'CSS color', requiresLightAndDark: true, cssVariable: '--rlw-alias-bg-base' },
+  { name: '--rlw-alias-bg-layer-1', description: 'Primary raised surface background.', valueType: 'CSS color', requiresLightAndDark: true, cssVariable: '--rlw-alias-bg-layer-1' },
+  { name: '--rlw-alias-bg-layer-2', description: 'Secondary nested surface background.', valueType: 'CSS color', requiresLightAndDark: true, cssVariable: '--rlw-alias-bg-layer-2' },
+  { name: '--rlw-alias-bg-overlay', description: 'Overlay and popover background.', valueType: 'CSS color', requiresLightAndDark: true, cssVariable: '--rlw-alias-bg-overlay' },
+  { name: '--rlw-alias-border-l1', description: 'Primary subtle border.', valueType: 'CSS color', requiresLightAndDark: true, cssVariable: '--rlw-alias-border-l1' },
+  { name: '--rlw-alias-border-l2', description: 'Secondary stronger border.', valueType: 'CSS color', requiresLightAndDark: true, cssVariable: '--rlw-alias-border-l2' },
+  { name: '--rlw-alias-brand-primary', description: 'Primary brand accent.', valueType: 'CSS color', requiresLightAndDark: true, cssVariable: '--rlw-alias-brand-primary' },
+  { name: '--rlw-alias-label-primary', description: 'Primary text color.', valueType: 'CSS color', requiresLightAndDark: true, cssVariable: '--rlw-alias-label-primary' },
+  { name: '--rlw-alias-label-secondary', description: 'Secondary text color.', valueType: 'CSS color', requiresLightAndDark: true, cssVariable: '--rlw-alias-label-secondary' },
+  { name: '--rlw-alias-state-error-primary', description: 'Primary error state color.', valueType: 'CSS color', requiresLightAndDark: true, cssVariable: '--rlw-alias-state-error-primary' },
+  { name: '--rlw-alias-state-success-primary', description: 'Primary success state color.', valueType: 'CSS color', requiresLightAndDark: true, cssVariable: '--rlw-alias-state-success-primary' },
+  { name: '--rlw-alias-state-warn-primary', description: 'Primary warning state color.', valueType: 'CSS color', requiresLightAndDark: true, cssVariable: '--rlw-alias-state-warn-primary' },
+  { name: '--rlw-specific-sidebar-fill', description: 'Sidebar column and title-row background.', valueType: 'CSS color', requiresLightAndDark: true, cssVariable: '--rlw-specific-sidebar-fill' },
+  { name: '--rlw-alias-glass-opacity', description: 'Overlay and composer solidity percent.', valueType: 'CSS percentage', requiresLightAndDark: true, cssVariable: '--rlw-alias-glass-opacity' },
 ])
 
 /**
@@ -571,7 +571,7 @@ export class ThemeRuntime {
    */
   private composeActive(active: ThemeDefinition, mode: 'light' | 'dark'): ThemeDefinition {
     const tokens: ThemeTokens = { ...active.tokens }
-    tokens['--dsw-alias-glass-opacity'] = `${this.settings.glassOpacity}%`
+    tokens['--rlw-alias-glass-opacity'] = `${this.settings.glassOpacity}%`
     if (isWallpaperDataUrl(this.settings.wallpaperImage)) {
       Object.assign(tokens, mixWallpaperSurfaces(tokens, mode, this.settings.glassOpacity))
     }

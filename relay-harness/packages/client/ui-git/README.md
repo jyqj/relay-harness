@@ -1,4 +1,4 @@
-# @deepseek-ai/dsh-client-ui-git
+# @relay-harness/rlh-client-ui-git
 
 English | [中文](README.zh.md)
 

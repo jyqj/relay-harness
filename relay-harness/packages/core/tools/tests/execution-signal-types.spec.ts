@@ -1,13 +1,13 @@
 import { describe, expectTypeOf, it } from 'vitest'
-import type { Context } from '@deepseek-ai/cordis'
-import { CallId } from '@deepseek-ai/dsh-llm'
-import { defineTool } from '@deepseek-ai/dsh-tools'
+import type { Context } from '@relay-harness/cordis'
+import { CallId } from '@relay-harness/rlh-llm'
+import { defineTool } from '@relay-harness/rlh-tools'
 import type {
   ToolDispatchExecution,
   ToolExecution,
   ToolExecutionInput,
   ToolRunContext,
-} from '@deepseek-ai/dsh-tools'
+} from '@relay-harness/rlh-tools'
 
 function inputAndExecutionContracts(
   input: ToolExecutionInput,

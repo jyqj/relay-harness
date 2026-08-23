@@ -6,8 +6,8 @@ import {
   IconGlobeOutline14,
   MarkdownText,
   Tooltip,
-} from '@deepseek-ai/dsh-client-ui-primitives'
-import type { InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
+} from '@relay-harness/rlh-client-ui-primitives'
+import type { InjectFace, PropsLocale, PropsRuntime } from '@relay-harness/rlh-client-ui-slots'
 import {
   formatFileCommentRange,
   normalizeFileCommentRange,
@@ -29,11 +29,11 @@ export type FilePreviewProps =
   & PropsLocale<typeof NS>
   & InjectFace<FilesShellInjected>
 
-const RENDER_MARKDOWN_KEY = 'dshd.renderMarkdown'
-const FILE_WORD_WRAP_KEY = 'dshd.fileWordWrap'
+const RENDER_MARKDOWN_KEY = 'rlhd.renderMarkdown'
+const FILE_WORD_WRAP_KEY = 'rlhd.fileWordWrap'
 const FILE_SAVE_DEBOUNCE_MS = 500
-const OPEN_SURFACE_EVENT = 'dshd-open-surface'
-const PENDING_PREVIEW_URL_KEY = 'dshd-pending-preview-url'
+const OPEN_SURFACE_EVENT = 'rlhd-open-surface'
+const PENDING_PREVIEW_URL_KEY = 'rlhd-pending-preview-url'
 const BROWSER_DOCUMENTS = new Set(['.html', '.htm', '.xhtml', '.svg', '.pdf'])
 
 interface DesktopPreviewShell {
@@ -172,7 +172,7 @@ function formatFileCommentComposerText(
  * ran without a cwd; Save writes whenever cwd exists. A successful write clears
  * truncated/binary so the editor remains. Ctrl/Cmd+S saves only while this tab
  * is active. The surfaces shell persists dirty buffers across reload. Markdown
- * Source/Rendered defaults to Source via `dshd.renderMarkdown`. Jump-to-line
+ * Source/Rendered defaults to Source via `rlhd.renderMarkdown`. Jump-to-line
  * (`revealLine` / `revealRequestId`) scrolls the source textarea and shows
  * source while that reveal is pending. A non-collapsed textarea selection
  * shows 「添加到对话」; that control appends an `L` range plus a `text` fence

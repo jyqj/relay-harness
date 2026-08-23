@@ -407,7 +407,7 @@ async function runGitWithProgress(cwd, args, emit, limits = {}) {
   try {
     const result = await runGit(cwd, args, {
       ...limits,
-      env: { ...monitor.env, ...(limits.env || {}) },
+      env: { ...monitor.env, ...limits.env },
       onLine: (line) => {
         monitor.poll();
         const hook = inferHookName(line);
@@ -788,7 +788,7 @@ async function gitCreateChangeRequest(cwd, input, onProgress) {
   if (!title) return fail('Change request title is required.');
 
   emit({ kind: 'phase', title: `Creating ${terms.singular}...` });
-  const bodyFile = path.join(os.tmpdir(), `dshd-pr-body-${process.pid}-${Date.now()}.md`);
+  const bodyFile = path.join(os.tmpdir(), `rlhd-pr-body-${process.pid}-${Date.now()}.md`);
   fs.writeFileSync(bodyFile, body);
   let created;
   try {

@@ -1,13 +1,13 @@
 /**
- * Package-owned invariant companion for `@deepseek-ai/dsh-token-budget-controller`.
- * @module @deepseek-ai/dsh-token-budget-controller/invariant
+ * Package-owned invariant companion for `@relay-harness/rlh-token-budget-controller`.
+ * @module @relay-harness/rlh-token-budget-controller/invariant
  */
 
 /* jscpd:ignore-start */
-import type { Context } from '@deepseek-ai/cordis'
-import type { InvariantInstaller } from '@deepseek-ai/dsh-invariants'
+import type { Context } from '@relay-harness/cordis'
+import type { InvariantInstaller } from '@relay-harness/rlh-invariants'
 
-const PACKAGE_NAME = '@deepseek-ai/dsh-token-budget-controller'
+const PACKAGE_NAME = '@relay-harness/rlh-token-budget-controller'
 
 /** Cordis companion plugin name. */
 export const name = 'token-budget-controller-invariant'

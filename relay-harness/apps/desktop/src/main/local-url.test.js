@@ -40,7 +40,7 @@ test('isSameOriginLoopbackUrl pins scheme, host, and port', () => {
 });
 
 test('isLocalAppNavigationUrl allows only the packaged boot.html path', () => {
-  const boot = path.join(os.tmpdir(), `dsh-boot-${process.pid}`, 'boot.html');
+  const boot = path.join(os.tmpdir(), `rlh-boot-${process.pid}`, 'boot.html');
   fs.mkdirSync(path.dirname(boot), { recursive: true });
   fs.writeFileSync(boot, '<html></html>');
   const resolveBootPath = () => boot;

@@ -1,13 +1,13 @@
 /**
- * Package-owned invariant companion for `@deepseek-ai/dsh-client-ui-agents-panel`.
- * @module @deepseek-ai/dsh-client-ui-agents-panel/invariant
+ * Package-owned invariant companion for `@relay-harness/rlh-client-ui-agents-panel`.
+ * @module @relay-harness/rlh-client-ui-agents-panel/invariant
  */
 
 /* jscpd:ignore-start */
-import type { Context } from '@deepseek-ai/cordis'
-import type { InvariantInstaller } from '@deepseek-ai/dsh-invariants'
+import type { Context } from '@relay-harness/cordis'
+import type { InvariantInstaller } from '@relay-harness/rlh-invariants'
 
-const PACKAGE_NAME = '@deepseek-ai/dsh-client-ui-agents-panel'
+const PACKAGE_NAME = '@relay-harness/rlh-client-ui-agents-panel'
 
 /** Cordis companion plugin name. */
 export const name = 'client-ui-agents-panel-invariant'

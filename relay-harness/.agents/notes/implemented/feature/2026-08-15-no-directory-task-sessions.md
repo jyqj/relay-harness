@@ -14,7 +14,7 @@ The hero Workspace chip toggles picker open state, but the picker Menu is a sibl
 
 ## Decision
 
-`host.describe` advertises `scratchCwd`. The Host resolves it with `dshHomePath('no-workspace')` (`$DSH_HOME/no-workspace` or `~/.dsh/no-workspace`) and `mkdir`s it during describe. The browser never joins that path.
+`host.describe` advertises `scratchCwd`. The Host resolves it with `rlhHomePath('no-workspace')` (`$RLH_HOME/no-workspace` or `~/.rlh/no-workspace`) and `mkdir`s it during describe. The browser never joins that path.
 
 `IWorkspaces.connectNoDirectory()` reuses a blank Session whose cwd equals `scratchCwd` and whose id is in no Workspace `sessionIds` and not archived; otherwise it calls `session.create({ cwd: scratchCwd })`. It never calls `workspace.create`. In-flight calls coalesce. Callers own navigation (`sessions.open`).
 

@@ -28,8 +28,8 @@ Status: implemented
 
 ## 测试
 
-`terminal-drawer.client.spec.tsx` 钉住构造终端上的 `minimumContrastRatio`、只从底部跟随的 refit（`keeps the scrollback position on refit unless the viewport was at the bottom`）、反色单元格 token CSS，以及样式表中不存在 `data-dsh-tui-selected`／`dsh-tui-selected-bar`。`fit.client.spec.ts` 覆盖 `shouldFollowOutput`（贴底、在其上方、缺失 buffer/字段）与 `TERMINAL_MINIMUM_CONTRAST` 为 1。`terminal-session-store.client.spec.ts` 覆盖 `realignBufferStart`（取行首/ESC 中最早者、窗口回退）以及 `appendData` 的溢出路径。`fit.client.spec.ts` 还让 `hostHasFitSize` 拒绝只剩 padding 的宿主（收起的右侧栏）。`src/main/pty.test.js` 断言 `useConpty: true` 且不含 `useConptyDll`。
+`terminal-drawer.client.spec.tsx` 钉住构造终端上的 `minimumContrastRatio`、只从底部跟随的 refit（`keeps the scrollback position on refit unless the viewport was at the bottom`）、反色单元格 token CSS，以及样式表中不存在 `data-rlh-tui-selected`／`rlh-tui-selected-bar`。`fit.client.spec.ts` 覆盖 `shouldFollowOutput`（贴底、在其上方、缺失 buffer/字段）与 `TERMINAL_MINIMUM_CONTRAST` 为 1。`terminal-session-store.client.spec.ts` 覆盖 `realignBufferStart`（取行首/ESC 中最早者、窗口回退）以及 `appendData` 的溢出路径。`fit.client.spec.ts` 还让 `hostHasFitSize` 拒绝只剩 padding 的宿主（收起的右侧栏）。`src/main/pty.test.js` 断言 `useConpty: true` 且不含 `useConptyDll`。
 
 ## 相关
 
-[终端画布使用应用背景](2026-08-18-terminal-canvas-app-background.md) 拥有透明工作区根与壁纸压暗。[终端窗格是不透明的画布井](2026-08-19-terminal-pane-opaque-tui-stage.md) 拥有 `--dsw-alias-terminal-pane` 不透明度。[PTY 的 ANSI 颜色跟随 T3code Pierre，而不是 UI 状态 token](2026-08-19-terminal-ansi-pierre-palette.md) 拥有 ANSI 1–15 与对比度重映射。[不带 DLL 的 ConPTY 一次性 DA](2026-08-18-terminal-conpty-oneshot-no-dll.md) 拥有本笔记 spawn 选项如今对齐的 DA1 闩锁。[终端窗格 fit 与焦点](2026-08-17-terminal-pane-fit-and-focus.md) 拥有 FitAddon 门控与 resize 防抖。
+[终端画布使用应用背景](2026-08-18-terminal-canvas-app-background.md) 拥有透明工作区根与壁纸压暗。[终端窗格是不透明的画布井](2026-08-19-terminal-pane-opaque-tui-stage.md) 拥有 `--rlw-alias-terminal-pane` 不透明度。[PTY 的 ANSI 颜色跟随 T3code Pierre，而不是 UI 状态 token](2026-08-19-terminal-ansi-pierre-palette.md) 拥有 ANSI 1–15 与对比度重映射。[不带 DLL 的 ConPTY 一次性 DA](2026-08-18-terminal-conpty-oneshot-no-dll.md) 拥有本笔记 spawn 选项如今对齐的 DA1 闩锁。[终端窗格 fit 与焦点](2026-08-17-terminal-pane-fit-and-focus.md) 拥有 FitAddon 门控与 resize 防抖。

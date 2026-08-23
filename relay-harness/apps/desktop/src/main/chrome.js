@@ -1,3 +1,4 @@
+// @ts-check
 const { BrowserWindow, ipcMain, nativeTheme } = require('electron');
 const fs = require('fs');
 const path = require('path');

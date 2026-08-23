@@ -12,10 +12,10 @@
 - button "Edit" [disabled]:
   - img
 - text: Wait for the current response to finish before editing
-- button "Context injection @deepseek-ai/dsh-system-prompt":
+- button "Context injection @relay-harness/rlh-system-prompt":
   - img
   - img
-  - text: Context injection @deepseek-ai/dsh-system-prompt
+  - text: Context injection @relay-harness/rlh-system-prompt
 - button "Context injection skill-catalog":
   - img
   - img

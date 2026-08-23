@@ -1,4 +1,4 @@
-# `@deepseek-ai/dsh-memory-extractor-llm`
+# `@relay-harness/rlh-memory-extractor-llm`
 
 English | [中文](README.zh.md)
 
@@ -14,7 +14,7 @@ An automatic memory becomes `active` only when `evidence_quote` is an exact cont
 |---|---:|---|
 | `enabled` | `false` | Registers capture and worker behavior only when explicit. |
 | `userId` | `local` | Stable user Scope for extracted memories. |
-| `agentId` | `deepseek-harness` | Stable Agent Scope shared across sessions. |
+| `agentId` | `relay-harness` | Stable Agent Scope shared across sessions. |
 | `workspaceId` | session cwd, then `global` | Optional explicit workspace Scope. |
 | `agentPresets` | `[]` | Durable preset allowlist; empty accepts every preset. |
 | `includeSubagents` | `false` | Whether delegated sessions are captured. |

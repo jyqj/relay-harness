@@ -1,7 +1,7 @@
 /** Operator-facing issue automation state. */
 
-import type { SessionId } from '@deepseek-ai/dsh-session/types'
-import type { TrackerIssue, TrackerIssueId } from '@deepseek-ai/dsh-tracker/types'
+import type { SessionId } from '@relay-harness/rlh-session/types'
+import type { TrackerIssue, TrackerIssueId } from '@relay-harness/rlh-tracker/types'
 
 /** Materialized view of one claimed, running, retrying, or blocked issue. */
 export interface IssueOrchestrationEntry {
@@ -51,7 +51,7 @@ export interface IssueCommand {
   readonly issueId: TrackerIssueId
 }
 
-declare module '@deepseek-ai/cordis' {
+declare module '@relay-harness/cordis' {
   interface Events {
     /**
      * Durable orchestration state changed; observers re-read `snapshot()`.

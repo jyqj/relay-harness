@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-07-27-skill-catalog-hot-refresh.md
-2026-07-27-skill-catalog-hot-refresh.md: fcca04e685c258eb927319c4f999160a1a0d3699
-2026-07-27-skill-catalog-hot-refresh.zh.md: a7d060a3c683dde789f07403e3f55a9f2c6643c4
+2026-07-27-skill-catalog-hot-refresh.md: fe505ff447d0d34bb66df75963b9aa60abf53fd3
+2026-07-27-skill-catalog-hot-refresh.zh.md: 30c63c11660529f10e88dc19a2b4589208852c32

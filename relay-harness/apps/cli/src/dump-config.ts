@@ -1,9 +1,9 @@
 /**
- * Config-dump entry for `dsh --profile <name> --dump-config`: compose the
+ * Config-dump entry for `rlh --profile <name> --dump-config`: compose the
  * profile's patch layers through the include plugin's patch algorithm without
  * booting or evaluating `!!js`, with one source layer per bundle, the
  * profile's own patch file, and each `--patch` overlay.
- * @module @deepseek-ai/dsh/dump-config
+ * @module @relay-harness/rlh/dump-config
  */
 
 import { existsSync } from 'node:fs'
@@ -13,10 +13,10 @@ import {
   loadOverlayPatches,
   renderConfigDump,
   type ConfigDumpLayer,
-} from '@deepseek-ai/dsh-app-boot'
+} from '@relay-harness/rlh-app-boot'
 import { homePatchPath, prepareProfile, PROFILE_ROOT_FILENAME } from './profile-boot.ts'
 
-const NAME = 'dsh'
+const NAME = 'rlh'
 
 export interface DumpConfigOptions {
   defaultOnly: boolean

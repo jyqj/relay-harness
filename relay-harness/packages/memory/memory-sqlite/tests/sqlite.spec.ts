@@ -2,13 +2,13 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
-import { Context } from '@deepseek-ai/cordis'
+import { Context } from '@relay-harness/cordis'
 import { DatabaseSync } from 'node:sqlite'
-import { CallId } from '@deepseek-ai/dsh-llm'
-import { MemoryId } from '@deepseek-ai/dsh-memory'
-import type { MemoryEvidence, MemoryScope } from '@deepseek-ai/dsh-memory/types'
-import SqliteLongTermMemory from '@deepseek-ai/dsh-memory-sqlite'
-import { SessionId } from '@deepseek-ai/dsh-session'
+import { CallId } from '@relay-harness/rlh-llm'
+import { MemoryId } from '@relay-harness/rlh-memory'
+import type { MemoryEvidence, MemoryScope } from '@relay-harness/rlh-memory/types'
+import SqliteLongTermMemory from '@relay-harness/rlh-memory-sqlite'
+import { SessionId } from '@relay-harness/rlh-session'
 
 const temporaryDirectories: string[] = []
 
@@ -19,7 +19,7 @@ afterEach(async () => {
 })
 
 async function databasePath(): Promise<string> {
-  const directory = await mkdtemp(join(tmpdir(), 'dsh-memory-'))
+  const directory = await mkdtemp(join(tmpdir(), 'rlh-memory-'))
   temporaryDirectories.push(directory)
   return join(directory, 'memory.db')
 }

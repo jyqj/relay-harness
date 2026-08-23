@@ -340,12 +340,12 @@ function deployCliEntries(deployDir) {
 }
 
 /**
- * 用精简 deploy 目录组装 resources/vendor/deepseek-harness：
+ * 用精简 deploy 目录组装 resources/vendor/relay-harness：
  *   apps/cli     <- deploy 根内容（lib/ config/ package.json，不含 node_modules）
  *   apps/web/dist<- vendor 源码构建产物
  *   node_modules <- deploy/node_modules（扁平依赖，完整展开以保留版本隔离嵌套）
  *   vendor       <- deploy/vendor（本地 cordis 插件包源）
- * 该结构已被验证可完整启动 dsh web（scripts/patch-deploy.js 迭代补齐）。
+ * 该结构已被验证可完整启动 rlh web（scripts/patch-deploy.js 迭代补齐）。
  */
 async function assembleFromDeploy(projectDir, deployDir, harnessDest) {
   const vendorSrc = harnessSourceRoot(projectDir);
@@ -447,7 +447,7 @@ function resolveResourcesDir(context) {
     return context.packager.getResourcesDir(context.appOutDir);
   }
   if (context?.electronPlatformName === 'darwin') {
-    const product = context.packager?.appInfo?.productFilename || 'Deepseek-Harness-Desktop';
+    const product = context.packager?.appInfo?.productFilename || 'Relay-Harness-Desktop';
     return path.join(context.appOutDir, `${product}.app`, 'Contents', 'Resources');
   }
   return path.join(context.appOutDir, 'resources');
@@ -529,16 +529,16 @@ function assertHarnessRuntime(harnessDest, pin) {
   const requiredFiles = [
     path.join('apps', 'cli', 'lib', 'bin.js'),
     path.join('apps', 'web', 'dist', 'index.html'),
-    path.join('node_modules', '@deepseek-ai', 'dsh-app-boot', 'lib', 'features.js'),
-    path.join('node_modules', '@deepseek-ai', 'dsh-client-modules', 'lib', 'index.js'),
-    path.join('node_modules', '@deepseek-ai', 'dsh-client-ui-conversation', 'lib', 'client.js'),
-    path.join('node_modules', '@deepseek-ai', 'dsh-mcp-servers-file', 'lib', 'index.js'),
-    path.join('node_modules', '@deepseek-ai', 'dsh-host-mcp-servers', 'lib', 'index.js'),
-    path.join('node_modules', '@deepseek-ai', 'dsh-host-skill-inventory', 'lib', 'index.js'),
-    path.join('node_modules', '@deepseek-ai', 'dsh-client-ui-settings-mcp', 'lib', 'index.js'),
-    path.join('node_modules', '@deepseek-ai', 'dsh-client-ui-settings-mcp', 'lib', 'client.js'),
-    path.join('node_modules', '@deepseek-ai', 'dsh-client-ui-settings-skills', 'lib', 'index.js'),
-    path.join('node_modules', '@deepseek-ai', 'dsh-client-ui-settings-skills', 'lib', 'client.js'),
+    path.join('node_modules', '@relay-harness', 'rlh-app-boot', 'lib', 'features.js'),
+    path.join('node_modules', '@relay-harness', 'rlh-client-modules', 'lib', 'index.js'),
+    path.join('node_modules', '@relay-harness', 'rlh-client-ui-conversation', 'lib', 'client.js'),
+    path.join('node_modules', '@relay-harness', 'rlh-mcp-servers-file', 'lib', 'index.js'),
+    path.join('node_modules', '@relay-harness', 'rlh-host-mcp-servers', 'lib', 'index.js'),
+    path.join('node_modules', '@relay-harness', 'rlh-host-skill-inventory', 'lib', 'index.js'),
+    path.join('node_modules', '@relay-harness', 'rlh-client-ui-settings-mcp', 'lib', 'index.js'),
+    path.join('node_modules', '@relay-harness', 'rlh-client-ui-settings-mcp', 'lib', 'client.js'),
+    path.join('node_modules', '@relay-harness', 'rlh-client-ui-settings-skills', 'lib', 'index.js'),
+    path.join('node_modules', '@relay-harness', 'rlh-client-ui-settings-skills', 'lib', 'client.js'),
   ];
   const missing = requiredFiles.filter((relative) => !fs.existsSync(path.join(harnessDest, relative)));
   if (missing.length > 0) {
@@ -554,15 +554,15 @@ function assertHarnessRuntime(harnessDest, pin) {
   }
 
   const features = fs.readFileSync(
-    path.join(harnessDest, 'node_modules', '@deepseek-ai', 'dsh-app-boot', 'lib', 'features.js'),
+    path.join(harnessDest, 'node_modules', '@relay-harness', 'rlh-app-boot', 'lib', 'features.js'),
     'utf8',
   );
   const modules = fs.readFileSync(
-    path.join(harnessDest, 'node_modules', '@deepseek-ai', 'dsh-client-modules', 'lib', 'index.js'),
+    path.join(harnessDest, 'node_modules', '@relay-harness', 'rlh-client-modules', 'lib', 'index.js'),
     'utf8',
   );
   const conversation = fs.readFileSync(
-    path.join(harnessDest, 'node_modules', '@deepseek-ai', 'dsh-client-ui-conversation', 'lib', 'client.js'),
+    path.join(harnessDest, 'node_modules', '@relay-harness', 'rlh-client-ui-conversation', 'lib', 'client.js'),
     'utf8',
   );
   const requiredFeatures = [
@@ -582,7 +582,7 @@ function assertHarnessRuntime(harnessDest, pin) {
       return code.includes('missingHostFeatures') && code.includes('parseCompatibilityFeatures');
     });
   if (!cliGatePresent) {
-    throw new Error('安装包的 dsh CLI 缺少插件兼容性门禁');
+    throw new Error('安装包的 rlh CLI 缺少插件兼容性门禁');
   }
   if (!modules.includes('missingHostFeatures') || !modules.includes('parseCompatibilityFeatures')) {
     throw new Error('安装包的 Browser 模块图缺少插件兼容性门禁');
@@ -597,11 +597,11 @@ function assertHarnessRuntime(harnessDest, pin) {
 module.exports = async function afterPack(context) {
   const projectDir = context.packager.projectDir;
   const resources = resolveResourcesDir(context);
-  restoreVendoredPluginNodeModules(projectDir, resources, 'dshmarket');
-  installPluginRuntimeDeps(path.join(resources, 'vendor', 'dshmarket'), { skipIfComplete: true });
-  assertVendoredPluginRuntimeDeps(resources, 'dshmarket');
-  const harnessDest = path.join(resources, 'vendor', 'deepseek-harness');
-  const deployDir = resolveDeployDir(process.env.DSH_DEPLOY_DIR);
+  restoreVendoredPluginNodeModules(projectDir, resources, 'rlhmarket');
+  installPluginRuntimeDeps(path.join(resources, 'vendor', 'rlhmarket'), { skipIfComplete: true });
+  assertVendoredPluginRuntimeDeps(resources, 'rlhmarket');
+  const harnessDest = path.join(resources, 'vendor', 'relay-harness');
+  const deployDir = resolveDeployDir(process.env.RLH_DEPLOY_DIR);
   const started = Date.now();
 
   let copied;
@@ -627,7 +627,7 @@ module.exports = async function afterPack(context) {
   );
   assertHarnessRuntime(harnessDest, pin);
 
-  const archive = path.join(resources, 'vendor', 'deepseek-harness.tar');
+  const archive = path.join(resources, 'vendor', 'relay-harness.tar');
   console.log('打包运行时为单个 tar，减少 NSIS 解压文件数…');
   execFileSync('tar', ['-cf', path.basename(archive), '-C', path.basename(harnessDest), '.'], {
     cwd: path.dirname(harnessDest),

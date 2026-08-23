@@ -49,7 +49,7 @@ function complete(
   event(response, 'message_start', {
     type: 'message_start',
     message: {
-      id: 'msg_dsh_fixture',
+      id: 'msg_rlh_fixture',
       type: 'message',
       role: 'assistant',
       model,
@@ -102,7 +102,7 @@ function toolUse(
   event(response, 'message_start', {
     type: 'message_start',
     message: {
-      id: 'msg_dsh_fixture_tool_use',
+      id: 'msg_rlh_fixture_tool_use',
       type: 'message',
       role: 'assistant',
       model,
@@ -122,7 +122,7 @@ function toolUse(
     index: 0,
     content_block: {
       type: 'tool_use',
-      id: 'toolu_dsh_fixture',
+      id: 'toolu_rlh_fixture',
       name: toolName,
       input: {},
     },

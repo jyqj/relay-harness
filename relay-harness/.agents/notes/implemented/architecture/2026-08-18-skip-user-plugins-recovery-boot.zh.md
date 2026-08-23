@@ -6,17 +6,17 @@ Status: implemented
 
 ## Problem
 
-profile 一旦多列一个组合包，或携带损坏的用户 `cordis.patch.yml`，整棵 plugin tree 都会响亮失败，连宿主仍需要启动的官方 Web UI 也被拖死。启动器已有用于 `--dump-default-config` 的 `loadProfile(..., { userLayer: false })`，但它仍会解析 `dsh.profile.bundles` 中的每一个名称，并且在真实启动时仍会读取 `$DSH_HOME/cordis.patch.yml`，因此无法从无法解析的额外组合包或有毒的 home 层中恢复。改写用户 manifest 去猜该禁用哪个插件，或在同一 `$DSH_HOME` 上再探测第二个 Loader，会改写或竞态用户唯一拥有的那份组合。
+profile 一旦多列一个组合包，或携带损坏的用户 `cordis.patch.yml`，整棵 plugin tree 都会响亮失败，连宿主仍需要启动的官方 Web UI 也被拖死。启动器已有用于 `--dump-default-config` 的 `loadProfile(..., { userLayer: false })`，但它仍会解析 `rlh.profile.bundles` 中的每一个名称，并且在真实启动时仍会读取 `$RLH_HOME/cordis.patch.yml`，因此无法从无法解析的额外组合包或有毒的 home 层中恢复。改写用户 manifest 去猜该禁用哪个插件，或在同一 `$RLH_HOME` 上再探测第二个 Loader，会改写或竞态用户唯一拥有的那份组合。
 
 ## Decision
 
-`--skip-user-plugins` 是根命令与 `web` 别名上的启动器旗标，在 `--host` / `--port` 这类应用旗标之前解析。它通过 `loadProfile(..., { userLayer: false, bundles: 'template' })` 组合 `PROFILE_TEMPLATES[name]`；该名称没有模板时使用 `DEFAULT_PROFILE_BUNDLES`，并且从不写回 `dsh.profile.bundles`。模板加载只读取磁盘上的清单、不改写它，然后解析 `PROFILE_TEMPLATES` / `DEFAULT_PROFILE_BUNDLES`。profile 与 home 的 `cordis.patch.yml` 都不读取；`--patch` overlay 与 telemetry 开关仍然应用；不安装 `watchUserPatches`，否则 HMR（热模块替换）会把跳过的层重新热加载回来。`--dump-default-config` 仍是「清单上的组合包层、无用户文件、无 `--patch`」；跳过栈用 `--skip-user-plugins --dump-config` dump。这两个旗标互斥。这不会按 loader id 禁用插件、隔离包装，也不会改变 Cordis 的响亮失败语义；需要在用户层失败后启动官方 Web 的宿主，对同一 `$DSH_HOME` 做这次二次 spawn。profile 组合本身仍由 [profile 插件组合包](2026-08-05-profile-plugin-bundles.md) 决策负责。
+`--skip-user-plugins` 是根命令与 `web` 别名上的启动器旗标，在 `--host` / `--port` 这类应用旗标之前解析。它通过 `loadProfile(..., { userLayer: false, bundles: 'template' })` 组合 `PROFILE_TEMPLATES[name]`；该名称没有模板时使用 `DEFAULT_PROFILE_BUNDLES`，并且从不写回 `rlh.profile.bundles`。模板加载只读取磁盘上的清单、不改写它，然后解析 `PROFILE_TEMPLATES` / `DEFAULT_PROFILE_BUNDLES`。profile 与 home 的 `cordis.patch.yml` 都不读取；`--patch` overlay 与 telemetry 开关仍然应用；不安装 `watchUserPatches`，否则 HMR（热模块替换）会把跳过的层重新热加载回来。`--dump-default-config` 仍是「清单上的组合包层、无用户文件、无 `--patch`」；跳过栈用 `--skip-user-plugins --dump-config` dump。这两个旗标互斥。这不会按 loader id 禁用插件、隔离包装，也不会改变 Cordis 的响亮失败语义；需要在用户层失败后启动官方 Web 的宿主，对同一 `$RLH_HOME` 做这次二次 spawn。profile 组合本身仍由 [profile 插件组合包](2026-08-05-profile-plugin-bundles.md) 决策负责。
 
 ## Alternatives considered
 
 - **把用户 `include` 行做成 fail-soft** — 会把坏掉的插件藏进仍在运行的树里，并改变其他组合所依赖的响亮失败约定。
 - **对最内层 loader id 自动写 `disabled: true`** — Cordis 会把 apply 失败包进 `include` / `modules` / 官方 `tools`；`cannot get property "tools"` 里的 `tools` 是服务名，group 行会忽略 `disabled`。
-- **临时 `$DSH_HOME`，或在同一 home 上换端口探测** — 会与 session、profile 修复、patch 监视器和 Windows 文件锁竞态；一份 home 同时只由一个 Loader 使用。
+- **临时 `$RLH_HOME`，或在同一 home 上换端口探测** — 会与 session、profile 修复、patch 监视器和 Windows 文件锁竞态；一份 home 同时只由一个 Loader 使用。
 
 ## Consequences
 

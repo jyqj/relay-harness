@@ -1,9 +1,9 @@
 /**
  * Bounded sharing and exclusive reservation of unpublished Sessions.
- * @module @deepseek-ai/dsh-session-persistence/preparations
+ * @module @relay-harness/rlh-session-persistence/preparations
  */
 
-import type { Session, SessionId } from '@deepseek-ai/dsh-session'
+import type { Session, SessionId } from '@relay-harness/rlh-session'
 
 interface PreparedSource {
   readonly session: Session

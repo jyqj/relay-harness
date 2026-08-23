@@ -12,9 +12,9 @@ Status: implemented
 
 ## Decision
 
-`@deepseek-ai/dsh-rollout-budget-controller` 是 opt-in guard 插件，要求显式 `limitTokens` 与 `reminderAtRemainingTokens`。本包与基础 bundle 都不会凭空设定部署开销上限。可选的 `samplingTokenWeight` 与 `prefillTokenWeight` 默认为一，且必须有限并非负。
+`@relay-harness/rlh-rollout-budget-controller` 是 opt-in guard 插件，要求显式 `limitTokens` 与 `reminderAtRemainingTokens`。本包与基础 bundle 都不会凭空设定部署开销上限。可选的 `samplingTokenWeight` 与 `prefillTokenWeight` 默认为一，且必须有限并非负。
 
-插件把每个本地 Session 解析到当前最高的 live 持久祖先，并为每个 root id 持有一个进程局部 ledger。它只消费每个 Session 事件序号一次，并忽略低于 `SessionHeader.seedLength` 的 fork prefix。带 usage 的 `assistant/message` 贡献 `max(0, outputTokens) × samplingTokenWeight + max(0, inputTokens) × prefillTokenWeight`；DSH input bucket 已经是未缓存输入，因此排除 cache-read 与 cache-write bucket。
+插件把每个本地 Session 解析到当前最高的 live 持久祖先，并为每个 root id 持有一个进程局部 ledger。它只消费每个 Session 事件序号一次，并忽略低于 `SessionHeader.seedLength` 的 fork prefix。带 usage 的 `assistant/message` 贡献 `max(0, outputTokens) × samplingTokenWeight + max(0, inputTokens) × prefillTokenWeight`；RLH input bucket 已经是未缓存输入，因此排除 cache-read 与 cache-write bucket。
 
 每个 Agent 从自身日志中的持久化插件来源用户消息派生已投递提醒 level。在 pre-step 中，controller 会先委托后续准入 listener，再为新跨越的最大阈值追加至多一条提醒。因此，恢复后的 Agent 不会重复已记录 level，而新后代会在阈值之后的首次请求中收到 root 当前余量。
 
@@ -36,7 +36,7 @@ usage 达到上限时，响应与其记账事件会保留。全局单调工具 g
 
 **在第一版持久化进程全局 ledger。** 不予采用，因为正确的跨进程强制需要一个事务存储、身份生命周期与 lease 协议。部分文件写入或逐会话副本会产生 split-brain 预算。opt-in 第一版明确说明进程局部重置。
 
-**把 cache read 按完整 prefill 计费。** 不予采用，因为吸收的先行公式对未缓存 input 加权，而 DSH 已把 `inputTokens` 规范化为该 bucket。再次计入 cache 字段会重复计费。
+**把 cache read 按完整 prefill 计费。** 不予采用，因为吸收的先行公式对未缓存 input 加权，而 RLH 已把 `inputTokens` 规范化为该 bucket。再次计入 cache 字段会重复计费。
 
 ## Consequences
 

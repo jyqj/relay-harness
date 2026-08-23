@@ -1,3 +1,4 @@
+// @ts-check
 'use strict';
 
 /** Discrete zoom levels mirroring Chrome's preset list. */

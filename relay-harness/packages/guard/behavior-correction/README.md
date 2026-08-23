@@ -1,4 +1,4 @@
-# @deepseek-ai/dsh-behavior-correction
+# @relay-harness/rlh-behavior-correction
 
 English | [中文](README.zh.md)
 
@@ -10,13 +10,13 @@ Three deviations are detected, in this inspection order:
 - **Unexecuted code** — the closing answer contains a fenced code block in a turn that made no tool call. Describing a command or edit does not perform it; the correction tells the model to call the tool or conclude without the block.
 - **Unverified completion** — the closing answer matches a completion-claim pattern in a turn that made no tool call, while an earlier turn of the same session did. The correction asks for a verifying tool call or a justification, which suppresses "declared done with no evidence" endings in work sessions without touching pure chat sessions (no prior tool activity, no challenge).
 
-A turn that closes on a `max-tokens` cutoff is NOT a deviation and is left to `@deepseek-ai/dsh-token-budget-controller`; a turn with any tool call in it is never challenged for code blocks or completion claims.
+A turn that closes on a `max-tokens` cutoff is NOT a deviation and is left to `@relay-harness/rlh-token-budget-controller`; a turn with any tool call in it is never challenged for code blocks or completion claims.
 
 ## Config
 
 ```yaml
 - id: behavior-correction
-  name: '@deepseek-ai/dsh-behavior-correction'
+  name: '@relay-harness/rlh-behavior-correction'
   config:
     maxCorrectionsPerTurn: 1       # default; corrections allowed per turn across all detectors
     maxConsecutiveEmpty: 3         # default; consecutive empty closings tolerated before giving up

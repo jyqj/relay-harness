@@ -1,6 +1,6 @@
-import { Context } from '@deepseek-ai/cordis'
+import { Context } from '@relay-harness/cordis'
 import { describe, expect, it } from 'vitest'
-import { SettingsProvider, settingsNamespace, type SettingsNamespace } from '@deepseek-ai/dsh-settings'
+import { SettingsProvider, settingsNamespace, type SettingsNamespace } from '@relay-harness/rlh-settings'
 import { GIT_SETTINGS_NAMESPACE, apply } from '../src/index.ts'
 
 class MemorySettings extends SettingsProvider {

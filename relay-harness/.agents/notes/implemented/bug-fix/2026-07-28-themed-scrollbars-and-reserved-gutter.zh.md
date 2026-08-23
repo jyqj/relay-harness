@@ -6,7 +6,7 @@ Status: implemented
 
 ## 问题
 
-`design-platform.css` 在亮色与暗色两套调色板中都声明了四个 `--dsw-alias-scrollbar-*` token（`bg-l1`、`bg-l2`、`hover-l1`、`hover-l2`），而客户端里没有任何一条规则读取它们。定义了却无人消费的 token 构不成主题：所有滚动区域渲染的都是浏览器自带的滚动条，它对调色板一无所知，因此暗色主题下暗色表面上出现的是一条亮色的原生滚动条。
+`design-platform.css` 在亮色与暗色两套调色板中都声明了四个 `--rlw-alias-scrollbar-*` token（`bg-l1`、`bg-l2`、`hover-l1`、`hover-l2`），而客户端里没有任何一条规则读取它们。定义了却无人消费的 token 构不成主题：所有滚动区域渲染的都是浏览器自带的滚动条，它对调色板一无所知，因此暗色主题下暗色表面上出现的是一条亮色的原生滚动条。
 
 暴露这一缺口的可见症状出在别处。工作区浏览器的会话列表（`WorkspaceBrowser.module.css` 中的 `.list`）是侧边栏里唯一的滚动区域，而每一行的尾部内容都紧贴该行 8px 的右内边距——`rows/Rows.module.css` 中的 `.time` 取 `flex: none`，hover 时取代它的操作按钮也是如此。于是覆盖式滚动条会画在相对时间戳之上。只在这一个列表里预留空间，滚动条本身仍然没有主题，因此两部分合为一次变更。
 
@@ -14,19 +14,19 @@ Status: implemented
 
 `packages/client/ui-theme/src/styles/scrollbar.css` 是这四个 token 的唯一消费方，也是 ui-theme 动态客户端 entry 导入的第三张全局样式表。它排在 `design-platform.css` 之后，因为它读取那张样式表的 token；两者都会编译进 ui-theme 持有的客户端 bundle。
 
-规则挂在 `body` 上，而非 `html`。`design-platform.css` 在 `body` 上声明 `--dsw-alias-*` token，暗色覆盖挂在 `body[data-ds-dark-theme]` 上，而自定义属性只向下继承；挂在 `html` 上的规则会把它们解析为 guaranteed-invalid 值，此时 `scrollbar-color` 计算为 `auto`，主题完全不起作用。
+规则挂在 `body` 上，而非 `html`。`design-platform.css` 在 `body` 上声明 `--rlw-alias-*` token，暗色覆盖挂在 `body[data-ds-dark-theme]` 上，而自定义属性只向下继承；挂在 `html` 上的规则会把它们解析为 guaranteed-invalid 值，此时 `scrollbar-color` 计算为 `auto`，主题完全不起作用。
 
 `scrollbar-width` 与 `scrollbar-color` 声明在 `body, body *` 上，而不是只在顶层声明一次。继承传下去的是已经在 `body` 处代入完成的颜色值，因此后代元素重新绑定这层间接变量也无法改变自己的滚动条；逐元素重新声明使每个元素按它自己看到的取值代入变量。`scrollbar-width` 本身就不是可继承属性，无论如何都需要逐元素声明。`::-webkit-scrollbar*` 伪元素同样不继承，因此以不加限定的选择器匹配。
 
 两种渲染互斥，而这种互斥是被强制的，不是假定的。`scrollbar-width` 或 `scrollbar-color` 只要取非 `auto` 值，Chromium 与 Safari 就会丢弃该元素上的全部 `::-webkit-scrollbar*` 规则，`::-webkit-scrollbar-thumb:hover` 也在其中。因此无条件地同时声明会让 hover token 在任何地方都得不到渲染：实现了 hover 伪元素的引擎，恰恰就是被标准属性静音的那些，而 Firefox 没有 hover 伪元素可作退路。于是标准属性写在 `@supports not selector(::-webkit-scrollbar)` 之内，该条件只在伪元素未被实现处为真，因此 Firefox 走标准属性路径，WebKit 系引擎走伪元素路径。WebKit 规则不再反向加门禁：不实现这些伪元素的引擎会把它们当作未知选择器丢弃，因此加门禁只是重述选择器匹配本身已经做的事。对于旧到不支持 `selector()` 函数的引擎，该条件无效，从而求值为假并选中伪元素路径——对于这条判断下现实存在的 16.4 之前的 Safari，这正是正确的一侧。
 
-两条路径都读取同一组间接变量 `--dsh-scrollbar-thumb` 与 `--dsh-scrollbar-thumb-hover`，它们在 `body` 上绑定到 l1（基础表面）token。**这就是重新绑定约定，也是单看 CSS 无法得知的部分**：抬升表面在自己的容器上设置 `--dsh-scrollbar-thumb: var(--dsw-alias-scrollbar-bg-l2)` 与 `--dsh-scrollbar-thumb-hover: var(--dsw-alias-scrollbar-hover-l2)`，这一次重新绑定同时作用于标准属性和 WebKit 伪元素。这组变量必须成对重新绑定；只改静止态滑块会让 hover 状态仍留在基础表面的 token 上。这组变量另一个合法的目标是 `transparent`，它随侧边栏滚动条[改为跟随指针](../feature/2026-08-04-pointer-revealed-sidebar-scrollbars.md)一并引入；下文的门禁只接受这两种目标。可由机械检查发现的子集归 `packages/client/ui-theme/tests/scrollbar-styles.client.spec.ts` 所有：任何既滚动又绘制抬升表面的样式表都必须重新绑定，因此本 note 不再维护完整的表面清单。多数把这组变量声明在抬升卡片上而非滚动的后代元素上，因为抬升层级属于这个表面，而自定义属性会继承到真正滚动的那个子元素。
+两条路径都读取同一组间接变量 `--rlh-scrollbar-thumb` 与 `--rlh-scrollbar-thumb-hover`，它们在 `body` 上绑定到 l1（基础表面）token。**这就是重新绑定约定，也是单看 CSS 无法得知的部分**：抬升表面在自己的容器上设置 `--rlh-scrollbar-thumb: var(--rlw-alias-scrollbar-bg-l2)` 与 `--rlh-scrollbar-thumb-hover: var(--rlw-alias-scrollbar-hover-l2)`，这一次重新绑定同时作用于标准属性和 WebKit 伪元素。这组变量必须成对重新绑定；只改静止态滑块会让 hover 状态仍留在基础表面的 token 上。这组变量另一个合法的目标是 `transparent`，它随侧边栏滚动条[改为跟随指针](../feature/2026-08-04-pointer-revealed-sidebar-scrollbars.md)一并引入；下文的门禁只接受这两种目标。可由机械检查发现的子集归 `packages/client/ui-theme/tests/scrollbar-styles.client.spec.ts` 所有：任何既滚动又绘制抬升表面的样式表都必须重新绑定，因此本 note 不再维护完整的表面清单。多数把这组变量声明在抬升卡片上而非滚动的后代元素上，因为抬升层级属于这个表面，而自定义属性会继承到真正滚动的那个子元素。
 
 `Menu`、`InputBar`、`QuestionComposer` 与 `TodoPanel` 这四个表面最初被漏掉，因此逐样式表的重新绑定约定由机械检查而非人工审阅把关。
 
-抬升表面集合是从调色板自身的暗色抬升阶梯解析出来的——暗色取值落在 `bg-layer-2` 或 `bg-layer-3` 上的那些表面 token，而这一档正是 l1/l2 之分所编码的层级差。最初的做法是从已经做了重新绑定的样式表反向推导，那是不成立的：这样得到的集合只能确认别人已经记得的部分，而尚无人重新绑定的表面——恰恰就是这项检查存在的理由——会把自己定义成「非抬升」。`--dsw-specific-tip` 证明了这一点：它解析到与菜单表面相同的那一档，待办面板在它上面滚动却没有重新绑定，而推导式的检查依然是绿的。
+抬升表面集合是从调色板自身的暗色抬升阶梯解析出来的——暗色取值落在 `bg-layer-2` 或 `bg-layer-3` 上的那些表面 token，而这一档正是 l1/l2 之分所编码的层级差。最初的做法是从已经做了重新绑定的样式表反向推导，那是不成立的：这样得到的集合只能确认别人已经记得的部分，而尚无人重新绑定的表面——恰恰就是这项检查存在的理由——会把自己定义成「非抬升」。`--rlw-specific-tip` 证明了这一点：它解析到与菜单表面相同的那一档，待办面板在它上面滚动却没有重新绑定，而推导式的检查依然是绿的。
 
-判定范围依据 token 家族而非几何形状：只有 `--dsw-alias-bg-*` 与 `--dsw-specific-*` 表述的是表面。`--dsw-alias-button-*`、`--dsw-alias-interactive-*` 与 `--dsw-alias-markdown-*` 会落到相同档位，但它们表述的是控件或行内片段，没有任何滚动容器会把滚动条画在它们之上。形状无法做这个判断，因为悬浮按钮本来就会带圆角、阴影和固定尺寸。这项检查以样式表为粒度而非以规则为粒度，因为卡片与真正滚动的后代元素是两条不同的规则。这种近似检查无法检测嵌在由另一个包的样式表绘制的抬升卡片中的滚动组件，`Modal` 内的 `DirectoryBrowser` 就证明了这一点；跨样式表的组合仍需在评审和组装后 UI 层面把关。
+判定范围依据 token 家族而非几何形状：只有 `--rlw-alias-bg-*` 与 `--rlw-specific-*` 表述的是表面。`--rlw-alias-button-*`、`--rlw-alias-interactive-*` 与 `--rlw-alias-markdown-*` 会落到相同档位，但它们表述的是控件或行内片段，没有任何滚动容器会把滚动条画在它们之上。形状无法做这个判断，因为悬浮按钮本来就会带圆角、阴影和固定尺寸。这项检查以样式表为粒度而非以规则为粒度，因为卡片与真正滚动的后代元素是两条不同的规则。这种近似检查无法检测嵌在由另一个包的样式表绘制的抬升卡片中的滚动组件，`Modal` 内的 `DirectoryBrowser` 就证明了这一点；跨样式表的组合仍需在评审和组装后 UI 层面把关。
 
 轨道与两条滚动条相交的角落保持透明，因此滑块是以其下滚动的任何表面为背景被看到；只有滑块及其 hover 状态带 token 颜色。
 
@@ -56,7 +56,7 @@ Status: implemented
 
 - 客户端的每个滚动容器都绘制带主题的滑块：亮色基础表面为 `rgb(229, 229, 229)`，暗色基础表面为 `rgb(60, 60, 61)`，重新绑定到 l2 的暗色抬升表面为 `rgb(84, 85, 87)`。侧边栏内的滚动区域经由同一组间接变量，只在指针到达时才绘制滑块。
 - 两种渲染分别指定，因此改动滑块的几何或 hover 行为需要改两处：一处在 `scrollbar-width`／`scrollbar-color`，一处在伪元素。让两者都经由这组间接变量，把这份重复限制在 Firefox 与 WebKit 不共用的那些属性上。
-- hover token（`--dsw-alias-scrollbar-hover-l1`／`-l2`）只在伪元素路径上渲染。Firefox 通过 `scrollbar-color` 只表述一个滑块颜色，其 hover 表现由引擎自行推导，因此对 hover 颜色的设计改动在 Chromium 与 Safari 上可见，在 Firefox 上不可见。这是 `scrollbar-color` 本身的限制，不是这张样式表的限制。
+- hover token（`--rlw-alias-scrollbar-hover-l1`／`-l2`）只在伪元素路径上渲染。Firefox 通过 `scrollbar-color` 只表述一个滑块颜色，其 hover 表现由引擎自行推导，因此对 hover 颜色的设计改动在 Chromium 与 Safari 上可见，在 Firefox 上不可见。这是 `scrollbar-color` 本身的限制，不是这张样式表的限制。
 - `body *` 匹配所有元素，涉及的两个属性其效果本就被浏览器限制在实际会滚动的元素上。代价是一个覆盖面很宽的选择器；另一种选择是一个不生效的重新绑定约定。
 - 工作区列表在任何列表长度下都永久少了预留空位那一条宽度。这正是该修复换来的代价：以稳定的行几何，换掉只在列表较短时才可读的时间戳。
 - 调色板中没有轨道 token，因此日后若设计需要不透明轨道，要新增一个别名 token，而不是在这张样式表里写字面颜色。
@@ -79,6 +79,6 @@ headless chromium 绘制的是覆盖式滚动条，而这恰好就是被报告�
 
 两者都要断言，因为各自捕捉的是不同的回归；这一点通过每次只改动一条声明、并把同一个测试里的其余断言静音来确定。只删掉空位声明时 `timeCoveredBy` 仍为 0——此时滚动条是 8px，而行的右内边距也是 8px，于是它紧贴时间戳但并未盖住——失败的是条带那条断言。再把伪元素宽度也删掉（这才是 master 的真实状态）才会产生重叠，此时 `timeCoveredBy` 以 7 变红。在 xvfb 下的有头运行无论哪种状态都看不到这个症状，因为 chromium 在那里画的是经典占位滚动条，`clientWidth` 本来就已经把它排除了。
 
-验证浏览器可见的插件 CSS 需要一次 `pnpm run build:web` 并不执行的重建。`WorkspaceBrowser.module.css` 从不进入 `apps/web/dist`：ui-workspace 以运行时插件方式加载，其 CSS 内联进 `packages/client/ui-workspace/lib/client.js`，由该包自己的 `bundle` 脚本构建。因此只重跑 `build:web` 的反向对照实际测的是旧产物，去掉声明后仍会通过，看起来像测试无效，实际是对照无效。正确做法是先 `pnpm --filter @deepseek-ai/dsh-client-ui-workspace run bundle`，用 grep 在 `lib/client.js` 中确认该声明确实存在或消失，然后再 `build:web`。
+验证浏览器可见的插件 CSS 需要一次 `pnpm run build:web` 并不执行的重建。`WorkspaceBrowser.module.css` 从不进入 `apps/web/dist`：ui-workspace 以运行时插件方式加载，其 CSS 内联进 `packages/client/ui-workspace/lib/client.js`，由该包自己的 `bundle` 脚本构建。因此只重跑 `build:web` 的反向对照实际测的是旧产物，去掉声明后仍会通过，看起来像测试无效，实际是对照无效。正确做法是先 `pnpm --filter @relay-harness/rlh-client-ui-workspace run bundle`，用 grep 在 `lib/client.js` 中确认该声明确实存在或消失，然后再 `build:web`。
 
 `test:web` 原先只运行 `build:web`，因此任何滚动区域或插件 CSS 的改动都会碰到这个陷阱；现在它先运行 `build`，而 `build` 覆盖 `packages/*/*`，从而会重建各插件产物。`check-all` 本来就把 `build` 排在 `build:web` 之前，所以 CI 从未受影响——受影响的只有本地脚本，而这恰恰是「产物过期却通过」最容易被当真的地方。

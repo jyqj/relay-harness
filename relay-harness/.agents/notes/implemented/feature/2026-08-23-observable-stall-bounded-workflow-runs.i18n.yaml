@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-08-23-observable-stall-bounded-workflow-runs.md
-2026-08-23-observable-stall-bounded-workflow-runs.md: bd1ef8348f174912e5c913cce48ff7700c9cb44e
-2026-08-23-observable-stall-bounded-workflow-runs.zh.md: fb904e7c8a56bc3b636318ac4eb662e0a372a3cb
+2026-08-23-observable-stall-bounded-workflow-runs.md: 4d63597ae3d2beec20adbba134af301d0d9ac948
+2026-08-23-observable-stall-bounded-workflow-runs.zh.md: b93657e63ee44c7f9d3188d42dd1465ee2a1da34

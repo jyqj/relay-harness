@@ -1,10 +1,10 @@
-/** Package-owned invariant companion for `@deepseek-ai/dsh-memory-extractor-llm`. */
+/** Package-owned invariant companion for `@relay-harness/rlh-memory-extractor-llm`. */
 
 /* jscpd:ignore-start */
-import type { Context } from '@deepseek-ai/cordis'
-import type { InvariantInstaller } from '@deepseek-ai/dsh-invariants'
+import type { Context } from '@relay-harness/cordis'
+import type { InvariantInstaller } from '@relay-harness/rlh-invariants'
 
-const PACKAGE_NAME = '@deepseek-ai/dsh-memory-extractor-llm'
+const PACKAGE_NAME = '@relay-harness/rlh-memory-extractor-llm'
 export const name = 'memory-extractor-llm-invariant'
 export const inject = ['invariants']
 

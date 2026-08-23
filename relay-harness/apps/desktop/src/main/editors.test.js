@@ -14,7 +14,7 @@ const {
 } = require('./editors.js');
 
 function makeTempDir() {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-editors-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'rlh-editors-'));
   setWorkspaceAuthority(createWorkspaceAuthority({ workspace: dir }));
   return dir;
 }

@@ -153,7 +153,7 @@ export function HoverCard({
       ref={cardRef}
       className={`${css.card}${copyable ? ` ${css.copyable}` : ''}${copied ? ` ${css.feedback}` : ''}`}
       style={{ ...pos, minHeight: copied && copyHeightRef.current !== null ? copyHeightRef.current : undefined }}
-      data-dsh-motion="popover"
+      data-rlh-motion="popover"
       data-state={state}
       aria-hidden={open ? undefined : true}
       role={copyable ? 'button' : undefined}

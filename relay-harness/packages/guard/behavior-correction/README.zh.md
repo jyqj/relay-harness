@@ -1,4 +1,4 @@
-# @deepseek-ai/dsh-behavior-correction
+# @relay-harness/rlh-behavior-correction
 
 [English](README.md) | 中文
 
@@ -10,13 +10,13 @@
 - **未执行代码** —— 在没有任何工具调用的轮次里，收尾回答包含围栏代码块。描述命令或编辑并不等于执行；纠正消息要求模型调用工具，或者不带代码块地收尾。
 - **未验证完成** —— 在没有任何工具调用的轮次里，收尾回答命中完成声明模式，而同一会话更早的轮次有过工具调用。纠正消息要求一次验证性工具调用或给出理由，从而抑制工作会话中"无证据宣布完成"的收尾，同时不影响纯聊天会话（没有历史工具活动就不会被质疑）。
 
-以 `max-tokens` 截断结束的轮次不算偏差，交由 `@deepseek-ai/dsh-token-budget-controller` 处理；本轮发生过任何工具调用的轮次不会被代码块或完成声明天规则质疑。
+以 `max-tokens` 截断结束的轮次不算偏差，交由 `@relay-harness/rlh-token-budget-controller` 处理；本轮发生过任何工具调用的轮次不会被代码块或完成声明天规则质疑。
 
 ## 配置
 
 ```yaml
 - id: behavior-correction
-  name: '@deepseek-ai/dsh-behavior-correction'
+  name: '@relay-harness/rlh-behavior-correction'
   config:
     maxCorrectionsPerTurn: 1       # default; corrections allowed per turn across all detectors
     maxConsecutiveEmpty: 3         # default; consecutive empty closings tolerated before giving up

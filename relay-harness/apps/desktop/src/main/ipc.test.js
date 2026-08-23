@@ -125,9 +125,9 @@ function loadIpc(options = {}) {
     openMarketplace() {},
     openRemote() {},
   });
-  stub('./dsh', {
+  stub('./rlh', {
     resolveNodeBin: () => 'node',
-    resolveDshBin: () => 'dsh',
+    resolveRlhBin: () => 'rlh',
     sourceHarnessStatus: () => ({ present: false, built: false, root: '' }),
   });
   stub('../shared/themes', {
@@ -185,7 +185,7 @@ function loadIpc(options = {}) {
       const allowed = new Set(roles);
       if (!event?.role || !allowed.has(event.role)) {
         const error = new Error('Unauthorized IPC sender');
-        error.code = 'ERR_DSH_IPC_SENDER';
+        error.code = 'ERR_RLH_IPC_SENDER';
         throw error;
       }
       return event.role;
@@ -196,7 +196,7 @@ function loadIpc(options = {}) {
   delete require.cache[ipcPath];
   const { registerIpc } = require('./ipc');
   registerIpc({
-    dsh: options.dsh || { snapshot: () => ({}), logs: [] },
+    rlh: options.rlh || { snapshot: () => ({}), logs: [] },
     harness: null,
     startHarness: async () => {
       startHarnessCalls += 1;
@@ -268,7 +268,7 @@ test('marketplace catalog and plugin channels reject marketplace senders', async
   const ipc = loadIpc();
   try {
     const sender = leftoverMarketplaceEvent();
-    const unauthorized = (error) => error.code === 'ERR_DSH_IPC_SENDER';
+    const unauthorized = (error) => error.code === 'ERR_RLH_IPC_SENDER';
     await assert.rejects(() => ipc.invoke('shell:list-marketplace', sender, {}), unauthorized);
     await assert.rejects(() => ipc.invoke('shell:refresh-marketplace', sender), unauthorized);
     await assert.rejects(() => ipc.invoke('shell:list-installed-plugins', sender), unauthorized);
@@ -283,7 +283,7 @@ test('config surfaces reject leftover marketplace senders', async () => {
   const ipc = loadIpc();
   try {
     const sender = leftoverMarketplaceEvent();
-    const unauthorized = (error) => error.code === 'ERR_DSH_IPC_SENDER';
+    const unauthorized = (error) => error.code === 'ERR_RLH_IPC_SENDER';
     await assert.rejects(() => ipc.invoke('shell:get-config', sender), unauthorized);
     await assert.rejects(() => ipc.invoke('shell:save-config', sender, { theme: 'midnight' }), unauthorized);
     await assert.rejects(() => ipc.invoke('shell:open-external', sender, 'https://example.com'), unauthorized);
@@ -364,7 +364,7 @@ test('shell:install-marketplace-plugin does not restart harness for needsAllowBu
 
 test('shell:install-marketplace-plugin keeps ok when startHarness throws', async () => {
   const ipc = loadIpc({
-    installResult: { ok: true, spec: 'dsh-loop' },
+    installResult: { ok: true, spec: 'rlh-loop' },
     startHarness: async () => {
       throw new Error('spawn failed');
     },
@@ -469,11 +469,11 @@ test('shell:list-wallpaper-catalog forwards a kind query and coerces numbers', a
   }
 });
 
-test('shell:save-boot-log is boot-only and writes dsh.logs not a renderer path', async () => {
-  const dest = path.join(os.tmpdir(), `dshd-boot-ipc-${Date.now()}.log`);
+test('shell:save-boot-log is boot-only and writes rlh.logs not a renderer path', async () => {
+  const dest = path.join(os.tmpdir(), `rlhd-boot-ipc-${Date.now()}.log`);
   const logs = Array.from({ length: 81 }, (_, index) => `[app] line ${index + 1}`);
   const ipc = loadIpc({
-    dsh: {
+    rlh: {
       logs,
       snapshot: () => ({
         state: 'error',
@@ -484,7 +484,7 @@ test('shell:save-boot-log is boot-only and writes dsh.logs not a renderer path',
     showSaveDialog: async () => ({ canceled: false, filePath: dest }),
   });
   try {
-    const unauthorized = (error) => error.code === 'ERR_DSH_IPC_SENDER';
+    const unauthorized = (error) => error.code === 'ERR_RLH_IPC_SENDER';
     await assert.rejects(() => ipc.invoke('shell:save-boot-log', harnessEvent()), unauthorized);
     await assert.rejects(() => ipc.invoke('shell:save-boot-log', leftoverMarketplaceEvent()), unauthorized);
 

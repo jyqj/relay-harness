@@ -1,4 +1,4 @@
-# @deepseek-ai/dsh-token-budget-controller
+# @relay-harness/rlh-token-budget-controller
 
 English | [中文](README.zh.md)
 
@@ -9,13 +9,13 @@ Two bounds keep continuation honest:
 - **Per-turn cap** — at most `maxContinuations` nudges per turn; the counter resets when the turn number changes.
 - **Diminishing-returns detection** — each continuation's produced output (the step's `usage.outputTokens`) is compared against `minUsefulDeltaTokens`; after `maxLowDeltaStreak` consecutive unproductive continuations the controller stops steering, because a model that answers each nudge with near-empty output has nothing left to say. A continuation whose usage is unreported counts as productive — the cap alone bounds those.
 
-A turn that closes on a plain `stop` finish is NOT this controller's domain and is left to other stop-boundary listeners (including `@deepseek-ai/dsh-behavior-correction`).
+A turn that closes on a plain `stop` finish is NOT this controller's domain and is left to other stop-boundary listeners (including `@relay-harness/rlh-behavior-correction`).
 
 ## Config
 
 ```yaml
 - id: token-budget-controller
-  name: '@deepseek-ai/dsh-token-budget-controller'
+  name: '@relay-harness/rlh-token-budget-controller'
   config:
     maxContinuations: 8        # default; continue nudges allowed per turn
     minUsefulDeltaTokens: 500  # default; output tokens below which a continuation is unproductive

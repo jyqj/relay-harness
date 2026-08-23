@@ -1,8 +1,8 @@
-# @deepseek-ai/dsh-hooks-codex
+# @relay-harness/rlh-hooks-codex
 
 English | [中文](README.zh.md)
 
-A cordis plugin that runs the supported subset of a user's existing **Codex** hook config on the harness's canonical interception points. The **Codex dialect** half of the hooks subsystem. The dialect-agnostic primitives come from [`@deepseek-ai/dsh-hook-protocol`](../hook-protocol/README.md); this bridge owns the Codex-shaped payloads, matcher mode, and decision mapping.
+A cordis plugin that runs the supported subset of a user's existing **Codex** hook config on the harness's canonical interception points. The **Codex dialect** half of the hooks subsystem. The dialect-agnostic primitives come from [`@relay-harness/rlh-hook-protocol`](../hook-protocol/README.md); this bridge owns the Codex-shaped payloads, matcher mode, and decision mapping.
 
 This bridge implements a deliberate subset of Codex's current hook protocol:
 
@@ -17,7 +17,7 @@ A native cordis plugin could do everything this bridge does, more powerfully; th
 ## Config
 
 ```ts
-import type { Config } from '@deepseek-ai/dsh-hooks-codex'
+import type { Config } from '@relay-harness/rlh-hooks-codex'
 const config: Config = {
   configPath: '/path/to/.codex/hooks.json', // required
   model: 'deepseek-v4',                      // optional: stamped on every payload (Codex includes `model`)
@@ -29,12 +29,12 @@ const config: Config = {
 In a `cordis.yml`:
 
 ```yaml
-- dsh-hooks-codex:
+- rlh-hooks-codex:
     configPath: ./.codex/hooks.json
     model: deepseek-v4
 ```
 
-An absolute `configPath` names one shared file. A relative path is discovered independently for each session: starting at `session.header.cwd`, the bridge checks that path at each ancestor through the nearest directory containing `.git`, without crossing that project root; agent-less calls start at the process cwd. Paths containing `..` are rejected. Parsed configs are cached by absolute path plus filesystem identity, size, mtime, and ctime, so different workspaces stay isolated and an edit is picked up at the next hook point. Missing files mean no hooks; discovery or parse failures are contained and deduplicated until the path or file version changes. An invalid regex reports its pattern and event. Only sync `type: 'command'` hooks run — a non-command or `async: true` hook is parsed-and-skipped with a warning. A hook accepts `timeout` or the `timeoutSec` alias; one that sets neither runs under the protocol's reference default (`DEFAULT_HOOK_TIMEOUT_MS` from `dsh-hook-protocol`, 10 minutes). Events outside the five bridge-supported points are dropped at parse.
+An absolute `configPath` names one shared file. A relative path is discovered independently for each session: starting at `session.header.cwd`, the bridge checks that path at each ancestor through the nearest directory containing `.git`, without crossing that project root; agent-less calls start at the process cwd. Paths containing `..` are rejected. Parsed configs are cached by absolute path plus filesystem identity, size, mtime, and ctime, so different workspaces stay isolated and an edit is picked up at the next hook point. Missing files mean no hooks; discovery or parse failures are contained and deduplicated until the path or file version changes. An invalid regex reports its pattern and event. Only sync `type: 'command'` hooks run — a non-command or `async: true` hook is parsed-and-skipped with a warning. A hook accepts `timeout` or the `timeoutSec` alias; one that sets neither runs under the protocol's reference default (`DEFAULT_HOOK_TIMEOUT_MS` from `rlh-hook-protocol`, 10 minutes). Events outside the five bridge-supported points are dropped at parse.
 
 The hooks themselves run in the agent's session workspace: for the agent-scoped points the bridge passes the session's `cwd` as the hook process's working directory, so a hook operates in the user's project tree, not the server launch dir.
 
@@ -52,7 +52,7 @@ A tool call's payload carries the real `tool_name` (the same value the matcher t
 
 Every agent-scoped stdin payload carries `session_id` and `transcript_path`. The bridge resolves the latter through `ctx.sessionPersistence.locate(session.header)` when available and otherwise sends `null`, preserving the Codex `string | null` shape. Lookup does not create or flush the artifact, so a path can be absent before the first turn-end checkpoint or omit the current open turn.
 
-`SessionStart` records only its source at the emit. The first nonempty pre-step runs and awaits it before `UserPromptSubmit`, so its context reaches the first model request. Every point runs under the caller signal fused with the bridge lifetime and is tracked; disposing the bridge aborts still-running hook processes and waits for their run chains to settle (`createDetachedRuns` in `dsh-hook-protocol`).
+`SessionStart` records only its source at the emit. The first nonempty pre-step runs and awaits it before `UserPromptSubmit`, so its context reaches the first model request. Every point runs under the caller signal fused with the bridge lifetime and is tracked; disposing the bridge aborts still-running hook processes and waits for their run chains to settle (`createDetachedRuns` in `rlh-hook-protocol`).
 
 ## Context source
 

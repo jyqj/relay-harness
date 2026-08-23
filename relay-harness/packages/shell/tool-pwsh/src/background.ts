@@ -1,13 +1,13 @@
 /**
  * Generic-task adaptation for background pwsh process handles — the shell-agnostic
- * twin of `dsh-tool-bash`'s background adaptation.
+ * twin of `rlh-tool-bash`'s background adaptation.
  *
- * @module @deepseek-ai/dsh-tool-pwsh/background
+ * @module @relay-harness/rlh-tool-pwsh/background
  */
 
-import type { ShellProcess } from '@deepseek-ai/dsh-shell'
+import type { ShellProcess } from '@relay-harness/rlh-shell'
 
-/* jscpd:ignore-start -- deliberate twin of dsh-tool-bash/background.ts (Agent Note). */
+/* jscpd:ignore-start -- deliberate twin of rlh-tool-bash/background.ts (Agent Note). */
 
 /**
  * Map a settled background process onto the generic task-outcome vocabulary:

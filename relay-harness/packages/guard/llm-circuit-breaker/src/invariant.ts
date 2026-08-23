@@ -1,11 +1,11 @@
 /**
  * Package invariant companion for the LLM circuit breaker.
- * @module @deepseek-ai/dsh-llm-circuit-breaker/invariant
+ * @module @relay-harness/rlh-llm-circuit-breaker/invariant
  */
 
 /* jscpd:ignore-start */
-import type { Context } from '@deepseek-ai/cordis'
-import type { InvariantInstaller } from '@deepseek-ai/dsh-invariants'
+import type { Context } from '@relay-harness/cordis'
+import type { InvariantInstaller } from '@relay-harness/rlh-invariants'
 
 /** Cordis companion plugin name. */
 export const name = 'llm-circuit-breaker-invariant'
@@ -20,5 +20,5 @@ const install: InvariantInstaller = () => {}
  * @returns the registration disposer after setup.
  */
 export const apply = (ctx: Context): Promise<() => void> =>
-  Promise.resolve(ctx.invariants.register('@deepseek-ai/dsh-llm-circuit-breaker', install))
+  Promise.resolve(ctx.invariants.register('@relay-harness/rlh-llm-circuit-breaker', install))
 /* jscpd:ignore-end */

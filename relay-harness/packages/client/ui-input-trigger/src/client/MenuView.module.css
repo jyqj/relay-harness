@@ -20,15 +20,15 @@
   overflow: hidden;
   /* Elevated surface: the scrollbar thumb takes the l2 elevation tokens
      (see ui-theme styles/scrollbar.css for the rebinding contract). */
-  --dsh-scrollbar-thumb: var(--dsw-alias-scrollbar-bg-l2);
-  --dsh-scrollbar-thumb-hover: var(--dsw-alias-scrollbar-hover-l2);
+  --rlh-scrollbar-thumb: var(--rlw-alias-scrollbar-bg-l2);
+  --rlh-scrollbar-thumb-hover: var(--rlw-alias-scrollbar-hover-l2);
   padding: 4px;
   display: flex;
   flex-direction: column;
-  border: 1px solid var(--dsw-alias-border-inverted);
+  border: 1px solid var(--rlw-alias-border-inverted);
   border-radius: 12px;
-  background: var(--dsw-specific-menu);
-  box-shadow: var(--dsw-shadow-lv3);
+  background: var(--rlw-specific-menu);
+  box-shadow: var(--rlw-shadow-lv3);
 }
 
 .viewport {
@@ -51,20 +51,20 @@
   cursor: pointer;
   font-size: 14px;
   line-height: 22px;
-  color: var(--dsw-alias-label-primary);
+  color: var(--rlw-alias-label-primary);
   text-align: left;
 }
 
 .item:hover,
 .item.active {
-  background: var(--dsw-alias-interactive-bg-hover);
+  background: var(--rlw-alias-interactive-bg-hover);
 }
 
 .sectionTitle {
   flex: none;
   min-height: 26px;
   padding: 6px 10px 2px;
-  color: var(--dsw-alias-label-tertiary);
+  color: var(--rlw-alias-label-tertiary);
   font-size: 12px;
   font-weight: 500;
   line-height: 18px;
@@ -81,7 +81,7 @@
   height: 16px;
   align-items: center;
   justify-content: center;
-  color: var(--dsw-alias-label-tertiary);
+  color: var(--rlw-alias-label-tertiary);
 }
 
 .itemName {
@@ -98,7 +98,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: var(--dsw-alias-label-tertiary);
+  color: var(--rlw-alias-label-tertiary);
 }
 
 /* Heading row above a source group: non-interactive small grey text,
@@ -107,7 +107,7 @@
   padding: 8px 10px;
   font-size: 12px;
   line-height: 16px;
-  color: var(--dsw-alias-label-tertiary);
+  color: var(--rlw-alias-label-tertiary);
 }
 
 /* Pending-source row: same cell metrics, dimmed label. */
@@ -118,5 +118,5 @@
   padding: 8px 10px;
   font-size: 14px;
   line-height: 22px;
-  color: var(--dsw-alias-label-dimmed);
+  color: var(--rlw-alias-label-dimmed);
 }

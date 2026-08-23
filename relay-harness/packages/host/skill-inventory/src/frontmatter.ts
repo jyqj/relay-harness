@@ -1,6 +1,6 @@
 /**
  * YAML frontmatter read/write for Settings-owned skill files.
- * @module @deepseek-ai/dsh-host-skill-inventory/frontmatter
+ * @module @relay-harness/rlh-host-skill-inventory/frontmatter
  */
 
 import { parse as parseYaml, stringify as stringifyYaml } from 'yaml'

@@ -8,17 +8,17 @@ Status: implemented
 
 外观页会把自定义家族、玻璃透明度和可选背景图叠在一起。其中两层会让选中铬架和背景图本身消失。
 
-非 DeepSeek 家族的 `--dsw-specific-sidebar-nav-item-active` 是画布上约 10% 的强调色洗色。设置导航坐在 `--dsw-alias-bg-layer-2` 上，而不是画布上，因此宣纸这类奶油色家族洗出的薄荷绿与对话框几乎无法区分。同一 token 也绘制会话侧栏选中行。
+非 DeepSeek 家族的 `--rlw-specific-sidebar-nav-item-active` 是画布上约 10% 的强调色洗色。设置导航坐在 `--rlw-alias-bg-layer-2` 上，而不是画布上，因此宣纸这类奶油色家族洗出的薄荷绿与对话框几乎无法区分。同一 token 也绘制会话侧栏选中行。
 
-`wallpaperCanvasSolidity` 把玻璃 100% 映射成完全不透明的 `--dsw-alias-bg-base`。毛玻璃和像素化只过滤背景图层，无法让图透过实心画布。因此已选背景图会出现在外观页预览里，却从主界面消失。
+`wallpaperCanvasSolidity` 把玻璃 100% 映射成完全不透明的 `--rlw-alias-bg-base`。毛玻璃和像素化只过滤背景图层，无法让图透过实心画布。因此已选背景图会出现在外观页预览里，却从主界面消失。
 
 第三个缺陷只发生在主题图书馆卡片：`.half` 被编辑器 fieldset 复用，预览半区吃到 `border-radius: 12px`，而 `.halfActive::after` 仍是直角，对不齐卡片的 14px 圆角。
 
 ## 决策
 
-`deriveThemeTokens` 把强调色混进画布，直到 `--dsw-specific-sidebar-nav-item-active` 相对 `--dsw-alias-bg-layer-2` 达到 1.25 对比下限，`--dsw-specific-sidebar-nav-item-active-accent` 达到 1.4。设置里的 `.navCell.active` 使用 accent token，因为该行坐在 layer-2 上。会话侧栏选中行共用这档更浓的洗色。
+`deriveThemeTokens` 把强调色混进画布，直到 `--rlw-specific-sidebar-nav-item-active` 相对 `--rlw-alias-bg-layer-2` 达到 1.25 对比下限，`--rlw-specific-sidebar-nav-item-active-accent` 达到 1.4。设置里的 `.navCell.active` 使用 accent token，因为该行坐在 layer-2 上。会话侧栏选中行共用这档更浓的洗色。
 
-混入背景图时，画布填充不超过 `MAX_WALLPAPER_CANVAS_SOLIDITY`（45%，与玻璃滑杆默认 80 时的画布值相同）。对话列、详情列和工作台列不再重涂 `--dsw-alias-bg-base`；AppFrame 把该填充涂在整框上。侧栏混合取未帽定画布曲线与玻璃的中值，因此玻璃 100% 时轨完全不透明，对话画布仍受上限约束。侧栏列与 SidebarRoot 都在该画布上再涂 `--dsw-specific-sidebar-fill`，中档玻璃时轨仍比对话更厚。100% 混合写入实色，不用 `color-mix`。侧栏列没有右边框；靠填充对比和对话区分，避免一条不透明的 1px 线切开背景图。浮起表层仍跟随玻璃滑杆，包括 100%。手机远程弹窗涂 `--dsw-alias-bg-layer-2`，不用被帽定的画布。外观文案写明玻璃越实心背景图越看不清；已选图且玻璃至少 90% 时再出一句提示。毛玻璃和像素化只过滤背景图位图，不改变铬架实心度。
+混入背景图时，画布填充不超过 `MAX_WALLPAPER_CANVAS_SOLIDITY`（45%，与玻璃滑杆默认 80 时的画布值相同）。对话列、详情列和工作台列不再重涂 `--rlw-alias-bg-base`；AppFrame 把该填充涂在整框上。侧栏混合取未帽定画布曲线与玻璃的中值，因此玻璃 100% 时轨完全不透明，对话画布仍受上限约束。侧栏列与 SidebarRoot 都在该画布上再涂 `--rlw-specific-sidebar-fill`，中档玻璃时轨仍比对话更厚。100% 混合写入实色，不用 `color-mix`。侧栏列没有右边框；靠填充对比和对话区分，避免一条不透明的 1px 线切开背景图。浮起表层仍跟随玻璃滑杆，包括 100%。手机远程弹窗涂 `--rlw-alias-bg-layer-2`，不用被帽定的画布。外观文案写明玻璃越实心背景图越看不清；已选图且玻璃至少 90% 时再出一句提示。毛玻璃和像素化只过滤背景图位图，不改变铬架实心度。
 
 图书馆预览半区使用独立圆角（`14px 0 0 0` / `0 14px 0 0`）；编辑器 fieldset 使用 `.editorHalf`。`.halfActive::after` 继承 `border-radius`。
 
@@ -42,4 +42,4 @@ Status: implemented
 
 ## 验证
 
-`derive.client.spec.ts` 用宣纸种子（`#0f766e` / `#f3efe6` / `#1c1915`）断言两个 nav-item 填充相对 layer-2 不低于对比下限。`wallpaper.client.spec.ts` 钉住玻璃 80、100 与 140 时画布实心度为 45%，混合后的 `--dsw-alias-bg-base` 使用该百分比，侧栏填充为中值混合（玻璃 80 时 63%）、玻璃 100 时为实色浮起色，浮起的 layer-1 在玻璃 100 时亦为实色。`appearance-section.client.spec.tsx` 钉住已选图且玻璃 100% 时出现背景图提示、80% 时不出现，以及字体名说明。
+`derive.client.spec.ts` 用宣纸种子（`#0f766e` / `#f3efe6` / `#1c1915`）断言两个 nav-item 填充相对 layer-2 不低于对比下限。`wallpaper.client.spec.ts` 钉住玻璃 80、100 与 140 时画布实心度为 45%，混合后的 `--rlw-alias-bg-base` 使用该百分比，侧栏填充为中值混合（玻璃 80 时 63%）、玻璃 100 时为实色浮起色，浮起的 layer-1 在玻璃 100 时亦为实色。`appearance-section.client.spec.tsx` 钉住已选图且玻璃 100% 时出现背景图提示、80% 时不出现，以及字体名说明。

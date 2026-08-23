@@ -4,9 +4,9 @@ import { chmod, mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises'
 import { homedir, tmpdir } from 'node:os'
 import { basename, join } from 'node:path'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { Context } from '@deepseek-ai/cordis'
-import { DirectoryPickerError } from '@deepseek-ai/dsh-host-directory-picker'
-import type { DirectoryPickerBrowseCapability } from '@deepseek-ai/dsh-host-directory-picker'
+import { Context } from '@relay-harness/cordis'
+import { DirectoryPickerError } from '@relay-harness/rlh-host-directory-picker'
+import type { DirectoryPickerBrowseCapability } from '@relay-harness/rlh-host-directory-picker'
 import BrowseDirectoryPicker, {
   ancestryCrumbs, boundedInsert, canOpenDirectory, fullyQualified, isWindowsVolumeRoot, listWindowsVolumes, raceAbort,
   WINDOWS_VOLUME_ROOT,
@@ -18,7 +18,7 @@ let capability: DirectoryPickerBrowseCapability
 let dispose: () => Promise<void>
 
 beforeAll(async () => {
-  root = await mkdtemp(join(tmpdir(), 'dsh-browse-'))
+  root = await mkdtemp(join(tmpdir(), 'rlh-browse-'))
   await mkdir(join(root, 'projects'))
   await mkdir(join(root, 'projects', 'harness'))
   await mkdir(join(root, '.hidden-dir'))
@@ -197,7 +197,7 @@ describe('BrowseDirectoryPicker', () => {
     // Incomplete UNC prefixes collapse to drive-relative roots under resolve().
     expect(fullyQualified('\\\\', 'win32')).toBe(false)
     expect(fullyQualified('\\\\server', 'win32')).toBe(false)
-    expect(fullyQualified('\\\\.\\dsh-computer', 'win32')).toBe(true)
+    expect(fullyQualified('\\\\.\\rlh-computer', 'win32')).toBe(true)
     expect(fullyQualified(WINDOWS_VOLUME_ROOT, 'win32')).toBe(true)
   })
 

@@ -18,13 +18,13 @@ workflow 事件流已经公开足够事实，可供外部构建进度视图，�
 
 ## Alternatives considered
 
-**把 Symphony 的 Tracker Orchestrator 复制进 Workflow 或 Agent Loop。** 不予采用，因为 Issue polling、Provider 原生 ticket 写入与 per-issue checkout 策略都属于部署关注点。把它们折叠进 `agent-loop` 或 `workflow-worker-thread` 会重复 DSH 的 Session、Subagent、Schedule 与 Workspace 所有权；后续 opt-in Automation Layer 保持了这一分离。
+**把 Symphony 的 Tracker Orchestrator 复制进 Workflow 或 Agent Loop。** 不予采用，因为 Issue polling、Provider 原生 ticket 写入与 per-issue checkout 策略都属于部署关注点。把它们折叠进 `agent-loop` 或 `workflow-worker-thread` 会重复 RLH 的 Session、Subagent、Schedule 与 Workspace 所有权；后续 opt-in Automation Layer 保持了这一分离。
 
 **从服务公开活动 `WorkflowRun` 对象。** 不予采用，因为观察者会因此取得取消与 dispose 权限。分离事实保留既有的持有方所有权。
 
 **持久化活动运行快照。** 不予采用，因为进程重启无法复活 worker thread 或任意脚本状态。既有 workflow journal 会恢复已完成 host call；把它的行展示为活动执行会产生错误事实。
 
-**默认启用固定 watchdog。** 不予采用，因为 DSH 没有适用于所有远程子 agent 静默工作的统一上限。部署需显式设置大于最长预期协议静默时间的期限。
+**默认启用固定 watchdog。** 不予采用，因为 RLH 没有适用于所有远程子 agent 静默工作的统一上限。部署需显式设置大于最长预期协议静默时间的期限。
 
 **只在模型可见叙述后重置。** 不予采用，因为即使 workflow 没有发出 phase 或 log，子 agent 发布、结果转发与 dispose acknowledgement 也属于真实进展。
 

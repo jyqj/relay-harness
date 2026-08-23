@@ -3,10 +3,10 @@
  *
  * The adapter boundary already detaches serializable facts (`LlmFailure`);
  * this module folds those facts into the recovery class a policy executor
- * routes on, so `dsh-llm-retry` (and future credential-pool or fallback
+ * routes on, so `rlh-llm-retry` (and future credential-pool or fallback
  * policies) share one classification instead of re-deriving it inline.
  *
- * @module @deepseek-ai/dsh-llm/failure-classification
+ * @module @relay-harness/rlh-llm/failure-classification
  */
 
 import { CONTEXT_WINDOW_EXCEEDED_CODE, EMPTY_RESPONSE_CODE } from './error.ts'

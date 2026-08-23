@@ -1,4 +1,4 @@
-# `@deepseek-ai/dsh-memory`
+# `@relay-harness/rlh-memory`
 
 English | [中文](README.zh.md)
 
@@ -8,7 +8,7 @@ Service Definitions for `ctx.longTermMemory` and `ctx.memoryExtractionQueue`. Th
 
 ## Model Experience
 
-Indirectly, through `@deepseek-ai/dsh-memory-agent` recall messages, `@deepseek-ai/dsh-memory-extractor-llm` auxiliary requests, and `@deepseek-ai/dsh-tool-memory` tool calls.
+Indirectly, through `@relay-harness/rlh-memory-agent` recall messages, `@relay-harness/rlh-memory-extractor-llm` auxiliary requests, and `@relay-harness/rlh-tool-memory` tool calls.
 
 #### KV Cache effect
 

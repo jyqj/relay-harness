@@ -2,7 +2,7 @@
 
 import { useEffect, useSyncExternalStore } from 'react'
 import clsx from 'clsx'
-import type { SessionId, SessionListState, SessionSummary } from '@deepseek-ai/dsh-client-runtime/client'
+import type { SessionId, SessionListState, SessionSummary } from '@relay-harness/rlh-client-runtime/client'
 import type {
   ConversationSessionHeaderSlotProps, ConversationSessionSlotProps,
 } from '../contract/slots.ts'
@@ -73,7 +73,7 @@ export function ConversationSessionHeader({
   const origin = useSessions(s => s.byId[sessionId]?.origin)
   const composerPhase = useSession(s => s.composerPhase)
   const blank = useSession(s => s.blank)
-  const hideChrome = blank && composerPhase === 'blank' && origin !== 'dshbot'
+  const hideChrome = blank && composerPhase === 'blank' && origin !== 'rlhbot'
 
   return (
     <header
@@ -81,10 +81,10 @@ export function ConversationSessionHeader({
       aria-hidden={hideChrome || undefined}
     >
       {hideChrome ? (
-        <div className={css.blankCaption} data-dshd-caption="blank" />
+        <div className={css.blankCaption} data-rlhd-caption="blank" />
       ) : (
         <>
-          <div className={css.titleRow} data-dshd-caption="title">
+          <div className={css.titleRow} data-rlhd-caption="title">
             <div className={css.titleCluster}>
               <nav className={css.crumbs} aria-label={t('session.hierarchy')}>
                 {ancestry.map((summary, index) => {
@@ -169,7 +169,7 @@ export function ConversationSession({
     releaseSessionImages(sessionId)
   }, [releaseSessionImages, sessionId])
 
-  if (blank && composerPhase === 'blank' && origin !== 'dshbot') return null
+  if (blank && composerPhase === 'blank' && origin !== 'rlhbot') return null
   return (
     <div className={css.viewArea}>
       {active !== undefined && renderSlot('conversation.view', {

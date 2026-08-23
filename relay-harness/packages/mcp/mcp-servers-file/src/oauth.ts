@@ -1,6 +1,6 @@
 /**
  * MCP HTTP OAuth 2.1 authorization-code + PKCE helper used by Settings login.
- * @module @deepseek-ai/dsh-mcp-servers-file/oauth
+ * @module @relay-harness/rlh-mcp-servers-file/oauth
  */
 
 import { createHash, randomBytes } from 'node:crypto'
@@ -147,7 +147,7 @@ async function registerClient(
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({
-      client_name: 'DeepSeek Harness',
+      client_name: 'Relay Harness',
       redirect_uris: [redirectUri],
       grant_types: ['authorization_code', 'refresh_token'],
       response_types: ['code'],
@@ -267,7 +267,7 @@ function createListener(): Promise<McpOAuthListener> {
         pending = undefined
         return
       }
-      res.writeHead(200, { 'content-type': 'text/plain; charset=utf-8' }).end('Login complete. You can return to DeepSeek Harness.')
+      res.writeHead(200, { 'content-type': 'text/plain; charset=utf-8' }).end('Login complete. You can return to Relay Harness.')
       pending.resolve(code)
       pending = undefined
     })

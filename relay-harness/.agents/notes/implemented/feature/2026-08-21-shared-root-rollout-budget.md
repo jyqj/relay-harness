@@ -12,9 +12,9 @@ The accounting must not charge a fork's copied history again, must remain isolat
 
 ## Decision
 
-`@deepseek-ai/dsh-rollout-budget-controller` is an opt-in guard plugin with a required `limitTokens` and required `reminderAtRemainingTokens`. No package or base-bundle default invents a deployment spend ceiling. Optional `samplingTokenWeight` and `prefillTokenWeight` default to one and must be finite and non-negative.
+`@relay-harness/rlh-rollout-budget-controller` is an opt-in guard plugin with a required `limitTokens` and required `reminderAtRemainingTokens`. No package or base-bundle default invents a deployment spend ceiling. Optional `samplingTokenWeight` and `prefillTokenWeight` default to one and must be finite and non-negative.
 
-The plugin resolves each local Session to its highest currently live durable ancestor and owns one process-local ledger per root id. It consumes each Session event sequence once and ignores the fork prefix below `SessionHeader.seedLength`. An `assistant/message` with usage contributes `max(0, outputTokens) × samplingTokenWeight + max(0, inputTokens) × prefillTokenWeight`; DSH's input bucket is already uncached, so cache-read and cache-write buckets are excluded.
+The plugin resolves each local Session to its highest currently live durable ancestor and owns one process-local ledger per root id. It consumes each Session event sequence once and ignores the fork prefix below `SessionHeader.seedLength`. An `assistant/message` with usage contributes `max(0, outputTokens) × samplingTokenWeight + max(0, inputTokens) × prefillTokenWeight`; RLH's input bucket is already uncached, so cache-read and cache-write buckets are excluded.
 
 Each Agent derives delivered reminder levels from durable plugin-sourced user messages in its own log. At pre-step, after delegating to later admission listeners, the controller appends at most one reminder for the greatest newly crossed threshold. A restored Agent therefore does not repeat a recorded level, while a new descendant receives the root's current remainder on its first request after a threshold.
 
@@ -36,7 +36,7 @@ The per-root concurrency admission mechanism is separate and is owned by the [ro
 
 **Persist a process-global ledger in the first version.** Rejected because correct cross-process enforcement requires one transactional store, identity lifetime, and lease protocol. A partial file write or per-session copy would create split-brain budgets. The opt-in first version states its process-local reset explicitly.
 
-**Count cache reads as full prefill.** Rejected because the imported prior-art formula weights non-cached input, and DSH already normalizes `inputTokens` to that bucket. Charging cache fields again would double-count.
+**Count cache reads as full prefill.** Rejected because the imported prior-art formula weights non-cached input, and RLH already normalizes `inputTokens` to that bucket. Charging cache fields again would double-count.
 
 ## Consequences
 

@@ -1,9 +1,9 @@
 node_modules/
-!vendor/dshmarket/node_modules/
-!vendor/dshmarket/node_modules/**
+!vendor/rlhmarket/node_modules/
+!vendor/rlhmarket/node_modules/**
 dist/
-!vendor/dshmarket/node_modules/**/dist/
-!vendor/dshmarket/node_modules/**/dist/**
+!vendor/rlhmarket/node_modules/**/dist/
+!vendor/rlhmarket/node_modules/**/dist/**
 dist-release/
 out/
 /release/

@@ -12,7 +12,7 @@ Status: implemented
 
 工作区指令基线和作用域增量将适用的操作方指令文件标记为生效且必须遵循的运行配置。所有随附的编码 persona 都携带相同的操作方权威性指令，包括会屏蔽后续提示词区段的完整 minimal persona。
 
-基础组合把 `DSH_PERMISSION_MODE` 的默认值设为 `danger-full-access`；由此推导的审批策略为 `never`，权限预设服务也会让新会话解析为 `danger-full-access`。`DSH_PERMISSION_MODE`、持久化设置和显式会话切换仍可选择 `read-only` 或 `workspace-write`，对应的沙箱实现与审批语义保持有效。
+基础组合把 `RLH_PERMISSION_MODE` 的默认值设为 `danger-full-access`；由此推导的审批策略为 `never`，权限预设服务也会让新会话解析为 `danger-full-access`。`RLH_PERMISSION_MODE`、持久化设置和显式会话切换仍可选择 `read-only` 或 `workspace-write`，对应的沙箱实现与审批语义保持有效。
 
 `never` 的运行时上下文语句同时说明该策略的两面：完全访问操作不需要审批，仍需审批的操作会被自动拒绝。它不会要求模型回避当前工具 schema 可能公开的提权参数。
 
@@ -22,7 +22,7 @@ Status: implemented
 
 **把所有沙箱拒绝规则改为允许规则。** 这会使显式选择的 `read-only` 和 `workspace-write` 与实际强制执行不一致。保留这些可选模式，可以在不削弱无限制默认值的前提下为部署提供真实限制路径。
 
-**增加第二个全局提示词文件。** `$DSH_HOME/AGENTS.md` 和现有指令发现路径已经提供可编辑、由操作方持有的来源。并行增加 `prompt-inject.md` 会造成重复所有权，并需要新增发现、重放和文档行为。
+**增加第二个全局提示词文件。** `$RLH_HOME/AGENTS.md` 和现有指令发现路径已经提供可编辑、由操作方持有的来源。并行增加 `prompt-inject.md` 会造成重复所有权，并需要新增发现、重放和文档行为。
 
 ## 后果
 

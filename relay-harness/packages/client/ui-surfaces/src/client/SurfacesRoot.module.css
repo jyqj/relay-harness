@@ -3,7 +3,7 @@
   flex-direction: column;
   height: 100%;
   min-width: 0;
-  /* AppFrame already paints `--dsw-alias-bg-base` and the column hairline. */
+  /* AppFrame already paints `--rlw-alias-bg-base` and the column hairline. */
 }
 
 .body {

@@ -2,8 +2,8 @@
 
 import type { ApiProxy, HostFrame, MuxFrame, RpcRequest, ServerRequest } from './api.ts'
 import { AbstractApiClient, RpcId } from './api.ts'
-import { hostFrameSchema, muxFrameSchema } from '@deepseek-ai/dsh-host-apiproxy/api/events.schema'
-import { serverRequestSchema } from '@deepseek-ai/dsh-host-apiproxy/api/rpc.schema'
+import { hostFrameSchema, muxFrameSchema } from '@relay-harness/rlh-host-apiproxy/api/events.schema'
+import { serverRequestSchema } from '@relay-harness/rlh-host-apiproxy/api/rpc.schema'
 import { HOST_EVENTS_PATH, MUX_EVENTS_PATH } from '../api-path.ts'
 import { randomUuid } from './random-uuid.ts'
 

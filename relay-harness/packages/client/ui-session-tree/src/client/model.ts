@@ -1,7 +1,7 @@
-import type { HistoryEntry, SessionId } from '@deepseek-ai/dsh-client-connection/client'
+import type { HistoryEntry, SessionId } from '@relay-harness/rlh-client-connection/client'
 import type {
   SessionListState, SessionSummary, WorkspaceListState,
-} from '@deepseek-ai/dsh-client-runtime/client'
+} from '@relay-harness/rlh-client-runtime/client'
 import type { SessionTreeFilterMode } from './store.ts'
 
 const CARD_X_GAP = 350

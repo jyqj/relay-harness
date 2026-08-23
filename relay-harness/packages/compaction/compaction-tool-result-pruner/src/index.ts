@@ -1,18 +1,18 @@
 /**
  * Replay-safe, model-free tool-result pruning service.
  *
- * @module @deepseek-ai/dsh-compaction-tool-result-pruner
+ * @module @relay-harness/rlh-compaction-tool-result-pruner
  */
 
-import { Context, Service } from '@deepseek-ai/cordis'
-import z from '@deepseek-ai/schemastery'
-import { freezeMessage } from '@deepseek-ai/dsh-llm'
-import type { ContentBlock } from '@deepseek-ai/dsh-llm'
-import type { Session, SessionEvent, ToolResultMessage } from '@deepseek-ai/dsh-session'
+import { Context, Service } from '@relay-harness/cordis'
+import z from '@relay-harness/schemastery'
+import { freezeMessage } from '@relay-harness/rlh-llm'
+import type { ContentBlock } from '@relay-harness/rlh-llm'
+import type { Session, SessionEvent, ToolResultMessage } from '@relay-harness/rlh-session'
 // Type-only: the `compaction/*` SessionEventMap merges (the shadow-price event).
-import type {} from '@deepseek-ai/dsh-compaction'
+import type {} from '@relay-harness/rlh-compaction'
 // Type-only: the `ctx.tokenMeter` Context merge for the declared injection.
-import type {} from '@deepseek-ai/dsh-token-meter'
+import type {} from '@relay-harness/rlh-token-meter'
 import { codePointLength, DEFAULTS, PRUNE_MARKER, resolveConfig } from './config.ts'
 import type {
   PrunedEntry,
@@ -29,7 +29,7 @@ export type {
   ToolResultPruneConfig,
 } from './types.ts'
 
-declare module '@deepseek-ai/cordis' {
+declare module '@relay-harness/cordis' {
   interface Context {
     toolResultPruner: ToolResultPruner
   }

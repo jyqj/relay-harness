@@ -12,7 +12,7 @@ const stampCodeEl = document.getElementById('stamp-code');
 
 const HINTS = {
   idle: '等待启动。',
-  starting: '本机 dsh web 启动中。关闭应用时服务一并退出。',
+  starting: '本机 rlh web 启动中。关闭应用时服务一并退出。',
   ready: '正在打开 Web UI。',
   stopping: '正在停止运行时。',
   error: '可立即重启，或根据日志调整配置。',

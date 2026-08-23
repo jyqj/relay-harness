@@ -1,15 +1,15 @@
 /**
  * Host Remote for listing and mutating filesystem-backed skills.
- * @module @deepseek-ai/dsh-host-skill-inventory
+ * @module @relay-harness/rlh-host-skill-inventory
  */
 
 import { access, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { dirname, join, resolve } from 'node:path'
-import type { Context } from '@deepseek-ai/cordis'
-import { resolveDshHome } from '@deepseek-ai/dsh-home-paths'
-import { isSkillName, type SkillDefinition, type SkillRegistry, type SkillSummary, type SkillViewOptions } from '@deepseek-ai/dsh-skill'
-import type {} from '@deepseek-ai/dsh-skill'
-import { TypertLookupFailure, TypertRemoteService, Remote } from '@deepseek-ai/dsh-typert-protocol'
+import type { Context } from '@relay-harness/cordis'
+import { resolveRlhHome } from '@relay-harness/rlh-home-paths'
+import { isSkillName, type SkillDefinition, type SkillRegistry, type SkillSummary, type SkillViewOptions } from '@relay-harness/rlh-skill'
+import type {} from '@relay-harness/rlh-skill'
+import { TypertLookupFailure, TypertRemoteService, Remote } from '@relay-harness/rlh-typert-protocol'
 import type {} from 'zod'
 import { parseSkillMarkdown, renderSkillInvocationMarkdown, renderSkillMarkdown } from './frontmatter.ts'
 import type {
@@ -27,8 +27,8 @@ import type {
 export type * from './types.ts'
 export { parseSkillMarkdown, renderSkillMarkdown } from './frontmatter.ts'
 
-const WRITABLE_ALWAYS = new Set(['user-dsh', 'user-agents'])
-const WRITABLE_WITH_CWD = new Set(['project-dsh', 'project-agents'])
+const WRITABLE_ALWAYS = new Set(['user-rlh', 'user-agents'])
+const WRITABLE_WITH_CWD = new Set(['project-rlh', 'project-agents'])
 
 interface ResolvedSkillView {
   readonly registry: SkillRegistry
@@ -236,12 +236,12 @@ async function createPath(
   name: string,
   cwd: string | undefined,
 ): Promise<string> {
-  if (root === 'user-dsh') return join(resolveDshHome(), 'skills', name, 'SKILL.md')
+  if (root === 'user-rlh') return join(resolveRlhHome(), 'skills', name, 'SKILL.md')
   if (cwd === undefined || cwd.trim().length === 0) {
     throw new Error('skillInventory: creating a project skill requires cwd')
   }
   const projectRoot = await findProjectRoot(cwd)
-  return join(projectRoot, '.dsh', 'skills', name, 'SKILL.md')
+  return join(projectRoot, '.rlh', 'skills', name, 'SKILL.md')
 }
 
 async function findProjectRoot(cwd: string): Promise<string> {

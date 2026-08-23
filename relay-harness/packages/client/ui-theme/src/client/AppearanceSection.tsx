@@ -3,9 +3,9 @@
  * Registered as `settings.section` id `appearance` by this package.
  */
 import { useEffect, useState } from 'react'
-import { Button, Input } from '@deepseek-ai/dsh-client-ui-primitives'
-import type { PropsLocale, PropsRuntime, PropsStore } from '@deepseek-ai/dsh-client-ui-slots'
-import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
+import { Button, Input } from '@relay-harness/rlh-client-ui-primitives'
+import type { PropsLocale, PropsRuntime, PropsStore } from '@relay-harness/rlh-client-ui-slots'
+import type {} from '@relay-harness/rlh-client-ui-settings/client'
 import type { ThemeFamily } from '../theme-family.ts'
 import {
   DEFAULT_CODE_FONT_SIZE,
@@ -27,7 +27,7 @@ import { WallpaperRow } from './WallpaperRow.tsx'
 import { sliderFillStyle } from './slider.ts'
 import css from './AppearanceSection.module.css'
 
-const TYPOGRAPHY_ADVANCED_KEY = 'dsh:typography-advanced'
+const TYPOGRAPHY_ADVANCED_KEY = 'rlh:typography-advanced'
 
 function readTypographyAdvanced(): boolean {
   if (typeof localStorage === 'undefined') return false

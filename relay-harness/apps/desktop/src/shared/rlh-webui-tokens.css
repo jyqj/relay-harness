@@ -1,0 +1,98 @@
+/* Official rlh web semantic tokens for shells that cannot import ui-theme.
+   Values match packages/client/ui-theme/src/styles/design-platform.css. */
+
+:root {
+  color-scheme: light;
+  --rlw-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC',
+    'Hiragino Sans GB', 'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  --rl-font-family-code: 'SF Mono', 'JetBrains Mono', 'Fira Code', Consolas,
+    'Liberation Mono', Menlo, Courier, 'PingFang SC', 'Microsoft YaHei';
+  --rl-ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --rl-transition-duration: 0.2s;
+  --rl-transition-duration-fast: 0.1s;
+  --rl-motion-duration-overlay: 0.2s;
+  --rl-motion-duration-overlay-out: 0.1s;
+  --rl-motion-distance-overlay: 8px;
+  --rl-motion-scale-overlay: 0.96;
+  --rlw-shadow-lv2: 0 4px 12px 0 rgba(0, 0, 0, 0.02), 0 2px 8px 0 rgba(0, 0, 0, 0.04);
+  --rlw-shadow-lv3:
+    0 0 1px 0 rgba(0, 0, 0, 0.2), 0 0 4px 0 rgba(0, 0, 0, 0.02), 0 12px 32px 0 rgba(0, 0, 0, 0.08);
+  --rlw-mask-blur: blur(2px);
+  --rlw-alias-glass-opacity: 80%;
+  --rlw-alias-bg-base: rgb(255, 255, 255);
+  --rlw-alias-bg-layer-1: rgb(255, 255, 255);
+  --rlw-alias-bg-layer-2: rgb(255, 255, 255);
+  --rlw-alias-bg-mask-1: rgba(0, 0, 0, 0.24);
+  --rlw-alias-bg-module-platform: rgb(245, 246, 247);
+  --rlw-alias-border-l1: rgba(0, 0, 0, 0.04);
+  --rlw-alias-border-l2: rgba(0, 0, 0, 0.1);
+  --rlw-alias-border-l2-darkmode-thin: rgba(0, 0, 0, 0.1);
+  --rlw-alias-border-inverted: rgba(0, 0, 0, 0);
+  --rlw-alias-brand-primary: rgb(15, 17, 21);
+  --rlw-alias-button-primary-fill: rgb(15, 17, 21);
+  --rlw-alias-button-primary-hover: rgb(67, 69, 74);
+  --rlw-alias-button-info-fill: rgb(65, 118, 230);
+  --rlw-alias-interactive-bg-hover: rgba(38, 49, 72, 0.06);
+  --rlw-alias-interactive-bg-active: rgba(38, 49, 72, 0.1);
+  --rlw-alias-label-primary: rgb(15, 17, 21);
+  --rlw-alias-label-primary-foreground: rgb(255, 255, 255);
+  --rlw-alias-label-secondary: rgb(97, 102, 107);
+  --rlw-alias-label-tertiary: rgb(129, 133, 140);
+  --rlw-alias-label-caption: rgb(173, 178, 184);
+  --rlw-alias-label-dimmed: rgb(225, 229, 238);
+  --rlw-alias-state-business-primary: rgb(65, 118, 230);
+  --rlw-alias-state-error-primary: rgb(236, 19, 19);
+  --rlw-alias-state-success-primary: rgb(34, 197, 94);
+  --rlw-static-amber-400: rgb(247, 173, 49);
+  --rlw-specific-bubble: rgb(237, 243, 254);
+  --rlw-specific-input-major: color-mix(in srgb, rgb(255, 255, 255) 80%, transparent);
+  --rlw-specific-menu: color-mix(in srgb, rgb(255, 255, 255) 80%, transparent);
+  --rlw-specific-sidebar-fill: rgb(249, 250, 251);
+  --rlw-specific-sidebar-nav-item-active: rgb(235, 238, 242);
+  --rlw-specific-sidebar-nav-item-active-accent: rgb(228, 237, 253);
+  --rlw-specific-sidebar-nav-item-hover: rgb(241, 243, 245);
+}
+
+html[data-ds-dark-theme],
+body[data-ds-dark-theme] {
+  color-scheme: dark;
+  --rlw-alias-bg-base: rgb(21, 21, 23);
+  --rlw-alias-bg-layer-1: rgb(35, 35, 36);
+  --rlw-alias-bg-layer-2: rgb(44, 44, 46);
+  --rlw-alias-bg-mask-1: rgba(0, 0, 0, 0.5);
+  --rlw-alias-bg-module-platform: rgb(53, 54, 56);
+  --rlw-alias-border-l1: rgba(255, 255, 255, 0.06);
+  --rlw-alias-border-l2: rgba(255, 255, 255, 0.12);
+  --rlw-alias-border-l2-darkmode-thin: rgba(255, 255, 255, 0.06);
+  --rlw-alias-border-inverted: rgba(255, 255, 255, 0.06);
+  --rlw-alias-brand-primary: rgb(249, 250, 251);
+  --rlw-alias-button-primary-fill: rgb(249, 250, 251);
+  --rlw-alias-button-primary-hover: rgb(235, 238, 242);
+  --rlw-alias-button-info-fill: rgb(103, 158, 254);
+  --rlw-alias-interactive-bg-hover: rgba(255, 255, 255, 0.08);
+  --rlw-alias-interactive-bg-active: rgba(255, 255, 255, 0.14);
+  --rlw-alias-label-primary: rgb(249, 250, 251);
+  --rlw-alias-label-primary-foreground: rgb(15, 17, 21);
+  --rlw-alias-label-secondary: rgb(207, 211, 214);
+  --rlw-alias-label-tertiary: rgb(173, 178, 184);
+  --rlw-alias-label-caption: rgb(129, 133, 140);
+  --rlw-alias-label-dimmed: rgb(67, 69, 74);
+  --rlw-alias-state-business-primary: rgb(103, 158, 254);
+  --rlw-alias-state-error-primary: rgb(242, 90, 90);
+  --rlw-specific-bubble: rgb(44, 44, 46);
+  --rlw-specific-input-major: color-mix(in srgb, rgb(44, 44, 46) 80%, transparent);
+  --rlw-specific-menu: color-mix(in srgb, rgb(53, 54, 56) 80%, transparent);
+  --rlw-specific-sidebar-fill: rgb(27, 27, 28);
+  --rlw-specific-sidebar-nav-item-active: rgb(67, 69, 74);
+  --rlw-specific-sidebar-nav-item-active-accent: rgb(53, 54, 56);
+  --rlw-specific-sidebar-nav-item-hover: rgb(44, 44, 46);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --rl-transition-duration: 0s;
+    --rl-transition-duration-fast: 0s;
+    --rl-motion-duration-overlay: 0s;
+    --rl-motion-duration-overlay-out: 0s;
+  }
+}

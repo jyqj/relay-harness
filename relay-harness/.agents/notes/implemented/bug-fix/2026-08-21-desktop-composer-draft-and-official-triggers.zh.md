@@ -12,7 +12,7 @@ Files 的「引用到输入框」、终端的加入对话、Browser 的保存进
 
 ui-files、ui-preview、ui-user-terminal 的 `appendToDraft` 读 `ctx.get('sessions')`，没有该服务就返回 false。插件顶层 `inject` 不加 `sessions`，没有会话时面板仍能挂载。
 
-ui-files 不注册 `path` input-trigger 来源。输入框 `@` 是官方 ui-reference（`name: 'reference'`）。Files 的 Mention 按钮和 `application/x-dshd-composer-mention` 拖拽保留。dshbot 的 `@` 成员来源（`name: 'dshbot'`）不变。
+ui-files 不注册 `path` input-trigger 来源。输入框 `@` 是官方 ui-reference（`name: 'reference'`）。Files 的 Mention 按钮和 `application/x-rlhd-composer-mention` 拖拽保留。rlhbot 的 `@` 成员来源（`name: 'rlhbot'`）不变。
 
 InputBar 没有 `listSkillNames`，也没有本地 `$` 菜单。技能只用官方 `/`（ui-skill）。
 

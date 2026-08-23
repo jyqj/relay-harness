@@ -2,8 +2,8 @@ import { useCallback, useEffect, useState, type MouseEvent, type ReactNode } fro
 import clsx from 'clsx'
 import {
   Button, DisclosureRow, IconCodeOutline16, IconRefreshOutline16, Menu, Modal, Tooltip,
-} from '@deepseek-ai/dsh-client-ui-primitives'
-import type { InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
+} from '@relay-harness/rlh-client-ui-primitives'
+import type { InjectFace, PropsLocale, PropsRuntime } from '@relay-harness/rlh-client-ui-slots'
 import { NS } from './locales.ts'
 import {
   isStaged, isUnstaged, type DiffBranchRef, type DiffFile, type DiffShellInjected, type GitStatusEntry,

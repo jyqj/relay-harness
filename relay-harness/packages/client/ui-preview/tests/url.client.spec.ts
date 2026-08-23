@@ -8,11 +8,11 @@ import {
 } from '../src/client/url.ts'
 
 describe('newPreviewTabId', () => {
-  it('returns a unique id with the dshd-tab_ prefix', () => {
+  it('returns a unique id with the rlhd-tab_ prefix', () => {
     const a = newPreviewTabId()
     const b = newPreviewTabId()
     expect(a).not.toBe(b)
-    expect(a.startsWith('dshd-tab_')).toBe(true)
+    expect(a.startsWith('rlhd-tab_')).toBe(true)
   })
 })
 

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type {
   SessionId, SessionListState, SessionSummary, WorkspaceId, WorkspaceView,
-} from '@deepseek-ai/dsh-client-runtime/client'
+} from '@relay-harness/rlh-client-runtime/client'
 import {
   deriveFlat, deriveGroups, deriveSearchResults, workspaceLabel, relativeTime,
   UNGROUPED_KEY, UNGROUPED_LABEL,
@@ -141,9 +141,9 @@ describe('deriveGroups', () => {
     ).items[0]).toMatchObject({ id: parent.id, runningSubagentCount: 2 })
   })
 
-  it('hides dshbot-origin sessions from the workspace browser', () => {
+  it('hides rlhbot-origin sessions from the workspace browser', () => {
     const ordinary = summary('ordinary', 1)
-    const bot = { ...summary('bot', 2), origin: 'dshbot' as const }
+    const bot = { ...summary('bot', 2), origin: 'rlhbot' as const }
     const sessions = { ...list(ordinary, bot), current: ordinary.id }
     const groups = deriveGroups(
       sessions,

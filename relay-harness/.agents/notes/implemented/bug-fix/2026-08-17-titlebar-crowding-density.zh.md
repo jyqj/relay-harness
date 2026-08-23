@@ -8,11 +8,11 @@ Status: implemented
 
 ## Problem
 
-Session log、Git 和分栏开关作为 `#dshd-shell-titlebar-trailing` 画在共享标题栏行上，在会话栏与详情栏上 `justify-self: end`。会话栏页头（标题、`header.actions` 的 preset 标签）占用同一行，右侧只有 28px padding。窗口宽于 1024px 时，侧栏和 surfaces 仍会把中间栏挤窄，`data-compact-header` 不生效，尾簇就会盖住「标准模式」。若在这一宽度藏掉整簇，用来收回宽度的 surfaces 开关也会一起消失。
+Session log、Git 和分栏开关作为 `#rlhd-shell-titlebar-trailing` 画在共享标题栏行上，在会话栏与详情栏上 `justify-self: end`。会话栏页头（标题、`header.actions` 的 preset 标签）占用同一行，右侧只有 28px padding。窗口宽于 1024px 时，侧栏和 surfaces 仍会把中间栏挤窄，`data-compact-header` 不生效，尾簇就会盖住「标准模式」。若在这一宽度藏掉整簇，用来收回宽度的 surfaces 开关也会一起消失。
 
 ## Decision
 
-AppFrame 测量 `#dshd-shell-titlebar-trailing`，在尾簇可见（非手机、非 compact-header）时发布 `--dshd-titlebar-conversation-reserve` 为 `max(0, trailingWidth - detailsWidth)`。会话栏页头的 `padding-right` 为 `max(28px, reserve + 8px)`，标题走省略而不是互叠。
+AppFrame 测量 `#rlhd-shell-titlebar-trailing`，在尾簇可见（非手机、非 compact-header）时发布 `--rlhd-titlebar-conversation-reserve` 为 `max(0, trailingWidth - detailsWidth)`。会话栏页头的 `padding-right` 为 `max(28px, reserve + 8px)`，标题走省略而不是互叠。
 
 标签密度由求解后的会话栏宽度决定，而不是尾簇当前宽度，因此收起标签不会让密度振荡。会话栏 ≥ 720px 为 `full`。低于 720px 为 `cozy`：Session log 只留图标（保留 aria-label），`header.actions` 隐藏。低于 560px 为 `compact`：分支触发器和 Initialize Git 也去掉文字。Commit 与分栏开关在按钮仍绘制时保持文字。详情栏打开或尾簇隐藏时密度为 `full`。AppFrame 写入 `data-titlebar-density` 以及尾簇 owner 的 `density` 字段。拥挤密度从不移除 Git 或分栏开关；这些按钮只在对应的界面设置开关关闭时离开尾簇。
 
@@ -32,7 +32,7 @@ AppFrame 测量 `#dshd-shell-titlebar-trailing`，在尾簇可见（非手机、
 
 ## Testing
 
-`titlebar-density.ts` 钉住两个函数。AppFrame 钉住避让、详情栏打开时的 full 密度、surfaces 把中间栏钉在 640px 时的 cozy，以及 compact-header 时 reserve 为 0。Session log 在 cozy 去掉可见标签。BranchMenu 在 compact 去掉分支名。会话栏页头 CSS 钉住 padding 公式、header-actions 隐藏、控件 no-drag，以及仍占第 1 行的 blank caption。AppFrame 尾簇 CSS 钉住 8px 间距、max-content 的 `no-drag` 空洞、`--dshd-wco-controls` inset、唯一的 caption drag 带，以及手机菜单的 `no-drag`。`apps/web/tests/desktop-chrome.e2e.ts` 拒绝 Session log / Git / 分栏开关水平互叠，并在 surfaces 打开时打开 branch menu。桌面 `src/main/harness-chrome-inject.test.js` 钉住只拥有窗口控件的注入。源码与打包 Electron smoke 在打开 surfaces 后，按真实坐标点击这些尾簇控件。
+`titlebar-density.ts` 钉住两个函数。AppFrame 钉住避让、详情栏打开时的 full 密度、surfaces 把中间栏钉在 640px 时的 cozy，以及 compact-header 时 reserve 为 0。Session log 在 cozy 去掉可见标签。BranchMenu 在 compact 去掉分支名。会话栏页头 CSS 钉住 padding 公式、header-actions 隐藏、控件 no-drag，以及仍占第 1 行的 blank caption。AppFrame 尾簇 CSS 钉住 8px 间距、max-content 的 `no-drag` 空洞、`--rlhd-wco-controls` inset、唯一的 caption drag 带，以及手机菜单的 `no-drag`。`apps/web/tests/desktop-chrome.e2e.ts` 拒绝 Session log / Git / 分栏开关水平互叠，并在 surfaces 打开时打开 branch menu。桌面 `src/main/harness-chrome-inject.test.js` 钉住只拥有窗口控件的注入。源码与打包 Electron smoke 在打开 surfaces 后，按真实坐标点击这些尾簇控件。
 
 ## Related
 

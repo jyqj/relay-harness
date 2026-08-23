@@ -1,33 +1,33 @@
-# Deepseek-Harness-Desktop
+# Relay-Harness-Desktop
 
 [English](README.md) | 中文
 
-基于 DeepSeek Harness 官方 Web UI 的桌面客户端。
+基于 Relay Harness 官方 Web UI 的桌面客户端。
 
-提供主题、壁纸等个性化能力；下载安装即可使用，内置 DSH 运行环境。
+提供主题、壁纸等个性化能力；下载安装即可使用，内置 RLH 运行环境。
 
-[下载](https://github.com/ChisaAlter/Deepseek-Harness-Desktop/releases/latest) · [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)
+[下载](https://github.com/jyqj/relay-harness/releases/latest) · [Relay Harness](https://github.com/jyqj/relay-harness)
 
 ## 安装
 
-从 [Releases](https://github.com/ChisaAlter/Deepseek-Harness-Desktop/releases/latest) 下载构建产物，无需本机安装 Node。
+从 [Releases](https://github.com/jyqj/relay-harness/releases/latest) 下载构建产物，无需本机安装 Node。
 
 | | |
 | --- | --- |
-| Windows x64 | `Deepseek-Harness-Desktop-Setup-*.exe` |
-| macOS Apple Silicon | `Deepseek-Harness-Desktop-*-mac-arm64.dmg` |
+| Windows x64 | `Relay-Harness-Desktop-Setup-*.exe` |
+| macOS Apple Silicon | `Relay-Harness-Desktop-*-mac-arm64.dmg` |
 | Intel Mac、Linux | [从源码运行](#run-from-source) |
 
-macOS 构建未签名：右键选择“打开”，或执行 `xattr -cr /Applications/Deepseek-Harness-Desktop.app`。
+macOS 构建未签名：右键选择“打开”，或执行 `xattr -cr /Applications/Relay-Harness-Desktop.app`。
 
 ## 功能
 
-- **官方界面** — 对话、工具调用和审批均来自 `dsh web`，没有另做聊天页面。
+- **官方界面** — 对话、工具调用和审批均来自 `rlh web`，没有另做聊天页面。
 - **Git** — 可从标题栏切换分支、提交、推送并创建拉取请求。
 - **文件与终端** — `Ctrl+\` 打开右栏（Files / Diff / Browser / Agents）；`` Ctrl+` `` 打开底部终端，选区可加入对话。
 - **模型** — 支持第三方模型思考强度、视觉兜底，以及编辑并重新发送最新用户消息。
 - **外观** — 支持浅色/深色主题，并可按分类、搜索、收藏和窗口比例选择壁纸。
-- **扩展** — 在设置中管理 MCP、Skills 和插件；市场由内置 [dsh-market](https://github.com/dsh-market/dsh-market) 插件（`dshmarket`）提供。
+- **扩展** — 在设置中管理 MCP、Skills 和插件；市场由内置 [rlh-market](https://github.com/dsh-market/dsh-market) 插件（`rlhmarket`）提供。
 - **桌面能力** — 支持关闭到托盘、自动更新、Harness 崩溃恢复，以及跳过故障用户插件树的启动路径。
 
 `Ctrl+,` 打开设置。

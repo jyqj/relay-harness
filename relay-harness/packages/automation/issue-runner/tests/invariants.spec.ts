@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { Context } from '@deepseek-ai/cordis'
-import InvariantRegistry from '@deepseek-ai/dsh-invariants'
+import { Context } from '@relay-harness/cordis'
+import InvariantRegistry from '@relay-harness/rlh-invariants'
 import * as IssueRunnerInvariant from '../src/invariant.ts'
 
-const PACKAGE_NAME = '@deepseek-ai/dsh-issue-runner'
+const PACKAGE_NAME = '@relay-harness/rlh-issue-runner'
 
 describe('issue-runner invariant companion', () => {
   it('reserves the package name with no runtime checks, then releases it on disposal', async () => {

@@ -1,10 +1,11 @@
+// @ts-check
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const { spawn, execFileSync } = require('child_process');
 const { app } = require('electron');
 const { loadConfig } = require('./config');
-const { resolveNodeBin, sourceHarnessStatus } = require('./dsh');
+const { resolveNodeBin, sourceHarnessStatus } = require('./rlh');
 const { projectRoot, harnessRoot } = require('./paths');
 const { DROPPED, webProfileDir, PROFILE, listInstalledPlugins } = require('./plugins');
 const { resolveCommitSha, getMarketplacePlugin } = require('./marketplace-catalog');
@@ -14,7 +15,7 @@ const {
   isValidPackageName,
   isValidAllowBuild,
   normalizeAllowBuilds,
-} = require('../host/install-dsh-plugin-client');
+} = require('../host/install-rlh-plugin-client');
 const {
   GITHUB_PATH_SPEC,
   parseGithubSpec,
@@ -145,11 +146,11 @@ function resolveCli() {
     return { ok: false, error: '未找到 Node.js。请安装 Node.js 22.19+ 或 24+。' };
   }
   if (!fs.existsSync(binJs) && !source.bin) {
-    return { ok: false, error: '未找到 dsh CLI。请先运行 npm run setup:harness。' };
+    return { ok: false, error: '未找到 rlh CLI。请先运行 npm run setup:harness。' };
   }
   const cli = fs.existsSync(binJs) ? binJs : source.bin;
   if (!cli || !fs.existsSync(cli)) {
-    return { ok: false, error: 'dsh CLI 未构建。请先运行 npm run setup:harness。' };
+    return { ok: false, error: 'rlh CLI 未构建。请先运行 npm run setup:harness。' };
   }
   if (!resolvePnpmCjs() && !resolvePnpmBin()) {
     return { ok: false, error: '未找到 pnpm。安装包应已内置；开发时请在本机安装 pnpm。' };
@@ -280,11 +281,11 @@ function hasLoadableEntry(packageName) {
   if (!pkg || typeof pkg !== 'object') {
     return false;
   }
-  const patch = pkg.dsh?.bundle?.patch;
+  const patch = pkg.rlh?.bundle?.patch;
   if (typeof patch === 'string' && patch && isExistingFile(path.resolve(dir, patch))) {
     return true;
   }
-  const client = pkg.dsh?.client;
+  const client = pkg.rlh?.client;
   if (typeof client === 'string' && isExistingFile(path.resolve(dir, client))) {
     return true;
   }
@@ -427,7 +428,7 @@ function parsePatchInsertedIds(text) {
 function bundlePatchInsertedIds(packageName) {
   const dir = packageInstallDir(packageName);
   const pkg = readJsonFile(path.join(dir, 'package.json'));
-  const declared = pkg?.dsh?.bundle?.patch;
+  const declared = pkg?.rlh?.bundle?.patch;
   if (typeof declared !== 'string' || !declared) {
     return [];
   }
@@ -493,7 +494,7 @@ function loadableInstallFailure(added, error) {
   return {
     ok: false,
     spec: added.spec,
-    error: error || '该包不是可加载的 dsh 插件',
+    error: error || '该包不是可加载的 rlh 插件',
     needsAllowBuilds: false,
     allowBuilds: [],
     log: added.log || '',

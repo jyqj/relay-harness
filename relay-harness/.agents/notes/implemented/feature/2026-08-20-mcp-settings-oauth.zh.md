@@ -6,7 +6,7 @@ Status: implemented
 
 ## Problem
 
-需要 OAuth 的受管 Streamable HTTP MCP（Ardot，以及任何带 `resource_metadata` 的 401）可以在 Settings 里添加，但 DSH 从不打开登录。Host 挂的是裸 URL，健康停在 `failed`，对话拿不到该服务器的工具。从别的客户端拷 token 不是产品路径。
+需要 OAuth 的受管 Streamable HTTP MCP（Ardot，以及任何带 `resource_metadata` 的 401）可以在 Settings 里添加，但 RLH 从不打开登录。Host 挂的是裸 URL，健康停在 `failed`，对话拿不到该服务器的工具。从别的客户端拷 token 不是产品路径。
 
 ## Decision
 
@@ -14,9 +14,9 @@ Status: implemented
 
 ## Alternatives considered
 
-**只把从 Cursor 拷来的 access token 写进 yaml。** 否决：用户在 DSH 里看不到登录，Host 可能不 remount，token 过期后产品内没有回来的路。
+**只把从 Cursor 拷来的 access token 写进 yaml。** 否决：用户在 RLH 里看不到登录，Host 可能不 remount，token 过期后产品内没有回来的路。
 
-**在 `dsh-mcp-client` 第一次 401 时自动跑 OAuth。** 否决：打开浏览器是 Settings/Host 的用户手势，不是静默重连的副作用。
+**在 `rlh-mcp-client` 第一次 401 时自动跑 OAuth。** 否决：打开浏览器是 Settings/Host 的用户手势，不是静默重连的副作用。
 
 **把 refresh token 存进旁路文件并无浏览器续期。** 暂缓：v1 把 access token 写成请求头；过期后显示连接失败，再点登录。
 

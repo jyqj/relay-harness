@@ -1,23 +1,23 @@
 /**
- * `dsh plugin --profile <name> <args...>` — profile plugin management as a
+ * `rlh plugin --profile <name> <args...>` — profile plugin management as a
  * thin pnpm forwarder: initialize the profile on first use, run
  * `pnpm <args...>` in the profile directory, then reconcile the
- * `dsh.profile.bundles` layer list against the installed state (a dependency
- * resolving to a package that declares `dsh.bundle` joins the layer stack; a
+ * `rlh.profile.bundles` layer list against the installed state (a dependency
+ * resolving to a package that declares `rlh.bundle` joins the layer stack; a
  * removed or bundle-less dependency leaves it). Reconciling by installed
  * state, not by dependency diff, means `update` activates a package that
- * gained its `dsh.bundle` declaration in a newer version.
+ * gained its `rlh.bundle` declaration in a newer version.
  *
  * Activation is fail-closed against the host-feature contract: a dependency
- * whose `dsh.compatibility` declaration is malformed, or whose required
- * features this dsh host does not support, never joins the layer stack (and
+ * whose `rlh.compatibility` declaration is malformed, or whose required
+ * features this rlh host does not support, never joins the layer stack (and
  * leaves it if it was active), `runPlugin` returns nonzero, and diagnostics
  * say exactly what to do. A package with no compatibility declaration is
  * untouched. A newly-added incompatible dependency is rolled back (removed
  * from the profile's dependencies — the exact undo of the `add` that just
  * ran); a pre-existing one stays installed but inactive, and the diagnostic
  * says so.
- * @module @deepseek-ai/dsh/plugin
+ * @module @relay-harness/rlh/plugin
  */
 
 import { spawnSync } from 'node:child_process'
@@ -34,10 +34,10 @@ import {
   resolveProfileDir,
   writeProfileManifest,
   type ProfileManifest,
-} from '@deepseek-ai/dsh-app-boot'
+} from '@relay-harness/rlh-app-boot'
 import { INSTALL_ANCHOR } from './profile-boot.ts'
 
-const NAME = 'dsh'
+const NAME = 'rlh'
 
 /** One dependency that failed the host-feature gate. */
 export interface CompatibilityFailure {
@@ -57,7 +57,7 @@ export interface ReconcileReport {
   failures: CompatibilityFailure[]
   /** Newly-added bundle-less dependencies (orientation warning, not a failure). */
   plainAdditions: string[]
-  /** Packages that left `dsh.profile.bundles` during this reconciliation. */
+  /** Packages that left `rlh.profile.bundles` during this reconciliation. */
   deactivated: string[]
   /** The reconciled bundle layer list. */
   bundles: string[]
@@ -77,7 +77,7 @@ export function compatibilityFailureOf(
   packageName: string, manifest: ProfileManifest | undefined,
 ): CompatibilityFailure | undefined {
   if (manifest === undefined) return undefined
-  const compatibility = manifest.dsh?.compatibility
+  const compatibility = manifest.rlh?.compatibility
   if (compatibility === undefined) return undefined
   let required: string[]
   try {
@@ -97,9 +97,9 @@ export function compatibilityFailureOf(
 }
 
 /**
- * Reconcile `dsh.profile.bundles` against the installed state (pure; all
+ * Reconcile `rlh.profile.bundles` against the installed state (pure; all
  * reads flow through `readManifest`): a dependency that resolves to a
- * `dsh.bundle`-declaring package joins the layer stack (appended in
+ * `rlh.bundle`-declaring package joins the layer stack (appended in
  * dependency order); a dependency-listed name that no longer does — removed,
  * or the installed version dropped the declaration — leaves it. In-box
  * bundles from the profile template are not dependencies and are never
@@ -119,7 +119,7 @@ export function reconcileBundleLayers(
 ): ReconcileReport {
   const beforeDeps = new Set(Object.keys(before.dependencies ?? {}))
   const dependencies = Object.keys(after.dependencies ?? {})
-  const plugins = [...(after.dsh?.profile?.bundles ?? [])]
+  const plugins = [...(after.rlh?.profile?.bundles ?? [])]
   const failures: CompatibilityFailure[] = []
   const plainAdditions: string[] = []
   const deactivated: string[] = []
@@ -128,7 +128,7 @@ export function reconcileBundleLayers(
     if (!manifests.has(packageName)) manifests.set(packageName, readManifest(packageName))
     return manifests.get(packageName)
   }
-  const exportsPatch = (packageName: string): boolean => manifestOf(packageName)?.dsh?.bundle?.patch !== undefined
+  const exportsPatch = (packageName: string): boolean => manifestOf(packageName)?.rlh?.bundle?.patch !== undefined
   let changed = false
   for (const packageName of dependencies) {
     const failure = compatibilityFailureOf(packageName, manifestOf(packageName))
@@ -154,7 +154,7 @@ export function reconcileBundleLayers(
   const dependencySet = new Set(dependencies)
   for (const packageName of [...plugins]) {
     // Only dependency-managed entries are subject to removal; template
-    // bundles (dsh-base and friends) are not dependencies.
+    // bundles (rlh-base and friends) are not dependencies.
     const wasDependency = beforeDeps.has(packageName) || dependencySet.has(packageName)
     const stillBundle = dependencySet.has(packageName) && exportsPatch(packageName)
     if (wasDependency && !stillBundle) {
@@ -176,7 +176,7 @@ function readDependencyManifest(packageName: string, profileDir: string): Profil
 }
 
 /**
- * Reconcile `dsh.profile.bundles` after a successful pnpm run, persisting the
+ * Reconcile `rlh.profile.bundles` after a successful pnpm run, persisting the
  * new bundle list when it changed. Writes the per-newly-added-bundle-less-
  * dependency orientation warning to stderr; compatibility failures are
  * returned (not printed) so the caller can roll back before diagnosing.
@@ -185,12 +185,12 @@ function reconcilePlugins(before: ProfileManifest, profileDir: string): Reconcil
   const after = readProfileManifest(NAME, profileDir)
   const report = reconcileBundleLayers(before, after, packageName => readDependencyManifest(packageName, profileDir))
   if (report.changed) {
-    after.dsh = { ...after.dsh, profile: { ...after.dsh?.profile, bundles: report.bundles } }
+    after.rlh = { ...after.rlh, profile: { ...after.rlh?.profile, bundles: report.bundles } }
     writeProfileManifest(profileDir, after)
   }
   for (const packageName of report.plainAdditions) {
     process.stderr.write(
-      `${NAME}: warning: ${packageName} declares no dsh.bundle — installed as a plain dependency, not a profile layer `
+      `${NAME}: warning: ${packageName} declares no rlh.bundle — installed as a plain dependency, not a profile layer `
       + '(a later update that gains one activates it automatically)\n',
     )
   }
@@ -201,20 +201,20 @@ function reconcilePlugins(before: ProfileManifest, profileDir: string): Reconcil
 function printCompatibilityFailure(failure: CompatibilityFailure): void {
   if (failure.kind === 'malformed') {
     process.stderr.write(
-      `${NAME}: ${failure.packageName} has a malformed dsh.compatibility declaration: ${failure.detail ?? 'unparseable'}\n`,
+      `${NAME}: ${failure.packageName} has a malformed rlh.compatibility declaration: ${failure.detail ?? 'unparseable'}\n`,
     )
     process.stderr.write(
-      `${NAME}:   fix dsh.compatibility.features in the plugin's package.json (a string array of feature ids), then re-run\n`,
+      `${NAME}:   fix rlh.compatibility.features in the plugin's package.json (a string array of feature ids), then re-run\n`,
     )
     return
   }
   process.stderr.write(
-    `${NAME}: ${failure.packageName} requires host features this dsh does not support: ${failure.missing?.join(', ') ?? ''}\n`,
+    `${NAME}: ${failure.packageName} requires host features this rlh does not support: ${failure.missing?.join(', ') ?? ''}\n`,
   )
   process.stderr.write(
-    `${NAME}:   update dsh to a host that provides them, or remove the plugin\n`,
+    `${NAME}:   update rlh to a host that provides them, or remove the plugin\n`,
   )
-  process.stderr.write(`${NAME}: ${failure.packageName} was not activated in dsh.profile.bundles\n`)
+  process.stderr.write(`${NAME}: ${failure.packageName} was not activated in rlh.profile.bundles\n`)
 }
 
 /**
@@ -225,7 +225,7 @@ function printCompatibilityFailure(failure: CompatibilityFailure): void {
  * specs, registry names, and every other pnpm argument pass through
  * untouched.
  * @param argument - one pnpm argument, verbatim from argv.
- * @param cwd - the directory `dsh` was invoked from.
+ * @param cwd - the directory `rlh` was invoked from.
  * @returns the argument with a relative path spec anchored to `cwd`.
  */
 function anchorPathSpec(argument: string, cwd: string): string {
@@ -258,7 +258,7 @@ function rollbackIncompatible(packageName: string, profileDir: string): boolean 
 }
 
 /**
- * Run one `dsh plugin` invocation: init if needed, forward to pnpm, reconcile.
+ * Run one `rlh plugin` invocation: init if needed, forward to pnpm, reconcile.
  * A dependency that fails the host-feature gate turns a successful pnpm run
  * into a nonzero exit: it never activates, newly-added ones are rolled back,
  * and diagnostics name the package and the missing or malformed contract.
@@ -316,12 +316,12 @@ export function runPlugin(profile: string, args: readonly string[]): number {
       } else {
         process.stderr.write(
           `${NAME}: ${failure.packageName} remains installed as an inactive dependency — remove it with `
-          + `'dsh plugin --profile ${profile} remove ${failure.packageName}' or upgrade dsh\n`,
+          + `'rlh plugin --profile ${profile} remove ${failure.packageName}' or upgrade rlh\n`,
         )
       }
     } else {
       process.stderr.write(
-        `${NAME}: ${failure.packageName} remains installed as an inactive dependency — update or remove it, or upgrade dsh\n`,
+        `${NAME}: ${failure.packageName} remains installed as an inactive dependency — update or remove it, or upgrade rlh\n`,
       )
     }
   }

@@ -7,13 +7,13 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
-import { bindSnapshotSelector } from '@deepseek-ai/dsh-client-test-runtime'
-import { makeTranslate } from '@deepseek-ai/dsh-client-test-runtime'
-import { zh as commonZh } from '@deepseek-ai/dsh-client-locale/src/locales/zh.ts'
-import { createSnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
+import { bindSnapshotSelector } from '@relay-harness/rlh-client-test-runtime'
+import { makeTranslate } from '@relay-harness/rlh-client-test-runtime'
+import { zh as commonZh } from '@relay-harness/rlh-client-locale/src/locales/zh.ts'
+import { createSnapshotStore } from '@relay-harness/rlh-client-runtime/client'
 import type {
   ChatConversationViewNode, ConversationNode, SessionId,
-} from '@deepseek-ai/dsh-client-runtime/client'
+} from '@relay-harness/rlh-client-runtime/client'
 import type { ChatNodeViewProps } from '../src/client/contract/slots.ts'
 import {
   formatMessageClock, msUntilNextLocalMidnight, startOfLocalDay,
@@ -681,16 +681,16 @@ describe('MessageItem arms', () => {
         content: [{ type: 'text', text: 'Current runtime context.\n\nsandbox\n\nworkspace' }],
         source: {
           kind: 'plugin',
-          plugin: '@deepseek-ai/dsh-system-prompt',
+          plugin: '@relay-harness/rlh-system-prompt',
           form: 'snapshot',
           sections: [{ name: 'sandbox:policy', text: 'workspace-write' }, { name: 'workspace', text: '/repo' }],
         },
-        provenance: { role: 'inject', label: '@deepseek-ai/dsh-system-prompt' },
+        provenance: { role: 'inject', label: '@relay-harness/rlh-system-prompt' },
         form: 'snapshot',
       } as never}
       />,
     )
-    fireEvent.click(view.getByRole('button', { name: /^上下文注入\s*@deepseek-ai\/dsh-system-prompt$/ }))
+    fireEvent.click(view.getByRole('button', { name: /^上下文注入\s*@relay-harness\/rlh-system-prompt$/ }))
     const rows = [...view.container.querySelectorAll('[data-context-sections] div')].map(node => node.textContent)
     expect(rows).toEqual(['sandbox:policyworkspace-write', 'workspace/repo'])
   })
@@ -1069,9 +1069,9 @@ describe('small branch tails', () => {
     expect(view.container.textContent).toBe('1 轮 · 1 步| 输入 0 tok · 输出 10 tok')
   })
 
-  it('renders no context injection row in a dshbot-room session', () => {
+  it('renders no context injection row in a rlhbot-room session', () => {
     const view = render(
-      <MessageItem t={t} agentPreset="dshbot-room" node={{
+      <MessageItem t={t} agentPreset="rlhbot-room" node={{
         kind: 'context',
         seq: 3,
         content: [{ type: 'text', text: 'line one' }],

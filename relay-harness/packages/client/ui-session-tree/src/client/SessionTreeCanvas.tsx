@@ -1,11 +1,11 @@
 import {
   useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent,
 } from 'react'
-import type { HistoryEntry, SessionId, WorkspaceId } from '@deepseek-ai/dsh-client-connection/client'
+import type { HistoryEntry, SessionId, WorkspaceId } from '@relay-harness/rlh-client-connection/client'
 import type {
   InjectFace, PropsLocale, PropsRuntime, PropsStore,
-} from '@deepseek-ai/dsh-client-ui-slots'
-import type { SnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
+} from '@relay-harness/rlh-client-ui-slots'
+import type { SnapshotStore } from '@relay-harness/rlh-client-runtime/client'
 import {
   buildSessionTreeGraph, currentPathCuts, sessionIdsForAnchor, sessionOfCardId, visibleSessionTreeGraph,
   type SessionTreeCard,

@@ -14,7 +14,7 @@
 }
 
 .label {
-  color: var(--dsw-alias-label-primary);
+  color: var(--rlw-alias-label-primary);
   font-size: 13px;
   font-weight: 500;
   line-height: 20px;
@@ -27,7 +27,7 @@
   height: 36px;
   padding: 0 10px;
   border-radius: 12px;
-  background: var(--dsw-alias-bg-layer-2);
+  background: var(--rlw-alias-bg-layer-2);
 }
 
 .row {
@@ -36,7 +36,7 @@
 }
 
 .note {
-  color: var(--dsw-alias-label-tertiary);
+  color: var(--rlw-alias-label-tertiary);
   font-size: 12px;
   line-height: 18px;
 }

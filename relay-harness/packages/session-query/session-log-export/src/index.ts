@@ -1,8 +1,8 @@
 /** Web Session-log download command over the host endpoint owned by ApiProxy. */
 
-import type { Context } from '@deepseek-ai/cordis'
-import type { CommandResult } from '@deepseek-ai/dsh-commands'
-import { settingsNamespace } from '@deepseek-ai/dsh-settings'
+import type { Context } from '@relay-harness/cordis'
+import type { CommandResult } from '@relay-harness/rlh-commands'
+import { settingsNamespace } from '@relay-harness/rlh-settings'
 import { SESSION_LOG_EXPORT_SETTINGS_NAMESPACE, SessionLogExportSettingsSchema } from './export-settings.ts'
 
 export {

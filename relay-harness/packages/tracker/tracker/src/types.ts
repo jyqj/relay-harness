@@ -1,7 +1,7 @@
 /** Provider-neutral issue-tracker values shared by schedulers and tool consumers. */
 
-import type { Branded } from '@deepseek-ai/dsh-brand'
-import type { JsonValue } from '@deepseek-ai/dsh-session/types'
+import type { Branded } from '@relay-harness/rlh-brand'
+import type { JsonValue } from '@relay-harness/rlh-session/types'
 
 /** Stable dispatch identity inside one configured tracker provider. */
 export type TrackerIssueId = Branded<'TrackerIssueId'>

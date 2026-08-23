@@ -1,5 +1,5 @@
 /** The Interface section: one column rendering feature-owned item contributions. */
-import type { PropsRenderSlots, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
+import type { PropsRenderSlots, PropsRuntime } from '@relay-harness/rlh-client-ui-slots'
 import css from './InterfaceSection.module.css'
 
 /** Full component props: section owner share plus item render share. */

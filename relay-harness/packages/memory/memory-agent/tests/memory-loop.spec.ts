@@ -1,18 +1,18 @@
-import { Context } from '@deepseek-ai/cordis'
-import AgentRegistry, { type Agent } from '@deepseek-ai/dsh-agent'
-import AgentLoop from '@deepseek-ai/dsh-agent-loop'
+import { Context } from '@relay-harness/cordis'
+import AgentRegistry, { type Agent } from '@relay-harness/rlh-agent'
+import AgentLoop from '@relay-harness/rlh-agent-loop'
 import LlmRuntime, {
   LlmAdapter,
   createUserMessage,
   type GenerateOptions,
   type LlmResolvedModelInfo,
   type StreamChunk,
-} from '@deepseek-ai/dsh-llm'
-import * as MemoryAgent from '@deepseek-ai/dsh-memory-agent'
-import SqliteLongTermMemory from '@deepseek-ai/dsh-memory-sqlite'
-import SessionStore, { SessionId } from '@deepseek-ai/dsh-session'
-import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
-import ToolRuntime from '@deepseek-ai/dsh-tools'
+} from '@relay-harness/rlh-llm'
+import * as MemoryAgent from '@relay-harness/rlh-memory-agent'
+import SqliteLongTermMemory from '@relay-harness/rlh-memory-sqlite'
+import SessionStore, { SessionId } from '@relay-harness/rlh-session'
+import SystemPrompt from '@relay-harness/rlh-system-prompt'
+import ToolRuntime from '@relay-harness/rlh-tools'
 import { describe, expect, it } from 'vitest'
 
 class RecordingAdapter extends LlmAdapter {
@@ -56,7 +56,7 @@ describe('memory recall through the real Agent loop', () => {
     const ctx = await harness(adapter)
     const source = SessionId('memory-source')
     const entry = await ctx.longTermMemory.remember({
-      scope: { workspaceId: 'global', userId: 'local', agentId: 'deepseek-harness' },
+      scope: { workspaceId: 'global', userId: 'local', agentId: 'relay-harness' },
       kind: 'constraint',
       content: 'Referenced files enter only through explicit File Context.',
       importance: 4,
@@ -86,7 +86,7 @@ describe('memory recall through the real Agent loop', () => {
     expect(agent.session.deriveMessages().map(message => message.source.kind))
       .toEqual(['user', 'memory-recall', 'model'])
     expect(await ctx.longTermMemory.read(
-      { workspaceId: 'global', userId: 'local', agentId: 'deepseek-harness' },
+      { workspaceId: 'global', userId: 'local', agentId: 'relay-harness' },
       entry.id,
     )).toMatchObject({ accessCount: 1 })
     await ctx.fiber.dispose()

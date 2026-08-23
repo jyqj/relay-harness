@@ -1,13 +1,13 @@
 /**
- * Package-owned invariant companion for `@deepseek-ai/dsh-behavior-correction`.
- * @module @deepseek-ai/dsh-behavior-correction/invariant
+ * Package-owned invariant companion for `@relay-harness/rlh-behavior-correction`.
+ * @module @relay-harness/rlh-behavior-correction/invariant
  */
 
 /* jscpd:ignore-start */
-import type { Context } from '@deepseek-ai/cordis'
-import type { InvariantInstaller } from '@deepseek-ai/dsh-invariants'
+import type { Context } from '@relay-harness/cordis'
+import type { InvariantInstaller } from '@relay-harness/rlh-invariants'
 
-const PACKAGE_NAME = '@deepseek-ai/dsh-behavior-correction'
+const PACKAGE_NAME = '@relay-harness/rlh-behavior-correction'
 
 /** Cordis companion plugin name. */
 export const name = 'behavior-correction-invariant'

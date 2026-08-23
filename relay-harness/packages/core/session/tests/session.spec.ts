@@ -1,6 +1,6 @@
 import { describe, expect, expectTypeOf, it, vi } from 'vitest'
-import { Context } from '@deepseek-ai/cordis'
-import { createUserMessage, CallId, createAssistantMessage, createMessage, createToolResultMessage, MessageId, ReasoningEffortId } from '@deepseek-ai/dsh-llm'
+import { Context } from '@relay-harness/cordis'
+import { createUserMessage, CallId, createAssistantMessage, createMessage, createToolResultMessage, MessageId, ReasoningEffortId } from '@relay-harness/rlh-llm'
 import SessionStore, {
   adoptSessionEvent,
   SESSION_FORMAT_VERSION,
@@ -8,8 +8,8 @@ import SessionStore, {
   SessionEvent,
   SessionId,
   snapshotSessionEvent,
-} from '@deepseek-ai/dsh-session'
-import type { CreateSessionOptions, SessionEventType, SessionHeader, SessionSurface, TodoItem } from '@deepseek-ai/dsh-session'
+} from '@relay-harness/rlh-session'
+import type { CreateSessionOptions, SessionEventType, SessionHeader, SessionSurface, TodoItem } from '@relay-harness/rlh-session'
 
 describe('Session', () => {
   it('exposes one stable readonly surface view', () => {
@@ -1299,13 +1299,13 @@ describe('SessionStore', () => {
     })
   })
 
-  it('accepts dshbot origin on a top-level session header', async () => {
+  it('accepts rlhbot origin on a top-level session header', async () => {
     const ctx = new Context()
     await ctx.plugin(SessionStore)
     const session = ctx.sessions.create(SessionId('bot-contact'), {
-      meta: { origin: 'dshbot' },
+      meta: { origin: 'rlhbot' },
     })
-    expect(session.header.origin).toBe('dshbot')
+    expect(session.header.origin).toBe('rlhbot')
   })
 
   it('rejects non-JSON and invalid scalar session metadata', async () => {
@@ -1322,7 +1322,7 @@ describe('SessionStore', () => {
       { meta: { seedLength: '1' }, error: /seedLength must be a non-negative safe integer/ },
       { meta: { seedLength: 0.5 }, error: /seedLength must be a non-negative safe integer/ },
       { meta: { seedLength: -1 }, error: /seedLength must be a non-negative safe integer/ },
-      { meta: { origin: 'fork' }, error: /origin must be "subagent" or "dshbot"/ },
+      { meta: { origin: 'fork' }, error: /origin must be "subagent" or "rlhbot"/ },
       { meta: { delegationDepth: '1' }, error: /delegationDepth must be a non-negative safe integer/ },
       { meta: { delegationDepth: 0.5 }, error: /delegationDepth must be a non-negative safe integer/ },
       { meta: { delegationDepth: -1 }, error: /delegationDepth must be a non-negative safe integer/ },

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import type { SessionId, SessionListState } from '@deepseek-ai/dsh-client-runtime/client'
+import type { SessionId, SessionListState } from '@relay-harness/rlh-client-runtime/client'
 import type { DiffPanelProps } from '../src/client/DiffPanel.tsx'
 import { DiffPanel, pickBranchBase } from '../src/client/DiffPanel.tsx'
 import { en } from '../src/client/locales.ts'

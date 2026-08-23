@@ -24,7 +24,7 @@ Host 在 Workspace entity 上提供以下 GUI 接线：
 | `workspace.delete({ workspaceId })` | 移除 Workspace 注册记录，同时保留目录和会话日志；相关 Session 进入任务 |
 | `session.create({ workspaceId, sessionId? })` | 从 Workspace 解析 cwd，以可选预分配 id 幂等创建 Session 并 attach |
 | `session.create({ cwd })` | 保留给非 Workspace 调用方，创建不属于任何 Workspace 的 Session |
-| `host.describe.scratchCwd` | Host 持有的 `$DSH_HOME/no-workspace`（或 `~/.dsh/no-workspace`）；缺失则创建；作为非 Workspace 成员 Session 的 cwd |
+| `host.describe.scratchCwd` | Host 持有的 `$RLH_HOME/no-workspace`（或 `~/.rlh/no-workspace`）；缺失则创建；作为非 Workspace 成员 Session 的 cwd |
 
 Host 流推送 Workspace 与 Session 增量，包括 `host/workspace-removed`；Client 重连后分别刷新 `workspace.list` 与 `session.list` 基线。删除注册记录的所有权与安全边界由 [Workspace 注册记录删除 Agent Note](2026-07-27-workspace-registration-deletion.md)定义。
 

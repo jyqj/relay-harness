@@ -1,8 +1,8 @@
-# @deepseek-ai/dsh-workspace
+# @relay-harness/rlh-workspace
 
 English | [中文](README.zh.md)
 
-Workspace entity registry (`ctx.workspaceRegistry`) for the DeepSeek Harness: durable workspace records, stable workspace order, and a newest-first candidate session index stored through the domain data form. Consumers see the `Workspace` interface; the entity implementation stays package-private.
+Workspace entity registry (`ctx.workspaceRegistry`) for the Relay Harness: durable workspace records, stable workspace order, and a newest-first candidate session index stored through the domain data form. Consumers see the `Workspace` interface; the entity implementation stays package-private.
 
 The entity/storage rationale lives in the [domain Agent Note](../../../.agents/notes/proposed/architecture/2026-07-24-domain-kv-storage-and-workspace.md); header-only bootstrap and GUI ordering live in the [Workspace UI product-flow Agent Note](../../../.agents/notes/implemented/feature/2026-07-25-workspace-ui-product-flow.md).
 
@@ -17,7 +17,7 @@ The entity/storage rationale lives in the [domain Agent Note](../../../.agents/n
 - `ctx.workspaceRegistry.archiveSession(id)` / `archivedSessionIds` — the registry-global archive set, layered over workspace accounting: an archived session disappears from grouping surfaces but keeps its session log and its `sessionIds` slot, so a future unarchive restores its position. Archiving accepts any live or persisted session (accounted or Ungrouped), resolves without writing for an already archived id, and rejects an unknown id. State written before the field existed parses with an empty set.
 - `Workspace.sessionIds` — synchronous id-plus-canonical-cwd membership projection in durable candidate order. Missing headers, invalid cwd values, and mismatches are filtered; the next workspace mutation prunes them. A medium indexing one session under two workspaces, claiming one path from two records, or diverging from durable workspace order rejects at startup.
 - `Workspace.status()` — uncached directory check, `'ok' | 'missing-dir'`; a missing directory never mutates the record.
-- `Workspace.checkpoint(paths)` — explicitly snapshots selected workspace-relative regular files and confirmed absence to owner-only, gitignored `.dsh/rewind-checkpoints` storage. Paths are sorted/deduplicated; escapes, symlinks, directories, more than 4096 paths, and more than 64 MiB reject.
+- `Workspace.checkpoint(paths)` — explicitly snapshots selected workspace-relative regular files and confirmed absence to owner-only, gitignored `.rlh/rewind-checkpoints` storage. Paths are sorted/deduplicated; escapes, symlinks, directories, more than 4096 paths, and more than 64 MiB reject.
 - `Workspace.rewind(checkpointId)` — preflights every checkpoint path, transactionally restores bytes/modes or absence, rolls back already-applied siblings when a later write fails, then removes the selected checkpoint and newer local checkpoints. It never rewinds conversation history automatically.
 
 `storageDomain` and `sessionPersistence` are required startup dependencies. An unavailable peer leaves the plugin pending and cannot commit an empty initialized marker. On the first successful start, the registry calls `SessionPersistence.list()` and uses only header `id`, `cwd`, and `createdAt` to group valid historical directories and persist initial order; it never reads event bodies. The initialized marker is written last, so partial bootstrap writes are reused safely after restart. Later cwd-only sessions remain Ungrouped.

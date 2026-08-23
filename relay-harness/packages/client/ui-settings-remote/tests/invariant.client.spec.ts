@@ -1,6 +1,6 @@
-import { Context } from '@deepseek-ai/cordis'
+import { Context } from '@relay-harness/cordis'
 import { describe, expect, it } from 'vitest'
-import InvariantRegistry from '@deepseek-ai/dsh-invariants'
+import InvariantRegistry from '@relay-harness/rlh-invariants'
 import * as RemoteInvariant from '../src/invariant.ts'
 
 describe('ui-settings-remote invariant companion', () => {

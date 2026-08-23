@@ -1,6 +1,6 @@
 /** Issue-workspace values shared by provisioners and orchestration consumers. */
 
-import type { TrackerIssueId } from '@deepseek-ai/dsh-tracker/types'
+import type { TrackerIssueId } from '@relay-harness/rlh-tracker/types'
 
 /** Stable prepared directory for one tracker issue. */
 export interface IssueWorkspace {

@@ -1,10 +1,10 @@
-import { createUserMessage, createMessage } from '@deepseek-ai/dsh-llm'
+import { createUserMessage, createMessage } from '@relay-harness/rlh-llm'
 import { describe, expect, it } from 'vitest'
-import { Context } from '@deepseek-ai/cordis'
-import SessionStore, { SESSION_FORMAT_VERSION, SessionId } from '@deepseek-ai/dsh-session'
-import type { Session, SessionEvent, SessionHeader, SessionId as SessionIdType } from '@deepseek-ai/dsh-session'
-import SessionPersistence from '@deepseek-ai/dsh-session-persistence'
-import { type SessionQueryErrorCode } from '@deepseek-ai/dsh-session-query'
+import { Context } from '@relay-harness/cordis'
+import SessionStore, { SESSION_FORMAT_VERSION, SessionId } from '@relay-harness/rlh-session'
+import type { Session, SessionEvent, SessionHeader, SessionId as SessionIdType } from '@relay-harness/rlh-session'
+import SessionPersistence from '@relay-harness/rlh-session-persistence'
+import { type SessionQueryErrorCode } from '@relay-harness/rlh-session-query'
 import { TestSessionQueryEngine } from './test-service.ts'
 
 type MutableSessionHeader = { -readonly [K in keyof SessionHeader]: SessionHeader[K] }

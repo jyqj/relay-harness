@@ -8,9 +8,9 @@ import {
   IconSplitOutline16,
   IconTrashOutline16,
   Tooltip,
-} from '@deepseek-ai/dsh-client-ui-primitives'
-import type { SessionId } from '@deepseek-ai/dsh-client-runtime/client'
-import type { PropsLocale, PropsRuntime, PropsStore } from '@deepseek-ai/dsh-client-ui-slots'
+} from '@relay-harness/rlh-client-ui-primitives'
+import type { SessionId } from '@relay-harness/rlh-client-runtime/client'
+import type { PropsLocale, PropsRuntime, PropsStore } from '@relay-harness/rlh-client-ui-slots'
 import { cwdFromSessions } from './cwd.ts'
 import { clampDrawerHeight, maxDrawerHeight, TERMINAL_DRAWER_DEFAULT } from './height.ts'
 import { NS } from './locales.ts'

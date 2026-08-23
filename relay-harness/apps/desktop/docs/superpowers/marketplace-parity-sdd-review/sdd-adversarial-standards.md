@@ -1,8 +1,8 @@
 # Standards-axis review
 
 Range: `e2b83922c864778e7d7908e1ac15b3e8e1218cf0...ecf69ec7f0bba153f98cbf8f30b0997835375679`  
-Worktree: `C:\Ai\Deepseek-Harness-Desktop\.worktrees\marketplace-parity` (HEAD `ecf69ec7`).  
-Axis: coding standards and smells only. Not product completeness vs dsh-market.  
+Worktree: `C:\Ai\Relay-Harness-Desktop\.worktrees\marketplace-parity` (HEAD `ecf69ec7`).  
+Axis: coding standards and smells only. Not product completeness vs rlh-market.  
 Skipped: anything a formatter, linter, coverage gate, or `verify-*` script would catch (trailing newline, hex-in-CSS if a token linter exists, bilingual pairing hashes).
 
 Legend: **HARD** = documented repo standard. **Judgement** = smell baseline (always a judgement call); a documented standard wins if it endorses the pattern.
@@ -13,7 +13,7 @@ Legend: **HARD** = documented repo standard. **Judgement** = smell baseline (alw
 
 ### 1. Unnamed empty `catch` (touched + new)
 
-**Standard:** `vendor/deepseek-harness/AGENTS.md` Conventions: *“An empty `catch` names what it swallows and why nothing else can reach it; keep the `try` to one statement.”*
+**Standard:** `vendor/relay-harness/AGENTS.md` Conventions: *“An empty `catch` names what it swallows and why nothing else can reach it; keep the `try` to one statement.”*
 
 Same change names the swallow in `marketplace-install.js` (`readJsonFile`, `isExistingFile`) and leaves catalog I/O silent.
 
@@ -61,8 +61,8 @@ function readJsonFile(file) {
 
 ### 2. JSDoc documents a caller option the function no longer honors
 
-**Standard:** `vendor/deepseek-harness/docs/AGENTS.md` Writing rules: *“Comments and JSDoc state complete contracts, not reasoning transcripts.”*  
-**Standard:** `vendor/deepseek-harness/.agents/skills/dsh-prose-standard/SKILL.md` — Public JSDoc must cover caller-visible distinctions.  
+**Standard:** `vendor/relay-harness/docs/AGENTS.md` Writing rules: *“Comments and JSDoc state complete contracts, not reasoning transcripts.”*  
+**Standard:** `vendor/relay-harness/.agents/skills/rlh-prose-standard/SKILL.md` — Public JSDoc must cover caller-visible distinctions.  
 IPC no longer forwards a GitHub token into `listMarketplace` (`src/main/ipc.js` 124–129). The catalog JSDoc still advertises `token?: string`; the body never reads `options.token`.
 
 ```255:260:src/main/marketplace-catalog.js
@@ -90,15 +90,15 @@ async function listMarketplace(options = {}) {
 
 ### 4. Module comment still says the plugin is read-only
 
-**Standard:** `vendor/deepseek-harness/docs/AGENTS.md` — comments/JSDoc state complete contracts.  
-**Standard:** `vendor/deepseek-harness/packages/AGENTS.md` — *“A package's README and JSDoc are part of the change.”*  
+**Standard:** `vendor/relay-harness/docs/AGENTS.md` — comments/JSDoc state complete contracts.  
+**Standard:** `vendor/relay-harness/packages/AGENTS.md` — *“A package's README and JSDoc are part of the change.”*  
 README was updated to one-click Modal install. The `/client` module comment and locale-map JSDoc were not.
 
-```1:1:vendor/deepseek-harness/packages/client/ui-settings-plugin-inventory/src/client/index.ts
+```1:1:vendor/relay-harness/packages/client/ui-settings-plugin-inventory/src/client/index.ts
 /** Read-only Host plugin inventory registered into Web Settings. */
 ```
 
-```16:18:vendor/deepseek-harness/packages/client/ui-settings-plugin-inventory/src/client/index.ts
+```16:18:vendor/relay-harness/packages/client/ui-settings-plugin-inventory/src/client/index.ts
   interface LocaleNamespaceMap {
     /** Read-only Host plugin inventory copy. */
     'settings.pluginInventory': PluginInventoryLocaleKey
@@ -108,13 +108,13 @@ README was updated to one-click Modal install. The `/client` module comment and 
 
 ### 5. Menu trigger labels change after pick without `FlipText`
 
-**Standard:** `vendor/deepseek-harness/packages/client/AGENTS.md` Styling: *“New dialogs and menus use `usePresence` plus a `motion.css` recipe; a trigger label that changes after a pick uses `FlipText`.”*  
-**Standard:** `vendor/deepseek-harness/docs/web-styling.md` Motion: *“`FlipText` plays the 400ms flip recipe … when a permission, model, or effort trigger label changes.”* and *“New dialogs, menus, and in-place swaps reuse a primitive or the same hook and recipe.”*  
+**Standard:** `vendor/relay-harness/packages/client/AGENTS.md` Styling: *“New dialogs and menus use `usePresence` plus a `motion.css` recipe; a trigger label that changes after a pick uses `FlipText`.”*  
+**Standard:** `vendor/relay-harness/docs/web-styling.md` Motion: *“`FlipText` plays the 400ms flip recipe … when a permission, model, or effort trigger label changes.”* and *“New dialogs, menus, and in-place swaps reuse a primitive or the same hook and recipe.”*  
 In-tree precedent: `ui-model-selection` / `ui-conversation` PermissionSelect wrap the changing Menu trigger in `FlipText`.
 
 This diff *introduces* two Menu anchors whose visible label is the selected option (`statusLabel`, `sortLabel`):
 
-```327:339:vendor/deepseek-harness/packages/client/ui-settings-plugin-inventory/src/client/MarketplaceSettingsTab.tsx
+```327:339:vendor/relay-harness/packages/client/ui-settings-plugin-inventory/src/client/MarketplaceSettingsTab.tsx
               <Button
                 size="sm"
                 variant="outline"
@@ -134,16 +134,16 @@ This diff *introduces* two Menu anchors whose visible label is the selected opti
 
 ### 6. Component spec asserts effect/call-count internals, not user-visible behavior
 
-**Standard:** `vendor/deepseek-harness/packages/client/AGENTS.md` Testing: *“Component specs render with realistic props or a driven fixture runtime and assert user-visible behavior, not class names, hook internals, or render counts.”*
+**Standard:** `vendor/relay-harness/packages/client/AGENTS.md` Testing: *“Component specs render with realistic props or a driven fixture runtime and assert user-visible behavior, not class names, hook internals, or render counts.”*
 
-```401:411:vendor/deepseek-harness/packages/client/ui-settings-plugin-inventory/tests/marketplace.client.spec.tsx
+```401:411:vendor/relay-harness/packages/client/ui-settings-plugin-inventory/tests/marketplace.client.spec.tsx
   it('reloads the catalog when t changes', async () => {
     const listMarketplace = vi.fn(async () => ({
       items: [ITEM],
       categories: [{ id: 'all', label: 'All', count: 1 }],
     }))
     const { props, rerender } = renderTab({ listMarketplace })
-    await waitFor(() => { expect(screen.getByText('dsh-loop')).toBeTruthy() })
+    await waitFor(() => { expect(screen.getByText('rlh-loop')).toBeTruthy() })
     expect(listMarketplace).toHaveBeenCalledTimes(1)
     const nextT = ((key: PluginInventoryLocaleKey): string => en[key]) as MarketplaceSettingsTabProps['t']
     rerender(<MarketplaceSettingsTab {...props} t={nextT} />)
@@ -155,7 +155,7 @@ This pins `useEffect` dependencies / fetch arity after replacing `t` with an equ
 
 ### 7. Unexplained asymmetry on parallel IPC values
 
-**Standard:** `vendor/deepseek-harness/AGENTS.md` Conventions: *“Prefer symmetry for parallel values; unexplained asymmetry usually signals a missed extraction.”*
+**Standard:** `vendor/relay-harness/AGENTS.md` Conventions: *“Prefer symmetry for parallel values; unexplained asymmetry usually signals a missed extraction.”*
 
 Locale forwarding — `list-marketplace` passes `options?.locale` through (undefined → catalog `resolveLocale`); `refresh-marketplace` forces `'zh'`:
 
@@ -197,7 +197,7 @@ Self-check in the same file: *“有现成原语却手写了按钮 / 菜单 / �
 
 Search, refresh, status/sort, dialogs, and footer actions moved to primitives. Category chips remain a custom `<button className={css.tab}>` with underline-via-`::after` chrome:
 
-```289:301:vendor/deepseek-harness/packages/client/ui-settings-plugin-inventory/src/client/MarketplaceSettingsTab.tsx
+```289:301:vendor/relay-harness/packages/client/ui-settings-plugin-inventory/src/client/MarketplaceSettingsTab.tsx
             {(categories ?? []).map(row => (
               <button
                 key={row.id}
@@ -223,7 +223,7 @@ Baseline smells are never hard. Repo standards above win where they already requ
 
 ### Mysterious Name — `isBundle: !deprecated`
 
-Catalog mapping no longer probes `package.json` `dsh.bundle.patch`. It inverts `deprecated`:
+Catalog mapping no longer probes `package.json` `rlh.bundle.patch`. It inverts `deprecated`:
 
 ```77:90:src/main/marketplace-catalog.js
   const npm = typeof plugin.npm === 'string' && plugin.npm ? plugin.npm : null;
@@ -238,11 +238,11 @@ Catalog mapping no longer probes `package.json` `dsh.bundle.patch`. It inverts `
 
 UI still treats the flag as “bundle vs 非 bundle” and as the install-enable gate:
 
-```396:396:vendor/deepseek-harness/packages/client/ui-settings-plugin-inventory/src/client/MarketplaceSettingsTab.tsx
+```396:396:vendor/relay-harness/packages/client/ui-settings-plugin-inventory/src/client/MarketplaceSettingsTab.tsx
                         <span>{item.isBundle ? t('marketBundle') : t('marketNotBundle')}</span>
 ```
 
-```422:422:vendor/deepseek-harness/packages/client/ui-settings-plugin-inventory/src/client/MarketplaceSettingsTab.tsx
+```422:422:vendor/relay-harness/packages/client/ui-settings-plugin-inventory/src/client/MarketplaceSettingsTab.tsx
             {detail.isBundle && !detailName ? (
 ```
 
@@ -264,7 +264,7 @@ function resolveLocale(locale) {
 
 Client:
 
-```91:92:vendor/deepseek-harness/packages/client/ui-settings-plugin-inventory/src/client/desktop-shell.ts
+```91:92:vendor/relay-harness/packages/client/ui-settings-plugin-inventory/src/client/desktop-shell.ts
 export function catalogLocale(active: string): 'zh' | 'en' {
   return active.toLowerCase().startsWith('zh') ? 'zh' : 'en'
 }
@@ -311,7 +311,7 @@ Three functions switch the same discriminant (`actionTitle` 494–509, `actionDe
 
 ### Divergent Change — `marketplace-install.js`
 
-One module now owns: Host github-only `installPlugin`, catalog-id whitelist (`isAllowedMarketplaceSpec` / `#path:`), CLI add/remove, in-flight mutex, and `package.json` export/`dsh.client`/`dsh.bundle` loadability. Unrelated reasons to edit the same file.
+One module now owns: Host github-only `installPlugin`, catalog-id whitelist (`isAllowedMarketplaceSpec` / `#path:`), CLI add/remove, in-flight mutex, and `package.json` export/`rlh.client`/`rlh.bundle` loadability. Unrelated reasons to edit the same file.
 
 ### Unnamed swallow via `.catch(() => false)`
 
@@ -365,7 +365,7 @@ If `writeDiskCache` throws, `memoryRegistry` is already live and the `catch` rep
 - **`githubHeaders` left in `marketplace-catalog.js`.** Still used by `resolveCommitSha` (pin path). Not dead.
 - **`DesktopShell` still has `installPlugin` / `saveConfig` / `refreshMarketplace`.** Those methods remain on harness preload; not speculative API for this tab.
 - **Agent Note `2026-08-18-desktop-marketplace-curated-catalog.md`.** Present-tense Decision/Consequences; Testing section is required evidence under implemented-note rules, not a slop inventory.
-- **CSS tokens.** Feature CSS uses `--dsw-alias-*`; no new `#hex` / `rgb()` in the Settings module.
+- **CSS tokens.** Feature CSS uses `--rlw-alias-*`; no new `#hex` / `rgb()` in the Settings module.
 
 ---
 

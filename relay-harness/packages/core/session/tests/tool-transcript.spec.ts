@@ -5,7 +5,7 @@
  */
 
 import { describe, expect, it } from 'vitest'
-import { CallId, createAssistantMessage, createToolResultMessage, createUserMessage, type AssistantMessage, type Message, type ToolResultMessage, type UserMessage } from '@deepseek-ai/dsh-llm'
+import { CallId, createAssistantMessage, createToolResultMessage, createUserMessage, type AssistantMessage, type Message, type ToolResultMessage, type UserMessage } from '@relay-harness/rlh-llm'
 import {
   Session,
   SessionId,
@@ -13,7 +13,7 @@ import {
   TOOL_OUTCOME_UNKNOWN_TEXT,
   assertToolTranscriptValid,
   normalizeToolTranscript,
-} from '@deepseek-ai/dsh-session'
+} from '@relay-harness/rlh-session'
 
 function assistantWithCalls(...calls: { id: string; name: string }[]): AssistantMessage {
   return createAssistantMessage({

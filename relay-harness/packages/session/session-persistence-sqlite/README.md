@@ -1,4 +1,4 @@
-# @deepseek-ai/dsh-session-persistence-sqlite
+# @relay-harness/rlh-session-persistence-sqlite
 
 English | [中文](README.zh.md)
 

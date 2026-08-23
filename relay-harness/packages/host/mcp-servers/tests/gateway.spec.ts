@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { Context } from '@deepseek-ai/cordis'
-import Loader from '@deepseek-ai/cordis-plugin-loader'
-import { remoteMethods } from '@deepseek-ai/dsh-typert-protocol'
-import type { McpServerRecord } from '@deepseek-ai/dsh-mcp-servers-file'
+import { Context } from '@relay-harness/cordis'
+import Loader from '@relay-harness/cordis-plugin-loader'
+import { remoteMethods } from '@relay-harness/rlh-typert-protocol'
+import type { McpServerRecord } from '@relay-harness/rlh-mcp-servers-file'
 import McpServersGateway from '../src/index.ts'
 
 const contexts: Context[] = []

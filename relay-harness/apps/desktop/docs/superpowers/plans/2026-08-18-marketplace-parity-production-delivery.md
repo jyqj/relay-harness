@@ -1,6 +1,6 @@
 # Marketplace Phase-1 生产交付修复计划
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:test-driven-development. Stay in the `feat/marketplace-parity` worktree: `C:\Ai\Deepseek-Harness-Desktop\.worktrees\marketplace-parity`. Do not edit the main checkout. Tasks are coupled — execute inline in this session (not a fresh worktree, not SDD-per-task).
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:test-driven-development. Stay in the `feat/marketplace-parity` worktree: `C:\Ai\Relay-Harness-Desktop\.worktrees\marketplace-parity`. Do not edit the main checkout. Tasks are coupled — execute inline in this session (not a fresh worktree, not SDD-per-task).
 
 **Goal:** Close the production-delivery gaps the two-axis review proved, without shrinking Phase-1 or inflating Phase 2–4.
 
@@ -12,17 +12,17 @@
 
 ## Global Constraints
 
-- Worktree only: `C:\Ai\Deepseek-Harness-Desktop\.worktrees\marketplace-parity`, branch `feat/marketplace-parity`.
-- Do not preinstall or vendor `dshmarket`. Do not port hoist / release-age / fetchTimeout / one-click pnpm.
+- Worktree only: `C:\Ai\Relay-Harness-Desktop\.worktrees\marketplace-parity`, branch `feat/marketplace-parity`.
+- Do not preinstall or vendor `rlhmarket`. Do not port hoist / release-age / fetchTimeout / one-click pnpm.
 - Do not widen Host `installPlugin` / `isValidGithubSpec` to `#path:` or tarballs.
 - Do not implement Phase 2–4 (screenshot gallery UI, theme page, updates, hot disable, backup, diagnostics).
 - Keep catalog field `screenshots` on `MarketplaceItem` (spec mapping table). Do not render a gallery.
 - Keep category chips as `role="tab"` token-colored buttons with two-row clip + 展开. `ui-primitives` has no Tab atom; do not invent one.
-- Frontend: `ui-primitives` + `--dsw-alias-*`. Product copy Chinese. Comments English contracts, not reasoning transcripts.
+- Frontend: `ui-primitives` + `--rlw-alias-*`. Product copy Chinese. Comments English contracts, not reasoning transcripts.
 - TDD: failing test first, watch red, then minimal production code.
 - Do not commit unless Trent asks. Do not push. Do not `pnpm install` in the worktree vendor tree.
 - Do not mix unrelated `apiproxy` dirty files.
-- Desktop tests: `node --test <files>` from the worktree root. Client tests: `node "C:\Ai\Deepseek-Harness-Desktop\vendor\deepseek-harness\node_modules\vitest\vitest.mjs" run packages/client/ui-settings-plugin-inventory` with cwd `...\marketplace-parity\vendor\deepseek-harness`.
+- Desktop tests: `node --test <files>` from the worktree root. Client tests: `node "C:\Ai\Relay-Harness-Desktop\vendor\relay-harness\node_modules\vitest\vitest.mjs" run packages/client/ui-settings-plugin-inventory` with cwd `...\marketplace-parity\vendor\relay-harness`.
 
 ## Pushback (do not implement)
 
@@ -50,7 +50,7 @@
 - Test: `src/main/marketplace-catalog.test.js`, `src/main/marketplace-install.test.js`
 
 **Interfaces:**
-- Consumes: `isValidGithubSpec`, `isValidPackageName` from `src/host/install-dsh-plugin-client.js`
+- Consumes: `isValidGithubSpec`, `isValidPackageName` from `src/host/install-rlh-plugin-client.js`
 - Produces: `isAllowedMarketplaceSpec(spec, plugin)`, `isValidMarketplacePathSpec(spec, plugin)`, `parseGithubSpec(spec)`, `ownerRepoMatches(owner, repo, homepage)`
 - `plugin` for allow-list: `{ homepage, npm }` where `homepage` is the registry `url`
 
@@ -60,7 +60,7 @@ Add to `marketplace-catalog.test.js` inside the live-mapping test file (new test
 
 ```js
 test('last-token github: fallback is empty when the spec is not an allow-listed marketplace spec', async () => {
-  process.env.DSHD_MARKETPLACE_REGISTRY_URL = FIXTURE_URL;
+  process.env.RLHD_MARKETPLACE_REGISTRY_URL = FIXTURE_URL;
   mockFetch(async () => jsonResponse({
     ...LIVE_REGISTRY,
     plugins: [{
@@ -71,7 +71,7 @@ test('last-token github: fallback is empty when the spec is not an allow-listed 
       description: { en: 'x', zh: 'x' },
       npm: null,
       stars: 0,
-      install: 'dsh plugin --profile web add github:evil/bad-path#path:/../etc',
+      install: 'rlh plugin --profile web add github:evil/bad-path#path:/../etc',
       added: '2026-08-18',
     }, {
       name: 'other-repo',
@@ -81,7 +81,7 @@ test('last-token github: fallback is empty when the spec is not an allow-listed 
       description: { en: 'x', zh: 'x' },
       npm: null,
       stars: 0,
-      install: 'dsh plugin --profile web add github:evil/other-repo',
+      install: 'rlh plugin --profile web add github:evil/other-repo',
       added: '2026-08-18',
     }],
   }));
@@ -106,7 +106,7 @@ Move from install, keep behavior identical except fallback:
 ```js
 'use strict';
 
-const { isValidGithubSpec, isValidPackageName } = require('../host/install-dsh-plugin-client');
+const { isValidGithubSpec, isValidPackageName } = require('../host/install-rlh-plugin-client');
 
 const GITHUB_PATH_SPEC = /^github:([^/#]+)\/([^/#]+)#path:\/(.+)$/;
 const GITHUB_URL_OWNER_REPO = /github\.com\/([^/#]+)\/([^/#]+)/i;
@@ -275,7 +275,7 @@ async function pinInstallSpec(spec, token) {
 ### Task 3: Settings empty catalog, exact `#path:`, harness-down kind, FlipText, named catch
 
 **Files:**
-- Modify: `vendor/deepseek-harness/packages/client/ui-settings-plugin-inventory/src/client/MarketplaceSettingsTab.tsx`
+- Modify: `vendor/relay-harness/packages/client/ui-settings-plugin-inventory/src/client/MarketplaceSettingsTab.tsx`
 - Modify: `src/client/desktop-shell.ts` JSDoc on `MarketplaceInstallResult`
 - Test: `tests/marketplace.client.spec.tsx`
 
@@ -293,9 +293,9 @@ it('clears cards when a successful refresh returns no items', async () => {
     .mockResolvedValueOnce({ items: [ITEM], categories: [{ id: 'all', label: 'All', count: 1 }] })
     .mockResolvedValueOnce({ items: [], warning: '请求过于频繁', categories: [] })
   renderTab({ listMarketplace })
-  await waitFor(() => { expect(screen.getByText('dsh-loop')).toBeTruthy() })
+  await waitFor(() => { expect(screen.getByText('rlh-loop')).toBeTruthy() })
   fireEvent.click(screen.getByRole('button', { name: en.marketRefresh }))
-  await waitFor(() => { expect(screen.queryByText('dsh-loop')).toBeNull() })
+  await waitFor(() => { expect(screen.queryByText('rlh-loop')).toBeNull() })
   expect(screen.getByText('请求过于频繁')).toBeTruthy()
   expect(screen.queryByText(en.marketEmpty)).toBeNull()
 })
@@ -309,10 +309,10 @@ it('keeps cards when a later catalog read throws', async () => {
     .mockResolvedValueOnce({ items: [ITEM], categories: [{ id: 'all', label: 'All', count: 1 }] })
     .mockRejectedValueOnce(new Error('offline'))
   renderTab({ listMarketplace })
-  await waitFor(() => { expect(screen.getByText('dsh-loop')).toBeTruthy() })
+  await waitFor(() => { expect(screen.getByText('rlh-loop')).toBeTruthy() })
   fireEvent.click(screen.getByRole('button', { name: en.marketRefresh }))
   await waitFor(() => { expect(screen.getByText(en.marketError)).toBeTruthy() })
-  expect(screen.getByText('dsh-loop')).toBeTruthy()
+  expect(screen.getByText('rlh-loop')).toBeTruthy()
 })
 ```
 
@@ -408,7 +408,7 @@ function specHasPath(spec: string, pathSuffix: string): boolean {
 
 `ActionDialog` add `{ kind: 'harness-down'; title: string; body: string }`. `runInstall` uses that kind. `actionTitle` / `actionDescription` / `actionFooter` treat it like dismiss-only (same footer as failure). Log `pre` only for `installing` and `failure`, not harness-down.
 
-Import `FlipText` from `@deepseek-ai/dsh-client-ui-primitives`. Wrap `{statusLabel}` and `{sortLabel}`:
+Import `FlipText` from `@relay-harness/rlh-client-ui-primitives`. Wrap `{statusLabel}` and `{sortLabel}`:
 
 ```tsx
 <FlipText text={statusLabel} />
@@ -474,9 +474,9 @@ README bullet (EN):
 ZH counterpart same fact. Then:
 
 ```
-git hash-object -w vendor/deepseek-harness/packages/client/ui-settings-plugin-inventory/README.md
-git hash-object -w vendor/deepseek-harness/packages/client/ui-settings-plugin-inventory/README.zh.md
-git update-ref refs/dsh/translation-pairing/snapshots/<hash> <hash>
+git hash-object -w vendor/relay-harness/packages/client/ui-settings-plugin-inventory/README.md
+git hash-object -w vendor/relay-harness/packages/client/ui-settings-plugin-inventory/README.zh.md
+git update-ref refs/rlh/translation-pairing/snapshots/<hash> <hash>
 ```
 
 Write the two hashes into `README.i18n.yaml`. Repeat for the Agent Note triplet.
@@ -488,7 +488,7 @@ Write the two hashes into `README.i18n.yaml`. Repeat for the Agent Note triplet.
 
 ### Task 6: Full verification
 
-- [x] **Step 1:** `node --test src/main/marketplace-catalog.test.js src/main/marketplace-install.test.js src/main/ipc.test.js src/main/window-marketplace.test.js src/host/install-dsh-plugin-client.test.js`
+- [x] **Step 1:** `node --test src/main/marketplace-catalog.test.js src/main/marketplace-install.test.js src/main/ipc.test.js src/main/window-marketplace.test.js src/host/install-rlh-plugin-client.test.js`
 - [x] **Step 2:** vitest `packages/client/ui-settings-plugin-inventory`
 - [x] **Step 3:** `npm test` (full desktop suite) from the worktree
 - [x] **Step 4:** Do not claim done without this run's exit code 0

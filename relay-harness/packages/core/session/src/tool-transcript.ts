@@ -7,10 +7,10 @@
  * provider-valid transcript (OpenAI-compatible providers reject an assistant
  * message whose tool_calls lack following tool messages).
  *
- * @module @deepseek-ai/dsh-session/tool-transcript
+ * @module @relay-harness/rlh-session/tool-transcript
  */
 
-import { MessageId, freezeMessage, type CallId, type Message, type ToolCallBlock, type ToolResultMessage } from '@deepseek-ai/dsh-llm'
+import { MessageId, freezeMessage, type CallId, type Message, type ToolCallBlock, type ToolResultMessage } from '@relay-harness/rlh-llm'
 import { TOOL_NOT_STARTED_TEXT, TOOL_OUTCOME_UNKNOWN_TEXT } from './repair.ts'
 
 /** Outcome of one transcript canonicalization pass. */

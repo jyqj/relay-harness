@@ -6,11 +6,11 @@ const leftoverCss = `--${['t', '3'].join('')}-`
 const leftoverBrand = ['t', '3', 'code'].join('')
 
 describe('readPreviewAnnotationTheme', () => {
-  it('maps --dsw-alias tokens onto theme fields and never emits leftover CSS names', () => {
+  it('maps --rlw-alias tokens onto theme fields and never emits leftover CSS names', () => {
     document.documentElement.removeAttribute('data-ds-dark-theme')
-    document.documentElement.style.setProperty('--dsw-alias-button-primary-fill', 'rgb(9, 9, 9)')
-    document.documentElement.style.setProperty('--dsw-alias-bg-layer-1', 'rgb(255, 255, 255)')
-    document.documentElement.style.setProperty('--dsw-alias-label-primary', 'rgb(15, 17, 21)')
+    document.documentElement.style.setProperty('--rlw-alias-button-primary-fill', 'rgb(9, 9, 9)')
+    document.documentElement.style.setProperty('--rlw-alias-bg-layer-1', 'rgb(255, 255, 255)')
+    document.documentElement.style.setProperty('--rlw-alias-label-primary', 'rgb(15, 17, 21)')
     const theme = readPreviewAnnotationTheme()
     expect(theme.primary).toBe('rgb(9, 9, 9)')
     expect(theme.background).toBe('rgb(255, 255, 255)')

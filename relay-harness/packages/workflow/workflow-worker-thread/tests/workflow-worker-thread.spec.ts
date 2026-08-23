@@ -4,18 +4,18 @@ import { mkdirSync, mkdtempSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import type { Worker } from 'node:worker_threads'
-import { Context } from '@deepseek-ai/cordis'
-import Loader from '@deepseek-ai/cordis-plugin-loader'
-import type { Agent } from '@deepseek-ai/dsh-agent'
-import SubagentRuntime from '@deepseek-ai/dsh-subagent'
-import type { SubagentCapabilities, SubagentProvider, SubagentResult, SubagentRun, SubagentStartRequest } from '@deepseek-ai/dsh-subagent'
-import type { WorkflowMeta, WorkflowResult, WorkflowResultInfo, WorkflowRun, WorkflowRunInfo } from '@deepseek-ai/dsh-workflow'
+import { Context } from '@relay-harness/cordis'
+import Loader from '@relay-harness/cordis-plugin-loader'
+import type { Agent } from '@relay-harness/rlh-agent'
+import SubagentRuntime from '@relay-harness/rlh-subagent'
+import type { SubagentCapabilities, SubagentProvider, SubagentResult, SubagentRun, SubagentStartRequest } from '@relay-harness/rlh-subagent'
+import type { WorkflowMeta, WorkflowResult, WorkflowResultInfo, WorkflowRun, WorkflowRunInfo } from '@relay-harness/rlh-workflow'
 import * as workerEngineModule from '../src/index.ts'
 import WorkerThreadWorkflowEngine, { type Config } from '../src/index.ts'
 import { workerSpawnEnv } from '../src/host.ts'
 import { HostToWorkerType, WorkerToHostType } from '../src/protocol.ts'
 import { workflowRequestHash } from '../src/journal.ts'
-import { SessionId } from '@deepseek-ai/dsh-session'
+import { SessionId } from '@relay-harness/rlh-session'
 
 /** A minimal parent stand-in: the engine only threads it through to the provider. */
 function fakeParent(): Agent {
@@ -184,7 +184,7 @@ function expectWorkflowError(result: WorkflowResult, fragment: string): void {
   expect(result.error).toContain(fragment)
 }
 
-describe('dsh-workflow-worker-thread', () => {
+describe('rlh-workflow-worker-thread', () => {
   describe('script execution over a real worker thread', () => {
     it('fails a silent unattended run through the configured stall watchdog', async () => {
       const { ctx, parent } = await setup({
@@ -209,7 +209,7 @@ describe('dsh-workflow-worker-thread', () => {
     })
 
     it('replays completed agent calls on resume and rejects an edited script fingerprint', async () => {
-      const journalRoot = mkdtempSync(join(tmpdir(), 'dsh-workflow-resume-'))
+      const journalRoot = mkdtempSync(join(tmpdir(), 'rlh-workflow-resume-'))
       try {
         const { ctx, parent, provider } = await setup({
           config: { journalRoot },
@@ -244,7 +244,7 @@ describe('dsh-workflow-worker-thread', () => {
     })
 
     it('rejects a resume id while its original run is still active', async () => {
-      const journalRoot = mkdtempSync(join(tmpdir(), 'dsh-workflow-active-resume-'))
+      const journalRoot = mkdtempSync(join(tmpdir(), 'rlh-workflow-active-resume-'))
       try {
         const { ctx, parent } = await setup({ manual: true, config: { journalRoot } })
         const source = scripted("return await agent('pending')")
@@ -276,7 +276,7 @@ describe('dsh-workflow-worker-thread', () => {
     })
 
     it('replays recorded start and result failures without repeating provider work', async () => {
-      const journalRoot = mkdtempSync(join(tmpdir(), 'dsh-workflow-failure-resume-'))
+      const journalRoot = mkdtempSync(join(tmpdir(), 'rlh-workflow-failure-resume-'))
       try {
         const startFailure = await setup({ manual: true, deferStart: true, config: { journalRoot } })
         const source = scripted("return await agent('fails to start')")
@@ -316,7 +316,7 @@ describe('dsh-workflow-worker-thread', () => {
     })
 
     it('fails a nondeterministic replay when the same script issues a different request', async () => {
-      const journalRoot = mkdtempSync(join(tmpdir(), 'dsh-workflow-divergence-'))
+      const journalRoot = mkdtempSync(join(tmpdir(), 'rlh-workflow-divergence-'))
       try {
         const { ctx, parent, provider } = await setup({ config: { journalRoot } })
         const source = scripted('return await agent(String(Math.random()))')
@@ -334,7 +334,7 @@ describe('dsh-workflow-worker-thread', () => {
     })
 
     it('surfaces journal append failure before publishing a child result', async () => {
-      const journalRoot = mkdtempSync(join(tmpdir(), 'dsh-workflow-journal-failure-'))
+      const journalRoot = mkdtempSync(join(tmpdir(), 'rlh-workflow-journal-failure-'))
       try {
         const { ctx, parent, provider } = await setup({ manual: true, config: { journalRoot } })
         const source = scripted("return await agent('write result')")
@@ -374,7 +374,7 @@ describe('dsh-workflow-worker-thread', () => {
     })
 
     it('journals an unserializable child result as a replayable infrastructure failure', async () => {
-      const journalRoot = mkdtempSync(join(tmpdir(), 'dsh-workflow-invalid-result-'))
+      const journalRoot = mkdtempSync(join(tmpdir(), 'rlh-workflow-invalid-result-'))
       try {
         const { ctx, parent, provider } = await setup({ manual: true, config: { journalRoot } })
         const source = scripted("return await agent('invalid result')")
@@ -397,7 +397,7 @@ describe('dsh-workflow-worker-thread', () => {
     })
 
     it('does not journal a cancelled live suffix call, so resume retries it', async () => {
-      const journalRoot = mkdtempSync(join(tmpdir(), 'dsh-workflow-cancel-resume-'))
+      const journalRoot = mkdtempSync(join(tmpdir(), 'rlh-workflow-cancel-resume-'))
       try {
         const { ctx, parent, provider } = await setup({ manual: true, config: { journalRoot } })
         const source = scripted("return await agent('retry after cancel')")
@@ -850,7 +850,7 @@ describe('dsh-workflow-worker-thread', () => {
       const { ctx, parent } = await setup()
       // The ACP snapshot harness runs the parent with its cwd OUTSIDE the
       // repo and pins the repo tsconfig through this variable; the worker
-      // must inherit the pin (or its dsh-* imports silently resolve to
+      // must inherit the pin (or its rlh-* imports silently resolve to
       // unbuilt lib/ bundles) while every other variable stays scrubbed.
       const tsconfig = fileURLToPath(new URL('../../../../tsconfig.json', import.meta.url))
       process.env.TSX_TSCONFIG_PATH = tsconfig

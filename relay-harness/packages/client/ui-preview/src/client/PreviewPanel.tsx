@@ -11,8 +11,8 @@ import {
   Menu,
   Tooltip,
   type MenuEntry,
-} from '@deepseek-ai/dsh-client-ui-primitives'
-import type { InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
+} from '@relay-harness/rlh-client-ui-primitives'
+import type { InjectFace, PropsLocale, PropsRuntime } from '@relay-harness/rlh-client-ui-slots'
 import { DeviceToolbar } from './DeviceToolbar.tsx'
 import { NS } from './locales.ts'
 import type { DiscoveredServer, PreviewBounds, PreviewColorScheme, PreviewNavState, PreviewShellInjected } from './shell.ts'
@@ -29,9 +29,9 @@ import { DEFAULT_DEVICE_VIEWPORT } from './viewportPresets.ts'
 import css from './PreviewPanel.module.css'
 
 /** Must match ui-user-terminal; client packages cannot share a value export. */
-const OPEN_SURFACE_EVENT = 'dshd-open-surface'
+const OPEN_SURFACE_EVENT = 'rlhd-open-surface'
 /** Must match ui-user-terminal; client packages cannot share a value export. */
-const PENDING_PREVIEW_URL_KEY = 'dshd-pending-preview-url'
+const PENDING_PREVIEW_URL_KEY = 'rlhd-pending-preview-url'
 const DISCOVER_INTERVAL_MS = 3_000
 
 export type PreviewPanelProps =

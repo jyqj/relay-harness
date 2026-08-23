@@ -1,10 +1,10 @@
-/** Package-owned invariant companion for `@deepseek-ai/dsh-tool-memory`. */
+/** Package-owned invariant companion for `@relay-harness/rlh-tool-memory`. */
 
 /* jscpd:ignore-start */
-import type { Context } from '@deepseek-ai/cordis'
-import type { InvariantInstaller } from '@deepseek-ai/dsh-invariants'
+import type { Context } from '@relay-harness/cordis'
+import type { InvariantInstaller } from '@relay-harness/rlh-invariants'
 
-const PACKAGE_NAME = '@deepseek-ai/dsh-tool-memory'
+const PACKAGE_NAME = '@relay-harness/rlh-tool-memory'
 export const name = 'tool-memory-invariant'
 export const inject = ['invariants']
 

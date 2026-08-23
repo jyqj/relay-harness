@@ -35,7 +35,7 @@ function tempDir(prefix) {
 }
 
 async function caseCleanInit() {
-  const cwd = tempDir('dsh-live-init-');
+  const cwd = tempDir('rlh-live-init-');
   try {
     const inited = await gitInit(cwd);
     assert.equal(inited.ok, true);
@@ -49,8 +49,8 @@ async function caseCleanInit() {
 }
 
 async function caseCommitPushSkip() {
-  const cwd = tempDir('dsh-live-push-');
-  const bare = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-live-bare-'));
+  const cwd = tempDir('rlh-live-push-');
+  const bare = fs.mkdtempSync(path.join(os.tmpdir(), 'rlh-live-bare-'));
   try {
     git(bare, ['init', '--bare']);
     git(cwd, ['init', '-b', 'main']);
@@ -74,8 +74,8 @@ async function caseCommitPushSkip() {
 }
 
 async function caseDirtyCreatePr() {
-  const cwd = tempDir('dsh-live-pr-');
-  const bare = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-live-bare-'));
+  const cwd = tempDir('rlh-live-pr-');
+  const bare = fs.mkdtempSync(path.join(os.tmpdir(), 'rlh-live-bare-'));
   try {
     git(bare, ['init', '--bare']);
     git(cwd, ['init', '-b', 'main']);
@@ -101,7 +101,7 @@ async function caseDirtyCreatePr() {
 }
 
 async function casePrBaseGhWins() {
-  const cwd = tempDir('dsh-live-base-');
+  const cwd = tempDir('rlh-live-base-');
   try {
     git(cwd, ['init', '-b', 'main']);
     git(cwd, ['config', 'user.email', 't@local']);
@@ -132,8 +132,8 @@ async function caseCeilingEnv() {
 }
 
 async function caseCreatePrCopy() {
-  const cwd = tempDir('dsh-live-copy-');
-  const bare = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-live-bare-'));
+  const cwd = tempDir('rlh-live-copy-');
+  const bare = fs.mkdtempSync(path.join(os.tmpdir(), 'rlh-live-bare-'));
   let seen = null;
   setTextGenerator(async (input) => {
     seen = input;
@@ -176,8 +176,8 @@ async function caseReservedNameCommitPush() {
     console.log('SKIP  reserved-name commit_push (not win32)');
     return;
   }
-  const cwd = tempDir('dsh-live-nul-');
-  const bare = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-live-bare-'));
+  const cwd = tempDir('rlh-live-nul-');
+  const bare = fs.mkdtempSync(path.join(os.tmpdir(), 'rlh-live-bare-'));
   const reserved = `\\\\?\\${path.resolve(cwd, 'nul')}`;
   try {
     git(bare, ['init', '--bare']);

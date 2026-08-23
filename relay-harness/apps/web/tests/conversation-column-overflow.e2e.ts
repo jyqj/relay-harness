@@ -48,7 +48,7 @@ const CONTROL_VIEWPORT = 600
  */
 const WIDTHS = [1680, 1200, 1000, 800, CONTROL_VIEWPORT]
 /** Element id of the mutation control's injected sheet, so the test can take it back out. */
-const CONTROL_STYLE_ID = 'dsh-column-overflow-control'
+const CONTROL_STYLE_ID = 'rlh-column-overflow-control'
 /** Horizontal wheel delta per gesture; must exceed the widest bleed the sweep can produce. */
 const WHEEL_DELTA = 300
 
@@ -221,7 +221,7 @@ describe('web e2e: the conversation column scrolls on one axis', () => {
    * Resize to a viewport and read the column once its width stops moving.
    *
    * The glow rides the hero box, which rides the column, and the frame eases
-   * its column tracks over `--ds-transition-duration-slow`: reading straight
+   * its column tracks over `--rl-transition-duration-slow`: reading straight
    * after a resize can report the previous viewport's relation, or a width
    * caught mid-transition.
    * @param width - viewport width to settle at.

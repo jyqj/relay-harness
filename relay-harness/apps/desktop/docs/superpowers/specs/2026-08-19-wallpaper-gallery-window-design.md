@@ -2,7 +2,7 @@
 
 外观里的背景图要能**浏览**，不能把「贴 JSON URL」当成产品。点「浏览图库」弹出窗口：上面分类 + 搜索，下面图片网格；可收藏；点图先确认是否设为壁纸，确认后再裁剪。图源的新增 / 编辑 / 删除也在这个窗口里，不拉到外观页。
 
-视觉语言仍是官方 `dsh web`：`ui-primitives` + `--dsw-alias-*`。不抄 `marketplace.css` 的 hex，不新开 Electron 窗口，不第二套皮肤。见 [design-language.md](../../design-language.md)。
+视觉语言仍是官方 `rlh web`：`ui-primitives` + `--rlw-alias-*`。不抄 `marketplace.css` 的 hex，不新开 Electron 窗口，不第二套皮肤。见 [design-language.md](../../design-language.md)。
 
 ## 决定
 
@@ -10,7 +10,7 @@
 2. **图源在浏览窗口里 CRUD。** 外观只留选择图片、浏览图库、裁剪、毛玻璃、像素化。图库窗口里有「图源」：列表（显示名、类型、编辑、删除）和「新增」。不在外观页再画一块图源。
 3. **预置必应和 Wallhaven。** 必应 = 官方今日 `HPImageArchive` + 中文历史归档 `https://bing.npanuhin.me/CN-zh.{year}.json`。Wallhaven = `https://wallhaven.cc/api/v1/search`，**写死 `purity=100`（仅 SFW）**，没有 NSFW 开关，不向用户要 API key。
 4. **自定义图源是具名 HTTPS JSON 目录。** 格式仍是必应 `images[]` 或 `{ items: [{ id, title, thumbUrl, imageUrl, copyright? }] }`。每条有显示名，作为图库里的一个分类页签。
-5. **持久化在 Host `ui-theme`。** 图源列表和收藏写进主题设置，不进桌面 `config.json`，不和插件市场混用。`dsh web` 没有 preload 时不显示浏览按钮。
+5. **持久化在 Host `ui-theme`。** 图源列表和收藏写进主题设置，不进桌面 `config.json`，不和插件市场混用。`rlh web` 没有 preload 时不显示浏览按钮。
 6. **旧字段只做一次迁入。** `wallpaperBingEnabled` / `wallpaperCatalogUrls` 若磁盘上还在，在解析时变成 `wallpaperSources`；之后只读写新字段。不再把必应开关和裸 URL 列表画在界面上。
 
 ## 非目标
@@ -99,7 +99,7 @@ type WallpaperFavorite = {
 
 条目统一 `{ id, title, copyright, thumbUrl, imageUrl, source }`。`source` 为图源 `id`。
 
-下载仍走 `downloadWallpaper`：HTTPS（fixture 可 `DSHD_WALLPAPER_ALLOW_HTTP=1`）、12MB、类型白名单、无 cookie、最多 4 次重定向。Wallhaven 的 `path` / 归档 jpg / 必应图都走这条，裁剪源不得用页面 `<img>` 画布。
+下载仍走 `downloadWallpaper`：HTTPS（fixture 可 `RLHD_WALLPAPER_ALLOW_HTTP=1`）、12MB、类型白名单、无 cookie、最多 4 次重定向。Wallhaven 的 `path` / 归档 jpg / 必应图都走这条，裁剪源不得用页面 `<img>` 画布。
 
 目录 JSON 4MB、每源 500 条、流式封顶保持不变。Wallhaven 单页通常远小于 500。
 
@@ -136,7 +136,7 @@ Host Zod：`wallpaperSources`、`wallpaperFavorites` 为权威字段。旧两字
 - `theme-settings` / store：sanitize、缺省预置、空数组不回种、旧 URL 迁入、收藏上限 100。
 - `wallpaper-catalog.test.js`：必应今日、按年归档 JSON、Wallhaven `purity=100` 与条目映射、非法 URL、4MB/500 仍在。
 - Appearance：无图源块；浏览打开窗口；窗口内图源新增/编辑/删除；页签切换触发对应 list 参数；星标写入收藏；点图出现确认；否不裁剪；是才 download+crop；取消图库忽略迟到下载。
-- 普通 `dsh web`：无浏览按钮。
+- 普通 `rlh web`：无浏览按钮。
 
 ## Agent Note
 

@@ -1,7 +1,7 @@
 /** Registers the Files tree and single-file preview into surfaces slots. */
-import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
-import type {} from '@deepseek-ai/dsh-client-locale/client'
-import type {} from '@deepseek-ai/dsh-client-ui-surfaces/client'
+import type { ClientContext } from '@relay-harness/rlh-client-runtime/client'
+import type {} from '@relay-harness/rlh-client-locale/client'
+import type {} from '@relay-harness/rlh-client-ui-surfaces/client'
 import { serializeComposerFileLink } from './composerMention.ts'
 import { appendToDraft } from './draft.ts'
 import { FilePreview } from './FilePreview.tsx'
@@ -14,7 +14,7 @@ export type { FilePreviewProps } from './FilePreview.tsx'
 export type { FilesKey } from './locales.ts'
 export type { DirEntry, FilesShellInjected, ListDirResult, ReadFileMediaResult, ReadFileResult, WriteFileResult } from './shell.ts'
 
-declare module '@deepseek-ai/dsh-client-ui-slots' {
+declare module '@relay-harness/rlh-client-ui-slots' {
   interface LocaleNamespaceMap {
     /** Files surface copy. */
     files: FilesKey

@@ -3,7 +3,7 @@
  * xterm's default answer is ESC [?1;2c via onData; PowerShell echoes that as
  * typed `[?1;2c`. ConPTY consumes ESC [?61;4c (VT level 61) instead.
  *
- * DSH destroys the xterm instance on pane unmount and replays the raw PTY
+ * RLH destroys the xterm instance on pane unmount and replays the raw PTY
  * buffer, which still contains CSI c. A second answer after handshake is
  * stdin to PowerShell (`[?61;4c`). This adapter never enables the DLL and caches
  * xterm across remounts; this module answers DA1 at most once per PTY id.

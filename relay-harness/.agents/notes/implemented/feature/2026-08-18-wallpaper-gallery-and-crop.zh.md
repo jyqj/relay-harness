@@ -10,11 +10,11 @@ Status: implemented
 
 ## 决策
 
-**图库主源是用户配置的 HTTPS JSON 目录。** `wallpaperCatalogUrls` 写在 Host `ui-theme`，最多八条互不相同的 `https:` 字符串，每条最多 500 字符——不是桌面 `config.json`，也不和插件市场混用。`wallpaperBingEnabled` 默认 false。渲染层每次打开图库带上该列表；主进程不持久化它。目录 JSON 要么是必应 `images[]`，要么是 `{ version, items: [{ id, title, thumbUrl, imageUrl, copyright? }] }`。拉取时只允许 HTTPS，测试可用 `DSHD_WALLPAPER_ALLOW_HTTP=1` 打到 fixture。上限：JSON 4MB、每源 500 条、原图 12MB、手工跟随最多四次重定向并复核 `Location`、不带 cookie。没有 `Content-Length` 的响应按块读取，超过字节上限即中止。缩略图可用 `<img src>`；裁剪用的全图必须经 `downloadWallpaper` 变成 data URL。
+**图库主源是用户配置的 HTTPS JSON 目录。** `wallpaperCatalogUrls` 写在 Host `ui-theme`，最多八条互不相同的 `https:` 字符串，每条最多 500 字符——不是桌面 `config.json`，也不和插件市场混用。`wallpaperBingEnabled` 默认 false。渲染层每次打开图库带上该列表；主进程不持久化它。目录 JSON 要么是必应 `images[]`，要么是 `{ version, items: [{ id, title, thumbUrl, imageUrl, copyright? }] }`。拉取时只允许 HTTPS，测试可用 `RLHD_WALLPAPER_ALLOW_HTTP=1` 打到 fixture。上限：JSON 4MB、每源 500 条、原图 12MB、手工跟随最多四次重定向并复核 `Location`、不带 cookie。没有 `Content-Length` 的响应按块读取，超过字节上限即中止。缩略图可用 `<img src>`；裁剪用的全图必须经 `downloadWallpaper` 变成 data URL。
 
-**必应 HPImageArchive 是可选的网络图源，不是内置图包。** 外观页开关打开时，桌面主进程拉取两页 HPImageArchive：`idx=0&n=8` 与 `idx=8&n=8`，地址为 `https://cn.bing.com/HPImageArchive.aspx?format=js&mkt=zh-CN`（测试用 `DSHD_BING_WALLPAPER_URL` 覆盖；`{idx}` 会展开成两页）。`wp === false` 的条目丢弃。全图用 `{origin}{urlbase}_1920x1080.jpg`，缩略图 `_400x240.jpg`。不拉 UHD：壁纸 data URL 已接近 1.8MB 上限，长边压在 1920。外观页写明必应目录仅限壁纸用途。
+**必应 HPImageArchive 是可选的网络图源，不是内置图包。** 外观页开关打开时，桌面主进程拉取两页 HPImageArchive：`idx=0&n=8` 与 `idx=8&n=8`，地址为 `https://cn.bing.com/HPImageArchive.aspx?format=js&mkt=zh-CN`（测试用 `RLHD_BING_WALLPAPER_URL` 覆盖；`{idx}` 会展开成两页）。`wp === false` 的条目丢弃。全图用 `{origin}{urlbase}_1920x1080.jpg`，缩略图 `_400x240.jpg`。不拉 UHD：壁纸 data URL 已接近 1.8MB 上限，长边压在 1920。外观页写明必应目录仅限壁纸用途。
 
-**每条持久化路径都按当前窗口比例裁剪。** 本地选图和图库选图打开同一个裁剪对话框（平移、滚轮／滑杆缩放，遮罩锁定为 `window.innerWidth / innerHeight`）。确认按钮在预览 `load` 给出自然尺寸之前保持禁用；窗口 `resize` 会更新遮罩。确认后经 `cropWallpaper` 烘焙 JPEG，再走 `setWallpaper`；裁剪失败（包括解码在 `CROP_DECODE_TIMEOUT_MS` 内一直不结束）时对话框留下，不写入未裁原图。裁剪进行中关闭对话框不写入。`dismiss` 会同步抬高裁剪会话令牌，即使此时 `open` 尚未翻转。裁剪预览在 `image` 为空时不渲染 `<img>`，因此 Presence 退出不会去拉取 `src=""`。关闭图库会抬高下载会话令牌；随后完成的 `downloadWallpaper` 不会打开裁剪。本地选图超过 `MAX_WALLPAPER_FILE_BYTES`（12MB，与主图拉取相同）时，在 `FileReader` 之前就被拒绝。图库缩略图使用 `referrerPolicy="no-referrer"`；仍以 `<img src>` 加载（不用 `crossOrigin`）。图库下载失败留在图库并显示下载错误。本地文件不是可读图片时，行上显示选图失败文案。添加一条会被 `sanitizeWallpaperCatalogUrls` 丢掉的目录 URL（非 `https:`、重复、过长）会留下草稿并显示目录拒绝文案。已设壁纸可通过外观「调整背景图」从已存 data URL 再裁一次。`apply` 仅在 `window.shell` 同时暴露 `listWallpaperCatalog` 与 `downloadWallpaper` 时注入二者；普通 `dsh web` 只保留本地选图和裁剪，不显示图库和图源编辑。
+**每条持久化路径都按当前窗口比例裁剪。** 本地选图和图库选图打开同一个裁剪对话框（平移、滚轮／滑杆缩放，遮罩锁定为 `window.innerWidth / innerHeight`）。确认按钮在预览 `load` 给出自然尺寸之前保持禁用；窗口 `resize` 会更新遮罩。确认后经 `cropWallpaper` 烘焙 JPEG，再走 `setWallpaper`；裁剪失败（包括解码在 `CROP_DECODE_TIMEOUT_MS` 内一直不结束）时对话框留下，不写入未裁原图。裁剪进行中关闭对话框不写入。`dismiss` 会同步抬高裁剪会话令牌，即使此时 `open` 尚未翻转。裁剪预览在 `image` 为空时不渲染 `<img>`，因此 Presence 退出不会去拉取 `src=""`。关闭图库会抬高下载会话令牌；随后完成的 `downloadWallpaper` 不会打开裁剪。本地选图超过 `MAX_WALLPAPER_FILE_BYTES`（12MB，与主图拉取相同）时，在 `FileReader` 之前就被拒绝。图库缩略图使用 `referrerPolicy="no-referrer"`；仍以 `<img src>` 加载（不用 `crossOrigin`）。图库下载失败留在图库并显示下载错误。本地文件不是可读图片时，行上显示选图失败文案。添加一条会被 `sanitizeWallpaperCatalogUrls` 丢掉的目录 URL（非 `https:`、重复、过长）会留下草稿并显示目录拒绝文案。已设壁纸可通过外观「调整背景图」从已存 data URL 再裁一次。`apply` 仅在 `window.shell` 同时暴露 `listWallpaperCatalog` 与 `downloadWallpaper` 时注入二者；普通 `rlh web` 只保留本地选图和裁剪，不显示图库和图源编辑。
 
 这是对[主题家族外观系统](2026-08-14-theme-family-appearance-system.md)里 Appearance 附加项的延伸。两个新字段与其他 Appearance 附加项同写 Host `ui-theme` 分节（[Host settings 支撑的偏好](../bug-fix/2026-08-06-host-backed-web-preferences.md)）。烘焙出的 JPEG 仍遵守[画布实心度与 data URL 上限](../bug-fix/2026-08-15-appearance-nav-contrast-and-wallpaper-canvas-cap.md)。
 
@@ -28,11 +28,11 @@ Status: implemented
 
 **把目录 `imageUrl` 热链成壁纸层。** 否决：Host 文档已经按带上限的 data URL 存储；活的远程 URL 会污染 canvas CORS、离线失效，并跳过裁剪烘焙。
 
-**再开一个 Electron 窗口，或放进插件市场设置页。** 否决：产品面是 Appearance `settings.section`（`id: appearance`），只用 `ui-primitives` 和 `--dsw-alias-*`。
+**再开一个 Electron 窗口，或放进插件市场设置页。** 否决：产品面是 Appearance `settings.section`（`id: appearance`），只用 `ui-primitives` 和 `--rlw-alias-*`。
 
 ## 后果
 
-桌面外观页可以列出最多八个自定义 JSON 目录，并在保存前裁剪。仅当 `wallpaperBingEnabled` 为 true 时才查询必应。`dsh web` 不拉目录。某条目录 URL 失败时只警告该源，其它源照常。没有搜索、分类、每日自动换图、收藏夹和成人源。
+桌面外观页可以列出最多八个自定义 JSON 目录，并在保存前裁剪。仅当 `wallpaperBingEnabled` 为 true 时才查询必应。`rlh web` 不拉目录。某条目录 URL 失败时只警告该源，其它源照常。没有搜索、分类、每日自动换图、收藏夹和成人源。
 
 ## 测试
 

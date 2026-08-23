@@ -1,15 +1,16 @@
+// @ts-check
 const fs = require('fs');
 const path = require('path');
 const { app } = require('electron');
 const { DROPPED } = require('./plugins');
-const { isValidPackageName } = require('../host/install-dsh-plugin-client');
+const { isValidPackageName } = require('../host/install-rlh-plugin-client');
 const { isAllowedMarketplaceSpec } = require('./marketplace-spec');
 
 const DEFAULT_REGISTRY_URL = 'https://awesome-dsh-plugin.com/plugins.json';
 const CACHE_VERSION = 3;
 const CACHE_TTL_MS = 60 * 60 * 1000;
 const FETCH_TIMEOUT_MS = 4000;
-const USER_AGENT = 'Deepseek-Harness-Desktop';
+const USER_AGENT = 'Relay-Harness-Desktop';
 const SNAPSHOT_PATH = path.join(__dirname, 'marketplace-registry-snapshot.json');
 const WARNING_FRESH_CACHE = '正在使用一小时内的本地插件目录。';
 const WARNING_EMPTY = '无法加载插件目录。';
@@ -21,10 +22,36 @@ function cachePath() {
   return path.join(app.getPath('userData'), 'marketplace-cache.json');
 }
 
+/**
+ * Whether a registry override may be fetched.
+ *
+ * The catalog is the trust anchor for installs: `isAllowedMarketplaceSpec`
+ * validates each row against that same row's homepage, so whoever serves the
+ * catalog decides what is installable. Require transport authentication, and
+ * exempt only loopback, where a local development server has no network path
+ * an attacker could occupy.
+ * @param {string} value
+ * @returns {boolean}
+ */
+function isAllowedRegistryUrl(value) {
+  let parsed;
+  try {
+    parsed = new URL(value);
+  } catch {
+    return false;
+  }
+  if (parsed.protocol === 'https:') return true;
+  if (parsed.protocol !== 'http:') return false;
+  return parsed.hostname === 'localhost'
+    || parsed.hostname === '127.0.0.1'
+    || parsed.hostname === '[::1]';
+}
+
 function registryUrl() {
-  const fromEnv = process.env.DSHD_MARKETPLACE_REGISTRY_URL;
-  if (typeof fromEnv === 'string' && fromEnv.trim()) {
-    return fromEnv.trim();
+  const fromEnv = process.env.RLHD_MARKETPLACE_REGISTRY_URL;
+  const override = typeof fromEnv === 'string' ? fromEnv.trim() : '';
+  if (override && isAllowedRegistryUrl(override)) {
+    return override;
   }
   return DEFAULT_REGISTRY_URL;
 }
@@ -100,7 +127,7 @@ function allowedFallbackSpec(spec, plugin) {
 }
 
 /**
- * Resolve the CLI spec the way dsh-market `installTargetFor` does:
+ * Resolve the CLI spec the way rlh-market `installTargetFor` does:
  * a valid npm name, else github / #path: from the GitHub URL,
  * else the last `install` token when `isAllowedMarketplaceSpec` accepts it.
  * @param {object} plugin

@@ -53,9 +53,9 @@ test('assertComposerOfficialQaResult rejects missing or failed cases', () => {
 test('composer official QA module is wired into the main process smoke path', () => {
   const index = fs.readFileSync(path.join(__dirname, 'index.js'), 'utf8');
   assert.match(index, /runComposerOfficialQa/);
-  assert.match(index, /DSH_QA_COMPOSER/);
+  assert.match(index, /RLH_QA_COMPOSER/);
   const runner = fs.readFileSync(path.join(__dirname, '..', '..', 'scripts', 'run-composer-official-qa.mjs'), 'utf8');
-  assert.match(runner, /DSH_QA_COMPOSER/);
+  assert.match(runner, /RLH_QA_COMPOSER/);
   assert.match(runner, /remoteEnabled:\s*true/);
   assert.match(runner, /assertComposerOfficialQaResult/);
 });

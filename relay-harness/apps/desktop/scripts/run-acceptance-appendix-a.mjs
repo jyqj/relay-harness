@@ -4,24 +4,24 @@
  * Does NOT replace in-app tool-card acceptance; records gateway+memory evidence.
  *
  * Env:
- *   DSH_ACCEPT_API_KEY   (required)
- *   DSH_ACCEPT_BASE_URL  (default https://ayase.cn/v1)
- *   DSH_ACCEPT_MODEL     (default grok-4.6)
- *   DSH_ACCEPT_WORKSPACE  (default cwd) — used to inject real README + cwd for turns 3–5
- *   DSH_ACCEPT_OUT        (optional JSON result path)
+ *   RLH_ACCEPT_API_KEY   (required)
+ *   RLH_ACCEPT_BASE_URL  (default https://ayase.cn/v1)
+ *   RLH_ACCEPT_MODEL     (default grok-4.6)
+ *   RLH_ACCEPT_WORKSPACE  (default cwd) — used to inject real README + cwd for turns 3–5
+ *   RLH_ACCEPT_OUT        (optional JSON result path)
  */
 import { readFileSync, writeFileSync, existsSync } from 'node:fs'
 import path from 'node:path'
 import { spawnSync } from 'node:child_process'
 
-const baseURL = (process.env.DSH_ACCEPT_BASE_URL || 'https://ayase.cn/v1').replace(/\/$/, '')
-const model = process.env.DSH_ACCEPT_MODEL || 'grok-4.6'
-const apiKey = process.env.DSH_ACCEPT_API_KEY || ''
-const workspace = process.env.DSH_ACCEPT_WORKSPACE || process.cwd()
-const outPath = process.env.DSH_ACCEPT_OUT || ''
+const baseURL = (process.env.RLH_ACCEPT_BASE_URL || 'https://ayase.cn/v1').replace(/\/$/, '')
+const model = process.env.RLH_ACCEPT_MODEL || 'grok-4.6'
+const apiKey = process.env.RLH_ACCEPT_API_KEY || ''
+const workspace = process.env.RLH_ACCEPT_WORKSPACE || process.cwd()
+const outPath = process.env.RLH_ACCEPT_OUT || ''
 
 if (!apiKey) {
-  console.error('DSH_ACCEPT_API_KEY is required')
+  console.error('RLH_ACCEPT_API_KEY is required')
   process.exit(2)
 }
 

@@ -10,9 +10,9 @@
   min-width: 0;
   overflow: auto;
   position: relative;
-  color: var(--dsw-alias-label-primary);
-  background: var(--dsw-alias-bg-layer-1);
-  font: 12px/16px var(--ds-font-family-code);
+  color: var(--rlw-alias-label-primary);
+  background: var(--rlw-alias-bg-layer-1);
+  font: 12px/16px var(--rl-font-family-code);
   overscroll-behavior-x: contain;
   overscroll-behavior-y: auto;
 }
@@ -115,7 +115,7 @@
 }
 
 .otherValue {
-  color: var(--dsw-alias-label-secondary);
+  color: var(--rlw-alias-label-secondary);
 }
 
 .punctuation {
@@ -131,7 +131,7 @@
 }
 
 .previewEllipsis {
-  color: var(--dsw-alias-label-tertiary);
+  color: var(--rlw-alias-label-tertiary);
 }
 
 .copyAnchor {
@@ -152,24 +152,24 @@
   padding: 0;
   border: 0;
   border-radius: 3px;
-  color: var(--dsw-alias-label-secondary);
-  background: var(--dsw-alias-bg-layer-1);
-  box-shadow: -5px 0 5px var(--dsw-alias-bg-layer-1);
+  color: var(--rlw-alias-label-secondary);
+  background: var(--rlw-alias-bg-layer-1);
+  box-shadow: -5px 0 5px var(--rlw-alias-bg-layer-1);
   cursor: pointer;
 }
 
 .copyButton:hover {
-  color: var(--dsw-alias-label-primary);
-  background: var(--dsw-alias-interactive-bg-hover);
+  color: var(--rlw-alias-label-primary);
+  background: var(--rlw-alias-interactive-bg-hover);
 }
 
 .copyButton:focus-visible {
-  outline: 1px solid var(--dsw-alias-state-business-primary);
+  outline: 1px solid var(--rlw-alias-state-business-primary);
   outline-offset: -1px;
 }
 
 .copyButton[data-state='failed'] {
-  color: var(--dsw-alias-state-error-primary);
+  color: var(--rlw-alias-state-error-primary);
 }
 
 .expander {
@@ -205,7 +205,7 @@
 }
 
 .expander:hover {
-  color: var(--dsw-alias-label-primary);
+  color: var(--rlw-alias-label-primary);
 }
 
 .expander:focus-visible {

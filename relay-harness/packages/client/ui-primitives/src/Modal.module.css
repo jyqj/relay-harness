@@ -10,13 +10,13 @@
   padding: 24px;
 }
 
-/* User/spec mask: rgba(0,0,0,0.24) + blur(2px) via --dsw-alias-bg-mask-1 /
-   --dsw-mask-blur (light); dark theme raises mask opacity. */
+/* User/spec mask: rgba(0,0,0,0.24) + blur(2px) via --rlw-alias-bg-mask-1 /
+   --rlw-mask-blur (light); dark theme raises mask opacity. */
 .mask {
   position: absolute;
   inset: 0;
-  background: var(--dsw-alias-bg-mask-1);
-  backdrop-filter: var(--dsw-mask-blur);
+  background: var(--rlw-alias-bg-mask-1);
+  backdrop-filter: var(--rlw-mask-blur);
 }
 
 /* Dialog card: r24, shadow-lv3, layer-2 fill, inverted border, pb 24. */
@@ -29,10 +29,10 @@
   width: min(380px, 100%);
   padding: 0 0 24px;
   overflow: hidden;
-  border: 1px solid var(--dsw-alias-border-inverted);
+  border: 1px solid var(--rlw-alias-border-inverted);
   border-radius: 24px;
-  background: color-mix(in srgb, var(--dsw-alias-bg-layer-2) var(--dsw-alias-glass-opacity, 80%), transparent);
-  box-shadow: var(--dsw-shadow-lv3);
+  background: color-mix(in srgb, var(--rlw-alias-bg-layer-2) var(--rlw-alias-glass-opacity, 80%), transparent);
+  box-shadow: var(--rlw-shadow-lv3);
 }
 
 .content {
@@ -58,7 +58,7 @@
   font-size: 16px;
   line-height: 24px;
   font-weight: 500; /* figma wt510, rendered 500 */
-  color: var(--dsw-alias-label-primary);
+  color: var(--rlw-alias-label-primary);
 }
 
 .headerEnd {
@@ -79,11 +79,11 @@
   border-radius: 8px;
   background: transparent;
   cursor: pointer;
-  color: var(--dsw-alias-label-secondary);
+  color: var(--rlw-alias-label-secondary);
 }
 
 .close:hover {
-  background: var(--dsw-alias-interactive-bg-hover);
+  background: var(--rlw-alias-interactive-bg-hover);
 }
 
 /* Description and body share the 332px content column (24px side pads). */
@@ -93,7 +93,7 @@
   font-size: 14px;
   line-height: 22px;
   font-weight: 400;
-  color: var(--dsw-alias-label-primary);
+  color: var(--rlw-alias-label-primary);
 }
 
 .body {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import type { HistoryEntry, SessionEvent, SessionId } from '@deepseek-ai/dsh-client-connection/client'
-import type { SessionListState, SessionSummary, WorkspaceListState } from '@deepseek-ai/dsh-client-runtime/client'
+import type { HistoryEntry, SessionEvent, SessionId } from '@relay-harness/rlh-client-connection/client'
+import type { SessionListState, SessionSummary, WorkspaceListState } from '@relay-harness/rlh-client-runtime/client'
 import {
   buildSessionTreeGraph, currentPathCuts, messageText, projectSessionTurns, sessionIdsForAnchor, sessionOfCardId, visibleSessionTreeGraph,
 } from '../src/client/model.ts'

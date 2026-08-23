@@ -12,13 +12,13 @@ When a capability is general enough to need replaceable providers, such as Bash 
 
 The Bash execution capability consists of:
 
-- **Service Definition** (`dsh-shell`) — defines the Cordis service and Bash request and result types
-- **Service Provider** (`dsh-bash-local`) — executes commands on the local machine
-- **Consumer** (`dsh-tool-bash`) — exposes the capability as a model-callable tool
+- **Service Definition** (`rlh-shell`) — defines the Cordis service and Bash request and result types
+- **Service Provider** (`rlh-bash-local`) — executes commands on the local machine
+- **Consumer** (`rlh-tool-bash`) — exposes the capability as a model-callable tool
 
 ```
 ┌─────────────┐     ┌──────────────────┐     ┌──────────────┐
-│  dsh-shell   │────▶│  dsh-bash-local  │     │ dsh-tool-bash│
+│  rlh-shell   │────▶│  rlh-bash-local  │     │ rlh-tool-bash│
 │(definition) │     │    (provider)     │     │(consumer/tool)│
 └─────────────┘     └──────────────────┘     └──────────────┘
        ▲                                            │
@@ -34,7 +34,7 @@ One Service Definition can have multiple providers selected through `cordis.yml`
 
 ```yaml
 # Local execution
-- name: '@deepseek-ai/dsh-bash-local'
+- name: '@relay-harness/rlh-bash-local'
 
 # Replace this row with another package that provides the same service.
 ```
@@ -61,9 +61,9 @@ The [capability-seam reference](../../../capability-seams.md) owns the current b
 
 ```ts ignore-check
 // packages/my-cap/my-cap/src/index.ts
-import { Service, type Context } from '@deepseek-ai/cordis'
+import { Service, type Context } from '@relay-harness/cordis'
 
-declare module '@deepseek-ai/cordis' {
+declare module '@relay-harness/cordis' {
   interface Context {
     myCap: MyCapService
   }
@@ -91,8 +91,8 @@ export interface MyCapResult {
 
 ```ts ignore-check
 // packages/my-cap/my-cap-local/src/index.ts
-import type { Context } from '@deepseek-ai/cordis'
-import { MyCapService, type MyCapRequest, type MyCapResult } from '@deepseek-ai/dsh-my-cap'
+import type { Context } from '@relay-harness/cordis'
+import { MyCapService, type MyCapRequest, type MyCapResult } from '@relay-harness/rlh-my-cap'
 
 class MyCapLocal extends MyCapService {
   async execute(request: MyCapRequest): Promise<MyCapResult> {
@@ -112,8 +112,8 @@ export function apply(ctx: Context) {
 
 ```ts ignore-check
 // packages/my-cap/tool-my-cap/src/index.ts
-import type { Context } from '@deepseek-ai/cordis'
-import { defineTool } from '@deepseek-ai/dsh-tools'
+import type { Context } from '@relay-harness/cordis'
+import { defineTool } from '@relay-harness/rlh-tools'
 
 export const name = 'tool-my-cap'
 export const inject = ['tools', 'myCap']
@@ -140,8 +140,8 @@ export function apply(ctx: Context) {
 ### Compose them in cordis.yml
 
 ```yaml
-- name: '@deepseek-ai/dsh-my-cap-local'
-- name: '@deepseek-ai/dsh-tool-my-cap'
+- name: '@relay-harness/rlh-my-cap-local'
+- name: '@relay-harness/rlh-tool-my-cap'
 ```
 
 ## Design points

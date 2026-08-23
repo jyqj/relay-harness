@@ -1,4 +1,4 @@
-import type { SessionId, SessionListState } from '@deepseek-ai/dsh-client-runtime/client'
+import type { SessionId, SessionListState } from '@relay-harness/rlh-client-runtime/client'
 
 /**
  * Resolve the project cwd for a session-maybe occupant.

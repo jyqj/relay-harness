@@ -47,7 +47,7 @@ function assertIpcSender(event, allowedRoles, options) {
   const role = ipcSenderRole(event, options);
   if (!role || !allowed.has(role)) {
     const error = new Error('Unauthorized IPC sender');
-    error.code = 'ERR_DSH_IPC_SENDER';
+    error.code = 'ERR_RLH_IPC_SENDER';
     throw error;
   }
   return role;

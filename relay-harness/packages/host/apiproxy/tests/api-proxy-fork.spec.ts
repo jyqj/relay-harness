@@ -1,19 +1,19 @@
 /** Session-fork boundaries, lineage, and inherited model routing. */
 
 import { describe, expect, it, vi } from 'vitest'
-import { Context } from '@deepseek-ai/cordis'
-import AgentRegistry, { agentEvents } from '@deepseek-ai/dsh-agent'
-import type { Agent, AgentHandle, CreateAgentOptions } from '@deepseek-ai/dsh-agent'
-import { createUserMessage, ReasoningEffortId } from '@deepseek-ai/dsh-llm'
-import type { LlmCallConfig } from '@deepseek-ai/dsh-llm'
-import SessionStore from '@deepseek-ai/dsh-session'
-import type { Session, SessionEvent, SessionHeader, SessionId } from '@deepseek-ai/dsh-session'
-import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
-import UserQuestionService from '@deepseek-ai/dsh-user-questions'
-import type { Workspace } from '@deepseek-ai/dsh-workspace'
-import type { RpcRequest } from '@deepseek-ai/dsh-host-apiproxy/api/rpc'
-import { RpcId } from '@deepseek-ai/dsh-host-apiproxy/api/rpc'
-import { createApiProxy } from '@deepseek-ai/dsh-host-apiproxy'
+import { Context } from '@relay-harness/cordis'
+import AgentRegistry, { agentEvents } from '@relay-harness/rlh-agent'
+import type { Agent, AgentHandle, CreateAgentOptions } from '@relay-harness/rlh-agent'
+import { createUserMessage, ReasoningEffortId } from '@relay-harness/rlh-llm'
+import type { LlmCallConfig } from '@relay-harness/rlh-llm'
+import SessionStore from '@relay-harness/rlh-session'
+import type { Session, SessionEvent, SessionHeader, SessionId } from '@relay-harness/rlh-session'
+import SystemPrompt from '@relay-harness/rlh-system-prompt'
+import UserQuestionService from '@relay-harness/rlh-user-questions'
+import type { Workspace } from '@relay-harness/rlh-workspace'
+import type { RpcRequest } from '@relay-harness/rlh-host-apiproxy/api/rpc'
+import { RpcId } from '@relay-harness/rlh-host-apiproxy/api/rpc'
+import { createApiProxy } from '@relay-harness/rlh-host-apiproxy'
 
 const sid = (id: string): SessionId => id as SessionId
 

@@ -20,21 +20,21 @@ function applyTheme(theme) {
     return;
   }
   if (theme.bg) {
-    root.style.setProperty('--dsw-alias-bg-base', theme.bg);
+    root.style.setProperty('--rlw-alias-bg-base', theme.bg);
   }
   if (theme.fg) {
-    root.style.setProperty('--dsw-alias-label-primary', theme.fg);
+    root.style.setProperty('--rlw-alias-label-primary', theme.fg);
   }
   if (theme.muted) {
-    root.style.setProperty('--dsw-alias-label-tertiary', theme.muted);
-    root.style.setProperty('--dsw-alias-label-secondary', theme.muted);
+    root.style.setProperty('--rlw-alias-label-tertiary', theme.muted);
+    root.style.setProperty('--rlw-alias-label-secondary', theme.muted);
   }
   if (theme.accent) {
-    root.style.setProperty('--dsw-alias-state-business-primary', theme.accent);
-    root.style.setProperty('--dsw-alias-button-info-fill', theme.accent);
+    root.style.setProperty('--rlw-alias-state-business-primary', theme.accent);
+    root.style.setProperty('--rlw-alias-button-info-fill', theme.accent);
   }
   if (theme.line) {
-    root.style.setProperty('--dsw-alias-border-l2', theme.line);
+    root.style.setProperty('--rlw-alias-border-l2', theme.line);
   }
   document.body?.style.setProperty('background', theme.bg || '');
 }

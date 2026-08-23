@@ -858,6 +858,7 @@ function createPreviewController(options = {}) {
     /** Destroy every live view (app quit, harness restart, renderer teardown). */
     async closeAll() {
       releasePictureInPicture(true);
+      // oxlint-disable-next-line unicorn/no-useless-spread -- stopAllFrameCapture deletes from the map being iterated.
       for (const previewId of [...frameCaptureSessions.keys()]) {
         stopAllFrameCapture(previewId);
       }
@@ -959,6 +960,7 @@ function createPreviewController(options = {}) {
         stopFrameCapture(id, 'recording');
         return { ok: true };
       }
+      // oxlint-disable-next-line unicorn/no-useless-spread -- stopFrameCapture deletes from the map being iterated.
       for (const previewId of [...frameCaptureSessions.keys()]) {
         stopFrameCapture(previewId, 'recording');
       }

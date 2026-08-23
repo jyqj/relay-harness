@@ -4,7 +4,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 
-/** Exit hold in milliseconds; matches `--ds-motion-duration-flip` (400ms). */
+/** Exit hold in milliseconds; matches `--rl-motion-duration-flip` (400ms). */
 export const FLIP_TEXT_MS = 400
 
 /**
@@ -51,11 +51,11 @@ export function FlipText({ text, className }: FlipTextProps) {
   }, [outgoing])
 
   return (
-    <span className={className} data-dsh-motion="flip">
+    <span className={className} data-rlh-motion="flip">
       {outgoing !== null && (
-        <span data-dsh-motion-part="outgoing" aria-hidden>{outgoing}</span>
+        <span data-rlh-motion-part="outgoing" aria-hidden>{outgoing}</span>
       )}
-      <span data-dsh-motion-part="current">{text}</span>
+      <span data-rlh-motion-part="current">{text}</span>
     </span>
   )
 }

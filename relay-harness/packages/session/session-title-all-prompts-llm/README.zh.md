@@ -1,4 +1,4 @@
-# @deepseek-ai/dsh-session-title-all-prompts-llm
+# @relay-harness/rlh-session-title-all-prompts-llm
 
 [English](README.md) | 中文
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { Context } from '@deepseek-ai/cordis'
-import InvariantRegistry, { InvariantError } from '@deepseek-ai/dsh-invariants'
+import { Context } from '@relay-harness/cordis'
+import InvariantRegistry, { InvariantError } from '@relay-harness/rlh-invariants'
 import * as IssueWorkflowInvariant from '../src/invariant.ts'
 import type { IssueWorkflowSnapshot } from '../src/index.ts'
 
@@ -35,7 +35,7 @@ describe('issue-workflow invariant companion', () => {
       failure = error
     }
     expect(failure).toBeInstanceOf(InvariantError)
-    expect((failure as InvariantError).packageName).toBe('@deepseek-ai/dsh-issue-workflow')
+    expect((failure as InvariantError).packageName).toBe('@relay-harness/rlh-issue-workflow')
     expect((failure as InvariantError).message).toMatch(/repeated the previous revision/)
     await ctx.fiber.dispose()
   })

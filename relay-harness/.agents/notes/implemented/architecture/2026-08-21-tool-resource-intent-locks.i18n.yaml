@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-08-21-tool-resource-intent-locks.md
-2026-08-21-tool-resource-intent-locks.md: ed23349bcbee74f92d28f7d47be1c33f42b8d3d8
-2026-08-21-tool-resource-intent-locks.zh.md: 8daf9764378236fdfab978bbca452b267e975d77
+2026-08-21-tool-resource-intent-locks.md: 460ee0f1a4e406d0e9661a833aea970b21fd6924
+2026-08-21-tool-resource-intent-locks.zh.md: 53b83520f509e3ea2171d6747f8bfd48d8d55f55

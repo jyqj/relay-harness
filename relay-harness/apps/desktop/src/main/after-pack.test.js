@@ -55,7 +55,7 @@ function linkPackage(source, shared, branch) {
 
 test('deployCliEntries excludes runtime state and separately assembled directories', (t) => {
   const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'after-pack-entries-'));
-  for (const name of ['.dsh-home', '.cache', 'node_modules', 'vendor', 'config', 'lib']) {
+  for (const name of ['.rlh-home', '.cache', 'node_modules', 'vendor', 'config', 'lib']) {
     fs.mkdirSync(path.join(workspace, name), { recursive: true });
   }
   fs.writeFileSync(path.join(workspace, 'package.json'), '{}\n');
@@ -185,7 +185,7 @@ test('resolveDeployDir ignores local caches unless a deploy directory is explici
 });
 
 function writeGhosttyTerminalPackage(root) {
-  const base = path.join(root, 'node_modules', '@deepseek-ai', 'dsh-client-ui-user-terminal', 'lib');
+  const base = path.join(root, 'node_modules', '@relay-harness', 'rlh-client-ui-user-terminal', 'lib');
   fs.mkdirSync(path.join(base, 'assets'), { recursive: true });
   fs.writeFileSync(path.join(base, 'client.js'), 'export {}\n');
   for (const name of ['ghostty-vt.wasm', 'ghostty-write-pty.wasm', 'SymbolsNerdFontMono-Regular.woff2']) {
@@ -201,24 +201,24 @@ test('assertHarnessRuntime accepts a complete compatible host', (t) => {
     [path.join('apps', 'cli', 'lib', 'plugin.js'), 'missingHostFeatures parseCompatibilityFeatures\n'],
     [path.join('apps', 'web', 'dist', 'index.html'), '<!doctype html>\n'],
     [
-      path.join('node_modules', '@deepseek-ai', 'dsh-app-boot', 'lib', 'features.js'),
+      path.join('node_modules', '@relay-harness', 'rlh-app-boot', 'lib', 'features.js'),
       'conversation.chat.user-actions session.fork.beforeSeq session.fork.blank\n',
     ],
     [
-      path.join('node_modules', '@deepseek-ai', 'dsh-client-modules', 'lib', 'index.js'),
+      path.join('node_modules', '@relay-harness', 'rlh-client-modules', 'lib', 'index.js'),
       'missingHostFeatures parseCompatibilityFeatures\n',
     ],
     [
-      path.join('node_modules', '@deepseek-ai', 'dsh-client-ui-conversation', 'lib', 'client.js'),
+      path.join('node_modules', '@relay-harness', 'rlh-client-ui-conversation', 'lib', 'client.js'),
       'conversation.chat.user-actions\n',
     ],
-    [path.join('node_modules', '@deepseek-ai', 'dsh-mcp-servers-file', 'lib', 'index.js'), 'export {}\n'],
-    [path.join('node_modules', '@deepseek-ai', 'dsh-host-mcp-servers', 'lib', 'index.js'), 'export {}\n'],
-    [path.join('node_modules', '@deepseek-ai', 'dsh-host-skill-inventory', 'lib', 'index.js'), 'export {}\n'],
-    [path.join('node_modules', '@deepseek-ai', 'dsh-client-ui-settings-mcp', 'lib', 'index.js'), 'export {}\n'],
-    [path.join('node_modules', '@deepseek-ai', 'dsh-client-ui-settings-mcp', 'lib', 'client.js'), 'export {}\n'],
-    [path.join('node_modules', '@deepseek-ai', 'dsh-client-ui-settings-skills', 'lib', 'index.js'), 'export {}\n'],
-    [path.join('node_modules', '@deepseek-ai', 'dsh-client-ui-settings-skills', 'lib', 'client.js'), 'export {}\n'],
+    [path.join('node_modules', '@relay-harness', 'rlh-mcp-servers-file', 'lib', 'index.js'), 'export {}\n'],
+    [path.join('node_modules', '@relay-harness', 'rlh-host-mcp-servers', 'lib', 'index.js'), 'export {}\n'],
+    [path.join('node_modules', '@relay-harness', 'rlh-host-skill-inventory', 'lib', 'index.js'), 'export {}\n'],
+    [path.join('node_modules', '@relay-harness', 'rlh-client-ui-settings-mcp', 'lib', 'index.js'), 'export {}\n'],
+    [path.join('node_modules', '@relay-harness', 'rlh-client-ui-settings-mcp', 'lib', 'client.js'), 'export {}\n'],
+    [path.join('node_modules', '@relay-harness', 'rlh-client-ui-settings-skills', 'lib', 'index.js'), 'export {}\n'],
+    [path.join('node_modules', '@relay-harness', 'rlh-client-ui-settings-skills', 'lib', 'client.js'), 'export {}\n'],
   ]);
   for (const [relative, content] of files) {
     const file = path.join(root, relative);
@@ -240,26 +240,26 @@ test('assertHarnessRuntime rejects a host missing Ghostty terminal assets', (t) 
     [path.join('apps', 'cli', 'lib', 'plugin.js'), 'missingHostFeatures parseCompatibilityFeatures\n'],
     [path.join('apps', 'web', 'dist', 'index.html'), '<!doctype html>\n'],
     [
-      path.join('node_modules', '@deepseek-ai', 'dsh-app-boot', 'lib', 'features.js'),
+      path.join('node_modules', '@relay-harness', 'rlh-app-boot', 'lib', 'features.js'),
       'conversation.chat.user-actions session.fork.beforeSeq session.fork.blank\n',
     ],
     [
-      path.join('node_modules', '@deepseek-ai', 'dsh-client-modules', 'lib', 'index.js'),
+      path.join('node_modules', '@relay-harness', 'rlh-client-modules', 'lib', 'index.js'),
       'missingHostFeatures parseCompatibilityFeatures\n',
     ],
     [
-      path.join('node_modules', '@deepseek-ai', 'dsh-client-ui-conversation', 'lib', 'client.js'),
+      path.join('node_modules', '@relay-harness', 'rlh-client-ui-conversation', 'lib', 'client.js'),
       'conversation.chat.user-actions\n',
     ],
-    [path.join('node_modules', '@deepseek-ai', 'dsh-mcp-servers-file', 'lib', 'index.js'), 'export {}\n'],
-    [path.join('node_modules', '@deepseek-ai', 'dsh-host-mcp-servers', 'lib', 'index.js'), 'export {}\n'],
-    [path.join('node_modules', '@deepseek-ai', 'dsh-host-skill-inventory', 'lib', 'index.js'), 'export {}\n'],
-    [path.join('node_modules', '@deepseek-ai', 'dsh-client-ui-settings-mcp', 'lib', 'index.js'), 'export {}\n'],
-    [path.join('node_modules', '@deepseek-ai', 'dsh-client-ui-settings-mcp', 'lib', 'client.js'), 'export {}\n'],
-    [path.join('node_modules', '@deepseek-ai', 'dsh-client-ui-settings-skills', 'lib', 'index.js'), 'export {}\n'],
-    [path.join('node_modules', '@deepseek-ai', 'dsh-client-ui-settings-skills', 'lib', 'client.js'), 'export {}\n'],
+    [path.join('node_modules', '@relay-harness', 'rlh-mcp-servers-file', 'lib', 'index.js'), 'export {}\n'],
+    [path.join('node_modules', '@relay-harness', 'rlh-host-mcp-servers', 'lib', 'index.js'), 'export {}\n'],
+    [path.join('node_modules', '@relay-harness', 'rlh-host-skill-inventory', 'lib', 'index.js'), 'export {}\n'],
+    [path.join('node_modules', '@relay-harness', 'rlh-client-ui-settings-mcp', 'lib', 'index.js'), 'export {}\n'],
+    [path.join('node_modules', '@relay-harness', 'rlh-client-ui-settings-mcp', 'lib', 'client.js'), 'export {}\n'],
+    [path.join('node_modules', '@relay-harness', 'rlh-client-ui-settings-skills', 'lib', 'index.js'), 'export {}\n'],
+    [path.join('node_modules', '@relay-harness', 'rlh-client-ui-settings-skills', 'lib', 'client.js'), 'export {}\n'],
     [
-      path.join('node_modules', '@deepseek-ai', 'dsh-client-ui-user-terminal', 'lib', 'client.js'),
+      path.join('node_modules', '@relay-harness', 'rlh-client-ui-user-terminal', 'lib', 'client.js'),
       'export {}\n',
     ],
   ]);
@@ -285,15 +285,15 @@ test('assertHarnessRuntime rejects a host missing MCP settings runtime', (t) => 
     [path.join('apps', 'cli', 'lib', 'plugin.js'), 'missingHostFeatures parseCompatibilityFeatures\n'],
     [path.join('apps', 'web', 'dist', 'index.html'), '<!doctype html>\n'],
     [
-      path.join('node_modules', '@deepseek-ai', 'dsh-app-boot', 'lib', 'features.js'),
+      path.join('node_modules', '@relay-harness', 'rlh-app-boot', 'lib', 'features.js'),
       'conversation.chat.user-actions session.fork.beforeSeq session.fork.blank\n',
     ],
     [
-      path.join('node_modules', '@deepseek-ai', 'dsh-client-modules', 'lib', 'index.js'),
+      path.join('node_modules', '@relay-harness', 'rlh-client-modules', 'lib', 'index.js'),
       'missingHostFeatures parseCompatibilityFeatures\n',
     ],
     [
-      path.join('node_modules', '@deepseek-ai', 'dsh-client-ui-conversation', 'lib', 'client.js'),
+      path.join('node_modules', '@relay-harness', 'rlh-client-ui-conversation', 'lib', 'client.js'),
       'conversation.chat.user-actions\n',
     ],
   ]);
@@ -305,7 +305,7 @@ test('assertHarnessRuntime rejects a host missing MCP settings runtime', (t) => 
 
   assert.throws(
     () => assertHarnessRuntime(root, RC7_PIN),
-    /dsh-mcp-servers-file/,
+    /rlh-mcp-servers-file/,
   );
 });
 
@@ -319,7 +319,7 @@ test('assertHarnessRuntime rejects stale deploy output before archiving', (t) =>
 
   assert.throws(
     () => assertHarnessRuntime(root, RC7_PIN),
-    /dsh-app-boot.*features\.js/,
+    /rlh-app-boot.*features\.js/,
   );
 });
 
@@ -331,24 +331,24 @@ test('assertHarnessRuntime rejects pin.npm mismatch', (t) => {
     [path.join('apps', 'cli', 'lib', 'plugin.js'), 'missingHostFeatures parseCompatibilityFeatures\n'],
     [path.join('apps', 'web', 'dist', 'index.html'), '<!doctype html>\n'],
     [
-      path.join('node_modules', '@deepseek-ai', 'dsh-app-boot', 'lib', 'features.js'),
+      path.join('node_modules', '@relay-harness', 'rlh-app-boot', 'lib', 'features.js'),
       'conversation.chat.user-actions session.fork.beforeSeq session.fork.blank\n',
     ],
     [
-      path.join('node_modules', '@deepseek-ai', 'dsh-client-modules', 'lib', 'index.js'),
+      path.join('node_modules', '@relay-harness', 'rlh-client-modules', 'lib', 'index.js'),
       'missingHostFeatures parseCompatibilityFeatures\n',
     ],
     [
-      path.join('node_modules', '@deepseek-ai', 'dsh-client-ui-conversation', 'lib', 'client.js'),
+      path.join('node_modules', '@relay-harness', 'rlh-client-ui-conversation', 'lib', 'client.js'),
       'conversation.chat.user-actions\n',
     ],
-    [path.join('node_modules', '@deepseek-ai', 'dsh-mcp-servers-file', 'lib', 'index.js'), 'export {}\n'],
-    [path.join('node_modules', '@deepseek-ai', 'dsh-host-mcp-servers', 'lib', 'index.js'), 'export {}\n'],
-    [path.join('node_modules', '@deepseek-ai', 'dsh-host-skill-inventory', 'lib', 'index.js'), 'export {}\n'],
-    [path.join('node_modules', '@deepseek-ai', 'dsh-client-ui-settings-mcp', 'lib', 'index.js'), 'export {}\n'],
-    [path.join('node_modules', '@deepseek-ai', 'dsh-client-ui-settings-mcp', 'lib', 'client.js'), 'export {}\n'],
-    [path.join('node_modules', '@deepseek-ai', 'dsh-client-ui-settings-skills', 'lib', 'index.js'), 'export {}\n'],
-    [path.join('node_modules', '@deepseek-ai', 'dsh-client-ui-settings-skills', 'lib', 'client.js'), 'export {}\n'],
+    [path.join('node_modules', '@relay-harness', 'rlh-mcp-servers-file', 'lib', 'index.js'), 'export {}\n'],
+    [path.join('node_modules', '@relay-harness', 'rlh-host-mcp-servers', 'lib', 'index.js'), 'export {}\n'],
+    [path.join('node_modules', '@relay-harness', 'rlh-host-skill-inventory', 'lib', 'index.js'), 'export {}\n'],
+    [path.join('node_modules', '@relay-harness', 'rlh-client-ui-settings-mcp', 'lib', 'index.js'), 'export {}\n'],
+    [path.join('node_modules', '@relay-harness', 'rlh-client-ui-settings-mcp', 'lib', 'client.js'), 'export {}\n'],
+    [path.join('node_modules', '@relay-harness', 'rlh-client-ui-settings-skills', 'lib', 'index.js'), 'export {}\n'],
+    [path.join('node_modules', '@relay-harness', 'rlh-client-ui-settings-skills', 'lib', 'client.js'), 'export {}\n'],
   ]);
   for (const [relative, content] of files) {
     const file = path.join(root, relative);
@@ -372,24 +372,24 @@ test('assertHarnessRuntime rejects a missing node-pty prebuild', (t) => {
     [path.join('apps', 'cli', 'lib', 'plugin.js'), 'missingHostFeatures parseCompatibilityFeatures\n'],
     [path.join('apps', 'web', 'dist', 'index.html'), '<!doctype html>\n'],
     [
-      path.join('node_modules', '@deepseek-ai', 'dsh-app-boot', 'lib', 'features.js'),
+      path.join('node_modules', '@relay-harness', 'rlh-app-boot', 'lib', 'features.js'),
       'conversation.chat.user-actions session.fork.beforeSeq session.fork.blank\n',
     ],
     [
-      path.join('node_modules', '@deepseek-ai', 'dsh-client-modules', 'lib', 'index.js'),
+      path.join('node_modules', '@relay-harness', 'rlh-client-modules', 'lib', 'index.js'),
       'missingHostFeatures parseCompatibilityFeatures\n',
     ],
     [
-      path.join('node_modules', '@deepseek-ai', 'dsh-client-ui-conversation', 'lib', 'client.js'),
+      path.join('node_modules', '@relay-harness', 'rlh-client-ui-conversation', 'lib', 'client.js'),
       'conversation.chat.user-actions\n',
     ],
-    [path.join('node_modules', '@deepseek-ai', 'dsh-mcp-servers-file', 'lib', 'index.js'), 'export {}\n'],
-    [path.join('node_modules', '@deepseek-ai', 'dsh-host-mcp-servers', 'lib', 'index.js'), 'export {}\n'],
-    [path.join('node_modules', '@deepseek-ai', 'dsh-host-skill-inventory', 'lib', 'index.js'), 'export {}\n'],
-    [path.join('node_modules', '@deepseek-ai', 'dsh-client-ui-settings-mcp', 'lib', 'index.js'), 'export {}\n'],
-    [path.join('node_modules', '@deepseek-ai', 'dsh-client-ui-settings-mcp', 'lib', 'client.js'), 'export {}\n'],
-    [path.join('node_modules', '@deepseek-ai', 'dsh-client-ui-settings-skills', 'lib', 'index.js'), 'export {}\n'],
-    [path.join('node_modules', '@deepseek-ai', 'dsh-client-ui-settings-skills', 'lib', 'client.js'), 'export {}\n'],
+    [path.join('node_modules', '@relay-harness', 'rlh-mcp-servers-file', 'lib', 'index.js'), 'export {}\n'],
+    [path.join('node_modules', '@relay-harness', 'rlh-host-mcp-servers', 'lib', 'index.js'), 'export {}\n'],
+    [path.join('node_modules', '@relay-harness', 'rlh-host-skill-inventory', 'lib', 'index.js'), 'export {}\n'],
+    [path.join('node_modules', '@relay-harness', 'rlh-client-ui-settings-mcp', 'lib', 'index.js'), 'export {}\n'],
+    [path.join('node_modules', '@relay-harness', 'rlh-client-ui-settings-mcp', 'lib', 'client.js'), 'export {}\n'],
+    [path.join('node_modules', '@relay-harness', 'rlh-client-ui-settings-skills', 'lib', 'index.js'), 'export {}\n'],
+    [path.join('node_modules', '@relay-harness', 'rlh-client-ui-settings-skills', 'lib', 'client.js'), 'export {}\n'],
   ]);
   for (const [relative, content] of files) {
     const file = path.join(root, relative);
@@ -408,11 +408,11 @@ test('resolveResourcesDir uses Contents/Resources inside the macOS .app', () => 
   const darwin = resolveResourcesDir({
     electronPlatformName: 'darwin',
     appOutDir: path.join('dist', 'mac-arm64'),
-    packager: { appInfo: { productFilename: 'Deepseek-Harness-Desktop' } },
+    packager: { appInfo: { productFilename: 'Relay-Harness-Desktop' } },
   });
   assert.equal(
     darwin,
-    path.join('dist', 'mac-arm64', 'Deepseek-Harness-Desktop.app', 'Contents', 'Resources'),
+    path.join('dist', 'mac-arm64', 'Relay-Harness-Desktop.app', 'Contents', 'Resources'),
   );
 });
 
@@ -448,23 +448,23 @@ test('restoreVendoredPluginNodeModules copies dropped plugin node_modules', (t) 
   t.after(() => fs.rmSync(workspace, { recursive: true, force: true }));
   const projectDir = path.join(workspace, 'project');
   const resources = path.join(workspace, 'resources');
-  const srcNm = path.join(projectDir, 'vendor', 'dshmarket', 'node_modules', 'undici');
-  const destPkg = path.join(resources, 'vendor', 'dshmarket');
+  const srcNm = path.join(projectDir, 'vendor', 'rlhmarket', 'node_modules', 'undici');
+  const destPkg = path.join(resources, 'vendor', 'rlhmarket');
   fs.mkdirSync(srcNm, { recursive: true });
   fs.mkdirSync(destPkg, { recursive: true });
   fs.writeFileSync(
-    path.join(projectDir, 'vendor', 'dshmarket', 'package.json'),
-    `${JSON.stringify({ name: 'dshmarket', dependencies: { undici: '7.29.0' } })}\n`,
+    path.join(projectDir, 'vendor', 'rlhmarket', 'package.json'),
+    `${JSON.stringify({ name: 'rlhmarket', dependencies: { undici: '7.29.0' } })}\n`,
   );
   fs.writeFileSync(path.join(srcNm, 'package.json'), '{"name":"undici"}\n');
   fs.writeFileSync(
     path.join(destPkg, 'package.json'),
-    `${JSON.stringify({ name: 'dshmarket', dependencies: { undici: '7.29.0' } })}\n`,
+    `${JSON.stringify({ name: 'rlhmarket', dependencies: { undici: '7.29.0' } })}\n`,
   );
 
-  const result = restoreVendoredPluginNodeModules(projectDir, resources, 'dshmarket');
+  const result = restoreVendoredPluginNodeModules(projectDir, resources, 'rlhmarket');
   assert.equal(result.restored, true);
-  assertVendoredPluginRuntimeDeps(resources, 'dshmarket');
+  assertVendoredPluginRuntimeDeps(resources, 'rlhmarket');
   assert.equal(
     fs.existsSync(path.join(destPkg, 'node_modules', 'undici', 'package.json')),
     true,
@@ -474,14 +474,14 @@ test('restoreVendoredPluginNodeModules copies dropped plugin node_modules', (t) 
 test('assertVendoredPluginRuntimeDeps rejects a packaged plugin without its dependencies', (t) => {
   const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'after-pack-plugin-missing-'));
   t.after(() => fs.rmSync(workspace, { recursive: true, force: true }));
-  const destPkg = path.join(workspace, 'vendor', 'dshmarket');
+  const destPkg = path.join(workspace, 'vendor', 'rlhmarket');
   fs.mkdirSync(destPkg, { recursive: true });
   fs.writeFileSync(
     path.join(destPkg, 'package.json'),
-    `${JSON.stringify({ name: 'dshmarket', dependencies: { undici: '7.29.0' } })}\n`,
+    `${JSON.stringify({ name: 'rlhmarket', dependencies: { undici: '7.29.0' } })}\n`,
   );
   assert.throws(
-    () => assertVendoredPluginRuntimeDeps(workspace, 'dshmarket'),
+    () => assertVendoredPluginRuntimeDeps(workspace, 'rlhmarket'),
     /undici/,
   );
 });
@@ -489,12 +489,12 @@ test('assertVendoredPluginRuntimeDeps rejects a packaged plugin without its depe
 test('assertVendoredPluginRuntimeDeps rejects a dependency whose export file is missing', (t) => {
   const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'after-pack-plugin-export-'));
   t.after(() => fs.rmSync(workspace, { recursive: true, force: true }));
-  const destPkg = path.join(workspace, 'vendor', 'dshmarket');
+  const destPkg = path.join(workspace, 'vendor', 'rlhmarket');
   const yamlDir = path.join(destPkg, 'node_modules', 'js-yaml');
   fs.mkdirSync(yamlDir, { recursive: true });
   fs.writeFileSync(
     path.join(destPkg, 'package.json'),
-    `${JSON.stringify({ name: 'dshmarket', dependencies: { 'js-yaml': '4.1.1' } })}\n`,
+    `${JSON.stringify({ name: 'rlhmarket', dependencies: { 'js-yaml': '4.1.1' } })}\n`,
   );
   fs.writeFileSync(path.join(yamlDir, 'package.json'), `${JSON.stringify({
     name: 'js-yaml',
@@ -502,7 +502,7 @@ test('assertVendoredPluginRuntimeDeps rejects a dependency whose export file is 
   })}\n`);
   fs.writeFileSync(path.join(yamlDir, 'index.js'), 'module.exports = {}\n');
   assert.throws(
-    () => assertVendoredPluginRuntimeDeps(workspace, 'dshmarket'),
+    () => assertVendoredPluginRuntimeDeps(workspace, 'rlhmarket'),
     /js-yaml\.mjs/,
   );
 });
@@ -510,12 +510,12 @@ test('assertVendoredPluginRuntimeDeps rejects a dependency whose export file is 
 test('installPluginRuntimeDeps runs npm install when export files are missing', (t) => {
   const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'after-pack-plugin-npm-'));
   t.after(() => fs.rmSync(workspace, { recursive: true, force: true }));
-  const destPkg = path.join(workspace, 'vendor', 'dshmarket');
+  const destPkg = path.join(workspace, 'vendor', 'rlhmarket');
   const yamlDir = path.join(destPkg, 'node_modules', 'js-yaml');
   fs.mkdirSync(yamlDir, { recursive: true });
   fs.writeFileSync(
     path.join(destPkg, 'package.json'),
-    `${JSON.stringify({ name: 'dshmarket', dependencies: { 'js-yaml': '4.1.1' } })}\n`,
+    `${JSON.stringify({ name: 'rlhmarket', dependencies: { 'js-yaml': '4.1.1' } })}\n`,
   );
   fs.writeFileSync(path.join(yamlDir, 'package.json'), `${JSON.stringify({
     name: 'js-yaml',
@@ -535,20 +535,20 @@ test('installPluginRuntimeDeps runs npm install when export files are missing', 
   });
   assert.equal(result.installed, true);
   assert.equal(ran, destPkg);
-  assertVendoredPluginRuntimeDeps(workspace, 'dshmarket');
+  assertVendoredPluginRuntimeDeps(workspace, 'rlhmarket');
 });
 
 test('assertVendoredPluginRuntimeDeps accepts a hoisted nested dependency', (t) => {
   const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'after-pack-plugin-hoist-'));
   t.after(() => fs.rmSync(workspace, { recursive: true, force: true }));
-  const destPkg = path.join(workspace, 'vendor', 'dshmarket');
+  const destPkg = path.join(workspace, 'vendor', 'rlhmarket');
   const yamlDir = path.join(destPkg, 'node_modules', 'js-yaml');
   const argparseDir = path.join(destPkg, 'node_modules', 'argparse');
   fs.mkdirSync(path.join(yamlDir, 'dist'), { recursive: true });
   fs.mkdirSync(argparseDir, { recursive: true });
   fs.writeFileSync(
     path.join(destPkg, 'package.json'),
-    `${JSON.stringify({ name: 'dshmarket', dependencies: { 'js-yaml': '4.1.1' } })}\n`,
+    `${JSON.stringify({ name: 'rlhmarket', dependencies: { 'js-yaml': '4.1.1' } })}\n`,
   );
   fs.writeFileSync(path.join(yamlDir, 'package.json'), `${JSON.stringify({
     name: 'js-yaml',
@@ -561,18 +561,18 @@ test('assertVendoredPluginRuntimeDeps accepts a hoisted nested dependency', (t) 
     `${JSON.stringify({ name: 'argparse', main: './index.js' })}\n`,
   );
   fs.writeFileSync(path.join(argparseDir, 'index.js'), 'module.exports = {}\n');
-  assert.doesNotThrow(() => assertVendoredPluginRuntimeDeps(workspace, 'dshmarket'));
+  assert.doesNotThrow(() => assertVendoredPluginRuntimeDeps(workspace, 'rlhmarket'));
 });
 
 test('installPluginRuntimeDeps skipIfComplete does not run npm when export files exist', (t) => {
   const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'after-pack-plugin-skip-'));
   t.after(() => fs.rmSync(workspace, { recursive: true, force: true }));
-  const destPkg = path.join(workspace, 'vendor', 'dshmarket');
+  const destPkg = path.join(workspace, 'vendor', 'rlhmarket');
   const yamlDir = path.join(destPkg, 'node_modules', 'js-yaml', 'dist');
   fs.mkdirSync(yamlDir, { recursive: true });
   fs.writeFileSync(
     path.join(destPkg, 'package.json'),
-    `${JSON.stringify({ name: 'dshmarket', dependencies: { 'js-yaml': '4.1.1' } })}\n`,
+    `${JSON.stringify({ name: 'rlhmarket', dependencies: { 'js-yaml': '4.1.1' } })}\n`,
   );
   fs.writeFileSync(
     path.join(destPkg, 'node_modules', 'js-yaml', 'package.json'),

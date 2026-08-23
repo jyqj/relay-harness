@@ -1,5 +1,5 @@
 // 递归闭包对齐：deploy 顶层与 vendor 的 cli 依赖闭包保持一致。
-// include 加载的插件及其依赖（@deepseek-ai/*、vendor 本地包、registry 包）
+// include 加载的插件及其依赖（@relay-harness/*、vendor 本地包、registry 包）
 // 全部补到 deploy 顶层；闭包外的包保持缺失（cordis include 跳过找不到的插件，
 // 与完整环境行为一致）。
 const fs = require('fs');
@@ -85,9 +85,9 @@ const queue = [];
 const done = new Set();
 const failed = new Set();
 
-// 种子：vendor 的 cli 包内嵌套 @deepseek-ai（cli 直接依赖闭包）
-for (const n of fs.readdirSync(path.join(vendorRoot, 'apps', 'cli', 'node_modules', '@deepseek-ai'))) {
-  queue.push(`@deepseek-ai/${n.replace(/@$/, '')}`);
+// 种子：vendor 的 cli 包内嵌套 @relay-harness（cli 直接依赖闭包）
+for (const n of fs.readdirSync(path.join(vendorRoot, 'apps', 'cli', 'node_modules', '@relay-harness'))) {
+  queue.push(`@relay-harness/${n.replace(/@$/, '')}`);
 }
 
 let copied = 0;

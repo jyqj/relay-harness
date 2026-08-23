@@ -1,4 +1,4 @@
-# @deepseek-ai/dsh-client-ui-settings-mcp
+# @relay-harness/rlh-client-ui-settings-mcp
 
 [English](README.md) | 中文
 

@@ -1,7 +1,7 @@
 /**
  * Client-half HMR apply: the `/plugins/events` EventSource is loopback-only.
  */
-import { Context } from '@deepseek-ai/cordis'
+import { Context } from '@relay-harness/cordis'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { apply, inject } from '../src/client/index.ts'
 

@@ -1,3 +1,4 @@
+// @ts-check
 /** Loopback workspace file preview: GET-only, token-prefixed, cwd-confined. */
 
 const crypto = require('node:crypto');

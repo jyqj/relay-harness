@@ -3,7 +3,7 @@
 import type { SessionSurfaces, Surface, SurfacesState } from './stores.ts'
 
 /** localStorage key prefix; the session id is the suffix. */
-export const SURFACES_PERSIST_PREFIX = 'dsh-surfaces:v1:'
+export const SURFACES_PERSIST_PREFIX = 'rlh-surfaces:v1:'
 
 const WRITE_DELAY_MS = 80
 /** Dirty draft bytes per field; matches workspace-fs utf8 write cap. */

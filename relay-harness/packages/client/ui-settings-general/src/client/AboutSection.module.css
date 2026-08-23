@@ -3,7 +3,7 @@
   flex-direction: column;
   gap: 12px;
   max-width: 560px;
-  color: var(--dsw-alias-label-primary);
+  color: var(--rlw-alias-label-primary);
 }
 
 .heading {
@@ -16,7 +16,7 @@
   margin: 0;
   font-size: 13px;
   line-height: 1.5;
-  color: var(--dsw-alias-label-tertiary);
+  color: var(--rlw-alias-label-tertiary);
 }
 
 .list {
@@ -38,12 +38,12 @@
   margin: 4px 0 0;
   font-size: 12px;
   line-height: 1.5;
-  color: var(--dsw-alias-label-tertiary);
+  color: var(--rlw-alias-label-tertiary);
   word-break: break-all;
 }
 
 .link {
-  color: var(--dsw-alias-state-business-primary);
+  color: var(--rlw-alias-state-business-primary);
   font-size: 14px;
   line-height: 1.5;
   text-decoration: none;
@@ -57,7 +57,7 @@
   margin: 8px 0 0;
   font-size: 12px;
   line-height: 1.5;
-  color: var(--dsw-alias-label-secondary);
+  color: var(--rlw-alias-label-secondary);
 }
 
 .actions {

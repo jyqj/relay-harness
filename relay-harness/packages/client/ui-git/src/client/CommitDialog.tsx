@@ -1,11 +1,11 @@
 /**
  * Commit review dialog: branch, file list with +/- stats,
  * optional message, and Commit / Commit on new branch.
- * @module @deepseek-ai/dsh-client-ui-git/client/CommitDialog
+ * @module @relay-harness/rlh-client-ui-git/client/CommitDialog
  */
 
-import { Button, Modal } from '@deepseek-ai/dsh-client-ui-primitives'
-import type { PropsLocale } from '@deepseek-ai/dsh-client-ui-slots'
+import { Button, Modal } from '@relay-harness/rlh-client-ui-primitives'
+import type { PropsLocale } from '@relay-harness/rlh-client-ui-slots'
 import type { NS } from './locales.ts'
 import css from './CommitDialog.module.css'
 

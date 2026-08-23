@@ -12,7 +12,7 @@ Web shell 会向运行时加载的插件发布共享平台模块。Vite 只保�
 
 `getStaticModules()` 会先通过 `preserveModuleExports()` 复制每个共享模块命名空间，再交给运行时模块加载器。这个可观察的命名空间复制让 Vite 保留每个平台模块的全部公开成员，同时加载器仍然接收普通的类模块对象。
 
-组装后的 Web 测试通过运行时模块系统导入 `@deepseek-ai/dsh-client-ui-primitives`，并验证 Cloud Upload、Commit 和 Pull Request 图标都是函数。标题栏测试还要求渲染 Switch branch 控件，并记录其无障碍输出。
+组装后的 Web 测试通过运行时模块系统导入 `@relay-harness/rlh-client-ui-primitives`，并验证 Cloud Upload、Commit 和 Pull Request 图标都是函数。标题栏测试还要求渲染 Switch branch 控件，并记录其无障碍输出。
 
 ## Alternatives considered
 

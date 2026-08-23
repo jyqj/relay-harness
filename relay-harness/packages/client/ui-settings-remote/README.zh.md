@@ -1,8 +1,8 @@
-# @deepseek-ai/dsh-client-ui-settings-remote
+# @relay-harness/rlh-client-ui-settings-remote
 
 [English](README.md) | 中文
 
-仅桌面端出现的、放在设置旁边的 **远程** 控件。浏览器插件仅在 Electron `window.shell` 提供 `getRemote`、`saveRemote`、`rotateRemoteToken` 和 `unbindRemoteDevice` 时，注册 id 为 `remote` 的 `sidebar.footer.action` 贡献。普通浏览器里的 `dsh web` 没有这一控件。触发器和标题文案是 **远程**。弹窗暴露一对 `Button` 的开启／关闭、一对 `Button` 的局域网／服务器中继（选中为 `primary` `sm`，未选中为 `ghost` `sm`）、配对二维码，以及带描边和右箭头的已连接设备行；点该行打开设备管理。改模式先写入本地快照，不禁用开启／关闭按钮，并且只换配对二维码：远程开启时局域网网关和中继都保持运行，只有关闭远程才会停掉它们。弹窗和设备面板涂 `--dsw-alias-bg-layer-2`，跟随玻璃透明度（100% 时不透明），不用壁纸画布填充。端口、地址和原始配对链接不出现在这一面。扫码会给这台设备签发长期凭证；解绑后该设备失效。设备行显示绑定名称、从已存 user-agent 抽出的系统／机型／浏览器（不是原始 UA），然后是短编号、绑定时间和最近访问，各占一行。Windows、Mac、Linux 显示为 **电脑**，详情行带架构。鉴权网关和出站中继由桌面主进程拥有。dsh 仍然只绑定 `127.0.0.1`。配对链接把密钥放在 `#offer=` 里，因此它不是查询参数。
+仅桌面端出现的、放在设置旁边的 **远程** 控件。浏览器插件仅在 Electron `window.shell` 提供 `getRemote`、`saveRemote`、`rotateRemoteToken` 和 `unbindRemoteDevice` 时，注册 id 为 `remote` 的 `sidebar.footer.action` 贡献。普通浏览器里的 `rlh web` 没有这一控件。触发器和标题文案是 **远程**。弹窗暴露一对 `Button` 的开启／关闭、一对 `Button` 的局域网／服务器中继（选中为 `primary` `sm`，未选中为 `ghost` `sm`）、配对二维码，以及带描边和右箭头的已连接设备行；点该行打开设备管理。改模式先写入本地快照，不禁用开启／关闭按钮，并且只换配对二维码：远程开启时局域网网关和中继都保持运行，只有关闭远程才会停掉它们。弹窗和设备面板涂 `--rlw-alias-bg-layer-2`，跟随玻璃透明度（100% 时不透明），不用壁纸画布填充。端口、地址和原始配对链接不出现在这一面。扫码会给这台设备签发长期凭证；解绑后该设备失效。设备行显示绑定名称、从已存 user-agent 抽出的系统／机型／浏览器（不是原始 UA），然后是短编号、绑定时间和最近访问，各占一行。Windows、Mac、Linux 显示为 **电脑**，详情行带架构。鉴权网关和出站中继由桌面主进程拥有。rlh 仍然只绑定 `127.0.0.1`。配对链接把密钥放在 `#offer=` 里，因此它不是查询参数。
 
 该控件只通过注入的桌面回调读写，不 import 其他 UI 插件的值。二维码由本包内维护中的 `uqr` 编码器绘制。网关关闭时手机图标为次级灰色，开启后用主文字色。
 

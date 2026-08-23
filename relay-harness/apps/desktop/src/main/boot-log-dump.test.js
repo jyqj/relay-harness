@@ -30,7 +30,7 @@ test('formatBootLogDump writes version, failure, and the full log ring', () => {
     logs,
   });
 
-  assert.match(text, /^Deepseek-Harness-Desktop 0\.2\.3\n/);
+  assert.match(text, /^Relay-Harness-Desktop 0\.2\.3\n/);
   assert.match(text, /^savedAt: 2026-08-20T00:00:00\.000Z$/m);
   assert.match(text, /^state: error$/m);
   assert.match(text, /^error: Harness 启动失败$/m);
@@ -56,7 +56,7 @@ test('formatBootLogDump keeps the header and log marker when logs are empty', ()
     snapshot: { state: 'error' },
     logs: [],
   });
-  assert.match(text, /^Deepseek-Harness-Desktop 1\.0\.0\n/);
+  assert.match(text, /^Relay-Harness-Desktop 1\.0\.0\n/);
   assert.match(text, /^failure\.phase: -$/m);
   assert.match(text, /\n--- logs ---\n$/);
   assert.doesNotMatch(text, /^recovery\./m);
@@ -96,7 +96,7 @@ test('saveBootLog writes the dump to the chosen path', async () => {
   });
   assert.deepEqual(result, { ok: true, canceled: false, path: '/tmp/out.log' });
   assert.deepEqual(writes, [{ filePath: '/tmp/out.log', body: 'full dump', encoding: 'utf8' }]);
-  assert.equal(dialogOptions.defaultPath, path.join('/tmp/downloads', 'dshd-boot-20260820-084203.log'));
+  assert.equal(dialogOptions.defaultPath, path.join('/tmp/downloads', 'rlhd-boot-20260820-084203.log'));
   assert.deepEqual(dialogOptions.filters, [
     { name: 'Log', extensions: ['log', 'txt'] },
   ]);

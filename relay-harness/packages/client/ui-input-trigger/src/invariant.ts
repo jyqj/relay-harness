@@ -1,13 +1,13 @@
 /**
- * Package-owned invariant companion for `@deepseek-ai/dsh-client-ui-input-trigger`.
- * @module @deepseek-ai/dsh-client-ui-input-trigger/invariant
+ * Package-owned invariant companion for `@relay-harness/rlh-client-ui-input-trigger`.
+ * @module @relay-harness/rlh-client-ui-input-trigger/invariant
  */
 
 /* jscpd:ignore-start */
-import type { Context } from '@deepseek-ai/cordis'
-import type { InvariantInstaller } from '@deepseek-ai/dsh-invariants'
+import type { Context } from '@relay-harness/cordis'
+import type { InvariantInstaller } from '@relay-harness/rlh-invariants'
 
-const PACKAGE_NAME = '@deepseek-ai/dsh-client-ui-input-trigger'
+const PACKAGE_NAME = '@relay-harness/rlh-client-ui-input-trigger'
 
 /** Cordis companion plugin name. */
 export const name = 'client-ui-input-trigger-invariant'

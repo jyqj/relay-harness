@@ -2,17 +2,17 @@
  * Cross-session snapshot preparation. Hosts adapt mentions into structured
  * references; this service owns exact reads, projection, budgets, and durable context.
  *
- * @module @deepseek-ai/dsh-session-reference
+ * @module @relay-harness/rlh-session-reference
  */
 
-import { Context } from '@deepseek-ai/cordis'
-import z from '@deepseek-ai/schemastery'
-import type { Agent, PreStepDecision } from '@deepseek-ai/dsh-agent'
-import { Remote, TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol'
-import { createUserMessage, freezeMessage } from '@deepseek-ai/dsh-llm'
-import type { ContentBlock, UserMessage } from '@deepseek-ai/dsh-llm'
-import type { SessionId } from '@deepseek-ai/dsh-session'
-import type { SessionSurfaceSnapshot, SessionTitleObservationResult } from '@deepseek-ai/dsh-session-query'
+import { Context } from '@relay-harness/cordis'
+import z from '@relay-harness/schemastery'
+import type { Agent, PreStepDecision } from '@relay-harness/rlh-agent'
+import { Remote, TypertRemoteService } from '@relay-harness/rlh-typert-protocol'
+import { createUserMessage, freezeMessage } from '@relay-harness/rlh-llm'
+import type { ContentBlock, UserMessage } from '@relay-harness/rlh-llm'
+import type { SessionId } from '@relay-harness/rlh-session'
+import type { SessionSurfaceSnapshot, SessionTitleObservationResult } from '@relay-harness/rlh-session-query'
 import {
   DEFAULT_CANDIDATE_LIMIT,
   DEFAULT_MAX_REFERENCE_BYTES,
@@ -55,7 +55,7 @@ user explicitly repeats them.
 `
 const PROMPT_SUFFIX = '\n</referenced-sessions>'
 
-declare module '@deepseek-ai/cordis' {
+declare module '@relay-harness/cordis' {
   interface Context {
     sessionReferenceResolver: SessionReferenceResolver
   }

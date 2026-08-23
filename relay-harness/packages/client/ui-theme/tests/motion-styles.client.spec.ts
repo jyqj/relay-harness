@@ -14,12 +14,12 @@ const motionCss = read('motion.css')
 
 describe('motion recipes', () => {
   it('declares overlay, popover, fade, swap, and flip recipes', () => {
-    expect(motionCss).toContain("[data-dsh-motion='overlay']")
-    expect(motionCss).toContain("[data-dsh-motion='popover']")
-    expect(motionCss).toContain("[data-dsh-motion='fade']")
-    expect(motionCss).toContain("[data-dsh-motion='swap']")
-    expect(motionCss).toContain("[data-dsh-motion='flip']")
-    expect(motionCss).toContain('data-dsh-motion-part')
+    expect(motionCss).toContain("[data-rlh-motion='overlay']")
+    expect(motionCss).toContain("[data-rlh-motion='popover']")
+    expect(motionCss).toContain("[data-rlh-motion='fade']")
+    expect(motionCss).toContain("[data-rlh-motion='swap']")
+    expect(motionCss).toContain("[data-rlh-motion='flip']")
+    expect(motionCss).toContain('data-rlh-motion-part')
   })
 
   it('transitions only opacity and transform', () => {
@@ -37,10 +37,10 @@ describe('motion recipes', () => {
 
   it('zeros duration tokens under prefers-reduced-motion', () => {
     expect(baseCss).toContain('@media (prefers-reduced-motion: reduce)')
-    expect(baseCss).toMatch(/--ds-motion-duration-overlay:\s*0s/)
-    expect(baseCss).toMatch(/--ds-motion-duration-popover:\s*0s/)
-    expect(baseCss).toMatch(/--ds-motion-duration-swap:\s*0s/)
-    expect(baseCss).toMatch(/--ds-motion-duration-flip:\s*0s/)
+    expect(baseCss).toMatch(/--rl-motion-duration-overlay:\s*0s/)
+    expect(baseCss).toMatch(/--rl-motion-duration-popover:\s*0s/)
+    expect(baseCss).toMatch(/--rl-motion-duration-swap:\s*0s/)
+    expect(baseCss).toMatch(/--rl-motion-duration-flip:\s*0s/)
     expect(motionCss).toContain('@media (prefers-reduced-motion: reduce)')
   })
 })

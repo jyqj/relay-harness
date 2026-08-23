@@ -1,11 +1,11 @@
 /** Durable issue-orchestrator domain schema. */
 
 import { z } from 'zod'
-import { SessionId } from '@deepseek-ai/dsh-session'
-import { TrackerIssueId } from '@deepseek-ai/dsh-tracker'
-import { defineDomain, domainTable } from '@deepseek-ai/dsh-storage-domain'
-import type { SessionId as SessionIdValue } from '@deepseek-ai/dsh-session/types'
-import type { TrackerIssue, TrackerIssueId as TrackerIssueIdValue } from '@deepseek-ai/dsh-tracker/types'
+import { SessionId } from '@relay-harness/rlh-session'
+import { TrackerIssueId } from '@relay-harness/rlh-tracker'
+import { defineDomain, domainTable } from '@relay-harness/rlh-storage-domain'
+import type { SessionId as SessionIdValue } from '@relay-harness/rlh-session/types'
+import type { TrackerIssue, TrackerIssueId as TrackerIssueIdValue } from '@relay-harness/rlh-tracker/types'
 
 const issueId = z.string().transform(TrackerIssueId)
 

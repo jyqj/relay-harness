@@ -1,9 +1,10 @@
+// @ts-check
 'use strict';
 
 const crypto = require('node:crypto');
 const path = require('node:path');
 
-const PREVIEW_PARTITION_PREFIX = 'persist:dshd-preview-';
+const PREVIEW_PARTITION_PREFIX = 'persist:rlhd-preview-';
 
 /** Permissions granted to preview web content. Not `clipboard-write` or `local-fonts`. */
 const ALLOWED_PREVIEW_PERMISSIONS = new Set([

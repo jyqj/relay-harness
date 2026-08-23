@@ -12,7 +12,7 @@
 
 ## Global Constraints
 
-- Official `dsh web` tokens / `ui-primitives` only; no marketplace hex.
+- Official `rlh web` tokens / `ui-primitives` only; no marketplace hex.
 - Product copy Chinese in `locales.ts`; English keys stay in lockstep.
 - Timeline HTML/partner/R18 stay out. Custom source remains the two JSON forms.
 - No UHD. Still bake JPEG through `setWallpaper` / `MAX_WALLPAPER_EDGE=1920`.
@@ -29,8 +29,8 @@
 ## File map
 
 - `src/main/wallpaper-catalog.js` + `.test.js` — Bing pages, redirects, fetch.
-- `vendor/deepseek-harness/packages/client/ui-theme/src/theme-settings.ts` — HTTPS-only persist.
-- `vendor/deepseek-harness/packages/client/ui-theme/src/wallpaper.ts` — crop decode must not abort at 200ms.
+- `vendor/relay-harness/packages/client/ui-theme/src/theme-settings.ts` — HTTPS-only persist.
+- `vendor/relay-harness/packages/client/ui-theme/src/wallpaper.ts` — crop decode must not abort at 200ms.
 - `WallpaperCropModal.tsx`, `WallpaperRow.tsx`, `WallpaperGalleryModal.tsx`, `WallpaperSources.tsx`, `locales.ts`.
 - Tests: `appearance-section.client.spec.tsx`, `wallpaper.client.spec.ts`, `theme.client.spec.ts`.
 - Docs: Agent Note + ui-theme README pairing.
@@ -91,7 +91,7 @@ New copy (zh / en):
 
 - [ ] **Step 2:** Run; expect FAIL (http survived).
 
-- [ ] **Step 3:** Persist `https:` only. `DSHD_WALLPAPER_ALLOW_HTTP` stays a main-process fetch fixture switch, not a Host schema hole.
+- [ ] **Step 3:** Persist `https:` only. `RLHD_WALLPAPER_ALLOW_HTTP` stays a main-process fetch fixture switch, not a Host schema hole.
 
 - [ ] **Step 4:** Re-run theme spec. Expected: PASS.
 
@@ -105,7 +105,7 @@ New copy (zh / en):
 
 **Root cause:** `redirect: 'follow'` plus nonexistent `x-redirect-count`. Built-in Bing is `idx=0&n=8` only; recommended product was ~two weeks.
 
-- [ ] **Step 1:** Test: fixture 302 chain longer than `MAX_REDIRECTS` (4) yields warning/error `重定向过多` and does not return the final image/catalog. Test: 2 hops to a PNG still downloads. Test: `DSHD_BING_WALLPAPER_URL` with `{idx}` fetches idx 0 and 8 and merges both `hsh` ids. Test: `bingCatalogUrls()` default (no env) is idx=0 and idx=8 on `cn.bing.com`.
+- [ ] **Step 1:** Test: fixture 302 chain longer than `MAX_REDIRECTS` (4) yields warning/error `重定向过多` and does not return the final image/catalog. Test: 2 hops to a PNG still downloads. Test: `RLHD_BING_WALLPAPER_URL` with `{idx}` fetches idx 0 and 8 and merges both `hsh` ids. Test: `bingCatalogUrls()` default (no env) is idx=0 and idx=8 on `cn.bing.com`.
 
 - [ ] **Step 2:** Run `node --test src/main/wallpaper-catalog.test.js`; expect FAIL.
 
@@ -115,7 +115,7 @@ New copy (zh / en):
 
 ---
 
-### Task 5: Bing wallpaper-use hint + dsh web description
+### Task 5: Bing wallpaper-use hint + rlh web description
 
 **Files:**
 - Modify: `locales.ts`, `WallpaperRow.tsx`, `WallpaperSources.tsx`
@@ -159,7 +159,7 @@ Facts to rewrite in present tense:
 node --test src/main/wallpaper-catalog.test.js src/preload/shell-api.test.js
 ```
 
-From `vendor/deepseek-harness`:
+From `vendor/relay-harness`:
 
 ```
 pnpm exec vitest run packages/client/ui-theme/tests/appearance-section.client.spec.tsx packages/client/ui-theme/tests/wallpaper.client.spec.ts packages/client/ui-theme/tests/theme.client.spec.ts packages/client/ui-theme/tests/apply.client.spec.ts packages/client/ui-theme/tests/wallpaper-shell.client.spec.ts

@@ -1,8 +1,8 @@
 # Surfaces 工作台加深 Implementation Plan
 
-> **对照来源（只读，已删除临时 clone）**：`omdsh-dev/DSH-better-sidebar` v0.12.2。借鉴交互与漏斗，不搬门户、不搬 `/sidebar/api`、不搬 `ctx.betterSidebar`。
+> **对照来源（只读，已删除临时 clone）**：`omdsh-dev/RLH-better-sidebar` v0.12.2。借鉴交互与漏斗，不搬门户、不搬 `/sidebar/api`、不搬 `ctx.betterSidebar`。
 >
-> **For agentic workers:** 按 Task 顺序落地。每步 checkbox；测红再写实现。同一 PR 写 Agent Note。外观走 `--dsw-*` + `ui-primitives`，禁止平行色板。
+> **For agentic workers:** 按 Task 顺序落地。每步 checkbox；测红再写实现。同一 PR 写 Agent Note。外观走 `--rlw-*` + `ui-primitives`，禁止平行色板。
 
 **Goal:** 让官方第四列 `surfaces` 成为桌面端文件 / Diff / Agent 的默认落点，补齐 Tab 壳、资源管理器动作、预览分发、Git 工作区操作。Inspect（`details`）、标题栏 Push/PR、底栏终端抽屉、工作区授权根都不动。
 
@@ -18,7 +18,7 @@
 | 包装 `workspaces.openPath` | 聊天点路径走 OS | **同样包装**，桌面且有当前会话才接管 |
 | explorer `single`，打开文件另开 editor tab | `openFile` **删掉** files 页 | **树常驻**，文件作并列 Tab |
 | Tab `+` 菜单 / 滚轮 / 中键关 | 空态五卡后无法再开第二种 | **Tab 条补 `+`、中键、右键关闭菜单** |
-| localStorage `dsh-sidebar:v1:<id>` | 内存 `bySession` | **精简持久化**（只要 surfaces 列表，不要分栏树） |
+| localStorage `rlh-sidebar:v1:<id>` | 内存 `bySession` | **精简持久化**（只要 surfaces 列表，不要分栏树） |
 | `@path` → `conversation.input.setDraft` | 无 | **同样插入**，`ctx.get('conversation')` |
 | 图片走 `/sidebar/file` 媒体路由 | `readFile` 遇 NUL 丢字节 | **新 IPC 读媒体字节**（仍锁工作区） |
 | Git porcelain + stage/unstage/discard | Diff 只读 unified；标题栏 `add -A` 再 commit | **Diff 页暂存/还原**；标题栏 Commit/Push **行为不变** |
@@ -45,7 +45,7 @@
 
 ## Visual language
 
-Tab `+`、右键菜单、文件行 `@` 都用现成 `Menu` / `Tooltip` / `writeClipboard`。行高 14/22，图标 14–16px `currentColor`，hover `--dsw-alias-interactive-bg-hover`。不要 VS Code 密度，不要对面的 `sidebar.module.css`。
+Tab `+`、右键菜单、文件行 `@` 都用现成 `Menu` / `Tooltip` / `writeClipboard`。行高 14/22，图标 14–16px `currentColor`，hover `--rlw-alias-interactive-bg-hover`。不要 VS Code 密度，不要对面的 `sidebar.module.css`。
 
 ---
 
@@ -53,14 +53,14 @@ Tab `+`、右键菜单、文件行 `@` 都用现成 `Menu` / `Tooltip` / `writeC
 
 **Files:**
 
-- Modify: `vendor/deepseek-harness/packages/client/ui-surfaces/src/client/stores.ts`
-- Modify: `vendor/deepseek-harness/packages/client/ui-surfaces/src/client/SurfaceTabs.tsx`
-- Modify: `vendor/deepseek-harness/packages/client/ui-surfaces/src/client/SurfaceTabs.module.css`
-- Modify: `vendor/deepseek-harness/packages/client/ui-surfaces/src/client/SurfacesRoot.tsx`
-- Modify: `vendor/deepseek-harness/packages/client/ui-surfaces/src/client/locales.ts`（及 i18n yaml 若有）
-- Test: `vendor/deepseek-harness/packages/client/ui-surfaces/tests/surfaces-store.client.spec.ts`
-- Test: `vendor/deepseek-harness/packages/client/ui-surfaces/tests/surfaces-root.client.spec.tsx`
-- Test: 新建 `vendor/deepseek-harness/packages/client/ui-surfaces/tests/surface-tabs.client.spec.tsx`
+- Modify: `vendor/relay-harness/packages/client/ui-surfaces/src/client/stores.ts`
+- Modify: `vendor/relay-harness/packages/client/ui-surfaces/src/client/SurfaceTabs.tsx`
+- Modify: `vendor/relay-harness/packages/client/ui-surfaces/src/client/SurfaceTabs.module.css`
+- Modify: `vendor/relay-harness/packages/client/ui-surfaces/src/client/SurfacesRoot.tsx`
+- Modify: `vendor/relay-harness/packages/client/ui-surfaces/src/client/locales.ts`（及 i18n yaml 若有）
+- Test: `vendor/relay-harness/packages/client/ui-surfaces/tests/surfaces-store.client.spec.ts`
+- Test: `vendor/relay-harness/packages/client/ui-surfaces/tests/surfaces-root.client.spec.tsx`
+- Test: 新建 `vendor/relay-harness/packages/client/ui-surfaces/tests/surface-tabs.client.spec.tsx`
 
 **Interfaces:**
 
@@ -89,7 +89,7 @@ export type SurfaceTabsProps = PropsLocale<typeof NS> & {
 
 - [ ] **Step 1:** store 测试：`openFile` 后仍有 `id: 'files'`，且 `file:src/a.ts` 为 active。跑红。
 - [ ] **Step 2:** 改 `openFile`；Tabs UI + 文案。
-- [ ] **Step 3:** `pnpm --filter @deepseek-ai/dsh-client-ui-surfaces test` 全绿。
+- [ ] **Step 3:** `pnpm --filter @relay-harness/rlh-client-ui-surfaces test` 全绿。
 - [ ] **Step 4:** 提交 `fix(ui-surfaces): keep files tab and add surface tab chrome`
 
 ---
@@ -98,12 +98,12 @@ export type SurfaceTabsProps = PropsLocale<typeof NS> & {
 
 **Files:**
 
-- Create: `vendor/deepseek-harness/packages/client/ui-surfaces/src/client/openpath-intercept.ts`（零 React，可单测）
-- Create: `vendor/deepseek-harness/packages/client/ui-surfaces/src/client/paths.ts`（`relativeTo`）
-- Modify: `vendor/deepseek-harness/packages/client/ui-surfaces/src/client/apply.ts`（`inject` 加 `workspaces`、`sessions`；`apply` 内 `createSurfacesStore()` 一次，register 传 handle）
-- Test: `vendor/deepseek-harness/packages/client/ui-surfaces/tests/openpath-intercept.client.spec.ts`
-- Test: `vendor/deepseek-harness/packages/client/ui-surfaces/tests/paths.client.spec.ts`
-- Test: `vendor/deepseek-harness/packages/client/ui-surfaces/tests/apply.client.spec.ts`
+- Create: `vendor/relay-harness/packages/client/ui-surfaces/src/client/openpath-intercept.ts`（零 React，可单测）
+- Create: `vendor/relay-harness/packages/client/ui-surfaces/src/client/paths.ts`（`relativeTo`）
+- Modify: `vendor/relay-harness/packages/client/ui-surfaces/src/client/apply.ts`（`inject` 加 `workspaces`、`sessions`；`apply` 内 `createSurfacesStore()` 一次，register 传 handle）
+- Test: `vendor/relay-harness/packages/client/ui-surfaces/tests/openpath-intercept.client.spec.ts`
+- Test: `vendor/relay-harness/packages/client/ui-surfaces/tests/paths.client.spec.ts`
+- Test: `vendor/relay-harness/packages/client/ui-surfaces/tests/apply.client.spec.ts`
 
 **Interfaces:**
 
@@ -143,14 +143,14 @@ export function wrapOpenPath(workspaces: OpenPathService, deps: OpenPathIntercep
 
 **Files:**
 
-- Create: `vendor/deepseek-harness/packages/client/ui-surfaces/src/client/persist.ts`
-- Modify: `vendor/deepseek-harness/packages/client/ui-surfaces/src/client/stores.ts` 或 apply 订阅
-- Modify: `vendor/deepseek-harness/packages/client/ui-titlebar/src/client/apply.ts`（或新建 `keybindings.ts`）
+- Create: `vendor/relay-harness/packages/client/ui-surfaces/src/client/persist.ts`
+- Modify: `vendor/relay-harness/packages/client/ui-surfaces/src/client/stores.ts` 或 apply 订阅
+- Modify: `vendor/relay-harness/packages/client/ui-titlebar/src/client/apply.ts`（或新建 `keybindings.ts`）
 - Test: `persist.client.spec.ts`、`keybindings.client.spec.ts`
 
 **Interfaces:**
 
-- localStorage 键：`dsh-surfaces:v1:<sessionId>`。只存 `{ activeId, surfaces }`。未知 `kind`、缺字段的条目丢掉。debounce 写（对面 50–100ms 量级即可）。
+- localStorage 键：`rlh-surfaces:v1:<sessionId>`。只存 `{ activeId, surfaces }`。未知 `kind`、缺字段的条目丢掉。debounce 写（对面 50–100ms 量级即可）。
 - 快捷键在 `ui-titlebar` `ctx.effect` 里 `window` 捕获：`Ctrl/Cmd+\` → `toggleSurfaces`；`Ctrl/Cmd+\`` → `toggleTerminalDrawer`。`input` / `textarea` / `contenteditable` / `.xterm` 内忽略（终端自己要吃 Ctrl+` 的例外：焦点在 xterm 时 **不要** 抢走，让抽屉快捷键只在焦点不在终端时生效——与 tooltip 文案一致：切抽屉，不是终端元键）。
 
 - [ ] **Step 1:** persist round-trip + 垃圾 kind 丢弃测试。跑红。
@@ -164,7 +164,7 @@ export function wrapOpenPath(workspaces: OpenPathService, deps: OpenPathIntercep
 
 **Files:**
 
-- Create: `vendor/deepseek-harness/packages/client/ui-files/src/client/draft.ts`（`appendToDraft`，对面 `conversation-draft.ts`）
+- Create: `vendor/relay-harness/packages/client/ui-files/src/client/draft.ts`（`appendToDraft`，对面 `conversation-draft.ts`）
 - Modify: `FileTree.tsx` / `FilesPanel.tsx` / `FileTree.module.css` / locales
 - Modify: `ui-files/src/client/apply.ts`（`inject` 加可选 conversation 读取，不要 value-import ui-conversation）
 - Test: `files-panel.client.spec.tsx`、新建 `draft.client.spec.ts`
@@ -181,7 +181,7 @@ export function appendToDraft(ctx: ClientContext, sessionId: string, text: strin
 
 - [ ] **Step 1:** 树测试：点击 `@` 调用 stub；右键复制。跑红。
 - [ ] **Step 2:** 实现；`ctx.get('conversation')` 缺失时 `@` 为 no-op（网页无 composer 也不崩）。
-- [ ] **Step 3:** `pnpm --filter @deepseek-ai/dsh-client-ui-files test`
+- [ ] **Step 3:** `pnpm --filter @relay-harness/rlh-client-ui-files test`
 - [ ] **Step 4:** 提交 `feat(ui-files): reference, copy path, and refresh`
 
 ---
@@ -270,7 +270,7 @@ Diff 页：
 
 - [ ] **Step 1:** `parsePorcelainZ` + stage 路径逃逸拒绝。跑红。
 - [ ] **Step 2:** IPC；DiffPanel UI。
-- [ ] **Step 3:** `pnpm --filter @deepseek-ai/dsh-client-ui-diff test` + `node --test src/main/git.test.js`
+- [ ] **Step 3:** `pnpm --filter @relay-harness/rlh-client-ui-diff test` + `node --test src/main/git.test.js`
 - [ ] **Step 4:** 提交 `feat(ui-diff): open files and stage from the diff surface`
 
 ---
@@ -287,12 +287,12 @@ Diff 页：
 
 **Files:**
 
-- Create: `vendor/deepseek-harness/.agents/notes/implemented/feature/2026-08-15-surfaces-workbench-depth.md`（+ zh + i18n yaml）
+- Create: `vendor/relay-harness/.agents/notes/implemented/feature/2026-08-15-surfaces-workbench-depth.md`（+ zh + i18n yaml）
 - Modify: 各包 README Known Limitations（删掉已落地的「只读树 / 纯文本预览 / Agents 只读」）
 - Modify: `apps/web/tests/desktop-chrome.e2e.ts`：打开右栏 → 点 Files 卡 → 断言 Tab 条有 Files 且有 `+`；网页 lane 没有 `listDir`，**不要**断言 openPath 接管。
 
 - [ ] **Step 1:** Note 写现在时：漏斗、树常驻、IPC 边界、不做清单。
-- [ ] **Step 2:** `DSH_SNAPSHOT=replay pnpm run test:web` 中 desktop-chrome；有意的 Tab 文案变化才 `refresh`。
+- [ ] **Step 2:** `RLH_SNAPSHOT=replay pnpm run test:web` 中 desktop-chrome；有意的 Tab 文案变化才 `refresh`。
 - [ ] **Step 3:** `pnpm run test:gui` 覆盖触及的 client 包。
 - [ ] **Step 4:** 提交 `docs: surfaces workbench depth note and snapshots`
 
@@ -300,14 +300,14 @@ Diff 页：
 
 | 档 | 命令 |
 |---|---|
-| 1–4, 6 | `pnpm --filter @deepseek-ai/dsh-client-ui-surfaces test` 以及 files / agents-panel |
+| 1–4, 6 | `pnpm --filter @relay-harness/rlh-client-ui-surfaces test` 以及 files / agents-panel |
 | 5, 7 | 上表 + `node --test src/main/workspace-fs.test.js src/main/git.test.js` |
-| 组装 | `DSH_SNAPSHOT=replay pnpm run test:web`（desktop-chrome） |
+| 组装 | `RLH_SNAPSHOT=replay pnpm run test:web`（desktop-chrome） |
 | 真机 | 桌面打开工作区：聊天里点工具行路径应打开右栏文件页；树还在；标题栏 Commit 仍能提交全部 |
 
 ## 明确不做（防止范围膨胀）
 
-- 预装或依赖 `dsh-better-sidebar`
+- 预装或依赖 `rlh-better-sidebar`
 - `document.body` portal、自管面板宽度、「位置兼容模式」
 - 底栏第二工作台（已有 `shell.terminalDrawer`）
 - 拖 Tab 拆 `surfaces` 列（终端内部 split 已有）

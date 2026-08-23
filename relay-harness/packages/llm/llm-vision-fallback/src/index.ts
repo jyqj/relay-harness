@@ -13,18 +13,18 @@
  * replays) reuse the logged description instead of calling the vision model
  * again.
  *
- * @module @deepseek-ai/dsh-llm-vision-fallback
+ * @module @relay-harness/rlh-llm-vision-fallback
  */
 
-import { Context, Service } from '@deepseek-ai/cordis'
-import z from '@deepseek-ai/schemastery'
-import { BlockAssembler, contentHasImage, createUserMessage, deepFreeze } from '@deepseek-ai/dsh-llm'
-import type { ContentBlock, FinishReason, GenerateOptions, ImageBlock, Message } from '@deepseek-ai/dsh-llm'
-import type { Session } from '@deepseek-ai/dsh-session'
-import { installSettingsSection, settingsNamespace } from '@deepseek-ai/dsh-settings'
-import { deadline, MAX_TIMER_DELAY_MS } from '@deepseek-ai/dsh-timeout'
+import { Context, Service } from '@relay-harness/cordis'
+import z from '@relay-harness/schemastery'
+import { BlockAssembler, contentHasImage, createUserMessage, deepFreeze } from '@relay-harness/rlh-llm'
+import type { ContentBlock, FinishReason, GenerateOptions, ImageBlock, Message } from '@relay-harness/rlh-llm'
+import type { Session } from '@relay-harness/rlh-session'
+import { installSettingsSection, settingsNamespace } from '@relay-harness/rlh-settings'
+import { deadline, MAX_TIMER_DELAY_MS } from '@relay-harness/rlh-timeout'
 
-declare module '@deepseek-ai/cordis' {
+declare module '@relay-harness/cordis' {
   interface Context {
     /** Designated vision-model routing and image-to-text rewriting. */
     visionFallback: VisionFallback
@@ -43,7 +43,7 @@ export interface VisionDescribeEventData {
   description: string
 }
 
-declare module '@deepseek-ai/dsh-session/types' {
+declare module '@relay-harness/rlh-session/types' {
   interface SessionEventMap {
     /**
      * Log-only record of one vision-model image description, appended before
@@ -259,7 +259,7 @@ export class VisionFallback extends Service {
     using callDeadline = deadline(signal, this.config.timeoutMs, VISION_DESCRIBE_TIMEOUT_CODE)
     const messages: Message[] = [createUserMessage({
       content: [block, { type: 'text', text: DESCRIBE_INSTRUCTION }],
-      source: { kind: 'plugin', plugin: 'dsh-llm-vision-fallback' },
+      source: { kind: 'plugin', plugin: 'rlh-llm-vision-fallback' },
     })]
     const options: GenerateOptions = deepFreeze({
       provider: target.provider,

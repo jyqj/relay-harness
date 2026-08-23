@@ -9,9 +9,9 @@ This file is GENERATED from source (`scripts/gen-config-catalog.ts`) and verifie
 
 A `Requires:` line lists the service keys the plugin `inject`s: its `cordis.yml` tree must also load providers for those services. Scope is the harness tier (`packages/`); the vendored cordis plugins a config tree may also load (`hmr`, the console logger, …) are pinned upstream source ([vendoring policy](../vendor/README.md)) and not catalogued here.
 
-<a id="deepseek-aidsh-acp"></a>
+<a id="relay-harnessrlh-acp"></a>
 
-## `@deepseek-ai/dsh-acp`
+## `@relay-harness/rlh-acp`
 
 Requires: `agents`
 
@@ -31,9 +31,9 @@ Depends on: `Stream` (`@agentclientprotocol/sdk`)
 
 Source: [`packages/acp/acp/src/index.ts:71`](../packages/acp/acp/src/index.ts)
 
-<a id="deepseek-aidsh-acp-demo"></a>
+<a id="relay-harnessrlh-acp-demo"></a>
 
-## `@deepseek-ai/dsh-acp-demo`
+## `@relay-harness/rlh-acp-demo`
 
 ```ts config-catalog
 /**
@@ -53,12 +53,12 @@ export interface Config {
   maxParallelToolCalls?: number
   /** Deployment persona (the system-prompt plugin's `persona` config). */
   persona?: string
-  /** Explicit model-facing tool order (the system-prompt plugin's `toolOrder` config; see dsh-system-prompt). */
+  /** Explicit model-facing tool order (the system-prompt plugin's `toolOrder` config; see rlh-system-prompt). */
   toolOrder?: string[]
-  /** Tool-registry config — its presentation `mode` (forwarded through agent-spine-demo; see dsh-tools). */
+  /** Tool-registry config — its presentation `mode` (forwarded through agent-spine-demo; see rlh-tools). */
   tools?: ToolsConfig
-  /** DeepSeek Harness home directory exposed to bash and used for local skill discovery. */
-  dshHome?: string
+  /** Relay Harness home directory exposed to bash and used for local skill discovery. */
+  rlhHome?: string
   /** Fallback session-title limits forwarded through agent-spine-demo. */
   sessionTitle?: NonNullable<agentCore.Config['sessionTitle']>
   /** Directory for JSONL sessions and the derived query index. Defaults to `./.sessions`. */
@@ -82,13 +82,13 @@ export interface Config {
 }
 ```
 
-Depends on: [`agentCore`](../packages/examples/agent-spine-demo/src/index.ts) · [`JsonlCompression`](../packages/session/session-persistence-jsonl/src/index.ts) · [`ToolsConfig`](#deepseek-aidsh-tools)
+Depends on: [`agentCore`](../packages/examples/agent-spine-demo/src/index.ts) · [`JsonlCompression`](../packages/session/session-persistence-jsonl/src/index.ts) · [`ToolsConfig`](#relay-harnessrlh-tools)
 
 Source: [`packages/examples/acp-demo/src/index.ts:39`](../packages/examples/acp-demo/src/index.ts)
 
-<a id="deepseek-aidsh-agent-default-model"></a>
+<a id="relay-harnessrlh-agent-default-model"></a>
 
-## `@deepseek-ai/dsh-agent-default-model`
+## `@relay-harness/rlh-agent-default-model`
 
 ```ts config-catalog
 /** Composition entry for the default model selection. */
@@ -102,15 +102,15 @@ export interface Config {
 
 Source: [`packages/core/agent-default-model/src/index.ts:41`](../packages/core/agent-default-model/src/index.ts)
 
-<a id="deepseek-aidsh-agent-instructions"></a>
+<a id="relay-harnessrlh-agent-instructions"></a>
 
-## `@deepseek-ai/dsh-agent-instructions`
+## `@relay-harness/rlh-agent-instructions`
 
 ```ts config-catalog
 /** User-facing workspace instruction loader configuration. */
 export interface Config {
-  /** Harness home containing the fixed user-global `AGENTS.md`; defaults to `$DSH_HOME` or `~/.dsh`. */
-  dshHome?: string
+  /** Harness home containing the fixed user-global `AGENTS.md`; defaults to `$RLH_HOME` or `~/.rlh`. */
+  rlhHome?: string
   /** Directory entries that identify the project root while walking upward from the session cwd. */
   projectRootMarkers?: string[]
   /** UTF-8 byte cap for one rendered baseline or dynamic batch; non-positive or non-finite disables loading. */
@@ -134,9 +134,9 @@ export interface Config {
 
 Source: [`packages/context/agent-instructions/src/config.ts:18`](../packages/context/agent-instructions/src/config.ts)
 
-<a id="deepseek-aidsh-agent-loop"></a>
+<a id="relay-harnessrlh-agent-loop"></a>
 
-## `@deepseek-ai/dsh-agent-loop`
+## `@relay-harness/rlh-agent-loop`
 
 Requires: `agents` · `sessions` · `llm` · `tools` · `systemPrompt`
 
@@ -166,9 +166,9 @@ Depends on: [`AgentOptions`](subsystems/core.md) · [`SessionId`](subsystems/cor
 
 Source: [`packages/core/agent-loop/src/index.ts:255`](../packages/core/agent-loop/src/index.ts)
 
-<a id="deepseek-aidsh-agent-presets"></a>
+<a id="relay-harnessrlh-agent-presets"></a>
 
-## `@deepseek-ai/dsh-agent-presets`
+## `@relay-harness/rlh-agent-presets`
 
 Requires: `loader`
 
@@ -204,9 +204,9 @@ export type PresetTrust = 'system' | 'user'
 
 Source: [`packages/preset/agent-presets/src/preset.ts:52`](../packages/preset/agent-presets/src/preset.ts)
 
-<a id="deepseek-aidsh-agent-spine-demo"></a>
+<a id="relay-harnessrlh-agent-spine-demo"></a>
 
-## `@deepseek-ai/dsh-agent-spine-demo`
+## `@relay-harness/rlh-agent-spine-demo`
 
 ```ts config-catalog
 /**
@@ -216,7 +216,7 @@ Source: [`packages/preset/agent-presets/src/preset.ts:52`](../packages/preset/ag
  * `persona`, and `toolOrder` to the system-prompt plugin (the fixed opener,
  * dynamic-context policy, deployment persona, and explicit model-facing tool
  * order), the `tools` object to the tool registry (its presentation `mode`),
- * `dshHome` to bash environment and local skill discovery, `sessionTitle` to
+ * `rlhHome` to bash environment and local skill discovery, `sessionTitle` to
  * the fallback title service, `skills` to the
  * skill registry/local provider/tool consumer, `workspaceContext` to the
  * agent-instructions loader, `jobs` to the process-local job provider, and
@@ -233,7 +233,7 @@ Source: [`packages/preset/agent-presets/src/preset.ts:52`](../packages/preset/ag
  * `bash` name.
  */
 export interface Config {
-  /** The agent-loop `agents` list (see dsh-agent-loop's `Config`). */
+  /** The agent-loop `agents` list (see rlh-agent-loop's `Config`). */
   agents?: AgentLoopConfig['agents']
   /** Agent-loop concurrency cap; `1` is serial. */
   maxParallelToolCalls?: AgentLoopConfig['maxParallelToolCalls']
@@ -241,14 +241,14 @@ export interface Config {
   includeHarnessIdentity?: SystemPromptConfig['includeHarnessIdentity']
   /** Whether model history includes dynamic runtime-context snapshots (default true). */
   includeRuntimeContext?: SystemPromptConfig['includeRuntimeContext']
-  /** The deployment persona (see dsh-system-prompt's `Config`). */
+  /** The deployment persona (see rlh-system-prompt's `Config`). */
   persona?: SystemPromptConfig['persona']
-  /** The explicit model-facing tool order (see dsh-system-prompt's `Config`). */
+  /** The explicit model-facing tool order (see rlh-system-prompt's `Config`). */
   toolOrder?: SystemPromptConfig['toolOrder']
-  /** The tool registry's config — its presentation `mode` (see dsh-tools' `Config`). */
+  /** The tool registry's config — its presentation `mode` (see rlh-tools' `Config`). */
   tools?: ToolsConfig
-  /** DeepSeek Harness home directory shared by shell context and local skill discovery. */
-  dshHome?: string
+  /** Relay Harness home directory shared by shell context and local skill discovery. */
+  rlhHome?: string
   /** Deterministic fallback and accepted-title limits; omission uses the bundle's example policy. */
   sessionTitle?: SessionTitleConfig
   /** Workspace-context loader controls with an explicit byte budget; set `false` for hermetic prompts. */
@@ -292,13 +292,13 @@ export interface GoalConfig {
 }
 ```
 
-Depends on: [`AgentLoopConfig`](#deepseek-aidsh-agent-loop) · [`GoalDomainConfig`](#deepseek-aidsh-goal) · [`InvariantConfig`](#deepseek-aidsh-invariants) · [`JobsConfig`](#deepseek-aidsh-jobs-local) · [`SessionTitleConfig`](#deepseek-aidsh-session-title) · [`SkillFileSystem`](../packages/skill/skill-filesystem/src/index.ts) · [`SkillRegistryConfig`](#deepseek-aidsh-skill) · [`SystemPromptConfig`](#deepseek-aidsh-system-prompt) · [`toolBash`](../packages/shell/tool-bash/src/index.ts) · [`toolGoal`](../packages/goal/tool-goal/src/index.ts) · [`toolJobs`](../packages/jobs/tool-jobs/src/index.ts) · [`ToolsConfig`](#deepseek-aidsh-tools) · [`toolSkill`](../packages/skill/tool-skill/src/index.ts) · [`workspaceContext`](../packages/context/agent-instructions/src/index.ts)
+Depends on: [`AgentLoopConfig`](#relay-harnessrlh-agent-loop) · [`GoalDomainConfig`](#relay-harnessrlh-goal) · [`InvariantConfig`](#relay-harnessrlh-invariants) · [`JobsConfig`](#relay-harnessrlh-jobs-local) · [`SessionTitleConfig`](#relay-harnessrlh-session-title) · [`SkillFileSystem`](../packages/skill/skill-filesystem/src/index.ts) · [`SkillRegistryConfig`](#relay-harnessrlh-skill) · [`SystemPromptConfig`](#relay-harnessrlh-system-prompt) · [`toolBash`](../packages/shell/tool-bash/src/index.ts) · [`toolGoal`](../packages/goal/tool-goal/src/index.ts) · [`toolJobs`](../packages/jobs/tool-jobs/src/index.ts) · [`ToolsConfig`](#relay-harnessrlh-tools) · [`toolSkill`](../packages/skill/tool-skill/src/index.ts) · [`workspaceContext`](../packages/context/agent-instructions/src/index.ts)
 
 Source: [`packages/examples/agent-spine-demo/src/index.ts:92`](../packages/examples/agent-spine-demo/src/index.ts)
 
-<a id="deepseek-aidsh-agent-tool-presentation"></a>
+<a id="relay-harnessrlh-agent-tool-presentation"></a>
 
-## `@deepseek-ai/dsh-agent-tool-presentation`
+## `@relay-harness/rlh-agent-tool-presentation`
 
 Requires: `tools`
 
@@ -320,15 +320,15 @@ Depends on: [`ToolPresentationMode`](subsystems/tools.md)
 
 Source: [`packages/core/agent-tool-presentation/src/index.ts:38`](../packages/core/agent-tool-presentation/src/index.ts)
 
-<a id="deepseek-aidsh-attachment-local"></a>
+<a id="relay-harnessrlh-attachment-local"></a>
 
-## `@deepseek-ai/dsh-attachment-local`
+## `@relay-harness/rlh-attachment-local`
 
 ```ts config-catalog
 /** Local attachment backend configuration. */
 export interface Config {
-  /** Explicit harness home; omitted follows `DSH_HOME`, then `~/.dsh`. */
-  dshHome?: string
+  /** Explicit harness home; omitted follows `RLH_HOME`, then `~/.rlh`. */
+  rlhHome?: string
   /** Maximum encoded bytes accepted for one image. */
   maxImageBytes?: number
   /** Maximum image count accepted in one submitted message. */
@@ -344,9 +344,9 @@ export interface Config {
 
 Source: [`packages/attachment/attachment-local/src/index.ts:31`](../packages/attachment/attachment-local/src/index.ts)
 
-<a id="deepseek-aidsh-bash-local"></a>
+<a id="relay-harnessrlh-bash-local"></a>
 
-## `@deepseek-ai/dsh-bash-local`
+## `@relay-harness/rlh-bash-local`
 
 Requires: `subprocess`
 
@@ -370,9 +370,9 @@ export interface Config {
 
 Source: [`packages/shell/bash-local/src/index.ts:41`](../packages/shell/bash-local/src/index.ts)
 
-<a id="deepseek-aidsh-bash-sandbox"></a>
+<a id="relay-harnessrlh-bash-sandbox"></a>
 
-## `@deepseek-ai/dsh-bash-sandbox`
+## `@relay-harness/rlh-bash-sandbox`
 
 Requires: `subprocess` · `sandbox` · `sandboxPolicy`
 
@@ -380,20 +380,20 @@ Requires: `subprocess` · `sandbox` · `sandboxPolicy`
 /**
  * Plugin config: the local executor's knobs, verbatim. The sandbox policy —
  * the default mode and fallback `workspace-write` root — is NOT here: it lives
- * on `ctx.sandboxPolicy` (`@deepseek-ai/dsh-sandbox-policy`), which resolves
+ * on `ctx.sandboxPolicy` (`@relay-harness/rlh-sandbox-policy`), which resolves
  * each calling session's mode and cwd for every enforcing capability. The runner
  * choice is likewise the `ctx.sandbox` provider's config, not this executor's.
  */
 export type Config = LocalConfig
 ```
 
-Depends on: [`LocalConfig`](#deepseek-aidsh-bash-local)
+Depends on: [`LocalConfig`](#relay-harnessrlh-bash-local)
 
 Source: [`packages/shell/bash-sandbox/src/index.ts:35`](../packages/shell/bash-sandbox/src/index.ts)
 
-<a id="deepseek-aidsh-behavior-correction"></a>
+<a id="relay-harnessrlh-behavior-correction"></a>
 
-## `@deepseek-ai/dsh-behavior-correction`
+## `@relay-harness/rlh-behavior-correction`
 
 ```ts config-catalog
 /**
@@ -425,9 +425,9 @@ export interface Config {
 
 Source: [`packages/guard/behavior-correction/src/index.ts:28`](../packages/guard/behavior-correction/src/index.ts)
 
-<a id="deepseek-aidsh-client-connection"></a>
+<a id="relay-harnessrlh-client-connection"></a>
 
-## `@deepseek-ai/dsh-client-connection`
+## `@relay-harness/rlh-client-connection`
 
 Requires: `webServer`
 
@@ -439,7 +439,7 @@ export interface ConnectionConfig {
    * port-less `host` matching any port. The /api trust fence refuses any
    * request whose Host is neither loopback nor listed here, so a
    * non-loopback (`0.0.0.0`) deployment must declare the names it is reached
-   * by (the dsh CLI derives the machine's LAN IP literals itself). An entry
+   * by (the rlh CLI derives the machine's LAN IP literals itself). An entry
    * that is not a bare, canonical authority fails the plugin load.
    */
   trustedHosts?: string[]
@@ -450,9 +450,9 @@ export interface ConnectionConfig {
 
 Source: [`packages/client/connection/src/index.ts:50`](../packages/client/connection/src/index.ts)
 
-<a id="deepseek-aidsh-client-hmr"></a>
+<a id="relay-harnessrlh-client-hmr"></a>
 
-## `@deepseek-ai/dsh-client-hmr`
+## `@relay-harness/rlh-client-hmr`
 
 Requires: `clientModules` · `webServer`
 
@@ -466,9 +466,9 @@ export interface Config {
 
 Source: [`packages/client/hmr/src/index.ts:31`](../packages/client/hmr/src/index.ts)
 
-<a id="deepseek-aidsh-code-runtime-worker-thread"></a>
+<a id="relay-harnessrlh-code-runtime-worker-thread"></a>
 
-## `@deepseek-ai/dsh-code-runtime-worker-thread`
+## `@relay-harness/rlh-code-runtime-worker-thread`
 
 ```ts config-catalog
 /** Plugin config: every execution cap, changeable from `cordis.yml` (no hardcoded tunables). */
@@ -503,9 +503,9 @@ export interface Config {
 
 Source: [`packages/code-runtime/code-runtime-worker-thread/src/index.ts:25`](../packages/code-runtime/code-runtime-worker-thread/src/index.ts)
 
-<a id="deepseek-aidsh-compaction-basic"></a>
+<a id="relay-harnessrlh-compaction-basic"></a>
 
-## `@deepseek-ai/dsh-compaction-basic`
+## `@relay-harness/rlh-compaction-basic`
 
 Requires: `llm` · `tokenMeter` · `sessions`
 
@@ -549,9 +549,9 @@ export interface ModelCompactPolicyConfig extends CompactionPolicyConfig {
 
 Source: [`packages/compaction/compaction-basic/src/types.ts:38`](../packages/compaction/compaction-basic/src/types.ts)
 
-<a id="deepseek-aidsh-compaction-tool-result-pruner"></a>
+<a id="relay-harnessrlh-compaction-tool-result-pruner"></a>
 
-## `@deepseek-ai/dsh-compaction-tool-result-pruner`
+## `@relay-harness/rlh-compaction-tool-result-pruner`
 
 Requires: `tokenMeter`
 
@@ -569,9 +569,9 @@ export interface ToolResultPruneConfig {
 
 Source: [`packages/compaction/compaction-tool-result-pruner/src/types.ts:4`](../packages/compaction/compaction-tool-result-pruner/src/types.ts)
 
-<a id="deepseek-aidsh-cordis-host-runner"></a>
+<a id="relay-harnessrlh-cordis-host-runner"></a>
 
-## `@deepseek-ai/dsh-cordis-host-runner`
+## `@relay-harness/rlh-cordis-host-runner`
 
 Requires: `tools`
 
@@ -585,17 +585,17 @@ export interface Config {
 
 Source: [`packages/extensions/cordis-host-runner/src/index.ts:88`](../packages/extensions/cordis-host-runner/src/index.ts)
 
-<a id="deepseek-aidsh-credentials-local"></a>
+<a id="relay-harnessrlh-credentials-local"></a>
 
-## `@deepseek-ai/dsh-credentials-local`
+## `@relay-harness/rlh-credentials-local`
 
 ```ts config-catalog
 /** Plugin config: file location and hot-reload behavior. */
 export interface Config {
   /** Credentials document path; defaults to `.credentials.yaml` under the harness home. */
   path?: string
-  /** Harness home used when `path` is omitted; defaults to `$DSH_HOME` or `~/.dsh`. */
-  dshHome?: string
+  /** Harness home used when `path` is omitted; defaults to `$RLH_HOME` or `~/.rlh`. */
+  rlhHome?: string
   /** Watch the document and hot-publish external edits; defaults to true. */
   watch?: boolean
   /** Watcher write-settle window in milliseconds; defaults to 100. */
@@ -605,9 +605,9 @@ export interface Config {
 
 Source: [`packages/credentials/credentials-local/src/index.ts:55`](../packages/credentials/credentials-local/src/index.ts)
 
-<a id="deepseek-aidsh-e2b"></a>
+<a id="relay-harnessrlh-e2b"></a>
 
-## `@deepseek-ai/dsh-e2b`
+## `@relay-harness/rlh-e2b`
 
 ```ts config-catalog
 /** Configuration for the shared E2B sandbox owner. */
@@ -623,9 +623,9 @@ export interface Config {
 
 Source: [`packages/e2b/e2b/src/index.ts:43`](../packages/e2b/e2b/src/index.ts)
 
-<a id="deepseek-aidsh-experimental-agent-team"></a>
+<a id="relay-harnessrlh-experimental-agent-team"></a>
 
-## `@deepseek-ai/dsh-experimental-agent-team`
+## `@relay-harness/rlh-experimental-agent-team`
 
 Requires: `agents` · `sessions` · `sessionPersistence` · `subagents`
 
@@ -647,9 +647,9 @@ export interface Config {
 
 Source: [`packages/experimental/agent-team/src/types.ts:125`](../packages/experimental/agent-team/src/types.ts)
 
-<a id="deepseek-aidsh-experimental-tool-agent-team"></a>
+<a id="relay-harnessrlh-experimental-tool-agent-team"></a>
 
-## `@deepseek-ai/dsh-experimental-tool-agent-team`
+## `@relay-harness/rlh-experimental-tool-agent-team`
 
 Requires: `agents` · `agentTeams` · `tools` · `systemPrompt`
 
@@ -665,9 +665,9 @@ export interface Config {
 
 Source: [`packages/experimental/tool-agent-team/src/index.ts:17`](../packages/experimental/tool-agent-team/src/index.ts)
 
-<a id="deepseek-aidsh-file-reference-local"></a>
+<a id="relay-harnessrlh-file-reference-local"></a>
 
-## `@deepseek-ai/dsh-file-reference-local`
+## `@relay-harness/rlh-file-reference-local`
 
 Requires: `agents`
 
@@ -685,9 +685,9 @@ export interface Config {
 
 Source: [`packages/context/file-reference-local/src/index.ts:35`](../packages/context/file-reference-local/src/index.ts)
 
-<a id="deepseek-aidsh-fs-local"></a>
+<a id="relay-harnessrlh-fs-local"></a>
 
-## `@deepseek-ai/dsh-fs-local`
+## `@relay-harness/rlh-fs-local`
 
 ```ts config-catalog
 /** Configuration for the local filesystem backend. */
@@ -704,9 +704,9 @@ export interface Config {
 
 Source: [`packages/fs/fs-local/src/index.ts:41`](../packages/fs/fs-local/src/index.ts)
 
-<a id="deepseek-aidsh-fs-sandbox"></a>
+<a id="relay-harnessrlh-fs-sandbox"></a>
 
-## `@deepseek-ai/dsh-fs-sandbox`
+## `@relay-harness/rlh-fs-sandbox`
 
 Requires: `sandboxPolicy`
 
@@ -720,13 +720,13 @@ Requires: `sandboxPolicy`
 export type Config = LocalConfig
 ```
 
-Depends on: [`LocalConfig`](#deepseek-aidsh-fs-local)
+Depends on: [`LocalConfig`](#relay-harnessrlh-fs-local)
 
 Source: [`packages/fs/fs-sandbox/src/index.ts:49`](../packages/fs/fs-sandbox/src/index.ts)
 
-<a id="deepseek-aidsh-goal"></a>
+<a id="relay-harnessrlh-goal"></a>
 
-## `@deepseek-ai/dsh-goal`
+## `@relay-harness/rlh-goal`
 
 Requires: `agents`
 
@@ -740,9 +740,9 @@ export interface Config {
 
 Source: [`packages/goal/goal/src/index.ts:116`](../packages/goal/goal/src/index.ts)
 
-<a id="deepseek-aidsh-headless"></a>
+<a id="relay-harnessrlh-headless"></a>
 
-## `@deepseek-ai/dsh-headless`
+## `@relay-harness/rlh-headless`
 
 Requires: `agentDefaultModel` · `agents` · `sessions`
 
@@ -756,9 +756,9 @@ export interface Config {
 
 Source: [`packages/bundle/headless/src/index.ts:31`](../packages/bundle/headless/src/index.ts)
 
-<a id="deepseek-aidsh-hooks-claude-code"></a>
+<a id="relay-harnessrlh-hooks-claude-code"></a>
 
-## `@deepseek-ai/dsh-hooks-claude-code`
+## `@relay-harness/rlh-hooks-claude-code`
 
 Requires: `shell`
 
@@ -794,9 +794,9 @@ export interface Config {
 
 Source: [`packages/hooks/hooks-claude-code/src/index.ts:45`](../packages/hooks/hooks-claude-code/src/index.ts)
 
-<a id="deepseek-aidsh-hooks-codex"></a>
+<a id="relay-harnessrlh-hooks-codex"></a>
 
-## `@deepseek-ai/dsh-hooks-codex`
+## `@relay-harness/rlh-hooks-codex`
 
 Requires: `shell`
 
@@ -820,9 +820,9 @@ export interface Config {
 
 Source: [`packages/hooks/hooks-codex/src/index.ts:45`](../packages/hooks/hooks-codex/src/index.ts)
 
-<a id="deepseek-aidsh-host-apiproxy"></a>
+<a id="relay-harnessrlh-host-apiproxy"></a>
 
-## `@deepseek-ai/dsh-host-apiproxy`
+## `@relay-harness/rlh-host-apiproxy`
 
 Requires: `agentDefaultModel` · `agents` · `attachments` · `directoryPicker` · `llm` · `sessions` · `subagents` · `sessionQuery` · `tools` · `userQuestions` · `workspaceRegistry`
 
@@ -854,9 +854,9 @@ export interface Config {
 
 Source: [`packages/host/apiproxy/src/index.ts:41`](../packages/host/apiproxy/src/index.ts)
 
-<a id="deepseek-aidsh-host-directory-picker-browse"></a>
+<a id="relay-harnessrlh-host-directory-picker-browse"></a>
 
-## `@deepseek-ai/dsh-host-directory-picker-browse`
+## `@relay-harness/rlh-host-directory-picker-browse`
 
 ```ts config-catalog
 /** Validated plugin configuration. */
@@ -868,9 +868,9 @@ export interface Config {
 
 Source: [`packages/host/directory-picker-browse/src/index.ts:260`](../packages/host/directory-picker-browse/src/index.ts)
 
-<a id="deepseek-aidsh-host-frontend-static"></a>
+<a id="relay-harnessrlh-host-frontend-static"></a>
 
-## `@deepseek-ai/dsh-host-frontend-static`
+## `@relay-harness/rlh-host-frontend-static`
 
 Requires: `webServer`
 
@@ -884,9 +884,9 @@ export interface Config {
 
 Source: [`packages/host/frontend-static/src/index.ts:28`](../packages/host/frontend-static/src/index.ts)
 
-<a id="deepseek-aidsh-host-webserver"></a>
+<a id="relay-harnessrlh-host-webserver"></a>
 
-## `@deepseek-ai/dsh-host-webserver`
+## `@relay-harness/rlh-host-webserver`
 
 ```ts config-catalog
 /** Gateway config: the listen address. */
@@ -900,9 +900,9 @@ export interface Config {
 
 Source: [`packages/host/webserver/src/index.ts:45`](../packages/host/webserver/src/index.ts)
 
-<a id="deepseek-aidsh-invariants"></a>
+<a id="relay-harnessrlh-invariants"></a>
 
-## `@deepseek-ai/dsh-invariants`
+## `@relay-harness/rlh-invariants`
 
 ```ts config-catalog
 /** Runtime invariant selection configured on the service plugin. */
@@ -918,9 +918,9 @@ export interface Config {
 
 Source: [`packages/runtime-diagnostics/invariants/src/index.ts:15`](../packages/runtime-diagnostics/invariants/src/index.ts)
 
-<a id="deepseek-aidsh-issue-runner-agent"></a>
+<a id="relay-harnessrlh-issue-runner-agent"></a>
 
-## `@deepseek-ai/dsh-issue-runner-agent`
+## `@relay-harness/rlh-issue-runner-agent`
 
 Requires: `agents` · `tools`
 
@@ -938,9 +938,9 @@ export interface Config {
 
 Source: [`packages/automation/issue-runner-agent/src/index.ts:16`](../packages/automation/issue-runner-agent/src/index.ts)
 
-<a id="deepseek-aidsh-issue-workflow-file"></a>
+<a id="relay-harnessrlh-issue-workflow-file"></a>
 
-## `@deepseek-ai/dsh-issue-workflow-file`
+## `@relay-harness/rlh-issue-workflow-file`
 
 ```ts config-catalog
 /** Absolute repository workflow document selection. */
@@ -952,9 +952,9 @@ export interface Config {
 
 Source: [`packages/automation/issue-workflow-file/src/index.ts:18`](../packages/automation/issue-workflow-file/src/index.ts)
 
-<a id="deepseek-aidsh-issue-workspace-local"></a>
+<a id="relay-harnessrlh-issue-workspace-local"></a>
 
-## `@deepseek-ai/dsh-issue-workspace-local`
+## `@relay-harness/rlh-issue-workspace-local`
 
 Requires: `subprocess`
 
@@ -982,9 +982,9 @@ export interface Config {
 
 Source: [`packages/automation/issue-workspace-local/src/index.ts:16`](../packages/automation/issue-workspace-local/src/index.ts)
 
-<a id="deepseek-aidsh-jobs-local"></a>
+<a id="relay-harnessrlh-jobs-local"></a>
 
-## `@deepseek-ai/dsh-jobs-local`
+## `@relay-harness/rlh-jobs-local`
 
 ```ts config-catalog
 /** Configuration for the process-local job registry. */
@@ -999,9 +999,9 @@ export interface Config {
 
 Source: [`packages/jobs/jobs-local/src/index.ts:31`](../packages/jobs/jobs-local/src/index.ts)
 
-<a id="deepseek-aidsh-llm-circuit-breaker"></a>
+<a id="relay-harnessrlh-llm-circuit-breaker"></a>
 
-## `@deepseek-ai/dsh-llm-circuit-breaker`
+## `@relay-harness/rlh-llm-circuit-breaker`
 
 Requires: `agents` · `sessions`
 
@@ -1025,9 +1025,9 @@ export interface Config {
 
 Source: [`packages/guard/llm-circuit-breaker/src/index.ts:21`](../packages/guard/llm-circuit-breaker/src/index.ts)
 
-<a id="deepseek-aidsh-llm-deepseek"></a>
+<a id="relay-harnessrlh-llm-deepseek"></a>
 
-## `@deepseek-ai/dsh-llm-deepseek`
+## `@relay-harness/rlh-llm-deepseek`
 
 Requires: `llm`
 
@@ -1084,9 +1084,9 @@ Depends on: [`ModelModality`](../packages/llm/llm/src/index.ts) · [`RetryPolicy
 
 Source: [`packages/llm/llm-deepseek/src/index.ts:66`](../packages/llm/llm-deepseek/src/index.ts)
 
-<a id="deepseek-aidsh-llm-pi-ai"></a>
+<a id="relay-harnessrlh-llm-pi-ai"></a>
 
-## `@deepseek-ai/dsh-llm-pi-ai`
+## `@relay-harness/rlh-llm-pi-ai`
 
 Requires: `llm`
 
@@ -1334,21 +1334,21 @@ Depends on: `Api` (`@earendil-works/pi-ai`) · `CacheRetention` (`@earendil-work
 
 Source: [`packages/llm/llm-pi-ai/src/config.ts:201`](../packages/llm/llm-pi-ai/src/config.ts)
 
-<a id="deepseek-aidsh-llm-replay"></a>
+<a id="relay-harnessrlh-llm-replay"></a>
 
-## `@deepseek-ai/dsh-llm-replay`
+## `@relay-harness/rlh-llm-replay`
 
 Requires: `llm`
 
 ```ts config-catalog
-/** Plugin config: the {@link ReplayConfig} inputs, each defaulting to its `DSH_SNAPSHOT_*` env var in `apply`. */
+/** Plugin config: the {@link ReplayConfig} inputs, each defaulting to its `RLH_SNAPSHOT_*` env var in `apply`. */
 export interface Config {
-  /** Override the fixture path; defaults to `$DSH_SNAPSHOT_FILE`. */
+  /** Override the fixture path; defaults to `$RLH_SNAPSHOT_FILE`. */
   file?: string
-  /** Override the sidecar path; defaults to `$DSH_SNAPSHOT_OVERRIDE`. */
+  /** Override the sidecar path; defaults to `$RLH_SNAPSHOT_OVERRIDE`. */
   overrideFile?: string
   /**
-   * Override the child-log paths; defaults to `$DSH_SNAPSHOT_CHILD_FILES` (a
+   * Override the child-log paths; defaults to `$RLH_SNAPSHOT_CHILD_FILES` (a
    * path-separator-delimited list). Each is a recorded subagent session log for
    * a nested-agent scenario; absent/empty for a single-session scenario.
    */
@@ -1402,9 +1402,9 @@ Depends on: [`ModelModality`](../packages/llm/llm/src/index.ts) · [`RetryPolicy
 
 Source: [`packages/test-support/llm-replay/src/index.ts:776`](../packages/test-support/llm-replay/src/index.ts)
 
-<a id="deepseek-aidsh-llm-retry"></a>
+<a id="relay-harnessrlh-llm-retry"></a>
 
-## `@deepseek-ai/dsh-llm-retry`
+## `@relay-harness/rlh-llm-retry`
 
 Requires: `agents`
 
@@ -1415,9 +1415,9 @@ export type Config = Readonly<Record<string, never>>
 
 Source: [`packages/llm/llm-retry/src/index.ts:25`](../packages/llm/llm-retry/src/index.ts)
 
-<a id="deepseek-aidsh-llm-vision-fallback"></a>
+<a id="relay-harnessrlh-llm-vision-fallback"></a>
 
-## `@deepseek-ai/dsh-llm-vision-fallback`
+## `@relay-harness/rlh-llm-vision-fallback`
 
 Requires: `llm`
 
@@ -1433,9 +1433,9 @@ export interface Config {
 
 Source: [`packages/llm/llm-vision-fallback/src/index.ts:76`](../packages/llm/llm-vision-fallback/src/index.ts)
 
-<a id="deepseek-aidsh-lsp-stdio"></a>
+<a id="relay-harnessrlh-lsp-stdio"></a>
 
-## `@deepseek-ai/dsh-lsp-stdio`
+## `@relay-harness/rlh-lsp-stdio`
 
 Requires: `fs` · `lsp` · `subprocess`
 
@@ -1475,9 +1475,9 @@ export interface LspLocalServerConfig {
 
 Source: [`packages/lsp/lsp-stdio/src/index.ts:82`](../packages/lsp/lsp-stdio/src/index.ts)
 
-<a id="deepseek-aidsh-mcp-client"></a>
+<a id="relay-harnessrlh-mcp-client"></a>
 
-## `@deepseek-ai/dsh-mcp-client`
+## `@relay-harness/rlh-mcp-client`
 
 Requires: `tools`
 
@@ -1548,9 +1548,9 @@ export interface ReconnectConfig {
 
 Source: [`packages/mcp/mcp-client/src/index.ts:100`](../packages/mcp/mcp-client/src/index.ts)
 
-<a id="deepseek-aidsh-mcp-servers-file"></a>
+<a id="relay-harnessrlh-mcp-servers-file"></a>
 
-## `@deepseek-ai/dsh-mcp-servers-file`
+## `@relay-harness/rlh-mcp-servers-file`
 
 ```ts config-catalog
 /** Plugin configuration. Merges with the Zod `Config` schema below. */
@@ -1558,10 +1558,10 @@ export interface Config extends McpServersFileOptions {}
 
 /** Plugin configuration fields used by the file service. */
 export interface McpServersFileOptions {
-  /** Absolute or home-relative document path. Defaults to `$DSH_HOME/mcp-servers.yaml`. */
+  /** Absolute or home-relative document path. Defaults to `$RLH_HOME/mcp-servers.yaml`. */
   path?: string
   /** Harness home used when `path` is omitted. */
-  dshHome?: string
+  rlhHome?: string
   /** Watch the document and remount children after an external write. */
   watch?: boolean
   /** Chokidar stability window in milliseconds. */
@@ -1571,9 +1571,9 @@ export interface McpServersFileOptions {
 
 Source: [`packages/mcp/mcp-servers-file/src/index.ts:12`](../packages/mcp/mcp-servers-file/src/index.ts)
 
-<a id="deepseek-aidsh-memory-agent"></a>
+<a id="relay-harnessrlh-memory-agent"></a>
 
-## `@deepseek-ai/dsh-memory-agent`
+## `@relay-harness/rlh-memory-agent`
 
 Requires: `longTermMemory`
 
@@ -1582,13 +1582,13 @@ Requires: `longTermMemory`
 export interface Config {
   /** Stable user identity inside each workspace. Defaults to `local`. */
   userId?: string
-  /** Stable Agent identity shared across recallable sessions. Defaults to `deepseek-harness`. */
+  /** Stable Agent identity shared across recallable sessions. Defaults to `relay-harness`. */
   agentId?: string
   /** Explicit workspace identity; omission uses the session cwd, then `global`. */
   workspaceId?: string
   /** Provider candidate cap before model-context packing. Defaults to 10. */
   candidateLimit?: number
-  /** Complete memory message character cap, including safety framing. Defaults to 3200. */
+  /** Complete memory message cap in Unicode code points, including safety framing. Defaults to 3200. */
   maxContextChars?: number
   /** Whether delegated subagents receive and settle memory. Defaults to false. */
   includeSubagents?: boolean
@@ -1597,9 +1597,9 @@ export interface Config {
 
 Source: [`packages/memory/memory-agent/src/index.ts:53`](../packages/memory/memory-agent/src/index.ts)
 
-<a id="deepseek-aidsh-memory-extractor-llm"></a>
+<a id="relay-harnessrlh-memory-extractor-llm"></a>
 
-## `@deepseek-ai/dsh-memory-extractor-llm`
+## `@relay-harness/rlh-memory-extractor-llm`
 
 Requires: `llm` · `longTermMemory` · `memoryExtractionQueue`
 
@@ -1610,7 +1610,7 @@ export interface Config {
   enabled?: boolean
   /** Stable user identity inside each workspace. Defaults to `local`. */
   userId?: string
-  /** Stable Agent identity shared across sessions. Defaults to `deepseek-harness`. */
+  /** Stable Agent identity shared across sessions. Defaults to `relay-harness`. */
   agentId?: string
   /** Optional explicit workspace identity; omission uses session cwd, then `global`. */
   workspaceId?: string
@@ -1651,9 +1651,9 @@ export interface Config {
 
 Source: [`packages/memory/memory-extractor-llm/src/index.ts:43`](../packages/memory/memory-extractor-llm/src/index.ts)
 
-<a id="deepseek-aidsh-memory-sqlite"></a>
+<a id="relay-harnessrlh-memory-sqlite"></a>
 
-## `@deepseek-ai/dsh-memory-sqlite`
+## `@relay-harness/rlh-memory-sqlite`
 
 ```ts config-catalog
 /** SQLite provider configuration. */
@@ -1668,17 +1668,19 @@ export interface Config {
   maxContentChars?: number
   /** Largest accepted summary in Unicode code points. Defaults to 500. */
   maxSummaryChars?: number
+  /** Age at which another process's ownership heartbeat is considered dead. Defaults to 30000. */
+  ownerStaleMs?: number
 }
 
 /** Supported SQLite journal modes. */
 export type JournalMode = 'wal' | 'delete' | 'truncate' | 'persist'
 ```
 
-Source: [`packages/memory/memory-sqlite/src/index.ts:60`](../packages/memory/memory-sqlite/src/index.ts)
+Source: [`packages/memory/memory-sqlite/src/index.ts:68`](../packages/memory/memory-sqlite/src/index.ts)
 
-<a id="deepseek-aidsh-message-feedback"></a>
+<a id="relay-harnessrlh-message-feedback"></a>
 
-## `@deepseek-ai/dsh-message-feedback`
+## `@relay-harness/rlh-message-feedback`
 
 Requires: `storageDomain` · `sessionPersistence` · `sessions`
 
@@ -1692,9 +1694,9 @@ export interface Config {
 
 Source: [`packages/feedback/message-feedback/src/index.ts:49`](../packages/feedback/message-feedback/src/index.ts)
 
-<a id="deepseek-aidsh-permission-presets"></a>
+<a id="relay-harnessrlh-permission-presets"></a>
 
-## `@deepseek-ai/dsh-permission-presets`
+## `@relay-harness/rlh-permission-presets`
 
 Requires: `shell` · `approval` · `sessions`
 
@@ -1731,9 +1733,9 @@ Depends on: [`ApprovalPolicy`](subsystems/approval.md) · [`SandboxMode`](subsys
 
 Source: [`packages/interaction/permission-presets/src/index.ts:140`](../packages/interaction/permission-presets/src/index.ts)
 
-<a id="deepseek-aidsh-persona"></a>
+<a id="relay-harnessrlh-persona"></a>
 
-## `@deepseek-ai/dsh-persona`
+## `@relay-harness/rlh-persona`
 
 Requires: `systemPrompt`
 
@@ -1755,9 +1757,9 @@ export interface Config {
 
 Source: [`packages/preset/persona/src/index.ts:34`](../packages/preset/persona/src/index.ts)
 
-<a id="deepseek-aidsh-plan-mode"></a>
+<a id="relay-harnessrlh-plan-mode"></a>
 
-## `@deepseek-ai/dsh-plan-mode`
+## `@relay-harness/rlh-plan-mode`
 
 Requires: `tools` · `systemPrompt`
 
@@ -1771,9 +1773,9 @@ export interface PlanModeConfig {
 
 Source: [`packages/plan/plan-mode/src/index.ts:71`](../packages/plan/plan-mode/src/index.ts)
 
-<a id="deepseek-aidsh-pwsh-local"></a>
+<a id="relay-harnessrlh-pwsh-local"></a>
 
-## `@deepseek-ai/dsh-pwsh-local`
+## `@relay-harness/rlh-pwsh-local`
 
 Requires: `subprocess`
 
@@ -1804,9 +1806,9 @@ export interface Config {
 
 Source: [`packages/shell/pwsh-local/src/index.ts:58`](../packages/shell/pwsh-local/src/index.ts)
 
-<a id="deepseek-aidsh-pwsh-sandbox"></a>
+<a id="relay-harnessrlh-pwsh-sandbox"></a>
 
-## `@deepseek-ai/dsh-pwsh-sandbox`
+## `@relay-harness/rlh-pwsh-sandbox`
 
 Requires: `subprocess` · `sandbox` · `sandboxPolicy`
 
@@ -1814,7 +1816,7 @@ Requires: `subprocess` · `sandbox` · `sandboxPolicy`
 /**
  * Plugin config: the local executor's knobs, verbatim. The sandbox policy —
  * the default mode and fallback `workspace-write` root — is NOT here: it lives
- * on `ctx.sandboxPolicy` (`@deepseek-ai/dsh-sandbox-policy`), which resolves
+ * on `ctx.sandboxPolicy` (`@relay-harness/rlh-sandbox-policy`), which resolves
  * each calling session's mode and cwd for every enforcing capability. The
  * runner choice is likewise the `ctx.sandbox` provider's config, not this
  * executor's.
@@ -1822,13 +1824,13 @@ Requires: `subprocess` · `sandbox` · `sandboxPolicy`
 export type Config = LocalConfig
 ```
 
-Depends on: [`LocalConfig`](#deepseek-aidsh-pwsh-local)
+Depends on: [`LocalConfig`](#relay-harnessrlh-pwsh-local)
 
 Source: [`packages/shell/pwsh-sandbox/src/index.ts:40`](../packages/shell/pwsh-sandbox/src/index.ts)
 
-<a id="deepseek-aidsh-repeat-tool-reminder"></a>
+<a id="relay-harnessrlh-repeat-tool-reminder"></a>
 
-## `@deepseek-ai/dsh-repeat-tool-reminder`
+## `@relay-harness/rlh-repeat-tool-reminder`
 
 ```ts config-catalog
 /**
@@ -1860,9 +1862,9 @@ export interface Config {
 
 Source: [`packages/guard/repeat-tool-reminder/src/index.ts:28`](../packages/guard/repeat-tool-reminder/src/index.ts)
 
-<a id="deepseek-aidsh-rollout-budget-controller"></a>
+<a id="relay-harnessrlh-rollout-budget-controller"></a>
 
-## `@deepseek-ai/dsh-rollout-budget-controller`
+## `@relay-harness/rlh-rollout-budget-controller`
 
 Requires: `agents` · `sessions` · `tools`
 
@@ -1882,9 +1884,9 @@ export interface Config {
 
 Source: [`packages/guard/rollout-budget-controller/src/index.ts:21`](../packages/guard/rollout-budget-controller/src/index.ts)
 
-<a id="deepseek-aidsh-sandbox-local"></a>
+<a id="relay-harnessrlh-sandbox-local"></a>
 
-## `@deepseek-ai/dsh-sandbox-local`
+## `@relay-harness/rlh-sandbox-local`
 
 ```ts config-catalog
 /** Plugin config. All optional — `static Config` supplies the defaults. */
@@ -1914,9 +1916,9 @@ export interface Config {
 
 Source: [`packages/sandbox/sandbox-local/src/index.ts:44`](../packages/sandbox/sandbox-local/src/index.ts)
 
-<a id="deepseek-aidsh-sandbox-policy"></a>
+<a id="relay-harnessrlh-sandbox-policy"></a>
 
-## `@deepseek-ai/dsh-sandbox-policy`
+## `@relay-harness/rlh-sandbox-policy`
 
 ```ts config-catalog
 /**
@@ -1941,9 +1943,9 @@ Depends on: [`SandboxMode`](subsystems/sandbox.md)
 
 Source: [`packages/sandbox/sandbox-policy/src/index.ts:67`](../packages/sandbox/sandbox-policy/src/index.ts)
 
-<a id="deepseek-aidsh-sdk-jsonrpc-server"></a>
+<a id="relay-harnessrlh-sdk-jsonrpc-server"></a>
 
-## `@deepseek-ai/dsh-sdk-jsonrpc-server`
+## `@relay-harness/rlh-sdk-jsonrpc-server`
 
 Requires: `agents`
 
@@ -1965,9 +1967,9 @@ Depends on: `Readable` (`node:stream`) · `Writable` (`node:stream`)
 
 Source: [`packages/sdk/server/src/index.ts:25`](../packages/sdk/server/src/index.ts)
 
-<a id="deepseek-aidsh-session-persistence-jsonl"></a>
+<a id="relay-harnessrlh-session-persistence-jsonl"></a>
 
-## `@deepseek-ai/dsh-session-persistence-jsonl`
+## `@relay-harness/rlh-session-persistence-jsonl`
 
 Requires: `sessions`
 
@@ -2004,9 +2006,9 @@ export type JsonlCompression = 'zstd' | 'none'
 
 Source: [`packages/session/session-persistence-jsonl/src/index.ts:60`](../packages/session/session-persistence-jsonl/src/index.ts)
 
-<a id="deepseek-aidsh-session-persistence-sqlite"></a>
+<a id="relay-harnessrlh-session-persistence-sqlite"></a>
 
-## `@deepseek-ai/dsh-session-persistence-sqlite`
+## `@relay-harness/rlh-session-persistence-sqlite`
 
 Requires: `sessions`
 
@@ -2031,9 +2033,9 @@ export type JournalMode = 'wal' | 'delete' | 'truncate' | 'persist'
 
 Source: [`packages/session/session-persistence-sqlite/src/index.ts:36`](../packages/session/session-persistence-sqlite/src/index.ts)
 
-<a id="deepseek-aidsh-session-projection-cache"></a>
+<a id="relay-harnessrlh-session-projection-cache"></a>
 
-## `@deepseek-ai/dsh-session-projection-cache`
+## `@relay-harness/rlh-session-projection-cache`
 
 Requires: `storageDomain` · `sessionProjections` · `sessionPersistence` · `sessions`
 
@@ -2054,9 +2056,9 @@ export interface Config {
 
 Source: [`packages/session/session-projection-cache/src/index.ts:42`](../packages/session/session-projection-cache/src/index.ts)
 
-<a id="deepseek-aidsh-session-query-sqlite"></a>
+<a id="relay-harnessrlh-session-query-sqlite"></a>
 
-## `@deepseek-ai/dsh-session-query-sqlite`
+## `@relay-harness/rlh-session-query-sqlite`
 
 Requires: `sessions`
 
@@ -2100,9 +2102,9 @@ Depends on: [`SessionQueryConfig`](../packages/session-query/session-query/src/i
 
 Source: [`packages/session-query/session-query-sqlite/src/index.ts:89`](../packages/session-query/session-query-sqlite/src/index.ts)
 
-<a id="deepseek-aidsh-session-reference"></a>
+<a id="relay-harnessrlh-session-reference"></a>
 
-## `@deepseek-ai/dsh-session-reference`
+## `@relay-harness/rlh-session-reference`
 
 Requires: `sessionQuery`
 
@@ -2120,16 +2122,16 @@ export interface Config {
 
 Source: [`packages/context/session-reference/src/config.ts:11`](../packages/context/session-reference/src/config.ts)
 
-<a id="deepseek-aidsh-session-telemetry-otel"></a>
+<a id="relay-harnessrlh-session-telemetry-otel"></a>
 
-## `@deepseek-ai/dsh-session-telemetry-otel`
+## `@relay-harness/rlh-session-telemetry-otel`
 
 Requires: `sessions`
 
 ```ts config-catalog
 /**
  * Plugin configuration: one sharing policy, two verbatim SDK option objects,
- * and one DSH-owned shutdown bound. Uploading modes validate their endpoint
+ * and one RLH-owned shutdown bound. Uploading modes validate their endpoint
  * and shutdown deadline at plugin load; `DISABLED` reads neither.
  */
 export interface Config {
@@ -2166,9 +2168,9 @@ Depends on: `BatchLogRecordProcessorOptions` (`@opentelemetry/sdk-logs`) · `OTL
 
 Source: [`packages/session/session-telemetry-otel/src/index.ts:91`](../packages/session/session-telemetry-otel/src/index.ts)
 
-<a id="deepseek-aidsh-session-title"></a>
+<a id="relay-harnessrlh-session-title"></a>
 
-## `@deepseek-ai/dsh-session-title`
+## `@relay-harness/rlh-session-title`
 
 Requires: `sessions`
 
@@ -2186,9 +2188,9 @@ export interface Config {
 
 Source: [`packages/session/session-title/src/index.ts:79`](../packages/session/session-title/src/index.ts)
 
-<a id="deepseek-aidsh-session-title-all-prompts-llm"></a>
+<a id="relay-harnessrlh-session-title-all-prompts-llm"></a>
 
-## `@deepseek-ai/dsh-session-title-all-prompts-llm`
+## `@relay-harness/rlh-session-title-all-prompts-llm`
 
 Requires: `sessionTitle` · `llm` · `sessions`
 
@@ -2201,9 +2203,9 @@ Depends on: [`SessionTitleLlmConfig`](../packages/session/session-title-llm/src/
 
 Source: [`packages/session/session-title-all-prompts-llm/src/index.ts:15`](../packages/session/session-title-all-prompts-llm/src/index.ts)
 
-<a id="deepseek-aidsh-session-title-first-prompt-llm"></a>
+<a id="relay-harnessrlh-session-title-first-prompt-llm"></a>
 
-## `@deepseek-ai/dsh-session-title-first-prompt-llm`
+## `@relay-harness/rlh-session-title-first-prompt-llm`
 
 Requires: `sessionTitle` · `llm` · `sessions`
 
@@ -2216,17 +2218,17 @@ Depends on: [`SessionTitleLlmConfig`](../packages/session/session-title-llm/src/
 
 Source: [`packages/session/session-title-first-prompt-llm/src/index.ts:15`](../packages/session/session-title-first-prompt-llm/src/index.ts)
 
-<a id="deepseek-aidsh-settings-file"></a>
+<a id="relay-harnessrlh-settings-file"></a>
 
-## `@deepseek-ai/dsh-settings-file`
+## `@relay-harness/rlh-settings-file`
 
 ```ts config-catalog
 /** Plugin config: file location and hot-reload behavior. */
 export interface Config {
   /** Settings document path; defaults to `settings.yaml` under the harness home. */
   path?: string
-  /** Harness home used when `path` is omitted; defaults to `$DSH_HOME` or `~/.dsh`. */
-  dshHome?: string
+  /** Harness home used when `path` is omitted; defaults to `$RLH_HOME` or `~/.rlh`. */
+  rlhHome?: string
   /** Watch the document and hot-publish external edits; defaults to true. */
   watch?: boolean
   /** Watcher write-settle window in milliseconds; defaults to 100. */
@@ -2236,23 +2238,23 @@ export interface Config {
 
 Source: [`packages/settings/settings-file/src/index.ts:21`](../packages/settings/settings-file/src/index.ts)
 
-<a id="deepseek-aidsh-shell-env"></a>
+<a id="relay-harnessrlh-shell-env"></a>
 
-## `@deepseek-ai/dsh-shell-env`
+## `@relay-harness/rlh-shell-env`
 
 ```ts config-catalog
 /** Plugin config (all optional — the built-in facts resolve without defaults). */
 export interface Config {
-  /** DeepSeek Harness home directory exposed as `DSH_HOME`; defaults to `$DSH_HOME` or `~/.dsh`. */
-  dshHome?: string
+  /** Relay Harness home directory exposed as `RLH_HOME`; defaults to `$RLH_HOME` or `~/.rlh`. */
+  rlhHome?: string
 }
 ```
 
 Source: [`packages/shell/shell-env/src/index.ts:29`](../packages/shell/shell-env/src/index.ts)
 
-<a id="deepseek-aidsh-skill"></a>
+<a id="relay-harnessrlh-skill"></a>
 
-## `@deepseek-ai/dsh-skill`
+## `@relay-harness/rlh-skill`
 
 ```ts config-catalog
 /** Skill registry configuration. */
@@ -2264,9 +2266,9 @@ export interface Config {
 
 Source: [`packages/skill/skill/src/index.ts:279`](../packages/skill/skill/src/index.ts)
 
-<a id="deepseek-aidsh-skill-filesystem"></a>
+<a id="relay-harnessrlh-skill-filesystem"></a>
 
-## `@deepseek-ai/dsh-skill-filesystem`
+## `@relay-harness/rlh-skill-filesystem`
 
 Requires: `skills`
 
@@ -2277,9 +2279,9 @@ export interface Config {
   providerName?: string
   /** Whether project and user roots are included around custom roots. */
   includeDefaultRoots?: boolean
-  /** DeepSeek Harness config root. Defaults to `$DSH_HOME` or `~/.dsh`. */
-  dshHome?: string
-  /** Shared agent config root. Defaults to `$DSH_AGENTS_HOME` or `~/.agents`. */
+  /** Relay Harness config root. Defaults to `$RLH_HOME` or `~/.rlh`. */
+  rlhHome?: string
+  /** Shared agent config root. Defaults to `$RLH_AGENTS_HOME` or `~/.agents`. */
   agentsHome?: string
   /** Additional skill roots scanned after project roots and before user roots. */
   customSkillDirs?: string[]
@@ -2295,16 +2297,16 @@ export interface Config {
   watchMaxProjects?: number
   /** Whether watched symbolic links follow their target files. */
   watchFollowSymlinks?: boolean
-  /** Bundled skill root; defaults to `$DSH_BUNDLED_SKILL_DIR` when default roots are included, otherwise mounts none. */
+  /** Bundled skill root; defaults to `$RLH_BUNDLED_SKILL_DIR` when default roots are included, otherwise mounts none. */
   bundledSkillDir?: string
 }
 ```
 
 Source: [`packages/skill/skill-filesystem/src/index.ts:49`](../packages/skill/skill-filesystem/src/index.ts)
 
-<a id="deepseek-aidsh-spill-local"></a>
+<a id="relay-harnessrlh-spill-local"></a>
 
-## `@deepseek-ai/dsh-spill-local`
+## `@relay-harness/rlh-spill-local`
 
 ```ts config-catalog
 /** Plugin config (all optional — `static Config` supplies the defaults). */
@@ -2320,9 +2322,9 @@ export interface Config {
 
 Source: [`packages/spill/spill-local/src/index.ts:22`](../packages/spill/spill-local/src/index.ts)
 
-<a id="deepseek-aidsh-spill-policy"></a>
+<a id="relay-harnessrlh-spill-policy"></a>
 
-## `@deepseek-ai/dsh-spill-policy`
+## `@relay-harness/rlh-spill-policy`
 
 Requires: `tools`
 
@@ -2340,9 +2342,9 @@ export interface Config {
 
 Source: [`packages/spill/spill-policy/src/index.ts:60`](../packages/spill/spill-policy/src/index.ts)
 
-<a id="deepseek-aidsh-storage-domain"></a>
+<a id="relay-harnessrlh-storage-domain"></a>
 
-## `@deepseek-ai/dsh-storage-domain`
+## `@relay-harness/rlh-storage-domain`
 
 Requires: `storage`
 
@@ -2363,9 +2365,9 @@ export interface Config {
 
 Source: [`packages/storage/storage-domain/src/index.ts:52`](../packages/storage/storage-domain/src/index.ts)
 
-<a id="deepseek-aidsh-storage-json"></a>
+<a id="relay-harnessrlh-storage-json"></a>
 
-## `@deepseek-ai/dsh-storage-json`
+## `@relay-harness/rlh-storage-json`
 
 Requires: `storage`
 
@@ -2384,9 +2386,9 @@ export interface Config {
 
 Source: [`packages/storage/storage-json/src/index.ts:27`](../packages/storage/storage-json/src/index.ts)
 
-<a id="deepseek-aidsh-storage-sqlite"></a>
+<a id="relay-harnessrlh-storage-sqlite"></a>
 
-## `@deepseek-ai/dsh-storage-sqlite`
+## `@relay-harness/rlh-storage-sqlite`
 
 Requires: `storage`
 
@@ -2424,9 +2426,9 @@ export type JournalMode = 'wal' | 'delete' | 'truncate' | 'persist'
 
 Source: [`packages/storage/storage-sqlite/src/index.ts:24`](../packages/storage/storage-sqlite/src/index.ts)
 
-<a id="deepseek-aidsh-subagent"></a>
+<a id="relay-harnessrlh-subagent"></a>
 
-## `@deepseek-ai/dsh-subagent`
+## `@relay-harness/rlh-subagent`
 
 ```ts config-catalog
 /** Deployment capacity shared by every subagent provider and consumer. */
@@ -2442,9 +2444,9 @@ export interface Config {
 
 Source: [`packages/subagent/subagent/src/index.ts:131`](../packages/subagent/subagent/src/index.ts)
 
-<a id="deepseek-aidsh-subagent-acp"></a>
+<a id="relay-harnessrlh-subagent-acp"></a>
 
-## `@deepseek-ai/dsh-subagent-acp`
+## `@relay-harness/rlh-subagent-acp`
 
 Requires: `subagents` · `subprocess`
 
@@ -2495,9 +2497,9 @@ export type PermissionPolicy = 'allow' | 'reject'
 
 Source: [`packages/subagent/subagent-acp/src/index.ts:27`](../packages/subagent/subagent-acp/src/index.ts)
 
-<a id="deepseek-aidsh-subagent-claude-code"></a>
+<a id="relay-harnessrlh-subagent-claude-code"></a>
 
-## `@deepseek-ai/dsh-subagent-claude-code`
+## `@relay-harness/rlh-subagent-claude-code`
 
 Requires: `subagents` · `subprocess`
 
@@ -2528,9 +2530,9 @@ export type ClaudeCodePermissionMode = typeof CLAUDE_CODE_PERMISSION_MODES[numbe
 
 Source: [`packages/subagent/subagent-claude-code/src/index.ts:38`](../packages/subagent/subagent-claude-code/src/index.ts)
 
-<a id="deepseek-aidsh-subagent-codex"></a>
+<a id="relay-harnessrlh-subagent-codex"></a>
 
-## `@deepseek-ai/dsh-subagent-codex`
+## `@relay-harness/rlh-subagent-codex`
 
 Requires: `subagents` · `subprocess`
 
@@ -2559,16 +2561,32 @@ export type CodexPermissionMode =
 
 Source: [`packages/subagent/subagent-codex/src/index.ts:36`](../packages/subagent/subagent-codex/src/index.ts)
 
-<a id="deepseek-aidsh-subagent-dsh-sdk"></a>
+<a id="relay-harnessrlh-subagent-fork-in-process"></a>
 
-## `@deepseek-ai/dsh-subagent-dsh-sdk`
+## `@relay-harness/rlh-subagent-fork-in-process`
+
+Requires: `subagents`
+
+```ts config-catalog
+/** Config: the registry name to register the provider under. */
+export interface Config {
+  /** Provider name on `ctx.subagents` (default `fork`). */
+  providerName: string
+}
+```
+
+Source: [`packages/subagent/subagent-fork-in-process/src/index.ts:31`](../packages/subagent/subagent-fork-in-process/src/index.ts)
+
+<a id="relay-harnessrlh-subagent-rlh-sdk"></a>
+
+## `@relay-harness/rlh-subagent-rlh-sdk`
 
 Requires: `subagents`
 
 ```ts config-catalog
 /** Config: how to spawn and drive the child SDK runtime process. */
 export interface Config {
-  /** Provider name on `ctx.subagents` (default `dsh-sdk`). */
+  /** Provider name on `ctx.subagents` (default `rlh-sdk`). */
   providerName: string
   /** The executable to spawn for each run (the child runtime bin or packaged exe). */
   command: string
@@ -2591,7 +2609,7 @@ export interface Config {
   maxTokens?: number
   /**
    * Extra environment variables for the child process — e.g. the child
-   * runtime's own `DEEPSEEK_API_KEY`, or `DSH_CORDIS_CONFIG` naming its
+   * runtime's own `DEEPSEEK_API_KEY`, or `RLH_CORDIS_CONFIG` naming its
    * config. Forwarded on top of a credential-scrubbed copy of the parent
    * env, so an explicit key here reaches the child while ambient secrets do
    * not leak implicitly.
@@ -2610,27 +2628,11 @@ export interface Config {
 }
 ```
 
-Source: [`packages/subagent/subagent-dsh-sdk/src/index.ts:29`](../packages/subagent/subagent-dsh-sdk/src/index.ts)
+Source: [`packages/subagent/subagent-rlh-sdk/src/index.ts:29`](../packages/subagent/subagent-rlh-sdk/src/index.ts)
 
-<a id="deepseek-aidsh-subagent-fork-in-process"></a>
+<a id="relay-harnessrlh-subagent-spawn-in-process"></a>
 
-## `@deepseek-ai/dsh-subagent-fork-in-process`
-
-Requires: `subagents`
-
-```ts config-catalog
-/** Config: the registry name to register the provider under. */
-export interface Config {
-  /** Provider name on `ctx.subagents` (default `fork`). */
-  providerName: string
-}
-```
-
-Source: [`packages/subagent/subagent-fork-in-process/src/index.ts:31`](../packages/subagent/subagent-fork-in-process/src/index.ts)
-
-<a id="deepseek-aidsh-subagent-spawn-in-process"></a>
-
-## `@deepseek-ai/dsh-subagent-spawn-in-process`
+## `@relay-harness/rlh-subagent-spawn-in-process`
 
 Requires: `subagents`
 
@@ -2644,9 +2646,9 @@ export interface Config {
 
 Source: [`packages/subagent/subagent-spawn-in-process/src/index.ts:25`](../packages/subagent/subagent-spawn-in-process/src/index.ts)
 
-<a id="deepseek-aidsh-subprocess-e2b"></a>
+<a id="relay-harnessrlh-subprocess-e2b"></a>
 
-## `@deepseek-ai/dsh-subprocess-e2b`
+## `@relay-harness/rlh-subprocess-e2b`
 
 Requires: `e2b`
 
@@ -2660,14 +2662,14 @@ export interface Config {
 
 Source: [`packages/e2b/subprocess-e2b/src/index.ts:25`](../packages/e2b/subprocess-e2b/src/index.ts)
 
-<a id="deepseek-aidsh-system-prompt"></a>
+<a id="relay-harnessrlh-system-prompt"></a>
 
-## `@deepseek-ai/dsh-system-prompt`
+## `@relay-harness/rlh-system-prompt`
 
 ```ts config-catalog
 /** Plugin config: the deployment-authored fragment of the system prompt (see {@link Config.persona} for its contract). */
 export interface Config {
-  /** Include the fixed DeepSeek Harness identity before the deployment persona (default true). */
+  /** Include the fixed Relay Harness identity before the deployment persona (default true). */
   includeHarnessIdentity?: boolean
   /** Include dynamic runtime-context snapshots in model history (default true). */
   includeRuntimeContext?: boolean
@@ -2687,9 +2689,9 @@ export interface Config {
 
 Source: [`packages/core/system-prompt/src/index.ts:186`](../packages/core/system-prompt/src/index.ts)
 
-<a id="deepseek-aidsh-terminal-bash"></a>
+<a id="relay-harnessrlh-terminal-bash"></a>
 
-## `@deepseek-ai/dsh-terminal-bash`
+## `@relay-harness/rlh-terminal-bash`
 
 Requires: `terminals` · `sandboxPolicy` · `subprocess`
 
@@ -2737,9 +2739,9 @@ export type ShellDialect = 'bash' | 'pwsh'
 
 Source: [`packages/terminal/terminal-bash/src/config.ts:10`](../packages/terminal/terminal-bash/src/config.ts)
 
-<a id="deepseek-aidsh-time-context"></a>
+<a id="relay-harnessrlh-time-context"></a>
 
-## `@deepseek-ai/dsh-time-context`
+## `@relay-harness/rlh-time-context`
 
 Requires: `agents`
 
@@ -2755,9 +2757,9 @@ export interface Config {
 
 Source: [`packages/context/time-context/src/index.ts:27`](../packages/context/time-context/src/index.ts)
 
-<a id="deepseek-aidsh-tmux-context"></a>
+<a id="relay-harnessrlh-tmux-context"></a>
 
-## `@deepseek-ai/dsh-tmux-context`
+## `@relay-harness/rlh-tmux-context`
 
 Requires: `agents`
 
@@ -2771,9 +2773,9 @@ export interface Config {
 
 Source: [`packages/context/tmux-context/src/index.ts:34`](../packages/context/tmux-context/src/index.ts)
 
-<a id="deepseek-aidsh-token-budget-controller"></a>
+<a id="relay-harnessrlh-token-budget-controller"></a>
 
-## `@deepseek-ai/dsh-token-budget-controller`
+## `@relay-harness/rlh-token-budget-controller`
 
 ```ts config-catalog
 /**
@@ -2797,9 +2799,9 @@ export interface Config {
 
 Source: [`packages/guard/token-budget-controller/src/index.ts:25`](../packages/guard/token-budget-controller/src/index.ts)
 
-<a id="deepseek-aidsh-token-meter"></a>
+<a id="relay-harnessrlh-token-meter"></a>
 
-## `@deepseek-ai/dsh-token-meter`
+## `@relay-harness/rlh-token-meter`
 
 ```ts config-catalog
 /** Token-meter plugin configuration; the fixed estimator has no settings. */
@@ -2808,9 +2810,9 @@ export type TokenMeterConfig = Record<string, never>
 
 Source: [`packages/llm/token-meter/src/types.ts:12`](../packages/llm/token-meter/src/types.ts)
 
-<a id="deepseek-aidsh-tool-bash"></a>
+<a id="relay-harnessrlh-tool-bash"></a>
 
-## `@deepseek-ai/dsh-tool-bash`
+## `@relay-harness/rlh-tool-bash`
 
 Requires: `tools` · `shell` · `systemPrompt` · `shellEnv`
 
@@ -2824,9 +2826,9 @@ export interface Config {
 
 Source: [`packages/shell/tool-bash/src/index.ts:34`](../packages/shell/tool-bash/src/index.ts)
 
-<a id="deepseek-aidsh-tool-bash-persistent"></a>
+<a id="relay-harnessrlh-tool-bash-persistent"></a>
 
-## `@deepseek-ai/dsh-tool-bash-persistent`
+## `@relay-harness/rlh-tool-bash-persistent`
 
 Requires: `tools` · `terminals`
 
@@ -2846,9 +2848,9 @@ export interface Config {
 
 Source: [`packages/shell/tool-bash-persistent/src/index.ts:432`](../packages/shell/tool-bash-persistent/src/index.ts)
 
-<a id="deepseek-aidsh-tool-fs"></a>
+<a id="relay-harnessrlh-tool-fs"></a>
 
-## `@deepseek-ai/dsh-tool-fs`
+## `@relay-harness/rlh-tool-fs`
 
 Requires: `tools` · `fs` · `systemPrompt`
 
@@ -2868,9 +2870,9 @@ export interface Config {
 
 Source: [`packages/fs/tool-fs/src/index.ts:25`](../packages/fs/tool-fs/src/index.ts)
 
-<a id="deepseek-aidsh-tool-fs-search"></a>
+<a id="relay-harnessrlh-tool-fs-search"></a>
 
-## `@deepseek-ai/dsh-tool-fs-search`
+## `@relay-harness/rlh-tool-fs-search`
 
 Requires: `tools` · `systemPrompt` · `subprocess`
 
@@ -2895,7 +2897,7 @@ export interface Config {
   stderrMaxBytes?: number
   /**
    * Cooperative tool-call timeout budget (ms) on both tools, enforced by
-   * `@deepseek-ai/dsh-tool-call-timeout-policy` through `exec.signal`.
+   * `@relay-harness/rlh-tool-call-timeout-policy` through `exec.signal`.
    */
   timeoutMs?: number
 }
@@ -2903,9 +2905,9 @@ export interface Config {
 
 Source: [`packages/fs/tool-fs-search/src/index.ts:73`](../packages/fs/tool-fs-search/src/index.ts)
 
-<a id="deepseek-aidsh-tool-goal"></a>
+<a id="relay-harnessrlh-tool-goal"></a>
 
-## `@deepseek-ai/dsh-tool-goal`
+## `@relay-harness/rlh-tool-goal`
 
 Requires: `agents` · `goals` · `tools` · `systemPrompt`
 
@@ -2919,9 +2921,9 @@ export interface Config {
 
 Source: [`packages/goal/tool-goal/src/index.ts:26`](../packages/goal/tool-goal/src/index.ts)
 
-<a id="deepseek-aidsh-tool-jobs"></a>
+<a id="relay-harnessrlh-tool-jobs"></a>
 
-## `@deepseek-ai/dsh-tool-jobs`
+## `@relay-harness/rlh-tool-jobs`
 
 Requires: `tools` · `jobs` · `systemPrompt`
 
@@ -2953,9 +2955,9 @@ export type CompletionDelivery = 'quiet' | 'wakeup'
 
 Source: [`packages/jobs/tool-jobs/src/index.ts:32`](../packages/jobs/tool-jobs/src/index.ts)
 
-<a id="deepseek-aidsh-tool-lsp"></a>
+<a id="relay-harnessrlh-tool-lsp"></a>
 
-## `@deepseek-ai/dsh-tool-lsp`
+## `@relay-harness/rlh-tool-lsp`
 
 Requires: `tools` · `lsp` · `systemPrompt`
 
@@ -2973,9 +2975,9 @@ export interface Config {
 
 Source: [`packages/lsp/tool-lsp/src/index.ts:58`](../packages/lsp/tool-lsp/src/index.ts)
 
-<a id="deepseek-aidsh-tool-memory"></a>
+<a id="relay-harnessrlh-tool-memory"></a>
 
-## `@deepseek-ai/dsh-tool-memory`
+## `@relay-harness/rlh-tool-memory`
 
 Requires: `longTermMemory` · `tools`
 
@@ -2984,7 +2986,7 @@ Requires: `longTermMemory` · `tools`
 export interface Config {
   /** Stable user identity inside each workspace. Defaults to `local`. */
   userId?: string
-  /** Stable Agent identity shared across recallable sessions. Defaults to `deepseek-harness`. */
+  /** Stable Agent identity shared across recallable sessions. Defaults to `relay-harness`. */
   agentId?: string
   /** Explicit workspace identity; omission uses the calling session cwd, then `global`. */
   workspaceId?: string
@@ -2995,9 +2997,9 @@ export interface Config {
 
 Source: [`packages/memory/tool-memory/src/index.ts:29`](../packages/memory/tool-memory/src/index.ts)
 
-<a id="deepseek-aidsh-tool-pwsh"></a>
+<a id="relay-harnessrlh-tool-pwsh"></a>
 
-## `@deepseek-ai/dsh-tool-pwsh`
+## `@relay-harness/rlh-tool-pwsh`
 
 Requires: `tools` · `shell` · `systemPrompt` · `shellEnv`
 
@@ -3011,9 +3013,9 @@ export interface Config {
 
 Source: [`packages/shell/tool-pwsh/src/index.ts:52`](../packages/shell/tool-pwsh/src/index.ts)
 
-<a id="deepseek-aidsh-tool-pwsh-persistent"></a>
+<a id="relay-harnessrlh-tool-pwsh-persistent"></a>
 
-## `@deepseek-ai/dsh-tool-pwsh-persistent`
+## `@relay-harness/rlh-tool-pwsh-persistent`
 
 Requires: `tools` · `terminals`
 
@@ -3033,9 +3035,9 @@ export interface Config {
 
 Source: [`packages/shell/tool-pwsh-persistent/src/index.ts:472`](../packages/shell/tool-pwsh-persistent/src/index.ts)
 
-<a id="deepseek-aidsh-tool-ralph"></a>
+<a id="relay-harnessrlh-tool-ralph"></a>
 
-## `@deepseek-ai/dsh-tool-ralph`
+## `@relay-harness/rlh-tool-ralph`
 
 Requires: `tools` · `workflowEngine` · `subagents` · `systemPrompt`
 
@@ -3055,9 +3057,9 @@ export interface Config {
 
 Source: [`packages/workflow/tool-ralph/src/index.ts:23`](../packages/workflow/tool-ralph/src/index.ts)
 
-<a id="deepseek-aidsh-tool-session-query"></a>
+<a id="relay-harnessrlh-tool-session-query"></a>
 
-## `@deepseek-ai/dsh-tool-session-query`
+## `@relay-harness/rlh-tool-session-query`
 
 Requires: `tools` · `systemPrompt` · `sessionQuery`
 
@@ -3073,9 +3075,9 @@ export interface Config {
 
 Source: [`packages/session-query/tool-session-query/src/index.ts:29`](../packages/session-query/tool-session-query/src/index.ts)
 
-<a id="deepseek-aidsh-tool-skill"></a>
+<a id="relay-harnessrlh-tool-skill"></a>
 
-## `@deepseek-ai/dsh-tool-skill`
+## `@relay-harness/rlh-tool-skill`
 
 Requires: `agents` · `tools` · `skills`
 
@@ -3089,9 +3091,9 @@ export interface Config {
 
 Source: [`packages/skill/tool-skill/src/index.ts:61`](../packages/skill/tool-skill/src/index.ts)
 
-<a id="deepseek-aidsh-tool-str-replace-editor"></a>
+<a id="relay-harnessrlh-tool-str-replace-editor"></a>
 
-## `@deepseek-ai/dsh-tool-str-replace-editor`
+## `@relay-harness/rlh-tool-str-replace-editor`
 
 Requires: `tools` · `fs`
 
@@ -3107,9 +3109,9 @@ export interface Config {
 
 Source: [`packages/fs/tool-str-replace-editor/src/index.ts:504`](../packages/fs/tool-str-replace-editor/src/index.ts)
 
-<a id="deepseek-aidsh-tool-subagent"></a>
+<a id="relay-harnessrlh-tool-subagent"></a>
 
-## `@deepseek-ai/dsh-tool-subagent`
+## `@relay-harness/rlh-tool-subagent`
 
 Requires: `tools` · `subagents` · `systemPrompt`
 
@@ -3172,9 +3174,9 @@ Depends on: [`AgentOptions`](subsystems/core.md)
 
 Source: [`packages/subagent/tool-subagent/src/index.ts:29`](../packages/subagent/tool-subagent/src/index.ts)
 
-<a id="deepseek-aidsh-tool-subagent-report"></a>
+<a id="relay-harnessrlh-tool-subagent-report"></a>
 
-## `@deepseek-ai/dsh-tool-subagent-report`
+## `@relay-harness/rlh-tool-subagent-report`
 
 Requires: `subagents` · `tools` · `systemPrompt`
 
@@ -3194,9 +3196,9 @@ Depends on: [`SubagentReportDelivery`](subsystems/subagent.md)
 
 Source: [`packages/subagent/tool-subagent-report/src/index.ts:27`](../packages/subagent/tool-subagent-report/src/index.ts)
 
-<a id="deepseek-aidsh-tool-terminal"></a>
+<a id="relay-harnessrlh-tool-terminal"></a>
 
-## `@deepseek-ai/dsh-tool-terminal`
+## `@relay-harness/rlh-tool-terminal`
 
 Requires: `terminals` · `tools` · `systemPrompt`
 
@@ -3212,9 +3214,9 @@ export interface Config {
 
 Source: [`packages/terminal/tool-terminal/src/index.ts:35`](../packages/terminal/tool-terminal/src/index.ts)
 
-<a id="deepseek-aidsh-tool-todo"></a>
+<a id="relay-harnessrlh-tool-todo"></a>
 
-## `@deepseek-ai/dsh-tool-todo`
+## `@relay-harness/rlh-tool-todo`
 
 Requires: `tools`
 
@@ -3234,9 +3236,9 @@ export interface Config {
 
 Source: [`packages/todo/tool-todo/src/index.ts:29`](../packages/todo/tool-todo/src/index.ts)
 
-<a id="deepseek-aidsh-tool-web"></a>
+<a id="relay-harnessrlh-tool-web"></a>
 
-## `@deepseek-ai/dsh-tool-web`
+## `@relay-harness/rlh-tool-web`
 
 Requires: `tools` · `web` · `systemPrompt`
 
@@ -3262,9 +3264,9 @@ export interface Config {
 
 Source: [`packages/web/tool-web/src/index.ts:37`](../packages/web/tool-web/src/index.ts)
 
-<a id="deepseek-aidsh-tool-workflow"></a>
+<a id="relay-harnessrlh-tool-workflow"></a>
 
-## `@deepseek-ai/dsh-tool-workflow`
+## `@relay-harness/rlh-tool-workflow`
 
 Requires: `tools` · `workflowEngine` · `systemPrompt`
 
@@ -3280,9 +3282,9 @@ export interface Config {
 
 Source: [`packages/workflow/tool-workflow/src/index.ts:34`](../packages/workflow/tool-workflow/src/index.ts)
 
-<a id="deepseek-aidsh-tools"></a>
+<a id="relay-harnessrlh-tools"></a>
 
-## `@deepseek-ai/dsh-tools`
+## `@relay-harness/rlh-tools`
 
 Requires: `systemPrompt`
 
@@ -3316,9 +3318,9 @@ export type ToolPresentationMode = 'native' | 'code' | 'both'
 
 Source: [`packages/core/tools/src/index.ts:723`](../packages/core/tools/src/index.ts)
 
-<a id="deepseek-aidsh-tracker-linear"></a>
+<a id="relay-harnessrlh-tracker-linear"></a>
 
-## `@deepseek-ai/dsh-tracker-linear`
+## `@relay-harness/rlh-tracker-linear`
 
 Requires: `trackers`
 
@@ -3326,29 +3328,29 @@ Requires: `trackers`
 /** Linear endpoint, scope, routing, auth, and provider-name configuration. */
 export interface Config {
   /** Registry name used by workflow policy (default `linear`). */
-  readonly providerName?: string
+  readonly providerName: string
   /** HTTPS Linear GraphQL endpoint. */
-  readonly endpoint?: string
+  readonly endpoint: string
   /** Optional literal API key; prefer `apiKeyEnv` for repository-owned composition. */
   readonly apiKey?: string
   /** Host environment variable carrying the API key (default `LINEAR_API_KEY`). */
-  readonly apiKeyEnv?: string
+  readonly apiKeyEnv: string
   /** Linear project slug that scopes every scheduler read. */
   readonly projectSlug: string
   /** Optional assignee id or `me` routing filter. */
   readonly assignee?: string
   /** States treated as terminal when evaluating blockers. */
-  readonly terminalStates?: string[]
+  readonly terminalStates: string[]
   /** New-work states whose non-terminal blockers prevent dispatch. */
-  readonly blockNewStates?: string[]
+  readonly blockNewStates: string[]
 }
 ```
 
-Source: [`packages/tracker/tracker-linear/src/index.ts:42`](../packages/tracker/tracker-linear/src/index.ts)
+Source: [`packages/tracker/tracker-linear/src/index.ts:44`](../packages/tracker/tracker-linear/src/index.ts)
 
-<a id="deepseek-aidsh-typert-loader"></a>
+<a id="relay-harnessrlh-typert-loader"></a>
 
-## `@deepseek-ai/dsh-typert-loader`
+## `@relay-harness/rlh-typert-loader`
 
 Requires: `typert` · `loader`
 
@@ -3362,9 +3364,9 @@ export interface Config {
 
 Source: [`packages/typert/loader/src/index.ts:47`](../packages/typert/loader/src/index.ts)
 
-<a id="deepseek-aidsh-user-approval"></a>
+<a id="relay-harnessrlh-user-approval"></a>
 
-## `@deepseek-ai/dsh-user-approval`
+## `@relay-harness/rlh-user-approval`
 
 ```ts config-catalog
 /** Plugin config. All optional — `static Config` supplies the defaults. */
@@ -3393,9 +3395,9 @@ export type ApprovalPolicy = 'ask' | 'never'
 
 Source: [`packages/interaction/user-approval/src/index.ts:177`](../packages/interaction/user-approval/src/index.ts)
 
-<a id="deepseek-aidsh-web"></a>
+<a id="relay-harnessrlh-web"></a>
 
-## `@deepseek-ai/dsh-web`
+## `@relay-harness/rlh-web`
 
 ```ts config-catalog
 /**
@@ -3414,9 +3416,9 @@ export interface WebRuntimeConfig {
 
 Source: [`packages/web/web/src/index.ts:55`](../packages/web/web/src/index.ts)
 
-<a id="deepseek-aidsh-web-app"></a>
+<a id="relay-harnessrlh-web-app"></a>
 
-## `@deepseek-ai/dsh-web-app`
+## `@relay-harness/rlh-web-app`
 
 Requires: `webServer`
 
@@ -3429,7 +3431,7 @@ export interface Config {
   printUrl: boolean
   /**
    * Register the model-visible surface context (the `app:web-surface` prompt
-   * section and the `DSH_WEB_URL` bash variable). A one-shot non-interactive
+   * section and the `RLH_WEB_URL` bash variable). A one-shot non-interactive
    * layer can turn it off when its user is not in the GUI, so the
    * orientation text would be false.
    */
@@ -3441,9 +3443,9 @@ export interface Config {
 
 Source: [`packages/bundle/web-app/src/index.ts:42`](../packages/bundle/web-app/src/index.ts)
 
-<a id="deepseek-aidsh-web-fetch-http"></a>
+<a id="relay-harnessrlh-web-fetch-http"></a>
 
-## `@deepseek-ai/dsh-web-fetch-http`
+## `@relay-harness/rlh-web-fetch-http`
 
 Requires: `web`
 
@@ -3467,9 +3469,9 @@ export interface Config {
 
 Source: [`packages/web/web-fetch-http/src/index.ts:34`](../packages/web/web-fetch-http/src/index.ts)
 
-<a id="deepseek-aidsh-web-search-deepseek"></a>
+<a id="relay-harnessrlh-web-search-deepseek"></a>
 
-## `@deepseek-ai/dsh-web-search-deepseek`
+## `@relay-harness/rlh-web-search-deepseek`
 
 Requires: `web`
 
@@ -3495,9 +3497,9 @@ export interface Config {
 
 Source: [`packages/web/web-search-deepseek/src/index.ts:46`](../packages/web/web-search-deepseek/src/index.ts)
 
-<a id="deepseek-aidsh-web-search-exa"></a>
+<a id="relay-harnessrlh-web-search-exa"></a>
 
-## `@deepseek-ai/dsh-web-search-exa`
+## `@relay-harness/rlh-web-search-exa`
 
 Requires: `web`
 
@@ -3519,9 +3521,9 @@ export interface Config {
 
 Source: [`packages/web/web-search-exa/src/index.ts:38`](../packages/web/web-search-exa/src/index.ts)
 
-<a id="deepseek-aidsh-web-search-perplexity"></a>
+<a id="relay-harnessrlh-web-search-perplexity"></a>
 
-## `@deepseek-ai/dsh-web-search-perplexity`
+## `@relay-harness/rlh-web-search-perplexity`
 
 Requires: `web`
 
@@ -3543,9 +3545,9 @@ export interface Config {
 
 Source: [`packages/web/web-search-perplexity/src/index.ts:32`](../packages/web/web-search-perplexity/src/index.ts)
 
-<a id="deepseek-aidsh-workflow-worker-thread"></a>
+<a id="relay-harnessrlh-workflow-worker-thread"></a>
 
-## `@deepseek-ai/dsh-workflow-worker-thread`
+## `@relay-harness/rlh-workflow-worker-thread`
 
 Requires: `subagents`
 
@@ -3581,153 +3583,153 @@ Source: [`packages/workflow/workflow-worker-thread/src/index.ts:38`](../packages
 
 These load from a `cordis.yml` entry with no `config:` block; they declare no configuration API.
 
-- `@deepseek-ai/dsh-agent` ([`packages/core/agent/src/index.ts`](../packages/core/agent/src/index.ts))
-- `@deepseek-ai/dsh-api-gateway` — requires `typert` ([`packages/api/gateway/src/index.ts`](../packages/api/gateway/src/index.ts))
-- `@deepseek-ai/dsh-api-remotes` ([`packages/api/remotes/src/index.ts`](../packages/api/remotes/src/index.ts))
-- `@deepseek-ai/dsh-client-locale` ([`packages/client/locale/src/index.ts`](../packages/client/locale/src/index.ts))
-- `@deepseek-ai/dsh-client-modules` — requires `webServer` · `loader` ([`packages/client/modules/src/index.ts`](../packages/client/modules/src/index.ts))
-- `@deepseek-ai/dsh-client-runtime` ([`packages/client/runtime/src/index.ts`](../packages/client/runtime/src/index.ts))
-- `@deepseek-ai/dsh-client-ui-agent-preset` ([`packages/client/ui-agent-preset/src/index.ts`](../packages/client/ui-agent-preset/src/index.ts))
-- `@deepseek-ai/dsh-client-ui-agents-panel` ([`packages/client/ui-agents-panel/src/index.ts`](../packages/client/ui-agents-panel/src/index.ts))
-- `@deepseek-ai/dsh-client-ui-attachment` ([`packages/client/ui-attachment/src/index.ts`](../packages/client/ui-attachment/src/index.ts))
-- `@deepseek-ai/dsh-client-ui-brand-official` ([`packages/client/ui-brand-official/src/index.ts`](../packages/client/ui-brand-official/src/index.ts))
-- `@deepseek-ai/dsh-client-ui-commands` ([`packages/client/ui-commands/src/index.ts`](../packages/client/ui-commands/src/index.ts))
-- `@deepseek-ai/dsh-client-ui-conversation` ([`packages/client/ui-conversation/src/index.ts`](../packages/client/ui-conversation/src/index.ts))
-- `@deepseek-ai/dsh-client-ui-cordis` ([`packages/extensions/ui-cordis/src/index.ts`](../packages/extensions/ui-cordis/src/index.ts))
-- `@deepseek-ai/dsh-client-ui-deliverables` — requires `systemPrompt` ([`packages/client/ui-deliverables/src/index.ts`](../packages/client/ui-deliverables/src/index.ts))
-- `@deepseek-ai/dsh-client-ui-diff` ([`packages/client/ui-diff/src/index.ts`](../packages/client/ui-diff/src/index.ts))
-- `@deepseek-ai/dsh-client-ui-directory-picker-browse` ([`packages/client/ui-directory-picker-browse/src/index.ts`](../packages/client/ui-directory-picker-browse/src/index.ts))
-- `@deepseek-ai/dsh-client-ui-directory-picker-native` ([`packages/client/ui-directory-picker-native/src/index.ts`](../packages/client/ui-directory-picker-native/src/index.ts))
-- `@deepseek-ai/dsh-client-ui-files` ([`packages/client/ui-files/src/index.ts`](../packages/client/ui-files/src/index.ts))
-- `@deepseek-ai/dsh-client-ui-git` ([`packages/client/ui-git/src/index.ts`](../packages/client/ui-git/src/index.ts))
-- `@deepseek-ai/dsh-client-ui-goal` ([`packages/client/ui-goal/src/index.ts`](../packages/client/ui-goal/src/index.ts))
-- `@deepseek-ai/dsh-client-ui-input-trigger` ([`packages/client/ui-input-trigger/src/index.ts`](../packages/client/ui-input-trigger/src/index.ts))
-- `@deepseek-ai/dsh-client-ui-issue-orchestration` ([`packages/client/ui-issue-orchestration/src/index.ts`](../packages/client/ui-issue-orchestration/src/index.ts))
-- `@deepseek-ai/dsh-client-ui-jobs` ([`packages/client/ui-jobs/src/index.ts`](../packages/client/ui-jobs/src/index.ts))
-- `@deepseek-ai/dsh-client-ui-layout` ([`packages/client/ui-layout/src/index.ts`](../packages/client/ui-layout/src/index.ts))
-- `@deepseek-ai/dsh-client-ui-message-edit` ([`packages/client/ui-message-edit/src/index.ts`](../packages/client/ui-message-edit/src/index.ts))
-- `@deepseek-ai/dsh-client-ui-message-feedback` ([`packages/client/ui-message-feedback/src/index.ts`](../packages/client/ui-message-feedback/src/index.ts))
-- `@deepseek-ai/dsh-client-ui-model-selection` ([`packages/client/ui-model-selection/src/index.ts`](../packages/client/ui-model-selection/src/index.ts))
-- `@deepseek-ai/dsh-client-ui-permission-presets` ([`packages/client/ui-permission-presets/src/index.ts`](../packages/client/ui-permission-presets/src/index.ts))
-- `@deepseek-ai/dsh-client-ui-plan` ([`packages/client/ui-plan/src/index.ts`](../packages/client/ui-plan/src/index.ts))
-- `@deepseek-ai/dsh-client-ui-preview` ([`packages/client/ui-preview/src/index.ts`](../packages/client/ui-preview/src/index.ts))
-- `@deepseek-ai/dsh-client-ui-reference` ([`packages/client/ui-reference/src/index.ts`](../packages/client/ui-reference/src/index.ts))
-- `@deepseek-ai/dsh-client-ui-renderer` ([`packages/client/ui-renderer/src/index.ts`](../packages/client/ui-renderer/src/index.ts))
-- `@deepseek-ai/dsh-client-ui-session-tree` ([`packages/client/ui-session-tree/src/index.ts`](../packages/client/ui-session-tree/src/index.ts))
-- `@deepseek-ai/dsh-client-ui-settings` ([`packages/client/ui-settings/src/index.ts`](../packages/client/ui-settings/src/index.ts))
-- `@deepseek-ai/dsh-client-ui-settings-general` ([`packages/client/ui-settings-general/src/index.ts`](../packages/client/ui-settings-general/src/index.ts))
-- `@deepseek-ai/dsh-client-ui-settings-mcp` ([`packages/client/ui-settings-mcp/src/index.ts`](../packages/client/ui-settings-mcp/src/index.ts))
-- `@deepseek-ai/dsh-client-ui-settings-models` ([`packages/client/ui-settings-models/src/index.ts`](../packages/client/ui-settings-models/src/index.ts))
-- `@deepseek-ai/dsh-client-ui-settings-plugin-inventory` ([`packages/client/ui-settings-plugin-inventory/src/index.ts`](../packages/client/ui-settings-plugin-inventory/src/index.ts))
-- `@deepseek-ai/dsh-client-ui-settings-plugins` ([`packages/client/ui-settings-plugins/src/index.ts`](../packages/client/ui-settings-plugins/src/index.ts))
-- `@deepseek-ai/dsh-client-ui-settings-remote` ([`packages/client/ui-settings-remote/src/index.ts`](../packages/client/ui-settings-remote/src/index.ts))
-- `@deepseek-ai/dsh-client-ui-settings-skills` ([`packages/client/ui-settings-skills/src/index.ts`](../packages/client/ui-settings-skills/src/index.ts))
-- `@deepseek-ai/dsh-client-ui-sidebar` ([`packages/client/ui-sidebar/src/index.ts`](../packages/client/ui-sidebar/src/index.ts))
-- `@deepseek-ai/dsh-client-ui-skill` ([`packages/client/ui-skill/src/index.ts`](../packages/client/ui-skill/src/index.ts))
-- `@deepseek-ai/dsh-client-ui-subagent` ([`packages/client/ui-subagent/src/index.ts`](../packages/client/ui-subagent/src/index.ts))
-- `@deepseek-ai/dsh-client-ui-surfaces` ([`packages/client/ui-surfaces/src/index.ts`](../packages/client/ui-surfaces/src/index.ts))
-- `@deepseek-ai/dsh-client-ui-theme` ([`packages/client/ui-theme/src/index.ts`](../packages/client/ui-theme/src/index.ts))
-- `@deepseek-ai/dsh-client-ui-titlebar` ([`packages/client/ui-titlebar/src/index.ts`](../packages/client/ui-titlebar/src/index.ts))
-- `@deepseek-ai/dsh-client-ui-tool` ([`packages/client/ui-tool/src/index.ts`](../packages/client/ui-tool/src/index.ts))
-- `@deepseek-ai/dsh-client-ui-trajectory` ([`packages/client/ui-trajectory/src/index.ts`](../packages/client/ui-trajectory/src/index.ts))
-- `@deepseek-ai/dsh-client-ui-user-questions` ([`packages/client/ui-user-questions/src/index.ts`](../packages/client/ui-user-questions/src/index.ts))
-- `@deepseek-ai/dsh-client-ui-user-terminal` ([`packages/client/ui-user-terminal/src/index.ts`](../packages/client/ui-user-terminal/src/index.ts))
-- `@deepseek-ai/dsh-client-ui-workflow-run` ([`packages/client/ui-workflow-run/src/index.ts`](../packages/client/ui-workflow-run/src/index.ts))
-- `@deepseek-ai/dsh-client-ui-workspace` ([`packages/client/ui-workspace/src/index.ts`](../packages/client/ui-workspace/src/index.ts))
-- `@deepseek-ai/dsh-command-compact` — requires `commands` · `compaction` ([`packages/compaction/command-compact/src/index.ts`](../packages/compaction/command-compact/src/index.ts))
-- `@deepseek-ai/dsh-command-feedback` — requires `commands` ([`packages/feedback/command-feedback/src/index.ts`](../packages/feedback/command-feedback/src/index.ts))
-- `@deepseek-ai/dsh-command-goal` — requires `commands` · `goals` ([`packages/goal/command-goal/src/index.ts`](../packages/goal/command-goal/src/index.ts))
-- `@deepseek-ai/dsh-commands` ([`packages/interaction/commands/src/index.ts`](../packages/interaction/commands/src/index.ts))
-- `@deepseek-ai/dsh-cordis-client-runner` ([`packages/extensions/cordis-client-runner/src/index.ts`](../packages/extensions/cordis-client-runner/src/index.ts))
-- `@deepseek-ai/dsh-fs-e2b` — requires `e2b` ([`packages/e2b/fs-e2b/src/index.ts`](../packages/e2b/fs-e2b/src/index.ts))
-- `@deepseek-ai/dsh-fs-observation-policy` ([`packages/fs/fs-observation-policy/src/index.ts`](../packages/fs/fs-observation-policy/src/index.ts))
-- `@deepseek-ai/dsh-goal-round-driver` — requires `agents` · `goals` · `sessions` ([`packages/goal/goal-round-driver/src/index.ts`](../packages/goal/goal-round-driver/src/index.ts))
-- `@deepseek-ai/dsh-host-directory-picker-auto` — requires `webServer` · `loader` ([`packages/host/directory-picker-auto/src/index.ts`](../packages/host/directory-picker-auto/src/index.ts))
-- `@deepseek-ai/dsh-host-directory-picker-native` ([`packages/host/directory-picker-native/src/index.ts`](../packages/host/directory-picker-native/src/index.ts))
-- `@deepseek-ai/dsh-host-mcp-servers` — requires `mcpServersFile` · `loader` ([`packages/host/mcp-servers/src/index.ts`](../packages/host/mcp-servers/src/index.ts))
-- `@deepseek-ai/dsh-host-plugin-inventory` — requires `loader` ([`packages/host/plugin-inventory/src/index.ts`](../packages/host/plugin-inventory/src/index.ts))
-- `@deepseek-ai/dsh-host-skill-inventory` — requires `agents` · `skills` ([`packages/host/skill-inventory/src/index.ts`](../packages/host/skill-inventory/src/index.ts))
-- `@deepseek-ai/dsh-issue-automation` ([`packages/bundle/issue-automation/src/index.ts`](../packages/bundle/issue-automation/src/index.ts))
-- `@deepseek-ai/dsh-issue-orchestrator` — requires `trackers` · `issueWorkflow` · `issueWorkspace` · `issueRunner` · `storageDomain` ([`packages/automation/issue-orchestrator/src/index.ts`](../packages/automation/issue-orchestrator/src/index.ts))
-- `@deepseek-ai/dsh-llm` ([`packages/llm/llm/src/index.ts`](../packages/llm/llm/src/index.ts))
-- `@deepseek-ai/dsh-lsp` ([`packages/lsp/lsp/src/index.ts`](../packages/lsp/lsp/src/index.ts))
-- `@deepseek-ai/dsh-schedule` — requires `agents` · `sessions` · `tools` · `sessionPersistence` ([`packages/schedule/schedule/src/index.ts`](../packages/schedule/schedule/src/index.ts))
-- `@deepseek-ai/dsh-session` ([`packages/core/session/src/index.ts`](../packages/core/session/src/index.ts))
-- `@deepseek-ai/dsh-session-checkpoint-policy` — requires `llm` · `sessionPersistence` · `sessions` · `tools` ([`packages/session/session-checkpoint-policy/src/index.ts`](../packages/session/session-checkpoint-policy/src/index.ts))
-- `@deepseek-ai/dsh-session-log-export` — requires `commands` ([`packages/session-query/session-log-export/src/index.ts`](../packages/session-query/session-log-export/src/index.ts))
-- `@deepseek-ai/dsh-session-projection` ([`packages/session/session-projection/src/index.ts`](../packages/session/session-projection/src/index.ts))
-- `@deepseek-ai/dsh-session-stats` — requires `sessionProjections` ([`packages/session/session-stats/src/index.ts`](../packages/session/session-stats/src/index.ts))
-- `@deepseek-ai/dsh-skill-badge` — requires `skills` ([`packages/skill/skill-badge/src/index.ts`](../packages/skill/skill-badge/src/index.ts))
-- `@deepseek-ai/dsh-storage` ([`packages/storage/storage/src/index.ts`](../packages/storage/storage/src/index.ts))
-- `@deepseek-ai/dsh-subprocess-local` ([`packages/subprocess/subprocess-local/src/index.ts`](../packages/subprocess/subprocess-local/src/index.ts))
-- `@deepseek-ai/dsh-terminal` ([`packages/terminal/terminal/src/index.ts`](../packages/terminal/terminal/src/index.ts))
-- `@deepseek-ai/dsh-tool-ask-user` — requires `tools` · `userQuestions` ([`packages/interaction/tool-ask-user/src/index.ts`](../packages/interaction/tool-ask-user/src/index.ts))
-- `@deepseek-ai/dsh-tool-call-timeout-policy` — requires `tools` ([`packages/guard/timeout-policy/src/index.ts`](../packages/guard/timeout-policy/src/index.ts))
-- `@deepseek-ai/dsh-tool-cordis` — requires `tools` · `systemPrompt` · `dynamicCordisRunner` · `cordisInspect` ([`packages/extensions/tool-cordis/src/index.ts`](../packages/extensions/tool-cordis/src/index.ts))
-- `@deepseek-ai/dsh-tool-subagent-control` — requires `tools` · `subagents` ([`packages/subagent/tool-subagent-control/src/index.ts`](../packages/subagent/tool-subagent-control/src/index.ts))
-- `@deepseek-ai/dsh-tracker` ([`packages/tracker/tracker/src/index.ts`](../packages/tracker/tracker/src/index.ts))
-- `@deepseek-ai/dsh-user-questions` ([`packages/interaction/user-questions/src/index.ts`](../packages/interaction/user-questions/src/index.ts))
-- `@deepseek-ai/dsh-workspace` — requires `storageDomain` · `sessionPersistence` ([`packages/workspace/workspace/src/index.ts`](../packages/workspace/workspace/src/index.ts))
+- `@relay-harness/rlh-agent` ([`packages/core/agent/src/index.ts`](../packages/core/agent/src/index.ts))
+- `@relay-harness/rlh-api-gateway` — requires `typert` ([`packages/api/gateway/src/index.ts`](../packages/api/gateway/src/index.ts))
+- `@relay-harness/rlh-api-remotes` ([`packages/api/remotes/src/index.ts`](../packages/api/remotes/src/index.ts))
+- `@relay-harness/rlh-client-locale` ([`packages/client/locale/src/index.ts`](../packages/client/locale/src/index.ts))
+- `@relay-harness/rlh-client-modules` — requires `webServer` · `loader` ([`packages/client/modules/src/index.ts`](../packages/client/modules/src/index.ts))
+- `@relay-harness/rlh-client-runtime` ([`packages/client/runtime/src/index.ts`](../packages/client/runtime/src/index.ts))
+- `@relay-harness/rlh-client-ui-agent-preset` ([`packages/client/ui-agent-preset/src/index.ts`](../packages/client/ui-agent-preset/src/index.ts))
+- `@relay-harness/rlh-client-ui-agents-panel` ([`packages/client/ui-agents-panel/src/index.ts`](../packages/client/ui-agents-panel/src/index.ts))
+- `@relay-harness/rlh-client-ui-attachment` ([`packages/client/ui-attachment/src/index.ts`](../packages/client/ui-attachment/src/index.ts))
+- `@relay-harness/rlh-client-ui-brand-official` ([`packages/client/ui-brand-official/src/index.ts`](../packages/client/ui-brand-official/src/index.ts))
+- `@relay-harness/rlh-client-ui-commands` ([`packages/client/ui-commands/src/index.ts`](../packages/client/ui-commands/src/index.ts))
+- `@relay-harness/rlh-client-ui-conversation` ([`packages/client/ui-conversation/src/index.ts`](../packages/client/ui-conversation/src/index.ts))
+- `@relay-harness/rlh-client-ui-cordis` ([`packages/extensions/ui-cordis/src/index.ts`](../packages/extensions/ui-cordis/src/index.ts))
+- `@relay-harness/rlh-client-ui-deliverables` — requires `systemPrompt` ([`packages/client/ui-deliverables/src/index.ts`](../packages/client/ui-deliverables/src/index.ts))
+- `@relay-harness/rlh-client-ui-diff` ([`packages/client/ui-diff/src/index.ts`](../packages/client/ui-diff/src/index.ts))
+- `@relay-harness/rlh-client-ui-directory-picker-browse` ([`packages/client/ui-directory-picker-browse/src/index.ts`](../packages/client/ui-directory-picker-browse/src/index.ts))
+- `@relay-harness/rlh-client-ui-directory-picker-native` ([`packages/client/ui-directory-picker-native/src/index.ts`](../packages/client/ui-directory-picker-native/src/index.ts))
+- `@relay-harness/rlh-client-ui-files` ([`packages/client/ui-files/src/index.ts`](../packages/client/ui-files/src/index.ts))
+- `@relay-harness/rlh-client-ui-git` ([`packages/client/ui-git/src/index.ts`](../packages/client/ui-git/src/index.ts))
+- `@relay-harness/rlh-client-ui-goal` ([`packages/client/ui-goal/src/index.ts`](../packages/client/ui-goal/src/index.ts))
+- `@relay-harness/rlh-client-ui-input-trigger` ([`packages/client/ui-input-trigger/src/index.ts`](../packages/client/ui-input-trigger/src/index.ts))
+- `@relay-harness/rlh-client-ui-issue-orchestration` ([`packages/client/ui-issue-orchestration/src/index.ts`](../packages/client/ui-issue-orchestration/src/index.ts))
+- `@relay-harness/rlh-client-ui-jobs` ([`packages/client/ui-jobs/src/index.ts`](../packages/client/ui-jobs/src/index.ts))
+- `@relay-harness/rlh-client-ui-layout` ([`packages/client/ui-layout/src/index.ts`](../packages/client/ui-layout/src/index.ts))
+- `@relay-harness/rlh-client-ui-message-edit` ([`packages/client/ui-message-edit/src/index.ts`](../packages/client/ui-message-edit/src/index.ts))
+- `@relay-harness/rlh-client-ui-message-feedback` ([`packages/client/ui-message-feedback/src/index.ts`](../packages/client/ui-message-feedback/src/index.ts))
+- `@relay-harness/rlh-client-ui-model-selection` ([`packages/client/ui-model-selection/src/index.ts`](../packages/client/ui-model-selection/src/index.ts))
+- `@relay-harness/rlh-client-ui-permission-presets` ([`packages/client/ui-permission-presets/src/index.ts`](../packages/client/ui-permission-presets/src/index.ts))
+- `@relay-harness/rlh-client-ui-plan` ([`packages/client/ui-plan/src/index.ts`](../packages/client/ui-plan/src/index.ts))
+- `@relay-harness/rlh-client-ui-preview` ([`packages/client/ui-preview/src/index.ts`](../packages/client/ui-preview/src/index.ts))
+- `@relay-harness/rlh-client-ui-reference` ([`packages/client/ui-reference/src/index.ts`](../packages/client/ui-reference/src/index.ts))
+- `@relay-harness/rlh-client-ui-renderer` ([`packages/client/ui-renderer/src/index.ts`](../packages/client/ui-renderer/src/index.ts))
+- `@relay-harness/rlh-client-ui-session-tree` ([`packages/client/ui-session-tree/src/index.ts`](../packages/client/ui-session-tree/src/index.ts))
+- `@relay-harness/rlh-client-ui-settings` ([`packages/client/ui-settings/src/index.ts`](../packages/client/ui-settings/src/index.ts))
+- `@relay-harness/rlh-client-ui-settings-general` ([`packages/client/ui-settings-general/src/index.ts`](../packages/client/ui-settings-general/src/index.ts))
+- `@relay-harness/rlh-client-ui-settings-mcp` ([`packages/client/ui-settings-mcp/src/index.ts`](../packages/client/ui-settings-mcp/src/index.ts))
+- `@relay-harness/rlh-client-ui-settings-models` ([`packages/client/ui-settings-models/src/index.ts`](../packages/client/ui-settings-models/src/index.ts))
+- `@relay-harness/rlh-client-ui-settings-plugin-inventory` ([`packages/client/ui-settings-plugin-inventory/src/index.ts`](../packages/client/ui-settings-plugin-inventory/src/index.ts))
+- `@relay-harness/rlh-client-ui-settings-plugins` ([`packages/client/ui-settings-plugins/src/index.ts`](../packages/client/ui-settings-plugins/src/index.ts))
+- `@relay-harness/rlh-client-ui-settings-remote` ([`packages/client/ui-settings-remote/src/index.ts`](../packages/client/ui-settings-remote/src/index.ts))
+- `@relay-harness/rlh-client-ui-settings-skills` ([`packages/client/ui-settings-skills/src/index.ts`](../packages/client/ui-settings-skills/src/index.ts))
+- `@relay-harness/rlh-client-ui-sidebar` ([`packages/client/ui-sidebar/src/index.ts`](../packages/client/ui-sidebar/src/index.ts))
+- `@relay-harness/rlh-client-ui-skill` ([`packages/client/ui-skill/src/index.ts`](../packages/client/ui-skill/src/index.ts))
+- `@relay-harness/rlh-client-ui-subagent` ([`packages/client/ui-subagent/src/index.ts`](../packages/client/ui-subagent/src/index.ts))
+- `@relay-harness/rlh-client-ui-surfaces` ([`packages/client/ui-surfaces/src/index.ts`](../packages/client/ui-surfaces/src/index.ts))
+- `@relay-harness/rlh-client-ui-theme` ([`packages/client/ui-theme/src/index.ts`](../packages/client/ui-theme/src/index.ts))
+- `@relay-harness/rlh-client-ui-titlebar` ([`packages/client/ui-titlebar/src/index.ts`](../packages/client/ui-titlebar/src/index.ts))
+- `@relay-harness/rlh-client-ui-tool` ([`packages/client/ui-tool/src/index.ts`](../packages/client/ui-tool/src/index.ts))
+- `@relay-harness/rlh-client-ui-trajectory` ([`packages/client/ui-trajectory/src/index.ts`](../packages/client/ui-trajectory/src/index.ts))
+- `@relay-harness/rlh-client-ui-user-questions` ([`packages/client/ui-user-questions/src/index.ts`](../packages/client/ui-user-questions/src/index.ts))
+- `@relay-harness/rlh-client-ui-user-terminal` ([`packages/client/ui-user-terminal/src/index.ts`](../packages/client/ui-user-terminal/src/index.ts))
+- `@relay-harness/rlh-client-ui-workflow-run` ([`packages/client/ui-workflow-run/src/index.ts`](../packages/client/ui-workflow-run/src/index.ts))
+- `@relay-harness/rlh-client-ui-workspace` ([`packages/client/ui-workspace/src/index.ts`](../packages/client/ui-workspace/src/index.ts))
+- `@relay-harness/rlh-command-compact` — requires `commands` · `compaction` ([`packages/compaction/command-compact/src/index.ts`](../packages/compaction/command-compact/src/index.ts))
+- `@relay-harness/rlh-command-feedback` — requires `commands` ([`packages/feedback/command-feedback/src/index.ts`](../packages/feedback/command-feedback/src/index.ts))
+- `@relay-harness/rlh-command-goal` — requires `commands` · `goals` ([`packages/goal/command-goal/src/index.ts`](../packages/goal/command-goal/src/index.ts))
+- `@relay-harness/rlh-commands` ([`packages/interaction/commands/src/index.ts`](../packages/interaction/commands/src/index.ts))
+- `@relay-harness/rlh-cordis-client-runner` ([`packages/extensions/cordis-client-runner/src/index.ts`](../packages/extensions/cordis-client-runner/src/index.ts))
+- `@relay-harness/rlh-fs-e2b` — requires `e2b` ([`packages/e2b/fs-e2b/src/index.ts`](../packages/e2b/fs-e2b/src/index.ts))
+- `@relay-harness/rlh-fs-observation-policy` ([`packages/fs/fs-observation-policy/src/index.ts`](../packages/fs/fs-observation-policy/src/index.ts))
+- `@relay-harness/rlh-goal-round-driver` — requires `agents` · `goals` · `sessions` ([`packages/goal/goal-round-driver/src/index.ts`](../packages/goal/goal-round-driver/src/index.ts))
+- `@relay-harness/rlh-host-directory-picker-auto` — requires `webServer` · `loader` ([`packages/host/directory-picker-auto/src/index.ts`](../packages/host/directory-picker-auto/src/index.ts))
+- `@relay-harness/rlh-host-directory-picker-native` ([`packages/host/directory-picker-native/src/index.ts`](../packages/host/directory-picker-native/src/index.ts))
+- `@relay-harness/rlh-host-mcp-servers` — requires `mcpServersFile` · `loader` ([`packages/host/mcp-servers/src/index.ts`](../packages/host/mcp-servers/src/index.ts))
+- `@relay-harness/rlh-host-plugin-inventory` — requires `loader` ([`packages/host/plugin-inventory/src/index.ts`](../packages/host/plugin-inventory/src/index.ts))
+- `@relay-harness/rlh-host-skill-inventory` — requires `agents` · `skills` ([`packages/host/skill-inventory/src/index.ts`](../packages/host/skill-inventory/src/index.ts))
+- `@relay-harness/rlh-issue-automation` ([`packages/bundle/issue-automation/src/index.ts`](../packages/bundle/issue-automation/src/index.ts))
+- `@relay-harness/rlh-issue-orchestrator` — requires `trackers` · `issueWorkflow` · `issueWorkspace` · `issueRunner` · `storageDomain` ([`packages/automation/issue-orchestrator/src/index.ts`](../packages/automation/issue-orchestrator/src/index.ts))
+- `@relay-harness/rlh-llm` ([`packages/llm/llm/src/index.ts`](../packages/llm/llm/src/index.ts))
+- `@relay-harness/rlh-lsp` ([`packages/lsp/lsp/src/index.ts`](../packages/lsp/lsp/src/index.ts))
+- `@relay-harness/rlh-schedule` — requires `agents` · `sessions` · `tools` · `sessionPersistence` ([`packages/schedule/schedule/src/index.ts`](../packages/schedule/schedule/src/index.ts))
+- `@relay-harness/rlh-session` ([`packages/core/session/src/index.ts`](../packages/core/session/src/index.ts))
+- `@relay-harness/rlh-session-checkpoint-policy` — requires `llm` · `sessionPersistence` · `sessions` · `tools` ([`packages/session/session-checkpoint-policy/src/index.ts`](../packages/session/session-checkpoint-policy/src/index.ts))
+- `@relay-harness/rlh-session-log-export` — requires `commands` ([`packages/session-query/session-log-export/src/index.ts`](../packages/session-query/session-log-export/src/index.ts))
+- `@relay-harness/rlh-session-projection` ([`packages/session/session-projection/src/index.ts`](../packages/session/session-projection/src/index.ts))
+- `@relay-harness/rlh-session-stats` — requires `sessionProjections` ([`packages/session/session-stats/src/index.ts`](../packages/session/session-stats/src/index.ts))
+- `@relay-harness/rlh-skill-badge` — requires `skills` ([`packages/skill/skill-badge/src/index.ts`](../packages/skill/skill-badge/src/index.ts))
+- `@relay-harness/rlh-storage` ([`packages/storage/storage/src/index.ts`](../packages/storage/storage/src/index.ts))
+- `@relay-harness/rlh-subprocess-local` ([`packages/subprocess/subprocess-local/src/index.ts`](../packages/subprocess/subprocess-local/src/index.ts))
+- `@relay-harness/rlh-terminal` ([`packages/terminal/terminal/src/index.ts`](../packages/terminal/terminal/src/index.ts))
+- `@relay-harness/rlh-tool-ask-user` — requires `tools` · `userQuestions` ([`packages/interaction/tool-ask-user/src/index.ts`](../packages/interaction/tool-ask-user/src/index.ts))
+- `@relay-harness/rlh-tool-call-timeout-policy` — requires `tools` ([`packages/guard/timeout-policy/src/index.ts`](../packages/guard/timeout-policy/src/index.ts))
+- `@relay-harness/rlh-tool-cordis` — requires `tools` · `systemPrompt` · `dynamicCordisRunner` · `cordisInspect` ([`packages/extensions/tool-cordis/src/index.ts`](../packages/extensions/tool-cordis/src/index.ts))
+- `@relay-harness/rlh-tool-subagent-control` — requires `tools` · `subagents` ([`packages/subagent/tool-subagent-control/src/index.ts`](../packages/subagent/tool-subagent-control/src/index.ts))
+- `@relay-harness/rlh-tracker` ([`packages/tracker/tracker/src/index.ts`](../packages/tracker/tracker/src/index.ts))
+- `@relay-harness/rlh-user-questions` ([`packages/interaction/user-questions/src/index.ts`](../packages/interaction/user-questions/src/index.ts))
+- `@relay-harness/rlh-workspace` — requires `storageDomain` · `sessionPersistence` ([`packages/workspace/workspace/src/index.ts`](../packages/workspace/workspace/src/index.ts))
 
 ## Seam packages (not directly loadable)
 
 Abstract service classes — a deployment loads a concrete implementation package instead ([capability seams](../.agents/notes/implemented/architecture/2026-06-13-capability-seams.md)).
 
-- `@deepseek-ai/dsh-attachment` — abstract `AttachmentStore` ([`packages/attachment/attachment/src/index.ts`](../packages/attachment/attachment/src/index.ts))
-- `@deepseek-ai/dsh-code-runtime` — abstract `CodeRuntime` ([`packages/code-runtime/code-runtime/src/index.ts`](../packages/code-runtime/code-runtime/src/index.ts))
-- `@deepseek-ai/dsh-compaction` — abstract `CompactionEngine` ([`packages/compaction/compaction/src/index.ts`](../packages/compaction/compaction/src/index.ts))
-- `@deepseek-ai/dsh-credentials` — abstract `CredentialProvider` ([`packages/credentials/credentials/src/index.ts`](../packages/credentials/credentials/src/index.ts))
-- `@deepseek-ai/dsh-file-reference` — abstract `FileReferenceService` ([`packages/context/file-reference/src/index.ts`](../packages/context/file-reference/src/index.ts))
-- `@deepseek-ai/dsh-fs` — abstract `FileSystem` ([`packages/fs/fs/src/index.ts`](../packages/fs/fs/src/index.ts))
-- `@deepseek-ai/dsh-host-directory-picker` — abstract `DirectoryPicker` ([`packages/host/directory-picker/src/index.ts`](../packages/host/directory-picker/src/index.ts))
-- `@deepseek-ai/dsh-issue-orchestration` — abstract `IssueOrchestration` ([`packages/automation/issue-orchestration/src/index.ts`](../packages/automation/issue-orchestration/src/index.ts))
-- `@deepseek-ai/dsh-issue-runner` — abstract `IssueRunner` ([`packages/automation/issue-runner/src/index.ts`](../packages/automation/issue-runner/src/index.ts))
-- `@deepseek-ai/dsh-issue-workflow` — abstract `IssueWorkflow` ([`packages/automation/issue-workflow/src/index.ts`](../packages/automation/issue-workflow/src/index.ts))
-- `@deepseek-ai/dsh-issue-workspace` — abstract `IssueWorkspaceProvisioner` ([`packages/automation/issue-workspace/src/index.ts`](../packages/automation/issue-workspace/src/index.ts))
-- `@deepseek-ai/dsh-jobs` — abstract `JobRegistry` ([`packages/jobs/jobs/src/index.ts`](../packages/jobs/jobs/src/index.ts))
-- `@deepseek-ai/dsh-memory` — abstract `LongTermMemory` ([`packages/memory/memory/src/index.ts`](../packages/memory/memory/src/index.ts))
-- `@deepseek-ai/dsh-sandbox` — abstract `SandboxProvider` ([`packages/sandbox/sandbox/src/index.ts`](../packages/sandbox/sandbox/src/index.ts))
-- `@deepseek-ai/dsh-session-persistence` — abstract `SessionPersistence` ([`packages/session/session-persistence/src/index.ts`](../packages/session/session-persistence/src/index.ts))
-- `@deepseek-ai/dsh-session-query` — abstract `SessionQueryEngine` ([`packages/session-query/session-query/src/index.ts`](../packages/session-query/session-query/src/index.ts))
-- `@deepseek-ai/dsh-settings` — abstract `SettingsProvider` ([`packages/settings/settings/src/index.ts`](../packages/settings/settings/src/index.ts))
-- `@deepseek-ai/dsh-shell` — abstract `ShellExecutor` ([`packages/shell/shell/src/index.ts`](../packages/shell/shell/src/index.ts))
-- `@deepseek-ai/dsh-spill` — abstract `SpillStore` ([`packages/spill/spill/src/index.ts`](../packages/spill/spill/src/index.ts))
-- `@deepseek-ai/dsh-subprocess` — abstract `SubprocessRuntime` ([`packages/subprocess/subprocess/src/index.ts`](../packages/subprocess/subprocess/src/index.ts))
-- `@deepseek-ai/dsh-workflow` — abstract `WorkflowEngine` ([`packages/workflow/workflow/src/index.ts`](../packages/workflow/workflow/src/index.ts))
+- `@relay-harness/rlh-attachment` — abstract `AttachmentStore` ([`packages/attachment/attachment/src/index.ts`](../packages/attachment/attachment/src/index.ts))
+- `@relay-harness/rlh-code-runtime` — abstract `CodeRuntime` ([`packages/code-runtime/code-runtime/src/index.ts`](../packages/code-runtime/code-runtime/src/index.ts))
+- `@relay-harness/rlh-compaction` — abstract `CompactionEngine` ([`packages/compaction/compaction/src/index.ts`](../packages/compaction/compaction/src/index.ts))
+- `@relay-harness/rlh-credentials` — abstract `CredentialProvider` ([`packages/credentials/credentials/src/index.ts`](../packages/credentials/credentials/src/index.ts))
+- `@relay-harness/rlh-file-reference` — abstract `FileReferenceService` ([`packages/context/file-reference/src/index.ts`](../packages/context/file-reference/src/index.ts))
+- `@relay-harness/rlh-fs` — abstract `FileSystem` ([`packages/fs/fs/src/index.ts`](../packages/fs/fs/src/index.ts))
+- `@relay-harness/rlh-host-directory-picker` — abstract `DirectoryPicker` ([`packages/host/directory-picker/src/index.ts`](../packages/host/directory-picker/src/index.ts))
+- `@relay-harness/rlh-issue-orchestration` — abstract `IssueOrchestration` ([`packages/automation/issue-orchestration/src/index.ts`](../packages/automation/issue-orchestration/src/index.ts))
+- `@relay-harness/rlh-issue-runner` — abstract `IssueRunner` ([`packages/automation/issue-runner/src/index.ts`](../packages/automation/issue-runner/src/index.ts))
+- `@relay-harness/rlh-issue-workflow` — abstract `IssueWorkflow` ([`packages/automation/issue-workflow/src/index.ts`](../packages/automation/issue-workflow/src/index.ts))
+- `@relay-harness/rlh-issue-workspace` — abstract `IssueWorkspaceProvisioner` ([`packages/automation/issue-workspace/src/index.ts`](../packages/automation/issue-workspace/src/index.ts))
+- `@relay-harness/rlh-jobs` — abstract `JobRegistry` ([`packages/jobs/jobs/src/index.ts`](../packages/jobs/jobs/src/index.ts))
+- `@relay-harness/rlh-memory` — abstract `LongTermMemory` ([`packages/memory/memory/src/index.ts`](../packages/memory/memory/src/index.ts))
+- `@relay-harness/rlh-sandbox` — abstract `SandboxProvider` ([`packages/sandbox/sandbox/src/index.ts`](../packages/sandbox/sandbox/src/index.ts))
+- `@relay-harness/rlh-session-persistence` — abstract `SessionPersistence` ([`packages/session/session-persistence/src/index.ts`](../packages/session/session-persistence/src/index.ts))
+- `@relay-harness/rlh-session-query` — abstract `SessionQueryEngine` ([`packages/session-query/session-query/src/index.ts`](../packages/session-query/session-query/src/index.ts))
+- `@relay-harness/rlh-settings` — abstract `SettingsProvider` ([`packages/settings/settings/src/index.ts`](../packages/settings/settings/src/index.ts))
+- `@relay-harness/rlh-shell` — abstract `ShellExecutor` ([`packages/shell/shell/src/index.ts`](../packages/shell/shell/src/index.ts))
+- `@relay-harness/rlh-spill` — abstract `SpillStore` ([`packages/spill/spill/src/index.ts`](../packages/spill/spill/src/index.ts))
+- `@relay-harness/rlh-subprocess` — abstract `SubprocessRuntime` ([`packages/subprocess/subprocess/src/index.ts`](../packages/subprocess/subprocess/src/index.ts))
+- `@relay-harness/rlh-workflow` — abstract `WorkflowEngine` ([`packages/workflow/workflow/src/index.ts`](../packages/workflow/workflow/src/index.ts))
 
 ## Library packages (no plugin entry)
 
 Imported as libraries by other packages; a `cordis.yml` cannot load them.
 
-- `@deepseek-ai/dsh-acp-snapshot` ([`packages/test-support/acp-snapshot/src/index.ts`](../packages/test-support/acp-snapshot/src/index.ts))
-- `@deepseek-ai/dsh-agent-loop-testkit` ([`packages/test-support/agent-loop-testkit/src/index.ts`](../packages/test-support/agent-loop-testkit/src/index.ts))
-- `@deepseek-ai/dsh-anonymous-user-id` ([`packages/identity/anonymous-user-id/src/index.ts`](../packages/identity/anonymous-user-id/src/index.ts))
-- `@deepseek-ai/dsh-app-boot` ([`packages/boot/app-boot/src/index.ts`](../packages/boot/app-boot/src/index.ts))
-- `@deepseek-ai/dsh-atomic-write` ([`packages/util/atomic-write/src/index.ts`](../packages/util/atomic-write/src/index.ts))
-- `@deepseek-ai/dsh-base` ([`packages/bundle/base/src/index.ts`](../packages/bundle/base/src/index.ts))
-- `@deepseek-ai/dsh-brand` ([`packages/util/brand/src/index.ts`](../packages/util/brand/src/index.ts))
-- `@deepseek-ai/dsh-client-test-runtime` ([`packages/test-support/client-runtime/src/index.ts`](../packages/test-support/client-runtime/src/index.ts))
-- `@deepseek-ai/dsh-client-ui-primitives` ([`packages/client/ui-primitives/src/index.ts`](../packages/client/ui-primitives/src/index.ts))
-- `@deepseek-ai/dsh-client-ui-slots` ([`packages/client/ui-slots/src/index.ts`](../packages/client/ui-slots/src/index.ts))
-- `@deepseek-ai/dsh-client-web` ([`packages/client/web/src/index.ts`](../packages/client/web/src/index.ts))
-- `@deepseek-ai/dsh-cmdline` ([`packages/boot/cmdline/src/index.ts`](../packages/boot/cmdline/src/index.ts))
-- `@deepseek-ai/dsh-code-runtime-python` ([`packages/code-runtime/code-runtime-python/src/index.ts`](../packages/code-runtime/code-runtime-python/src/index.ts))
-- `@deepseek-ai/dsh-home-paths` ([`packages/util/home-paths/src/index.ts`](../packages/util/home-paths/src/index.ts))
-- `@deepseek-ai/dsh-hook-protocol` ([`packages/hooks/hook-protocol/src/index.ts`](../packages/hooks/hook-protocol/src/index.ts))
-- `@deepseek-ai/dsh-launch-environment` ([`packages/util/launch-environment/src/index.ts`](../packages/util/launch-environment/src/index.ts))
-- `@deepseek-ai/dsh-llm-mock-server` ([`packages/test-support/llm-mock-server/src/index.ts`](../packages/test-support/llm-mock-server/src/index.ts))
-- `@deepseek-ai/dsh-loader-smoke` ([`packages/test-support/loader-smoke/src/index.ts`](../packages/test-support/loader-smoke/src/index.ts))
-- `@deepseek-ai/dsh-native-command` ([`packages/util/native-command/src/index.ts`](../packages/util/native-command/src/index.ts))
-- `@deepseek-ai/dsh-output-retention` ([`packages/util/output-retention/src/index.ts`](../packages/util/output-retention/src/index.ts))
-- `@deepseek-ai/dsh-sandbox-windows-acl` ([`packages/sandbox/sandbox-windows-acl/src/index.ts`](../packages/sandbox/sandbox-windows-acl/src/index.ts))
-- `@deepseek-ai/dsh-scope` ([`packages/core/scope/src/index.ts`](../packages/core/scope/src/index.ts))
-- `@deepseek-ai/dsh-sdk-client` ([`packages/sdk/client/src/index.ts`](../packages/sdk/client/src/index.ts))
-- `@deepseek-ai/dsh-sdk-jsonrpc-demo` ([`packages/examples/jsonrpc-demo/src/index.ts`](../packages/examples/jsonrpc-demo/src/index.ts))
-- `@deepseek-ai/dsh-sdk-protocol` ([`packages/sdk/protocol/src/index.ts`](../packages/sdk/protocol/src/index.ts))
-- `@deepseek-ai/dsh-session-telemetry` ([`packages/session/session-telemetry/src/index.ts`](../packages/session/session-telemetry/src/index.ts))
-- `@deepseek-ai/dsh-session-title-llm` ([`packages/session/session-title-llm/src/index.ts`](../packages/session/session-title-llm/src/index.ts))
-- `@deepseek-ai/dsh-subagent-in-process-driver` ([`packages/subagent/subagent-in-process-driver/src/index.ts`](../packages/subagent/subagent-in-process-driver/src/index.ts))
-- `@deepseek-ai/dsh-timeout` ([`packages/util/timeout/src/index.ts`](../packages/util/timeout/src/index.ts))
-- `@deepseek-ai/dsh-typert-generator` ([`packages/typert/generator/src/index.ts`](../packages/typert/generator/src/index.ts))
-- `@deepseek-ai/dsh-typert-protocol` ([`packages/typert/protocol/src/index.ts`](../packages/typert/protocol/src/index.ts))
-- `@deepseek-ai/dsh-typert-registry` ([`packages/typert/registry/src/index.ts`](../packages/typert/registry/src/index.ts))
+- `@relay-harness/rlh-acp-snapshot` ([`packages/test-support/acp-snapshot/src/index.ts`](../packages/test-support/acp-snapshot/src/index.ts))
+- `@relay-harness/rlh-agent-loop-testkit` ([`packages/test-support/agent-loop-testkit/src/index.ts`](../packages/test-support/agent-loop-testkit/src/index.ts))
+- `@relay-harness/rlh-anonymous-user-id` ([`packages/identity/anonymous-user-id/src/index.ts`](../packages/identity/anonymous-user-id/src/index.ts))
+- `@relay-harness/rlh-app-boot` ([`packages/boot/app-boot/src/index.ts`](../packages/boot/app-boot/src/index.ts))
+- `@relay-harness/rlh-atomic-write` ([`packages/util/atomic-write/src/index.ts`](../packages/util/atomic-write/src/index.ts))
+- `@relay-harness/rlh-base` ([`packages/bundle/base/src/index.ts`](../packages/bundle/base/src/index.ts))
+- `@relay-harness/rlh-brand` ([`packages/util/brand/src/index.ts`](../packages/util/brand/src/index.ts))
+- `@relay-harness/rlh-client-test-runtime` ([`packages/test-support/client-runtime/src/index.ts`](../packages/test-support/client-runtime/src/index.ts))
+- `@relay-harness/rlh-client-ui-primitives` ([`packages/client/ui-primitives/src/index.ts`](../packages/client/ui-primitives/src/index.ts))
+- `@relay-harness/rlh-client-ui-slots` ([`packages/client/ui-slots/src/index.ts`](../packages/client/ui-slots/src/index.ts))
+- `@relay-harness/rlh-client-web` ([`packages/client/web/src/index.ts`](../packages/client/web/src/index.ts))
+- `@relay-harness/rlh-cmdline` ([`packages/boot/cmdline/src/index.ts`](../packages/boot/cmdline/src/index.ts))
+- `@relay-harness/rlh-code-runtime-python` ([`packages/code-runtime/code-runtime-python/src/index.ts`](../packages/code-runtime/code-runtime-python/src/index.ts))
+- `@relay-harness/rlh-home-paths` ([`packages/util/home-paths/src/index.ts`](../packages/util/home-paths/src/index.ts))
+- `@relay-harness/rlh-hook-protocol` ([`packages/hooks/hook-protocol/src/index.ts`](../packages/hooks/hook-protocol/src/index.ts))
+- `@relay-harness/rlh-launch-environment` ([`packages/util/launch-environment/src/index.ts`](../packages/util/launch-environment/src/index.ts))
+- `@relay-harness/rlh-llm-mock-server` ([`packages/test-support/llm-mock-server/src/index.ts`](../packages/test-support/llm-mock-server/src/index.ts))
+- `@relay-harness/rlh-loader-smoke` ([`packages/test-support/loader-smoke/src/index.ts`](../packages/test-support/loader-smoke/src/index.ts))
+- `@relay-harness/rlh-native-command` ([`packages/util/native-command/src/index.ts`](../packages/util/native-command/src/index.ts))
+- `@relay-harness/rlh-output-retention` ([`packages/util/output-retention/src/index.ts`](../packages/util/output-retention/src/index.ts))
+- `@relay-harness/rlh-sandbox-windows-acl` ([`packages/sandbox/sandbox-windows-acl/src/index.ts`](../packages/sandbox/sandbox-windows-acl/src/index.ts))
+- `@relay-harness/rlh-scope` ([`packages/core/scope/src/index.ts`](../packages/core/scope/src/index.ts))
+- `@relay-harness/rlh-sdk-client` ([`packages/sdk/client/src/index.ts`](../packages/sdk/client/src/index.ts))
+- `@relay-harness/rlh-sdk-jsonrpc-demo` ([`packages/examples/jsonrpc-demo/src/index.ts`](../packages/examples/jsonrpc-demo/src/index.ts))
+- `@relay-harness/rlh-sdk-protocol` ([`packages/sdk/protocol/src/index.ts`](../packages/sdk/protocol/src/index.ts))
+- `@relay-harness/rlh-session-telemetry` ([`packages/session/session-telemetry/src/index.ts`](../packages/session/session-telemetry/src/index.ts))
+- `@relay-harness/rlh-session-title-llm` ([`packages/session/session-title-llm/src/index.ts`](../packages/session/session-title-llm/src/index.ts))
+- `@relay-harness/rlh-subagent-in-process-driver` ([`packages/subagent/subagent-in-process-driver/src/index.ts`](../packages/subagent/subagent-in-process-driver/src/index.ts))
+- `@relay-harness/rlh-timeout` ([`packages/util/timeout/src/index.ts`](../packages/util/timeout/src/index.ts))
+- `@relay-harness/rlh-typert-generator` ([`packages/typert/generator/src/index.ts`](../packages/typert/generator/src/index.ts))
+- `@relay-harness/rlh-typert-protocol` ([`packages/typert/protocol/src/index.ts`](../packages/typert/protocol/src/index.ts))
+- `@relay-harness/rlh-typert-registry` ([`packages/typert/registry/src/index.ts`](../packages/typert/registry/src/index.ts))

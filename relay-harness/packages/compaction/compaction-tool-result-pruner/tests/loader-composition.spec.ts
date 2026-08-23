@@ -3,11 +3,11 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { afterEach, describe, expect, it } from 'vitest'
-import { Context } from '@deepseek-ai/cordis'
-import Loader from '@deepseek-ai/cordis-plugin-loader'
-import Include from '@deepseek-ai/cordis-plugin-include'
-import TokenMeter from '@deepseek-ai/dsh-token-meter'
-import ToolResultPruner from '@deepseek-ai/dsh-compaction-tool-result-pruner'
+import { Context } from '@relay-harness/cordis'
+import Loader from '@relay-harness/cordis-plugin-loader'
+import Include from '@relay-harness/cordis-plugin-include'
+import TokenMeter from '@relay-harness/rlh-token-meter'
+import ToolResultPruner from '@relay-harness/rlh-compaction-tool-result-pruner'
 
 let root: string | undefined
 let context: Context | undefined
@@ -21,11 +21,11 @@ afterEach(async () => {
 
 describe('compaction-tool-result-pruner real Loader composition', () => {
   it('loads and resolves the flat YAML plugin shape', async () => {
-    root = await mkdtemp(join(tmpdir(), 'dsh-compact-tool-result-prune-loader-'))
+    root = await mkdtemp(join(tmpdir(), 'rlh-compact-tool-result-prune-loader-'))
     const configPath = join(root, 'cordis.yml')
     await writeFile(configPath, [
-      "- name: '@deepseek-ai/dsh-token-meter'",
-      "- name: '@deepseek-ai/dsh-compaction-tool-result-pruner'",
+      "- name: '@relay-harness/rlh-token-meter'",
+      "- name: '@relay-harness/rlh-compaction-tool-result-pruner'",
       '  config:',
       '    thresholdChars: 100',
       '    headChars: 20',
@@ -40,8 +40,8 @@ describe('compaction-tool-result-pruner real Loader composition', () => {
     context.loader.internal = {
       version: 'v2',
       async import(specifier: string) {
-        if (specifier === '@deepseek-ai/dsh-token-meter') return TokenMeter
-        if (specifier === '@deepseek-ai/dsh-compaction-tool-result-pruner') return ToolResultPruner
+        if (specifier === '@relay-harness/rlh-token-meter') return TokenMeter
+        if (specifier === '@relay-harness/rlh-compaction-tool-result-pruner') return ToolResultPruner
         throw new Error(`unexpected Loader import: ${specifier}`)
       },
     } as unknown as NonNullable<typeof context.loader.internal>

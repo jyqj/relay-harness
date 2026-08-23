@@ -7,9 +7,9 @@
 
 import type { z as zCore } from 'zod'
 type ZodIssue = zCore.core.$ZodIssue
-import type { Branded } from '@deepseek-ai/dsh-brand'
-import type { MessageId } from '@deepseek-ai/dsh-llm/brand'
-import type { SessionId } from '@deepseek-ai/dsh-session/types'
+import type { Branded } from '@relay-harness/rlh-brand'
+import type { MessageId } from '@relay-harness/rlh-llm/brand'
+import type { SessionId } from '@relay-harness/rlh-session/types'
 
 /**
  * Message correlation id: the initiator mints it on a request; a response

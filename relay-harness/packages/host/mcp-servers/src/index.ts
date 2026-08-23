@@ -1,14 +1,14 @@
 /**
  * Host Remote for listing and mutating the managed MCP server document.
- * @module @deepseek-ai/dsh-host-mcp-servers
+ * @module @relay-harness/rlh-host-mcp-servers
  */
 
-import type { Context, FiberState } from '@deepseek-ai/cordis'
-import type {} from '@deepseek-ai/cordis-plugin-loader'
-import { TypertRemoteService, Remote } from '@deepseek-ai/dsh-typert-protocol'
+import type { Context, FiberState } from '@relay-harness/cordis'
+import type {} from '@relay-harness/cordis-plugin-loader'
+import { TypertRemoteService, Remote } from '@relay-harness/rlh-typert-protocol'
 import type {} from 'zod'
-import type { McpServerRecord } from '@deepseek-ai/dsh-mcp-servers-file'
-import { maskRecordSecrets } from '@deepseek-ai/dsh-mcp-servers-file'
+import type { McpServerRecord } from '@relay-harness/rlh-mcp-servers-file'
+import { maskRecordSecrets } from '@relay-harness/rlh-mcp-servers-file'
 import type {
   McpServerEnableRequest,
   McpServerEntry,
@@ -19,7 +19,7 @@ import type {
 
 export type * from './types.ts'
 
-const MCP_MODULE = '@deepseek-ai/dsh-mcp-client'
+const MCP_MODULE = '@relay-harness/rlh-mcp-client'
 const MCP_SHORT = 'mcp-client'
 
 const FIBER_STATE = {

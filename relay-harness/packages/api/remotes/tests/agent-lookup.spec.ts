@@ -1,12 +1,12 @@
 import { describe, expect, it, vi } from 'vitest'
-import { Context } from '@deepseek-ai/cordis'
-import AgentRegistry from '@deepseek-ai/dsh-agent'
-import type { Agent } from '@deepseek-ai/dsh-agent'
-import SessionStore from '@deepseek-ai/dsh-session'
-import type { Session, SessionEvent, SessionHeader, SessionId } from '@deepseek-ai/dsh-session'
-import { createApiRemoteAgentResolver } from '@deepseek-ai/dsh-api-remotes'
-import { TypertLookupFailure } from '@deepseek-ai/dsh-typert-protocol'
-import TypertRegistry from '@deepseek-ai/dsh-typert-registry'
+import { Context } from '@relay-harness/cordis'
+import AgentRegistry from '@relay-harness/rlh-agent'
+import type { Agent } from '@relay-harness/rlh-agent'
+import SessionStore from '@relay-harness/rlh-session'
+import type { Session, SessionEvent, SessionHeader, SessionId } from '@relay-harness/rlh-session'
+import { createApiRemoteAgentResolver } from '@relay-harness/rlh-api-remotes'
+import { TypertLookupFailure } from '@relay-harness/rlh-typert-protocol'
+import TypertRegistry from '@relay-harness/rlh-typert-registry'
 
 const sid = (value: string): SessionId => value as SessionId
 

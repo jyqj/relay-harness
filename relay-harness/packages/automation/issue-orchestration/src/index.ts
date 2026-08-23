@@ -1,16 +1,16 @@
 /**
  * Service Definition for durable tracker-driven issue automation.
- * @module @deepseek-ai/dsh-issue-orchestration
+ * @module @relay-harness/rlh-issue-orchestration
  */
 
-import { Context } from '@deepseek-ai/cordis'
-import { TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol'
+import { Context } from '@relay-harness/cordis'
+import { TypertRemoteService } from '@relay-harness/rlh-typert-protocol'
 import type { IssueCommand, IssueOrchestrationSnapshot, IssueRefreshResult } from './types.ts'
 
 export type * from './types.ts'
 export { IssueOrchestrationError } from './types.ts'
 
-declare module '@deepseek-ai/cordis' {
+declare module '@relay-harness/cordis' {
   interface Context {
     issueOrchestration: IssueOrchestration
   }

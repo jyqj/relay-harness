@@ -1,3 +1,4 @@
+// @ts-check
 const { run, runGit, GH_TIMEOUT_MS } = require('./git-exec');
 const { defaultRefName, resolveCurrentUpstream, parseGitHubRepositoryNameWithOwner } = require('./git-remotes');
 const { parseRepositoryNameWithOwnerFromNormalized } = require('./git-pullrequest');

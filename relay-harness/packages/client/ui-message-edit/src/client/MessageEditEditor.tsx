@@ -3,12 +3,12 @@
  * bubble chrome plus cancel/send. Confirm forks a child session cut before
  * that message, opens it, and submits the edited text. Escape cancels;
  * Enter sends (Shift+Enter inserts a newline), matching the composer.
- * @module @deepseek-ai/dsh-client-ui-message-edit/client/MessageEditEditor
+ * @module @relay-harness/rlh-client-ui-message-edit/client/MessageEditEditor
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ChangeEvent, KeyboardEvent } from 'react'
-import { Button } from '@deepseek-ai/dsh-client-ui-primitives'
+import { Button } from '@relay-harness/rlh-client-ui-primitives'
 import { joinedText } from './text.ts'
 import type { MessageEditEditorProps } from './slots.ts'
 import css from './MessageEditEditor.module.css'

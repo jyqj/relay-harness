@@ -1,3 +1,4 @@
+// @ts-check
 'use strict';
 
 const { ipcRenderer } = require('electron');
@@ -15,94 +16,94 @@ const { applyAnnotationTheme, captureElement } = require('./preview-pick-helpers
 
 globalThis.ipcRenderer = ipcRenderer;
 
-const OVERLAY_ATTRIBUTE = 'data-dshd-annotation-ui';
-const TOOL_ATTRIBUTE = 'data-dshd-annotation-tool';
+const OVERLAY_ATTRIBUTE = 'data-rlhd-annotation-ui';
+const TOOL_ATTRIBUTE = 'data-rlhd-annotation-tool';
 const Z_INDEX_OVERLAY = 2147483646;
-const PRIMARY = 'var(--dshd-preview-primary)';
-const PRIMARY_FILL = 'color-mix(in srgb, var(--dshd-preview-primary) 10%, transparent)';
+const PRIMARY = 'var(--rlhd-preview-primary)';
+const PRIMARY_FILL = 'color-mix(in srgb, var(--rlhd-preview-primary) 10%, transparent)';
 const MAX_MARQUEE_ELEMENTS = 20;
 const CONTENT_LAYER_Z_INDEX = 1;
 const CHROME_LAYER_Z_INDEX = 10;
 
 const OVERLAY_STYLES = `
-:host, [${OVERLAY_ATTRIBUTE}] { font-family: var(--dshd-preview-font-sans, system-ui, sans-serif); color: var(--dshd-preview-foreground); box-sizing: border-box; }
+:host, [${OVERLAY_ATTRIBUTE}] { font-family: var(--rlhd-preview-font-sans, system-ui, sans-serif); color: var(--rlhd-preview-foreground); box-sizing: border-box; }
 *, *::before, *::after { box-sizing: border-box; }
 .ann-toolbar {
   pointer-events: auto; position: fixed; top: 10px; left: 50%; transform: translateX(-50%);
-  display: flex; gap: 2px; border-radius: var(--dshd-preview-radius, 8px);
-  border: 1px solid var(--dshd-preview-border); padding: 4px;
-  background: color-mix(in srgb, var(--dshd-preview-popover) 95%, transparent);
-  color: var(--dshd-preview-popover-foreground); z-index: ${CHROME_LAYER_Z_INDEX};
+  display: flex; gap: 2px; border-radius: var(--rlhd-preview-radius, 8px);
+  border: 1px solid var(--rlhd-preview-border); padding: 4px;
+  background: color-mix(in srgb, var(--rlhd-preview-popover) 95%, transparent);
+  color: var(--rlhd-preview-popover-foreground); z-index: ${CHROME_LAYER_Z_INDEX};
   box-shadow: 0 8px 24px rgba(0,0,0,0.12);
 }
 .ann-editor {
   pointer-events: auto; position: fixed; display: none; max-height: calc(100vh - 16px);
   width: min(360px, calc(100vw - 16px)); flex-direction: column; overflow: hidden;
-  border-radius: calc(var(--dshd-preview-radius, 8px) + 4px);
-  border: 1px solid var(--dshd-preview-border);
-  background: color-mix(in srgb, var(--dshd-preview-popover) 96%, transparent);
-  color: var(--dshd-preview-popover-foreground); z-index: ${CHROME_LAYER_Z_INDEX};
+  border-radius: calc(var(--rlhd-preview-radius, 8px) + 4px);
+  border: 1px solid var(--rlhd-preview-border);
+  background: color-mix(in srgb, var(--rlhd-preview-popover) 96%, transparent);
+  color: var(--rlhd-preview-popover-foreground); z-index: ${CHROME_LAYER_Z_INDEX};
   box-shadow: 0 16px 40px rgba(0,0,0,0.18);
 }
 .ann-row { display: flex; align-items: flex-start; gap: 8px; padding: 8px; }
 .ann-btn {
   display: inline-flex; height: 28px; align-items: center; justify-content: center;
-  border: 1px solid transparent; border-radius: var(--dshd-preview-radius, 6px);
+  border: 1px solid transparent; border-radius: var(--rlhd-preview-radius, 6px);
   padding: 0 8px; cursor: pointer;
-  font: 500 12px var(--dshd-preview-font-sans, system-ui, sans-serif);
-  color: var(--dshd-preview-foreground); background: transparent;
+  font: 500 12px var(--rlhd-preview-font-sans, system-ui, sans-serif);
+  color: var(--rlhd-preview-foreground); background: transparent;
 }
-.ann-btn:hover { background: var(--dshd-preview-accent); }
+.ann-btn:hover { background: var(--rlhd-preview-accent); }
 .ann-btn:disabled { pointer-events: none; opacity: 0.6; }
 .ann-btn[data-active="true"] {
-  background: color-mix(in srgb, var(--dshd-preview-primary) 10%, transparent);
-  color: var(--dshd-preview-primary);
+  background: color-mix(in srgb, var(--rlhd-preview-primary) 10%, transparent);
+  color: var(--rlhd-preview-primary);
 }
 .ann-btn-primary {
-  height: 32px; border-color: var(--dshd-preview-primary);
-  background: var(--dshd-preview-primary); color: var(--dshd-preview-primary-foreground);
+  height: 32px; border-color: var(--rlhd-preview-primary);
+  background: var(--rlhd-preview-primary); color: var(--rlhd-preview-primary-foreground);
 }
-.ann-icon { height: 32px; width: 32px; flex-shrink: 0; background: var(--dshd-preview-muted);
-  color: var(--dshd-preview-muted-foreground); padding: 0; }
+.ann-icon { height: 32px; width: 32px; flex-shrink: 0; background: var(--rlhd-preview-muted);
+  color: var(--rlhd-preview-muted-foreground); padding: 0; }
 .ann-comment {
   min-height: 32px; max-height: 96px; min-width: 0; flex: 1; resize: none; overflow-y: hidden;
   border: 0; border-bottom: 1px solid transparent; background: transparent; padding: 6px 0;
-  font: 14px/20px var(--dshd-preview-font-sans, system-ui, sans-serif);
-  color: var(--dshd-preview-foreground); outline: none;
+  font: 14px/20px var(--rlhd-preview-font-sans, system-ui, sans-serif);
+  color: var(--rlhd-preview-foreground); outline: none;
 }
-.ann-comment:focus { border-bottom-color: var(--dshd-preview-primary); }
-.ann-comment::placeholder { color: var(--dshd-preview-muted-foreground); }
+.ann-comment:focus { border-bottom-color: var(--rlhd-preview-primary); }
+.ann-comment::placeholder { color: var(--rlhd-preview-muted-foreground); }
 .ann-drag {
   display: none; height: 32px; width: 24px; flex-shrink: 0; cursor: grab; border: 0;
-  background: transparent; padding: 0; font: 700 18px/20px var(--dshd-preview-font-sans, system-ui);
-  color: var(--dshd-preview-muted-foreground);
+  background: transparent; padding: 0; font: 700 18px/20px var(--rlhd-preview-font-sans, system-ui);
+  color: var(--rlhd-preview-muted-foreground);
 }
 .ann-styles {
   display: none; max-height: min(176px, calc(100vh - 180px)); overflow: auto;
-  border-top: 1px solid var(--dshd-preview-border);
-  background: color-mix(in srgb, var(--dshd-preview-muted) 40%, transparent); padding: 0 12px;
+  border-top: 1px solid var(--rlhd-preview-border);
+  background: color-mix(in srgb, var(--rlhd-preview-muted) 40%, transparent); padding: 0 12px;
 }
-.ann-section { display: grid; gap: 4px; border-top: 1px solid var(--dshd-preview-border); padding: 8px 0; }
+.ann-section { display: grid; gap: 4px; border-top: 1px solid var(--rlhd-preview-border); padding: 8px 0; }
 .ann-field {
   display: grid; min-height: 28px; grid-template-columns: 82px minmax(0,1fr); align-items: center;
-  gap: 8px; font: 500 12px var(--dshd-preview-font-sans, system-ui); color: var(--dshd-preview-muted-foreground);
+  gap: 8px; font: 500 12px var(--rlhd-preview-font-sans, system-ui); color: var(--rlhd-preview-muted-foreground);
 }
 .ann-control, .ann-field select, .ann-field input[type=number], .ann-field input[type=text], .ann-field input[type=range] {
-  height: 28px; min-width: 0; width: 100%; border-radius: var(--dshd-preview-radius, 6px);
-  border: 1px solid var(--dshd-preview-input); background: var(--dshd-preview-background);
-  padding: 0 8px; font: 12px var(--dshd-preview-font-mono, ui-monospace, monospace);
-  color: var(--dshd-preview-foreground); outline: none;
+  height: 28px; min-width: 0; width: 100%; border-radius: var(--rlhd-preview-radius, 6px);
+  border: 1px solid var(--rlhd-preview-input); background: var(--rlhd-preview-background);
+  padding: 0 8px; font: 12px var(--rlhd-preview-font-mono, ui-monospace, monospace);
+  color: var(--rlhd-preview-foreground); outline: none;
 }
 .ann-unit { position: relative; min-width: 0; }
 .ann-unit-label {
   pointer-events: none; position: absolute; top: 50%; right: 8px; transform: translateY(-50%);
-  font: 12px var(--dshd-preview-font-mono, ui-monospace, monospace); color: var(--dshd-preview-muted-foreground);
+  font: 12px var(--rlhd-preview-font-mono, ui-monospace, monospace); color: var(--rlhd-preview-muted-foreground);
 }
 .ann-label {
   position: fixed; pointer-events: none; white-space: nowrap; text-overflow: ellipsis;
-  overflow: hidden; max-width: 280px; border-radius: var(--dshd-preview-radius, 6px);
-  background: var(--dshd-preview-primary); color: var(--dshd-preview-primary-foreground);
-  padding: 4px 8px; font: 600 12px var(--dshd-preview-font-sans, system-ui);
+  overflow: hidden; max-width: 280px; border-radius: var(--rlhd-preview-radius, 6px);
+  background: var(--rlhd-preview-primary); color: var(--rlhd-preview-primary-foreground);
+  padding: 4px 8px; font: 600 12px var(--rlhd-preview-font-sans, system-ui);
   z-index: ${CONTENT_LAYER_Z_INDEX}; box-shadow: 0 4px 12px rgba(0,0,0,0.16);
 }
 input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { appearance: none; margin: 0; }
@@ -569,7 +570,7 @@ function startAnnotation() {
     const label = document.createElement('span');
     label.textContent = labelText;
     const control = document.createElement('div');
-    control.style.cssText = 'display:grid;height:28px;grid-template-columns:22px minmax(0,1fr);align-items:center;gap:4px;border-radius:6px;border:1px solid var(--dshd-preview-input);background:var(--dshd-preview-background);padding:0 4px';
+    control.style.cssText = 'display:grid;height:28px;grid-template-columns:22px minmax(0,1fr);align-items:center;gap:4px;border-radius:6px;border:1px solid var(--rlhd-preview-input);background:var(--rlhd-preview-background);padding:0 4px';
     const color = document.createElement('input');
     color.type = 'color';
     color.setAttribute('aria-label', labelText);
@@ -577,7 +578,7 @@ function startAnnotation() {
     const text = document.createElement('input');
     text.type = 'text';
     text.setAttribute('aria-label', `${labelText} value`);
-    text.style.cssText = 'min-width:0;width:100%;border:0;background:transparent;font:12px var(--dshd-preview-font-mono,ui-monospace,monospace);color:var(--dshd-preview-foreground);outline:none';
+    text.style.cssText = 'min-width:0;width:100%;border:0;background:transparent;font:12px var(--rlhd-preview-font-mono,ui-monospace,monospace);color:var(--rlhd-preview-foreground);outline:none';
     color.addEventListener('input', () => {
       text.value = color.value;
       setStyleForSelected(property, color.value);
@@ -631,7 +632,7 @@ function startAnnotation() {
   const dimensions = document.createElement('div');
   dimensions.style.cssText = 'display:grid;grid-template-columns:82px minmax(0,1fr);gap:8px;align-items:center';
   const dimensionLabel = document.createElement('div');
-  dimensionLabel.style.cssText = 'display:grid;gap:8px;font:500 12px var(--dshd-preview-font-sans,system-ui);color:var(--dshd-preview-muted-foreground)';
+  dimensionLabel.style.cssText = 'display:grid;gap:8px;font:500 12px var(--rlhd-preview-font-sans,system-ui);color:var(--rlhd-preview-muted-foreground)';
   dimensionLabel.innerHTML = '<span>Width</span><span>Height</span>';
   const dimensionControls = document.createElement('div');
   dimensionControls.style.cssText = 'position:relative;display:grid;gap:3px;padding-left:22px';
@@ -993,7 +994,7 @@ function startAnnotation() {
         if (found === 0) {
           const region = { id: nextId('region'), rect };
           regions.push(region);
-          const regionBox = createBox(PRIMARY, 'color-mix(in srgb, var(--dshd-preview-primary) 6%, transparent)');
+          const regionBox = createBox(PRIMARY, 'color-mix(in srgb, var(--rlhd-preview-primary) 6%, transparent)');
           regionBox.setAttribute('data-region-id', region.id);
           positionBox(regionBox, rect);
           root.appendChild(regionBox);

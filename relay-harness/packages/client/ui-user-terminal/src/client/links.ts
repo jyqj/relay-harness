@@ -206,10 +206,10 @@ export function activateTerminalTarget(
 }
 
 /** sessionStorage key used when Preview is not mounted yet. */
-export const PENDING_PREVIEW_URL_KEY = 'dshd-pending-preview-url'
+export const PENDING_PREVIEW_URL_KEY = 'rlhd-pending-preview-url'
 
 /** Window event that opens a surfaces kind (and optional preview URL). */
-export const OPEN_SURFACE_EVENT = 'dshd-open-surface'
+export const OPEN_SURFACE_EVENT = 'rlhd-open-surface'
 
 /** One xterm buffer line used to rejoin wrapped output. */
 export interface TerminalBufferLineLike {

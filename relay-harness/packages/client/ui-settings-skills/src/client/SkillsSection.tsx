@@ -8,8 +8,8 @@ import type {
   SkillInventoryDetail,
   SkillInventoryEntry,
   SkillInventorySnapshot,
-} from '@deepseek-ai/dsh-api-remotes/client'
-import type { SessionId } from '@deepseek-ai/dsh-client-runtime/client'
+} from '@relay-harness/rlh-api-remotes/client'
+import type { SessionId } from '@relay-harness/rlh-client-runtime/client'
 import {
   Button,
   IconPlusOutline16,
@@ -22,14 +22,14 @@ import {
   Modal,
   Pill,
   Switch,
-} from '@deepseek-ai/dsh-client-ui-primitives'
-import type { InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
+} from '@relay-harness/rlh-client-ui-primitives'
+import type { InjectFace, PropsLocale, PropsRuntime } from '@relay-harness/rlh-client-ui-slots'
 import type { SkillsSettingsKey } from './locales.ts'
 import styles from './SkillsSection.module.css'
 
 const NAME = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 
-type SkillCreateRoot = 'user-dsh' | 'project-dsh'
+type SkillCreateRoot = 'user-rlh' | 'project-rlh'
 type SourceFilter = 'all' | 'user' | 'project' | 'bundled' | 'other'
 type RowAction = 'detail' | 'invocation'
 type FieldErrors = Partial<Record<'name' | 'description' | 'content', string>>
@@ -590,20 +590,20 @@ function SkillEditor({ open, creating, draft, cwd, pending, submitError, t, onCl
           <fieldset className={styles.scopeField}>
             <legend className={styles.label}>{t('scope')}</legend>
             <div className={styles.scopeOptions}>
-              <Pill active={form.root === 'user-dsh'} aria-pressed={form.root === 'user-dsh'} onClick={() => { setField('root', 'user-dsh') }}>
+              <Pill active={form.root === 'user-rlh'} aria-pressed={form.root === 'user-rlh'} onClick={() => { setField('root', 'user-rlh') }}>
                 {t('scopeUser')}
               </Pill>
               <Pill
-                active={form.root === 'project-dsh'}
-                aria-pressed={form.root === 'project-dsh'}
+                active={form.root === 'project-rlh'}
+                aria-pressed={form.root === 'project-rlh'}
                 disabled={cwd === undefined}
-                onClick={() => { setField('root', 'project-dsh') }}
+                onClick={() => { setField('root', 'project-rlh') }}
               >
                 {t('scopeProject')}
               </Pill>
             </div>
             {cwd === undefined && <span className={styles.fieldHint}>{t('projectUnavailable')}</span>}
-            {cwd !== undefined && form.root === 'project-dsh' && <span className={styles.fieldHint}>{format(t('projectPath'), { cwd })}</span>}
+            {cwd !== undefined && form.root === 'project-rlh' && <span className={styles.fieldHint}>{format(t('projectPath'), { cwd })}</span>}
           </fieldset>
         )}
         <label className={styles.field}>
@@ -680,7 +680,7 @@ function emptySkill(): EditorDraft {
   return {
     name: '',
     description: '',
-    root: 'user-dsh',
+    root: 'user-rlh',
     modelInvocable: true,
     userInvocable: true,
     content: '',
@@ -693,7 +693,7 @@ function editorDraft(detail: SkillInventoryDetail): EditorDraft {
     description: detail.description,
     ...detail.whenToUse === undefined ? {} : { whenToUse: detail.whenToUse },
     content: detail.content,
-    root: detail.source === 'project-dsh' ? 'project-dsh' : 'user-dsh',
+    root: detail.source === 'project-rlh' ? 'project-rlh' : 'user-rlh',
     modelInvocable: detail.modelInvocable,
     userInvocable: detail.userInvocable,
   }
@@ -704,8 +704,8 @@ function skillKey(skill: Pick<SkillInventoryEntry, 'source' | 'name'>): string {
 }
 
 function sourceBucket(source: string): Exclude<SourceFilter, 'all'> {
-  if (source === 'user-dsh' || source === 'user-agents') return 'user'
-  if (source === 'project-dsh' || source === 'project-agents') return 'project'
+  if (source === 'user-rlh' || source === 'user-agents') return 'user'
+  if (source === 'project-rlh' || source === 'project-agents') return 'project'
   if (source === 'bundled') return 'bundled'
   return 'other'
 }

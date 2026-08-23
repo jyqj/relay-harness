@@ -1,30 +1,30 @@
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { Context } from '@deepseek-ai/cordis'
-import AgentRegistry from '@deepseek-ai/dsh-agent'
-import AgentLoop from '@deepseek-ai/dsh-agent-loop'
+import { Context } from '@relay-harness/cordis'
+import AgentRegistry from '@relay-harness/rlh-agent'
+import AgentLoop from '@relay-harness/rlh-agent-loop'
 import LlmRuntime, {
   LlmAdapter,
   createUserMessage,
   type GenerateOptions,
   type LlmResolvedModelInfo,
   type StreamChunk,
-} from '@deepseek-ai/dsh-llm'
+} from '@relay-harness/rlh-llm'
 import { MEMORY_EXTRACTION_PROMPT_VERSION } from '../src/prompt.ts'
 import { collectExtractionSources } from '../src/sources.ts'
-import * as Extractor from '@deepseek-ai/dsh-memory-extractor-llm'
-import * as MemoryAgent from '@deepseek-ai/dsh-memory-agent'
-import SqliteLongTermMemory from '@deepseek-ai/dsh-memory-sqlite'
+import * as Extractor from '@relay-harness/rlh-memory-extractor-llm'
+import * as MemoryAgent from '@relay-harness/rlh-memory-agent'
+import SqliteLongTermMemory from '@relay-harness/rlh-memory-sqlite'
 import type {
   EnqueueMemoryExtractionInput,
   MemoryEntry,
   MemoryExtractionJob,
   RememberMemoryInput,
-} from '@deepseek-ai/dsh-memory/types'
-import SessionStore, { SessionId } from '@deepseek-ai/dsh-session'
-import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
-import ToolRuntime from '@deepseek-ai/dsh-tools'
+} from '@relay-harness/rlh-memory/types'
+import SessionStore, { SessionId } from '@relay-harness/rlh-session'
+import SystemPrompt from '@relay-harness/rlh-system-prompt'
+import ToolRuntime from '@relay-harness/rlh-tools'
 import { afterEach, describe, expect, it } from 'vitest'
 
 type ScriptEntry = string | { kind: 'hang' } | { kind: 'error'; message: string }
@@ -75,7 +75,7 @@ afterEach(async () => {
 })
 
 async function databasePath(): Promise<string> {
-  const directory = await mkdtemp(join(tmpdir(), 'dsh-memory-extractor-'))
+  const directory = await mkdtemp(join(tmpdir(), 'rlh-memory-extractor-'))
   temporaryDirectories.push(directory)
   return join(directory, 'memory.db')
 }
@@ -87,7 +87,7 @@ function candidate(content: string, quote: string, kind = 'fact'): string {
 function input(overrides: Partial<EnqueueMemoryExtractionInput> = {}): EnqueueMemoryExtractionInput {
   return {
     promptVersion: MEMORY_EXTRACTION_PROMPT_VERSION,
-    scope: { workspaceId: 'global', userId: 'local', agentId: 'deepseek-harness' },
+    scope: { workspaceId: 'global', userId: 'local', agentId: 'relay-harness' },
     sessionId: SessionId('source-session'),
     turn: 1,
     sourceHash: 'a'.repeat(64),
@@ -174,7 +174,7 @@ describe('durable LLM memory extractor', () => {
     if (collected === undefined) throw new Error('expected extraction sources')
     const expected = await ctx.memoryExtractionQueue.enqueue({
       ...input(),
-      scope: { workspaceId: '/workspace', userId: 'local', agentId: 'deepseek-harness' },
+      scope: { workspaceId: '/workspace', userId: 'local', agentId: 'relay-harness' },
       sessionId: session.id,
       sourceHash: collected.sourceHash,
       route: collected.route,

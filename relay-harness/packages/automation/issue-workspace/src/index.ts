@@ -1,15 +1,15 @@
 /**
  * Service Definition for deterministic per-issue workspace lifecycle.
- * @module @deepseek-ai/dsh-issue-workspace
+ * @module @relay-harness/rlh-issue-workspace
  */
 
-import { Context, Service } from '@deepseek-ai/cordis'
-import type { TrackerIssue } from '@deepseek-ai/dsh-tracker'
+import { Context, Service } from '@relay-harness/cordis'
+import type { TrackerIssue } from '@relay-harness/rlh-tracker'
 import type { IssueWorkspace } from './types.ts'
 
 export type * from './types.ts'
 
-declare module '@deepseek-ai/cordis' {
+declare module '@relay-harness/cordis' {
   interface Context {
     issueWorkspace: IssueWorkspaceProvisioner
   }

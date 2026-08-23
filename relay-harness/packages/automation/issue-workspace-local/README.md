@@ -1,8 +1,8 @@
-# `@deepseek-ai/dsh-issue-workspace-local`
+# `@relay-harness/rlh-issue-workspace-local`
 
 English | [中文](README.zh.md)
 
-Local provider that derives a sanitized collision-resistant directory key, canonicalizes the root and target, rejects symlink escape, preserves reused workspaces, removes failed new setup, and runs bounded hooks through `ctx.subprocess` with issue metadata in explicit `DSH_*` environment fields.
+Local provider that derives a sanitized collision-resistant directory key, canonicalizes the root and target, rejects symlink escape, preserves reused workspaces, removes failed new setup, and runs bounded hooks through `ctx.subprocess` with issue metadata in explicit `RLH_*` environment fields.
 
 ## Model Experience
 

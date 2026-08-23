@@ -31,7 +31,7 @@
       },
       "npm": "dsh-composer-expand",
       "stars": 4,
-      "install": "dsh plugin --profile web add dsh-composer-expand",
+      "install": "rlh plugin --profile web add dsh-composer-expand",
       "added": "2026-08-15"
     },
     {
@@ -46,7 +46,7 @@
       },
       "npm": null,
       "stars": 21,
-      "install": "dsh plugin --profile web add github:01Virex/dsh-status-rotator",
+      "install": "rlh plugin --profile web add github:01Virex/dsh-status-rotator",
       "added": "2026-08-14"
     },
     {
@@ -61,7 +61,7 @@
       },
       "npm": null,
       "stars": 3,
-      "install": "dsh plugin --profile web add github:DamonKoy/dsh-web-ui#path:/packages/dsh-aionui-panel",
+      "install": "rlh plugin --profile web add github:DamonKoy/dsh-web-ui#path:/packages/dsh-aionui-panel",
       "added": "2026-08-17"
     },
     {
@@ -76,7 +76,7 @@
       },
       "npm": null,
       "stars": 8,
-      "install": "dsh plugin --profile web add github:0xsline/dsh-spotlight",
+      "install": "rlh plugin --profile web add github:0xsline/dsh-spotlight",
       "added": "2026-08-13"
     },
     {
@@ -91,7 +91,7 @@
       },
       "npm": "@dsh-external/dsh-genui",
       "stars": 196,
-      "install": "dsh plugin --profile web add @dsh-external/dsh-genui",
+      "install": "rlh plugin --profile web add @dsh-external/dsh-genui",
       "added": "2026-08-13"
     },
     {
@@ -106,7 +106,7 @@
       },
       "npm": null,
       "stars": 0,
-      "install": "dsh plugin --profile web add github:example/old-loop",
+      "install": "rlh plugin --profile web add github:example/old-loop",
       "added": "2026-07-01",
       "deprecated": true,
       "replacement": "DamonKoy/dsh-web-ui#dsh-aionui-panel"
@@ -123,7 +123,7 @@
       },
       "npm": null,
       "stars": 3,
-      "install": "dsh plugin --profile web add github:DamonKoy/dsh-web-ui#path:/packages/dsh-skins",
+      "install": "rlh plugin --profile web add github:DamonKoy/dsh-web-ui#path:/packages/dsh-skins",
       "added": "2026-08-17",
       "screenshots": [
         "https://raw.githubusercontent.com/DamonKoy/dsh-web-ui/main/packages/dsh-skins/preview.png"

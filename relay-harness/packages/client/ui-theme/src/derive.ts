@@ -1,4 +1,4 @@
-/** Seed-color derivation into `--dsw-alias-*` token overrides. */
+/** Seed-color derivation into `--rlw-alias-*` token overrides. */
 
 import type { ThemeSeeds, ThemeTokens } from './theme-family.ts'
 
@@ -18,8 +18,8 @@ const STATUS_PALETTE = {
 } as const
 
 /**
- * Minimum WCAG contrast of `--dsw-specific-sidebar-nav-item-active` against
- * `--dsw-alias-bg-layer-2` (settings nav and chat sidebar sit on raised fills).
+ * Minimum WCAG contrast of `--rlw-specific-sidebar-nav-item-active` against
+ * `--rlw-alias-bg-layer-2` (settings nav and chat sidebar sit on raised fills).
  */
 export const NAV_ITEM_ACTIVE_MIN_CONTRAST = 1.25
 
@@ -29,12 +29,12 @@ export const NAV_ITEM_ACTIVE_ACCENT_MIN_CONTRAST = 1.4
 /**
  * Derive alias-layer tokens from three seed colors and contrast.
  * The canvas stays `seeds.background`. Accent paints every colorful chrome
- * token the sheets otherwise pin to DeepSeek blue (send, links, user bubble,
+ * token the sheets otherwise pin to the Relay accent blue (send, links, user bubble,
  * sidebar selection) and tints raised surfaces so a custom family is visible
  * without opening Settings. Incomplete coverage is intentional: unset names
  * keep the CSS-sheet values.
  * @param seeds - accent / background / foreground plus optional overrides.
- * @returns `--dsw-*` variable map for the active half.
+ * @returns `--rlw-*` variable map for the active half.
  */
 export function deriveThemeTokens(seeds: ThemeSeeds): ThemeTokens {
   const contrastFactor = clamp(seeds.contrast / 100, 0, 1)
@@ -92,34 +92,34 @@ export function deriveThemeTokens(seeds: ThemeSeeds): ThemeTokens {
   const onAccent = pickReadableText(seeds.accent, [seeds.foreground, seeds.background, '#ffffff', '#0f1115'])
   const status = isDark ? STATUS_PALETTE.dark : STATUS_PALETTE.light
   const tokens: ThemeTokens = {
-    '--dsw-alias-bg-base': seeds.background,
-    '--dsw-alias-bg-layer-1': card,
-    '--dsw-alias-bg-layer-2': layer2,
-    '--dsw-alias-bg-overlay': overlay,
-    '--dsw-alias-label-primary': seeds.foreground,
-    '--dsw-alias-label-secondary': mutedForeground,
-    '--dsw-alias-label-primary-foreground': onAccent,
-    '--dsw-alias-brand-primary': seeds.accent,
-    '--dsw-alias-brand-primary-invert': onAccent,
-    '--dsw-alias-brand-text': seeds.accent,
-    '--dsw-alias-brand-primary-new-colorprimary-new-color': seeds.accent,
-    '--dsw-alias-button-primary-fill': seeds.accent,
-    '--dsw-alias-button-primary-hover': accentHover,
-    '--dsw-alias-button-info-fill': seeds.accent,
-    '--dsw-alias-button-info-hover': accentHover,
-    '--dsw-alias-state-business-primary': seeds.accent,
-    '--dsw-alias-state-business-tertiary': accentWash,
-    '--dsw-alias-border-l1': border,
-    '--dsw-alias-border-l2': input,
-    '--dsw-alias-state-error-primary': status.destructive,
-    '--dsw-alias-state-success-primary': status.success,
-    '--dsw-alias-state-warn-primary': status.warning,
-    '--dsw-specific-bubble': accentWash,
-    '--dsw-specific-bubble-highlight': accentWashStrong,
-    '--dsw-specific-sidebar-fill': sidebar,
-    '--dsw-specific-sidebar-nav-item-active': navActive,
-    '--dsw-specific-sidebar-nav-item-active-accent': navActiveAccent,
-    '--dsw-alias-interactive-bg-hover-accent': withAlpha(seeds.accent, isDark ? 0.22 : 0.14),
+    '--rlw-alias-bg-base': seeds.background,
+    '--rlw-alias-bg-layer-1': card,
+    '--rlw-alias-bg-layer-2': layer2,
+    '--rlw-alias-bg-overlay': overlay,
+    '--rlw-alias-label-primary': seeds.foreground,
+    '--rlw-alias-label-secondary': mutedForeground,
+    '--rlw-alias-label-primary-foreground': onAccent,
+    '--rlw-alias-brand-primary': seeds.accent,
+    '--rlw-alias-brand-primary-invert': onAccent,
+    '--rlw-alias-brand-text': seeds.accent,
+    '--rlw-alias-brand-primary-new-colorprimary-new-color': seeds.accent,
+    '--rlw-alias-button-primary-fill': seeds.accent,
+    '--rlw-alias-button-primary-hover': accentHover,
+    '--rlw-alias-button-info-fill': seeds.accent,
+    '--rlw-alias-button-info-hover': accentHover,
+    '--rlw-alias-state-business-primary': seeds.accent,
+    '--rlw-alias-state-business-tertiary': accentWash,
+    '--rlw-alias-border-l1': border,
+    '--rlw-alias-border-l2': input,
+    '--rlw-alias-state-error-primary': status.destructive,
+    '--rlw-alias-state-success-primary': status.success,
+    '--rlw-alias-state-warn-primary': status.warning,
+    '--rlw-specific-bubble': accentWash,
+    '--rlw-specific-bubble-highlight': accentWashStrong,
+    '--rlw-specific-sidebar-fill': sidebar,
+    '--rlw-specific-sidebar-nav-item-active': navActive,
+    '--rlw-specific-sidebar-nav-item-active-accent': navActiveAccent,
+    '--rlw-alias-interactive-bg-hover-accent': withAlpha(seeds.accent, isDark ? 0.22 : 0.14),
   }
   if (seeds.overrides) {
     for (const [name, value] of Object.entries(seeds.overrides)) {

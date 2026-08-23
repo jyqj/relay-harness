@@ -1,0 +1,3 @@
+# lefthook's install step runs at this git root and drops an example stub here;
+# the real hook config lives at relay-harness/lefthook.yml.
+/lefthook.yml

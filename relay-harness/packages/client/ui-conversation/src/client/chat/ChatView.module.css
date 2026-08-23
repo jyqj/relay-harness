@@ -17,7 +17,7 @@
   overflow-y: auto;
   /* Sides = composer clearance + 16px: on narrow viewports the transcript
      stays exactly 32px narrower than the input card (the shared width rule). */
-  padding: 16px calc(var(--dsh-composer-side-clearance) + 16px);
+  padding: 16px calc(var(--rlh-composer-side-clearance) + 16px);
 }
 
 :global([data-conversation-scroll]) .root {
@@ -32,11 +32,11 @@
   min-height: auto;
 }
 
-/* Message column: shared chat width (ConversationRoot --dsh-chat-content-width),
+/* Message column: shared chat width (ConversationRoot --rlh-chat-content-width),
    centered on the same axis as the input box (which caps at chat + 16px); the
    scroller itself stays full-bleed. */
 .column {
-  max-width: var(--dsh-chat-content-width);
+  max-width: var(--rlh-chat-content-width);
   width: 100%;
   margin: 0 auto;
   display: flex;
@@ -85,15 +85,15 @@
   display: inline-flex;
   align-items: center;
   height: 26px;
-  font: var(--dsw-font-s-strong-14);
+  font: var(--rlw-font-s-strong-14);
   white-space: nowrap;
   background: linear-gradient(
     90deg,
-    var(--dsw-static-deepseek-500) 0%,
-    var(--dsw-static-deepseek-500) 40%,
-    var(--dsw-static-deepseek-200) 50%,
-    var(--dsw-static-deepseek-500) 60%,
-    var(--dsw-static-deepseek-500) 100%
+    var(--rlw-static-relay-500) 0%,
+    var(--rlw-static-relay-500) 40%,
+    var(--rlw-static-relay-200) 50%,
+    var(--rlw-static-relay-500) 60%,
+    var(--rlw-static-relay-500) 100%
   );
   background-position: 100% 0;
   background-size: 250% 100%;
@@ -101,19 +101,19 @@
   color: transparent;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  animation: dsh-turn-status-shimmer 1.8s linear infinite;
+  animation: rlh-turn-status-shimmer 1.8s linear infinite;
 }
 
 .turnStatusClock {
   margin-left: 8px;
-  font: var(--dsw-font-xs-13);
+  font: var(--rlw-font-xs-13);
   font-weight: 400;
   font-variant-numeric: tabular-nums;
-  color: var(--dsw-alias-label-caption);
-  -webkit-text-fill-color: var(--dsw-alias-label-caption);
+  color: var(--rlw-alias-label-caption);
+  -webkit-text-fill-color: var(--rlw-alias-label-caption);
 }
 
-@keyframes dsh-turn-status-shimmer {
+@keyframes rlh-turn-status-shimmer {
   to {
     background-position: 0 0;
   }
@@ -128,13 +128,13 @@
 }
 
 .hint {
-  color: var(--dsw-alias-label-tertiary);
+  color: var(--rlw-alias-label-tertiary);
   font-size: 12px;
   line-height: 18px;
 }
 
 .openError {
-  color: var(--dsw-alias-state-error-primary);
+  color: var(--rlw-alias-state-error-primary);
   font-size: 12px;
   line-height: 18px;
 }
@@ -149,8 +149,8 @@
   border-radius: 14px;
   padding: 4px 12px;
   font-size: 12px;
-  color: var(--dsw-alias-label-secondary);
-  background: var(--dsw-alias-interactive-bg-hover-solid);
+  color: var(--rlw-alias-label-secondary);
+  background: var(--rlw-alias-interactive-bg-hover-solid);
   cursor: pointer;
 }
 
@@ -171,16 +171,16 @@
   height: 0;
   display: flex;
   justify-content: flex-end;
-  padding-right: max(0px, calc((100% - var(--dsh-chat-content-width)) / 2));
+  padding-right: max(0px, calc((100% - var(--rlh-chat-content-width)) / 2));
   pointer-events: none;
 }
 
 :global([data-conversation-scroll]) .toBottomSlot {
   /* Clears the sticky composer stack (docks + input card + stats): the live
-     height rides --dsh-composer-height (ConversationRoot's seat observer) so
+     height rides --rlh-composer-height (ConversationRoot's seat observer) so
      the control follows a growing textarea; the fallback covers the first
      paint before the observer fires. */
-  bottom: calc(var(--dsh-composer-height, 152px) + 16px);
+  bottom: calc(var(--rlh-composer-height, 152px) + 16px);
 }
 
 .toBottom {
@@ -191,17 +191,17 @@
   height: 34px;
   margin-top: -34px;
   padding: 0;
-  border: 1px solid var(--dsw-alias-border-l2);
+  border: 1px solid var(--rlw-alias-border-l2);
   border-radius: 100px;
-  color: var(--dsw-alias-label-primary);
-  background: var(--dsw-alias-button-floating-fill);
-  box-shadow: var(--dsw-shadow-lv2);
+  color: var(--rlw-alias-label-primary);
+  background: var(--rlw-alias-button-floating-fill);
+  box-shadow: var(--rlw-shadow-lv2);
   cursor: pointer;
   pointer-events: auto;
 }
 
 .toBottom:hover {
-  background: var(--dsw-alias-button-floating-hover);
+  background: var(--rlw-alias-button-floating-hover);
 }
 
 /* Host open-path refusal: same dialog family as the workspace folder error. */

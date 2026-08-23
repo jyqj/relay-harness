@@ -1,6 +1,6 @@
-import { Context } from '@deepseek-ai/cordis'
+import { Context } from '@relay-harness/cordis'
 import { describe, expect, it, vi } from 'vitest'
-import type { SessionId, WorkspaceId, WorkspaceView } from '@deepseek-ai/dsh-api-remotes/client'
+import type { SessionId, WorkspaceId, WorkspaceView } from '@relay-harness/rlh-api-remotes/client'
 import { SessionRuntime } from '../src/client/sessions/service.ts'
 import { WorkspaceManager } from '../src/client/workspaces/manager.ts'
 import { DirectoryBrowseError, WorkspaceCreateError, WorkspaceRuntime } from '../src/client/workspaces/service.ts'
@@ -275,7 +275,7 @@ describe('WorkspaceRuntime', () => {
     await expect(workspaces.connectWorkspace(wid('alpha'))).resolves.toBe('s-fresh-2')
   })
 
-  it('connectWorkspace does not reuse a blank dshbot or subagent member', async () => {
+  it('connectWorkspace does not reuse a blank rlhbot or subagent member', async () => {
     const ctx = new Context()
     const api = new FakeApiClient()
     const sessions = new SessionRuntime(ctx, api, fakeRemote())
@@ -287,7 +287,7 @@ describe('WorkspaceRuntime', () => {
       items: [
         {
           sessionId: sid('s-room'), updatedAt: 1, running: false, blank: true,
-          cwd: '/w/alpha', origin: 'dshbot',
+          cwd: '/w/alpha', origin: 'rlhbot',
         },
         {
           sessionId: sid('s-child'), updatedAt: 2, running: false, blank: true,
@@ -302,7 +302,7 @@ describe('WorkspaceRuntime', () => {
     expect(api.callsOf('session.create')).toEqual([{ workspaceId: 'alpha' }])
   })
 
-  it('connectNoDirectory does not reuse a scratch blank stamped origin dshbot', async () => {
+  it('connectNoDirectory does not reuse a scratch blank stamped origin rlhbot', async () => {
     const ctx = new Context()
     const api = new FakeApiClient()
     const sessions = new SessionRuntime(ctx, api, fakeRemote())
@@ -312,7 +312,7 @@ describe('WorkspaceRuntime', () => {
       items: [
         {
           sessionId: sid('s-room'), updatedAt: 1, running: false, blank: true,
-          cwd: '/scratch', origin: 'dshbot',
+          cwd: '/scratch', origin: 'rlhbot',
         },
       ] as never[],
     }))

@@ -13,12 +13,12 @@ import {
   PROFILE_TEMPLATES,
   PROFILES_DIR,
   readProfileManifest,
-} from '@deepseek-ai/dsh-app-boot'
+} from '@relay-harness/rlh-app-boot'
 import { homePatchPath, composeProfile, prepareProfile, userPatchWatchFiles } from '../src/profile-boot.ts'
 
 const tmpDirs: string[] = []
 const tmp = (): string => {
-  const dir = mkdtempSync(join(tmpdir(), 'dsh-profile-boot-'))
+  const dir = mkdtempSync(join(tmpdir(), 'rlh-profile-boot-'))
   tmpDirs.push(dir)
   return dir
 }
@@ -32,7 +32,7 @@ afterEach(() => {
 describe('prepareProfile', () => {
   it('template selection skips the user layer and does not rewrite the manifest', () => {
     const home = tmp()
-    vi.stubEnv('DSH_HOME', home)
+    vi.stubEnv('RLH_HOME', home)
     const dir = join(home, PROFILES_DIR, 'web')
     const listed = [...PROFILE_TEMPLATES.web ?? [], 'ghost-bundle']
     initProfile(dir, listed)
@@ -40,7 +40,7 @@ describe('prepareProfile', () => {
     const profile = prepareProfile('web', { userLayer: false, bundles: 'template' })
     expect(profile.layers.map(layer => layer.packageName)).toEqual([...PROFILE_TEMPLATES.web ?? []])
     expect(profile.patches).toEqual([])
-    expect(readProfileManifest('dsh', dir).dsh?.profile?.bundles).toEqual(listed)
+    expect(readProfileManifest('rlh', dir).rlh?.profile?.bundles).toEqual(listed)
     expect(homePatchPath()).toBe(join(home, PROFILE_PATCH_FILENAME))
   })
 })
@@ -48,7 +48,7 @@ describe('prepareProfile', () => {
 describe('composeProfile skip-user-plugins', () => {
   it('skips invalid profile and home user patches, keeps --patch, and does not watch them', () => {
     const home = tmp()
-    vi.stubEnv('DSH_HOME', home)
+    vi.stubEnv('RLH_HOME', home)
     const dir = join(home, PROFILES_DIR, 'web')
     initProfile(dir, [...PROFILE_TEMPLATES.web ?? [], 'ghost-bundle'])
     writeFileSync(join(dir, PROFILE_PATCH_FILENAME), 'not: a list\n')

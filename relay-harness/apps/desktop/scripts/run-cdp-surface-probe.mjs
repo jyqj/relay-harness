@@ -3,12 +3,12 @@
  * Quick CDP probe against a packaged/source Electron instance started with
  * --remote-debugging-port. Verifies terminal drawer + surface tabs manually.
  *
- * Env: DSH_CDP_PORT (default 9333), DSH_CDP_OUT optional JSON path
+ * Env: RLH_CDP_PORT (default 9333), RLH_CDP_OUT optional JSON path
  */
 import { writeFileSync } from 'node:fs'
 
-const port = Number(process.env.DSH_CDP_PORT || 9333)
-const outPath = process.env.DSH_CDP_OUT || ''
+const port = Number(process.env.RLH_CDP_PORT || 9333)
+const outPath = process.env.RLH_CDP_OUT || ''
 
 async function listTargets() {
   const res = await fetch(`http://127.0.0.1:${port}/json/list`)
@@ -19,7 +19,7 @@ async function listTargets() {
 function pickPage(targets) {
   const pages = targets.filter((t) => t.type === 'page' && t.webSocketDebuggerUrl)
   const harness = pages.find((t) => /^https?:\/\/(127\.0\.0\.1|localhost)/i.test(t.url))
-    || pages.find((t) => /dsh|harness/i.test(`${t.url} ${t.title}`) && !/boot\.html/i.test(t.url))
+    || pages.find((t) => /rlh|harness/i.test(`${t.url} ${t.title}`) && !/boot\.html/i.test(t.url))
     || pages.find((t) => !/boot\.html|devtools/i.test(`${t.url} ${t.title}`))
     || pages[0]
   if (!harness) throw new Error(`no page target in ${JSON.stringify(targets.map((t) => t.url))}`)
@@ -93,7 +93,7 @@ async function main() {
   const afterTerminal = await evalExpr(`(() => ({
     xterm: Boolean(document.querySelector('.xterm')),
     terminalish: Boolean(document.querySelector('[class*="terminal"], [class*="Terminal"]')),
-    bodyTextHasEcho: /dshd|终端|Terminal/i.test(document.body.innerText||''),
+    bodyTextHasEcho: /rlhd|终端|Terminal/i.test(document.body.innerText||''),
   }))()`)
 
   // Open surfaces then try Diff / Browser / Agents cards or tabs

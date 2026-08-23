@@ -3,7 +3,7 @@ import {
   parseExtractionOutput,
   renderExtractionPrompt,
 } from '../src/prompt.ts'
-import { SessionId } from '@deepseek-ai/dsh-session'
+import { SessionId } from '@relay-harness/rlh-session'
 
 describe('memory extraction prompt', () => {
   it('renders tag-safe source JSON with evidence metadata', () => {

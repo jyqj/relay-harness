@@ -1,4 +1,4 @@
-import type { Branded } from '@deepseek-ai/dsh-brand'
+import type { Branded } from '@relay-harness/rlh-brand'
 import type {
   AssistantMessage,
   CallId,
@@ -10,7 +10,7 @@ import type {
   ToolResultMessage,
   ToolSchema,
   UserMessage,
-} from '@deepseek-ai/dsh-llm'
+} from '@relay-harness/rlh-llm'
 import type { JsonValue } from './json.ts'
 
 // The lossless-JSON payload type belongs to this client-safe face too: a wire
@@ -32,11 +32,11 @@ export function SessionId(id: string): SessionId {
 
 /**
  * Coarse product classification on a session header. `subagent` marks a
- * delegated child; `dshbot` marks a desktop-plugin contact or room parent
+ * delegated child; `rlhbot` marks a desktop-plugin contact or room parent
  * that the workspace browser hides. Absence means an ordinary top-level
  * session.
  */
-export type SessionOrigin = 'subagent' | 'dshbot'
+export type SessionOrigin = 'subagent' | 'rlhbot'
 
 /**
  * Whether a header origin value is one of the durable classifications.
@@ -44,7 +44,7 @@ export type SessionOrigin = 'subagent' | 'dshbot'
  * @returns true when the value may be stored on {@link SessionHeader.origin}.
  */
 export function isSessionOrigin(value: unknown): value is SessionOrigin {
-  return value === 'subagent' || value === 'dshbot'
+  return value === 'subagent' || value === 'rlhbot'
 }
 
 /**
@@ -97,7 +97,7 @@ export interface SessionHeader {
   readonly seedLength?: number
   /**
    * Coarse product classification for a delegated child (`subagent`) or a
-   * desktop-plugin contact/room parent (`dshbot`). This is presentation
+   * desktop-plugin contact/room parent (`rlhbot`). This is presentation
    * metadata, not proof that a child is continuable.
    */
   readonly origin?: SessionOrigin
@@ -262,7 +262,7 @@ export interface SessionEventMap {
   /**
    * Closes turn `turn` with the {@link TurnEndReason} that ended it. A turn
    * with no entered step has no `step/start` or `step/end`. The loop does not await a
-   * flush at turn boundaries: `dsh-session-checkpoint-policy` owns the
+   * flush at turn boundaries: `rlh-session-checkpoint-policy` owns the
    * per-request durability checkpoint, and consumers that read storage after
    * `whenIdle()` flush themselves. Success commits the turn; rejection is
    * reported live and does not prevent later work.
@@ -307,7 +307,7 @@ export interface SessionEventMap {
    * runtime-validates all event data with `isJsonValue`, so a non-serializable
    * `meta` is rejected at the source, and the durable log reproduces the
    * identical card on replay. Absent
-   * unless the tool attaches one (e.g. `dsh-tool-fs` carries its result-time
+   * unless the tool attaches one (e.g. `rlh-tool-fs` carries its result-time
    * contextual diff here).
    */
   'tool/result': {

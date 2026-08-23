@@ -1,3 +1,4 @@
+// @ts-check
 function apiUrl(origin, path) {
   return `${String(origin || '').replace(/\/$/, '')}${path}`;
 }

@@ -7,24 +7,24 @@
   border: 0;
   border-radius: 7px;
   background: transparent;
-  color: var(--dsw-alias-label-secondary);
+  color: var(--rlw-alias-label-secondary);
   cursor: pointer;
 }
 
 .button:hover:not(:disabled) {
-  background: var(--dsw-alias-interactive-bg-hover);
-  color: var(--dsw-alias-label-primary);
+  background: var(--rlw-alias-interactive-bg-hover);
+  color: var(--rlw-alias-label-primary);
 }
 
 .button:disabled {
-  color: var(--dsw-alias-label-dimmed);
+  color: var(--rlw-alias-label-dimmed);
   cursor: not-allowed;
 }
 
 .button svg {
   width: 17px;
   height: 17px;
-  fill: var(--dsw-alias-bg-base);
+  fill: var(--rlw-alias-bg-base);
   stroke: currentColor;
   stroke-width: 1.5;
   stroke-linecap: round;

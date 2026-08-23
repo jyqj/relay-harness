@@ -1,3 +1,4 @@
+// @ts-check
 const os = require('os');
 const { encodeOffer } = require('./offer');
 

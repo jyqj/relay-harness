@@ -18,9 +18,9 @@ import {
 export interface ThemeBootPayload {
   /** Durable color-scheme preference. */
   preference: ThemePreference
-  /** Derived tokens for the light half (empty for the DeepSeek family). */
+  /** Derived tokens for the light half (empty for the Relay family). */
   lightTokens: ThemeTokens
-  /** Derived tokens for the dark half (empty for the DeepSeek family). */
+  /** Derived tokens for the dark half (empty for the Relay family). */
   darkTokens: ThemeTokens
   /** Interface font size in px. */
   fontSizeInterface: number
@@ -69,7 +69,7 @@ function bootThemeScript(payload: ThemeBootPayload): string {
   for (const [name, value] of Object.entries(tokens)) {
     document.body.style.setProperty(name, value)
   }
-  document.body.style.setProperty('--dsw-alias-glass-opacity', glassOpacity + '%')
+  document.body.style.setProperty('--rlw-alias-glass-opacity', glassOpacity + '%')
 })()</script>`
 }
 

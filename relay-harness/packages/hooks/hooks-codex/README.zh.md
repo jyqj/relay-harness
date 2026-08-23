@@ -1,8 +1,8 @@
-# @deepseek-ai/dsh-hooks-codex
+# @relay-harness/rlh-hooks-codex
 
 [English](README.md) | 中文
 
-一个 Cordis 插件，在 harness 的规范拦截点上运行用户现有 **Codex** hook 配置的受支持子集。它是 hooks 子系统中采用 **Codex 方言** 的一侧。方言无关原语来自 [`@deepseek-ai/dsh-hook-protocol`](../hook-protocol/README.md)；该桥接负责处理 Codex 形状的 payload、matcher 模式和决策映射。
+一个 Cordis 插件，在 harness 的规范拦截点上运行用户现有 **Codex** hook 配置的受支持子集。它是 hooks 子系统中采用 **Codex 方言** 的一侧。方言无关原语来自 [`@relay-harness/rlh-hook-protocol`](../hook-protocol/README.md)；该桥接负责处理 Codex 形状的 payload、matcher 模式和决策映射。
 
 该桥接实现 Codex 当前 hook 协议的一个有意选取的子集：
 
@@ -17,7 +17,7 @@
 ## 配置
 
 ```ts
-import type { Config } from '@deepseek-ai/dsh-hooks-codex'
+import type { Config } from '@relay-harness/rlh-hooks-codex'
 const config: Config = {
   configPath: '/path/to/.codex/hooks.json', // required
   model: 'deepseek-v4',                      // optional: stamped on every payload (Codex includes `model`)
@@ -29,12 +29,12 @@ const config: Config = {
 在 `cordis.yml` 中：
 
 ```yaml
-- dsh-hooks-codex:
+- rlh-hooks-codex:
     configPath: ./.codex/hooks.json
     model: deepseek-v4
 ```
 
-绝对 `configPath` 命名一个共享文件。相对路径会按会话独立发现：桥接从 `session.header.cwd` 开始，在每个祖先目录检查该路径，直至包含 `.git` 的最近目录，且不会越过该项目根；无 agent 调用从进程 cwd 开始。包含 `..` 的路径会被拒绝。已解析配置按绝对路径、文件系统身份、大小、mtime 与 ctime 缓存，因此不同工作区互相隔离，编辑会在下一个 hook 点生效。缺失文件表示没有 hook；发现或解析失败会被隔离并去重，直到路径或文件版本变化。无效正则会报告其 pattern 与事件。只运行同步 `type: 'command'` hook；非 command 或 `async: true` hook 会被解析并跳过，同时记录警告。hook 接受 `timeout` 或 `timeoutSec` alias；两者都未设置时，使用协议参考默认值 `DEFAULT_HOOK_TIMEOUT_MS`（来自 `dsh-hook-protocol`，10 分钟）。五个桥接支持点之外的事件会在解析时丢弃。
+绝对 `configPath` 命名一个共享文件。相对路径会按会话独立发现：桥接从 `session.header.cwd` 开始，在每个祖先目录检查该路径，直至包含 `.git` 的最近目录，且不会越过该项目根；无 agent 调用从进程 cwd 开始。包含 `..` 的路径会被拒绝。已解析配置按绝对路径、文件系统身份、大小、mtime 与 ctime 缓存，因此不同工作区互相隔离，编辑会在下一个 hook 点生效。缺失文件表示没有 hook；发现或解析失败会被隔离并去重，直到路径或文件版本变化。无效正则会报告其 pattern 与事件。只运行同步 `type: 'command'` hook；非 command 或 `async: true` hook 会被解析并跳过，同时记录警告。hook 接受 `timeout` 或 `timeoutSec` alias；两者都未设置时，使用协议参考默认值 `DEFAULT_HOOK_TIMEOUT_MS`（来自 `rlh-hook-protocol`，10 分钟）。五个桥接支持点之外的事件会在解析时丢弃。
 
 hook 本身会在 agent（智能体）的会话工作区中运行：对 agent scope 点，桥接会将会话 `cwd` 作为 hook 进程工作目录，因此 hook 作用于用户项目树，而非服务器启动目录。
 
@@ -52,7 +52,7 @@ hook 本身会在 agent（智能体）的会话工作区中运行：对 agent sc
 
 每个 agent scope stdin payload 都携带 `session_id` 和 `transcript_path`。可用时，桥接通过 `ctx.sessionPersistence.locate(session.header)` 解析后者，否则发送 `null`，保留 Codex `string | null` 形状。查找不会创建或 flush 产物，因此在第一个轮次结束检查点之前，路径可能尚不存在，或其指向的 transcript（文本记录）可能尚未包含当前未结束的轮次。
 
-`SessionStart` 在 emit 处只记录来源。第一个非空 pre-step 会在 `UserPromptSubmit` 前运行并等待它，因此其上下文会进入第一个模型请求。每个点都在调用方信号与桥接生命周期组合出的信号下运行并受到跟踪；对桥接执行 dispose（资源释放）会中止仍在运行的 hook 进程，并等待其运行链结算（`createDetachedRuns`，位于 `dsh-hook-protocol`）。
+`SessionStart` 在 emit 处只记录来源。第一个非空 pre-step 会在 `UserPromptSubmit` 前运行并等待它，因此其上下文会进入第一个模型请求。每个点都在调用方信号与桥接生命周期组合出的信号下运行并受到跟踪；对桥接执行 dispose（资源释放）会中止仍在运行的 hook 进程，并等待其运行链结算（`createDetachedRuns`，位于 `rlh-hook-protocol`）。
 
 ## 上下文源
 

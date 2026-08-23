@@ -1,10 +1,10 @@
 /**
  * Wire types for the skill Settings Remote.
- * @module @deepseek-ai/dsh-host-skill-inventory/types
+ * @module @relay-harness/rlh-host-skill-inventory/types
  */
 
 /** Discovery root a Settings create may write. */
-export type SkillCreateRoot = 'user-dsh' | 'project-dsh'
+export type SkillCreateRoot = 'user-rlh' | 'project-rlh'
 
 /** One catalog row for Settings. */
 export interface SkillInventoryEntry {

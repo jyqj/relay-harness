@@ -1,8 +1,8 @@
 {
-  "name": "deepseek-harness-desktop",
-  "productName": "Deepseek-Harness-Desktop",
+  "name": "relay-harness-desktop",
+  "productName": "Relay-Harness-Desktop",
   "version": "0.2.6",
-  "description": "Electron desktop shell for DeepSeek Harness Web UI",
+  "description": "Electron desktop shell for Relay Harness Web UI",
   "author": "Chisa",
   "license": "MIT",
   "main": "src/main/index.js",
@@ -11,6 +11,7 @@
     "start": "node scripts/run-electron.js",
     "icon": "node scripts/run-render-icon.js",
     "test": "node --test \"src/**/*.test.js\" \"mobile/web/**/*.test.js\"",
+    "typecheck": "tsc -p tsconfig.json",
     "setup:harness": "pnpm --dir ../.. run build",
     "pack": "node scripts/run-electron-builder.cjs --dir --publish never",
     "smoke:source": "node scripts/run-source-smoke.mjs",
@@ -34,8 +35,8 @@
     "pnpm": "11.8.0"
   },
   "build": {
-    "appId": "ai.deepseek.harness.gui",
-    "productName": "Deepseek-Harness-Desktop",
+    "appId": "com.relayharness.desktop",
+    "productName": "Relay-Harness-Desktop",
     "copyright": "MIT",
     "npmRebuild": false,
     "directories": {
@@ -56,12 +57,12 @@
         "from": "vendor",
         "to": "vendor",
         "filter": [
-          "dshmarket/**"
+          "rlhmarket/**"
         ]
       },
       {
-        "from": "vendor/dshbot",
-        "to": "vendor/dshbot"
+        "from": "vendor/rlhbot",
+        "to": "vendor/rlhbot"
       }
     ],
     "extraMetadata": {
@@ -91,8 +92,8 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "Deepseek-Harness-Desktop",
-      "artifactName": "Deepseek-Harness-Desktop-Setup-${version}.${ext}"
+      "shortcutName": "Relay-Harness-Desktop",
+      "artifactName": "Relay-Harness-Desktop-Setup-${version}.${ext}"
     },
     "mac": {
       "icon": "assets/icon.png",
@@ -108,10 +109,10 @@
           ]
         }
       ],
-      "artifactName": "Deepseek-Harness-Desktop-${version}-mac-${arch}.${ext}"
+      "artifactName": "Relay-Harness-Desktop-${version}-mac-${arch}.${ext}"
     },
     "dmg": {
-      "artifactName": "Deepseek-Harness-Desktop-${version}-mac-${arch}.${ext}"
+      "artifactName": "Relay-Harness-Desktop-${version}-mac-${arch}.${ext}"
     }
   }
 }

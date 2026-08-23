@@ -1,13 +1,13 @@
 /**
- * Package-owned invariant companion for `@deepseek-ai/dsh-subagent-spawn-in-process`.
- * @module @deepseek-ai/dsh-subagent-spawn-in-process/invariant
+ * Package-owned invariant companion for `@relay-harness/rlh-subagent-spawn-in-process`.
+ * @module @relay-harness/rlh-subagent-spawn-in-process/invariant
  */
 
 /* jscpd:ignore-start */
-import type { Context } from '@deepseek-ai/cordis'
-import type { InvariantInstaller } from '@deepseek-ai/dsh-invariants'
+import type { Context } from '@relay-harness/cordis'
+import type { InvariantInstaller } from '@relay-harness/rlh-invariants'
 
-const PACKAGE_NAME = '@deepseek-ai/dsh-subagent-spawn-in-process'
+const PACKAGE_NAME = '@relay-harness/rlh-subagent-spawn-in-process'
 
 /** Cordis companion plugin name. */
 export const name = 'subagent-spawn-in-process-invariant'

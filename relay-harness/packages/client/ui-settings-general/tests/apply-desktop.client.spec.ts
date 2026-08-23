@@ -1,12 +1,12 @@
 // @vitest-environment jsdom
 /** Desktop-only close-window row: present only when the shell can persist it. */
 import { afterEach, describe, expect, it } from 'vitest'
-import { Context } from '@deepseek-ai/cordis'
-import { SlotRegistry } from '@deepseek-ai/dsh-client-runtime/client'
-import { LocaleRuntime } from '@deepseek-ai/dsh-client-locale/client'
-import { TestRemote, usePinnedBrowserLanguages } from '@deepseek-ai/dsh-client-test-runtime'
-import { apply as settingsApply, inject as settingsInject } from '@deepseek-ai/dsh-client-ui-settings/client'
-import { apply, inject } from '@deepseek-ai/dsh-client-ui-settings-general/client'
+import { Context } from '@relay-harness/cordis'
+import { SlotRegistry } from '@relay-harness/rlh-client-runtime/client'
+import { LocaleRuntime } from '@relay-harness/rlh-client-locale/client'
+import { TestRemote, usePinnedBrowserLanguages } from '@relay-harness/rlh-client-test-runtime'
+import { apply as settingsApply, inject as settingsInject } from '@relay-harness/rlh-client-ui-settings/client'
+import { apply, inject } from '@relay-harness/rlh-client-ui-settings-general/client'
 import { CloseBehaviorRow } from '../src/client/CloseBehaviorRow.tsx'
 
 usePinnedBrowserLanguages('zh-CN')

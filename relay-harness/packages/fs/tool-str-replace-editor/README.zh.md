@@ -1,4 +1,4 @@
-# @deepseek-ai/dsh-tool-str-replace-editor
+# @relay-harness/rlh-tool-str-replace-editor
 
 [English](README.md) | 中文
 
@@ -15,7 +15,7 @@
 
 schema 提供针对绝对路径的 `view`、`create`、`str_replace` 与 `insert`。文件查看使用从 1 开始的行号，并保留内容中的制表符，因此显示的文本仍可作为有效的字面量替换输入；目录查看忽略隐藏、依赖与 Python 缓存条目并下探两层。`view`、`str_replace` 或 `insert` 发生元数据未命中时，工具会在返回 `FS_NOT_FOUND` 前记录确认缺失，因此后续 `create` 可以通过已挂载策略的防护创建流程恢复外部删除的路径；缺失状态绝不会授权 `str_replace` 或 `insert`。替换要求字面量唯一匹配，错误只使用公开的 `old_str` 词汇。插入遵循所选的零基插入边界，不会隐式补尾换行。修改操作会保留请求编辑范围之外的制表符。
 
-每个命令都会在分派前把绝对路径解析为提供方 `FsTargetKey`。`view` 声明 read 锁；`create`、`str_replace` 与 `insert` 在共享的 `dsh-tools` `fs:` namespace 中声明 write 锁，因此它们会与 `dsh-tool-fs` 协调，同时让无关文件保持并行。
+每个命令都会在分派前把绝对路径解析为提供方 `FsTargetKey`。`view` 声明 read 锁；`create`、`str_replace` 与 `insert` 在共享的 `rlh-tools` `fs:` namespace 中声明 write 锁，因此它们会与 `rlh-tool-fs` 协调，同时让无关文件保持并行。
 
 ## 模型体验
 
@@ -23,7 +23,7 @@ schema 提供针对绝对路径的 `view`、`create`、`str_replace` 与 `insert
 
 #### 模型看到的内容
 
-生成的 [`str_replace_editor` schema](../../../docs/tool-catalog.md#deepseek-aidsh-tool-str-replace-editor)，其中包含配置的 `description`。本插件不贡献独立系统提示词段。
+生成的 [`str_replace_editor` schema](../../../docs/tool-catalog.md#relay-harnessrlh-tool-str-replace-editor)，其中包含配置的 `description`。本插件不贡献独立系统提示词段。
 
 #### Token 影响
 

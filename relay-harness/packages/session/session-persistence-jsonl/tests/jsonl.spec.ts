@@ -1,12 +1,12 @@
-import { MessageId, createUserMessage, createMessage } from '@deepseek-ai/dsh-llm'
+import { MessageId, createUserMessage, createMessage } from '@relay-harness/rlh-llm'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { Context } from '@deepseek-ai/cordis'
+import { Context } from '@relay-harness/cordis'
 import { appendFile, mkdtemp, mkdir, rm, readFile, writeFile, readdir, stat, symlink } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, isAbsolute, join, relative, resolve } from 'node:path'
-import SessionStore, { SessionId } from '@deepseek-ai/dsh-session'
-import type { Session, SessionEvent, SessionHeader } from '@deepseek-ai/dsh-session'
-import JsonlSessionPersistence from '@deepseek-ai/dsh-session-persistence-jsonl'
+import SessionStore, { SessionId } from '@relay-harness/rlh-session'
+import type { Session, SessionEvent, SessionHeader } from '@relay-harness/rlh-session'
+import JsonlSessionPersistence from '@relay-harness/rlh-session-persistence-jsonl'
 import {
   encodeSegment, eventLines, logPath, projectDir, projectKey, scanLog, sessionDir, SessionLogScanner, toHeaderLine,
 } from '../src/format.ts'
@@ -74,7 +74,7 @@ async function expectFlushCode(promise: Promise<unknown>, codes: readonly string
 }
 
 async function freshRoot(): Promise<string> {
-  const dir = await mkdtemp(join(tmpdir(), 'dsh-jsonl-'))
+  const dir = await mkdtemp(join(tmpdir(), 'rlh-jsonl-'))
   dirs.push(dir)
   return dir
 }
@@ -101,7 +101,7 @@ function appendClosedTurn(session: Session): void {
 
 // Run the shared backend contract against the real JSONL backend.
 runPersistenceContract('jsonl-none', async () => {
-  const dir = await mkdtemp(join(tmpdir(), 'dsh-jsonl-'))
+  const dir = await mkdtemp(join(tmpdir(), 'rlh-jsonl-'))
   const ctx = new Context()
   await ctx.plugin(SessionStore)
   const fiber = await ctx.plugin(JsonlSessionPersistence, { root: dir, compression: 'none' })
@@ -117,7 +117,7 @@ runPersistenceContract('jsonl-none', async () => {
 // Two mounts share this temp root to exercise reload. `corruptTail` appends a partial,
 // newline-less fragment past the committed region so coordinator repair runs on real file bytes.
 runCoordinatorContract('jsonl-none', async (): Promise<CoordinatorFixture> => {
-  const dir = await mkdtemp(join(tmpdir(), 'dsh-jsonl-coord-'))
+  const dir = await mkdtemp(join(tmpdir(), 'rlh-jsonl-coord-'))
   return {
     mount: async (ctx) => {
       const fiber = await ctx.plugin(JsonlSessionPersistence, { root: dir, compression: 'none' })
@@ -161,7 +161,7 @@ describe('JsonlSessionPersistence: format helpers', () => {
   })
 
   it('projectKey normalizes project paths into bounded readable names', () => {
-    expect(projectKey('/Users/qyj/work/deepseek-harness')).toBe('--Users-qyj-work-deepseek-harness--')
+    expect(projectKey('/Users/qyj/work/relay-harness')).toBe('--Users-qyj-work-relay-harness--')
     expect(projectKey('/a/b-c')).toBe(projectKey('/a-b/c'))
     expect(projectKey('C:\\work\\agent')).toBe('--C-work-agent--')
     expect(projectKey('/开发/~agent')).toBe('--~5F00~53D1-~007Eagent--')
@@ -942,15 +942,15 @@ describe('JsonlSessionPersistence: scanLog unit', () => {
     expect(scanLog(Buffer.from(log)).meta.agentPreset).toBe('minimal')
   })
 
-  it('round-trips dshbot origin', () => {
+  it('round-trips rlhbot origin', () => {
     const line = toHeaderLine({
       version: 0,
       id: SessionId('bot'),
       createdAt: 1,
-      origin: 'dshbot',
+      origin: 'rlhbot',
       delegationDepth: 0,
     })
-    expect(scanLog(Buffer.from(`${JSON.stringify(line)}\n`)).meta.origin).toBe('dshbot')
+    expect(scanLog(Buffer.from(`${JSON.stringify(line)}\n`)).meta.origin).toBe('rlhbot')
   })
 
   it('rejects a session header whose origin is not a known classification', () => {

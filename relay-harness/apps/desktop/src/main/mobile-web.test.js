@@ -18,9 +18,9 @@ test('shouldProxyToHost only forwards /api', () => {
 });
 
 test('resolveSpaAsset blocks traversal and missing test files', () => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-spa-'));
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'rlh-spa-'));
   fs.writeFileSync(path.join(root, 'index.html'), '<html>手机远程</html>');
-  fs.writeFileSync(path.join(root, 'app.js'), 'window.DSH_MOBILE = true;');
+  fs.writeFileSync(path.join(root, 'app.js'), 'window.RLH_MOBILE = true;');
   try {
     assert.equal(resolveSpaAsset(root, '/').file, path.join(root, 'index.html'));
     assert.equal(resolveSpaAsset(root, '/app.js').type, 'text/javascript; charset=utf-8');

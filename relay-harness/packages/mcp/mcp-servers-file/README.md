@@ -1,8 +1,8 @@
-# @deepseek-ai/dsh-mcp-servers-file
+# @relay-harness/rlh-mcp-servers-file
 
 English | [中文](README.zh.md)
 
-Owns `$DSH_HOME/mcp-servers.yaml` (or an explicit `path`) and mounts one [`@deepseek-ai/dsh-mcp-client`](../mcp-client/README.md) child for each enabled record. The document is a YAML object with a `servers` array; each record carries a unique `id`, `serverName`, `enabled`, and either stdio (`command`, `args`, `env`, `cwd`) or Streamable HTTP (`url`, `headers`) fields that match the mcp-client Config. Writes use the atomic-write lock; a watcher remounts children after an external edit. The `mcpServersFile` service exposes `listManaged`, `upsert`, `remove`, `setEnabled`, `remount`, and `authorize`. `authorize` runs MCP HTTP OAuth (PKCE) in the system browser, writes `Authorization: Bearer …` on that record, and remounts so the child's tools are live. Secret-looking env and header keys are masked on `listManaged`; a blank or `********` upsert keeps the stored value.
+Owns `$RLH_HOME/mcp-servers.yaml` (or an explicit `path`) and mounts one [`@relay-harness/rlh-mcp-client`](../mcp-client/README.md) child for each enabled record. The document is a YAML object with a `servers` array; each record carries a unique `id`, `serverName`, `enabled`, and either stdio (`command`, `args`, `env`, `cwd`) or Streamable HTTP (`url`, `headers`) fields that match the mcp-client Config. Writes use the atomic-write lock; a watcher remounts children after an external edit. The `mcpServersFile` service exposes `listManaged`, `upsert`, `remove`, `setEnabled`, `remount`, and `authorize`. `authorize` runs MCP HTTP OAuth (PKCE) in the system browser, writes `Authorization: Bearer …` on that record, and remounts so the child's tools are live. Secret-looking env and header keys are masked on `listManaged`; a blank or `********` upsert keeps the stored value.
 
 ## Model Experience
 

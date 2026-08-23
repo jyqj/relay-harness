@@ -1,6 +1,6 @@
 /** Durable automatic-memory-extraction job seam. */
 
-import { Context, Service } from '@deepseek-ai/cordis'
+import { Context, Service } from '@relay-harness/cordis'
 import type {
   ClaimMemoryExtractionInput,
   CompleteMemoryExtractionInput,
@@ -10,7 +10,7 @@ import type {
   MemoryExtractionJobId,
 } from './types.ts'
 
-declare module '@deepseek-ai/cordis' {
+declare module '@relay-harness/cordis' {
   interface Context {
     memoryExtractionQueue: MemoryExtractionQueue
   }

@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/bug-fix/2026-08-19-terminal-ansi-pierre-palette.md
-2026-08-19-terminal-ansi-pierre-palette.md: b5b5e5afd09c732998558707219a6bdba068995c
-2026-08-19-terminal-ansi-pierre-palette.zh.md: 818bb4f3d300724f36b20c5483fc25e20b96c2a2
+2026-08-19-terminal-ansi-pierre-palette.md: 78b3a933d68e0452ffaff31295854125006f5227
+2026-08-19-terminal-ansi-pierre-palette.zh.md: 9a869551b8cecbc720197a1bbd741f9ec6b0dbce

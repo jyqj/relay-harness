@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { Context } from '@deepseek-ai/cordis'
-import { CodeRuntime } from '@deepseek-ai/dsh-code-runtime'
-import type { CodeRunRequest, CodeRunResult } from '@deepseek-ai/dsh-code-runtime'
+import { Context } from '@relay-harness/cordis'
+import { CodeRuntime } from '@relay-harness/rlh-code-runtime'
+import type { CodeRunRequest, CodeRunResult } from '@relay-harness/rlh-code-runtime'
 
 /**
  * Minimal concrete runtime: records requests, "executes" by invoking every

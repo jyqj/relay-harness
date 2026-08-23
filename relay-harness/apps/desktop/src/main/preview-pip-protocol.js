@@ -1,6 +1,7 @@
+// @ts-check
 'use strict';
 
-const PREVIEW_PIP_FRAME_CHANNEL = 'dshd-preview-pip-frame';
+const PREVIEW_PIP_FRAME_CHANNEL = 'rlhd-preview-pip-frame';
 const PICTURE_IN_PICTURE_INITIAL_WIDTH = 480;
 const PICTURE_IN_PICTURE_INITIAL_HEIGHT = 320;
 const PICTURE_IN_PICTURE_MIN_WIDTH = 240;

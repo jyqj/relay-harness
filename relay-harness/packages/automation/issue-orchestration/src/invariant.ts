@@ -1,8 +1,8 @@
-/** Package-owned invariant companion for `@deepseek-ai/dsh-issue-orchestration`. */
+/** Package-owned invariant companion for `@relay-harness/rlh-issue-orchestration`. */
 
-import type { Context } from '@deepseek-ai/cordis'
-import type { InvariantFailure, InvariantInstaller } from '@deepseek-ai/dsh-invariants'
-const PACKAGE_NAME = '@deepseek-ai/dsh-issue-orchestration'
+import type { Context } from '@relay-harness/cordis'
+import type { InvariantFailure, InvariantInstaller } from '@relay-harness/rlh-invariants'
+const PACKAGE_NAME = '@relay-harness/rlh-issue-orchestration'
 export const name = 'issue-orchestration-invariant'
 export const inject = ['invariants']
 /** Check that change notifications name the committed authoritative revision. */

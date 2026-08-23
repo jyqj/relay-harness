@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-08-16-titlebar-branch-picker.md
-2026-08-16-titlebar-branch-picker.md: cd4d2cf2f46310c5ddbc486d18dd967e2d019638
-2026-08-16-titlebar-branch-picker.zh.md: a7550816577729566c3575f0b5cd9bc3bfea3ca5
+2026-08-16-titlebar-branch-picker.md: 5328832761ce7b65ab04ee4e6fcd5ea781bc43f5
+2026-08-16-titlebar-branch-picker.zh.md: 12f88399d205d5421a52a2e2535f7b5e0e29b180

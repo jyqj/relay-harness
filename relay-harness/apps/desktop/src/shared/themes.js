@@ -1,12 +1,13 @@
+// @ts-check
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const DEFAULT_FAMILY_ID = 'deepseek';
+const DEFAULT_FAMILY_ID = 'relay';
 
 const FAMILY_SEEDS = {
-  deepseek: {
-    name: 'DeepSeek',
+  relay: {
+    name: 'Relay',
     light: { accent: '#4176e6', background: '#ffffff', foreground: '#0f1115' },
     dark: { accent: '#679efe', background: '#151517', foreground: '#f5f5f5' },
   },
@@ -47,12 +48,12 @@ const THEMES = Object.entries(FAMILY_SEEDS).flatMap(([id, family]) => ([
   tokensFromSeeds(id, family.name, 'light', family.light),
 ]));
 
-function dshHome() {
-  const fromEnv = process.env.DSH_HOME;
+function rlhHome() {
+  const fromEnv = process.env.RLH_HOME;
   if (typeof fromEnv === 'string' && fromEnv.trim()) {
     return path.resolve(fromEnv.trim());
   }
-  return path.join(os.homedir(), '.dsh');
+  return path.join(os.homedir(), '.rlh');
 }
 
 function parseScalar(raw) {
@@ -130,7 +131,7 @@ function parseSimpleYaml(text) {
 }
 
 function readHarnessThemeSettings() {
-  const file = path.join(dshHome(), 'settings.yaml');
+  const file = path.join(rlhHome(), 'settings.yaml');
   try {
     const doc = parseSimpleYaml(fs.readFileSync(file, 'utf8'));
     return doc['ui-theme'] && typeof doc['ui-theme'] === 'object' ? doc['ui-theme'] : {};

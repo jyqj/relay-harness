@@ -10,9 +10,9 @@ Status: implemented
 
 ## Decision
 
-`@deepseek-ai/dsh-llm-circuit-breaker` 是 opt-in guard 插件。它为每个解析后的 provider route 持有一个 `CircuitBreaker`，并在下游 `agent/request` route selection 后、transport dispatch 前检查。open route 会抛出 code 为 `CIRCUIT_OPEN` 的 `LlmError`，并把剩余 cool-down 作为 `providerRetryAfterMs`。
+`@relay-harness/rlh-llm-circuit-breaker` 是 opt-in guard 插件。它为每个解析后的 provider route 持有一个 `CircuitBreaker`，并在下游 `agent/request` route selection 后、transport dispatch 前检查。open route 会抛出 code 为 `CIRCUIT_OPEN` 的 `LlmError`，并把剩余 cool-down 作为 `providerRetryAfterMs`。
 
-状态机使用 live time window、minimum sample count、failure-rate threshold、open duration 与有界 half-open probe。默认值沿用吸收的 client preset：60 秒 window、五个 sample、0.5 threshold、60 秒 open duration 和一个 probe。DSH provider-neutral transient failure code 替代参考实现的 HTTP-specific client code。其他错误计为成功 connectivity sample，因此 authorization、invalid argument 与 quota ownership 不会声称 provider unavailable。
+状态机使用 live time window、minimum sample count、failure-rate threshold、open duration 与有界 half-open probe。默认值沿用吸收的 client preset：60 秒 window、五个 sample、0.5 threshold、60 秒 open duration 和一个 probe。RLH provider-neutral transient failure code 替代参考实现的 HTTP-specific client code。其他错误计为成功 connectivity sample，因此 authorization、invalid argument 与 quota ownership 不会声称 provider unavailable。
 
 已提交 assistant message 根据持久 provider source 记录 success。`agent/request-error` 会在委托 recovery 前记录每次失败 attempt，因此 retry 贡献其实际 outcome。如果取消使 half-open probe 始终没有 outcome，该 slot 会在一个 open duration 后 reclaim；success 关闭并清空历史，failure 重新打开。Provider map 为进程局部且彼此隔离。
 

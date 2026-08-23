@@ -1,7 +1,7 @@
 /** Attachment error and limit copy owned by the conversation input flow. */
 
-import type { ImageAttachmentLimits } from '@deepseek-ai/dsh-attachment'
-import type { Translate } from '@deepseek-ai/dsh-client-ui-slots'
+import type { ImageAttachmentLimits } from '@relay-harness/rlh-attachment'
+import type { Translate } from '@relay-harness/rlh-client-ui-slots'
 import type { ConversationKey } from './locales.ts'
 
 /**

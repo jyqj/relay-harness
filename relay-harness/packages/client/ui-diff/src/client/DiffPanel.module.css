@@ -4,7 +4,7 @@
   position: relative;
   height: 100%;
   min-width: 0;
-  background: var(--dsw-alias-bg-base);
+  background: var(--rlw-alias-bg-base);
 }
 
 .toolbar {
@@ -17,17 +17,17 @@
 
 .scope {
   padding: 2px 8px;
-  border: 1px solid var(--dsw-alias-border-l2);
+  border: 1px solid var(--rlw-alias-border-l2);
   border-radius: 8px;
   background: transparent;
-  color: var(--dsw-alias-label-primary);
+  color: var(--rlw-alias-label-primary);
   font-size: 12px;
   line-height: 18px;
   cursor: pointer;
 }
 
 .scope:hover {
-  background: var(--dsw-alias-interactive-bg-hover);
+  background: var(--rlw-alias-interactive-bg-hover);
 }
 
 .refresh {
@@ -40,13 +40,13 @@
   border: none;
   border-radius: 8px;
   background: transparent;
-  color: var(--dsw-alias-label-secondary);
+  color: var(--rlw-alias-label-secondary);
   cursor: pointer;
 }
 
 .refresh:hover {
-  background: var(--dsw-alias-interactive-bg-hover);
-  color: var(--dsw-alias-label-primary);
+  background: var(--rlw-alias-interactive-bg-hover);
+  color: var(--rlw-alias-label-primary);
 }
 
 .body {
@@ -54,15 +54,15 @@
   min-height: 0;
   overflow: auto;
   padding: 8px 12px 16px;
-  --dsh-scrollbar-thumb: var(--dsw-alias-scrollbar-bg-l2);
-  --dsh-scrollbar-thumb-hover: var(--dsw-alias-scrollbar-hover-l2);
+  --rlh-scrollbar-thumb: var(--rlw-alias-scrollbar-bg-l2);
+  --rlh-scrollbar-thumb-hover: var(--rlw-alias-scrollbar-hover-l2);
 }
 
 .message {
   margin: 16px 4px;
   font-size: 12px;
   line-height: 18px;
-  color: var(--dsw-alias-label-tertiary);
+  color: var(--rlw-alias-label-tertiary);
   text-align: center;
 }
 
@@ -70,13 +70,13 @@
   margin: 0 4px 8px;
   font-size: 12px;
   line-height: 18px;
-  color: var(--dsw-alias-state-error-primary);
+  color: var(--rlw-alias-state-error-primary);
 }
 
 .hunks {
   margin: 0 0 8px 20px;
   overflow-x: auto;
-  font: var(--dsw-font-markdown-code-block);
+  font: var(--rlw-font-markdown-code-block);
 }
 
 .hunk {
@@ -85,8 +85,8 @@
 
 .hunkHeader {
   padding: 4px 8px;
-  color: var(--dsw-alias-label-tertiary);
-  background: var(--dsw-alias-bg-layer-2);
+  color: var(--rlw-alias-label-tertiary);
+  background: var(--rlw-alias-bg-layer-2);
   border-radius: 8px 8px 0 0;
   white-space: pre;
 }
@@ -102,21 +102,21 @@
 .gutter {
   flex-shrink: 0;
   width: 12px;
-  color: var(--dsw-alias-label-tertiary);
+  color: var(--rlw-alias-label-tertiary);
 }
 
 .context {
-  color: var(--dsw-alias-label-primary);
+  color: var(--rlw-alias-label-primary);
 }
 
 .add {
-  color: var(--dsw-alias-state-success-primary);
-  background: color-mix(in srgb, var(--dsw-alias-state-success-primary) 8%, transparent);
+  color: var(--rlw-alias-state-success-primary);
+  background: color-mix(in srgb, var(--rlw-alias-state-success-primary) 8%, transparent);
 }
 
 .del {
-  color: var(--dsw-alias-state-error-primary);
-  background: color-mix(in srgb, var(--dsw-alias-state-error-primary) 8%, transparent);
+  color: var(--rlw-alias-state-error-primary);
+  background: color-mix(in srgb, var(--rlw-alias-state-error-primary) 8%, transparent);
 }
 
 .fileTitle {
@@ -124,7 +124,7 @@
 }
 
 .fileTitle:hover {
-  color: var(--dsw-alias-label-primary);
+  color: var(--rlw-alias-label-primary);
 }
 
 .group {
@@ -132,7 +132,7 @@
   font-size: 12px;
   line-height: 18px;
   font-weight: 500;
-  color: var(--dsw-alias-label-secondary);
+  color: var(--rlw-alias-label-secondary);
 }
 
 .action {
@@ -141,13 +141,13 @@
   border: none;
   border-radius: 8px;
   background: transparent;
-  color: var(--dsw-alias-label-secondary);
+  color: var(--rlw-alias-label-secondary);
   font-size: 12px;
   line-height: 18px;
   cursor: pointer;
 }
 
 .action:hover {
-  background: var(--dsw-alias-interactive-bg-hover);
-  color: var(--dsw-alias-label-primary);
+  background: var(--rlw-alias-interactive-bg-hover);
+  color: var(--rlw-alias-label-primary);
 }

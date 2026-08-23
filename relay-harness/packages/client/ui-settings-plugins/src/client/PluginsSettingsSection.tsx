@@ -3,7 +3,7 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import type {
   HostObservable, InjectFace, PropsLocale, PropsRenderSlots, PropsRuntime,
-} from '@deepseek-ai/dsh-client-ui-slots'
+} from '@relay-harness/rlh-client-ui-slots'
 import type { PluginsSettingsLocaleKey } from './locales.ts'
 import css from './PluginsSettingsSection.module.css'
 
@@ -69,7 +69,7 @@ export function PluginsSettingsSection({ t, renderSlot, useTabs, close }: Plugin
                   aria-selected={selected}
                   aria-controls={`${tabsId}-panel-${row.id}`}
                   data-active={selected ? 'true' : undefined}
-                  data-dsh-settings-plugin-tab={row.id}
+                  data-rlh-settings-plugin-tab={row.id}
                   tabIndex={selected ? 0 : -1}
                   onClick={() => { setActiveId(row.id) }}
                   onKeyDown={(event) => {
@@ -116,7 +116,7 @@ export function PluginsSettingsSection({ t, renderSlot, useTabs, close }: Plugin
   )
 }
 
-declare module '@deepseek-ai/dsh-client-ui-slots' {
+declare module '@relay-harness/rlh-client-ui-slots' {
   interface LocaleNamespaceMap {
     /** Plugins section, configurable-tab, and card copy. */
     'settings.plugins': PluginsSettingsLocaleKey

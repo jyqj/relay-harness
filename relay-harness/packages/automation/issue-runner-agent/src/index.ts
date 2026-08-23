@@ -1,16 +1,16 @@
 /**
- * Native DSH Agent provider for multi-turn issue runs and captured tracker tools.
- * @module @deepseek-ai/dsh-issue-runner-agent
+ * Native RLH Agent provider for multi-turn issue runs and captured tracker tools.
+ * @module @relay-harness/rlh-issue-runner-agent
  */
 
 import { randomUUID } from 'node:crypto'
-import { Context } from '@deepseek-ai/cordis'
-import z from '@deepseek-ai/schemastery'
-import type { Agent, AgentHandle, AgentOptions } from '@deepseek-ai/dsh-agent'
-import { IssueRunner, type IssueRun, type IssueRunEvent, type IssueRunId, type IssueRunRequest, type IssueRunResult } from '@deepseek-ai/dsh-issue-runner'
-import { createUserMessage } from '@deepseek-ai/dsh-llm'
-import { SessionId, type JsonValue, type SessionEvent, type TurnEndReason } from '@deepseek-ai/dsh-session'
-import type { ToolDefinition } from '@deepseek-ai/dsh-tools'
+import { Context } from '@relay-harness/cordis'
+import z from '@relay-harness/schemastery'
+import type { Agent, AgentHandle, AgentOptions } from '@relay-harness/rlh-agent'
+import { IssueRunner, type IssueRun, type IssueRunEvent, type IssueRunId, type IssueRunRequest, type IssueRunResult } from '@relay-harness/rlh-issue-runner'
+import { createUserMessage } from '@relay-harness/rlh-llm'
+import { SessionId, type JsonValue, type SessionEvent, type TurnEndReason } from '@relay-harness/rlh-session'
+import type { ToolDefinition } from '@relay-harness/rlh-tools'
 
 /** Agent route and execution limits for issue attempts. */
 export interface Config {
@@ -28,7 +28,7 @@ export const Config: z<Config> = z.object({
   maxTokens: z.natural().min(1),
 })
 
-/** Convert one captured tracker tool into an agent-scoped DSH definition. */
+/** Convert one captured tracker tool into an agent-scoped RLH definition. */
 function trackerToolDefinition(request: IssueRunRequest, tool: IssueRunRequest['trackerTools']['tools'][number]): ToolDefinition {
   return {
     name: tool.name,

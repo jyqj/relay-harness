@@ -10,21 +10,21 @@ Host 的 `installPlugin` 只接受 `github:owner/repo[#ref]`。awesome-dsh-plugi
 
 ## 决策
 
-**产品市场界面不是这个标签页。** 设置 → 插件市场是预置的 `dshmarket` 插件（`settings.section` id `market`），由 [桌面预置 dshmarket](2026-08-19-desktop-dshmarket-preset.md) 拥有。本笔记拥有主进程精选目录和 Host／IPC 安装白名单。没有 id 为 `marketplace` 的 `settings.plugins.tab`。托盘和菜单的 `openMarketplace()` 仍绝不创建市场 `BrowserWindow`。
+**产品市场界面不是这个标签页。** 设置 → 插件市场是预置的 `rlhmarket` 插件（`settings.section` id `market`），由 [桌面预置 rlhmarket](2026-08-19-desktop-rlhmarket-preset.md) 拥有。本笔记拥有主进程精选目录和 Host／IPC 安装白名单。没有 id 为 `marketplace` 的 `settings.plugins.tab`。托盘和菜单的 `openMarketplace()` 仍绝不创建市场 `BrowserWindow`。
 
-**目录是 `https://awesome-dsh-plugin.com/plugins.json`。** 主进程拉取（测试用 `DSHD_MARKETPLACE_REGISTRY_URL`）。超时 4 秒。成功响应必须是带非空 `plugins` 数组的对象。`listMarketplace({ refresh?, locale? })` 的 `locale` 为 `zh` | `en`（默认 `zh`；`zh*` 映射为 `zh`）。磁盘缓存在 `app.getPath('userData')`，`CACHE_VERSION` 为 3，TTL 1 小时。回退顺序是内存、磁盘、打包快照 `src/main/marketplace-registry-snapshot.json`。`source` 为 `live` | `cache` | `snapshot`；非 live 必须带 `warning`。每一层都空时返回 `ok: false`、`items: []` 和可见警告。不搜 GitHub topic。
+**目录是 `https://awesome-dsh-plugin.com/plugins.json`。** 主进程拉取（测试用 `RLHD_MARKETPLACE_REGISTRY_URL`）。超时 4 秒。成功响应必须是带非空 `plugins` 数组的对象。`listMarketplace({ refresh?, locale? })` 的 `locale` 为 `zh` | `en`（默认 `zh`；`zh*` 映射为 `zh`）。磁盘缓存在 `app.getPath('userData')`，`CACHE_VERSION` 为 3，TTL 1 小时。回退顺序是内存、磁盘、打包快照 `src/main/marketplace-registry-snapshot.json`。`source` 为 `live` | `cache` | `snapshot`；非 live 必须带 `warning`。每一层都空时返回 `ok: false`、`items: []` 和可见警告。不搜 GitHub topic。
 
-`installSpec` 与 dsh-market 的 `installTargetFor` 一致：合法的目录 `npm` 包名；否则从 GitHub `url` 得到 `github:owner/repo` 或 `github:owner/repo#path:/<posix>`（`/tree/<ref>/<posix>`）。`install` 的最后一个空白分词只在 `isAllowedMarketplaceSpec` 接受时使用：last-token npm 必须等于该行 `npm` 字段（`npm` 为 null 时 `installSpec` 为空）。tarball、git、file URL 不会成为 `installSpec`。目录 `id` 是 `owner/name`（name 可含 `#`）。
+`installSpec` 与 rlh-market 的 `installTargetFor` 一致：合法的目录 `npm` 包名；否则从 GitHub `url` 得到 `github:owner/repo` 或 `github:owner/repo#path:/<posix>`（`/tree/<ref>/<posix>`）。`install` 的最后一个空白分词只在 `isAllowedMarketplaceSpec` 接受时使用：last-token npm 必须等于该行 `npm` 字段（`npm` 为 null 时 `installSpec` 为空）。tarball、git、file URL 不会成为 `installSpec`。目录 `id` 是 `owner/name`（name 可含 `#`）。
 
-**安装路径分开。** `installMarketplacePlugin(id)` 在当前目录（内存，否则磁盘，否则快照）按该 id 查出这一行。只有该行的 `installSpec` 能进 `dsh plugin --profile web add`。允许的规格：通过 `isValidPackageName` 的目录 npm 包名；通过 `isValidGithubSpec` 且与该行 GitHub URL 一致的 `github:owner/repo` 或 `github:owner/repo#<gitRef>`；`github:owner/repo#path:/<posix>`，其中 posix 路径不含 `..`、`:`、反斜杠，且 owner/repo 与该行 URL 一致（`isValidMarketplacePathSpec`）。进 CLI 之前拒绝：`file:`、`link:`、tarball 或 git URL、未知 id、`DROPPED` 包、非法 `allowBuilds`。桌面其它功能已存的 GitHub Token 可用来钉 SHA；没有 Token 就装浮动 ref。
+**安装路径分开。** `installMarketplacePlugin(id)` 在当前目录（内存，否则磁盘，否则快照）按该 id 查出这一行。只有该行的 `installSpec` 能进 `rlh plugin --profile web add`。允许的规格：通过 `isValidPackageName` 的目录 npm 包名；通过 `isValidGithubSpec` 且与该行 GitHub URL 一致的 `github:owner/repo` 或 `github:owner/repo#<gitRef>`；`github:owner/repo#path:/<posix>`，其中 posix 路径不含 `..`、`:`、反斜杠，且 owner/repo 与该行 URL 一致（`isValidMarketplacePathSpec`）。进 CLI 之前拒绝：`file:`、`link:`、tarball 或 git URL、未知 id、`DROPPED` 包、非法 `allowBuilds`。桌面其它功能已存的 GitHub Token 可用来钉 SHA；没有 Token 就装浮动 ref。
 
-`installPlugin(spec)` 仍只接受 github（`isValidGithubSpec`），给 Host 的 `install_dsh_plugin` 控制通道用。
+`installPlugin(spec)` 仍只接受 github（`isValidGithubSpec`），给 Host 的 `install_rlh_plugin` 控制通道用。
 
-安装与卸载共用一把进行中互斥锁。已安装名来自新增的 profile 键、新增的 `node_modules` 目录，或与 github 身份匹配的已有 profile 规格。add 成功但没有可加载的 dsh 入口（仅布尔 `dsh.bundle.patch: true` 不够）或插入了重复 loader id：当场卸掉并报失败。`ok: false` 时不调用 `startHarness()`。若 add、Host `install-plugin` 或卸载成功而 `startHarness()` 抛错，IPC 返回 `ok: true`、`harnessStarted: false`。安装文案说明插件已写入 web profile；卸载文案说明插件已从 web profile 移除。`needsAllowBuilds` 再确认一次，然后带名单重试一次，名单含 ndjson 转义的 prepare-not-allowed 名以及 `name@git+https://github.com/owner/repo.git` 键。
+安装与卸载共用一把进行中互斥锁。已安装名来自新增的 profile 键、新增的 `node_modules` 目录，或与 github 身份匹配的已有 profile 规格。add 成功但没有可加载的 rlh 入口（仅布尔 `rlh.bundle.patch: true` 不够）或插入了重复 loader id：当场卸掉并报失败。`ok: false` 时不调用 `startHarness()`。若 add、Host `install-plugin` 或卸载成功而 `startHarness()` 抛错，IPC 返回 `ok: true`、`harnessStarted: false`。安装文案说明插件已写入 web profile；卸载文案说明插件已从 web profile 移除。`needsAllowBuilds` 再确认一次，然后带名单重试一次，名单含 ndjson 转义的 prepare-not-allowed 名以及 `name@git+https://github.com/owner/repo.git` 键。
 
 ## 曾考虑的替代方案
 
-**预装或 vendor `dshmarket` 作为设置里的插件市场界面。** 由 [桌面预置 dshmarket](2026-08-19-desktop-dshmarket-preset.md) 拥有。本笔记把目录拉取和 Host 只接受 github 的 `installPlugin` 路径留在该插件之外。
+**预装或 vendor `rlhmarket` 作为设置里的插件市场界面。** 由 [桌面预置 rlhmarket](2026-08-19-desktop-rlhmarket-preset.md) 拥有。本笔记把目录拉取和 Host 只接受 github 的 `installPlugin` 路径留在该插件之外。
 
 **保留第二个 Electron 市场窗口（`src/renderer/marketplace/`）。** 否决：第二份 `file:` 文档需要平行色板、市场 IPC 角色，以及钉在 `marketplace/index.html` 上的导航守卫。托盘和菜单的 `openMarketplace()` 打开设置页。
 
@@ -32,7 +32,7 @@ Host 的 `installPlugin` 只接受 `github:owner/repo[#ref]`。awesome-dsh-plugi
 
 ## 后果
 
-没有独立市场窗口，没有 `IPC_ROLES.MARKETPLACE`，也没有 `shell:seed-install-draft`。特权导航只把 boot 的 `file:` 钉在打包的 `boot.html`。IPC 市场安装仍走目录 id。Host 的 `install_dsh_plugin` 仍只接受 github。离线目录用缓存再快照，不搜 GitHub。
+没有独立市场窗口，没有 `IPC_ROLES.MARKETPLACE`，也没有 `shell:seed-install-draft`。特权导航只把 boot 的 `file:` 钉在打包的 `boot.html`。IPC 市场安装仍走目录 id。Host 的 `install_rlh_plugin` 仍只接受 github。离线目录用缓存再快照，不搜 GitHub。
 
 ## 测试
 
@@ -41,5 +41,5 @@ Host 的 `installPlugin` 只接受 `github:owner/repo[#ref]`。awesome-dsh-plugi
 ## 相关
 
 - [右边栏与终端工作环](2026-08-16-surfaces-terminal-work-loops.md)
-- [Host install_dsh_plugin 控制通道](2026-08-15-marketplace-draft-install.md)
-- [桌面预置 dshmarket](2026-08-19-desktop-dshmarket-preset.md)
+- [Host install_rlh_plugin 控制通道](2026-08-15-marketplace-draft-install.md)
+- [桌面预置 rlhmarket](2026-08-19-desktop-rlhmarket-preset.md)

@@ -5,15 +5,15 @@ const test = require('node:test');
 const protocol = require('./preview-guest-protocol.js');
 
 const CHANNELS = [
-  'dshd-preview-start-pick',
-  'dshd-preview-cancel-pick',
-  'dshd-preview-element-picked',
-  'dshd-preview-annotation-captured',
-  'dshd-preview-annotation-theme',
-  'dshd-preview-human-input',
+  'rlhd-preview-start-pick',
+  'rlhd-preview-cancel-pick',
+  'rlhd-preview-element-picked',
+  'rlhd-preview-annotation-captured',
+  'rlhd-preview-annotation-theme',
+  'rlhd-preview-human-input',
 ];
 
-test('guest protocol exports the six dshd-preview channels and no leftover brand names', () => {
+test('guest protocol exports the six rlhd-preview channels and no leftover brand names', () => {
   const values = [
     protocol.START_PICK_CHANNEL,
     protocol.CANCEL_PICK_CHANNEL,
@@ -25,6 +25,6 @@ test('guest protocol exports the six dshd-preview channels and no leftover brand
   assert.deepEqual(values, CHANNELS);
   for (const name of values) {
     assert.equal(name.includes(['t', '3'].join('')), false, name);
-    assert.match(name, /^dshd-preview-/);
+    assert.match(name, /^rlhd-preview-/);
   }
 });

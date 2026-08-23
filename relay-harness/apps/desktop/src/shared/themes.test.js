@@ -41,7 +41,7 @@ test('resolveTheme uses the dark half of a named family', () => {
 test('resolveTheme follows system preference and lists builtin families', () => {
   const light = resolveTheme({}, { harness: { preference: 'system' }, systemDark: false });
   assert.equal(light.scheme, 'light');
-  assert.equal(light.id, 'deepseek');
+  assert.equal(light.id, 'relay');
   const dark = resolveTheme({}, { harness: { preference: 'system' }, systemDark: true });
   assert.equal(dark.scheme, 'dark');
   assert.ok(listThemes().some((item) => item.id === 'paper'));

@@ -1,5 +1,5 @@
 {
-  "name": "@deepseek-ai/dsh-client-ui-settings-remote",
+  "name": "@relay-harness/rlh-client-ui-settings-remote",
   "description": "Desktop-only phone Remote popup beside Settings: on/off, LAN/relay, pairing QR, and bound-device management via window.shell",
   "version": "0.1.0-rc.8",
   "publishConfig": {
@@ -7,7 +7,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+    "url": "git+https://github.com/jyqj/relay-harness.git",
     "directory": "packages/client/ui-settings-remote"
   },
   "type": "module",
@@ -29,12 +29,12 @@
     "./src/*": "./src/*",
     "./package.json": "./package.json"
   },
-  "dsh": {
+  "rlh": {
     "client": {
       "inject": [
-        "@deepseek-ai/dsh-client-runtime",
-        "@deepseek-ai/dsh-client-ui-sidebar",
-        "@deepseek-ai/dsh-client-locale"
+        "@relay-harness/rlh-client-runtime",
+        "@relay-harness/rlh-client-ui-sidebar",
+        "@relay-harness/rlh-client-locale"
       ],
       "platform": "web"
     }
@@ -48,26 +48,26 @@
     "uqr": "^0.1.3"
   },
   "peerDependencies": {
-    "@deepseek-ai/cordis": "workspace:^",
-    "@deepseek-ai/dsh-client-locale": "workspace:^",
-    "@deepseek-ai/dsh-client-runtime": "workspace:^",
-    "@deepseek-ai/dsh-client-ui-primitives": "workspace:^",
-    "@deepseek-ai/dsh-client-ui-sidebar": "workspace:^",
-    "@deepseek-ai/dsh-client-ui-slots": "workspace:^",
-    "@deepseek-ai/dsh-invariants": "workspace:^",
+    "@relay-harness/cordis": "workspace:^",
+    "@relay-harness/rlh-client-locale": "workspace:^",
+    "@relay-harness/rlh-client-runtime": "workspace:^",
+    "@relay-harness/rlh-client-ui-primitives": "workspace:^",
+    "@relay-harness/rlh-client-ui-sidebar": "workspace:^",
+    "@relay-harness/rlh-client-ui-slots": "workspace:^",
+    "@relay-harness/rlh-invariants": "workspace:^",
     "react": "^18.2.0"
   },
   "devDependencies": {
-    "@deepseek-ai/dsh-client-locale": "workspace:^",
-    "@deepseek-ai/dsh-client-runtime": "workspace:^",
-    "@deepseek-ai/dsh-client-test-runtime": "workspace:^",
-    "@deepseek-ai/dsh-client-ui-primitives": "workspace:^",
-    "@deepseek-ai/dsh-client-ui-sidebar": "workspace:^",
-    "@deepseek-ai/dsh-client-ui-slots": "workspace:^",
-    "@deepseek-ai/dsh-invariants": "workspace:^",
+    "@relay-harness/rlh-client-locale": "workspace:^",
+    "@relay-harness/rlh-client-runtime": "workspace:^",
+    "@relay-harness/rlh-client-test-runtime": "workspace:^",
+    "@relay-harness/rlh-client-ui-primitives": "workspace:^",
+    "@relay-harness/rlh-client-ui-sidebar": "workspace:^",
+    "@relay-harness/rlh-client-ui-slots": "workspace:^",
+    "@relay-harness/rlh-invariants": "workspace:^",
     "@testing-library/react": "^16.1.0",
     "@types/react": "~18.3.1",
-    "@deepseek-ai/cordis": "workspace:^",
+    "@relay-harness/cordis": "workspace:^",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   },

@@ -1,13 +1,14 @@
+// @ts-check
 'use strict';
 
 /** Preview URL helpers (CJS twin of ui-preview `url.ts`). */
 
-const TAB_ID_PREFIX = 'dshd-tab_';
+const TAB_ID_PREFIX = 'rlhd-tab_';
 let nextPreviewTabSequence = 0;
 
 /**
  * Mint a preview tab id. Sequence increments per call in this module.
- * @returns {string} id starting with `dshd-tab_`.
+ * @returns {string} id starting with `rlhd-tab_`.
  */
 function newPreviewTabId() {
   nextPreviewTabSequence += 1;

@@ -7,9 +7,9 @@
   flex-direction: column;
   gap: 10px;
   padding: 12px;
-  border: 1px solid var(--dsw-alias-border-l2);
+  border: 1px solid var(--rlw-alias-border-l2);
   border-radius: 12px;
-  background: var(--dsw-alias-bg-layer-1);
+  background: var(--rlw-alias-bg-layer-1);
 }
 
 .branchRow {
@@ -24,7 +24,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: var(--dsw-alias-label-primary);
+  color: var(--rlw-alias-label-primary);
   font-size: 13px;
   font-weight: 500;
   line-height: 20px;
@@ -32,7 +32,7 @@
 
 .warn {
   margin-left: auto;
-  color: var(--dsw-alias-state-warn-label);
+  color: var(--rlw-alias-state-warn-label);
   font-size: 12px;
   line-height: 18px;
 }
@@ -52,14 +52,14 @@
 }
 
 .meta {
-  color: var(--dsw-alias-label-tertiary);
+  color: var(--rlw-alias-label-tertiary);
   font-size: 12px;
   line-height: 18px;
 }
 
 .none {
   margin: 0;
-  color: var(--dsw-alias-label-primary);
+  color: var(--rlw-alias-label-primary);
   font-size: 13px;
   font-weight: 500;
   line-height: 20px;
@@ -74,11 +74,11 @@
   padding: 4px;
   overflow: auto;
   list-style: none;
-  border: 1px solid var(--dsw-alias-border-l2);
+  border: 1px solid var(--rlw-alias-border-l2);
   border-radius: 10px;
-  background: var(--dsw-alias-bg-layer-2);
-  --dsh-scrollbar-thumb: var(--dsw-alias-scrollbar-bg-l2);
-  --dsh-scrollbar-thumb-hover: var(--dsw-alias-scrollbar-hover-l2);
+  background: var(--rlw-alias-bg-layer-2);
+  --rlh-scrollbar-thumb: var(--rlw-alias-scrollbar-bg-l2);
+  --rlh-scrollbar-thumb-hover: var(--rlw-alias-scrollbar-hover-l2);
 }
 
 .row {
@@ -97,14 +97,14 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-family: var(--ds-font-family-code);
+  font-family: var(--rl-font-family-code);
   font-size: 12px;
   line-height: 18px;
 }
 
 .path,
 .pathButton {
-  color: var(--dsw-alias-label-primary);
+  color: var(--rlw-alias-label-primary);
 }
 
 .pathButton {
@@ -116,7 +116,7 @@
   padding: 0;
   border: none;
   background: none;
-  font-family: var(--ds-font-family-code);
+  font-family: var(--rl-font-family-code);
   font-size: 12px;
   line-height: 18px;
   text-align: left;
@@ -128,13 +128,13 @@
 }
 
 .pathMuted {
-  color: var(--dsw-alias-label-dimmed);
+  color: var(--rlw-alias-label-dimmed);
 }
 
 .stat,
 .total {
   flex: none;
-  font-family: var(--ds-font-family-code);
+  font-family: var(--rl-font-family-code);
   font-size: 12px;
   line-height: 18px;
 }
@@ -144,11 +144,11 @@
 }
 
 .add {
-  color: var(--dsw-alias-state-success-primary);
+  color: var(--rlw-alias-state-success-primary);
 }
 
 .del {
-  color: var(--dsw-alias-state-error-primary);
+  color: var(--rlw-alias-state-error-primary);
 }
 
 .field {
@@ -159,7 +159,7 @@
 }
 
 .fieldLabel {
-  color: var(--dsw-alias-label-primary);
+  color: var(--rlw-alias-label-primary);
   font-size: 13px;
   font-weight: 500;
   line-height: 20px;
@@ -170,11 +170,11 @@
   width: 100%;
   min-height: 72px;
   padding: 8px 10px;
-  border: 1px solid var(--dsw-alias-border-l2);
+  border: 1px solid var(--rlw-alias-border-l2);
   border-radius: 12px;
-  background: var(--dsw-alias-bg-layer-2);
-  color: var(--dsw-alias-label-primary);
-  font-family: var(--dsw-font-family);
+  background: var(--rlw-alias-bg-layer-2);
+  color: var(--rlw-alias-label-primary);
+  font-family: var(--rlw-font-family);
   font-size: 13px;
   line-height: 20px;
   resize: vertical;
@@ -182,5 +182,5 @@
 
 .message:focus {
   outline: none;
-  border-color: var(--dsw-alias-brand-primary);
+  border-color: var(--rlw-alias-brand-primary);
 }

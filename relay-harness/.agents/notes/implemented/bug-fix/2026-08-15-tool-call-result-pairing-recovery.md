@@ -10,7 +10,7 @@ A tool scheduler failure could leave a session log where an `assistant/message` 
 
 Two independent causes fed the failure:
 
-1. **Scheduler identity could break.** The tool runtime's internal scheduler view is addressed by a module-scoped `unique symbol`. A process that accidentally loaded two copies of `@deepseek-ai/dsh-tools` (a duplicated install, a stale profile fallback link, or a mixed packaged runtime) evaluated two distinct symbols, so the consumer's `ctx.tools[TOOL_RUNTIME_SCHEDULER]` read `undefined` and `prepare` crashed with a bare `TypeError: Cannot read properties of undefined (reading 'prepare')`.
+1. **Scheduler identity could break.** The tool runtime's internal scheduler view is addressed by a module-scoped `unique symbol`. A process that accidentally loaded two copies of `@relay-harness/rlh-tools` (a duplicated install, a stale profile fallback link, or a mixed packaged runtime) evaluated two distinct symbols, so the consumer's `ctx.tools[TOOL_RUNTIME_SCHEDULER]` read `undefined` and `prepare` crashed with a bare `TypeError: Cannot read properties of undefined (reading 'prepare')`.
 
 2. **The failure path did not close the transcript.** `executeToolCalls` deliberately drained started dispatches and rethrew the first error without recording results, so a failed step's assistant tool calls were left dangling. `interruptedTurnClosers` only repairs an *open* tail turn; a closed error turn was skipped, and `deriveMessages` projected the unbalanced history as-is.
 
@@ -23,11 +23,11 @@ Two independent causes fed the failure:
 - A terminal scheduler failure drains started dispatches, then completes every started call in model order — committing settled results (a throwing `finalize`/`finish` is treated as outcome-unknown and its stage is never re-run) and recording a synthetic `TOOL_OUTCOME_UNKNOWN` result for started calls without one.
 - Calls that never began receive a synthetic `TOOL_NOT_STARTED` call/result pair.
 - The original first failure still ends the turn as `turn/end { reason: { kind: 'error' } }`; completion is best-effort and a secondary failure only logs.
-- The scheduler is resolved once per group through `requireToolRuntimeScheduler`, which fails loud with a deployable diagnosis (stale `$DSH_HOME/profiles/<name>/node_modules` copies, mixed packaged runtime) instead of a bare `TypeError`.
+- The scheduler is resolved once per group through `requireToolRuntimeScheduler`, which fails loud with a deployable diagnosis (stale `$RLH_HOME/profiles/<name>/node_modules` copies, mixed packaged runtime) instead of a bare `TypeError`.
 
 ### Stable scheduler identity (tools)
 
-`TOOL_RUNTIME_SCHEDULER` is now `Symbol.for('@deepseek-ai/dsh-tools.scheduler')`, so two module copies in one realm share the same key. The `unique symbol` type and the generated Cordis API surface are unchanged.
+`TOOL_RUNTIME_SCHEDULER` is now `Symbol.for('@relay-harness/rlh-tools.scheduler')`, so two module copies in one realm share the same key. The `unique symbol` type and the generated Cordis API surface are unchanged.
 
 ### Transcript canonicalization (session)
 
@@ -53,7 +53,7 @@ The conversation projection already settles a running tool card at a closed turn
 
 - New failures never produce orphan tool calls; the turn still ends in error with the original failure surfaced.
 - Legacy corrupted sessions recover on the next request with deterministic synthetic results; providers never receive a known-invalid payload.
-- Duplicate module copies of dsh-tools no longer break the scheduler lookup, and a missing scheduler is diagnosed instead of crashing with a `TypeError`.
+- Duplicate module copies of rlh-tools no longer break the scheduler lookup, and a missing scheduler is diagnosed instead of crashing with a `TypeError`.
 - The append-only log, session format version, event vocabulary, and both persistence backends are unchanged.
 
 ## Verification
@@ -61,5 +61,5 @@ The conversation projection already settles a running tool card at a closed turn
 - Unit/integration: `tool-calls.spec.ts` (30 tests) covers scheduler-missing, prepare/finalize/dispatch failures, mixed real+synthetic completion, later-group failure/abort, and a followup whose next request passes `assertToolTranscriptValid`; `tool-transcript.spec.ts` (14 tests) covers the exact corrupted-log shape (assistant tool calls with no results, closed error turn, later user messages) through `deriveMessages`; the interrupted tool card is pinned in `conversation-node-definitions.client.spec.ts`.
 - Type gates: host and client `tsc -b` pass; per-file coverage thresholds pass for the changed files.
 - Shell: root `npm test` is green (69/69) after installing the Electron package and its binary.
-- Packaging: `npm run pack` succeeds; the shipped runtime archive contains the fix (scheduler guard, outcome-unknown synthesis, canonicalizer, `Symbol.for` key). A script imported the packaged `dsh-session`/`dsh-llm` bundles and verified the corrupted shape derives a provider-valid transcript.
+- Packaging: `npm run pack` succeeds; the shipped runtime archive contains the fix (scheduler guard, outcome-unknown synthesis, canonicalizer, `Symbol.for` key). A script imported the packaged `rlh-session`/`rlh-llm` bundles and verified the corrupted shape derives a provider-valid transcript.
 - In-app end-to-end: the packaged desktop app was launched with a corrupted fixture session in the active workspace; sending a message through the app composer (provider: opencode-go / DeepSeek V4 Flash) completed normally. The model observed the synthetic results ("returned 'No result provided' — odd. Let me retry"), continued the agent loop with real tool executions, and produced a full reply — no `INVALID_REQUEST`, no failure.

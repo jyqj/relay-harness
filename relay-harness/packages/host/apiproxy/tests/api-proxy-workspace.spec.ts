@@ -2,21 +2,21 @@ import { existsSync, mkdirSync, mkdtempSync, realpathSync, statSync } from 'node
 import { homedir, tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
-import { Context } from '@deepseek-ai/cordis'
-import AgentRegistry, { Inbox } from '@deepseek-ai/dsh-agent'
-import type { Agent, AgentFactory } from '@deepseek-ai/dsh-agent'
-import SessionStore, { SessionId } from '@deepseek-ai/dsh-session'
-import type { Session } from '@deepseek-ai/dsh-session'
-import Storage from '@deepseek-ai/dsh-storage'
-import { DomainFacility } from '@deepseek-ai/dsh-storage-domain'
-import UserQuestionService from '@deepseek-ai/dsh-user-questions'
-import { DirectoryPickerError } from '@deepseek-ai/dsh-host-directory-picker'
-import type { DirectoryPickerCapability } from '@deepseek-ai/dsh-host-directory-picker'
-import WorkspaceRegistry from '@deepseek-ai/dsh-workspace'
-import type { HostFrame, WorkspaceId } from '@deepseek-ai/dsh-host-apiproxy/api'
-import type { RpcRequest, RpcResponse } from '@deepseek-ai/dsh-host-apiproxy/api/rpc'
-import { RpcId } from '@deepseek-ai/dsh-host-apiproxy/api/rpc'
-import { createApiProxy } from '@deepseek-ai/dsh-host-apiproxy'
+import { Context } from '@relay-harness/cordis'
+import AgentRegistry, { Inbox } from '@relay-harness/rlh-agent'
+import type { Agent, AgentFactory } from '@relay-harness/rlh-agent'
+import SessionStore, { SessionId } from '@relay-harness/rlh-session'
+import type { Session } from '@relay-harness/rlh-session'
+import Storage from '@relay-harness/rlh-storage'
+import { DomainFacility } from '@relay-harness/rlh-storage-domain'
+import UserQuestionService from '@relay-harness/rlh-user-questions'
+import { DirectoryPickerError } from '@relay-harness/rlh-host-directory-picker'
+import type { DirectoryPickerCapability } from '@relay-harness/rlh-host-directory-picker'
+import WorkspaceRegistry from '@relay-harness/rlh-workspace'
+import type { HostFrame, WorkspaceId } from '@relay-harness/rlh-host-apiproxy/api'
+import type { RpcRequest, RpcResponse } from '@relay-harness/rlh-host-apiproxy/api/rpc'
+import { RpcId } from '@relay-harness/rlh-host-apiproxy/api/rpc'
+import { createApiProxy } from '@relay-harness/rlh-host-apiproxy'
 import { MemoryStorageBackend } from '../../../storage/storage-domain/tests/helpers/memory-backend.ts'
 
 let nextRpc = 1
@@ -59,7 +59,7 @@ function stubAgent(session: Session): Agent {
 
 /** Compose the API over real Session, Agent, Storage, Domain, and Workspace services. */
 async function harness(
-  root = realpathSync.native(mkdtempSync(join(tmpdir(), 'dsh-apiproxy-workspace-'))),
+  root = realpathSync.native(mkdtempSync(join(tmpdir(), 'rlh-apiproxy-workspace-'))),
   picker: DirectoryPickerCapability = { kind: 'native', pick: async () => null },
   extras: {
     openPath?: (path: string, signal: AbortSignal) => Promise<void>
@@ -229,18 +229,18 @@ describe('host.listDirectory / host.createDirectory', () => {
 })
 
 describe('host.openPath', () => {
-  it('advertises a Host-owned scratch directory under DSH_HOME and creates it', async () => {
-    const home = realpathSync.native(mkdtempSync(join(tmpdir(), 'dsh-scratch-home-')))
-    const previous = process.env.DSH_HOME
-    process.env.DSH_HOME = home
+  it('advertises a Host-owned scratch directory under RLH_HOME and creates it', async () => {
+    const home = realpathSync.native(mkdtempSync(join(tmpdir(), 'rlh-scratch-home-')))
+    const previous = process.env.RLH_HOME
+    process.env.RLH_HOME = home
     try {
       const { api } = await harness()
       const described = expectOk(await api.host.describe(request({})))
       expect(described.scratchCwd).toBe(join(home, 'no-workspace'))
       expect(statSync(described.scratchCwd).isDirectory()).toBe(true)
     } finally {
-      if (previous === undefined) delete process.env.DSH_HOME
-      else process.env.DSH_HOME = previous
+      if (previous === undefined) delete process.env.RLH_HOME
+      else process.env.RLH_HOME = previous
     }
   })
 

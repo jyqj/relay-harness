@@ -3,7 +3,7 @@
  * the drawer and a second handle on the right-panel Terminal surface so
  * each shell keeps its own sessions, groups, and active id.
  */
-import { defineStore, type EngineStoreHandle, type EngineStoreInstance } from '@deepseek-ai/dsh-client-runtime/client'
+import { defineStore, type EngineStoreHandle, type EngineStoreInstance } from '@relay-harness/rlh-client-runtime/client'
 
 /** Per-group split ceiling. */
 export const MAX_TERMINALS_PER_GROUP = 4

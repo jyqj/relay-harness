@@ -10,10 +10,10 @@ import {
   Menu,
   Modal,
   Tooltip,
-} from '@deepseek-ai/dsh-client-ui-primitives'
-import type { InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
-import type { SnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
-import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
+} from '@relay-harness/rlh-client-ui-primitives'
+import type { InjectFace, PropsLocale, PropsRuntime } from '@relay-harness/rlh-client-ui-slots'
+import type { SnapshotStore } from '@relay-harness/rlh-client-runtime/client'
+import type {} from '@relay-harness/rlh-client-ui-layout/client'
 import type {
   DefaultBranchConfirmableAction,
   GitActionIconName,

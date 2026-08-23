@@ -1,9 +1,9 @@
-/** Package-owned invariant companion for `@deepseek-ai/dsh-issue-runner-agent`. */
+/** Package-owned invariant companion for `@relay-harness/rlh-issue-runner-agent`. */
 
 /* jscpd:ignore-start */
-import type { Context } from '@deepseek-ai/cordis'
-import type { InvariantInstaller } from '@deepseek-ai/dsh-invariants'
-const PACKAGE_NAME = '@deepseek-ai/dsh-issue-runner-agent'
+import type { Context } from '@relay-harness/cordis'
+import type { InvariantInstaller } from '@relay-harness/rlh-invariants'
+const PACKAGE_NAME = '@relay-harness/rlh-issue-runner-agent'
 export const name = 'issue-runner-agent-invariant'
 export const inject = ['invariants']
 /** No runtime invariant: Agent/Session and Tool Runtime companions own the relationships this provider composes. */

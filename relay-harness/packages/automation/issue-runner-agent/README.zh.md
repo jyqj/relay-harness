@@ -1,8 +1,8 @@
-# `@deepseek-ai/dsh-issue-runner-agent`
+# `@relay-harness/rlh-issue-runner-agent`
 
 [English](README.md) | 中文
 
-原生 DSH Agent Runner。它在准备好的 cwd 创建一个 Session，在发布前安装捕获的 Tracker 工具，发送渲染后的 Issue 提示词，每轮后重查 Tracker eligibility，并在有界 continuation 轮次中复用同一个 Agent／Session。运行结果在 Agent dispose 后结算。
+原生 RLH Agent Runner。它在准备好的 cwd 创建一个 Session，在发布前安装捕获的 Tracker 工具，发送渲染后的 Issue 提示词，每轮后重查 Tracker eligibility，并在有界 continuation 轮次中复用同一个 Agent／Session。运行结果在 Agent dispose 后结算。
 
 ## 模型体验
 

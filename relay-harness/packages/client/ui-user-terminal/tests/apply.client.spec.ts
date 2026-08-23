@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
 /** User-terminal plugin injects the drawer now and surfaces.terminal when Task 6 declares it. */
-import { Context } from '@deepseek-ai/cordis'
+import { Context } from '@relay-harness/cordis'
 import { describe, expect, it, vi } from 'vitest'
-import { SlotRegistry } from '@deepseek-ai/dsh-client-runtime/client'
-import { LocaleRuntime } from '@deepseek-ai/dsh-client-locale/client'
+import { SlotRegistry } from '@relay-harness/rlh-client-runtime/client'
+import { LocaleRuntime } from '@relay-harness/rlh-client-locale/client'
 import { apply, inject } from '../src/client/index.ts'
 import type { TerminalShellInjected } from '../src/client/shell.ts'
 import { OPEN_SURFACE_EVENT, PENDING_PREVIEW_URL_KEY } from '../src/client/links.ts'

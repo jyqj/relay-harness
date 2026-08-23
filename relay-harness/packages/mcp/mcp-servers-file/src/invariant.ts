@@ -1,10 +1,10 @@
-/** Package-owned invariant companion. @module @deepseek-ai/dsh-mcp-servers-file/invariant */
+/** Package-owned invariant companion. @module @relay-harness/rlh-mcp-servers-file/invariant */
 
 /* jscpd:ignore-start */
-import type { Context } from '@deepseek-ai/cordis'
-import type { InvariantInstaller } from '@deepseek-ai/dsh-invariants'
+import type { Context } from '@relay-harness/cordis'
+import type { InvariantInstaller } from '@relay-harness/rlh-invariants'
 
-const PACKAGE_NAME = '@deepseek-ai/dsh-mcp-servers-file'
+const PACKAGE_NAME = '@relay-harness/rlh-mcp-servers-file'
 
 /** Cordis companion plugin name. */
 export const name = 'mcp-servers-file-invariant'

@@ -3,26 +3,26 @@
  * optional alias-token overrides.
  */
 import { useState } from 'react'
-import { Button, Input } from '@deepseek-ai/dsh-client-ui-primitives'
+import { Button, Input } from '@relay-harness/rlh-client-ui-primitives'
 import type { ThemeFamily, ThemeSeeds } from '../theme-family.ts'
 import type { ThemeKey } from './locales.ts'
 import { sliderFillStyle } from './slider.ts'
 import css from './AppearanceSection.module.css'
 
 const OVERRIDE_FIELDS = [
-  '--dsw-alias-bg-base',
-  '--dsw-alias-bg-layer-1',
-  '--dsw-alias-bg-layer-2',
-  '--dsw-alias-bg-overlay',
-  '--dsw-alias-label-primary',
-  '--dsw-alias-label-secondary',
-  '--dsw-alias-brand-primary',
-  '--dsw-alias-state-business-primary',
-  '--dsw-alias-button-info-fill',
-  '--dsw-alias-border-l1',
-  '--dsw-alias-border-l2',
-  '--dsw-specific-sidebar-fill',
-  '--dsw-specific-bubble',
+  '--rlw-alias-bg-base',
+  '--rlw-alias-bg-layer-1',
+  '--rlw-alias-bg-layer-2',
+  '--rlw-alias-bg-overlay',
+  '--rlw-alias-label-primary',
+  '--rlw-alias-label-secondary',
+  '--rlw-alias-brand-primary',
+  '--rlw-alias-state-business-primary',
+  '--rlw-alias-button-info-fill',
+  '--rlw-alias-border-l1',
+  '--rlw-alias-border-l2',
+  '--rlw-specific-sidebar-fill',
+  '--rlw-specific-bubble',
 ] as const
 
 /**

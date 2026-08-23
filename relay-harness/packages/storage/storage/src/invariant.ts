@@ -1,13 +1,13 @@
 /**
- * Package-owned invariant companion for `@deepseek-ai/dsh-storage`.
- * @module @deepseek-ai/dsh-storage/invariant
+ * Package-owned invariant companion for `@relay-harness/rlh-storage`.
+ * @module @relay-harness/rlh-storage/invariant
  */
 
 /* jscpd:ignore-start */
-import type { Context } from '@deepseek-ai/cordis'
-import type { InvariantInstaller } from '@deepseek-ai/dsh-invariants'
+import type { Context } from '@relay-harness/cordis'
+import type { InvariantInstaller } from '@relay-harness/rlh-invariants'
 
-const PACKAGE_NAME = '@deepseek-ai/dsh-storage'
+const PACKAGE_NAME = '@relay-harness/rlh-storage'
 
 /** Cordis companion plugin name. */
 export const name = 'storage-invariant'

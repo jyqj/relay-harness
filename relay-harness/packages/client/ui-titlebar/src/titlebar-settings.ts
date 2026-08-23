@@ -1,6 +1,6 @@
 /** Titlebar panel-toggle visibility stored in the Host user-settings document. */
 
-import z from '@deepseek-ai/schemastery'
+import z from '@relay-harness/schemastery'
 
 /** Settings namespace owned by the titlebar plugin. */
 export const TITLEBAR_SETTINGS_NAMESPACE = 'ui-titlebar'

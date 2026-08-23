@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
-import type { DirectoryListing } from '@deepseek-ai/dsh-client-runtime/client'
-import { DirectoryBrowseError } from '@deepseek-ai/dsh-client-runtime/client'
+import type { DirectoryListing } from '@relay-harness/rlh-client-runtime/client'
+import { DirectoryBrowseError } from '@relay-harness/rlh-client-runtime/client'
 import { DirectoryBrowser } from '../src/client/DirectoryBrowser.tsx'
 
 afterEach(cleanup)
@@ -1158,7 +1158,7 @@ describe('DirectoryBrowser', () => {
   })
 
   it('lists Win32 drive roots at This PC and can open a drive, not the volume picker itself', async () => {
-    const COMPUTER = '\\\\.\\dsh-computer'
+    const COMPUTER = '\\\\.\\rlh-computer'
     const C = 'C:\\'
     const computer: DirectoryListing = {
       path: COMPUTER,

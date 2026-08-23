@@ -2,23 +2,23 @@
 
 中文 · [English](motion.en.md)
 
-本文件记录产品动效合同，以及各 recipe 用在哪些产品面上。视觉规则见 [设计语言](design-language.md)。时长、缓动、位移的权威值在官方 [`base.css`](../vendor/deepseek-harness/packages/client/ui-theme/src/styles/base.css) 与 [`motion.css`](../vendor/deepseek-harness/packages/client/ui-theme/src/styles/motion.css)；工程规则见 [`web-styling.md`](../vendor/deepseek-harness/docs/web-styling.md)；决策依据见 [动效系统 Agent Note](../vendor/deepseek-harness/.agents/notes/implemented/architecture/2026-08-14-web-motion-presence-and-recipes.md)。
+本文件记录产品动效合同，以及各 recipe 用在哪些产品面上。视觉规则见 [设计语言](design-language.md)。时长、缓动、位移的权威值在官方 [`base.css`](../vendor/relay-harness/packages/client/ui-theme/src/styles/base.css) 与 [`motion.css`](../vendor/relay-harness/packages/client/ui-theme/src/styles/motion.css)；工程规则见 [`web-styling.md`](../vendor/relay-harness/docs/web-styling.md)；决策依据见 [动效系统 Agent Note](../vendor/relay-harness/.agents/notes/implemented/architecture/2026-08-14-web-motion-presence-and-recipes.md)。
 
-对照表按 recipe 与产品面分组，不枚举每一个 Tooltip 或按钮 hover。核对实现时以源码为准：搜 `data-dsh-motion`、`usePresence`、`FlipText`。
+对照表按 recipe 与产品面分组，不枚举每一个 Tooltip 或按钮 hover。核对实现时以源码为准：搜 `data-rlh-motion`、`usePresence`、`FlipText`。
 
 ## 适用范围
 
 凡改动可见进出场、换文案或持续指示，都受约束，包括：
 
-- 官方 Web UI：`vendor/deepseek-harness/packages/client/**`、`apps/web/**`
+- 官方 Web UI：`vendor/relay-harness/packages/client/**`、`apps/web/**`
 - 桌面壳：`src/renderer/**`、`src/main/closing-overlay.js`
 
 ## 原则
 
 1. **只动 `opacity` 和 `transform`。** 禁止动画 `backdrop-filter`、大面板宽高，禁止引入动画库。
-2. **新对话框、菜单、同层切换走 recipe。** 表面从 `usePresence` 写上 `data-dsh-motion` 和 `data-state`，不得另起一套时长或缓动。
+2. **新对话框、菜单、同层切换走 recipe。** 表面从 `usePresence` 写上 `data-rlh-motion` 和 `data-state`，不得另起一套时长或缓动。
 3. **触发器换文案用 `FlipText`。** 权限、模型、推理等级这类芯片在所选值替换旧文案时翻转，不闪切。
-4. **`prefers-reduced-motion: reduce` 把 `--ds-transition-duration*` 和 `--ds-motion-duration-*` 收成 `0s`。** 新动效必须吃这些 token，才能一并关掉。
+4. **`prefers-reduced-motion: reduce` 把 `--rl-transition-duration*` 和 `--rl-motion-duration-*` 收成 `0s`。** 新动效必须吃这些 token，才能一并关掉。
 5. **先复用原语。** `Modal` / `Menu` / `Tooltip` / `HoverCard` / `DisclosureRow` / `OnboardingSurface` 已经带齐 Presence 与 recipe。
 
 ## Token
@@ -27,18 +27,18 @@
 
 | Token | 当前值 | 用途 |
 | --- | --- | --- |
-| `--ds-ease-in-out` | `cubic-bezier(0.4, 0, 0.2, 1)` | 共享缓动 |
-| `--ds-transition-duration-fast` | 100ms | 快过渡；overlay 退场、swap / fade |
-| `--ds-transition-duration` | 200ms | 默认过渡；overlay 进场 |
-| `--ds-transition-duration-slow` | 300ms | 栏开合、Hero 小动效 |
-| `--ds-motion-duration-overlay` | 200ms | overlay 进场 |
-| `--ds-motion-duration-overlay-out` | 100ms | overlay 退场 |
-| `--ds-motion-duration-popover` | 160ms | 菜单 / 浮层 |
-| `--ds-motion-duration-swap` | 100ms | fade、swap |
-| `--ds-motion-duration-flip` | 400ms | `FlipText` |
-| `--ds-motion-distance-overlay` | 8px | overlay 面板上移 |
-| `--ds-motion-distance-popover` | 4px | popover 上移 |
-| `--ds-motion-scale-overlay` | 0.96 | overlay 面板缩放 |
+| `--rl-ease-in-out` | `cubic-bezier(0.4, 0, 0.2, 1)` | 共享缓动 |
+| `--rl-transition-duration-fast` | 100ms | 快过渡；overlay 退场、swap / fade |
+| `--rl-transition-duration` | 200ms | 默认过渡；overlay 进场 |
+| `--rl-transition-duration-slow` | 300ms | 栏开合、Hero 小动效 |
+| `--rl-motion-duration-overlay` | 200ms | overlay 进场 |
+| `--rl-motion-duration-overlay-out` | 100ms | overlay 退场 |
+| `--rl-motion-duration-popover` | 160ms | 菜单 / 浮层 |
+| `--rl-motion-duration-swap` | 100ms | fade、swap |
+| `--rl-motion-duration-flip` | 400ms | `FlipText` |
+| `--rl-motion-distance-overlay` | 8px | overlay 面板上移 |
+| `--rl-motion-distance-popover` | 4px | popover 上移 |
+| `--rl-motion-scale-overlay` | 0.96 | overlay 面板缩放 |
 
 `usePresence` 的退场挂载默认 200ms（`PRESENCE_EXIT_MS`），与 overlay 进场 token 对齐。`FlipText` 的 400ms 挂载（`FLIP_TEXT_MS`）独立于 Presence。
 
@@ -102,13 +102,13 @@ composer 上四个浮层共用此时长：加号斜杠菜单、权限 `Menu`、�
 | --- | --- |
 | 所有 Tooltip | `Tooltip`（侧栏、标题栏栏开关、输入栏、队列、消息操作、终端、Git 提示等） |
 | 展开行正文 | `DisclosureRow`：推理、工具行、命令卡、上下文注入、Diff 文件、工作流状态 |
-| 侧栏工作目录下的会话列表 | `GroupSessionRun`：`fade` 进出场；内层 `0fr` / `1fr` 用 `--ds-transition-duration` 收合，箭头同步旋转 |
+| 侧栏工作目录下的会话列表 | `GroupSessionRun`：`fade` 进出场；内层 `0fr` / `1fr` 用 `--rl-transition-duration` 收合，箭头同步旋转 |
 
 ### swap
 
 | 产品面 | 实现 |
 | --- | --- |
-| 设置左侧换分区 | `SettingsRoot` 以 `key={active}` 包一层 `data-dsh-motion="swap"` |
+| 设置左侧换分区 | `SettingsRoot` 以 `key={active}` 包一层 `data-rlh-motion="swap"` |
 
 ### flip
 
@@ -119,14 +119,14 @@ composer 上四个浮层共用此时长：加号斜杠菜单、权限 `Menu`、�
 
 ### 同 token、非 recipe
 
-这些过渡吃 `--ds-transition-*` / `--ds-ease-in-out`，但没有 `data-dsh-motion`。不要为它们新造时长。
+这些过渡吃 `--rl-transition-*` / `--rl-ease-in-out`，但没有 `data-rlh-motion`。不要为它们新造时长。
 
 | 产品面 | 行为 |
 | --- | --- |
 | 侧栏 / 栏开合 | `AppFrame` 过渡 `grid-template-columns` / `rows`、把手 `left`、图标位移；拖拽中暂停；减弱动效时停下 |
-| 开关 | `Switch` 滑块 `transform`，`--ds-transition-duration-fast` |
+| 开关 | `Switch` 滑块 `transform`，`--rl-transition-duration-fast` |
 | 按钮、输入、行 hover | 交互色 token，不是进出场 recipe |
-| 空会话 Hero 小鱼 | 悬停且未减弱动效时，`--ds-transition-duration-slow` 轻摆 |
+| 空会话 Hero 标志 | 悬停且未减弱动效时，`--rl-transition-duration-slow` 轻推 |
 
 ### 独立例外
 
@@ -136,14 +136,14 @@ composer 上四个浮层共用此时长：加号斜杠菜单、权限 `Menu`、�
 | --- | --- | --- |
 | Toast | 160ms 滑入，停留 3s，再 1s 淡出；组件自己计时卸载 | `Toast.tsx` / `Toast.module.css`。输入栏附件上限、模型选择失败等 |
 | 桌面启动页 | 标志 / 文案 `rise`（8px + fade，错开 0 / 80 / 120 / 160ms）；盖章 `pulse` 1.2s；瞄准环 `spin` 1.05s；日志行 `fade`。时长走官方 token；减弱动效时全部停 | [`boot.css`](../src/renderer/boot.css)。仪器风不得扩散，见 [桌面启动页](design-language.md#桌面启动页) |
-| 关闭遮罩 | 本地 0.85s 无限旋转；不读 `--ds-motion-*`，也没有减弱动效分支 | [`closing-overlay.js`](../src/main/closing-overlay.js) |
-| dshbot 机器人头像 | 思考时用同命令数路径连续压扁/鼓边/拉长/侧倾（软泥）；眼白眨眼与瞳孔只动 `transform`；上传图 `scale` 脉冲。缓动走 `--ds-ease-in-out`，减弱动效全停 | [`vendor/dshbot/client/client.js`](../vendor/dshbot/client/client.js)。不得扩散到官方 Web UI 弹层 |
+| 关闭遮罩 | 本地 0.85s 无限旋转；不读 `--rl-motion-*`，也没有减弱动效分支 | [`closing-overlay.js`](../src/main/closing-overlay.js) |
+| rlhbot 机器人头像 | 思考时用同命令数路径连续压扁/鼓边/拉长/侧倾（软泥）；眼白眨眼与瞳孔只动 `transform`；上传图 `scale` 脉冲。缓动走 `--rl-ease-in-out`，减弱动效全停 | [`vendor/rlhbot/client/client.js`](../vendor/rlhbot/client/client.js)。不得扩散到官方 Web UI 弹层 |
 
 ## 如何新增
 
 | 要做的事 | 用法 |
 | --- | --- |
-| 全屏对话框或遮罩面板 | `Modal`，或 `usePresence` + `data-dsh-motion="overlay"`（`mask` / `panel`） |
+| 全屏对话框或遮罩面板 | `Modal`，或 `usePresence` + `data-rlh-motion="overlay"`（`mask` / `panel`） |
 | 锚定菜单或卡片 | `Menu` / `HoverCard`，或 `usePresence` + `popover` |
 | 已用 transform 定位的提示 | `Tooltip`，或 `fade` |
 | 同层换一块内容 | 换 `key` 的节点加 `swap` |
@@ -155,8 +155,8 @@ composer 上四个浮层共用此时长：加号斜杠菜单、权限 `Menu`、�
 
 ## 源码
 
-- Recipe：[`motion.css`](../vendor/deepseek-harness/packages/client/ui-theme/src/styles/motion.css)
-- Token：[`base.css`](../vendor/deepseek-harness/packages/client/ui-theme/src/styles/base.css)
-- Presence：[`usePresence.ts`](../vendor/deepseek-harness/packages/client/ui-primitives/src/usePresence.ts)
-- 翻转文案：[`FlipText.tsx`](../vendor/deepseek-harness/packages/client/ui-primitives/src/FlipText.tsx)
-- 桌面启动页 token：[`boot-tokens.css`](../src/renderer/boot-tokens.css)、[`dsh-webui-tokens.css`](../src/shared/dsh-webui-tokens.css)
+- Recipe：[`motion.css`](../vendor/relay-harness/packages/client/ui-theme/src/styles/motion.css)
+- Token：[`base.css`](../vendor/relay-harness/packages/client/ui-theme/src/styles/base.css)
+- Presence：[`usePresence.ts`](../vendor/relay-harness/packages/client/ui-primitives/src/usePresence.ts)
+- 翻转文案：[`FlipText.tsx`](../vendor/relay-harness/packages/client/ui-primitives/src/FlipText.tsx)
+- 桌面启动页 token：[`boot-tokens.css`](../src/renderer/boot-tokens.css)、[`rlh-webui-tokens.css`](../src/shared/rlh-webui-tokens.css)

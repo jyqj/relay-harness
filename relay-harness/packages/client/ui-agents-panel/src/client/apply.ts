@@ -1,8 +1,8 @@
 /** Registers the Agents occupant into surfaces.agents. */
-import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
-import type { SessionId } from '@deepseek-ai/dsh-client-runtime/client'
-import type {} from '@deepseek-ai/dsh-client-locale/client'
-import type {} from '@deepseek-ai/dsh-client-ui-surfaces/client'
+import type { ClientContext } from '@relay-harness/rlh-client-runtime/client'
+import type { SessionId } from '@relay-harness/rlh-client-runtime/client'
+import type {} from '@relay-harness/rlh-client-locale/client'
+import type {} from '@relay-harness/rlh-client-ui-surfaces/client'
 import { AgentsPanel } from './AgentsPanel.tsx'
 import type { AgentsPanelInjected } from './AgentsPanel.tsx'
 import { en, NS, zh, type AgentsKey } from './locales.ts'
@@ -11,7 +11,7 @@ export type { AgentsPanelProps, AgentsPanelInjected } from './AgentsPanel.tsx'
 export type { AgentRow } from './agents.ts'
 export type { AgentsKey } from './locales.ts'
 
-declare module '@deepseek-ai/dsh-client-ui-slots' {
+declare module '@relay-harness/rlh-client-ui-slots' {
   interface LocaleNamespaceMap {
     /** Agents surface copy. */
     agents: AgentsKey

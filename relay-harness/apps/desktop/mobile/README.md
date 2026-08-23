@@ -2,7 +2,7 @@
 
 English | [中文](README.zh.md)
 
-Scanning the QR code in the desktop **Remote** dialog opens this directory's independent `mobile/web` SPA, not the official four-column `dsh web` UI.
+Scanning the QR code in the desktop **Remote** dialog opens this directory's independent `mobile/web` SPA, not the official four-column `rlh web` UI.
 
 ## Web
 

@@ -6,14 +6,14 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render } from '@testing-library/react'
 import type { ReactNode } from 'react'
-import { bindSnapshotSelector } from '@deepseek-ai/dsh-client-test-runtime'
+import { bindSnapshotSelector } from '@relay-harness/rlh-client-test-runtime'
 import {
   createSnapshotStore, EMPTY_CHAT_SNAPSHOT, EMPTY_CONVERSATION_VIEWS, PendingWait,
-} from '@deepseek-ai/dsh-client-runtime/client'
-import { RpcId } from '@deepseek-ai/dsh-client-connection/client'
-import { makeTranslate } from '@deepseek-ai/dsh-client-test-runtime'
-import { zh as commonZh } from '@deepseek-ai/dsh-client-locale/src/locales/zh.ts'
-import type { ConversationSnapshot, SessionId } from '@deepseek-ai/dsh-client-runtime/client'
+} from '@relay-harness/rlh-client-runtime/client'
+import { RpcId } from '@relay-harness/rlh-client-connection/client'
+import { makeTranslate } from '@relay-harness/rlh-client-test-runtime'
+import { zh as commonZh } from '@relay-harness/rlh-client-locale/src/locales/zh.ts'
+import type { ConversationSnapshot, SessionId } from '@relay-harness/rlh-client-runtime/client'
 import type { ApprovalComposerProps } from '../src/client/contract/slots.ts'
 import { ApprovalPanel } from '../src/client/skeleton/ApprovalPanel.tsx'
 import { zh } from '../src/client/locales.ts'
@@ -168,8 +168,8 @@ describe('ApprovalPanel composer resize', () => {
     seat.dataset.composerSeat = ''
     seat.dataset.composerResized = ''
     seat.dataset.composerResizedWidth = ''
-    seat.style.setProperty('--dsh-composer-resized-height', '200px')
-    seat.style.setProperty('--dsh-composer-resized-width', '480px')
+    seat.style.setProperty('--rlh-composer-resized-height', '200px')
+    seat.style.setProperty('--rlh-composer-resized-width', '480px')
     document.body.appendChild(seat)
     const { view } = bench({ composerResize: true, seat })
     const scroll = view.container.querySelector('[data-approval-scroll]') as HTMLElement
@@ -193,7 +193,7 @@ describe('ApprovalPanel composer resize', () => {
     })
     fireEvent.pointerDown(handle, { pointerId: 1, clientY: 400, button: 0 })
     fireEvent.pointerMove(handle, { pointerId: 1, clientY: 350 })
-    expect(seat.style.getPropertyValue('--dsh-composer-resized-height')).toBe('130px')
+    expect(seat.style.getPropertyValue('--rlh-composer-resized-height')).toBe('130px')
     expect(seat.hasAttribute('data-composer-resized')).toBe(true)
     seat.remove()
   })

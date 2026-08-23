@@ -1,10 +1,10 @@
-# @deepseek-ai/dsh-rollout-budget-controller
+# @relay-harness/rlh-rollout-budget-controller
 
 English | [中文](README.zh.md)
 
 An opt-in shared rollout budget for one root Agent and every local descendant. It is not a tool. The plugin accounts each own-suffix `assistant/message.usage` once, charges output and uncached input with configurable weights, inserts threshold reminders into each Agent's next model request, rejects later pre-steps after exhaustion, and denies tool effects requested by the response that crosses the limit.
 
-This controller is separate from [`dsh-token-budget-controller`](../token-budget-controller/README.md): that plugin continues one response after a per-request `max-tokens` cutoff; this package limits aggregate model spend across many requests and subagents.
+This controller is separate from [`rlh-token-budget-controller`](../token-budget-controller/README.md): that plugin continues one response after a per-request `max-tokens` cutoff; this package limits aggregate model spend across many requests and subagents.
 
 ## Config
 
@@ -12,7 +12,7 @@ No limit is invented by the package or base bundle. A deployment that loads it m
 
 ```yaml
 - id: rollout-budget-controller
-  name: '@deepseek-ai/dsh-rollout-budget-controller'
+  name: '@relay-harness/rlh-rollout-budget-controller'
   config:
     limitTokens: 200000
     reminderAtRemainingTokens: [50000, 20000, 5000]
@@ -26,7 +26,7 @@ No limit is invented by the package or base bundle. A deployment that loads it m
 
 The highest currently live durable ancestor is the accounting root. The root session and every local child/grandchild resolve to one process-local ledger; unrelated roots remain isolated. Fork seeds are not charged again: events below `SessionHeader.seedLength` belong to the ancestor's already-counted prefix, and each session's own suffix is consumed once by event sequence. Rescanning a live or resumed Session therefore does not duplicate usage.
 
-Weighted usage is `outputTokens × samplingTokenWeight + inputTokens × prefillTokenWeight`. DSH defines `inputTokens` as uncached input, so `cacheReadTokens` and `cacheWriteTokens` are deliberately not charged. Provider-reported negative buckets clamp to zero.
+Weighted usage is `outputTokens × samplingTokenWeight + inputTokens × prefillTokenWeight`. RLH defines `inputTokens` as uncached input, so `cacheReadTokens` and `cacheWriteTokens` are deliberately not charged. Provider-reported negative buckets clamp to zero.
 
 Exhaustion is fail-closed at the next effect boundary. The response that crosses the limit is retained. Any tool calls in that response reach the global monotonic tool guard and settle as denied without invoking their bodies; any later Agent pre-step throws `RolloutBudgetError` (`ROLLOUT_BUDGET_EXCEEDED`) before another model request. Direct tool executions without an Agent have no root identity and remain outside the policy.
 

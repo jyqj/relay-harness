@@ -9,10 +9,10 @@
   - img
 - button "Edit":
   - img
-- button "Context injection @deepseek-ai/dsh-system-prompt":
+- button "Context injection @relay-harness/rlh-system-prompt":
   - img
   - img
-  - text: Context injection @deepseek-ai/dsh-system-prompt
+  - text: Context injection @relay-harness/rlh-system-prompt
 - 'button "Failed Bash Error: tool call aborted" [expanded]':
   - img
   - text: "Failed Bash Error: tool call aborted"

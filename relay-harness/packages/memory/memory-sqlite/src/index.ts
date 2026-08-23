@@ -1,20 +1,20 @@
 /**
  * Local SQLite provider for the long-term-memory capability.
  *
- * @module @deepseek-ai/dsh-memory-sqlite
+ * @module @relay-harness/rlh-memory-sqlite
  */
 
 import { createHash, randomUUID } from 'node:crypto'
 import type { DatabaseSync } from 'node:sqlite'
-import { Context, Service } from '@deepseek-ai/cordis'
-import z from '@deepseek-ai/schemastery'
+import { Context, Service } from '@relay-harness/cordis'
+import z from '@relay-harness/schemastery'
 import LongTermMemory, {
   MemoryExtractionJobId,
   MemoryExtractionQueue,
   MemoryId,
   MemoryTurnHandle,
   memoryContainsSecret,
-} from '@deepseek-ai/dsh-memory'
+} from '@relay-harness/rlh-memory'
 import type {
   AbortMemoryTurnInput,
   CommitMemoryTurnInput,
@@ -39,7 +39,7 @@ import type {
   RememberMemoryInput,
   ReviseMemoryInput,
   SearchMemoryInput,
-} from '@deepseek-ai/dsh-memory/types'
+} from '@relay-harness/rlh-memory/types'
 import { memoryContentHash, openMemoryDatabase, type JournalMode } from './schema.ts'
 import {
   claimMemoryStoreOwnership,

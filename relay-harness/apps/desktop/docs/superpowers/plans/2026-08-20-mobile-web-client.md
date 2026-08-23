@@ -6,19 +6,19 @@
 
 **Architecture:** Static ESM under `mobile/web/` (no Expo, no official plugin tree). Duplicate the Host wire locally. After remote login, Electron `RemoteGateway` serves this folder for document GETs and still proxies `/api/*` plus WebSocket upgrades to `127.0.0.1:3080`. Re-enable LAN + HTTPS relay.
 
-**Tech Stack:** Vanilla ESM, CSS custom properties copied from official `--dsw-alias-*`, Node `node:test` + `http`/`ws` test servers, existing `RemoteGateway`.
+**Tech Stack:** Vanilla ESM, CSS custom properties copied from official `--rlw-alias-*`, Node `node:test` + `http`/`ws` test servers, existing `RemoteGateway`.
 
 **Spec:** `docs/superpowers/specs/2026-08-20-mobile-web-client-design.md`
 
 ## Global Constraints
 
-- No `import` / `require` of `src/main`, `src/renderer`, `src/preload`, or `@deepseek-ai/dsh-client-*` from `mobile/web/` production files.
-- Token in URL hash only (`#offer=`). Cookie `dsh_remote`. Login `POST /__remote__/login`.
+- No `import` / `require` of `src/main`, `src/renderer`, `src/preload`, or `@relay-harness/rlh-client-*` from `mobile/web/` production files.
+- Token in URL hash only (`#offer=`). Cookie `rlh_remote`. Login `POST /__remote__/login`.
 - Unary body `{ type: "client-request", rpcId, method, payload }`. `rpcId` via `crypto.getRandomValues`, not `randomUUID`.
 - Handshake: `host.describe` → `session.list` + `workspace.list` → then WS `/api/events.mux` and `/api/events.host`. No SSE.
 - Prompt: `session.prompt` `{ mode: "queue", content: [{ type: "text", text }] }`.
 - Approval: `POST /api/respond` `{ type: "client-response", rpcId, result: { ok: true, value: { sessionId, approvalId, outcome } } }` with `allowed-once` | `rejected`.
-- Chinese product copy. Official `--dsw-alias-*` only. No Pierre / lucide / Tailwind / marketplace hex. Boot instrument canvas stays off this SPA.
+- Chinese product copy. Official `--rlw-alias-*` only. No Pierre / lucide / Tailwind / marketplace hex. Boot instrument canvas stays off this SPA.
 - Settings are memory-only for this connection. Hide desktop rows: 关闭窗口时, Harness 自动恢复, 打开配置文件. Gallery source CRUD stays in the gallery window.
 - Relay origins must stay HTTPS after `normalizeRelayOrigin`. No hardcoded relay IP.
 - Tests first. Do not commit unless asked.
@@ -94,7 +94,7 @@ test('offerFromHash reads #offer= and ignores query', () => {
 });
 ```
 
-`mobile/web/fence.test.js`: walk `mobile/web` production `.js`/`.html`/`.css` (skip `*.test.js`) and reject `from ['"]\\.\\./\\.\\./src/`, `require(['"]\\.\\./\\.\\./src/`, `@deepseek-ai/dsh-client-`.
+`mobile/web/fence.test.js`: walk `mobile/web` production `.js`/`.html`/`.css` (skip `*.test.js`) and reject `from ['"]\\.\\./\\.\\./src/`, `require(['"]\\.\\./\\.\\./src/`, `@relay-harness/rlh-client-`.
 
 - [ ] **Step 2: Run tests — expect fail** (module not found)
 
@@ -284,7 +284,7 @@ Packaging: add `mobile/web/**/*` to `build.files`, exclude `**/*.test.js`. Resol
 **Files:**
 - Create: `mobile/web/index.html`, `tokens.css`, `app.css`, `app.js` (screens can live in `app.js` for v1)
 
-Copy tokens from `src/shared/dsh-webui-tokens.css` **by value** into `tokens.css` (do not import that file from the SPA if the fence forbids `../../src`; pasting values is the exception). Layout from the mock: connect, chat+drawer, approval takeover, settings overlay with horizontal nav. Chinese copy from the mock. No 56px rail. Empty state = 新会话.
+Copy tokens from `src/shared/rlh-webui-tokens.css` **by value** into `tokens.css` (do not import that file from the SPA if the fence forbids `../../src`; pasting values is the exception). Layout from the mock: connect, chat+drawer, approval takeover, settings overlay with horizontal nav. Chinese copy from the mock. No 56px rail. Empty state = 新会话.
 
 `app.js` may use placeholder data until Task 10.
 

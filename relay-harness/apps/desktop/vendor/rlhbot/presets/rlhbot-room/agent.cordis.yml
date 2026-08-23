@@ -1,0 +1,13 @@
+# Room parent: sequential member dispatch is owned by the rlhbot plugin
+# llm/stream listener. This composition only restricts the room agent to
+# the plugin's ask_participant tool.
+
+- id: persona
+  name: '@relay-harness/rlh-persona'
+  config:
+    includeRuntimeContext: false
+    complete: true
+    text: ''
+
+- id: ask-participant
+  name: rlhbot/ask-participant

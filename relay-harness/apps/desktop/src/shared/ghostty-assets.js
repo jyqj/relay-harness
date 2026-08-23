@@ -1,3 +1,4 @@
+// @ts-check
 'use strict';
 
 const fs = require('fs');
@@ -18,7 +19,7 @@ const GHOSTTY_ASSET_FILES = Object.freeze([
 function terminalPackageRoots(harnessRoot) {
   return [
     path.join(harnessRoot, 'packages', 'client', 'ui-user-terminal'),
-    path.join(harnessRoot, 'node_modules', '@deepseek-ai', 'dsh-client-ui-user-terminal'),
+    path.join(harnessRoot, 'node_modules', '@relay-harness', 'rlh-client-ui-user-terminal'),
   ];
 }
 
@@ -148,7 +149,7 @@ function missingGhosttyAssetPaths(harnessRoot) {
   const roots = terminalRootsWithClient(harnessRoot);
   if (roots.length === 0) {
     missing.push(path.join('packages', 'client', 'ui-user-terminal', 'lib', 'client.js'));
-    missing.push(path.join('node_modules', '@deepseek-ai', 'dsh-client-ui-user-terminal', 'lib', 'client.js'));
+    missing.push(path.join('node_modules', '@relay-harness', 'rlh-client-ui-user-terminal', 'lib', 'client.js'));
     return missing;
   }
   for (const root of roots) {

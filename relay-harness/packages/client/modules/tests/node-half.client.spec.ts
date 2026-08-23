@@ -6,15 +6,15 @@ import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { runInNewContext } from 'node:vm'
-import { Context } from '@deepseek-ai/cordis'
+import { Context } from '@relay-harness/cordis'
 import { afterEach, describe, expect, it } from 'vitest'
-import type { WebServer, WebRoute } from '@deepseek-ai/dsh-host-webserver'
+import type { WebServer, WebRoute } from '@relay-harness/rlh-host-webserver'
 import * as modulesClient from '../src/client/index.ts'
 import { ClientModuleRegistry, injectBootManifest, orderByModuleGraph } from '../src/index.ts'
 import type { ClientModuleLoaderTarget, WebBootEntry, WebBootGraph } from '../src/client/index.ts'
 
-const MODULES_ID = '@deepseek-ai/dsh-client-modules'
-const RUNTIME_ID = '@deepseek-ai/dsh-client-runtime'
+const MODULES_ID = '@relay-harness/rlh-client-modules'
+const RUNTIME_ID = '@relay-harness/rlh-client-runtime'
 
 let root: string | undefined
 
@@ -26,9 +26,9 @@ afterEach(() => {
 /** Create a resolvable package whose client export points at the returned path. */
 function writePackage(
   packageName: string,
-  metadata: Record<string, unknown> = { dsh: { client: { platform: 'web' } } },
+  metadata: Record<string, unknown> = { rlh: { client: { platform: 'web' } } },
 ): string {
-  root ??= realpathSync(mkdtempSync(join(tmpdir(), 'dsh-client-modules-')))
+  root ??= realpathSync(mkdtempSync(join(tmpdir(), 'rlh-client-modules-')))
   const pkgRoot = join(root, 'node_modules', ...packageName.split('/'))
   const clientPath = join(pkgRoot, 'lib', 'client.js')
   mkdirSync(pkgRoot, { recursive: true })
@@ -45,7 +45,7 @@ function writePackage(
 
 /** Create a built package with the supplied client declaration. */
 function writeBuiltPackage(packageName: string, client: Record<string, unknown>): void {
-  const clientPath = writePackage(packageName, { dsh: { client: { platform: 'web', ...client } } })
+  const clientPath = writePackage(packageName, { rlh: { client: { platform: 'web', ...client } } })
   mkdirSync(dirname(clientPath), { recursive: true })
   writeFileSync(clientPath, 'module.exports = {}\n')
 }
@@ -107,7 +107,7 @@ describe('HTML bootstrap facade', () => {
     const facadeAt = html.indexOf('window.__ModuleLoader__=')
     const modulesAt = html.indexOf('<script src="/plugins/modules.js?rev=m"></script>')
     const runtimeAt = html.indexOf('<script src="/plugins/runtime.js?rev=r"></script>')
-    const graphAt = html.indexOf('window.__DSH_BOOT__ = ')
+    const graphAt = html.indexOf('window.__RLH_BOOT__ = ')
     const entryAt = html.indexOf('<script type="module" src="/index.js"></script>')
     expect([facadeAt, modulesAt, runtimeAt, graphAt, entryAt]).toEqual([...new Set([
       facadeAt, modulesAt, runtimeAt, graphAt, entryAt,
@@ -161,10 +161,10 @@ describe('HTML bootstrap facade', () => {
 })
 
 describe('client bundle activation', () => {
-  it('allows sibling dsh roles', () => {
+  it('allows sibling rlh roles', () => {
     const currentName = '@fixture/current-client-field'
     const clientPath = writePackage(currentName, {
-      dsh: {
+      rlh: {
         bundle: { patch: './cordis.patch.yml' },
         client: { platform: 'web' },
         profile: { bundles: [] },
@@ -315,9 +315,9 @@ describe('client bundle activation', () => {
 })
 
 describe('host-feature compatibility gate', () => {
-  /** Write a web client package whose manifest carries the given dsh section and a built bundle. */
-  function writeCompatibleClient(packageName: string, dsh: Record<string, unknown>): void {
-    const clientPath = writePackage(packageName, { dsh })
+  /** Write a web client package whose manifest carries the given rlh section and a built bundle. */
+  function writeCompatibleClient(packageName: string, rlh: Record<string, unknown>): void {
+    const clientPath = writePackage(packageName, { rlh })
     mkdirSync(dirname(clientPath), { recursive: true })
     writeFileSync(clientPath, 'module.exports = {}\n')
   }
@@ -344,28 +344,28 @@ describe('host-feature compatibility gate', () => {
       compatibility: { features: ['conversation.chat.user-actions', 'editor.unsupported'] },
     })
     expect(() => construct([packageName])).toThrow([
-      `client-modules: ${packageName} requires host features this dsh host does not support: editor.unsupported`,
-      '  the package is not part of the boot graph — update dsh to a host that provides them, or remove the plugin',
+      `client-modules: ${packageName} requires host features this rlh host does not support: editor.unsupported`,
+      '  the package is not part of the boot graph — update rlh to a host that provides them, or remove the plugin',
     ].join('\n'))
   })
 
-  it('rejects a malformed dsh.compatibility declaration, naming the package', () => {
+  it('rejects a malformed rlh.compatibility declaration, naming the package', () => {
     const packageName = '@fixture/features-malformed'
     writeCompatibleClient(packageName, {
       client: { platform: 'web' },
       compatibility: { features: 'conversation.chat.user-actions' },
     })
     expect(() => construct([packageName]))
-      .toThrow(`${packageName}: dsh.compatibility.features must be a string array of feature ids`)
+      .toThrow(`${packageName}: rlh.compatibility.features must be a string array of feature ids`)
   })
 
   it('does not gate packages without a web client declaration', () => {
     // A non-web package's compatibility is out of the module graph's scope
-    // (the install gate in `dsh plugin` owns every dependency); it must not
+    // (the install gate in `rlh plugin` owns every dependency); it must not
     // fail the composition.
     const packageName = '@fixture/features-node-only'
     writePackage(packageName, {
-      dsh: { client: { platform: 'node' }, compatibility: { features: ['editor.unsupported'] } },
+      rlh: { client: { platform: 'node' }, compatibility: { features: ['editor.unsupported'] } },
     })
     expect(construct([packageName]).graph().entries).toEqual([])
   })
@@ -394,7 +394,7 @@ describe('shared module declarations', () => {
     const packageName = '@fixture/external-not-array'
     writeBuiltPackage(packageName, { external: 'react' })
     expect(() => construct([packageName]))
-      .toThrow(`client-modules: ${packageName} dsh.client.external must be a string array`)
+      .toThrow(`client-modules: ${packageName} rlh.client.external must be a string array`)
   })
 })
 
@@ -429,7 +429,7 @@ describe('module graph order', () => {
 
   it('leaves a request no row answers to the static assembly channel', () => {
     expect(ids(orderByModuleGraph([
-      entry('consumer', { external: ['@deepseek-ai/cordis'] }),
+      entry('consumer', { external: ['@relay-harness/cordis'] }),
       entry('other'),
     ]))).toEqual(['consumer', 'other'])
   })

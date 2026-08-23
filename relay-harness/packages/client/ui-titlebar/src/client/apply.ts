@@ -1,8 +1,8 @@
 /** Registers the titlebar panel toggles into the layout-owned trailing cluster. */
-import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
-import type {} from '@deepseek-ai/dsh-client-locale/client'
-import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
-import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
+import type { ClientContext } from '@relay-harness/rlh-client-runtime/client'
+import type {} from '@relay-harness/rlh-client-locale/client'
+import type {} from '@relay-harness/rlh-client-ui-layout/client'
+import type {} from '@relay-harness/rlh-client-ui-settings/client'
 import type { PanelTogglesInjected } from './PanelToggles.tsx'
 import { PanelToggles } from './PanelToggles.tsx'
 import type { PanelToggleRowInjected } from './PanelToggleRow.tsx'
@@ -17,7 +17,7 @@ import { en, NS, zh, type TitlebarKey } from './locales.ts'
 export type { PanelTogglesInjected, PanelTogglesProps } from './PanelToggles.tsx'
 export type { TitlebarKey } from './locales.ts'
 
-declare module '@deepseek-ai/dsh-client-ui-slots' {
+declare module '@relay-harness/rlh-client-ui-slots' {
   interface LocaleNamespaceMap {
     /** Titlebar panel-toggle copy. */
     titlebar: TitlebarKey

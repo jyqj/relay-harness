@@ -2,7 +2,7 @@
  * Gallery-window wallpaper source list: add, edit, and delete named sources.
  */
 import { useState } from 'react'
-import { Button, Input, Modal } from '@deepseek-ai/dsh-client-ui-primitives'
+import { Button, Input, Modal } from '@relay-harness/rlh-client-ui-primitives'
 import {
   sanitizeWallpaperSources,
   type WallpaperSource,

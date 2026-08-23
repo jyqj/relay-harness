@@ -1,15 +1,15 @@
 import { describe, expect, expectTypeOf, it } from 'vitest'
-import { Context } from '@deepseek-ai/cordis'
-import { createUserMessage, CallId, HarnessError, type ContentBlock  } from '@deepseek-ai/dsh-llm'
-import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
-import type { Agent } from '@deepseek-ai/dsh-agent'
-import ApprovalService, { type ApprovalOutcome, type ApprovalRequest } from '@deepseek-ai/dsh-user-approval'
+import { Context } from '@relay-harness/cordis'
+import { createUserMessage, CallId, HarnessError, type ContentBlock  } from '@relay-harness/rlh-llm'
+import SystemPrompt from '@relay-harness/rlh-system-prompt'
+import type { Agent } from '@relay-harness/rlh-agent'
+import ApprovalService, { type ApprovalOutcome, type ApprovalRequest } from '@relay-harness/rlh-user-approval'
 import ToolRuntime, {
   defineContentToolFixture, defineTool, JsonSchemaError, parameterSchemaSpecToJsonSchema, validateArgs, ToolArgsError, ToolNotFoundError,
   TOOL_ABORTED, TOOL_ABORTED_BEFORE_DISPATCH, TOOL_RUNTIME_SCHEDULER,
   type InferArgs, type JsonValue, type ParameterSchemaSpec, type PreToolDecision, type PostToolDecision,
   type JsonSchemaNode, type ToolDefinition, type ToolDispatchExecution, type ToolExecutionResult, type ToolExecutionToken,
-} from '@deepseek-ai/dsh-tools'
+} from '@relay-harness/rlh-tools'
 
 const testToolSignal = new AbortController().signal
 
@@ -57,7 +57,7 @@ describe('ToolRuntime', () => {
     // entry) evaluates its own module scope, so a plain Symbol() would produce
     // a different key and break the consumer's lookup. The global registry
     // keeps the identity stable across copies within one Node realm.
-    expect(TOOL_RUNTIME_SCHEDULER).toBe(Symbol.for('@deepseek-ai/dsh-tools.scheduler'))
+    expect(TOOL_RUNTIME_SCHEDULER).toBe(Symbol.for('@relay-harness/rlh-tools.scheduler'))
     const readBack = (ctx.tools as unknown as Record<symbol, unknown>)[TOOL_RUNTIME_SCHEDULER]
     expect(typeof readBack).toBe('object')
     expect(typeof (readBack as { prepare: unknown }).prepare).toBe('function')
@@ -697,7 +697,7 @@ describe('ToolRuntime', () => {
   })
 
   it('ToolNotFoundError carries a stable message and code', async () => {
-    const { HarnessError } = await import('@deepseek-ai/dsh-llm')
+    const { HarnessError } = await import('@relay-harness/rlh-llm')
     const err = new ToolNotFoundError('ghost')
     expect(err).toBeInstanceOf(HarnessError)
     expect(err.name).toBe('ToolNotFoundError')
@@ -2663,7 +2663,7 @@ describe('defineTool validation (the runtime-validation Agent Note, part 1)', ()
   })
 
   it('a tool throwing a HarnessError surfaces its name and code', async () => {
-    const { HarnessError } = await import('@deepseek-ai/dsh-llm')
+    const { HarnessError } = await import('@relay-harness/rlh-llm')
     const ctx = await setup()
     ctx.tools.register({
       ...echoTool,

@@ -14,7 +14,7 @@ Status: implemented
 
 ## 决策
 
-`host.describe` 宣告 `scratchCwd`。Host 用 `dshHomePath('no-workspace')` 解析它（`$DSH_HOME/no-workspace` 或 `~/.dsh/no-workspace`），并在 describe 时 `mkdir`。浏览器从不拼接该路径。
+`host.describe` 宣告 `scratchCwd`。Host 用 `rlhHomePath('no-workspace')` 解析它（`$RLH_HOME/no-workspace` 或 `~/.rlh/no-workspace`），并在 describe 时 `mkdir`。浏览器从不拼接该路径。
 
 `IWorkspaces.connectNoDirectory()` 复用 cwd 等于 `scratchCwd`、id 不在任何 Workspace `sessionIds` 中、且未归档的空白 Session；否则调用 `session.create({ cwd: scratchCwd })`。它从不调用 `workspace.create`。进行中的调用会合流。导航由调用方负责（`sessions.open`）。
 

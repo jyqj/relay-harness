@@ -1,4 +1,4 @@
-# @deepseek-ai/dsh-settings
+# @relay-harness/rlh-settings
 
 English | [中文](README.zh.md)
 

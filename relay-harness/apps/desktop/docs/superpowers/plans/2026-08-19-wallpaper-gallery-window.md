@@ -12,7 +12,7 @@
 
 ## Global Constraints
 
-- Official `dsh web` tokens / `ui-primitives` only; no `marketplace.css` hex; no new Electron window.
+- Official `rlh web` tokens / `ui-primitives` only; no `marketplace.css` hex; no new Electron window.
 - Product copy Chinese in `locales.ts`; English keys in lockstep (`satisfies Record<ThemeKey, string>`).
 - Wallhaven `purity=100` only; no API key field; no NSFW toggle.
 - Unsplash / Pexels / Pixabay / Timeline / R18 stay out.
@@ -30,7 +30,7 @@
 
 ## File map
 
-- Modify: `vendor/deepseek-harness/packages/client/ui-theme/src/theme-settings.ts` — `WallpaperSource`, `WallpaperFavorite`, sanitize, migrate, Zod.
+- Modify: `vendor/relay-harness/packages/client/ui-theme/src/theme-settings.ts` — `WallpaperSource`, `WallpaperFavorite`, sanitize, migrate, Zod.
 - Modify: `settings-store.ts`, `src/client/index.ts` ThemeRuntime `setWallpaperSources` / `setWallpaperFavorites`.
 - Modify: `src/main/wallpaper-catalog.js` + `.test.js` — query by kind; Bing year; Wallhaven.
 - Modify: `src/main/ipc.js`, `src/preload/index.js` — pass the query object.
@@ -56,9 +56,9 @@ Task 8 Agent Note last
 ### Task 1: Host source and favorite records
 
 **Files:**
-- Modify: `vendor/deepseek-harness/packages/client/ui-theme/src/theme-settings.ts`
+- Modify: `vendor/relay-harness/packages/client/ui-theme/src/theme-settings.ts`
 - Modify: `settings-store.ts`, `src/client/index.ts` (ThemeSettings snapshot + `setWallpaperSources` / `setWallpaperFavorites`)
-- Test: `vendor/deepseek-harness/packages/client/ui-theme/tests/theme.client.spec.ts` and/or a focused `theme-settings` import in an existing spec that already imports `resolveThemeSettings` / `sanitizeWallpaperCatalogUrls`
+- Test: `vendor/relay-harness/packages/client/ui-theme/tests/theme.client.spec.ts` and/or a focused `theme-settings` import in an existing spec that already imports `resolveThemeSettings` / `sanitizeWallpaperCatalogUrls`
 
 **Interfaces:**
 - Produces:
@@ -142,7 +142,7 @@ Wallhaven: GET `https://wallhaven.cc/api/v1/search?purity=100&categories=${categ
 
 Catalog: existing parse; `source` = catalog url or pass-through.
 
-- [ ] **Step 1: Failing tests** in `wallpaper-catalog.test.js` with `withHttp` + `DSHD_WALLPAPER_ALLOW_HTTP=1` and env override for archive/search base if you add `DSHD_BING_ARCHIVE_URL` / `DSHD_WALLHAVEN_SEARCH_URL` (recommended so tests never hit the network). If you add env overrides, production defaults remain the two URLs in the spec.
+- [ ] **Step 1: Failing tests** in `wallpaper-catalog.test.js` with `withHttp` + `RLHD_WALLPAPER_ALLOW_HTTP=1` and env override for archive/search base if you add `RLHD_BING_ARCHIVE_URL` / `RLHD_WALLHAVEN_SEARCH_URL` (recommended so tests never hit the network). If you add env overrides, production defaults remain the two URLs in the spec.
 
 ```js
 test('listWallpaperCatalog wallhaven hardcodes purity=100', async () => {
@@ -312,13 +312,13 @@ Click card (not the star) → dialog 「将这张图设为背景？」 buttons �
 ### Task 8: Agent Note, README, pairing
 
 **Files:**
-- `vendor/deepseek-harness/.agents/notes/implemented/feature/2026-08-18-wallpaper-gallery-and-crop.md` (+ zh + sidecar)
+- `vendor/relay-harness/.agents/notes/implemented/feature/2026-08-18-wallpaper-gallery-and-crop.md` (+ zh + sidecar)
 - ui-theme `README.md` / `README.zh.md` Known Limitations
 
 Present tense. Describe the window, source CRUD, Bing+Wallhaven SFW, migrate-once, favorites. No “previously / round”.
 
 - [ ] **Step 1: Edit notes + README**
-- [ ] **Step 2: Pairing** from `vendor/deepseek-harness`:
+- [ ] **Step 2: Pairing** from `vendor/relay-harness`:
 
 ```sh
 pnpm run verify-translation-pairing -- --write .agents/notes/implemented/feature/2026-08-18-wallpaper-gallery-and-crop.md
@@ -332,7 +332,7 @@ If README pairing is required by the package, write both locales in the same cha
 
 Repo root: `node --test src/main/wallpaper-catalog.test.js`
 
-`vendor/deepseek-harness`:
+`vendor/relay-harness`:
 
 ```sh
 pnpm exec vitest run packages/client/ui-theme/tests/appearance-section.client.spec.tsx packages/client/ui-theme/tests/theme.client.spec.ts packages/client/ui-theme/tests/wallpaper-shell.client.spec.ts packages/client/ui-theme/tests/wallpaper.client.spec.ts packages/client/ui-theme/tests/settings-store.client.spec.ts packages/client/ui-theme/tests/wallpaper-crop-modal.client.spec.tsx

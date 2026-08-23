@@ -3,14 +3,14 @@
  * tools through nested executions scheduled under the native concurrency
  * contract; each sub-dispatch is logged for reconstruction, while only the
  * outer curated result enters model history.
- * @module @deepseek-ai/dsh-tools/src/code-mode
+ * @module @relay-harness/rlh-tools/src/code-mode
  */
 
-import { CallId, createUserMessage, HarnessError } from '@deepseek-ai/dsh-llm'
-import type { ContentBlock } from '@deepseek-ai/dsh-llm'
-import type { CodeBindingFunction, CodeRunResult, CodeRuntime } from '@deepseek-ai/dsh-code-runtime'
-import { snapshotJsonValue } from '@deepseek-ai/dsh-session'
-import type { JsonValue } from '@deepseek-ai/dsh-session'
+import { CallId, createUserMessage, HarnessError } from '@relay-harness/rlh-llm'
+import type { ContentBlock } from '@relay-harness/rlh-llm'
+import type { CodeBindingFunction, CodeRunResult, CodeRuntime } from '@relay-harness/rlh-code-runtime'
+import { snapshotJsonValue } from '@relay-harness/rlh-session'
+import type { JsonValue } from '@relay-harness/rlh-session'
 import { defineTool, parameterSchemaSpecToJsonSchema } from './schema.ts'
 import type { CodeDispatchLog, ToolDefinition, ToolExecutionResult, ToolRuntime, ToolRunContext } from './index.ts'
 import { toolRuntimeExecutionRequest } from './request-snapshot.ts'
@@ -126,7 +126,7 @@ function resolveFlavor(peekRuntime: () => CodeRuntime | undefined): RunCodeFlavo
   const flavor = RUN_CODE_FLAVORS[runtime.language]
   if (!Object.hasOwn(RUN_CODE_FLAVORS, runtime.language) || flavor === undefined) {
     const known = Object.keys(RUN_CODE_FLAVORS).map(name => JSON.stringify(name)).join(', ')
-    throw new Error(`dsh-tools: no run_code schema flavor registered for runtime language ${JSON.stringify(runtime.language)} (known: ${known})`)
+    throw new Error(`rlh-tools: no run_code schema flavor registered for runtime language ${JSON.stringify(runtime.language)} (known: ${known})`)
   }
   return flavor
 }

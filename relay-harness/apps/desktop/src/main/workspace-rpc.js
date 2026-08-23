@@ -1,3 +1,4 @@
+// @ts-check
 const { randomUUID } = require('crypto');
 
 function rpcEndpoint(baseUrl, method) {

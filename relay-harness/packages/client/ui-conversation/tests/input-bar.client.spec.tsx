@@ -6,14 +6,14 @@
 
 import { afterEach, describe, expect, it, onTestFinished, vi } from 'vitest'
 import { act, cleanup, fireEvent, render } from '@testing-library/react'
-import { bindSnapshotSelector } from '@deepseek-ai/dsh-client-test-runtime'
+import { bindSnapshotSelector } from '@relay-harness/rlh-client-test-runtime'
 import {
   createSnapshotStore, EMPTY_CHAT_SNAPSHOT, EMPTY_CONVERSATION_VIEWS,
-} from '@deepseek-ai/dsh-client-runtime/client'
-import { makeTranslate } from '@deepseek-ai/dsh-client-test-runtime'
-import { zh as commonZh } from '@deepseek-ai/dsh-client-locale/src/locales/zh.ts'
-import type { ClientContext, ConversationSnapshot, SessionId } from '@deepseek-ai/dsh-client-runtime/client'
-import type { SubmitOutcome } from '@deepseek-ai/dsh-client-ui-input-trigger/client'
+} from '@relay-harness/rlh-client-runtime/client'
+import { makeTranslate } from '@relay-harness/rlh-client-test-runtime'
+import { zh as commonZh } from '@relay-harness/rlh-client-locale/src/locales/zh.ts'
+import type { ClientContext, ConversationSnapshot, SessionId } from '@relay-harness/rlh-client-runtime/client'
+import type { SubmitOutcome } from '@relay-harness/rlh-client-ui-input-trigger/client'
 import { SessionInputShell } from '../src/client/input/facade.ts'
 import type {
   ComposerAttachment, ComposerAttachmentsOwnerProps,
@@ -71,7 +71,7 @@ interface BenchOptions {
   draft?: string
   running?: boolean
   agentPreset?: string
-  origin?: 'dshbot'
+  origin?: 'rlhbot'
   subagent?: Exclude<ConversationSnapshot['subagent'], null>
   disabled?: boolean
   inert?: boolean
@@ -1535,9 +1535,9 @@ describe('command launcher chrome and control seats', () => {
     expect((live.view.getByLabelText(/^访问模式/) as HTMLButtonElement).disabled).toBe(false)
   })
 
-  it('skips the model seat when the session agent preset is dshbot-room', () => {
+  it('skips the model seat when the session agent preset is rlhbot-room', () => {
     const { view, slotCalls } = bench({
-      agentPreset: 'dshbot-room',
+      agentPreset: 'rlhbot-room',
       planEntry: <i data-testid="plan-entry" />,
       modelEntry: <i data-testid="model-entry" />,
     })
@@ -1548,9 +1548,9 @@ describe('command launcher chrome and control seats', () => {
   })
 
 
-  it('skips the model seat when the session origin is dshbot', () => {
+  it('skips the model seat when the session origin is rlhbot', () => {
     const { view, slotCalls } = bench({
-      origin: 'dshbot',
+      origin: 'rlhbot',
       planEntry: <i data-testid="plan-entry" />,
       modelEntry: <i data-testid="model-entry" />,
     })

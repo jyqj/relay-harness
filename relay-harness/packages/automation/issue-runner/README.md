@@ -1,4 +1,4 @@
-# `@deepseek-ai/dsh-issue-runner`
+# `@relay-harness/rlh-issue-runner`
 
 English | [中文](README.zh.md)
 

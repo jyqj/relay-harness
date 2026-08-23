@@ -10,11 +10,11 @@
   box-sizing: border-box;
   width: min(320px, calc(100vw - 32px));
   padding: 12px 14px;
-  border: 1px solid var(--dsw-alias-border-l2);
+  border: 1px solid var(--rlw-alias-border-l2);
   border-radius: 12px;
-  background: var(--dsw-alias-bg-layer-2);
-  box-shadow: var(--dsw-shadow-lv2);
-  color: var(--dsw-alias-label-primary);
+  background: var(--rlw-alias-bg-layer-2);
+  box-shadow: var(--rlw-shadow-lv2);
+  color: var(--rlw-alias-label-primary);
 }
 
 .copy {
@@ -32,7 +32,7 @@
 .sub,
 .subFull {
   margin: 2px 0 0;
-  color: var(--dsw-alias-label-tertiary);
+  color: var(--rlw-alias-label-tertiary);
   font-size: 12px;
   line-height: 18px;
 }
@@ -50,8 +50,8 @@
   overflow: auto;
   white-space: pre-wrap;
   font: inherit;
-  --dsh-scrollbar-thumb: var(--dsw-alias-scrollbar-bg-l2);
-  --dsh-scrollbar-thumb-hover: var(--dsw-alias-scrollbar-hover-l2);
+  --rlh-scrollbar-thumb: var(--rlw-alias-scrollbar-bg-l2);
+  --rlh-scrollbar-thumb-hover: var(--rlw-alias-scrollbar-hover-l2);
 }
 
 .actions {
@@ -67,8 +67,8 @@
   width: 16px;
   height: 16px;
   margin-top: 2px;
-  border: 2px solid var(--dsw-alias-border-l2);
-  border-top-color: var(--dsw-alias-label-primary);
+  border: 2px solid var(--rlw-alias-border-l2);
+  border-top-color: var(--rlw-alias-label-primary);
   border-radius: 50%;
   animation: git-progress-spin 0.7s linear infinite;
 }
@@ -77,7 +77,7 @@
   padding: 0;
   border: none;
   background: none;
-  color: var(--dsw-alias-label-primary);
+  color: var(--rlw-alias-label-primary);
   font: inherit;
   font-size: 12px;
   line-height: 18px;
@@ -95,13 +95,13 @@
   margin: -4px -4px 0 0;
   border: none;
   border-radius: 999px;
-  background: var(--dsw-alias-bg-layer-1);
-  color: var(--dsw-alias-label-secondary);
+  background: var(--rlw-alias-bg-layer-1);
+  color: var(--rlw-alias-label-secondary);
   cursor: pointer;
 }
 
 .close:hover {
-  background: var(--dsw-alias-interactive-bg-hover);
+  background: var(--rlw-alias-interactive-bg-hover);
 }
 
 @keyframes git-progress-spin {

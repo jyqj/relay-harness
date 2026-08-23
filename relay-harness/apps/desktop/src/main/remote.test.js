@@ -196,7 +196,7 @@ test('gateway proxies an authorized request and rewrites Host', async () => {
   const upstream = http.createServer((req, res) => {
     seenHost = req.headers.host;
     res.writeHead(200, { 'content-type': 'text/plain' });
-    res.end('ok-from-dsh');
+    res.end('ok-from-rlh');
   });
   const upstreamPort = await listen(upstream);
   const token = generateToken();
@@ -217,12 +217,12 @@ test('gateway proxies an authorized request and rewrites Host', async () => {
     headers: { authorization: `Bearer ${token}` },
   });
   assert.equal(allowed.status, 200);
-  assert.equal(allowed.body, 'ok-from-dsh');
+  assert.equal(allowed.body, 'ok-from-rlh');
   assert.equal(seenHost, `127.0.0.1:${upstreamPort}`);
 
   const login = await request(port, `/?token=${token}`, { redirect: 'manual' });
   assert.equal(login.status, 302);
-  assert.match(String(login.headers.get('set-cookie') || ''), /dsh_remote=/);
+  assert.match(String(login.headers.get('set-cookie') || ''), /rlh_remote=/);
 
   const snap = gateway.snapshot();
   assert.equal(snap.mode, 'lan');
@@ -459,7 +459,7 @@ function memoryConfig(initial = {}) {
 
 function cookieFrom(response) {
   const header = String(response.headers.get('set-cookie') || '');
-  const match = header.match(/dsh_remote=([^;]+)/);
+  const match = header.match(/rlh_remote=([^;]+)/);
   return match ? decodeURIComponent(match[1]) : '';
 }
 
@@ -494,7 +494,7 @@ test('QR login mints a long-lived device cookie that survives unbinding of other
   assert.equal('token' in gateway.snapshot().devices[0], false);
 
   const allowed = await request(port, '/api/ping', {
-    headers: { cookie: `dsh_remote=${deviceToken}` },
+    headers: { cookie: `rlh_remote=${deviceToken}` },
   });
   assert.equal(allowed.status, 200);
 
@@ -502,7 +502,7 @@ test('QR login mints a long-lived device cookie that survives unbinding of other
     method: 'POST',
     headers: {
       'content-type': 'application/x-www-form-urlencoded',
-      cookie: `dsh_remote=${deviceToken}`,
+      cookie: `rlh_remote=${deviceToken}`,
     },
     body: `token=${token}`,
     redirect: 'manual',
@@ -515,7 +515,7 @@ test('QR login mints a long-lived device cookie that survives unbinding of other
   gateway.unbindDevice(id);
   assert.equal(gateway.snapshot().devices.length, 0);
   const denied = await request(port, '/api/ping', {
-    headers: { cookie: `dsh_remote=${deviceToken}` },
+    headers: { cookie: `rlh_remote=${deviceToken}` },
   });
   assert.equal(denied.status, 401);
 
@@ -538,7 +538,7 @@ test('an HTML visit with the pairing cookie upgrades into a bound device', async
   const upgrade = await request(port, '/', {
     headers: {
       accept: 'text/html',
-      cookie: `dsh_remote=${token}`,
+      cookie: `rlh_remote=${token}`,
       'user-agent': 'Mozilla/5.0 (Linux; Android 14)',
     },
     redirect: 'manual',
@@ -555,9 +555,9 @@ test('an HTML visit with the pairing cookie upgrades into a bound device', async
 });
 
 test('paired HTML comes from the mobile SPA; /api still hits the host', async () => {
-  const spaRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-mobile-web-'));
+  const spaRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'rlh-mobile-web-'));
   fs.writeFileSync(path.join(spaRoot, 'index.html'), '<html>手机远程</html>');
-  fs.writeFileSync(path.join(spaRoot, 'app.js'), 'window.DSH_MOBILE=1');
+  fs.writeFileSync(path.join(spaRoot, 'app.js'), 'window.RLH_MOBILE=1');
   const upstream = http.createServer((req, res) => {
     res.writeHead(200, { 'content-type': 'text/html' });
     res.end('<html>Into the Unknown</html>');
@@ -586,20 +586,20 @@ test('paired HTML comes from the mobile SPA; /api still hits the host', async ()
   });
   const deviceToken = cookieFrom(login);
   const authed = await request(port, '/', {
-    headers: { accept: 'text/html', cookie: `dsh_remote=${deviceToken}` },
+    headers: { accept: 'text/html', cookie: `rlh_remote=${deviceToken}` },
   });
   assert.equal(authed.status, 200);
   assert.match(authed.body, /手机远程/);
   assert.doesNotMatch(authed.body, /Into the Unknown/);
 
   const asset = await request(port, '/app.js', {
-    headers: { cookie: `dsh_remote=${deviceToken}` },
+    headers: { cookie: `rlh_remote=${deviceToken}` },
   });
   assert.equal(asset.status, 200);
-  assert.equal(asset.body, 'window.DSH_MOBILE=1');
+  assert.equal(asset.body, 'window.RLH_MOBILE=1');
 
   const plugin = await request(port, '/plugins/ui-layout/client.js', {
-    headers: { cookie: `dsh_remote=${deviceToken}` },
+    headers: { cookie: `rlh_remote=${deviceToken}` },
   });
   assert.equal(plugin.status, 404);
 
@@ -607,7 +607,7 @@ test('paired HTML comes from the mobile SPA; /api still hits the host', async ()
     method: 'POST',
     headers: {
       'content-type': 'application/json',
-      cookie: `dsh_remote=${deviceToken}`,
+      cookie: `rlh_remote=${deviceToken}`,
     },
     body: JSON.stringify({ type: 'client-request', rpcId: 'r1', method: 'session.list', payload: {} }),
   });

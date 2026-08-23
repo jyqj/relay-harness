@@ -1,4 +1,4 @@
-# @deepseek-ai/dsh-client-ui-session-tree
+# @relay-harness/rlh-client-ui-session-tree
 
 [English](README.md) | 中文
 
@@ -20,4 +20,4 @@ Web 与 Desktop 共用的原生工作区 Session Tree。`conversation.session.he
 
 - 布局与标签使用浏览器 `localStorage`，不会跨设备漫游。
 - 打开 Tree 时会按协议分页读取所有可见 Session 的完整 history。超大工作区后续需要 viewport 驱动的 history cache。
-- 不自动执行 Pi 风格的 abandoned-branch summary。DSH 保留旧分支并从选中的稳定 Turn fork，不添加隐藏的模型可见上下文。
+- 不自动执行 Pi 风格的 abandoned-branch summary。RLH 保留旧分支并从选中的稳定 Turn fork，不添加隐藏的模型可见上下文。

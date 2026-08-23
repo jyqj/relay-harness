@@ -1,5 +1,5 @@
-import { createSnapshotStore, type SnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
-import type { SessionId } from '@deepseek-ai/dsh-client-connection/client'
+import { createSnapshotStore, type SnapshotStore } from '@relay-harness/rlh-client-runtime/client'
+import type { SessionId } from '@relay-harness/rlh-client-connection/client'
 
 /** Transient visibility state; layout persistence belongs to the Tree store. */
 export interface SessionTreeOpenState {

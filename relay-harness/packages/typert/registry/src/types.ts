@@ -1,11 +1,11 @@
 /**
  * Pure generated-artifact and runtime-registry types. The registry stores Zod
  * schemas separately from generated package reflection metadata.
- * @module @deepseek-ai/dsh-typert-registry/types
+ * @module @relay-harness/rlh-typert-registry/types
  */
 
 import type { z } from 'zod'
-import type { InvocationDescriptor } from '@deepseek-ai/dsh-typert-protocol'
+import type { InvocationDescriptor } from '@relay-harness/rlh-typert-protocol'
 
 /** Independently compiled side that produced a contribution. */
 export type TypertFace = 'host' | 'client'

@@ -3,7 +3,7 @@
 const http = require('http');
 const crypto = require('crypto');
 
-const { isValidGithubSpec, normalizeAllowBuilds } = require('../host/install-dsh-plugin-client.js');
+const { isValidGithubSpec, normalizeAllowBuilds } = require('../host/install-rlh-plugin-client.js');
 
 const RESTART_DELAY_MS = 500;
 const MAX_BODY_BYTES = 64 * 1024;
@@ -15,8 +15,8 @@ function desktopInstallEnv() {
     return {};
   }
   return {
-    DSH_DESKTOP_INSTALL_URL: active.url,
-    DSH_DESKTOP_INSTALL_TOKEN: active.token,
+    RLH_DESKTOP_INSTALL_URL: active.url,
+    RLH_DESKTOP_INSTALL_TOKEN: active.token,
   };
 }
 

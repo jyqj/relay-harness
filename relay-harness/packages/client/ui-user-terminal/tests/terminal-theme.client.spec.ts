@@ -96,7 +96,7 @@ describe('terminalThemeFromApp', () => {
   it('does not map ANSI onto UI state tokens; Ghostty keeps the engine palette', () => {
     const host = document.createElement('div')
     host.style.backgroundColor = 'rgb(21, 21, 23)'
-    host.style.setProperty('--dsw-alias-state-success-secondary', 'rgb(78, 209, 126)')
+    host.style.setProperty('--rlw-alias-state-success-secondary', 'rgb(78, 209, 126)')
     document.body.appendChild(host)
     const theme = terminalThemeFromApp(host)
     expect(theme).not.toHaveProperty('cyan')
@@ -213,7 +213,7 @@ describe('readXtermFont', () => {
     const real = window.getComputedStyle.bind(window)
     const spy = vi.spyOn(window, 'getComputedStyle').mockImplementation((el: Element) => {
       const styles = real(el)
-      if (el instanceof HTMLSpanElement && el.style.fontFamily.includes('--dsw-font-family-terminal')) {
+      if (el instanceof HTMLSpanElement && el.style.fontFamily.includes('--rlw-font-family-terminal')) {
         return new Proxy(styles, {
           get(target, prop, receiver) {
             if (prop === 'fontFamily') return '"SF Mono"'
@@ -230,10 +230,10 @@ describe('readXtermFont', () => {
     host.remove()
   })
 
-  it('reads --dsw-font-family-terminal and --dsw-font-size-code from the host', () => {
+  it('reads --rlw-font-family-terminal and --rlw-font-size-code from the host', () => {
     const host = document.createElement('div')
-    host.style.setProperty('--dsw-font-family-terminal', '"IBM Plex Mono"')
-    host.style.setProperty('--dsw-font-size-code', '14px')
+    host.style.setProperty('--rlw-font-family-terminal', '"IBM Plex Mono"')
+    host.style.setProperty('--rlw-font-size-code', '14px')
     document.body.appendChild(host)
     const font = readXtermFont(host)
     expect(font.fontFamily).toContain('IBM Plex Mono')
@@ -242,22 +242,22 @@ describe('readXtermFont', () => {
     host.remove()
   })
 
-  it('falls back from --dsw-font-family-terminal to --ds-font-family-code', () => {
+  it('falls back from --rlw-font-family-terminal to --rl-font-family-code', () => {
     const host = document.createElement('div')
-    host.style.setProperty('--dsw-font-family-terminal', 'var(--missing)')
-    host.style.setProperty('--ds-font-family-code', '"JetBrains Mono"')
+    host.style.setProperty('--rlw-font-family-terminal', 'var(--missing)')
+    host.style.setProperty('--rl-font-family-code', '"JetBrains Mono"')
     document.body.appendChild(host)
     const font = readXtermFont(host)
     expect(font.fontFamily).toContain('JetBrains Mono')
     host.remove()
   })
 
-  it('ignores a non-positive --dsw-font-size-code', () => {
+  it('ignores a non-positive --rlw-font-size-code', () => {
     const host = document.createElement('div')
-    host.style.setProperty('--dsw-font-size-code', '0px')
+    host.style.setProperty('--rlw-font-size-code', '0px')
     document.body.appendChild(host)
     expect(readXtermFont(host).fontSize).toBe(12)
-    host.style.setProperty('--dsw-font-size-code', 'nope')
+    host.style.setProperty('--rlw-font-size-code', 'nope')
     expect(readXtermFont(host).fontSize).toBe(12)
     host.remove()
   })

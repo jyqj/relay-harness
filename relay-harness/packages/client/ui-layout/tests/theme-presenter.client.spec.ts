@@ -5,8 +5,8 @@
 // retracts everything the presenter wrote.
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import type { ThemeSnapshot } from '@deepseek-ai/dsh-client-ui-theme/client'
-import { DARK_ATTRIBUTE, ThemePresenter } from '@deepseek-ai/dsh-client-ui-layout/src/client/theme-presenter.ts'
+import type { ThemeSnapshot } from '@relay-harness/rlh-client-ui-theme/client'
+import { DARK_ATTRIBUTE, ThemePresenter } from '@relay-harness/rlh-client-ui-layout/src/client/theme-presenter.ts'
 
 const LIGHT_THEME_COLOR = 'rgb(255, 255, 255)'
 const DARK_THEME_COLOR = 'rgb(21, 21, 23)'
@@ -19,8 +19,8 @@ function snapshot(colorScheme: 'light' | 'dark', tokens: Record<string, string> 
     active,
     themes: [active],
     families: [],
-    activeLightThemeId: 'deepseek',
-    activeDarkThemeId: 'deepseek',
+    activeLightThemeId: 'relay',
+    activeDarkThemeId: 'relay',
     customThemes: [],
     glassOpacity: 80,
     wallpaperImage: '',
@@ -90,24 +90,24 @@ describe('ThemePresenter', () => {
 
   it('applies tokens as inline variables and clears the previous set on theme change', () => {
     const presenter = new ThemePresenter()
-    presenter.apply(snapshot('dark', { '--dsw-alias-bg': '#111', '--dsw-alias-fg': '#eee' }))
-    expect(document.body.style.getPropertyValue('--dsw-alias-bg')).toBe('#111')
-    expect(document.body.style.getPropertyValue('--dsw-alias-fg')).toBe('#eee')
-    presenter.apply(snapshot('light', { '--dsw-alias-bg': '#fff' }))
-    expect(document.body.style.getPropertyValue('--dsw-alias-bg')).toBe('#fff')
+    presenter.apply(snapshot('dark', { '--rlw-alias-bg': '#111', '--rlw-alias-fg': '#eee' }))
+    expect(document.body.style.getPropertyValue('--rlw-alias-bg')).toBe('#111')
+    expect(document.body.style.getPropertyValue('--rlw-alias-fg')).toBe('#eee')
+    presenter.apply(snapshot('light', { '--rlw-alias-bg': '#fff' }))
+    expect(document.body.style.getPropertyValue('--rlw-alias-bg')).toBe('#fff')
     // The old theme's extra variable is gone, not merged.
-    expect(document.body.style.getPropertyValue('--dsw-alias-fg')).toBe('')
+    expect(document.body.style.getPropertyValue('--rlw-alias-fg')).toBe('')
   })
 
   it('dispose removes color-scheme, the attribute, and every applied variable, sparing foreign inline styles', () => {
     document.body.style.setProperty('--foreign', 'kept')
     const presenter = new ThemePresenter()
-    presenter.apply(snapshot('dark', { '--dsw-alias-bg': '#111' }))
+    presenter.apply(snapshot('dark', { '--rlw-alias-bg': '#111' }))
     const meta = themeColorMeta()
     presenter.dispose()
     expect(document.documentElement.style.colorScheme).toBe('')
     expect(document.body.hasAttribute(DARK_ATTRIBUTE)).toBe(false)
-    expect(document.body.style.getPropertyValue('--dsw-alias-bg')).toBe('')
+    expect(document.body.style.getPropertyValue('--rlw-alias-bg')).toBe('')
     expect(document.body.style.getPropertyValue('--foreign')).toBe('kept')
     expect(meta?.isConnected).toBe(false)
   })

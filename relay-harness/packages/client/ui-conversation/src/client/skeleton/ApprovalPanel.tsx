@@ -14,8 +14,8 @@
 // handles as InputBar and shares a dragged size through `[data-composer-seat]`.
 
 import { useMemo, useRef, useState } from 'react'
-import { Button } from '@deepseek-ai/dsh-client-ui-primitives'
-import type { RunningToolCall } from '@deepseek-ai/dsh-client-runtime/client'
+import { Button } from '@relay-harness/rlh-client-ui-primitives'
+import type { RunningToolCall } from '@relay-harness/rlh-client-runtime/client'
 import { PendingApproval, type ApprovalComposerProps } from '../contract/slots.ts'
 import { rootToolCall } from '../chat/tool-node-reader.ts'
 import { ComposerResizeHandles, useComposerResizeDrag } from './ComposerResizeHandles.tsx'

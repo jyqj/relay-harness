@@ -1,9 +1,9 @@
 /**
  * Plain-text projection of a user-message content list.
- * @module @deepseek-ai/dsh-client-ui-message-edit/client/text
+ * @module @relay-harness/rlh-client-ui-message-edit/client/text
  */
 
-import type { UserActionContentBlock } from '@deepseek-ai/dsh-client-ui-conversation/client'
+import type { UserActionContentBlock } from '@relay-harness/rlh-client-ui-conversation/client'
 
 /**
  * Join a user message's text blocks in order.

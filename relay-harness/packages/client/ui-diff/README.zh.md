@@ -1,4 +1,4 @@
-# @deepseek-ai/dsh-client-ui-diff
+# @relay-harness/rlh-client-ui-diff
 
 [English](README.md) | 中文
 

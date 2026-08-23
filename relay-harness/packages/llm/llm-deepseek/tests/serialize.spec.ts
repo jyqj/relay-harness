@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from 'vitest'
-import { AttachmentError, AttachmentId } from '@deepseek-ai/dsh-attachment'
-import type { AttachmentStore, ImageAttachmentRef, ImageMediaType } from '@deepseek-ai/dsh-attachment'
-import { createUserMessage, CallId, ReasoningEffortId, createMessage } from '@deepseek-ai/dsh-llm'
-import type { ContentBlock, GenerateOptions, Message } from '@deepseek-ai/dsh-llm'
+import { AttachmentError, AttachmentId } from '@relay-harness/rlh-attachment'
+import type { AttachmentStore, ImageAttachmentRef, ImageMediaType } from '@relay-harness/rlh-attachment'
+import { createUserMessage, CallId, ReasoningEffortId, createMessage } from '@relay-harness/rlh-llm'
+import type { ContentBlock, GenerateOptions, Message } from '@relay-harness/rlh-llm'
 import {
   serializeMessages,
   serializeMessagesWithImages,

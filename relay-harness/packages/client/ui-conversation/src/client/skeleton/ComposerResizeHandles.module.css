@@ -22,7 +22,7 @@
   height: 3px;
   transform: translate(-50%, -50%);
   border-radius: 2px;
-  background: var(--dsw-alias-border-l3);
+  background: var(--rlw-alias-border-l3);
   opacity: 0;
   transition: opacity 100ms ease;
 }

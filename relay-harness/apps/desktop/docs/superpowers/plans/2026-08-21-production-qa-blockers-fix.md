@@ -4,14 +4,14 @@
 
 **Goal:** Clear the 2026-08-21 production acceptance Critical blockers so Windows installers ship a working Ghostty terminal (no wasm 404), pack/extract cannot silently omit assets, automation gates are green or honestly fixed, and appendix-A can pass in-app on a fresh package.
 
-**Architecture:** DEF-002 is a **build + pack + runtime-reuse** failure, not a Ghostty engine bug. Root `pnpm run build` / `build:lib:client` runs `tsc` + `tsdown` but does **not** run `ui-user-terminal`'s `copy-ghostty-assets.mjs` (that step only lives on the package-local `bundle` script). `lib/` is gitignored, so a clean build can emit `lib/client.js` with **no** `lib/assets/*.wasm`. Pack copies that tree into `deepseek-harness.tar`; the host serves `dirname(client.js)/assets/<file>` → 404. `hasBuiltHarness` only checks CLI + web dist, so a bad extract under `userData/runtime/<version>` never self-heals. Fix by (1) making asset copy part of the normal client build or an unavoidable pre-pack step, (2) failing `afterPack` without wasm, (3) rejecting incomplete extracts at runtime. DEF-001 (`qa:source` walk failures) is a **separate** track: source trees already had assets when the walk failed, so do not treat it as a Ghostty cascade—retest after DEF-002, then harden walk or product only with new evidence.
+**Architecture:** DEF-002 is a **build + pack + runtime-reuse** failure, not a Ghostty engine bug. Root `pnpm run build` / `build:lib:client` runs `tsc` + `tsdown` but does **not** run `ui-user-terminal`'s `copy-ghostty-assets.mjs` (that step only lives on the package-local `bundle` script). `lib/` is gitignored, so a clean build can emit `lib/client.js` with **no** `lib/assets/*.wasm`. Pack copies that tree into `relay-harness.tar`; the host serves `dirname(client.js)/assets/<file>` → 404. `hasBuiltHarness` only checks CLI + web dist, so a bad extract under `userData/runtime/<version>` never self-heals. Fix by (1) making asset copy part of the normal client build or an unavoidable pre-pack step, (2) failing `afterPack` without wasm, (3) rejecting incomplete extracts at runtime. DEF-001 (`qa:source` walk failures) is a **separate** track: source trees already had assets when the walk failed, so do not treat it as a Ghostty cascade—retest after DEF-002, then harden walk or product only with new evidence.
 
 **Tech Stack:** Desktop `scripts/after-pack.js`, `scripts/setup-harness.js`, `src/main/harness-extract.js`; vendored `ui-user-terminal` (`copy-ghostty-assets.mjs`, `assets.ts`, `runtime.ts`); `qa:source` / `qa:composer`; acceptance under `docs/qa/`.
 
 **Spec / evidence:**
 - [`docs/qa/results/2026-08-21/EXECUTION-REPORT.md`](../../qa/results/2026-08-21/EXECUTION-REPORT.md)
 - [`docs/qa/production-acceptance-test-cases.md`](../../qa/production-acceptance-test-cases.md)
-- Agent Note (background): `vendor/deepseek-harness/.agents/notes/implemented/bug-fix/2026-08-19-terminal-ghostty-libghostty-vt.md`
+- Agent Note (background): `vendor/relay-harness/.agents/notes/implemented/bug-fix/2026-08-19-terminal-ghostty-libghostty-vt.md`
 - Review of this plan: session 2026-08-21 (build path omits copy; DEF-001 not proven cascade)
 
 ## Delivery standard for this plan
@@ -33,14 +33,14 @@
 - Prefer foundation fixes: wire copy into the build/pack path; missing wasm must fail pack; do not soft-skip Ghostty at runtime.
 - `hasBuiltHarness` must use the **same on-disk layout** the plugin asset server uses (`dirname(client.js)/assets/…`). Wrong paths cause either sticky 404 or wipe-and-re-extract every launch.
 - Same-version hotfix (still `0.2.6`) must self-heal via Task 4; bumping to `0.2.7` alone is not a substitute for the completeness check.
-- Keep official `dsh web` language; no xterm rollback in this plan.
+- Keep official `rlh web` language; no xterm rollback in this plan.
 - Verification ladder: focused unit tests → `qa:composer` → `qa:source` → packaged smoke + wasm probe → in-app appendix A → update execution report.
 
 ## Confirmed root causes
 
 | ID | Symptom | Cause | Independence |
 | --- | --- | --- | --- |
-| DEF-002 | `Unable to load libghostty-vt (404)` | Packaged runtime has `lib/client.js` but no `lib/assets/ghostty-*.wasm` (both `packages/client/ui-user-terminal` and `node_modules/@deepseek-ai/dsh-client-ui-user-terminal`). Host resolves `join(dirname(client.js), 'assets', name)`. | Product Critical |
+| DEF-002 | `Unable to load libghostty-vt (404)` | Packaged runtime has `lib/client.js` but no `lib/assets/ghostty-*.wasm` (both `packages/client/ui-user-terminal` and `node_modules/@relay-harness/rlh-client-ui-user-terminal`). Host resolves `join(dirname(client.js), 'assets', name)`. | Product Critical |
 | DEF-002a | Clean build can omit assets | Root `build` / `build:lib:client` does not run `copy-ghostty-assets.mjs`; only package `bundle` does. `lib/` is gitignored. | **Primary** build-path bug |
 | DEF-002b | Upgrade may not self-heal | `hasBuiltHarness` only checks `apps/cli/lib/bin.js` + `apps/web/dist/index.html`. | Runtime reuse bug |
 | DEF-001 | `qa:source` fails drawer / agents / diff / browser / terminal.surface | Walk/selectors/timing and/or product UI; **source tree already had wasm** when this failed; composer terminal path passed. | **Separate** from DEF-002 — retest after fix, then fix with new evidence |
@@ -82,7 +82,7 @@
 **Files:**
 - Modify (pick the smallest durable hook — prefer one):
   - Harness: root client build after tsdown for `ui-user-terminal`, **or** package `tsdown`/post-build hook that always runs `scripts/copy-ghostty-assets.mjs`
-  - And/or desktop: `scripts/setup-harness.js` / pre-`afterPack` step that runs the copy against `vendor/deepseek-harness/packages/client/ui-user-terminal`
+  - And/or desktop: `scripts/setup-harness.js` / pre-`afterPack` step that runs the copy against `vendor/relay-harness/packages/client/ui-user-terminal`
 - Keep: `copy-ghostty-assets.mjs` as the single copy implementation (DRY)
 
 **Steps:**
@@ -108,7 +108,7 @@
 - Resolve the staged terminal package the same way the runtime will: directory that contains `lib/client.js`, then require `lib/assets/ghostty-vt.wasm` (and write-pty; font recommended).
 - Accept either layout if both can appear after flatten:
   - `packages/client/ui-user-terminal/lib/assets/...`
-  - `node_modules/@deepseek-ai/dsh-client-ui-user-terminal/lib/assets/...`
+  - `node_modules/@relay-harness/rlh-client-ui-user-terminal/lib/assets/...`
 - Rule: **at least one** complete `client.js` + `assets` pair must exist; error message lists checked paths.
 
 **Steps:**
@@ -148,7 +148,7 @@
 - [ ] Negative once: strip assets pre-assert → pack fails.
 - [ ] Positive: unpacked/extracted tree has wasm beside `client.js`.
 - [ ] Launch packaged app; open terminal drawer — **no** 404 banner; pane paints.
-- [ ] Probe: HTTP GET `/plugins/@deepseek-ai/dsh-client-ui-user-terminal/assets/ghostty-vt.wasm` → **200** (or equivalent packaged smoke assertion).
+- [ ] Probe: HTTP GET `/plugins/@relay-harness/rlh-client-ui-user-terminal/assets/ghostty-vt.wasm` → **200** (or equivalent packaged smoke assertion).
 - [ ] Optionally extend packaged smoke to assert that status once.
 
 **Done when:** Fresh package proven on disk + over HTTP + visually.
@@ -164,7 +164,7 @@
 **Steps:**
 - [ ] `qa:composer` must stay green.
 - [ ] `qa:source` after DEF-002 fix. If green → record log; **no** walk drive-by.
-- [ ] If still failing: keep artifacts (`DSH_SMOKE_KEEP=1`), identify whether drawer height, `dshd-open-surface` settle, or preview URL/toolbar selectors are wrong; minimal walk or product fix; re-run to green.
+- [ ] If still failing: keep artifacts (`RLH_SMOKE_KEEP=1`), identify whether drawer height, `rlhd-open-surface` settle, or preview URL/toolbar selectors are wrong; minimal walk or product fix; re-run to green.
 - [ ] Do not close DEF-001 as “fixed by wasm” without a green `qa:source` log.
 
 **Done when:** Both QA scripts exit 0.
@@ -187,7 +187,7 @@
 - Update: `docs/qa/results/<date>/EXECUTION-REPORT.md` (new dated report OK)
 - Update: `.github/release-notes.md` (next tag)
 - Docs: **desktop** short note if only `after-pack` / `harness-extract` / desktop setup changed
-- Harness Agent Note triplet **only if** Task 2 changed harness build/bundle scripts under `vendor/deepseek-harness`
+- Harness Agent Note triplet **only if** Task 2 changed harness build/bundle scripts under `vendor/relay-harness`
 
 **Steps:**
 - [ ] In-app appendix A turns 1–5 on fixed package (tools + approvals as needed).

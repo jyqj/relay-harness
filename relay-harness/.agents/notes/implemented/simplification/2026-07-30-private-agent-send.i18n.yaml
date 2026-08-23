@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/simplification/2026-07-30-private-agent-send.md
-2026-07-30-private-agent-send.md: 43353c309f98eab1bff91b8fbe0c9cfaa2bbc69b
-2026-07-30-private-agent-send.zh.md: a475c39fc378bca609f747795e185d25accf4489
+2026-07-30-private-agent-send.md: 7d9f91234ca849583a7f50578b324a750ece7106
+2026-07-30-private-agent-send.zh.md: f442d6064b87de52689ecfb6178b94c07fdfb1b1

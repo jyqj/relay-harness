@@ -1,8 +1,8 @@
-/** Package-owned invariant companion for `@deepseek-ai/dsh-issue-workflow`. */
+/** Package-owned invariant companion for `@relay-harness/rlh-issue-workflow`. */
 
-import type { Context } from '@deepseek-ai/cordis'
-import type { InvariantFailure, InvariantInstaller } from '@deepseek-ai/dsh-invariants'
-const PACKAGE_NAME = '@deepseek-ai/dsh-issue-workflow'
+import type { Context } from '@relay-harness/cordis'
+import type { InvariantFailure, InvariantInstaller } from '@relay-harness/rlh-invariants'
+const PACKAGE_NAME = '@relay-harness/rlh-issue-workflow'
 export const name = 'issue-workflow-invariant'
 export const inject = ['invariants']
 /** Check update events against the provider's committed revision. */

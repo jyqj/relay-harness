@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { Context } from '@deepseek-ai/cordis'
-import type { CommandDefinition } from '@deepseek-ai/dsh-commands'
-import { SettingsProvider, settingsNamespace, type SettingsNamespace } from '@deepseek-ai/dsh-settings'
+import { Context } from '@relay-harness/cordis'
+import type { CommandDefinition } from '@relay-harness/rlh-commands'
+import { SettingsProvider, settingsNamespace, type SettingsNamespace } from '@relay-harness/rlh-settings'
 import * as SessionLogDownload from '../src/index.ts'
 import { SESSION_LOG_EXPORT_SETTINGS_NAMESPACE } from '../src/index.ts'
 

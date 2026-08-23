@@ -4,7 +4,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const userData = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-marketplace-install-'));
+const userData = fs.mkdtempSync(path.join(os.tmpdir(), 'rlh-marketplace-install-'));
 const electronPath = require.resolve('electron');
 require.cache[electronPath] = {
   id: electronPath,
@@ -40,14 +40,14 @@ const NPM_SPEC = 'dsh-composer-expand';
 const GITHUB_SPEC = 'github:01Virex/dsh-status-rotator';
 const PATH_SPEC = 'github:DamonKoy/dsh-web-ui#path:/packages/dsh-aionui-panel';
 
-let dshHomeDir = '';
+let rlhHomeDir = '';
 
 function cacheFile() {
   return path.join(userData, 'marketplace-cache.json');
 }
 
 function profileDir() {
-  return path.join(dshHomeDir, 'profiles', 'web');
+  return path.join(rlhHomeDir, 'profiles', 'web');
 }
 
 function writeProfileDep(packageName, spec) {
@@ -76,7 +76,7 @@ function writePlugin(packageName, manifest, files = {}) {
 function writeBundlePlugin(packageName) {
   const id = `bundle-${String(packageName).replace(/[^A-Za-z0-9]+/g, '-')}`.slice(0, 48);
   writePlugin(packageName, {
-    dsh: { bundle: { patch: './cordis.patch.yml' } },
+    rlh: { bundle: { patch: './cordis.patch.yml' } },
   }, {
     'cordis.patch.yml': `- insert:\n    - id: ${id}\n      name: ${packageName}\n`,
   });
@@ -84,7 +84,7 @@ function writeBundlePlugin(packageName) {
 
 function writeClientPlugin(packageName) {
   writePlugin(packageName, {
-    dsh: { client: { platform: 'web', inject: [] } },
+    rlh: { client: { platform: 'web', inject: [] } },
     exports: { './client': { default: './lib/client.js' } },
   }, { 'lib/client.js': 'export {}\n' });
 }
@@ -116,7 +116,7 @@ function githubRow(owner, name, url, installToken) {
     description: { en: name, zh: name },
     npm: null,
     stars: 0,
-    install: `dsh plugin --profile web add ${installToken}`,
+    install: `rlh plugin --profile web add ${installToken}`,
     added: '2026-08-18',
   };
 }
@@ -136,13 +136,13 @@ function recordRunner(onAdd) {
 }
 
 test.beforeEach(() => {
-  dshHomeDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-home-'));
-  process.env.DSH_HOME = dshHomeDir;
+  rlhHomeDir = fs.mkdtempSync(path.join(os.tmpdir(), 'rlh-home-'));
+  process.env.RLH_HOME = rlhHomeDir;
 });
 
 test.afterEach(() => {
-  delete process.env.DSH_HOME;
-  fs.rmSync(dshHomeDir, { recursive: true, force: true });
+  delete process.env.RLH_HOME;
+  fs.rmSync(rlhHomeDir, { recursive: true, force: true });
   try {
     fs.unlinkSync(cacheFile());
   } catch {
@@ -337,7 +337,7 @@ test('installMarketplacePlugin and uninstallPlugin share an in-flight mutex', as
   assert.equal(firstResult.ok, false);
 });
 
-test('installMarketplacePlugin removes a package with no loadable dsh entry', async () => {
+test('installMarketplacePlugin removes a package with no loadable rlh entry', async () => {
   const { calls, runPlugin } = recordRunner();
   const result = await installMarketplacePlugin(NPM_ID, { runPlugin });
   assert.equal(result.ok, false);
@@ -345,7 +345,7 @@ test('installMarketplacePlugin removes a package with no loadable dsh entry', as
   assert.deepEqual(calls, [['add', NPM_SPEC], ['remove', NPM_SPEC]]);
 });
 
-test('installMarketplacePlugin removes a github package with no loadable dsh entry', async () => {
+test('installMarketplacePlugin removes a github package with no loadable rlh entry', async () => {
   const { calls, runPlugin } = recordRunner(() => {
     writeProfileDep('@virex/dsh-status-rotator', 'git+https://github.com/01Virex/dsh-status-rotator.git');
     writeBarePlugin('@virex/dsh-status-rotator');
@@ -356,7 +356,7 @@ test('installMarketplacePlugin removes a github package with no loadable dsh ent
   assert.deepEqual(calls, [['add', GITHUB_SPEC], ['remove', '@virex/dsh-status-rotator']]);
 });
 
-test('installMarketplacePlugin removes a #path: package with no loadable dsh entry', async () => {
+test('installMarketplacePlugin removes a #path: package with no loadable rlh entry', async () => {
   const { calls, runPlugin } = recordRunner(() => {
     writeProfileDep(
       'dsh-aionui-panel',
@@ -436,7 +436,7 @@ test('installMarketplacePlugin removes a github package already in the profile w
 
 test('installMarketplacePlugin removes a package whose bundle patch only sets patch: true', async () => {
   const { calls, runPlugin } = recordRunner(() => {
-    writePlugin(NPM_SPEC, { dsh: { bundle: { patch: true } } });
+    writePlugin(NPM_SPEC, { rlh: { bundle: { patch: true } } });
   });
   const result = await installMarketplacePlugin(NPM_ID, { runPlugin });
   assert.equal(result.ok, false);
@@ -444,15 +444,15 @@ test('installMarketplacePlugin removes a package whose bundle patch only sets pa
 });
 
 test('installMarketplacePlugin removes a package that inserts a duplicate loader id', async () => {
-  writeProfileDep('@deepseek-ai/dsh-web-app', 'workspace:*');
-  writePlugin('@deepseek-ai/dsh-web-app', {
-    dsh: { bundle: { patch: './cordis.patch.yml' } },
+  writeProfileDep('@relay-harness/rlh-web-app', 'workspace:*');
+  writePlugin('@relay-harness/rlh-web-app', {
+    rlh: { bundle: { patch: './cordis.patch.yml' } },
   }, {
-    'cordis.patch.yml': '- insert:\n    - id: storage\n      name: @deepseek-ai/dsh-web-app\n',
+    'cordis.patch.yml': '- insert:\n    - id: storage\n      name: @relay-harness/rlh-web-app\n',
   });
   const { calls, runPlugin } = recordRunner(() => {
     writePlugin(NPM_SPEC, {
-      dsh: { bundle: { patch: './cordis.patch.yml' } },
+      rlh: { bundle: { patch: './cordis.patch.yml' } },
     }, {
       'cordis.patch.yml': '- insert:\n    - id: storage\n      name: dsh-composer-expand\n',
     });
@@ -464,8 +464,8 @@ test('installMarketplacePlugin removes a package that inserts a duplicate loader
 });
 
 test('parseAllowBuilds reads ndjson-escaped prepare-not-allowed package names', () => {
-  const keys = parseAllowBuilds('{"msg":"The git-hosted package \\"dsh-loop@1.0.0\\" needs to execute build scripts but is not in the allowBuilds allowlist."}');
-  assert.ok(keys.includes('dsh-loop'));
+  const keys = parseAllowBuilds('{"msg":"The git-hosted package \\"rlh-loop@1.0.0\\" needs to execute build scripts but is not in the allowBuilds allowlist."}');
+  assert.ok(keys.includes('rlh-loop'));
 });
 
 test('installMarketplacePlugin leaves a floating github ref when no token is stored', async () => {

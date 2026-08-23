@@ -1,8 +1,8 @@
 /** Registers the titlebar Git split button into the layout-owned trailing cluster. */
-import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
-import type {} from '@deepseek-ai/dsh-client-locale/client'
-import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
-import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
+import type { ClientContext } from '@relay-harness/rlh-client-runtime/client'
+import type {} from '@relay-harness/rlh-client-locale/client'
+import type {} from '@relay-harness/rlh-client-ui-layout/client'
+import type {} from '@relay-harness/rlh-client-ui-settings/client'
 import type { GitActionsInjected } from './GitActionsControl.tsx'
 import { GitActionsControl } from './GitActionsControl.tsx'
 import type { GitChromeRowInjected } from './GitChromeRow.tsx'
@@ -17,7 +17,7 @@ export type { GitActionsInjected, GitActionsProps } from './GitActionsControl.ts
 export type { GitKey } from './locales.ts'
 export type { GitResult, VcsStatus } from './git-logic.ts'
 
-declare module '@deepseek-ai/dsh-client-ui-slots' {
+declare module '@relay-harness/rlh-client-ui-slots' {
   interface LocaleNamespaceMap {
     /** Titlebar Git action copy. */
     git: GitKey

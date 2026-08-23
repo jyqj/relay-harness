@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-08-21-root-tree-subagent-admission.md
-2026-08-21-root-tree-subagent-admission.md: 3d60576d9cc2bd2c4a78825260dce96d0cec8df6
-2026-08-21-root-tree-subagent-admission.zh.md: 2799638b7d3a9322a22728893c0d7407a3e146f1
+2026-08-21-root-tree-subagent-admission.md: b05a2ae228bd77bff5ec2df0f4d4b4e7d3876002
+2026-08-21-root-tree-subagent-admission.zh.md: 19580b204d520151be468638b1c778f91c8153f6

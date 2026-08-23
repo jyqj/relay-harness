@@ -1,0 +1,4 @@
+interface:
+  display_name: "RLH Pre-Push Checks"
+  short_description: "Run the relevant Relay Harness checks before push"
+  default_prompt: "Use $rlh-pre-push-checks before pushing this Relay Harness branch."

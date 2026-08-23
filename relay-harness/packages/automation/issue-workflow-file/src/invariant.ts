@@ -1,9 +1,9 @@
-/** Package-owned invariant companion for `@deepseek-ai/dsh-issue-workflow-file`. */
+/** Package-owned invariant companion for `@relay-harness/rlh-issue-workflow-file`. */
 
 /* jscpd:ignore-start */
-import type { Context } from '@deepseek-ai/cordis'
-import type { InvariantInstaller } from '@deepseek-ai/dsh-invariants'
-const PACKAGE_NAME = '@deepseek-ai/dsh-issue-workflow-file'
+import type { Context } from '@relay-harness/cordis'
+import type { InvariantInstaller } from '@relay-harness/rlh-invariants'
+const PACKAGE_NAME = '@relay-harness/rlh-issue-workflow-file'
 export const name = 'issue-workflow-file-invariant'
 export const inject = ['invariants']
 /** No runtime invariant: the Service Definition companion checks committed revision events. */

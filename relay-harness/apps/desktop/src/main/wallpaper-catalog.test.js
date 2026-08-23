@@ -24,16 +24,16 @@ function close(server) {
 }
 
 async function withHttp(handler, run) {
-  const previous = process.env.DSHD_WALLPAPER_ALLOW_HTTP;
-  process.env.DSHD_WALLPAPER_ALLOW_HTTP = '1';
+  const previous = process.env.RLHD_WALLPAPER_ALLOW_HTTP;
+  process.env.RLHD_WALLPAPER_ALLOW_HTTP = '1';
   const server = http.createServer(handler);
   const port = await listen(server);
   try {
     return await run(`http://127.0.0.1:${port}`);
   } finally {
     await close(server);
-    if (previous === undefined) delete process.env.DSHD_WALLPAPER_ALLOW_HTTP;
-    else process.env.DSHD_WALLPAPER_ALLOW_HTTP = previous;
+    if (previous === undefined) delete process.env.RLHD_WALLPAPER_ALLOW_HTTP;
+    else process.env.RLHD_WALLPAPER_ALLOW_HTTP = previous;
   }
 }
 
@@ -126,8 +126,8 @@ test('parseCatalogJson rejects JSON that is neither Bing nor a native catalog', 
   assert.match(parsed.error, /壁纸目录/);
 });
 
-test('listWallpaperCatalog fetches Bing from DSHD_BING_WALLPAPER_URL when HTTP is allowed', async () => {
-  const previousBing = process.env.DSHD_BING_WALLPAPER_URL;
+test('listWallpaperCatalog fetches Bing from RLHD_BING_WALLPAPER_URL when HTTP is allowed', async () => {
+  const previousBing = process.env.RLHD_BING_WALLPAPER_URL;
   await withHttp((req, res) => {
     res.setHeader('Content-Type', 'application/json');
     res.end(JSON.stringify({
@@ -140,7 +140,7 @@ test('listWallpaperCatalog fetches Bing from DSHD_BING_WALLPAPER_URL when HTTP i
       }],
     }));
   }, async (origin) => {
-    process.env.DSHD_BING_WALLPAPER_URL = `${origin}/bing.json`;
+    process.env.RLHD_BING_WALLPAPER_URL = `${origin}/bing.json`;
     const result = await listWallpaperCatalog({ kind: 'bing' });
     assert.equal(result.items.length, 1);
     assert.equal(result.items[0].id, 'fix1');
@@ -148,8 +148,8 @@ test('listWallpaperCatalog fetches Bing from DSHD_BING_WALLPAPER_URL when HTTP i
     assert.equal(result.items[0].imageUrl, `${origin}/th?id=OHR.Test_1920x1080.jpg`);
     assert.equal(result.warning, undefined);
   });
-  if (previousBing === undefined) delete process.env.DSHD_BING_WALLPAPER_URL;
-  else process.env.DSHD_BING_WALLPAPER_URL = previousBing;
+  if (previousBing === undefined) delete process.env.RLHD_BING_WALLPAPER_URL;
+  else process.env.RLHD_BING_WALLPAPER_URL = previousBing;
 });
 
 test('listWallpaperCatalog catalog kind reports a failed catalog without throwing', async () => {
@@ -189,7 +189,7 @@ test('listWallpaperCatalog catalog kind reports a failed catalog without throwin
 });
 
 test('listWallpaperCatalog rejects file URLs and http when HTTP is not allowed', async () => {
-  delete process.env.DSHD_WALLPAPER_ALLOW_HTTP;
+  delete process.env.RLHD_WALLPAPER_ALLOW_HTTP;
   const fileResult = await listWallpaperCatalog({
     kind: 'catalog',
     url: 'file:///C:/secret.json',
@@ -236,7 +236,7 @@ test('listWallpaperCatalog accepts a catalog under 4MB and drops one above it', 
 });
 
 test('listWallpaperCatalog does not fetch Bing unless kind is bing', async () => {
-  const previousBing = process.env.DSHD_BING_WALLPAPER_URL;
+  const previousBing = process.env.RLHD_BING_WALLPAPER_URL;
   try {
     await withHttp((req, res) => {
       res.setHeader('Content-Type', 'application/json');
@@ -256,7 +256,7 @@ test('listWallpaperCatalog does not fetch Bing unless kind is bing', async () =>
         images: [{ urlbase: '/th?id=OHR.Skip', title: 'Skip', hsh: 'nope', wp: true }],
       }));
     }, async (origin) => {
-      process.env.DSHD_BING_WALLPAPER_URL = `${origin}/bing.json`;
+      process.env.RLHD_BING_WALLPAPER_URL = `${origin}/bing.json`;
       const omitted = await listWallpaperCatalog({});
       assert.equal(omitted.items.length, 0);
       const catalog = await listWallpaperCatalog({ kind: 'catalog', url: `${origin}/pack.json` });
@@ -265,14 +265,14 @@ test('listWallpaperCatalog does not fetch Bing unless kind is bing', async () =>
       assert.equal(catalog.items[0].source, `${origin}/pack.json`);
     });
   } finally {
-    if (previousBing === undefined) delete process.env.DSHD_BING_WALLPAPER_URL;
-    else process.env.DSHD_BING_WALLPAPER_URL = previousBing;
+    if (previousBing === undefined) delete process.env.RLHD_BING_WALLPAPER_URL;
+    else process.env.RLHD_BING_WALLPAPER_URL = previousBing;
   }
 });
 
 test('listWallpaperCatalog aborts a chunked catalog once it exceeds 4MB', async () => {
-  const previousHttp = process.env.DSHD_WALLPAPER_ALLOW_HTTP;
-  process.env.DSHD_WALLPAPER_ALLOW_HTTP = '1';
+  const previousHttp = process.env.RLHD_WALLPAPER_ALLOW_HTTP;
+  process.env.RLHD_WALLPAPER_ALLOW_HTTP = '1';
   const server = http.createServer((_req, res) => {
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.write('{"items":[],"pad":"');
@@ -289,8 +289,8 @@ test('listWallpaperCatalog aborts a chunked catalog once it exceeds 4MB', async 
   } finally {
     if (typeof server.closeAllConnections === 'function') server.closeAllConnections();
     await close(server);
-    if (previousHttp === undefined) delete process.env.DSHD_WALLPAPER_ALLOW_HTTP;
-    else process.env.DSHD_WALLPAPER_ALLOW_HTTP = previousHttp;
+    if (previousHttp === undefined) delete process.env.RLHD_WALLPAPER_ALLOW_HTTP;
+    else process.env.RLHD_WALLPAPER_ALLOW_HTTP = previousHttp;
   }
 });
 
@@ -321,26 +321,26 @@ test('downloadWallpaper rejects a disallowed URL and a non-image body', async ()
 });
 
 test('bingCatalogUrls uses idx 0 and 8 unless a single override is set', () => {
-  const previous = process.env.DSHD_BING_WALLPAPER_URL;
-  delete process.env.DSHD_BING_WALLPAPER_URL;
+  const previous = process.env.RLHD_BING_WALLPAPER_URL;
+  delete process.env.RLHD_BING_WALLPAPER_URL;
   const defaults = bingCatalogUrls();
   assert.deepEqual(defaults, [
     'https://cn.bing.com/HPImageArchive.aspx?format=js&idx=0&n=8&mkt=zh-CN',
     'https://cn.bing.com/HPImageArchive.aspx?format=js&idx=8&n=8&mkt=zh-CN',
   ]);
-  process.env.DSHD_BING_WALLPAPER_URL = 'https://example.com/one.json';
+  process.env.RLHD_BING_WALLPAPER_URL = 'https://example.com/one.json';
   assert.deepEqual(bingCatalogUrls(), ['https://example.com/one.json']);
-  process.env.DSHD_BING_WALLPAPER_URL = 'https://example.com/bing.json?idx={idx}';
+  process.env.RLHD_BING_WALLPAPER_URL = 'https://example.com/bing.json?idx={idx}';
   assert.deepEqual(bingCatalogUrls(), [
     'https://example.com/bing.json?idx=0',
     'https://example.com/bing.json?idx=8',
   ]);
-  if (previous === undefined) delete process.env.DSHD_BING_WALLPAPER_URL;
-  else process.env.DSHD_BING_WALLPAPER_URL = previous;
+  if (previous === undefined) delete process.env.RLHD_BING_WALLPAPER_URL;
+  else process.env.RLHD_BING_WALLPAPER_URL = previous;
 });
 
 test('listWallpaperCatalog merges both Bing idx pages from a {idx} override', async () => {
-  const previousBing = process.env.DSHD_BING_WALLPAPER_URL;
+  const previousBing = process.env.RLHD_BING_WALLPAPER_URL;
   await withHttp((req, res) => {
     const idx = new URL(req.url, 'http://127.0.0.1').searchParams.get('idx');
     res.setHeader('Content-Type', 'application/json');
@@ -354,15 +354,15 @@ test('listWallpaperCatalog merges both Bing idx pages from a {idx} override', as
       }],
     }));
   }, async (origin) => {
-    process.env.DSHD_BING_WALLPAPER_URL = `${origin}/bing.json?idx={idx}`;
+    process.env.RLHD_BING_WALLPAPER_URL = `${origin}/bing.json?idx={idx}`;
     const result = await listWallpaperCatalog({ kind: 'bing' });
     assert.equal(result.items.length, 2);
     assert.deepEqual(result.items.map((item) => item.id).sort(), ['h0', 'h8']);
     assert.equal(result.items[0].source, 'bing');
     assert.equal(result.items[1].source, 'bing');
   });
-  if (previousBing === undefined) delete process.env.DSHD_BING_WALLPAPER_URL;
-  else process.env.DSHD_BING_WALLPAPER_URL = previousBing;
+  if (previousBing === undefined) delete process.env.RLHD_BING_WALLPAPER_URL;
+  else process.env.RLHD_BING_WALLPAPER_URL = previousBing;
 });
 
 test('downloadWallpaper follows a short redirect chain and rejects too many hops', async () => {
@@ -388,7 +388,7 @@ test('downloadWallpaper follows a short redirect chain and rejects too many hops
 });
 
 test('listWallpaperCatalog wallhaven hardcodes purity=100', async () => {
-  const previousSearch = process.env.DSHD_WALLHAVEN_SEARCH_URL;
+  const previousSearch = process.env.RLHD_WALLHAVEN_SEARCH_URL;
   let recordedUrl = '';
   try {
     await withHttp((req, res) => {
@@ -403,7 +403,7 @@ test('listWallpaperCatalog wallhaven hardcodes purity=100', async () => {
         meta: { current_page: 1, last_page: 2 },
       }));
     }, async (origin) => {
-      process.env.DSHD_WALLHAVEN_SEARCH_URL = `${origin}/search`;
+      process.env.RLHD_WALLHAVEN_SEARCH_URL = `${origin}/search`;
       const result = await listWallpaperCatalog({
         kind: 'wallhaven',
         categories: '010',
@@ -428,13 +428,13 @@ test('listWallpaperCatalog wallhaven hardcodes purity=100', async () => {
       assert.equal(result.nextPage, 2);
     });
   } finally {
-    if (previousSearch === undefined) delete process.env.DSHD_WALLHAVEN_SEARCH_URL;
-    else process.env.DSHD_WALLHAVEN_SEARCH_URL = previousSearch;
+    if (previousSearch === undefined) delete process.env.RLHD_WALLHAVEN_SEARCH_URL;
+    else process.env.RLHD_WALLHAVEN_SEARCH_URL = previousSearch;
   }
 });
 
 test('listWallpaperCatalog wallhaven omits nextPage on the last page', async () => {
-  const previousSearch = process.env.DSHD_WALLHAVEN_SEARCH_URL;
+  const previousSearch = process.env.RLHD_WALLHAVEN_SEARCH_URL;
   try {
     await withHttp((_req, res) => {
       const origin = `http://${_req.headers.host}`;
@@ -444,19 +444,19 @@ test('listWallpaperCatalog wallhaven omits nextPage on the last page', async () 
         meta: { current_page: 3, last_page: 3 },
       }));
     }, async (origin) => {
-      process.env.DSHD_WALLHAVEN_SEARCH_URL = `${origin}/search`;
+      process.env.RLHD_WALLHAVEN_SEARCH_URL = `${origin}/search`;
       const result = await listWallpaperCatalog({ kind: 'wallhaven', page: 3 });
       assert.equal(result.items.length, 1);
       assert.equal(result.nextPage, undefined);
     });
   } finally {
-    if (previousSearch === undefined) delete process.env.DSHD_WALLHAVEN_SEARCH_URL;
-    else process.env.DSHD_WALLHAVEN_SEARCH_URL = previousSearch;
+    if (previousSearch === undefined) delete process.env.RLHD_WALLHAVEN_SEARCH_URL;
+    else process.env.RLHD_WALLHAVEN_SEARCH_URL = previousSearch;
   }
 });
 
 test('listWallpaperCatalog bing year maps archive json', async () => {
-  const previousArchive = process.env.DSHD_BING_ARCHIVE_URL;
+  const previousArchive = process.env.RLHD_BING_ARCHIVE_URL;
   try {
     await withHttp((req, res) => {
       const origin = `http://${req.headers.host}`;
@@ -477,7 +477,7 @@ test('listWallpaperCatalog bing year maps archive json', async () => {
       res.statusCode = 404;
       res.end();
     }, async (origin) => {
-      process.env.DSHD_BING_ARCHIVE_URL = `${origin}/CN-zh.{year}.json`;
+      process.env.RLHD_BING_ARCHIVE_URL = `${origin}/CN-zh.{year}.json`;
       const result = await listWallpaperCatalog({ kind: 'bing', year: 2024 });
       assert.equal(result.items.length, 2);
       assert.deepEqual(result.items[0], {
@@ -494,13 +494,13 @@ test('listWallpaperCatalog bing year maps archive json', async () => {
       assert.equal(result.items[1].source, 'bing');
     });
   } finally {
-    if (previousArchive === undefined) delete process.env.DSHD_BING_ARCHIVE_URL;
-    else process.env.DSHD_BING_ARCHIVE_URL = previousArchive;
+    if (previousArchive === undefined) delete process.env.RLHD_BING_ARCHIVE_URL;
+    else process.env.RLHD_BING_ARCHIVE_URL = previousArchive;
   }
 });
 
 test('listWallpaperCatalog bing year keeps 500 items and drops the rest', async () => {
-  const previousArchive = process.env.DSHD_BING_ARCHIVE_URL;
+  const previousArchive = process.env.RLHD_BING_ARCHIVE_URL;
   try {
     await withHttp((_req, res) => {
       res.setHeader('Content-Type', 'application/json');
@@ -512,14 +512,14 @@ test('listWallpaperCatalog bing year keeps 500 items and drops the rest', async 
       }));
       res.end(JSON.stringify(entries));
     }, async (origin) => {
-      process.env.DSHD_BING_ARCHIVE_URL = `${origin}/CN-zh.{year}.json`;
+      process.env.RLHD_BING_ARCHIVE_URL = `${origin}/CN-zh.{year}.json`;
       const result = await listWallpaperCatalog({ kind: 'bing', year: 2024 });
       assert.equal(result.items.length, 500);
       assert.equal(result.items[0].id, 'bing-2024-d-0');
       assert.equal(result.items[499].id, 'bing-2024-d-499');
     });
   } finally {
-    if (previousArchive === undefined) delete process.env.DSHD_BING_ARCHIVE_URL;
-    else process.env.DSHD_BING_ARCHIVE_URL = previousArchive;
+    if (previousArchive === undefined) delete process.env.RLHD_BING_ARCHIVE_URL;
+    else process.env.RLHD_BING_ARCHIVE_URL = previousArchive;
   }
 });

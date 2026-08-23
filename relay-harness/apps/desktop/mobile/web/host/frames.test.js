@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { applyHostFrame, hostLabel } from './frames.js';
 
 test('hostLabel uses cwd folder then 已连接', () => {
-  assert.equal(hostLabel({ cwd: 'C:\\Ai\\Deepseek-Harness-Desktop' }), 'Deepseek-Harness-Desktop');
+  assert.equal(hostLabel({ cwd: 'C:\\Ai\\Relay-Harness-Desktop' }), 'Relay-Harness-Desktop');
   assert.equal(hostLabel({ cwd: '/tmp/work' }), 'work');
   assert.equal(hostLabel({}), '已连接');
 });

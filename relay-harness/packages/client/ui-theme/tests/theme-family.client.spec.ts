@@ -45,11 +45,11 @@ describe('theme-family helpers', () => {
   it('imports JSON, rewrites colliding ids, and drops empty overrides', () => {
     const imported = normalizeImportedThemeFamily({
       ...SAMPLE,
-      id: 'deepseek',
-      light: { ...SAMPLE.light, overrides: { '--dsw-alias-bg-base': '', '--keep': '#111111' } },
+      id: 'relay',
+      light: { ...SAMPLE.light, overrides: { '--rlw-alias-bg-base': '', '--keep': '#111111' } },
     }, getReservedThemeIds())
     expect(normalizeImportedThemeFamily({ ...SAMPLE, id: '' }, new Set()).id).toBe('grove')
-    expect(imported.id).toBe('deepseek-2')
+    expect(imported.id).toBe('relay-2')
     expect(imported.origin).toBe('custom')
     expect(imported.light.overrides).toEqual({ '--keep': '#111111' })
   })
@@ -78,17 +78,17 @@ describe('theme-family helpers', () => {
 })
 
 describe('builtin families', () => {
-  it('ships DeepSeek plus the six desktop palettes', () => {
+  it('ships Relay plus the six desktop palettes', () => {
     expect(BUILTIN_THEME_FAMILIES.map(family => family.id)).toEqual([
-      'deepseek', 'midnight', 'celadon', 'violet', 'amber', 'paper', 'contrast',
+      'relay', 'midnight', 'celadon', 'violet', 'amber', 'paper', 'contrast',
     ])
     expect(isBuiltinFamilyId('celadon')).toBe(true)
     expect(getBuiltinFamily('missing')).toBeUndefined()
     expect(getReservedThemeIds().has('paper')).toBe(true)
   })
 
-  it('resolves unknown ids to DeepSeek and lists custom families after builtins', () => {
-    expect(resolveThemeFamily('missing', [SAMPLE]).id).toBe('deepseek')
+  it('resolves unknown ids to Relay and lists custom families after builtins', () => {
+    expect(resolveThemeFamily('missing', [SAMPLE]).id).toBe('relay')
     expect(resolveThemeFamily('grove', [SAMPLE])).toBe(SAMPLE)
     expect(listThemeFamilies([SAMPLE]).at(-1)).toBe(SAMPLE)
   })

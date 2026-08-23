@@ -11,8 +11,8 @@
   border: none;
   border-radius: 0;
   background: transparent;
-  color: var(--dsw-alias-label-primary);
-  font-family: var(--dsw-font-family);
+  color: var(--rlw-alias-label-primary);
+  font-family: var(--rlw-font-family);
   font-size: 13px;
   font-weight: 400;
   line-height: 20px;
@@ -20,8 +20,8 @@
 }
 
 .trigger:hover {
-  background: var(--dsw-alias-interactive-bg-hover);
-  color: var(--dsw-alias-label-primary);
+  background: var(--rlw-alias-interactive-bg-hover);
+  color: var(--rlw-alias-label-primary);
 }
 
 .trigger:disabled {

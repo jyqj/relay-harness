@@ -1,16 +1,16 @@
 /**
  * Same-session goal-round driver over public agent, session, and goal services.
- * @module @deepseek-ai/dsh-goal-round-driver
+ * @module @relay-harness/rlh-goal-round-driver
  */
 
 import { isDeepStrictEqual } from 'node:util'
-import { FiberState } from '@deepseek-ai/cordis'
-import type { Context } from '@deepseek-ai/cordis'
-import type { Agent, PreStepDecision } from '@deepseek-ai/dsh-agent'
-import type { GoalMessageSource, GoalRef, GoalView } from '@deepseek-ai/dsh-goal'
-import { createUserMessage } from '@deepseek-ai/dsh-llm'
-import type { ContentBlock, MessageId, MessageSource } from '@deepseek-ai/dsh-llm'
-import type { Session, SessionEvent, UserMessage } from '@deepseek-ai/dsh-session'
+import { FiberState } from '@relay-harness/cordis'
+import type { Context } from '@relay-harness/cordis'
+import type { Agent, PreStepDecision } from '@relay-harness/rlh-agent'
+import type { GoalMessageSource, GoalRef, GoalView } from '@relay-harness/rlh-goal'
+import { createUserMessage } from '@relay-harness/rlh-llm'
+import type { ContentBlock, MessageId, MessageSource } from '@relay-harness/rlh-llm'
+import type { Session, SessionEvent, UserMessage } from '@relay-harness/rlh-session'
 import { renderGoalRoundPrompt } from './prompt.ts'
 
 export { renderGoalRoundPrompt } from './prompt.ts'

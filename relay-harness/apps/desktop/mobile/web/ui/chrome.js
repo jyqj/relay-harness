@@ -1,3 +1,4 @@
+// @ts-check
 export const SETTINGS_TABS = [
   '通用设置', '外观', '界面设置', '权限', '模型', 'MCP', '技能', '插件', '关于',
 ];

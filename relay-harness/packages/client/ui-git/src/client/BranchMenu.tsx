@@ -1,7 +1,7 @@
 /**
  * Titlebar branch picker: the same Menu atom as the commit/push chevron,
  * with the Menu filter and a create footer.
- * @module @deepseek-ai/dsh-client-ui-git/client/BranchMenu
+ * @module @relay-harness/rlh-client-ui-git/client/BranchMenu
  */
 
 import { useEffect, useState } from 'react'
@@ -11,8 +11,8 @@ import {
   IconChevronDownOutline14,
   IconPlusOutline16,
   Menu,
-} from '@deepseek-ai/dsh-client-ui-primitives'
-import type { PropsLocale } from '@deepseek-ai/dsh-client-ui-slots'
+} from '@relay-harness/rlh-client-ui-primitives'
+import type { PropsLocale } from '@relay-harness/rlh-client-ui-slots'
 import type { NS } from './locales.ts'
 import type { GitResult } from './git-logic.ts'
 import {

@@ -6,7 +6,7 @@ English | [中文](2026-08-20-mcp-settings-oauth.zh.md)
 
 ## Problem
 
-A managed Streamable HTTP MCP server that requires OAuth (Ardot, and any 401 `resource_metadata` challenge) could be added in Settings, but DSH never opened a login. The Host mounted a naked URL, health stayed `failed`, and chat never received that server's tools. Copying a token from another client is not a product path.
+A managed Streamable HTTP MCP server that requires OAuth (Ardot, and any 401 `resource_metadata` challenge) could be added in Settings, but RLH never opened a login. The Host mounted a naked URL, health stayed `failed`, and chat never received that server's tools. Copying a token from another client is not a product path.
 
 ## Decision
 
@@ -14,9 +14,9 @@ A managed Streamable HTTP MCP server that requires OAuth (Ardot, and any 401 `re
 
 ## Alternatives considered
 
-**Store only a Cursor-copied access token in yaml.** Rejected: the user never sees a DSH login, Host may not remount, and the token expires with no way back inside the product.
+**Store only a Cursor-copied access token in yaml.** Rejected: the user never sees a RLH login, Host may not remount, and the token expires with no way back inside the product.
 
-**Automatic OAuth inside `dsh-mcp-client` on the first 401.** Rejected: opening a browser is a Settings/Host user gesture, not a silent reconnect side effect.
+**Automatic OAuth inside `rlh-mcp-client` on the first 401.** Rejected: opening a browser is a Settings/Host user gesture, not a silent reconnect side effect.
 
 **Persist refresh tokens in a sidecar and renew without the browser.** Deferred: v1 writes the access token as a header; expiry shows 连接失败 and 登录 again.
 

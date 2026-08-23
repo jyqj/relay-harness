@@ -1,7 +1,7 @@
 // Web e2e: one assembled walk of every desktop UI that survived the rc.8
 // vendor merge. Zero model calls. English browser locale. Live assertions,
 // no golden files — titlebar/surfaces goldens stay in desktop-chrome.e2e.ts.
-// Electron-only chrome (dshbot Bots tab, native BrowserView) is out of this
+// Electron-only chrome (rlhbot Bots tab, native BrowserView) is out of this
 // lane; src/shared/post-merge-ui.test.js pins those source markers.
 import { mkdir, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
@@ -109,7 +109,7 @@ describe('web e2e: post-merge assembled desktop UI', () => {
     await waitVisible(page.getByRole('button', { name: 'Send message' }))
     await waitVisible(page.getByRole('button', { name: /Access mode/ }))
 
-    const cluster = page.locator('#dshd-shell-titlebar-trailing')
+    const cluster = page.locator('#rlhd-shell-titlebar-trailing')
     await cluster.waitFor({ timeout: 15_000 })
     await waitVisible(cluster.getByRole('button', { name: 'Session log' }))
     await waitVisible(cluster.getByRole('button', { name: 'Switch branch' }))
@@ -143,7 +143,7 @@ describe('web e2e: post-merge assembled desktop UI', () => {
   it('opens the Git branch and actions menus', async () => {
     onTestFailed(() => saveFailureShot(page, 'web-e2e-post-merge-git'))
     await dismissOverlays(page)
-    const cluster = page.locator('#dshd-shell-titlebar-trailing')
+    const cluster = page.locator('#rlhd-shell-titlebar-trailing')
     const branch = cluster.getByRole('button', { name: 'Switch branch' })
     await branch.click()
     await expect.poll(() => branch.getAttribute('aria-expanded'), { timeout: 5_000 }).toBe('true')

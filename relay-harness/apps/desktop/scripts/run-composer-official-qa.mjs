@@ -18,7 +18,7 @@ const require = createRequire(import.meta.url)
 const { assertComposerOfficialQaResult } = require('../src/main/composer-official-qa.js')
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
-const timeoutMs = Number(process.env.DSH_SMOKE_TIMEOUT_MS) || 420_000
+const timeoutMs = Number(process.env.RLH_SMOKE_TIMEOUT_MS) || 420_000
 
 function electronExecutable() {
   if (process.env.ELECTRON_PATH && existsSync(process.env.ELECTRON_PATH)) {
@@ -101,8 +101,8 @@ function writeComposerQaConfig(userData, workspace, port) {
   }, null, 2))
 }
 
-const dirs = createSmokeDirs('dsh-composer-qa-')
-const keepRequested = process.env.DSH_SMOKE_KEEP === '1'
+const dirs = createSmokeDirs('rlh-composer-qa-')
+const keepRequested = process.env.RLH_SMOKE_KEEP === '1'
 let keepArtifacts = keepRequested
 
 try {
@@ -116,9 +116,9 @@ try {
   console.log(`Config forces remoteEnabled=true; gateway must still stay down.`)
   const outcome = await run(executable, ['.', `--user-data-dir=${dirs.userData}`, '--no-first-run'], {
     ...process.env,
-    DSH_HOME: dirs.dshHome,
-    DSH_SMOKE: '1',
-    DSH_QA_COMPOSER: '1',
+    RLH_HOME: dirs.rlhHome,
+    RLH_SMOKE: '1',
+    RLH_QA_COMPOSER: '1',
   })
 
   if (!existsSync(dirs.resultPath)) {
@@ -137,8 +137,8 @@ try {
 } finally {
   if (keepArtifacts) {
     console.log(`QA artifacts kept at ${dirs.smokeRoot}`)
-    if (existsSync(path.join(dirs.userData, 'dshd-composer-qa.png'))) {
-      console.log(`Screenshot: ${path.join(dirs.userData, 'dshd-composer-qa.png')}`)
+    if (existsSync(path.join(dirs.userData, 'rlhd-composer-qa.png'))) {
+      console.log(`Screenshot: ${path.join(dirs.userData, 'rlhd-composer-qa.png')}`)
     }
   } else if (!keepRequested) {
     try {

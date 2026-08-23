@@ -1,4 +1,4 @@
-"""Legacy plus-mark PNG. The checked-in whale icon is rendered by scripts/render-icon.js."""
+"""Legacy plus-mark PNG. The checked-in brand icon is rendered by scripts/render-icon.js."""
 from __future__ import annotations
 
 import struct

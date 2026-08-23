@@ -11,16 +11,16 @@ import type { ChangeEvent, KeyboardEvent, MouseEvent, ReactNode } from 'react'
 import clsx from 'clsx'
 import {
   IconPlusOutline16, IconWarningOutline16, Toast, Tooltip,
-} from '@deepseek-ai/dsh-client-ui-primitives'
+} from '@relay-harness/rlh-client-ui-primitives'
 // Type-only: the `plan` projection key merge (the TodoDock posture — the
 // composer reads a host-computed value; the domain owns the key).
-import type {} from '@deepseek-ai/dsh-plan-mode/client'
+import type {} from '@relay-harness/rlh-plan-mode/client'
 // Type-only: the `goal` projection key merge (hint disambiguation).
-import type {} from '@deepseek-ai/dsh-goal/client'
+import type {} from '@relay-harness/rlh-goal/client'
 // The `imageLimits` projection key merge (intake pre-check) arrives with the
 // wire types: apiproxy's sessions contract declares it, and client-runtime's
 // api-remotes import already places it in every client program.
-import type { Translate } from '@deepseek-ai/dsh-client-ui-slots'
+import type { Translate } from '@relay-harness/rlh-client-ui-slots'
 import type { ComposerBarProps } from '../contract/slots.ts'
 import { deriveDecorations } from '../input/decorations.ts'
 import type { DraftDecorations } from '../input/decorations.ts'
@@ -36,7 +36,7 @@ import css from './InputBar.module.css'
 const INERT_DECORATIONS: DraftDecorations = { token: null, chips: [], textRefs: [], hint: null }
 
 /** File-tree drag payload; kept local so this plugin does not import ui-files. */
-const COMPOSER_MENTION_DRAG_TYPE = 'application/x-dshd-composer-mention'
+const COMPOSER_MENTION_DRAG_TYPE = 'application/x-rlhd-composer-mention'
 
 export type InputBarProps = ComposerBarProps
 
@@ -62,8 +62,8 @@ export function InputBar({
   const subagent = useSession(s => s.subagent) ?? null
   const removed = useSession(s => s.removed) ?? false
   const sessionRow = useSessions(s => (sessionId === undefined ? undefined : s.byId[sessionId]))
-  const hideModelSeat = sessionRow?.origin === 'dshbot' || sessionRow?.agentPreset === 'dshbot-room'
-  const hideRoomChrome = sessionRow?.agentPreset === 'dshbot-room'
+  const hideModelSeat = sessionRow?.origin === 'rlhbot' || sessionRow?.agentPreset === 'rlhbot-room'
+  const hideRoomChrome = sessionRow?.agentPreset === 'rlhbot-room'
   // Plan mode swaps the textarea placeholder (the projection is the folded
   // host value; owner-prop placeholders — hero, session-unavailable — win).
   const planActive = useProjection('plan', plan => plan !== undefined && (plan.pending ? !plan.active : plan.active))
@@ -491,7 +491,7 @@ export function InputBar({
   const canAcceptDrop = !locked && !machineBusy && addImages !== undefined
 
   // File-image drops live on `conversation.input.attachments`. Mention payloads
-  // (`application/x-dshd-composer-mention`) are claimed here so a file-tree
+  // (`application/x-rlhd-composer-mention`) are claimed here so a file-tree
   // drag inserts into the draft instead of falling through as native text.
   useEffect(() => {
     const hasMention = (event: globalThis.DragEvent): boolean =>

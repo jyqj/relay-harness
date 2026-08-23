@@ -75,15 +75,15 @@ export function applyAppearanceDocumentExtras(extras: AppearanceDocumentExtras):
   root.style.fontSize = `${extras.fontSizeInterface || DEFAULT_INTERFACE_FONT_SIZE}px`
   const sans = appearanceFontStack(extras.fontFamilySans, DEFAULT_SANS_STACK)
   const code = appearanceFontStack(extras.fontFamilyCode, DEFAULT_CODE_STACK)
-  root.style.setProperty('--dsw-font-family', sans)
-  root.style.setProperty('--ds-font-family-code', code)
-  root.style.setProperty('--dsw-font-size-code', `${extras.fontSizeCode || DEFAULT_CODE_FONT_SIZE}px`)
+  root.style.setProperty('--rlw-font-family', sans)
+  root.style.setProperty('--rl-font-family-code', code)
+  root.style.setProperty('--rlw-font-size-code', `${extras.fontSizeCode || DEFAULT_CODE_FONT_SIZE}px`)
   root.style.setProperty(
-    '--dsw-font-family-composer',
+    '--rlw-font-family-composer',
     appearanceFontStack(extras.fontFamilyComposer ?? '', sans),
   )
   root.style.setProperty(
-    '--dsw-font-family-terminal',
+    '--rlw-font-family-terminal',
     appearanceFontStack(extras.fontFamilyTerminal ?? '', code),
   )
   applyWallpaperLayer({

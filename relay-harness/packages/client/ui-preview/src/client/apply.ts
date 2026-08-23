@@ -1,7 +1,7 @@
 /** Registers the Browser occupant into surfaces.browser. */
-import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
-import type {} from '@deepseek-ai/dsh-client-locale/client'
-import type {} from '@deepseek-ai/dsh-client-ui-surfaces/client'
+import type { ClientContext } from '@relay-harness/rlh-client-runtime/client'
+import type {} from '@relay-harness/rlh-client-locale/client'
+import type {} from '@relay-harness/rlh-client-ui-surfaces/client'
 import { en, NS, zh, type PreviewKey } from './locales.ts'
 import { PreviewPanel } from './PreviewPanel.tsx'
 import { appendToDraft } from './draft.ts'
@@ -11,7 +11,7 @@ export type { PreviewPanelProps } from './PreviewPanel.tsx'
 export type { PreviewKey } from './locales.ts'
 export type { PreviewBounds, PreviewResult, PreviewShellInjected } from './shell.ts'
 
-declare module '@deepseek-ai/dsh-client-ui-slots' {
+declare module '@relay-harness/rlh-client-ui-slots' {
   interface LocaleNamespaceMap {
     /** Browser / preview surface copy. */
     preview: PreviewKey

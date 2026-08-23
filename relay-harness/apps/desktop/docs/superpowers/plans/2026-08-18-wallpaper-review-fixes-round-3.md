@@ -12,10 +12,10 @@
 
 ## Global Constraints
 
-- Official `dsh web` tokens / `ui-primitives` only; no marketplace hex.
+- Official `rlh web` tokens / `ui-primitives` only; no marketplace hex.
 - Product copy Chinese in `locales.ts`; English keys in lockstep (`satisfies Record<ThemeKey, string>`).
 - Timeline / UHD / Unsplash / search / favorites / R18 stay out.
-- Do **not** add a private-host / LAN SSRF denylist. User-typed `https:` catalogs (and `DSHD_WALLPAPER_ALLOW_HTTP=1` fixtures) are in-product.
+- Do **not** add a private-host / LAN SSRF denylist. User-typed `https:` catalogs (and `RLHD_WALLPAPER_ALLOW_HTTP=1` fixtures) are in-product.
 - Do **not** put `crossOrigin="anonymous"` on gallery thumbs. Bing/custom thumbs often lack CORS for the harness origin; that would break the grid the Agent Note allows (`<img src={thumbUrl}>`).
 - Do **not** require `downloadWallpaper(url)` to be in the last catalog list (needs a main-process allow-set; out of this slice).
 - Do **not** retune `downscaleWallpaper`’s 200ms abort; live persist is `cropWallpaper` / `CROP_DECODE_TIMEOUT_MS`.
@@ -36,11 +36,11 @@
 
 ## File map
 
-- Modify: `vendor/deepseek-harness/packages/client/ui-theme/src/client/WallpaperCropModal.tsx` — sync session bump on dismiss; skip empty `img` src.
-- Modify: `vendor/deepseek-harness/packages/client/ui-theme/src/client/WallpaperRow.tsx` — download generation token; local `file.size` cap.
-- Modify: `vendor/deepseek-harness/packages/client/ui-theme/src/client/WallpaperGalleryModal.tsx` — `referrerPolicy="no-referrer"` on thumbs; comment no longer says Bing is always on.
-- Modify: `vendor/deepseek-harness/packages/client/ui-theme/src/wallpaper.ts` — `MAX_WALLPAPER_FILE_BYTES`.
-- Modify: `vendor/deepseek-harness/packages/client/ui-theme/src/client/locales.ts` — `wallpaper.fileTooLarge`; broader `catalogRejected`; en `glassHint` capital-G.
+- Modify: `vendor/relay-harness/packages/client/ui-theme/src/client/WallpaperCropModal.tsx` — sync session bump on dismiss; skip empty `img` src.
+- Modify: `vendor/relay-harness/packages/client/ui-theme/src/client/WallpaperRow.tsx` — download generation token; local `file.size` cap.
+- Modify: `vendor/relay-harness/packages/client/ui-theme/src/client/WallpaperGalleryModal.tsx` — `referrerPolicy="no-referrer"` on thumbs; comment no longer says Bing is always on.
+- Modify: `vendor/relay-harness/packages/client/ui-theme/src/wallpaper.ts` — `MAX_WALLPAPER_FILE_BYTES`.
+- Modify: `vendor/relay-harness/packages/client/ui-theme/src/client/locales.ts` — `wallpaper.fileTooLarge`; broader `catalogRejected`; en `glassHint` capital-G.
 - Modify: `src/main/wallpaper-catalog.js` — stop exporting unused `DEFAULT_BING_URL`.
 - Test: `appearance-section.client.spec.tsx`; new `wallpaper-crop-modal.client.spec.tsx`.
 - Docs: Agent Note en/zh Testing + Decision sentences; re-record pairing.
@@ -63,9 +63,9 @@ Tasks 3 and 4 are independent of 1–2. Task 5 is independent polish. Task 6 las
 ### Task 1: Synchronous crop-cancel token
 
 **Files:**
-- Create: `vendor/deepseek-harness/packages/client/ui-theme/tests/wallpaper-crop-modal.client.spec.tsx`
-- Modify: `vendor/deepseek-harness/packages/client/ui-theme/src/client/WallpaperCropModal.tsx:54-110` (`useEffect` session bump, `Modal onClose`, footer 取消)
-- Modify: `vendor/deepseek-harness/packages/client/ui-theme/tests/appearance-section.client.spec.tsx:443-457` — keep the existing cancel test as an integration pin. Do not treat `vi.waitFor` dialog-role-null as proof of a same-turn token bump.
+- Create: `vendor/relay-harness/packages/client/ui-theme/tests/wallpaper-crop-modal.client.spec.tsx`
+- Modify: `vendor/relay-harness/packages/client/ui-theme/src/client/WallpaperCropModal.tsx:54-110` (`useEffect` session bump, `Modal onClose`, footer 取消)
+- Modify: `vendor/relay-harness/packages/client/ui-theme/tests/appearance-section.client.spec.tsx:443-457` — keep the existing cancel test as an integration pin. Do not treat `vi.waitFor` dialog-role-null as proof of a same-turn token bump.
 
 **Root cause:** `session.current += 1` runs in `useEffect([open, image])` (`WallpaperCropModal.tsx` 54–74). Cancel is `onClose` → parent `setCropSource(null)` (`WallpaperRow.tsx` 254). If the parent has not flipped `open` yet, the effect does not run, `confirm` still sees the old token, and `onConfirm` fires. The appearance test waits until `queryByRole('dialog')` is null (Modal `aria-hidden` as soon as `open` is false) then `act(finish)`, which flushes effects — it does not cover a no-op / deferred `onClose`. Overlay/Escape also call `Modal` `onClose`; the dismiss wrapper must cover that path, not only the footer button.
 
@@ -134,7 +134,7 @@ describe('WallpaperCropModal', () => {
 
 - [ ] **Step 2: Run to verify RED**
 
-Run from `vendor/deepseek-harness`:
+Run from `vendor/relay-harness`:
 
 `pnpm exec vitest run packages/client/ui-theme/tests/wallpaper-crop-modal.client.spec.tsx`
 
@@ -166,10 +166,10 @@ Also run: `pnpm exec vitest run packages/client/ui-theme/tests/appearance-sectio
 ### Task 2: No empty crop `<img src="">` on Presence exit
 
 **Files:**
-- Modify: `vendor/deepseek-harness/packages/client/ui-theme/src/client/WallpaperCropModal.tsx:143-161` (preview `<img>`)
-- Test: `vendor/deepseek-harness/packages/client/ui-theme/tests/appearance-section.client.spec.tsx:443-457`
+- Modify: `vendor/relay-harness/packages/client/ui-theme/src/client/WallpaperCropModal.tsx:143-161` (preview `<img>`)
+- Test: `vendor/relay-harness/packages/client/ui-theme/tests/appearance-section.client.spec.tsx:443-457`
 
-**Root cause:** `WallpaperRow` passes `image={cropSource ?? ''}` (`WallpaperRow.tsx` 250–252). Modal `usePresence` keeps children mounted ~200ms after `open=false` (`vendor/deepseek-harness/packages/client/ui-primitives/src/Modal.tsx` ~45–56). That paints `<img src="">`, which fetches the Appearance document.
+**Root cause:** `WallpaperRow` passes `image={cropSource ?? ''}` (`WallpaperRow.tsx` 250–252). Modal `usePresence` keeps children mounted ~200ms after `open=false` (`vendor/relay-harness/packages/client/ui-primitives/src/Modal.tsx` ~45–56). That paints `<img src="">`, which fetches the Appearance document.
 
 **Interfaces:**
 - Consumes: Task 1 `dismiss`.
@@ -210,8 +210,8 @@ Same appearance test + Task 1 isolated spec. Expected: PASS. Preview `onLoad` / 
 ### Task 3: Ignore a gallery download after dismiss
 
 **Files:**
-- Modify: `vendor/deepseek-harness/packages/client/ui-theme/src/client/WallpaperRow.tsx:66-137,257-266`
-- Test: `vendor/deepseek-harness/packages/client/ui-theme/tests/appearance-section.client.spec.tsx` — new `it` next to the existing gallery download-error case (~586–633)
+- Modify: `vendor/relay-harness/packages/client/ui-theme/src/client/WallpaperRow.tsx:66-137,257-266`
+- Test: `vendor/relay-harness/packages/client/ui-theme/tests/appearance-section.client.spec.tsx` — new `it` next to the existing gallery download-error case (~586–633)
 
 **Root cause:** `pickCatalog` (`WallpaperRow.tsx` 120–136) has no generation token. Gallery `onClose` only `setGalleryOpen(false)` (264). A finishing `downloadWallpaper` still `setCropSource(result.dataUrl)` and opens crop. The list effect at 75–87 already uses `cancelled`; download does not.
 
@@ -294,9 +294,9 @@ That new test plus existing “skips a download without bytes” / Bing crop-wri
 ### Task 4: Cap local file reads at 12MB
 
 **Files:**
-- Modify: `vendor/deepseek-harness/packages/client/ui-theme/src/wallpaper.ts` — export `MAX_WALLPAPER_FILE_BYTES = 12 * 1024 * 1024`
-- Modify: `vendor/deepseek-harness/packages/client/ui-theme/src/client/WallpaperRow.tsx:90-111` — reject before `readFileAsDataUrl`
-- Modify: `vendor/deepseek-harness/packages/client/ui-theme/src/client/locales.ts` — zh ~43 and en ~124 lockstep `wallpaper.fileTooLarge`
+- Modify: `vendor/relay-harness/packages/client/ui-theme/src/wallpaper.ts` — export `MAX_WALLPAPER_FILE_BYTES = 12 * 1024 * 1024`
+- Modify: `vendor/relay-harness/packages/client/ui-theme/src/client/WallpaperRow.tsx:90-111` — reject before `readFileAsDataUrl`
+- Modify: `vendor/relay-harness/packages/client/ui-theme/src/client/locales.ts` — zh ~43 and en ~124 lockstep `wallpaper.fileTooLarge`
 - Test: `appearance-section.client.spec.tsx` — new `it` next to the local pick-failed case (~419–441)
 
 **Root cause:** `pick` reads the whole File (`WallpaperRow.tsx` 90–110). Main `downloadWallpaper` already caps at `MAX_IMAGE_BYTES` (12MB in `src/main/wallpaper-catalog.js`). A huge local pick can OOM in the renderer. Do not import `src/main/wallpaper-catalog.js` from ui-theme.
@@ -366,8 +366,8 @@ That test + existing local-pick crop test (small PNG). Expected: PASS.
 ### Task 5: Thumb referrer, copy, comments, unused export
 
 **Files:**
-- Modify: `vendor/deepseek-harness/packages/client/ui-theme/src/client/WallpaperGalleryModal.tsx:1-3,61` — file comment; thumb `<img>`
-- Modify: `vendor/deepseek-harness/packages/client/ui-theme/src/client/locales.ts` — `wallpaper.catalogRejected` (zh 52 / en 133) and en `wallpaper.glassHint` (124)
+- Modify: `vendor/relay-harness/packages/client/ui-theme/src/client/WallpaperGalleryModal.tsx:1-3,61` — file comment; thumb `<img>`
+- Modify: `vendor/relay-harness/packages/client/ui-theme/src/client/locales.ts` — `wallpaper.catalogRejected` (zh 52 / en 133) and en `wallpaper.glassHint` (124)
 - Modify: `src/main/wallpaper-catalog.js:4,347-356` — `DEFAULT_BING_URL` is unused except the export (`bingCatalogUrls` already inlines the two HPImageArchive URLs). Delete the const and drop it from `module.exports`.
 - Test: `appearance-section.client.spec.tsx:553-584` (thumb attribute on the existing Bing-rows test) and `:635-650` (catalogRejected string).
 
@@ -412,7 +412,7 @@ Appearance catalog-reject + gallery tests. `node --test src/main/wallpaper-catal
 ### Task 6: Agent Note + pairing
 
 **Files:**
-- Modify: `vendor/deepseek-harness/.agents/notes/implemented/feature/2026-08-18-wallpaper-gallery-and-crop.md`
+- Modify: `vendor/relay-harness/.agents/notes/implemented/feature/2026-08-18-wallpaper-gallery-and-crop.md`
 - Modify: `.../2026-08-18-wallpaper-gallery-and-crop.zh.md`
 - Pairing: `pnpm run verify-translation-pairing -- --write .agents/notes/implemented/feature/2026-08-18-wallpaper-gallery-and-crop.md` then the check without `--write`.
 
@@ -434,7 +434,7 @@ Testing paragraph: pin the isolated crop-modal cancel-with-open-still-true spec,
 
 - [ ] **Step 2: Pairing**
 
-From `vendor/deepseek-harness`:
+From `vendor/relay-harness`:
 
 ```sh
 pnpm run verify-translation-pairing -- --write .agents/notes/implemented/feature/2026-08-18-wallpaper-gallery-and-crop.md
@@ -448,7 +448,7 @@ Expected: write records the sidecar; check reports the named pair consistent; fo
 
 From repo root: `node --test src/main/wallpaper-catalog.test.js` — 15 PASS.
 
-From `vendor/deepseek-harness`:
+From `vendor/relay-harness`:
 
 ```sh
 pnpm exec vitest run packages/client/ui-theme/tests/appearance-section.client.spec.tsx packages/client/ui-theme/tests/wallpaper-crop-modal.client.spec.tsx packages/client/ui-theme/tests/wallpaper.client.spec.ts packages/client/ui-theme/tests/theme.client.spec.ts packages/client/ui-theme/tests/apply.client.spec.ts packages/client/ui-theme/tests/wallpaper-shell.client.spec.ts packages/client/ui-theme/tests/settings-store.client.spec.ts

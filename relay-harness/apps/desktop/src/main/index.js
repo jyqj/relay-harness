@@ -1,12 +1,13 @@
+// @ts-check
 const { app, dialog, globalShortcut, session } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { loadConfig, saveConfig } = require('./config');
-const { DshManager, ensureOwnedPort } = require('./dsh');
+const { RlhManager, ensureOwnedPort } = require('./rlh');
 const { HarnessController } = require('./harness-controller');
 const { stripDroppedPlugins, healDanglingBundles, ensureDesktopInstallPlugin } = require('./plugins');
-const { ensureDshMarketPlugin } = require('./dshmarket-preset');
-const { ensureDshbotPlugin } = require('./dshbot-preset');
+const { ensureRlhMarketPlugin } = require('./rlhmarket-preset');
+const { ensureRlhbotPlugin } = require('./rlhbot-preset');
 const { ensureWorkspace } = require('./workspace-rpc');
 const { registerIpc } = require('./ipc');
 const { createDisabledRemote } = require('./remote');
@@ -33,8 +34,8 @@ const { showClosingOverlay } = require('./closing-overlay');
 const { hideOnClose } = require('./close-behavior');
 // The installer keeps only the smoke-support half of the QA surface: the full
 // walkers (release-ui-walk.js, composer-official-qa.js) are excluded by
-// build.files and load lazily below, so development QA runs (DSH_QA /
-// DSH_QA_COMPOSER, launched from the repository checkout) still reach them
+// build.files and load lazily below, so development QA runs (RLH_QA /
+// RLH_QA_COMPOSER, launched from the repository checkout) still reach them
 // while the packaged app carries no QA walker code.
 const { connectConfiguredWorkspace, makeRecorder } = require('./workspace-connect');
 
@@ -46,7 +47,7 @@ function loadQaModule(name) {
   }
 }
 
-const dsh = new DshManager();
+const rlh = new RlhManager();
 const remote = createDisabledRemote();
 let quitting = false;
 let stoppingForQuit = false;
@@ -56,13 +57,13 @@ async function resolveLaunchTarget() {
   const config = loadConfig();
   const host = config.host || '127.0.0.1';
   const wanted = Number(config.port) || 3080;
-  dsh.log(`检测端口 ${host}:${wanted}`);
-  const port = await ensureOwnedPort(host, wanted, (line) => dsh.log(line));
+  rlh.log(`检测端口 ${host}:${wanted}`);
+  const port = await ensureOwnedPort(host, wanted, (line) => rlh.log(line));
   return { port };
 }
 
 const harness = new HarnessController({
-  dsh,
+  rlh,
   remote,
   loadConfig,
   createMainWindow,
@@ -75,8 +76,8 @@ const harness = new HarnessController({
   resolveLaunchTarget,
   stripDroppedPlugins,
   ensureDesktopInstallPlugin,
-  ensureDshMarketPlugin,
-  ensureDshbotPlugin,
+  ensureRlhMarketPlugin,
+  ensureRlhbotPlugin,
   healDanglingBundles,
   saveConfig,
   appVersion: app.getVersion(),
@@ -106,10 +107,10 @@ function cleanupDesktopResources() {
   try {
     desktopResources.pty.killAll();
   } catch (error) {
-    dsh.log(`PTY 清理失败：${error.message}`, 'app');
+    rlh.log(`PTY 清理失败：${error.message}`, 'app');
   }
   void Promise.resolve(desktopResources.preview.closeAll()).catch((error) => {
-    dsh.log(`预览清理失败：${error.message}`, 'app');
+    rlh.log(`预览清理失败：${error.message}`, 'app');
   });
 }
 
@@ -155,7 +156,7 @@ async function clickClientCenter(wc, x, y) {
 async function titlebarButtonRect(wc, pattern) {
   return wc.executeJavaScript(`(() => {
     const match = new RegExp(${JSON.stringify(pattern)}, 'i');
-    const titlebar = document.querySelector('#dshd-shell-titlebar-trailing');
+    const titlebar = document.querySelector('#rlhd-shell-titlebar-trailing');
     if (!titlebar) return null;
     const buttons = Array.from(titlebar.querySelectorAll('button'));
     const button = buttons.find((el) =>
@@ -173,7 +174,7 @@ async function titlebarButtonRect(wc, pattern) {
 async function titlebarMenuOpen(wc, pattern) {
   return wc.executeJavaScript(`(() => {
     const match = new RegExp(${JSON.stringify(pattern)}, 'i');
-    const titlebar = document.querySelector('#dshd-shell-titlebar-trailing');
+    const titlebar = document.querySelector('#rlhd-shell-titlebar-trailing');
     const button = titlebar && Array.from(titlebar.querySelectorAll('button')).find((el) =>
       match.test((el.getAttribute('aria-label') || el.textContent || '').trim()));
     return Boolean(button && button.getAttribute('aria-expanded') === 'true')
@@ -184,7 +185,7 @@ async function titlebarMenuOpen(wc, pattern) {
 async function clickTitlebarButton(wc, pattern) {
   return wc.executeJavaScript(`(() => {
     const match = new RegExp(${JSON.stringify(pattern)}, 'i');
-    const titlebar = document.querySelector('#dshd-shell-titlebar-trailing');
+    const titlebar = document.querySelector('#rlhd-shell-titlebar-trailing');
     if (!titlebar) return false;
     const buttons = Array.from(titlebar.querySelectorAll('button'));
     const button = buttons.find((el) =>
@@ -327,7 +328,7 @@ async function probeThemeBackgrounds(wc) {
     await waitUntil(() => wc.executeJavaScript(`(() => !document.querySelector('[role="menu"]'))()`), 3_000);
     await dismissFirstRunOnboarding(wc);
     await wc.executeJavaScript(`(() => {
-      window.dispatchEvent(new CustomEvent('dshd-open-surface', { detail: { kind: 'terminal' } }));
+      window.dispatchEvent(new CustomEvent('rlhd-open-surface', { detail: { kind: 'terminal' } }));
       return true;
     })()`);
     const surface = await waitUntil(() => wc.executeJavaScript(`(() => {
@@ -424,8 +425,8 @@ async function probeThemeBackgrounds(wc) {
         || frameTokenStyles?.getPropertyValue(name).trim()
         || '';
       const tokens = {
-        base: tokenValue('--dsw-alias-bg-base'),
-        layer2: tokenValue('--dsw-alias-bg-layer-2'),
+        base: tokenValue('--rlw-alias-bg-base'),
+        layer2: tokenValue('--rlw-alias-bg-layer-2'),
       };
       const isBlack = (value) => {
         const match = String(value || '').match(/rgba?\\(\\s*0[ ,]+0[ ,]+0(?:[ ,/]+(?:0|1(?:\\.0*)?))?\\s*\\)/i);
@@ -511,7 +512,7 @@ async function runSmoke(win) {
       for (let i = 0; i < 60 && !document.querySelector('[class*="frame"]'); i += 1) await sleep(250);
       await sleep(2500);
       const frame = document.querySelector('[class*="frame"]');
-      const titlebar = document.querySelector('#dshd-shell-titlebar-trailing');
+      const titlebar = document.querySelector('#rlhd-shell-titlebar-trailing');
       const buttons = titlebar ? Array.from(titlebar.querySelectorAll('button')).map(b => (b.getAttribute('aria-label') || b.textContent || '').trim()) : [];
       const api = window.shell;
       return {
@@ -521,11 +522,11 @@ async function runSmoke(win) {
         titlebarButtons: buttons,
         hasTerminalToggle: buttons.some(t => /terminal|\u7ec8\u7aef/i.test(t)),
         hasSurfacesToggle: buttons.some(t => /right panel|surfaces|\u53f3\u4fa7\u680f/i.test(t)),
-        hasDragStrip: Boolean(document.getElementById('dshd-shell-drag-strip')),
-        hasDragMark: Boolean(document.querySelector('[data-dshd-shell-drag]')),
-        hasHitMark: Boolean(document.querySelector('[data-dshd-shell-hit]')),
+        hasDragStrip: Boolean(document.getElementById('rlhd-shell-drag-strip')),
+        hasDragMark: Boolean(document.querySelector('[data-rlhd-shell-drag]')),
+        hasHitMark: Boolean(document.querySelector('[data-rlhd-shell-hit]')),
         captionRegion: (() => {
-          const caption = document.querySelector('[data-dshd-caption="band"]');
+          const caption = document.querySelector('[data-rlhd-caption="band"]');
           return caption ? getComputedStyle(caption).webkitAppRegion : null;
         })(),
         hasHarnessShellApi: Boolean(
@@ -543,7 +544,7 @@ async function runSmoke(win) {
       };
     })()`);
     Object.assign(result, bootShellApi);
-    console.log('[DSH_SMOKE]', JSON.stringify({ ...result, pageErrors }));
+    console.log('[RLH_SMOKE]', JSON.stringify({ ...result, pageErrors }));
     // Real PTY probe: node-pty is the one native dependency; prove it can
     // spawn a shell inside Electron (or report the exact failure) so the
     // smoke distinguishes "UI renders" from "terminal backend actually works".
@@ -557,7 +558,7 @@ async function runSmoke(win) {
         new Promise((_, reject) => setTimeout(() => reject(new Error('pty-create timed out')), 15000)),
       ]);
       ptyStatus = `created:${created.id}`;
-      const marker = `dshd-smoke-ok-${process.pid}-${Date.now()}`;
+      const marker = `rlhd-smoke-ok-${process.pid}-${Date.now()}`;
       let output = '';
       let markerSeen;
       const markerOutput = new Promise((resolve, reject) => {
@@ -600,10 +601,10 @@ async function runSmoke(win) {
         await desktopResources.pty.kill(created.id).catch(() => {});
       }
     }
-    console.log('[DSH_SMOKE_PTY]', ptyStatus);
+    console.log('[RLH_SMOKE_PTY]', ptyStatus);
     let qaAttached = false;
-    const needsComposerQa = process.env.DSH_QA_COMPOSER === '1';
-    const needsReleaseQa = process.env.DSH_QA === '1';
+    const needsComposerQa = process.env.RLH_QA_COMPOSER === '1';
+    const needsReleaseQa = process.env.RLH_QA === '1';
     if (!wc.debugger.isAttached()) {
       await wc.debugger.attach('1.3');
       qaAttached = true;
@@ -635,7 +636,7 @@ async function runSmoke(win) {
       titlebarHits = { hits: { surfaces: 0, branch: 0, git: 0 }, error: String(error) };
     }
     result.titlebarHits = titlebarHits;
-    console.log('[DSH_SMOKE_HITS]', JSON.stringify(titlebarHits));
+    console.log('[RLH_SMOKE_HITS]', JSON.stringify(titlebarHits));
     if (needsComposerQa) {
       const runComposerOfficialQa = loadQaModule('./composer-official-qa')?.runComposerOfficialQa ?? null;
       try {
@@ -669,10 +670,10 @@ async function runSmoke(win) {
           failed: ['composer-official-threw'],
         };
       }
-      console.log('[DSH_QA_COMPOSER]', JSON.stringify(result.composerOfficialQa));
+      console.log('[RLH_QA_COMPOSER]', JSON.stringify(result.composerOfficialQa));
       try {
         const png = await wc.capturePage();
-        fs.writeFileSync(path.join(app.getPath('userData'), 'dshd-composer-qa.png'), png.toPNG());
+        fs.writeFileSync(path.join(app.getPath('userData'), 'rlhd-composer-qa.png'), png.toPNG());
       } catch {
         // Screenshot is evidence, not the verdict.
       }
@@ -704,10 +705,10 @@ async function runSmoke(win) {
       } catch (error) {
         result.qa = { ok: false, error: String(error), steps: [], failed: ['walk-threw'] };
       }
-      console.log('[DSH_QA]', JSON.stringify(result.qa));
+      console.log('[RLH_QA]', JSON.stringify(result.qa));
       try {
         const png = await wc.capturePage();
-        fs.writeFileSync(path.join(app.getPath('userData'), 'dshd-qa.png'), png.toPNG());
+        fs.writeFileSync(path.join(app.getPath('userData'), 'rlhd-qa.png'), png.toPNG());
       } catch {
         // Screenshot is evidence, not the verdict.
       }
@@ -719,13 +720,13 @@ async function runSmoke(win) {
         // Detach is best-effort before process exit.
       }
     }
-    if (process.env.DSH_THEME_SMOKE === '1') {
+    if (process.env.RLH_THEME_SMOKE === '1') {
       try {
         result.themeSmoke = await probeThemeBackgrounds(wc);
       } catch (error) {
         result.themeSmoke = { ok: false, error: String(error) };
       }
-      console.log('[DSH_THEME_SMOKE]', JSON.stringify(result.themeSmoke));
+      console.log('[RLH_THEME_SMOKE]', JSON.stringify(result.themeSmoke));
     }
     const hitCount = titlebarHits.hits.surfaces + titlebarHits.hits.branch + titlebarHits.hits.git;
     const ok = result.hasFrame
@@ -746,18 +747,18 @@ async function runSmoke(win) {
       && titlebarHits.hits.git > 0
       && titlebarHits.error == null
       && ptyStatus === 'echoed:ok'
-      && (process.env.DSH_THEME_SMOKE !== '1' || result.themeSmoke?.ok === true)
-      && (process.env.DSH_QA !== '1' || result.qa?.ok === true)
-      && (process.env.DSH_QA_COMPOSER !== '1' || result.composerOfficialQa?.ok === true)
+      && (process.env.RLH_THEME_SMOKE !== '1' || result.themeSmoke?.ok === true)
+      && (process.env.RLH_QA !== '1' || result.qa?.ok === true)
+      && (process.env.RLH_QA_COMPOSER !== '1' || result.composerOfficialQa?.ok === true)
       && pageErrors.length === 0;
     try {
-      fs.writeFileSync(path.join(app.getPath('userData'), 'dshd-smoke.json'), JSON.stringify({ ok, result, ptyStatus, pageErrors }, null, 2));
+      fs.writeFileSync(path.join(app.getPath('userData'), 'rlhd-smoke.json'), JSON.stringify({ ok, result, ptyStatus, pageErrors }, null, 2));
     } catch {
       // Best-effort: the exit code still carries the verdict.
     }
     await exitSmoke(ok ? 0 : 1);
   } catch (error) {
-    console.log('[DSH_SMOKE] failed', String(error));
+    console.log('[RLH_SMOKE] failed', String(error));
     await exitSmoke(1);
   }
 }
@@ -769,21 +770,21 @@ function quitApp() {
 
 function ignoreFailure(promise) {
   Promise.resolve(promise).catch((error) => {
-    dsh.log(error.message || String(error), 'error');
+    rlh.log(error.message || String(error), 'error');
   });
 }
 
 const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) {
-  console.error('Deepseek-Harness-Desktop is already running. Quit the installed app before npm start (same appId single-instance lock).');
+  console.error('Relay-Harness-Desktop is already running. Quit the installed app before npm start (same appId single-instance lock).');
   app.quit();
 } else {
   app.on('second-instance', () => {
     showMain();
   });
 
-  app.setName('Deepseek-Harness-Desktop');
-  app.setAppUserModelId('ai.deepseek.harness.gui');
+  app.setName('Relay-Harness-Desktop');
+  app.setAppUserModelId('com.relayharness.desktop');
 
   app.whenReady().then(async () => {
     const config = loadConfig();
@@ -802,10 +803,10 @@ if (!gotLock) {
       await desktopInstallReady();
     } catch (error) {
       stopDesktopInstallControl();
-      dsh.log(`桌面安装控制通道启动失败：${error.message || String(error)}`, 'error');
+      rlh.log(`桌面安装控制通道启动失败：${error.message || String(error)}`, 'error');
     }
 
-    desktopResources = registerIpc({ dsh, harness, startHarness: restartWithCleanup, remote });
+    desktopResources = registerIpc({ rlh, harness, startHarness: restartWithCleanup, remote });
     buildMenu({
       onOpenWorkspace: () => ignoreFailure(pickWorkspace()),
       onRestart: () => ignoreFailure(restartWithCleanup()),
@@ -843,7 +844,7 @@ if (!gotLock) {
 
     try {
       await harness.start();
-      if (process.env.DSH_SMOKE === '1') {
+      if (process.env.RLH_SMOKE === '1') {
         void runSmoke(getMainWindow());
       }
     } catch {

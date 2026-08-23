@@ -260,7 +260,7 @@ Source: [`packages/extensions/cordis-host-runner/src/index.ts:124`](../../packag
 
 ### `ctx.mcpServersFile` — `McpServersFile`
 
-Owns `$DSH_HOME/mcp-servers.yaml` and the live mcp-client children it describes.
+Owns `$RLH_HOME/mcp-servers.yaml` and the live mcp-client children it describes.
 
 ```ts cordis-catalog
 /**

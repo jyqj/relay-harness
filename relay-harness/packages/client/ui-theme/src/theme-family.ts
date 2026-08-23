@@ -1,12 +1,12 @@
 /** Theme-family documents: seed colors, durable ids, and import helpers. */
 
-import z from '@deepseek-ai/schemastery'
+import z from '@relay-harness/schemastery'
 
 /** Alias-layer token dictionary keyed by CSS custom-property name. */
 export type ThemeTokens = Record<string, string>
 
 /** Default built-in family; empty derived tokens keep the CSS sheets. */
-export const DEFAULT_FAMILY_ID = 'deepseek'
+export const DEFAULT_FAMILY_ID = 'relay'
 
 /** Contrast slider default, matching a mid-range mix. */
 export const DEFAULT_CONTRAST = 46
@@ -45,7 +45,7 @@ export interface ThemeSeeds {
   foreground: string
   /** Mix-strength modifier from 0 to 100. */
   contrast: number
-  /** Exact `--dsw-alias-*` replacements applied after derivation. */
+  /** Exact `--rlw-alias-*` replacements applied after derivation. */
   overrides?: Record<string, string>
 }
 

@@ -5,7 +5,7 @@
 import clsx from 'clsx'
 import {
   IconDarkOutline16, IconFollowsystemOutline16, IconLightOutline16,
-} from '@deepseek-ai/dsh-client-ui-primitives'
+} from '@relay-harness/rlh-client-ui-primitives'
 import type { ThemePreference } from '../theme-settings.ts'
 import type { ThemeKey } from './locales.ts'
 import css from './AppearanceSection.module.css'

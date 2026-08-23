@@ -3,15 +3,15 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { afterEach, describe, expect, it } from 'vitest'
-import { Context } from '@deepseek-ai/cordis'
-import Loader from '@deepseek-ai/cordis-plugin-loader'
-import Include from '@deepseek-ai/cordis-plugin-include'
-import AgentRegistry from '@deepseek-ai/dsh-agent'
-import AgentLoop from '@deepseek-ai/dsh-agent-loop'
-import LlmRuntime, { createUserMessage } from '@deepseek-ai/dsh-llm'
-import SessionStore, { SessionId } from '@deepseek-ai/dsh-session'
-import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
-import ToolRuntime from '@deepseek-ai/dsh-tools'
+import { Context } from '@relay-harness/cordis'
+import Loader from '@relay-harness/cordis-plugin-loader'
+import Include from '@relay-harness/cordis-plugin-include'
+import AgentRegistry from '@relay-harness/rlh-agent'
+import AgentLoop from '@relay-harness/rlh-agent-loop'
+import LlmRuntime, { createUserMessage } from '@relay-harness/rlh-llm'
+import SessionStore, { SessionId } from '@relay-harness/rlh-session'
+import SystemPrompt from '@relay-harness/rlh-system-prompt'
+import ToolRuntime from '@relay-harness/rlh-tools'
 import * as CircuitBreaker from '../src/index.ts'
 import { ScriptAdapter } from './support.ts'
 
@@ -27,18 +27,18 @@ afterEach(async () => {
 
 describe('real Loader composition', () => {
   it('loads YAML and sheds the third failing-provider request before transport', { timeout: 60_000 }, async () => {
-    root = await mkdtemp(join(tmpdir(), 'dsh-circuit-loader-'))
+    root = await mkdtemp(join(tmpdir(), 'rlh-circuit-loader-'))
     const configPath = join(root, 'cordis.yml')
     await writeFile(configPath, [
-      "- name: '@deepseek-ai/dsh-llm'",
-      "- name: '@deepseek-ai/dsh-session'",
-      "- name: '@deepseek-ai/dsh-system-prompt'",
-      "- name: '@deepseek-ai/dsh-tools'",
-      "- name: '@deepseek-ai/dsh-agent'",
-      "- name: '@deepseek-ai/dsh-agent-loop'",
+      "- name: '@relay-harness/rlh-llm'",
+      "- name: '@relay-harness/rlh-session'",
+      "- name: '@relay-harness/rlh-system-prompt'",
+      "- name: '@relay-harness/rlh-tools'",
+      "- name: '@relay-harness/rlh-agent'",
+      "- name: '@relay-harness/rlh-agent-loop'",
       '  config:',
       '    agents: []',
-      "- name: '@deepseek-ai/dsh-llm-circuit-breaker'",
+      "- name: '@relay-harness/rlh-llm-circuit-breaker'",
       '  config:',
       '    minSamples: 2',
       '    errorRateThreshold: 1',
@@ -50,13 +50,13 @@ describe('real Loader composition', () => {
     await context.plugin(Loader)
     context.loader.builtins.include = Include
     const modules = new Map<string, unknown>([
-      ['@deepseek-ai/dsh-llm', LlmRuntime],
-      ['@deepseek-ai/dsh-session', SessionStore],
-      ['@deepseek-ai/dsh-system-prompt', SystemPrompt],
-      ['@deepseek-ai/dsh-tools', ToolRuntime],
-      ['@deepseek-ai/dsh-agent', AgentRegistry],
-      ['@deepseek-ai/dsh-agent-loop', AgentLoop],
-      ['@deepseek-ai/dsh-llm-circuit-breaker', CircuitBreaker],
+      ['@relay-harness/rlh-llm', LlmRuntime],
+      ['@relay-harness/rlh-session', SessionStore],
+      ['@relay-harness/rlh-system-prompt', SystemPrompt],
+      ['@relay-harness/rlh-tools', ToolRuntime],
+      ['@relay-harness/rlh-agent', AgentRegistry],
+      ['@relay-harness/rlh-agent-loop', AgentLoop],
+      ['@relay-harness/rlh-llm-circuit-breaker', CircuitBreaker],
     ])
     context.loader.internal = {
       version: 'v2',

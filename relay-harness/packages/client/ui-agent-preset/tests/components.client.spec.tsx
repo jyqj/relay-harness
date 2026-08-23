@@ -9,8 +9,8 @@
 
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { bindSnapshotSelector } from '@deepseek-ai/dsh-client-test-runtime'
-import { createSnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
+import { bindSnapshotSelector } from '@relay-harness/rlh-client-test-runtime'
+import { createSnapshotStore } from '@relay-harness/rlh-client-runtime/client'
 import { AgentPresetLabel } from '../src/client/AgentPresetLabel.tsx'
 import type { AgentPresetLabelProps } from '../src/client/AgentPresetLabel.tsx'
 import { AgentPresetRow } from '../src/client/AgentPresetRow.tsx'
@@ -71,7 +71,7 @@ function renderSeat(state: Partial<AgentPresetSeatState> = {}) {
 }
 
 function renderLabel(
-  summary: { blank: boolean; agentPreset?: string; origin?: 'dshbot' | 'subagent' } | undefined,
+  summary: { blank: boolean; agentPreset?: string; origin?: 'rlhbot' | 'subagent' } | undefined,
   roster: Partial<AgentPresetSettingsState> = {},
 ) {
   // The chip and the label read the same roster, metadata included.
@@ -405,7 +405,7 @@ describe('the session-header label', () => {
 
   it('hides the composition name on a desktop-plugin contact', () => {
     const { load, view } = renderLabel({
-      blank: true, agentPreset: 'dshbot-room', origin: 'dshbot',
+      blank: true, agentPreset: 'rlhbot-room', origin: 'rlhbot',
     })
     expect(view.container.firstChild).toBeNull()
     expect(load).not.toHaveBeenCalled()

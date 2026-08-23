@@ -8,8 +8,8 @@
  */
 
 import { useCallback, useEffect, useState } from 'react'
-import { IconChevronDownOutline14, Menu } from '@deepseek-ai/dsh-client-ui-primitives'
-import type { PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
+import { IconChevronDownOutline14, Menu } from '@relay-harness/rlh-client-ui-primitives'
+import type { PropsLocale, PropsRuntime } from '@relay-harness/rlh-client-ui-slots'
 import {
   desktopShell,
   HARNESS_RESTART_BASE_DELAYS_MS,

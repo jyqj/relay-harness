@@ -1,3 +1,4 @@
+// @ts-check
 const { Tray, Menu, nativeImage } = require('electron');
 const { showMain, iconImage, openHarnessSettings, openMarketplace } = require('./window');
 const { assetFile } = require('./paths');
@@ -18,7 +19,7 @@ function createTray({ onRestart, onQuit }) {
   }
 
   tray = new Tray(image && !image.isEmpty() ? image : nativeImage.createEmpty());
-  tray.setToolTip('Deepseek-Harness-Desktop');
+  tray.setToolTip('Relay-Harness-Desktop');
   tray.setContextMenu(Menu.buildFromTemplate([
     { label: '显示窗口', click: () => showMain() },
     { label: '设置…', click: () => { openHarnessSettings(); } },

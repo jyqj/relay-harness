@@ -1,11 +1,11 @@
 {
-  "name": "@deepseek-ai/dsh-memory-sqlite",
-  "description": "Canonical SQLite provider for the DeepSeek Harness long-term-memory capability",
+  "name": "@relay-harness/rlh-memory-sqlite",
+  "description": "Canonical SQLite provider for the Relay Harness long-term-memory capability",
   "version": "0.1.0-rc.8",
   "publishConfig": { "access": "public" },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+    "url": "git+https://github.com/jyqj/relay-harness.git",
     "directory": "packages/memory/memory-sqlite"
   },
   "type": "module",
@@ -20,14 +20,14 @@
   "files": ["lib/index.js", "lib/invariant.js", "lib/types/**/*.d.ts"],
   "license": "MIT",
   "peerDependencies": {
-    "@deepseek-ai/dsh-invariants": "workspace:^",
-    "@deepseek-ai/dsh-memory": "workspace:^",
-    "@deepseek-ai/cordis": "workspace:^"
+    "@relay-harness/rlh-invariants": "workspace:^",
+    "@relay-harness/rlh-memory": "workspace:^",
+    "@relay-harness/cordis": "workspace:^"
   },
-  "dependencies": { "@deepseek-ai/schemastery": "workspace:^" },
+  "dependencies": { "@relay-harness/schemastery": "workspace:^" },
   "devDependencies": {
-    "@deepseek-ai/dsh-invariants": "workspace:^",
-    "@deepseek-ai/dsh-memory": "workspace:^",
-    "@deepseek-ai/cordis": "workspace:^"
+    "@relay-harness/rlh-invariants": "workspace:^",
+    "@relay-harness/rlh-memory": "workspace:^",
+    "@relay-harness/cordis": "workspace:^"
   }
 }

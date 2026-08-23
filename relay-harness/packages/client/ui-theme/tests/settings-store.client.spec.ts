@@ -8,8 +8,8 @@ function snap(overrides: Partial<AppearanceSyncSnapshot> = {}): AppearanceSyncSn
   return {
     preference: DEFAULT_THEME_SETTINGS.preference,
     active: { colorScheme: 'light' },
-    activeLightThemeId: 'deepseek',
-    activeDarkThemeId: 'deepseek',
+    activeLightThemeId: 'relay',
+    activeDarkThemeId: 'relay',
     families: [],
     customThemes: [],
     glassOpacity: DEFAULT_THEME_SETTINGS.glassOpacity,

@@ -22,7 +22,7 @@ CodeBuddy's slash menu marks the selected row with Ink `bold` plus `colors.info`
 
 ## Consequences
 
-Plugin `client.js` fetches `ghostty-vt.wasm`, `ghostty-write-pty.wasm`, and the symbols Nerd Font from `/plugins/@deepseek-ai/dsh-client-ui-user-terminal/assets/`. `@xterm/xterm` is no longer a pane dependency. Chat bash cards (`TerminalBlock`) are unchanged. Windows PTY spawn copies T3code `createTerminalSpawnEnv` and `name: xterm-color`. Electron's `TERM=dumb` is dropped on Windows; T3code's Windows node-pty never writes `name` into `$TERM`. Selection Copy / Add to chat / Open stays the existing work-loop bar. A live slash menu is only proven by a CDP screenshot of the selected row, not by unit tests.
+Plugin `client.js` fetches `ghostty-vt.wasm`, `ghostty-write-pty.wasm`, and the symbols Nerd Font from `/plugins/@relay-harness/rlh-client-ui-user-terminal/assets/`. `@xterm/xterm` is no longer a pane dependency. Chat bash cards (`TerminalBlock`) are unchanged. Windows PTY spawn copies T3code `createTerminalSpawnEnv` and `name: xterm-color`. Electron's `TERM=dumb` is dropped on Windows; T3code's Windows node-pty never writes `name` into `$TERM`. Selection Copy / Add to chat / Open stays the existing work-loop bar. A live slash menu is only proven by a CDP screenshot of the selected row, not by unit tests.
 
 ## Testing
 
@@ -30,4 +30,4 @@ Copied T3code helper/ABI specs live under `tests/ghostty/`. `terminal-drawer.cli
 
 ## Related
 
-[PTY ANSI colors follow T3code Pierre, not UI state tokens](2026-08-19-terminal-ansi-pierre-palette.md) described the abandoned xterm Pierre mapping; Ghostty's engine palette owns ANSI 1–15 here. [Terminal panes are opaque canvas wells](2026-08-19-terminal-pane-opaque-tui-stage.md) owns `--dsw-alias-terminal-pane`. [ConPTY spawn matches T3code; DA1 is one-shot per PTY](2026-08-18-terminal-conpty-oneshot-no-dll.md) owns Windows spawn; the xterm DA1 latch is unused by this pane.
+[PTY ANSI colors follow T3code Pierre, not UI state tokens](2026-08-19-terminal-ansi-pierre-palette.md) described the abandoned xterm Pierre mapping; Ghostty's engine palette owns ANSI 1–15 here. [Terminal panes are opaque canvas wells](2026-08-19-terminal-pane-opaque-tui-stage.md) owns `--rlw-alias-terminal-pane`. [ConPTY spawn matches T3code; DA1 is one-shot per PTY](2026-08-18-terminal-conpty-oneshot-no-dll.md) owns Windows spawn; the xterm DA1 latch is unused by this pane.

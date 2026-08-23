@@ -28,7 +28,7 @@ const LIVE_REGISTRY = {
       },
       npm: 'dsh-composer-expand',
       stars: 4,
-      install: 'dsh plugin --profile web add dsh-composer-expand',
+      install: 'rlh plugin --profile web add dsh-composer-expand',
       added: '2026-08-15',
     },
     {
@@ -42,7 +42,7 @@ const LIVE_REGISTRY = {
       },
       npm: null,
       stars: 21,
-      install: 'dsh plugin --profile web add github:01Virex/dsh-status-rotator',
+      install: 'rlh plugin --profile web add github:01Virex/dsh-status-rotator',
       added: '2026-08-14',
     },
     {
@@ -56,7 +56,7 @@ const LIVE_REGISTRY = {
       },
       npm: null,
       stars: 3,
-      install: 'dsh plugin --profile web add github:DamonKoy/dsh-web-ui#path:/packages/dsh-aionui-panel',
+      install: 'rlh plugin --profile web add github:DamonKoy/dsh-web-ui#path:/packages/dsh-aionui-panel',
       added: '2026-08-17',
     },
     {
@@ -70,7 +70,7 @@ const LIVE_REGISTRY = {
       },
       npm: 'npm-name-not-used',
       stars: 1,
-      install: 'dsh plugin --profile web add github:acme/spec-mismatch',
+      install: 'rlh plugin --profile web add github:acme/spec-mismatch',
       added: '2026-08-18',
     },
     {
@@ -84,7 +84,7 @@ const LIVE_REGISTRY = {
       },
       npm: '@dsh-external/dsh-genui',
       stars: 196,
-      install: 'dsh plugin --profile web add @dsh-external/dsh-genui',
+      install: 'rlh plugin --profile web add @dsh-external/dsh-genui',
       added: '2026-08-13',
     },
     {
@@ -98,7 +98,7 @@ const LIVE_REGISTRY = {
       },
       npm: null,
       stars: 0,
-      install: 'dsh plugin --profile web add github:example/old-loop',
+      install: 'rlh plugin --profile web add github:example/old-loop',
       added: '2026-07-01',
       deprecated: true,
       replacement: 'DamonKoy/dsh-web-ui#dsh-aionui-panel',
@@ -114,7 +114,7 @@ const LIVE_REGISTRY = {
       },
       npm: null,
       stars: 1,
-      install: 'dsh plugin --profile web add "https://github.com/HUITianYi/dsh-whale-desktop-launcher/releases/latest/download/dsh-whale-desktop-launcher-0.1.0.tgz"',
+      install: 'rlh plugin --profile web add "https://github.com/HUITianYi/dsh-whale-desktop-launcher/releases/latest/download/dsh-whale-desktop-launcher-0.1.0.tgz"',
       added: '2026-08-16',
     },
     {
@@ -128,7 +128,7 @@ const LIVE_REGISTRY = {
       },
       npm: null,
       stars: 2,
-      install: 'dsh plugin --profile web add "https://github.com/TianYa-DAO/dsh-wallpaper-engine/releases/download/dsh-0.1.2/dsh-wallpaper-engine-0.1.2.tgz"',
+      install: 'rlh plugin --profile web add "https://github.com/TianYa-DAO/dsh-wallpaper-engine/releases/download/rlh-0.1.2/dsh-wallpaper-engine-0.1.2.tgz"',
       added: '2026-08-16',
     },
   ],
@@ -194,7 +194,7 @@ function assertNotGithubSearch(calls) {
 }
 
 test.before(() => {
-  userData = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-marketplace-catalog-'));
+  userData = fs.mkdtempSync(path.join(os.tmpdir(), 'rlh-marketplace-catalog-'));
   mockElectron(userData);
 });
 
@@ -208,7 +208,7 @@ test.after(() => {
 
 test.afterEach(() => {
   globalThis.fetch = originalFetch;
-  delete process.env.DSHD_MARKETPLACE_REGISTRY_URL;
+  delete process.env.RLHD_MARKETPLACE_REGISTRY_URL;
   delete require.cache[catalogPath];
   try {
     fs.unlinkSync(cacheFile());
@@ -217,8 +217,35 @@ test.afterEach(() => {
   }
 });
 
+test('a plaintext non-loopback registry override is refused for the default registry', async () => {
+  process.env.RLHD_MARKETPLACE_REGISTRY_URL = 'http://registry.example.com/plugins.json';
+  const calls = mockFetch(async () => jsonResponse(LIVE_REGISTRY));
+  const { listMarketplace } = loadCatalog();
+  await listMarketplace();
+
+  assert.equal(calls[0].url, 'https://awesome-dsh-plugin.com/plugins.json');
+});
+
+test('a loopback registry override is honored for local development', async () => {
+  process.env.RLHD_MARKETPLACE_REGISTRY_URL = 'http://localhost:8080/plugins.json';
+  const calls = mockFetch(async () => jsonResponse(LIVE_REGISTRY));
+  const { listMarketplace } = loadCatalog();
+  await listMarketplace();
+
+  assert.equal(calls[0].url, 'http://localhost:8080/plugins.json');
+});
+
+test('a malformed registry override is refused for the default registry', async () => {
+  process.env.RLHD_MARKETPLACE_REGISTRY_URL = 'not a url';
+  const calls = mockFetch(async () => jsonResponse(LIVE_REGISTRY));
+  const { listMarketplace } = loadCatalog();
+  await listMarketplace();
+
+  assert.equal(calls[0].url, 'https://awesome-dsh-plugin.com/plugins.json');
+});
+
 test('live catalog maps npm, github, and #path: install tokens from plugins.json', async () => {
-  process.env.DSHD_MARKETPLACE_REGISTRY_URL = FIXTURE_URL;
+  process.env.RLHD_MARKETPLACE_REGISTRY_URL = FIXTURE_URL;
   const calls = mockFetch(async () => jsonResponse(LIVE_REGISTRY));
   const { listMarketplace } = loadCatalog();
   const result = await listMarketplace();
@@ -271,7 +298,7 @@ test('live catalog maps npm, github, and #path: install tokens from plugins.json
 });
 
 test('locale picks Chinese or English copy and category labels', async () => {
-  process.env.DSHD_MARKETPLACE_REGISTRY_URL = FIXTURE_URL;
+  process.env.RLHD_MARKETPLACE_REGISTRY_URL = FIXTURE_URL;
   const calls = mockFetch(async () => jsonResponse(LIVE_REGISTRY));
   const { listMarketplace } = loadCatalog();
 
@@ -303,7 +330,7 @@ test('locale picks Chinese or English copy and category labels', async () => {
 });
 
 test('fetch errors without cache fall back to the packed snapshot', async () => {
-  process.env.DSHD_MARKETPLACE_REGISTRY_URL = FIXTURE_URL;
+  process.env.RLHD_MARKETPLACE_REGISTRY_URL = FIXTURE_URL;
   mockFetch(async () => {
     throw new Error('offline');
   });
@@ -322,7 +349,7 @@ test('fetch errors without cache fall back to the packed snapshot', async () => 
 });
 
 test('memory and disk cache beat the snapshot; refresh skips TTL', async () => {
-  process.env.DSHD_MARKETPLACE_REGISTRY_URL = FIXTURE_URL;
+  process.env.RLHD_MARKETPLACE_REGISTRY_URL = FIXTURE_URL;
   const liveOnly = {
     categories: { ui: { en: 'UI', zh: '界面' } },
     plugins: [{
@@ -333,7 +360,7 @@ test('memory and disk cache beat the snapshot; refresh skips TTL', async () => {
       description: { en: 'Live row', zh: '在线行' },
       npm: 'from-live',
       stars: 2,
-      install: 'dsh plugin --profile web add from-live',
+      install: 'rlh plugin --profile web add from-live',
       added: '2026-08-18',
     }],
   };
@@ -362,7 +389,7 @@ test('memory and disk cache beat the snapshot; refresh skips TTL', async () => {
         category: 'ui',
         description: { en: 'Disk row', zh: '磁盘行' },
         npm: null,
-        install: 'dsh plugin --profile web add github:disk/from-disk',
+        install: 'rlh plugin --profile web add github:disk/from-disk',
         added: '2026-08-18',
       }],
     },
@@ -393,7 +420,7 @@ test('memory and disk cache beat the snapshot; refresh skips TTL', async () => {
 });
 
 test('empty plugins arrays and non-objects are not live', async () => {
-  process.env.DSHD_MARKETPLACE_REGISTRY_URL = FIXTURE_URL;
+  process.env.RLHD_MARKETPLACE_REGISTRY_URL = FIXTURE_URL;
   const catalog = loadCatalog();
 
   mockFetch(async () => jsonResponse({ plugins: [] }));
@@ -415,7 +442,7 @@ test('empty plugins arrays and non-objects are not live', async () => {
 });
 
 test('listMarketplace hides DROPPED packages; getMarketplacePlugin still returns them', async () => {
-  process.env.DSHD_MARKETPLACE_REGISTRY_URL = FIXTURE_URL;
+  process.env.RLHD_MARKETPLACE_REGISTRY_URL = FIXTURE_URL;
   mockFetch(async () => jsonResponse(LIVE_REGISTRY));
   const { listMarketplace, getMarketplacePlugin } = loadCatalog();
   const listed = await listMarketplace();
@@ -442,7 +469,7 @@ test('fetch uses the curated registry URL, not GitHub topic search', async () =>
 });
 
 test('CACHE_VERSION 2 disk files are ignored', async () => {
-  process.env.DSHD_MARKETPLACE_REGISTRY_URL = FIXTURE_URL;
+  process.env.RLHD_MARKETPLACE_REGISTRY_URL = FIXTURE_URL;
   fs.writeFileSync(cacheFile(), JSON.stringify({
     version: 2,
     fetchedAt: Date.now(),
@@ -464,7 +491,7 @@ test('CACHE_VERSION 2 disk files are ignored', async () => {
 });
 
 test('a still-fresh cache does not claim the online directory failed', async () => {
-  process.env.DSHD_MARKETPLACE_REGISTRY_URL = FIXTURE_URL;
+  process.env.RLHD_MARKETPLACE_REGISTRY_URL = FIXTURE_URL;
   mockFetch(async () => jsonResponse(LIVE_REGISTRY));
   const { listMarketplace } = loadCatalog();
   await listMarketplace();
@@ -475,7 +502,7 @@ test('a still-fresh cache does not claim the online directory failed', async () 
 });
 
 test('disk cache older than one hour is fetched again', async () => {
-  process.env.DSHD_MARKETPLACE_REGISTRY_URL = FIXTURE_URL;
+  process.env.RLHD_MARKETPLACE_REGISTRY_URL = FIXTURE_URL;
   fs.writeFileSync(cacheFile(), JSON.stringify({
     version: 3,
     fetchedAt: Date.now() - (60 * 60 * 1000) - 1,
@@ -488,7 +515,7 @@ test('disk cache older than one hour is fetched again', async () => {
         category: 'ui',
         description: { en: 'Stale', zh: '过期' },
         npm: 'stale-disk',
-        install: 'dsh plugin --profile web add stale-disk',
+        install: 'rlh plugin --profile web add stale-disk',
         added: '2026-08-01',
       }],
     },
@@ -503,7 +530,7 @@ test('disk cache older than one hour is fetched again', async () => {
 });
 
 test('a hung registry fetch aborts after 4s and uses the snapshot', async (t) => {
-  process.env.DSHD_MARKETPLACE_REGISTRY_URL = FIXTURE_URL;
+  process.env.RLHD_MARKETPLACE_REGISTRY_URL = FIXTURE_URL;
   t.mock.timers.enable({ apis: ['setTimeout'] });
   mockFetch(async (_url, options) => new Promise((_, reject) => {
     options.signal.addEventListener('abort', () => {
@@ -521,7 +548,7 @@ test('a hung registry fetch aborts after 4s and uses the snapshot', async (t) =>
 });
 
 test('last-token github: fallback is empty when the spec is not an allow-listed marketplace spec', async () => {
-  process.env.DSHD_MARKETPLACE_REGISTRY_URL = FIXTURE_URL;
+  process.env.RLHD_MARKETPLACE_REGISTRY_URL = FIXTURE_URL;
   mockFetch(async () => jsonResponse({
     name: 'awesome-dsh-plugin',
     url: 'https://awesome-dsh-plugin.com',
@@ -534,7 +561,7 @@ test('last-token github: fallback is empty when the spec is not an allow-listed 
       description: { en: 'x', zh: 'x' },
       npm: null,
       stars: 0,
-      install: 'dsh plugin --profile web add github:evil/bad-path#path:/../etc',
+      install: 'rlh plugin --profile web add github:evil/bad-path#path:/../etc',
       added: '2026-08-18',
     }, {
       name: 'other-repo',
@@ -544,7 +571,7 @@ test('last-token github: fallback is empty when the spec is not an allow-listed 
       description: { en: 'x', zh: 'x' },
       npm: null,
       stars: 0,
-      install: 'dsh plugin --profile web add github:evil/other-repo',
+      install: 'rlh plugin --profile web add github:evil/other-repo',
       added: '2026-08-18',
     }],
   }));
@@ -555,7 +582,7 @@ test('last-token github: fallback is empty when the spec is not an allow-listed 
 });
 
 test('last-token npm fallback is empty when the row has no registry npm field', async () => {
-  process.env.DSHD_MARKETPLACE_REGISTRY_URL = FIXTURE_URL;
+  process.env.RLHD_MARKETPLACE_REGISTRY_URL = FIXTURE_URL;
   mockFetch(async () => jsonResponse({
     name: 'awesome-dsh-plugin',
     url: 'https://awesome-dsh-plugin.com',
@@ -568,7 +595,7 @@ test('last-token npm fallback is empty when the row has no registry npm field', 
       description: { en: 'x', zh: 'x' },
       npm: null,
       stars: 0,
-      install: 'dsh plugin --profile web add lodash',
+      install: 'rlh plugin --profile web add lodash',
       added: '2026-08-18',
     }],
   }));

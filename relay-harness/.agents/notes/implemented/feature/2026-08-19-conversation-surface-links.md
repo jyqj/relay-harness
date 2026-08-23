@@ -6,11 +6,11 @@ English | [中文](2026-08-19-conversation-surface-links.zh.md)
 
 ## Problem
 
-Desktop conversation already had two work loops that never met. File mentions, produced chips, and tool-row paths call `workspaces.openPath`, which the surfaces interceptor turned into a Files `file:` tab only, so `.html` / `.svg` opened as source. Markdown and inline-code http(s) used `target="_blank"`, and the Harness BrowserView `setWindowOpenHandler` sent every http(s) URL to `shell.openExternal`, including loopback. Terminal already routed loopback through `dshd-open-surface` and `dshd-pending-preview-url`. [Opening a produced file from the web UI](2026-07-31-web-workspace-file-links.md) rejected serving workspace files from the harness origin (same-origin `/api` leak) and recorded a desktop WebView as the remaining isolation. `file:` cancelled; guest documents may be any http(s); harness main window stays loopback.
+Desktop conversation already had two work loops that never met. File mentions, produced chips, and tool-row paths call `workspaces.openPath`, which the surfaces interceptor turned into a Files `file:` tab only, so `.html` / `.svg` opened as source. Markdown and inline-code http(s) used `target="_blank"`, and the Harness BrowserView `setWindowOpenHandler` sent every http(s) URL to `shell.openExternal`, including loopback. Terminal already routed loopback through `rlhd-open-surface` and `rlhd-pending-preview-url`. [Opening a produced file from the web UI](2026-07-31-web-workspace-file-links.md) rejected serving workspace files from the harness origin (same-origin `/api` leak) and recorded a desktop WebView as the remaining isolation. `file:` cancelled; guest documents may be any http(s); harness main window stays loopback.
 
 ## Decision
 
-**Workspace HTML/SVG opens Files then Browser.** Desktop `wrapOpenPath` awaits `openInSurfaces`. After `openFile` and `layout.openSurfaces()`, `.html` / `.htm` / `.xhtml` / `.svg` (the same set Host `openPath` treats as browser documents) call `previewWorkspaceFile({ cwd, relativePath })`. On `{ ok, url }` the interceptor writes `dshd-pending-preview-url` then dispatches `dshd-open-surface` with `{ kind: 'preview', url }`, so the active tab is Browser and the source tab remains. Missing, throwing, or refusing IPC leaves Files, does not throw, and does not fall through to OS `openPath`.
+**Workspace HTML/SVG opens Files then Browser.** Desktop `wrapOpenPath` awaits `openInSurfaces`. After `openFile` and `layout.openSurfaces()`, `.html` / `.htm` / `.xhtml` / `.svg` (the same set Host `openPath` treats as browser documents) call `previewWorkspaceFile({ cwd, relativePath })`. On `{ ok, url }` the interceptor writes `rlhd-pending-preview-url` then dispatches `rlhd-open-surface` with `{ kind: 'preview', url }`, so the active tab is Browser and the source tab remains. Missing, throwing, or refusing IPC leaves Files, does not throw, and does not fall through to OS `openPath`.
 
 **A token-prefixed GET-only listener serves those files.** The URL is `http://127.0.0.1:{port}/{token}/{relative}` and the socket binds only `127.0.0.1`. The token is 16 bytes `base64url` (≥96 bit) per resolved cwd. GET without the token is 404. POST/PUT/DELETE are 405. `Host` must be `127.0.0.1` (optional port). Responses send `X-Content-Type-Options: nosniff`. The path is decoded once then `resolveInside`. Directories are not listed and `index.html` is not followed; `fileUrl` of a directory fails and GET of a directory is 403. The preview origin can `fetch` other files under the same token (including `.env`); isolation is from the harness `/api` origin and from unauthenticated port scans, not a page sandbox. `preview.closeAll` / Harness restart close the listener and drop tokens.
 
@@ -32,7 +32,7 @@ Desktop conversation already had two work loops that never met. File mentions, p
 
 ## Consequences
 
-`dsh web` still uses Host `openPath` / the OS browser. Desktop conversation HTML/SVG and non-harness loopback stay in the right column. Remote http(s) still leave the app. Same-origin `_blank` cannot load the Harness UI into the preview partition. Boot windows never receive `shell:open-preview-url`.
+`rlh web` still uses Host `openPath` / the OS browser. Desktop conversation HTML/SVG and non-harness loopback stay in the right column. Remote http(s) still leave the app. Same-origin `_blank` cannot load the Harness UI into the preview partition. Boot windows never receive `shell:open-preview-url`.
 
 ## Testing
 
@@ -40,4 +40,4 @@ Desktop conversation already had two work loops that never met. File mentions, p
 
 ## Related
 
-[Opening a produced file from the web UI](2026-07-31-web-workspace-file-links.md) owns `dsh web` Host `openPath`. [Right-panel and terminal work loops](2026-08-16-surfaces-terminal-work-loops.md) owns the Files/Browser/Terminal loops this intercept joins.
+[Opening a produced file from the web UI](2026-07-31-web-workspace-file-links.md) owns `rlh web` Host `openPath`. [Right-panel and terminal work loops](2026-08-16-surfaces-terminal-work-loops.md) owns the Files/Browser/Terminal loops this intercept joins.

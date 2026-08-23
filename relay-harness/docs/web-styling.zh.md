@@ -6,14 +6,14 @@
 
 ## 职责归属
 
-[`ui-theme`](../packages/client/ui-theme/README.md) 负责 `--dsw-*` 静态色阶、语义别名、排版、动效、渐变、阴影、滚动条样式以及明暗主题偏好。[`ui-layout`](../packages/client/ui-layout/README.md) 将解析后的主题快照应用到文档。功能包使用语义别名，不得另行定义全局主题。
+[`ui-theme`](../packages/client/ui-theme/README.md) 负责 `--rlw-*` 静态色阶、语义别名、排版、动效、渐变、阴影、滚动条样式以及明暗主题偏好。[`ui-layout`](../packages/client/ui-layout/README.md) 将解析后的主题快照应用到文档。功能包使用语义别名，不得另行定义全局主题。
 
 全局样式表归 `ui-theme/src/styles/` 所有。组件样式以 CSS Modules 形式放在组件旁。当某个值属于该组件的布局或呈现约定时，组件可以定义局部自定义属性；共享颜色、排版、层级和动效属于主题包。
 
 ## 组件规则
 
 - 使用 CSS Modules 和 `clsx`；不得添加组件库或 Tailwind。
-- 功能组件使用 `--dsw-alias-*` 语义 token。不得复制静态色板值或在其中写入颜色字面量。
+- 功能组件使用 `--rlw-alias-*` 语义 token。不得复制静态色板值或在其中写入颜色字面量。
 - 功能组件 CSS 不得包含主题选择器。明暗主题覆盖属于主题所有方。
 - 字体大小必须与行高配对；已有角色匹配时使用主题排版变量。
 - 当组件约定要求保留列结构时，源码文本、终端输出和 diff 行不得换行；使用共享滚动条样式，不得定义组件专用滚动条选择器。
@@ -22,7 +22,7 @@
 
 ## 动效
 
-共享进出场动效在 [`ui-theme` 的 `motion.css`](../packages/client/ui-theme/src/styles/motion.css) 与 [`usePresence`](../packages/client/ui-primitives/src/usePresence.ts)。overlay、popover、fade、swap、flip 五种 recipe 只动 `opacity` 和 `transform`。表面从 `usePresence` 写上 `data-dsh-motion` 和 `data-state`，不得另起一套时长或缓动。composer 上的加号、权限、模型和上下文圆环弹层都走 `popover`。权限、模型和推理等级触发器文案变化时，`FlipText` 播放 400ms 的 flip recipe（`--ds-motion-duration-flip`）。`prefers-reduced-motion: reduce` 会把 `--ds-transition-duration*` 和 `--ds-motion-duration-*` 收成 `0s`。不要动画 `backdrop-filter`、大面板宽高，也不要引入动画库。新的对话框、菜单和同层切换复用原语，或使用同一 hook 与 recipe。依据：[动效系统 Agent Note](../.agents/notes/implemented/architecture/2026-08-14-web-motion-presence-and-recipes.md)。
+共享进出场动效在 [`ui-theme` 的 `motion.css`](../packages/client/ui-theme/src/styles/motion.css) 与 [`usePresence`](../packages/client/ui-primitives/src/usePresence.ts)。overlay、popover、fade、swap、flip 五种 recipe 只动 `opacity` 和 `transform`。表面从 `usePresence` 写上 `data-rlh-motion` 和 `data-state`，不得另起一套时长或缓动。composer 上的加号、权限、模型和上下文圆环弹层都走 `popover`。权限、模型和推理等级触发器文案变化时，`FlipText` 播放 400ms 的 flip recipe（`--rl-motion-duration-flip`）。`prefers-reduced-motion: reduce` 会把 `--rl-transition-duration*` 和 `--rl-motion-duration-*` 收成 `0s`。不要动画 `backdrop-filter`、大面板宽高，也不要引入动画库。新的对话框、菜单和同层切换复用原语，或使用同一 hook 与 recipe。依据：[动效系统 Agent Note](../.agents/notes/implemented/architecture/2026-08-14-web-motion-presence-and-recipes.md)。
 
 ## 变更系统
 

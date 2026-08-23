@@ -6,11 +6,11 @@
 
 ## 问题
 
-Web 客户端已经能从完整 Turn fork Session，durable header 也已记录 `parentSession` 与 `seedLength`，但第一方界面没有展示这张图。外部 Synapse 实验证明了工作区画布的价值：分支可见、平移缩放、折叠、当前 Session 同步和 Turn 卡片；但其 fixed `document.body` 控件、iframe／`postMessage` 桥、私有 HTTP 路由及第二份 Session 消息与 lineage JSON 绕过了客户端 slot 和 object layer。Pi `/tree` 还提供当前路径、历史分叉点、标签、过滤和从旧用户消息重写等有价值的导航语义；但其单文件 entry tree 无法替换 DSH balanced append-only Turn／Step／Tool 日志及跨 Session lineage，否则两套 parent 模型会扩散到持久化、SDK、projection 与恢复。
+Web 客户端已经能从完整 Turn fork Session，durable header 也已记录 `parentSession` 与 `seedLength`，但第一方界面没有展示这张图。外部 Synapse 实验证明了工作区画布的价值：分支可见、平移缩放、折叠、当前 Session 同步和 Turn 卡片；但其 fixed `document.body` 控件、iframe／`postMessage` 桥、私有 HTTP 路由及第二份 Session 消息与 lineage JSON 绕过了客户端 slot 和 object layer。Pi `/tree` 还提供当前路径、历史分叉点、标签、过滤和从旧用户消息重写等有价值的导航语义；但其单文件 entry tree 无法替换 RLH balanced append-only Turn／Step／Tool 日志及跨 Session lineage，否则两套 parent 模型会扩散到持久化、SDK、projection 与恢复。
 
 ## 决定
 
-`@deepseek-ai/dsh-client-ui-session-tree` 是原生浏览器插件。`conversation.session.header.actions` 条目及 root `shell.titlebar.trailing` 条目都会打开 root-scoped `shell.overlay`，因此选择另一 Session 时地图更新而不 remount；没有当前 Session 时标题栏条目为 disabled。所有注册都使用普通 slot injection，并随插件 fiber dispose。包内私有 controller 只拥有临时 open／anchor 状态；root store 只持久化 viewport、位置、折叠、标签、过滤、查询与选择。
+`@relay-harness/rlh-client-ui-session-tree` 是原生浏览器插件。`conversation.session.header.actions` 条目及 root `shell.titlebar.trailing` 条目都会打开 root-scoped `shell.overlay`，因此选择另一 Session 时地图更新而不 remount；没有当前 Session 时标题栏条目为 disabled。所有注册都使用普通 slot injection，并随插件 fiber dispose。包内私有 controller 只拥有临时 open／anchor 状态；root store 只持久化 viewport、位置、折叠、标签、过滤、查询与选择。
 
 Session 事实仍由原 owner 持有。`SessionSummary.seedLength` 把 `SessionHeader.seedLength` 透传到 list baseline 与 `host/session-added`；`parentSessionId` 继续表示父身份。画布读取全局 Session／Workspace snapshot，排除 archived Session，并包含隐藏 subagent 等 descendants；`session.history` 分页读取不会打开或恢复 Agent。child 只投影 seq 大于等于 `seedLength` 的事件；第一张 live 卡连接到 cut 之前最后一张父 Turn。缺失父节点退化为根；cyclic lineage 去掉 cyclic parent edge 但保留每个 Session。
 
@@ -26,7 +26,7 @@ Session 事实仍由原 owner 持有。`SessionSummary.seedLength` 把 `SessionH
 
 **新建另一套 lineage 数据库或 projection key。** 拒绝。lineage 是跨 Session 的 immutable header metadata；`session-projection` 拥有单 Session 日志派生值，persistence 与 SessionQuery 已拥有 live／cold header。
 
-**在单 Session 文件采用 Pi entry `parentId`。** 拒绝。它会在 DSH Turn／Step balance 旁增加第二套顺序关系，并重复现有跨 Session fork lineage。历史导航用 child Session 表示，不移动 mutable leaf pointer。
+**在单 Session 文件采用 Pi entry `parentId`。** 拒绝。它会在 RLH Turn／Step balance 旁增加第二套顺序关系，并重复现有跨 Session fork lineage。历史导航用 child Session 表示，不移动 mutable leaf pointer。
 
 **自动写 branch summary。** 本次不采用。进入模型的 summary 是 durable model-visible input，需要独立 Session event 与 request-assembly policy；Tree 导航不能注入隐藏上下文。
 

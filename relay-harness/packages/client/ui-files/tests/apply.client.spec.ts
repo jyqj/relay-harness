@@ -1,8 +1,8 @@
 /** Files plugin injects the tree and preview into surfaces.files / surfaces.file. */
-import { Context } from '@deepseek-ai/cordis'
+import { Context } from '@relay-harness/cordis'
 import { describe, expect, it, vi } from 'vitest'
-import { SlotRegistry } from '@deepseek-ai/dsh-client-runtime/client'
-import { LocaleRuntime } from '@deepseek-ai/dsh-client-locale/client'
+import { SlotRegistry } from '@relay-harness/rlh-client-runtime/client'
+import { LocaleRuntime } from '@relay-harness/rlh-client-locale/client'
 import { apply, inject } from '../src/client/index.ts'
 import { FilePreview } from '../src/client/FilePreview.tsx'
 import { FilesPanel } from '../src/client/FilesPanel.tsx'

@@ -1,12 +1,12 @@
 /** Browser runtime services for slots, sessions, workspaces, and connection-stream delivery. */
-import type { Context } from '@deepseek-ai/cordis'
-import type { ConnectionHandle, ConnectionSinks, SessionId } from '@deepseek-ai/dsh-api-remotes/client'
+import type { Context } from '@relay-harness/cordis'
+import type { ConnectionHandle, ConnectionSinks, SessionId } from '@relay-harness/rlh-api-remotes/client'
 // Type-only: the ctx.remote merge. Deliberately the gateway's Client half rather
 // than api-remotes': that face imports a Host-tsdown-generated artifact, and this
 // project sits in the Host build graph.
-import type {} from '@deepseek-ai/dsh-api-remotes/client'
-import type { TypertContext } from '@deepseek-ai/dsh-typert-protocol'
-import type { MaybeSnapshotSelectorHook, SnapshotSelectorHook } from '@deepseek-ai/dsh-client-ui-slots'
+import type {} from '@relay-harness/rlh-api-remotes/client'
+import type { TypertContext } from '@relay-harness/rlh-typert-protocol'
+import type { MaybeSnapshotSelectorHook, SnapshotSelectorHook } from '@relay-harness/rlh-client-ui-slots'
 import { SlotRegistry } from './slots.ts'
 import { SessionRuntime } from './sessions/service.ts'
 import type { SessionListState } from './sessions/service.ts'
@@ -16,7 +16,7 @@ import type { UseProjection } from './sessions/projection-store.ts'
 import { ConversationEventRegistry } from './conversation/event-registry.ts'
 import { ConversationViewRegistry } from './conversation/view-registry.ts'
 
-export { isAppendSurfaceEvent, isReplacementSurfaceEvent } from '@deepseek-ai/dsh-session/surface'
+export { isAppendSurfaceEvent, isReplacementSurfaceEvent } from '@relay-harness/rlh-session/surface'
 
 export { SlotRegistry } from './slots.ts'
 export { ConversationEventRegistry } from './conversation/event-registry.ts'
@@ -48,7 +48,7 @@ export type { AgentScopeHandle } from './agents/scope.ts'
 export { DirectoryBrowseError, WorkspaceCreateError, WorkspaceRuntime } from './workspaces/service.ts'
 export { abbreviateHomePath, resolveWorkspacePath } from './workspaces/path.ts'
 // Contract only: the scope implementation and its Host transport belong to
-// dsh-client-ui-settings (see that package's settings-scope.ts).
+// rlh-client-ui-settings (see that package's settings-scope.ts).
 export type {
   SettingsScope, SettingsScopeSnapshot, SettingsScopeSpec,
 } from './contract/settings-scope.ts'
@@ -60,12 +60,12 @@ export type {
   SessionBinding, SessionListState, SessionProvideContribution, SessionProvideDescriptor, SessionSummary,
 } from './sessions/service.ts'
 export type { SessionListPhase, SessionSearchResultItem, SubagentCatalogSnapshot } from './sessions/manager.ts'
-export type { SubagentAddress, JobView } from '@deepseek-ai/dsh-client-connection/client'
+export type { SubagentAddress, JobView } from '@relay-harness/rlh-client-connection/client'
 export type { WorkspaceListPhase } from './workspaces/manager.ts'
 export type { WorkspaceListState } from './workspaces/service.ts'
 export type {
   DirectoryEntry, DirectoryListing, WorkspaceId, WorkspaceView,
-} from '@deepseek-ai/dsh-client-connection/client'
+} from '@relay-harness/rlh-client-connection/client'
 // Runtime owns the snapshot store; ui-renderer only binds it to React.
 export { createSnapshotStore, defineStore, shallowEqual } from './contract/store.ts'
 export type {
@@ -106,12 +106,12 @@ export type {
 export type {
   ProjectionsBaseline, ProjectionValueStore, SessionProjectionMap, UseProjection,
 } from './sessions/projection-store.ts'
-export type { SessionId } from '@deepseek-ai/dsh-client-connection/client'
+export type { SessionId } from '@relay-harness/rlh-client-connection/client'
 
 /** Client-side Cordis context after declaration merging. */
 export type ClientContext = Context
 
-declare module '@deepseek-ai/dsh-typert-protocol' {
+declare module '@relay-harness/rlh-typert-protocol' {
   interface TypertContextMap {
     /** Client Agent scope identity; the agent and session share one wire id. */
     agent: TypertContext<SessionId>
@@ -121,7 +121,7 @@ declare module '@deepseek-ai/dsh-typert-protocol' {
 /** The conversation-snapshot selector hook supplied to session-scoped UI entries. */
 export type UseConversationSession = SnapshotSelectorHook<ConversationSnapshot>
 
-declare module '@deepseek-ai/dsh-client-ui-slots' {
+declare module '@relay-harness/rlh-client-ui-slots' {
   /**
    * Session standard kit, real members (ui-slots declares the empty seat;
    * the runtime — where the subjects live — merges the concrete types):
@@ -150,7 +150,7 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
   }
 }
 
-declare module '@deepseek-ai/cordis' {
+declare module '@relay-harness/cordis' {
   interface Events {
     /**
      * A slot's definition or registration set changed.
@@ -238,7 +238,7 @@ export function apply(ctx: Context): void {
       if (cancelled) return
       loop = connection.start(sinks)
     }
-    const bootGate = (globalThis as { __DSH_BOOT_GATE__?: Promise<void> }).__DSH_BOOT_GATE__
+    const bootGate = (globalThis as { __RLH_BOOT_GATE__?: Promise<void> }).__RLH_BOOT_GATE__
     if (bootGate === undefined) begin()
     else void bootGate.then(begin, begin)
     return () => {

@@ -9,7 +9,7 @@ function marketplaceRendererDir() {
 }
 
 function hasMarketSectionScript(scripts) {
-  return scripts.some((script) => script.includes('data-dsh-settings-section') && script.includes('"market"'));
+  return scripts.some((script) => script.includes('data-rlh-settings-section') && script.includes('"market"'));
 }
 
 function loadWindowModule() {
@@ -49,7 +49,7 @@ function loadWindowModule() {
 
     executeJavaScript(script) {
       this.scripts.push(script);
-      if (script.includes('data-dshd-boot-status')) {
+      if (script.includes('data-rlhd-boot-status')) {
         return Promise.resolve({
           pending: !this.hasApp,
           ready: this.hasApp ? 1 : 0,
@@ -59,7 +59,7 @@ function loadWindowModule() {
           error: '',
         });
       }
-      if (script.includes('data-dsh-settings-section')) {
+      if (script.includes('data-rlh-settings-section')) {
         return Promise.resolve(this.settingsOpened);
       }
       return Promise.resolve(true);
@@ -213,7 +213,7 @@ test('openMarketplace does not create a window when the main window is missing',
   }
 });
 
-test('openMarketplace jumps to the dsh-market settings section when Harness is ready', async () => {
+test('openMarketplace jumps to the rlh-market settings section when Harness is ready', async () => {
   const loaded = loadWindowModule();
   try {
     const { windowMod, windows } = loaded;

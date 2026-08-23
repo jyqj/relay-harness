@@ -10,7 +10,7 @@
  * mounted for the seat to exist. Data only — this module is the one legitimate
  * meeting point of the two planes, so it carries strings, never client imports.
  *
- * @module @deepseek-ai/dsh-cordis-client-runner/client/slot-catalog
+ * @module @relay-harness/rlh-cordis-client-runner/client/slot-catalog
  */
 
 /* jscpd:ignore-start */
@@ -69,7 +69,7 @@ export const CLIENT_NOTES: readonly string[] = [
   'Contribute UI only through `ctx.slots.register(options, Component)`; declare `inject: [\'slots\']` in your returned plugin (object form) or the seat is withheld.',
   'Wrap every registration in `ctx.slots.inject(key, () => ctx.slots.register(...))`. A slot exists only while the entry that declared it is mounted, and registering into an undeclared slot throws; `inject` runs your registration when the declaration is (or becomes) live and re-runs it if the owner remounts.',
   'Do NOT pass `priority`: the browser-half facade assigns one automatically, and it is LOWER than every shipped entry — in a single or keyed cell that means your entry is the one that renders.',
-  'You cannot `import` anything, so the design-system components are out of reach: build markup with `React.createElement` and ship CSS through `styles.insert(css)`. Use the theme CSS variables (`var(--dsw-alias-bg-layer-1)`, `var(--dsw-alias-label-primary)`, …) instead of literal colors, or your contribution breaks in the other color scheme.',
+  'You cannot `import` anything, so the design-system components are out of reach: build markup with `React.createElement` and ship CSS through `styles.insert(css)`. Use the theme CSS variables (`var(--rlw-alias-bg-layer-1)`, `var(--rlw-alias-label-primary)`, …) instead of literal colors, or your contribution breaks in the other color scheme.',
   'Every component receives the framework hook seats listed under `framework props` for its scope; a selector hook is called with a selector, e.g. `useSessions(state => state.current)`.',
   'This catalog is the COMPILE-TIME contract of the shipped web bundle, not a snapshot of one page: a key is registrable only where the owner that declares it is mounted. A failed registration surfaces in the browser-half load report — read it back with `cordis_inspect what:"temporary"`.',
 ]
@@ -619,7 +619,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     kind: 'single',
     scope: 'root',
     summary: 'Brand mark leading the blank-session headline.',
-    doc: 'Brand mark leading the blank-session headline. Declared by this\npackage\'s `conversation` entry; the shell supplies a fish fallback.',
+    doc: 'Brand mark leading the blank-session headline. Declared by this\npackage\'s `conversation` entry; the shell supplies the Relay Harness mark as fallback.',
     registerOptions: [],
     ownerProps: [
       '/** Presentation props supplied to the blank-session brand-mark occupant. */\nexport interface HeroBrandMarkOwnerProps {\n  /** Requested square edge in pixels. */\n  size: number\n  /** Host CSS class for preserving the default hero mark color and hover motion. */\n  className?: string | undefined\n}',
@@ -1782,8 +1782,8 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     key: 'shell.titlebar.trailing',
     kind: 'list',
     scope: 'root',
-    summary: 'Titlebar trailing cluster in the shared titlebar grid row, inset from the window controls (`margin-right: var(--dshd-wco-controls, 8px)`).',
-    doc: 'Titlebar trailing cluster in the shared titlebar grid row, inset from\nthe window controls (`margin-right: var(--dshd-wco-controls, 8px)`).\nList slot: entries order among themselves. The cluster is\n`-webkit-app-region: no-drag` so Session log, Git, and panel toggles\nstay clickable over the AppFrame caption drag band. Owner props\nare the live layout widths so toggles can derive pressed state.',
+    summary: 'Titlebar trailing cluster in the shared titlebar grid row, inset from the window controls (`margin-right: var(--rlhd-wco-controls, 8px)`).',
+    doc: 'Titlebar trailing cluster in the shared titlebar grid row, inset from\nthe window controls (`margin-right: var(--rlhd-wco-controls, 8px)`).\nList slot: entries order among themselves. The cluster is\n`-webkit-app-region: no-drag` so Session log, Git, and panel toggles\nstay clickable over the AppFrame caption drag band. Owner props\nare the live layout widths so toggles can derive pressed state.',
     registerOptions: [
       {
         name: 'id',
@@ -1862,7 +1862,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     kind: 'single',
     scope: 'root',
     summary: 'Brand mark rendered in the expanded brand row and collapsed rail.',
-    doc: 'Brand mark rendered in the expanded brand row and collapsed rail.\nDeclared by this package\'s `sidebar` entry; deployments may replace\nthe shell\'s fish fallback without replacing the surrounding controls.',
+    doc: 'Brand mark rendered in the expanded brand row and collapsed rail.\nDeclared by this package\'s `sidebar` entry; deployments may replace\nthe shell\'s Relay Harness mark without replacing the surrounding controls.',
     registerOptions: [],
     ownerProps: [
       '/** Geometry supplied to the sidebar brand-mark occupant. */\nexport interface SidebarBrandMarkOwnerProps {\n  /** Requested square edge in pixels. */\n  size: number\n}',

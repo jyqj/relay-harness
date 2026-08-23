@@ -1,8 +1,8 @@
 /** Desktop-gated Remote popup registered next to Settings. */
 
-import type {} from '@deepseek-ai/dsh-client-locale/client'
-import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
-import type {} from '@deepseek-ai/dsh-client-ui-sidebar/client'
+import type {} from '@relay-harness/rlh-client-locale/client'
+import type { ClientContext } from '@relay-harness/rlh-client-runtime/client'
+import type {} from '@relay-harness/rlh-client-ui-sidebar/client'
 import { desktopShell, hasRemoteApi } from './desktop-shell.ts'
 import { RemoteSection, type RemoteSectionInjected } from './RemoteSection.tsx'
 import { en, zh, type RemoteLocaleKey } from './locales.ts'
@@ -11,7 +11,7 @@ export type { RemoteSectionInjected, RemoteSectionProps } from './RemoteSection.
 export type { RemoteLocaleKey } from './locales.ts'
 export type { RemotePatch, RemoteSnapshot, RemoteDevice } from './desktop-shell.ts'
 
-declare module '@deepseek-ai/dsh-client-ui-slots' {
+declare module '@relay-harness/rlh-client-ui-slots' {
   interface LocaleNamespaceMap {
     /** Remote popup copy. */
     'settings.remote': RemoteLocaleKey

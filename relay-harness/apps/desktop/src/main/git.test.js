@@ -5,12 +5,12 @@ const os = require('node:os');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const { createWorkspaceAuthority } = require('./workspace-authority');
-const { COMMIT_TIMEOUT_MS, FETCH_TIMEOUT_MS, GH_TIMEOUT_MS, commitArgs, gitBranchList, gitChildEnv, gitCommit, gitCreateBranch, gitCreateChangeRequest, gitDiff, gitDiscard, gitFailureMessage, gitInit, gitPublishRepository, gitPull, gitPush, gitReadPullRequest, gitStage, gitStatus, gitStatusEntries, gitSwitchBranch, gitUnstage, inferHookName, isGitAdviceLine, isNtfsReservedGitPath, matchesBranchHeadContext, normalizeGitRemoteUrl, parseCustomCommitMessage, parseGhPullRequestRow, parseGitHubRepositoryNameWithOwner, parsePorcelainZ, parseUnifiedDiff, providerFromRemoteUrl, readPrTemplate, readRangeContext, rememberLastKnownPr, resetFetchCooldowns, resetLastKnownPrCache, resolveBaseBranchForNoUpstream, resolveBranchHeadContext, resolveLastKnownPr, resolvePrBaseBranch, resolvePreferredHeadSelector, run, sanitizeProgressText, setGhDefaultBranchResolver, setLookupOpenPullRequest, setWorkspaceAuthority, summarizeCommitMessage } = require('./git.js');
+const { COMMIT_TIMEOUT_MS, FETCH_TIMEOUT_MS, GH_TIMEOUT_MS, commitArgs, gitBranchList, gitChildEnv, gitCommit, gitCreateBranch, gitCreateChangeRequest, gitDiff, gitDiscard, gitFailureMessage, gitInit, gitPublishRepository, gitPull, gitPush, gitReadPullRequest, gitStage, gitStatus, gitStatusEntries, gitSwitchBranch, gitUnstage, inferHookName, isGitAdviceLine, isNtfsReservedGitPath, matchesBranchHeadContext, normalizeGitRemoteUrl, parseCustomCommitMessage, parseGhPullRequestRow, parseGitHubRepositoryNameWithOwner, parsePorcelainZ, parseUnifiedDiff, providerFromRemoteUrl, readPrTemplate, readRangeContext, rememberLastKnownPr, resetFetchCooldowns, resetLastKnownPrCache, resolveBaseBranchForNoUpstream, resolveBranchHeadContext, resolveLastKnownPr, resolvePrBaseBranch, run, sanitizeProgressText, setGhDefaultBranchResolver, setLookupOpenPullRequest, setWorkspaceAuthority, summarizeCommitMessage } = require('./git.js');
 const { parseRepositoryNameWithOwnerFromNormalized } = require('./git-pullrequest');
 const { setTextGenerator } = require('./git-generate.js');
 
 function makeTempDir() {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-git-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'rlh-git-'));
   // Pin the workspace authority so cwd checks pass inside this test root.
   setWorkspaceAuthority(createWorkspaceAuthority({ workspace: dir }));
   return dir;
@@ -497,9 +497,9 @@ test('parsePorcelainZ skips rename origin fields', () => {
 });
 
 test('gitStatus accepts a second authorized git root and ignores an outsider repo', async () => {
-  const boot = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-git-boot-'));
-  const extra = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-git-extra-'));
-  const outsider = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-git-out-'));
+  const boot = fs.mkdtempSync(path.join(os.tmpdir(), 'rlh-git-boot-'));
+  const extra = fs.mkdtempSync(path.join(os.tmpdir(), 'rlh-git-extra-'));
+  const outsider = fs.mkdtempSync(path.join(os.tmpdir(), 'rlh-git-out-'));
   setWorkspaceAuthority(createWorkspaceAuthority({
     workspace: boot,
     extraWorkspaces: [extra],
@@ -945,7 +945,7 @@ test('gitCommit featureBranch generates under Preparing and uses the model branc
 
 test('readRangeContext falls back to the local default when origin/HEAD is missing', async () => {
   const cwd = makeTempDir();
-  const bare = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-git-bare-'));
+  const bare = fs.mkdtempSync(path.join(os.tmpdir(), 'rlh-git-bare-'));
   try {
     git(bare, ['init', '--bare']);
     git(cwd, ['init', '-b', 'main']);
@@ -970,7 +970,7 @@ test('readRangeContext falls back to the local default when origin/HEAD is missi
 
 test('gitCreateChangeRequest generates PR copy and ignores a client-supplied commit subject', async () => {
   const cwd = makeTempDir();
-  const bare = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-git-bare-'));
+  const bare = fs.mkdtempSync(path.join(os.tmpdir(), 'rlh-git-bare-'));
   let seen = null;
   setTextGenerator(async (input) => {
     seen = input;
@@ -1011,7 +1011,7 @@ test('gitCreateChangeRequest generates PR copy and ignores a client-supplied com
 
 test('gitCreateChangeRequest refuses a dirty work tree', async () => {
   const cwd = makeTempDir();
-  const bare = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-git-bare-'));
+  const bare = fs.mkdtempSync(path.join(os.tmpdir(), 'rlh-git-bare-'));
   try {
     git(bare, ['init', '--bare']);
     git(cwd, ['init', '-b', 'main']);
@@ -1037,7 +1037,7 @@ test('gitCreateChangeRequest refuses a dirty work tree', async () => {
 
 test('gitStatus counts no-upstream ahead against the default ref', async () => {
   const cwd = makeTempDir();
-  const bare = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-git-bare-'));
+  const bare = fs.mkdtempSync(path.join(os.tmpdir(), 'rlh-git-bare-'));
   try {
     git(bare, ['init', '--bare']);
     git(cwd, ['init', '-b', 'main']);
@@ -1066,7 +1066,7 @@ test('gitStatus counts no-upstream ahead against the default ref', async () => {
 
 test('gitStatus zeros aheadOfDefaultCount on the default ref', async () => {
   const cwd = makeTempDir();
-  const bare = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-git-bare-'));
+  const bare = fs.mkdtempSync(path.join(os.tmpdir(), 'rlh-git-bare-'));
   try {
     git(bare, ['init', '--bare']);
     git(cwd, ['init', '-b', 'main']);
@@ -1164,7 +1164,7 @@ test('resolvePrBaseBranch prefers branch.<name>.gh-merge-base', async () => {
 
 test('resolvePrBaseBranch uses upstream branch when it differs from the local ref', async () => {
   const cwd = makeTempDir();
-  const bare = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-git-bare-'));
+  const bare = fs.mkdtempSync(path.join(os.tmpdir(), 'rlh-git-bare-'));
   try {
     git(bare, ['init', '--bare']);
     git(cwd, ['init', '-b', 'main']);
@@ -1192,7 +1192,7 @@ test('resolvePrBaseBranch uses upstream branch when it differs from the local re
 
 test('resolvePrBaseBranch uses an unparseable non-origin upstream name as --base', async () => {
   const cwd = makeTempDir();
-  const bare = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-git-bare-'));
+  const bare = fs.mkdtempSync(path.join(os.tmpdir(), 'rlh-git-bare-'));
   try {
     git(bare, ['init', '--bare']);
     git(cwd, ['init', '-b', 'main']);
@@ -1272,11 +1272,11 @@ test('parseGitHubRepositoryNameWithOwner and preferred head for forks', () => {
 
 test('parseRepositoryNameWithOwnerFromNormalized ignores filesystem remotes', () => {
   assert.equal(
-    parseRepositoryNameWithOwnerFromNormalized('/var/folders/df/tmp/T/dsh-git-bare-x'),
+    parseRepositoryNameWithOwnerFromNormalized('/var/folders/df/tmp/T/rlh-git-bare-x'),
     null,
   );
   assert.equal(
-    parseRepositoryNameWithOwnerFromNormalized('C:\\Users\\me\\AppData\\Local\\Temp\\dsh-git-bare-x'),
+    parseRepositoryNameWithOwnerFromNormalized('C:\\Users\\me\\AppData\\Local\\Temp\\rlh-git-bare-x'),
     null,
   );
   assert.equal(
@@ -1319,8 +1319,8 @@ test('resolveLastKnownPr keeps the badge when head identity still matches', () =
 
 test('resolveBranchHeadContext lists owner:branch for cross-repo upstreams', async () => {
   const cwd = makeTempDir();
-  const bareOrigin = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-git-bare-o-'));
-  const bareFork = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-git-bare-f-'));
+  const bareOrigin = fs.mkdtempSync(path.join(os.tmpdir(), 'rlh-git-bare-o-'));
+  const bareFork = fs.mkdtempSync(path.join(os.tmpdir(), 'rlh-git-bare-f-'));
   try {
     git(bareOrigin, ['init', '--bare']);
     git(bareFork, ['init', '--bare']);
@@ -1351,7 +1351,7 @@ test('resolveBranchHeadContext lists owner:branch for cross-repo upstreams', asy
 
 test('resolveBranchHeadContext keeps branch.*.remote after upstream is unset', async () => {
   const cwd = makeTempDir();
-  const bareFork = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-git-bare-f2-'));
+  const bareFork = fs.mkdtempSync(path.join(os.tmpdir(), 'rlh-git-bare-f2-'));
   try {
     git(bareFork, ['init', '--bare']);
     git(cwd, ['init', '-b', 'feature']);
@@ -1444,7 +1444,7 @@ test('normalizeGitRemoteUrl matches scp and https forms', () => {
 
 test('gitPush skips when there is no local delta and the remote branch already exists', async () => {
   const cwd = makeTempDir();
-  const bare = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-git-bare-'));
+  const bare = fs.mkdtempSync(path.join(os.tmpdir(), 'rlh-git-bare-'));
   try {
     resetFetchCooldowns();
     git(bare, ['init', '--bare']);
@@ -1472,7 +1472,7 @@ test('gitPush skips when there is no local delta and the remote branch already e
 
 test('gitPush no-upstream skip uses gh-merge-base when defaultRefName is missing', async () => {
   const cwd = makeTempDir();
-  const bare = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-git-bare-'));
+  const bare = fs.mkdtempSync(path.join(os.tmpdir(), 'rlh-git-bare-'));
   try {
     resetFetchCooldowns();
     git(bare, ['init', '--bare']);
@@ -1502,7 +1502,7 @@ test('gitPush no-upstream skip uses gh-merge-base when defaultRefName is missing
 
 test('gitPush does not skip when no-upstream aheadCount is unreliable', async () => {
   const cwd = makeTempDir();
-  const bare = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-git-bare-'));
+  const bare = fs.mkdtempSync(path.join(os.tmpdir(), 'rlh-git-bare-'));
   try {
     resetFetchCooldowns();
     git(bare, ['init', '--bare']);
@@ -1562,7 +1562,7 @@ test('gitCommit marks a truncated staged patch for the generator', async () => {
 
 test('resolvePrBaseBranch uses primary-remote HEAD when origin is absent', async () => {
   const cwd = makeTempDir();
-  const bare = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-git-bare-'));
+  const bare = fs.mkdtempSync(path.join(os.tmpdir(), 'rlh-git-bare-'));
   try {
     git(bare, ['init', '--bare']);
     git(cwd, ['init', '-b', 'develop']);
@@ -1588,7 +1588,7 @@ test('resolvePrBaseBranch uses primary-remote HEAD when origin is absent', async
 test('gitPull fast-forwards then reports up_to_date', async () => {
   const originCwd = makeTempDir();
   const cloneCwd = makeTempDir();
-  const bare = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-git-bare-'));
+  const bare = fs.mkdtempSync(path.join(os.tmpdir(), 'rlh-git-bare-'));
   try {
     resetFetchCooldowns();
     git(bare, ['init', '--bare']);
@@ -1669,7 +1669,7 @@ test('gitPublishRepository adds a pasted origin without pushing an empty repo', 
 
 test('gitPublishRepository pushes an existing history to a pasted origin', async () => {
   const cwd = makeTempDir();
-  const bare = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-git-bare-'));
+  const bare = fs.mkdtempSync(path.join(os.tmpdir(), 'rlh-git-bare-'));
   try {
     resetFetchCooldowns();
     git(bare, ['init', '--bare']);
@@ -1710,7 +1710,7 @@ test('gitPublishRepository refuses a second origin', async () => {
 
 test('gitCreateChangeRequest returns opened_existing for an open PR', async () => {
   const cwd = makeTempDir();
-  const bare = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-git-bare-'));
+  const bare = fs.mkdtempSync(path.join(os.tmpdir(), 'rlh-git-bare-'));
   setLookupOpenPullRequest(async () => ({
     pr: {
       number: 7,
@@ -1748,7 +1748,7 @@ test('gitCreateChangeRequest returns opened_existing for an open PR', async () =
 
 test('gitStatus and gitPush treat a deleted upstream as unpublished', async () => {
   const cwd = makeTempDir();
-  const bare = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-git-bare-'));
+  const bare = fs.mkdtempSync(path.join(os.tmpdir(), 'rlh-git-bare-'));
   try {
     resetFetchCooldowns();
     git(bare, ['init', '--bare']);
@@ -1786,7 +1786,7 @@ test('gitStatus and gitPush treat a deleted upstream as unpublished', async () =
 
 test('resolveBranchHeadContext does not treat an unparseable non-origin remote as a fork', async () => {
   const cwd = makeTempDir();
-  const bare = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-git-bare-'));
+  const bare = fs.mkdtempSync(path.join(os.tmpdir(), 'rlh-git-bare-'));
   try {
     git(bare, ['init', '--bare']);
     git(cwd, ['init', '-b', 'main']);

@@ -5,10 +5,10 @@ const serialFiles = [
   'apps/web/tests/hmr-live.e2e.ts',
   'apps/web/tests/cordis-tool-round.e2e.ts',
 ]
-const workerRaw = process.env.DSH_WEB_SNAPSHOT_WORKERS
+const workerRaw = process.env.RLH_WEB_SNAPSHOT_WORKERS
 const workers = Number.parseInt(workerRaw ?? '', 10)
 if (!Number.isSafeInteger(workers) || workers < 2 || String(workers) !== workerRaw) {
-  throw new Error(`DSH_WEB_SNAPSHOT_WORKERS must be an integer greater than 1, got ${JSON.stringify(workerRaw)}.`)
+  throw new Error(`RLH_WEB_SNAPSHOT_WORKERS must be an integer greater than 1, got ${JSON.stringify(workerRaw)}.`)
 }
 const pnpmEntrypoint = process.env.npm_execpath
 if (pnpmEntrypoint === undefined || pnpmEntrypoint === '') {

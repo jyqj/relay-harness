@@ -8,23 +8,23 @@
 
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render } from '@testing-library/react'
-import { Context } from '@deepseek-ai/cordis'
-import { bindSnapshotSelector } from '@deepseek-ai/dsh-client-test-runtime'
+import { Context } from '@relay-harness/cordis'
+import { bindSnapshotSelector } from '@relay-harness/rlh-client-test-runtime'
 import {
   createSnapshotStore, EMPTY_CONVERSATION_VIEWS,
-} from '@deepseek-ai/dsh-client-runtime/client'
-import { makeTranslate } from '@deepseek-ai/dsh-client-test-runtime'
-import { zh as commonZh } from '@deepseek-ai/dsh-client-locale/src/locales/zh.ts'
+} from '@relay-harness/rlh-client-runtime/client'
+import { makeTranslate } from '@relay-harness/rlh-client-test-runtime'
+import { zh as commonZh } from '@relay-harness/rlh-client-locale/src/locales/zh.ts'
 import type {
   ConversationSnapshot, RunningToolCall, SessionId, SessionListState, ToolResultNode, WorkspaceListState,
-} from '@deepseek-ai/dsh-client-runtime/client'
-import type { ToolResultView } from '@deepseek-ai/dsh-api-remotes/client'
-import type { SelectionTarget } from '@deepseek-ai/dsh-client-ui-conversation/client'
+} from '@relay-harness/rlh-client-runtime/client'
+import type { ToolResultView } from '@relay-harness/rlh-api-remotes/client'
+import type { SelectionTarget } from '@relay-harness/rlh-client-ui-conversation/client'
 import { CHAT_READ_MAX_LINES, readCardModel } from '../src/client/tool/models/read-card-model.ts'
-import { createChatStore } from '@deepseek-ai/dsh-client-ui-conversation/src/client/stores.ts'
+import { createChatStore } from '@relay-harness/rlh-client-ui-conversation/src/client/stores.ts'
 import { GenericToolCard, type GenericToolCardProps } from '../src/client/tool/toolviews/GenericToolCard.tsx'
-import { zh } from '@deepseek-ai/dsh-client-ui-conversation/src/client/locales.ts'
-import { DetailsPanel } from '@deepseek-ai/dsh-client-ui-conversation/src/client/skeleton/DetailsPanel.tsx'
+import { zh } from '@relay-harness/rlh-client-ui-conversation/src/client/locales.ts'
+import { DetailsPanel } from '@relay-harness/rlh-client-ui-conversation/src/client/skeleton/DetailsPanel.tsx'
 import { ReadRow, readToolview } from '../src/client/tool/toolviews/read-row.tsx'
 import { renderToolDetails, SessionProviderStub, toolChatSnapshot } from './tool-details-render.client.tsx'
 
@@ -212,7 +212,7 @@ describe('ReadRow keyed toolview', () => {
     expect(view.getByText('显示 3 / 180 行')).toBeTruthy()
     // Collapse back in place: Presence holds the card through exit; AT leaves with aria-hidden.
     toggleRow(view)
-    expect(view.container.querySelector('[data-read]')?.closest('[data-dsh-motion]')?.getAttribute('aria-hidden')).toBe('true')
+    expect(view.container.querySelector('[data-read]')?.closest('[data-rlh-motion]')?.getAttribute('aria-hidden')).toBe('true')
     expect(view.getByRole('button', { name: 'src/a.ts' })).toBeTruthy()
   })
 

@@ -10,8 +10,8 @@ const ROOT = path.join(__dirname, '..', '..');
 /** Pins that make desktop tests require the removed nested Harness checkout. */
 function listVendorHarnessRootPins(source) {
   const pins = [];
-  const joined = /DSH_HARNESS_ROOT\s*=\s*path\.join\([^;]*['"]vendor['"]\s*,\s*['"]deepseek-harness['"]/g;
-  const literal = /DSH_HARNESS_ROOT\s*=\s*[^;\n]*vendor[/\\]deepseek-harness/g;
+  const joined = /RLH_HARNESS_ROOT\s*=\s*path\.join\([^;]*['"]vendor['"]\s*,\s*['"]relay-harness['"]/g;
+  const literal = /RLH_HARNESS_ROOT\s*=\s*[^;\n]*vendor[/\\]relay-harness/g;
   for (const re of [joined, literal]) {
     re.lastIndex = 0;
     let match;
@@ -61,12 +61,12 @@ test('icon renderer writes a display-independent PNG size', () => {
   assert.match(source, /assertMacReleaseIcon/);
 });
 
-test('a vendor DSH_HARNESS_ROOT pin is visible to the isolation scan', () => {
-  const tagged = `process.env.${'DSH_HARNESS' + '_ROOT'} = path.join(__dirname, '..', '..', 'vendor', 'deepseek-harness');\n`;
+test('a vendor RLH_HARNESS_ROOT pin is visible to the isolation scan', () => {
+  const tagged = `process.env.${'RLH_HARNESS' + '_ROOT'} = path.join(__dirname, '..', '..', 'vendor', 'relay-harness');\n`;
   assert.equal(listVendorHarnessRootPins(tagged).length, 1);
 });
 
-test('desktop unit tests do not pin DSH_HARNESS_ROOT to vendor/deepseek-harness', () => {
+test('desktop unit tests do not pin RLH_HARNESS_ROOT to vendor/relay-harness', () => {
   const hits = [];
   for (const file of walkTestFiles(path.join(ROOT, 'src'))) {
     const pins = listVendorHarnessRootPins(fs.readFileSync(file, 'utf8'));

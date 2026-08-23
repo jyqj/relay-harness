@@ -31,4 +31,4 @@ Status: implemented
 
 ## 后果
 
-ui-tool 内置视图都能就地检查输入与输出，详情面板和 trajectory 仍是深查界面。共享 `ToolRow` 交互是 ui-tool 内部实现；外部原子视图接收 `ToolCallViewProps`，可以通过自己的 chrome 暴露其中的 `inspect` 回调。bash 视图保留独立 CSS，因此未来交互变化仍需显式同步。`--dsw-font-markdown-code-block-small`（12/18）是手工补充的 token，待设计平台导出后替换。web-cordis 的 `distIndex` 修复（纯拼接而非 URL.pathname）解除了含空格 cwd 下预览无法启动的问题。
+ui-tool 内置视图都能就地检查输入与输出，详情面板和 trajectory 仍是深查界面。共享 `ToolRow` 交互是 ui-tool 内部实现；外部原子视图接收 `ToolCallViewProps`，可以通过自己的 chrome 暴露其中的 `inspect` 回调。bash 视图保留独立 CSS，因此未来交互变化仍需显式同步。`--rlw-font-markdown-code-block-small`（12/18）是手工补充的 token，待设计平台导出后替换。web-cordis 的 `distIndex` 修复（纯拼接而非 URL.pathname）解除了含空格 cwd 下预览无法启动的问题。

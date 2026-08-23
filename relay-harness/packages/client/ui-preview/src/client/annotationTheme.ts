@@ -1,6 +1,6 @@
-/** Read guest annotation theme fields from host `--dsw-alias-*` tokens. */
+/** Read guest annotation theme fields from host `--rlw-alias-*` tokens. */
 
-/** Theme object field names match the reference peel; CSS vars are `--dshd-preview-*`. */
+/** Theme object field names match the reference peel; CSS vars are `--rlhd-preview-*`. */
 export interface PreviewAnnotationTheme {
   colorScheme: 'light' | 'dark'
   radius: string
@@ -46,7 +46,7 @@ function readVariable(styles: CSSStyleDeclaration, name: string, fallback: strin
 }
 
 /**
- * Collect live `--dsw-alias-*` values from the document element.
+ * Collect live `--rlw-alias-*` values from the document element.
  * Empty computed values fall back to {@link DEFAULT_THEME}.
  * @returns theme fields for `previewSetAnnotationTheme`.
  */
@@ -57,25 +57,25 @@ export function readPreviewAnnotationTheme(): PreviewAnnotationTheme {
     || styles.colorScheme.includes('dark')
   return {
     colorScheme: dark ? 'dark' : 'light',
-    radius: readVariable(styles, '--dsw-alias-radius', DEFAULT_THEME.radius),
-    background: readVariable(styles, '--dsw-alias-bg-layer-1', DEFAULT_THEME.background),
-    foreground: readVariable(styles, '--dsw-alias-label-primary', DEFAULT_THEME.foreground),
-    popover: readVariable(styles, '--dsw-alias-bg-layer-1', DEFAULT_THEME.popover),
-    popoverForeground: readVariable(styles, '--dsw-alias-label-primary', DEFAULT_THEME.popoverForeground),
-    primary: readVariable(styles, '--dsw-alias-button-primary-fill', DEFAULT_THEME.primary),
+    radius: readVariable(styles, '--rlw-alias-radius', DEFAULT_THEME.radius),
+    background: readVariable(styles, '--rlw-alias-bg-layer-1', DEFAULT_THEME.background),
+    foreground: readVariable(styles, '--rlw-alias-label-primary', DEFAULT_THEME.foreground),
+    popover: readVariable(styles, '--rlw-alias-bg-layer-1', DEFAULT_THEME.popover),
+    popoverForeground: readVariable(styles, '--rlw-alias-label-primary', DEFAULT_THEME.popoverForeground),
+    primary: readVariable(styles, '--rlw-alias-button-primary-fill', DEFAULT_THEME.primary),
     primaryForeground: readVariable(
       styles,
-      '--dsw-alias-button-primary-label',
-      readVariable(styles, '--dsw-alias-label-primary-foreground', DEFAULT_THEME.primaryForeground),
+      '--rlw-alias-button-primary-label',
+      readVariable(styles, '--rlw-alias-label-primary-foreground', DEFAULT_THEME.primaryForeground),
     ),
-    muted: readVariable(styles, '--dsw-alias-interactive-bg-hover', DEFAULT_THEME.muted),
-    mutedForeground: readVariable(styles, '--dsw-alias-label-secondary', DEFAULT_THEME.mutedForeground),
-    accent: readVariable(styles, '--dsw-alias-interactive-bg-hover', DEFAULT_THEME.accent),
-    accentForeground: readVariable(styles, '--dsw-alias-label-primary', DEFAULT_THEME.accentForeground),
-    border: readVariable(styles, '--dsw-alias-border-l2', DEFAULT_THEME.border),
-    input: readVariable(styles, '--dsw-alias-border-l2', DEFAULT_THEME.input),
-    ring: readVariable(styles, '--dsw-alias-state-business-primary', DEFAULT_THEME.ring),
-    fontSans: readVariable(styles, '--dsw-font-family', styles.fontFamily || DEFAULT_THEME.fontSans),
-    fontMono: readVariable(styles, '--ds-font-family-code', DEFAULT_THEME.fontMono),
+    muted: readVariable(styles, '--rlw-alias-interactive-bg-hover', DEFAULT_THEME.muted),
+    mutedForeground: readVariable(styles, '--rlw-alias-label-secondary', DEFAULT_THEME.mutedForeground),
+    accent: readVariable(styles, '--rlw-alias-interactive-bg-hover', DEFAULT_THEME.accent),
+    accentForeground: readVariable(styles, '--rlw-alias-label-primary', DEFAULT_THEME.accentForeground),
+    border: readVariable(styles, '--rlw-alias-border-l2', DEFAULT_THEME.border),
+    input: readVariable(styles, '--rlw-alias-border-l2', DEFAULT_THEME.input),
+    ring: readVariable(styles, '--rlw-alias-state-business-primary', DEFAULT_THEME.ring),
+    fontSans: readVariable(styles, '--rlw-font-family', styles.fontFamily || DEFAULT_THEME.fontSans),
+    fontMono: readVariable(styles, '--rl-font-family-code', DEFAULT_THEME.fontMono),
   }
 }

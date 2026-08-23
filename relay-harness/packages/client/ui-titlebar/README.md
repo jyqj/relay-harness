@@ -1,4 +1,4 @@
-# @deepseek-ai/dsh-client-ui-titlebar
+# @relay-harness/rlh-client-ui-titlebar
 
 English | [中文](README.zh.md)
 

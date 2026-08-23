@@ -1,14 +1,14 @@
 /**
  * Service Definition for repository-owned issue automation policy.
- * @module @deepseek-ai/dsh-issue-workflow
+ * @module @relay-harness/rlh-issue-workflow
  */
 
-import { Context, Service } from '@deepseek-ai/cordis'
+import { Context, Service } from '@relay-harness/cordis'
 import type { IssueWorkflowSnapshot } from './types.ts'
 
 export type * from './types.ts'
 
-declare module '@deepseek-ai/cordis' {
+declare module '@relay-harness/cordis' {
   interface Context {
     issueWorkflow: IssueWorkflow
   }

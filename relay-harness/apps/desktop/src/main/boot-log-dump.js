@@ -23,13 +23,13 @@ function bootLogFilename(now = new Date()) {
     pad2(now.getMinutes()),
     pad2(now.getSeconds()),
   ].join('');
-  return `dshd-boot-${stamp}.log`;
+  return `rlhd-boot-${stamp}.log`;
 }
 
 function formatBootLogDump({ version, savedAt, snapshot = {}, logs = [] } = {}) {
   const failure = snapshot.failure || {};
   const lines = [
-    `Deepseek-Harness-Desktop ${dash(version).replace(/^-$/, '')}`.trimEnd(),
+    `Relay-Harness-Desktop ${dash(version).replace(/^-$/, '')}`.trimEnd(),
     `savedAt: ${dash(savedAt)}`,
     `state: ${dash(snapshot.state)}`,
     `error: ${dash(snapshot.error)}`,

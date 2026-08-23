@@ -3,8 +3,8 @@ import { fileBreadcrumbs } from '../src/client/filePath.ts'
 
 describe('fileBreadcrumbs', () => {
   it('builds project, directory, and file crumbs', () => {
-    expect(fileBreadcrumbs('dshd', 'apps/web/src/main.tsx')).toEqual([
-      { label: 'dshd', path: '', kind: 'project' },
+    expect(fileBreadcrumbs('rlhd', 'apps/web/src/main.tsx')).toEqual([
+      { label: 'rlhd', path: '', kind: 'project' },
       { label: 'apps', path: 'apps', kind: 'directory' },
       { label: 'web', path: 'apps/web', kind: 'directory' },
       { label: 'src', path: 'apps/web/src', kind: 'directory' },

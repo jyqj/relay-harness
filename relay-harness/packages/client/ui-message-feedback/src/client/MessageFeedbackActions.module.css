@@ -15,13 +15,13 @@
   border: none;
   border-radius: 28px;
   background: transparent;
-  color: var(--dsw-alias-label-tertiary);
+  color: var(--rlw-alias-label-tertiary);
   cursor: pointer;
 }
 
 .action:hover {
-  background: var(--dsw-alias-interactive-bg-hover);
-  color: var(--dsw-alias-label-secondary);
+  background: var(--rlw-alias-interactive-bg-hover);
+  color: var(--rlw-alias-label-secondary);
 }
 
 .action:disabled {
@@ -32,7 +32,7 @@
 /* A recorded rating stays legible without hover, so the signal survives a
    pointer leaving the row. */
 .action[data-active] {
-  color: var(--dsw-alias-label-primary);
+  color: var(--rlw-alias-label-primary);
 }
 
 .noteOpen {
@@ -42,7 +42,7 @@
   border: none;
   border-radius: 14px;
   background: transparent;
-  color: var(--dsw-alias-label-tertiary);
+  color: var(--rlw-alias-label-tertiary);
   font-size: 13px;
   line-height: 28px;
   white-space: nowrap;
@@ -52,8 +52,8 @@
 
 .noteOpen:hover,
 .noteOpen[aria-expanded='true'] {
-  background: var(--dsw-alias-interactive-bg-hover);
-  color: var(--dsw-alias-label-secondary);
+  background: var(--rlw-alias-interactive-bg-hover);
+  color: var(--rlw-alias-label-secondary);
 }
 
 /* Portal surface: fixed in the viewport, left/top supplied inline from the
@@ -78,22 +78,22 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  border: 1px solid var(--dsw-alias-border-inverted);
+  border: 1px solid var(--rlw-alias-border-inverted);
   border-radius: 12px;
-  background: var(--dsw-specific-menu);
-  box-shadow: var(--dsw-shadow-lv3);
-  --dsh-scrollbar-thumb: var(--dsw-alias-scrollbar-bg-l2);
-  --dsh-scrollbar-thumb-hover: var(--dsw-alias-scrollbar-hover-l2);
+  background: var(--rlw-specific-menu);
+  box-shadow: var(--rlw-shadow-lv3);
+  --rlh-scrollbar-thumb: var(--rlw-alias-scrollbar-bg-l2);
+  --rlh-scrollbar-thumb-hover: var(--rlw-alias-scrollbar-hover-l2);
 }
 
 .noteInput {
   width: 100%;
   box-sizing: border-box;
   padding: 6px 8px;
-  border: 1px solid var(--dsw-alias-border-l2);
+  border: 1px solid var(--rlw-alias-border-l2);
   border-radius: 8px;
-  background: var(--dsw-alias-bg-layer-1);
-  color: var(--dsw-alias-label-primary);
+  background: var(--rlw-alias-bg-layer-1);
+  color: var(--rlw-alias-label-primary);
   font: inherit;
   font-size: 13px;
   resize: vertical;
@@ -116,12 +116,12 @@
 }
 
 .noteSave {
-  background: var(--dsw-alias-button-primary-fill);
-  color: var(--dsw-alias-label-primary-foreground);
+  background: var(--rlw-alias-button-primary-fill);
+  color: var(--rlw-alias-label-primary-foreground);
 }
 
 .noteSave:hover:not(:disabled) {
-  background: var(--dsw-alias-button-primary-hover);
+  background: var(--rlw-alias-button-primary-hover);
 }
 
 .noteSave:disabled {
@@ -131,17 +131,17 @@
 
 .noteCancel {
   background: transparent;
-  color: var(--dsw-alias-label-tertiary);
+  color: var(--rlw-alias-label-tertiary);
 }
 
 .noteCancel:hover {
-  background: var(--dsw-alias-interactive-bg-hover);
-  color: var(--dsw-alias-label-secondary);
+  background: var(--rlw-alias-interactive-bg-hover);
+  color: var(--rlw-alias-label-secondary);
 }
 
 .failure {
   padding-left: 4px;
-  color: var(--dsw-alias-label-tertiary);
+  color: var(--rlw-alias-label-tertiary);
   font-size: 13px;
   line-height: 20px;
 }

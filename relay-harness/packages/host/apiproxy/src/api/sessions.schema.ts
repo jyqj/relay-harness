@@ -6,8 +6,8 @@
  */
 
 import { z } from 'zod'
-import type { SessionEvent, SessionId } from '@deepseek-ai/dsh-session/types'
-import type { MessageId } from '@deepseek-ai/dsh-llm/brand'
+import type { SessionEvent, SessionId } from '@relay-harness/rlh-session/types'
+import type { MessageId } from '@relay-harness/rlh-llm/brand'
 import type { RequestPayload, ResponseValue } from './rpc-map.ts'
 import type { Wire } from './rpc.schema.ts'
 import type {
@@ -15,7 +15,7 @@ import type {
   ModelReasoningEffort, ModelSelection, SessionListMetadata, SessionProjectionsBlock, SessionSearchItem, SessionSummary,
 } from './sessions.ts'
 import type { ToolEventView } from './events.ts'
-import type { AttachmentIdType, ImageAttachmentLimits, ImageAttachmentRef } from '@deepseek-ai/dsh-attachment'
+import type { AttachmentIdType, ImageAttachmentLimits, ImageAttachmentRef } from '@relay-harness/rlh-attachment'
 import type { WorkspaceId } from './workspace.ts'
 import {
   SESSION_SEARCH_RESULT_LIMIT,
@@ -56,7 +56,7 @@ export const sessionSummarySchema = z.object({
   blank: z.boolean(),
   parentSessionId: sessionIdSchema.optional(),
   seedLength: z.number().int().nonnegative().optional(),
-  origin: z.enum(['subagent', 'dshbot']).optional(),
+  origin: z.enum(['subagent', 'rlhbot']).optional(),
   cwd: z.string().optional(),
   agentPreset: z.string().optional(),
   projections: z.lazy(() => sessionProjectionsBlockSchema).optional(),
@@ -105,7 +105,7 @@ export const sessionCreateRequestSchema = z.object({
   cwd: z.string().optional(),
   sessionId: sessionIdSchema.optional(),
   agentPreset: z.string().optional(),
-  origin: z.literal('dshbot').optional(),
+  origin: z.literal('rlhbot').optional(),
 }).refine(
   payload => payload.workspaceId === undefined || payload.cwd === undefined,
   { message: 'session.create accepts workspaceId or cwd, not both' },
@@ -205,7 +205,7 @@ export const modelCatalogFailureSchema = z.object({
  * ToolEventView passthrough: lock only the `for` discriminant and the presence
  * of a card-tagged `view` object. The view interior is a host-computed product
  * the client reads without echoing back; deep-validating it would hand-copy
- * the dsh-tools vocabulary into this schema and drift with it.
+ * the rlh-tools vocabulary into this schema and drift with it.
  */
 export const toolEventViewSchema = z.discriminatedUnion('for', [
   z.object({ for: z.literal('call'), view: z.looseObject({ card: z.string() }) }),

@@ -6,15 +6,15 @@ Status: implemented
 
 ## Problem
 
-DeepSeek Harness 已能运行持久 Session、Subagent、Job、Schedule 和可恢复 Workflow Script，但没有组件负责持续读取 Tracker、claim 可执行工作、准备隔离的 Issue 目录、对账 Tracker 变化，或向 Operator 暴露 retry 与 blocked 状态。把该策略放进 `agent-loop`、Schedule、Workflow 或现有 Workspace Registry，会让模型运行时组件拥有外部业务队列，并重复已有状态 Owner。
+Relay Harness 已能运行持久 Session、Subagent、Job、Schedule 和可恢复 Workflow Script，但没有组件负责持续读取 Tracker、claim 可执行工作、准备隔离的 Issue 目录、对账 Tracker 变化，或向 Operator 暴露 retry 与 blocked 状态。把该策略放进 `agent-loop`、Schedule、Workflow 或现有 Workspace Registry，会让模型运行时组件拥有外部业务队列，并重复已有状态 Owner。
 
 ## Decision
 
-Issue Automation 是由独立 capability seam 组成的 opt-in layer。`@deepseek-ai/dsh-tracker` 注册 effect-scoped Provider，并为每次运行捕获一个 Provider／配置／工具／凭据环境变量别名 binding。`@deepseek-ai/dsh-issue-workflow-file` 读取仓库 Markdown／YAML 策略，拒绝无效启动文档，并在 reload 失败后保留最后有效版本。`@deepseek-ai/dsh-issue-workspace-local` 拥有确定性路径、canonical containment、设置回滚、有界 hook 和终态删除，不改变 `WorkspaceRegistry` 现有 Session 分组契约。
+Issue Automation 是由独立 capability seam 组成的 opt-in layer。`@relay-harness/rlh-tracker` 注册 effect-scoped Provider，并为每次运行捕获一个 Provider／配置／工具／凭据环境变量别名 binding。`@relay-harness/rlh-issue-workflow-file` 读取仓库 Markdown／YAML 策略，拒绝无效启动文档，并在 reload 失败后保留最后有效版本。`@relay-harness/rlh-issue-workspace-local` 拥有确定性路径、canonical containment、设置回滚、有界 hook 和终态删除，不改变 `WorkspaceRegistry` 现有 Session 分组契约。
 
-`@deepseek-ai/dsh-issue-runner-agent` 在准备好的目录创建一个原生 Agent Session，在发布前安装捕获的 Tracker 工具；只要按精确 ID refresh 后 Issue 仍可执行，就在有界 continuation 轮次中复用同一 Session。`@deepseek-ai/dsh-issue-orchestrator` 是唯一调度写者。Storage-domain row 会在 Workspace 或 Agent 副作用前提交 `claimed`，并物化 `running`、`retrying` 或 `blocked`；启动时把中断的 claimed／running row 转成即时持久重试。每次 poll 都先对账 running 与 blocked Issue，再 dispatch 候选项；按精确 ID 重验每个候选项；执行全局与 per-state capacity；检测事件静默；并应用有界指数退避。完成后仍可执行的再派发会递增 attempt 并使用指数 continuation 退避，在配置上限处停在 blocked 状态；启动 Workspace 清理只触碰有持久 claim 记录的 Issue。Live handle 与 timer 是持久 row 的投影，而不是恢复事实。
+`@relay-harness/rlh-issue-runner-agent` 在准备好的目录创建一个原生 Agent Session，在发布前安装捕获的 Tracker 工具；只要按精确 ID refresh 后 Issue 仍可执行，就在有界 continuation 轮次中复用同一 Session。`@relay-harness/rlh-issue-orchestrator` 是唯一调度写者。Storage-domain row 会在 Workspace 或 Agent 副作用前提交 `claimed`，并物化 `running`、`retrying` 或 `blocked`；启动时把中断的 claimed／running row 转成即时持久重试。每次 poll 都先对账 running 与 blocked Issue，再 dispatch 候选项；按精确 ID 重验每个候选项；执行全局与 per-state capacity；检测事件静默；并应用有界指数退避。完成后仍可执行的再派发会递增 attempt 并使用指数 continuation 退避，在配置上限处停在 blocked 状态；启动 Workspace 清理只触碰有持久 claim 记录的 Issue。Live handle 与 timer 是持久 row 的投影，而不是恢复事实。
 
-首个完整 vertical slice 是 Linear。Provider 分页读取项目范围候选项、批量读取对账项、规范化路由事实，并暴露 session-bound、Host 执行的 `linear_graphql` 工具，而不把 token 交给 Agent。生成的 Typert contract 暴露 snapshot、refresh、retry 和 release。浏览器插件通过原生 titlebar／overlay contribution 呈现 running、retrying、blocked 条目。只有部署在 Web bundle 后加入 `@deepseek-ai/dsh-issue-automation` 时，才会组合完整 layer。
+首个完整 vertical slice 是 Linear。Provider 分页读取项目范围候选项、批量读取对账项、规范化路由事实，并暴露 session-bound、Host 执行的 `linear_graphql` 工具，而不把 token 交给 Agent。生成的 Typert contract 暴露 snapshot、refresh、retry 和 release。浏览器插件通过原生 titlebar／overlay contribution 呈现 running、retrying、blocked 条目。只有部署在 Web bundle 后加入 `@relay-harness/rlh-issue-automation` 时，才会组合完整 layer。
 
 ## Durable and security rules
 
@@ -28,7 +28,7 @@ Issue 身份由 Provider 拥有并带 brand。记录保留接纳该 attempt 的 
 
 **把 WorkspaceRegistry 复用为目录 Provisioner。** 不予采用，因为该服务持久分组既有 canonical 目录与 Session，并有意不创建、填充、重置或删除仓库内容。
 
-**移植 Symphony 的 Elixir 服务或 App Server Client。** 不予采用，因为 Cordis effect、DSH Agent／Session、Tool Runtime、Subprocess Tree、Storage Domain、生成 Remote 和原生 Client Slot 已拥有这些机制。只改造行为与 invariant；Runtime 不引入 Elixir 源码或独立传输。
+**移植 Symphony 的 Elixir 服务或 App Server Client。** 不予采用，因为 Cordis effect、RLH Agent／Session、Tool Runtime、Subprocess Tree、Storage Domain、生成 Remote 和原生 Client Slot 已拥有这些机制。只改造行为与 invariant；Runtime 不引入 Elixir 源码或独立传输。
 
 **把 claimed、retry、blocked 状态留在内存。** 不予采用，因为 Host 重启会静默释放工作并丢失 Operator intervention。持久 row 可显式恢复，而不会假装进程或模型 stream 幸存。
 

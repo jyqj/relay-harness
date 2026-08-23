@@ -6,7 +6,7 @@ English | [中文](2026-08-16-titlebar-branch-picker.zh.md)
 
 ## Problem
 
-The titlebar Git cluster could commit, push, and open change requests, but switching or creating a branch required the terminal. The product needed a branch selector (search, inline create, remote dedupe) that uses this design system: `ui-primitives` Menu, `--dsw-alias-*` tokens, and no second state stack.
+The titlebar Git cluster could commit, push, and open change requests, but switching or creating a branch required the terminal. The product needed a branch selector (search, inline create, remote dedupe) that uses this design system: `ui-primitives` Menu, `--rlw-alias-*` tokens, and no second state stack.
 
 ## Decision
 

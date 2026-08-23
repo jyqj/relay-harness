@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   resolveTitlebarDensity, titlebarConversationReserve,
   TITLEBAR_DENSITY_COMPACT, TITLEBAR_DENSITY_COZY,
-} from '@deepseek-ai/dsh-client-ui-layout/src/client/titlebar-density.ts'
+} from '@relay-harness/rlh-client-ui-layout/src/client/titlebar-density.ts'
 
 describe('resolveTitlebarDensity', () => {
   it('stays full when the cluster is not over the conversation column', () => {

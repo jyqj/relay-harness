@@ -13,8 +13,8 @@ import type { Browser, Page, Response } from 'playwright'
 import { chromium } from 'playwright'
 import { strFromU8, unzipSync } from 'fflate'
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, onTestFailed, vi } from 'vitest'
-import { parseSessionLog } from '@deepseek-ai/dsh-llm-replay'
-import type { SessionEvent } from '@deepseek-ai/dsh-session'
+import { parseSessionLog } from '@relay-harness/rlh-llm-replay'
+import type { SessionEvent } from '@relay-harness/rlh-session'
 import {
   assertFixtureInventory, captureStableAria, compareOrRefreshGolden, fixtureUserPrompts,
   launchWebScaffold, recordFixture, seedSession, watchConsole, webSnapshotMode, type WebScaffold,
@@ -319,7 +319,7 @@ describe('web e2e: navigation & panes over a rich seeded session', () => {
     const response = await responsePromise
     expect(response.status()).toBe(200)
     const download = await downloadPromise
-    expect(download.suggestedFilename()).toMatch(/^dsh-session-.+\.zip$/)
+    expect(download.suggestedFilename()).toMatch(/^rlh-session-.+\.zip$/)
     const dialog = page.getByRole('dialog', { name: 'Session download started' })
     await dialog.waitFor({ timeout: 30_000 })
     // The real host streamed the ZIP; its root entry is the persisted log
@@ -467,13 +467,13 @@ describe('web e2e: navigation & panes over a rich seeded session', () => {
     })
     expect(layout).toEqual({ whiteSpace: 'pre', overflowX: 'auto', wrapped: false, scrollsSideways: true })
     // The run-state dot's color is the whole point of it and is the one thing
-    // jsdom cannot report: --dsw-* tokens resolve only against the real theme
+    // jsdom cannot report: --rlw-* tokens resolve only against the real theme
     // stylesheet. This command settled cleanly, so the dot must be the green
     // success token — a red one here would read as a failed command.
     const dot = await card.locator('[class*="_runState_"][data-state]').first().evaluate((node) => {
       // The token lives on body, so the probe must sit in the same cascade.
       const probe = document.createElement('span')
-      probe.style.color = 'var(--dsw-alias-state-success-primary)'
+      probe.style.color = 'var(--rlw-alias-state-success-primary)'
       document.body.appendChild(probe)
       const success = getComputedStyle(probe).color
       probe.remove()

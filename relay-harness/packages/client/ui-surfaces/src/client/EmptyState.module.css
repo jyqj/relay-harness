@@ -22,14 +22,14 @@
   font-size: 14px;
   line-height: 22px;
   font-weight: 500;
-  color: var(--dsw-alias-label-primary);
+  color: var(--rlw-alias-label-primary);
 }
 
 .subtitle {
   margin: 4px 0 0;
   font-size: 12px;
   line-height: 18px;
-  color: var(--dsw-alias-label-tertiary);
+  color: var(--rlw-alias-label-tertiary);
 }
 
 .grid {
@@ -46,8 +46,8 @@
   padding: 16px;
   border: none;
   border-radius: 12px;
-  background: var(--dsw-alias-bg-layer-2);
-  color: var(--dsw-alias-label-primary);
+  background: var(--rlw-alias-bg-layer-2);
+  color: var(--rlw-alias-label-primary);
   text-align: left;
   cursor: pointer;
 }
@@ -62,7 +62,7 @@
 }
 
 .card:hover {
-  background: var(--dsw-alias-interactive-bg-hover);
+  background: var(--rlw-alias-interactive-bg-hover);
 }
 
 .card:disabled,
@@ -73,12 +73,12 @@
 
 .card:disabled:hover,
 .disabled:hover {
-  background: var(--dsw-alias-bg-layer-2);
+  background: var(--rlw-alias-bg-layer-2);
 }
 
 .icon {
   margin-bottom: 12px;
-  color: var(--dsw-alias-label-secondary);
+  color: var(--rlw-alias-label-secondary);
 }
 
 .cardTitle {
@@ -91,5 +91,5 @@
   margin-top: 4px;
   font-size: 12px;
   line-height: 18px;
-  color: var(--dsw-alias-label-tertiary);
+  color: var(--rlw-alias-label-tertiary);
 }

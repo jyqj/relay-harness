@@ -1,8 +1,8 @@
-# @deepseek-ai/dsh-workspace
+# @relay-harness/rlh-workspace
 
 [English](README.md) | 中文
 
-DeepSeek Harness 的 Workspace 实体注册表（`ctx.workspaceRegistry`）：通过领域数据形式存储持久 workspace 记录、稳定 workspace 顺序和按新到旧排列的候选会话索引。消费方看到 `Workspace` 接口；实体实现保持包私有。
+Relay Harness 的 Workspace 实体注册表（`ctx.workspaceRegistry`）：通过领域数据形式存储持久 workspace 记录、稳定 workspace 顺序和按新到旧排列的候选会话索引。消费方看到 `Workspace` 接口；实体实现保持包私有。
 
 实体／存储理由见[领域 Agent Note](../../../.agents/notes/proposed/architecture/2026-07-24-domain-kv-storage-and-workspace.md)；仅使用头部的引导初始化和 GUI 排序见 [Workspace UI 产品流 Agent Note](../../../.agents/notes/implemented/feature/2026-07-25-workspace-ui-product-flow.md)。
 
@@ -17,7 +17,7 @@ DeepSeek Harness 的 Workspace 实体注册表（`ctx.workspaceRegistry`）：�
 - `ctx.workspaceRegistry.archiveSession(id)`/`archivedSessionIds`：覆盖在 workspace 记账之上的注册表级全局归档集合：被归档的会话从各分组视图中消失，但其会话日志和 `sessionIds` 席位保持不变，未来取消归档时可恢复原位置。归档接受任何实时或已持久化的会话（无论已记账还是 Ungrouped），对已归档的 id 直接完成而不写入，并拒绝未知 id。在该字段出现之前写入的状态解析为一个空集合。
 - `Workspace.sessionIds`：按持久候选顺序提供同步 id 加规范 cwd 成员投影。缺失头部、无效 cwd 值和不匹配情况都被过滤；下一次 workspace 变更会剪除它们。如果同一存储介质将一个会话索引到两个 workspace 下、用两条记录声明同一路径，或偏离持久 workspace 顺序，启动会被拒绝。
 - `Workspace.status()`：未缓存的目录检查，返回 `'ok' | 'missing-dir'`；目录缺失绝不会改动记录。
-- `Workspace.checkpoint(paths)`：把显式选中的 workspace-relative 普通文件与确认缺失状态快照到 owner-only、gitignored 的 `.dsh/rewind-checkpoints` storage。路径会排序并去重；escape、symlink、目录、超过 4096 个路径和超过 64 MiB 都会拒绝。
+- `Workspace.checkpoint(paths)`：把显式选中的 workspace-relative 普通文件与确认缺失状态快照到 owner-only、gitignored 的 `.rlh/rewind-checkpoints` storage。路径会排序并去重；escape、symlink、目录、超过 4096 个路径和超过 64 MiB 都会拒绝。
 - `Workspace.rewind(checkpointId)`：预检 checkpoint 的每个路径，以事务方式恢复 bytes／mode 或缺失状态，在后续写入失败时回滚已应用 sibling，然后移除所选 checkpoint 与更新的本地 checkpoint。它绝不会自动回滚对话历史。
 
 `storageDomain` 和 `sessionPersistence` 是启动必需依赖。任一依赖服务不可用时，插件保持待处理，且不能提交空的已初始化标记。首次成功启动时，注册表调用 `SessionPersistence.list()`，仅使用头部 `id`、`cwd` 和 `createdAt` 对有效历史目录分组并持久化初始顺序；它绝不读取事件正文。已初始化标记最后写入，因此重启后可安全复用引导初始化期间的部分写入。后续仅能通过 cwd 识别的会话仍属于 Ungrouped。

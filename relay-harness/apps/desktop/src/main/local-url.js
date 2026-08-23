@@ -1,3 +1,4 @@
+// @ts-check
 /** Shared loopback / local-app URL checks for privileged BrowserViews. */
 
 const fs = require('node:fs');

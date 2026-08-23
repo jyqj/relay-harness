@@ -12,7 +12,7 @@ The Web shell publishes shared platform modules to plugins that are loaded at ru
 
 `getStaticModules()` copies every shared module namespace through `preserveModuleExports()` before handing it to the runtime module loader. The observable namespace copy makes Vite retain all public members for every platform module, while the loader still receives ordinary module-like objects.
 
-The assembled Web test imports `@deepseek-ai/dsh-client-ui-primitives` through the runtime module system and verifies the Cloud Upload, Commit, and Pull Request icons are functions. The titlebar test also requires the Switch branch control to render and records its accessible output.
+The assembled Web test imports `@relay-harness/rlh-client-ui-primitives` through the runtime module system and verifies the Cloud Upload, Commit, and Pull Request icons are functions. The titlebar test also requires the Switch branch control to render and records its accessible output.
 
 ## Alternatives considered
 

@@ -1,10 +1,10 @@
 /**
  * Publish a local repo: gh repo create, or add a remote URL and push.
- * @module @deepseek-ai/dsh-client-ui-git/client/PublishDialog
+ * @module @relay-harness/rlh-client-ui-git/client/PublishDialog
  */
 
-import { Button, Input, Modal } from '@deepseek-ai/dsh-client-ui-primitives'
-import type { PropsLocale } from '@deepseek-ai/dsh-client-ui-slots'
+import { Button, Input, Modal } from '@relay-harness/rlh-client-ui-primitives'
+import type { PropsLocale } from '@relay-harness/rlh-client-ui-slots'
 import type { NS } from './locales.ts'
 import css from './PublishDialog.module.css'
 

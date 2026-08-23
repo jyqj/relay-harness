@@ -1,4 +1,4 @@
-# @deepseek-ai/dsh-client-ui-message-edit
+# @relay-harness/rlh-client-ui-message-edit
 
 English | [中文](README.zh.md)
 

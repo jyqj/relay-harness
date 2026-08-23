@@ -1,10 +1,10 @@
 /**
  * Parse, validate, merge, and serialize the managed MCP server document.
- * @module @deepseek-ai/dsh-mcp-servers-file/document
+ * @module @relay-harness/rlh-mcp-servers-file/document
  */
 
 import { parse as parseYaml, stringify as stringifyYaml } from 'yaml'
-import type { Config as McpClientConfig } from '@deepseek-ai/dsh-mcp-client'
+import type { Config as McpClientConfig } from '@relay-harness/rlh-mcp-client'
 import type {
   McpHttpServerRecord,
   McpReconnectRecord,

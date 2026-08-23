@@ -1,4 +1,4 @@
-# @deepseek-ai/dsh-session-title
+# @relay-harness/rlh-session-title
 
 English | [中文](README.zh.md)
 

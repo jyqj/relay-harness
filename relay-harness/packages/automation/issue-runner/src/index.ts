@@ -1,14 +1,14 @@
 /**
  * Service Definition for one prepared tracker-issue execution attempt.
- * @module @deepseek-ai/dsh-issue-runner
+ * @module @relay-harness/rlh-issue-runner
  */
 
-import { Context, Service } from '@deepseek-ai/cordis'
+import { Context, Service } from '@relay-harness/cordis'
 import type { IssueRun, IssueRunRequest } from './types.ts'
 
 export type * from './types.ts'
 
-declare module '@deepseek-ai/cordis' {
+declare module '@relay-harness/cordis' {
   interface Context {
     issueRunner: IssueRunner
   }

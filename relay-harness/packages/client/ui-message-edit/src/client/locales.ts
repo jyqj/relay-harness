@@ -14,7 +14,7 @@ export const zh = {
 /** The messageEdit namespace key union. */
 export type MessageEditKey = keyof typeof zh
 
-declare module '@deepseek-ai/dsh-client-ui-slots' {
+declare module '@relay-harness/rlh-client-ui-slots' {
   interface LocaleNamespaceMap {
     /** The latest-user-message edit control's copy. */
     messageEdit: MessageEditKey

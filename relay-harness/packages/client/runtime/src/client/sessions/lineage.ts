@@ -2,8 +2,8 @@
 // The input order is authoritative; lineage only makes each child adjacent to its parent.
 // Orphaned lineage degrades to root level; cycles fail soft and emit as roots.
 
-import type { SessionId, SessionSummary } from '@deepseek-ai/dsh-api-remotes/client'
-import type { SessionProjectionMap } from '@deepseek-ai/dsh-session-projection/types'
+import type { SessionId, SessionSummary } from '@relay-harness/rlh-api-remotes/client'
+import type { SessionProjectionMap } from '@relay-harness/rlh-session-projection/types'
 import type { PendingInteractionStatus } from './pending.ts'
 
 /** Host list summary enriched with the latest mux-projected durable title. */
@@ -25,7 +25,7 @@ export interface SessionListEntry {
   /** Number of source events inherited by a fork child. */
   seedLength?: number
   /** Coarse durable origin for navigation filtering; not a continuation capability. */
-  origin?: 'subagent' | 'dshbot'
+  origin?: 'subagent' | 'rlhbot'
   cwd?: string
   /** Agent preset the session's agent was composed from (summary passthrough). */
   agentPreset?: string

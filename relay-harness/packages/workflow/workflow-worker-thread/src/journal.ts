@@ -1,7 +1,7 @@
 /**
  * Bounded JSONL journal for deterministic workflow host-call replay.
  *
- * @module @deepseek-ai/dsh-workflow-worker-thread
+ * @module @relay-harness/rlh-workflow-worker-thread
  */
 
 import { createHash } from 'node:crypto'
@@ -18,9 +18,9 @@ import {
   writeSync,
 } from 'node:fs'
 import { dirname } from 'node:path'
-import { snapshotJsonValue } from '@deepseek-ai/dsh-session'
-import type { JsonValue } from '@deepseek-ai/dsh-session'
-import type { WorkflowRunId } from '@deepseek-ai/dsh-workflow'
+import { snapshotJsonValue } from '@relay-harness/rlh-session'
+import type { JsonValue } from '@relay-harness/rlh-session'
+import type { WorkflowRunId } from '@relay-harness/rlh-workflow'
 import type { ChildResult, ChildStartRequest } from './types.ts'
 
 /** On-disk journal format version. */

@@ -8,11 +8,11 @@ English | [中文](2026-08-17-titlebar-crowding-density.zh.md)
 
 ## Problem
 
-Session log, Git, and the panel toggles sit in the shared titlebar row as `#dshd-shell-titlebar-trailing`, `justify-self: end` over conversation and details. The conversation header (title, `header.actions` preset label) occupies the same row with only 28px right padding. A window wider than 1024px still squeezes the center column when the sidebar and surfaces are open, so `data-compact-header` stays off and the cluster paints over 「标准模式」. Hiding the whole cluster at that width would also hide the surfaces toggle that recovers space.
+Session log, Git, and the panel toggles sit in the shared titlebar row as `#rlhd-shell-titlebar-trailing`, `justify-self: end` over conversation and details. The conversation header (title, `header.actions` preset label) occupies the same row with only 28px right padding. A window wider than 1024px still squeezes the center column when the sidebar and surfaces are open, so `data-compact-header` stays off and the cluster paints over 「标准模式」. Hiding the whole cluster at that width would also hide the surfaces toggle that recovers space.
 
 ## Decision
 
-AppFrame measures `#dshd-shell-titlebar-trailing` and publishes `--dshd-titlebar-conversation-reserve` as `max(0, trailingWidth - detailsWidth)` while the cluster is visible (not phone, not compact-header). The conversation header pads `max(28px, reserve + 8px)` so the title ellipsizes instead of colliding.
+AppFrame measures `#rlhd-shell-titlebar-trailing` and publishes `--rlhd-titlebar-conversation-reserve` as `max(0, trailingWidth - detailsWidth)` while the cluster is visible (not phone, not compact-header). The conversation header pads `max(28px, reserve + 8px)` so the title ellipsizes instead of colliding.
 
 Label density keys off the solved conversation column width, not the cluster's current width, so shrinking a label cannot oscillate the density. `full` at center ≥ 720px. `cozy` below 720px: Session log is icon-only (aria-label kept), `header.actions` hides. `compact` below 560px: the branch trigger and Initialize Git also drop their text. Commit and the panel toggles stay labeled when those buttons are drawn. Density is `full` whenever details is open or the cluster is hidden. AppFrame writes `data-titlebar-density` and the trailing owner `density` field. Crowding density never removes Git or the panel toggles; those buttons leave the cluster only when their Interface Settings switches are off.
 
@@ -32,7 +32,7 @@ Crowding density never removes Git or the panel toggles from a squeezed desktop 
 
 ## Testing
 
-`titlebar-density.ts` pins the two functions. AppFrame pins reserve, details-open full density, cozy when surfaces pins center at 640px, and compact-header reserve 0. Session log drops the visible label at cozy. BranchMenu drops the ref name at compact. Conversation header CSS pins the padding formula, the header-actions hide, control no-drag, and a blank caption that still occupies row 1. AppFrame trailing CSS pins the 8px cluster gap, a max-content `no-drag` hole, the `--dshd-wco-controls` inset, the single caption drag band, and the phone-menu `no-drag`. `apps/web/tests/desktop-chrome.e2e.ts` rejects horizontally overlapping Session log / Git / panel-toggle boxes and opens the branch menu while surfaces is open. Desktop `src/main/harness-chrome-inject.test.js` pins a window-control-only inject. Source and packaged Electron smoke click those trailing controls at real coordinates after surfaces opens.
+`titlebar-density.ts` pins the two functions. AppFrame pins reserve, details-open full density, cozy when surfaces pins center at 640px, and compact-header reserve 0. Session log drops the visible label at cozy. BranchMenu drops the ref name at compact. Conversation header CSS pins the padding formula, the header-actions hide, control no-drag, and a blank caption that still occupies row 1. AppFrame trailing CSS pins the 8px cluster gap, a max-content `no-drag` hole, the `--rlhd-wco-controls` inset, the single caption drag band, and the phone-menu `no-drag`. `apps/web/tests/desktop-chrome.e2e.ts` rejects horizontally overlapping Session log / Git / panel-toggle boxes and opens the branch menu while surfaces is open. Desktop `src/main/harness-chrome-inject.test.js` pins a window-control-only inject. Source and packaged Electron smoke click those trailing controls at real coordinates after surfaces opens.
 
 ## Related
 

@@ -1,3 +1,4 @@
+// @ts-check
 'use strict';
 
 const PLUGIN_BOOT_FAILED = 'PLUGIN_BOOT_FAILED';

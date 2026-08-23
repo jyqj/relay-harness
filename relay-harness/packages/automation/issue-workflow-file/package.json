@@ -1,9 +1,9 @@
 {
-  "name": "@deepseek-ai/dsh-issue-workflow-file",
-  "description": "Markdown/YAML last-known-good issue workflow provider for DeepSeek Harness",
+  "name": "@relay-harness/rlh-issue-workflow-file",
+  "description": "Markdown/YAML last-known-good issue workflow provider for Relay Harness",
   "version": "0.1.0-rc.8",
   "publishConfig": { "access": "public" },
-  "repository": { "type": "git", "url": "git+https://github.com/deepseek-ai/deepseek-harness.git", "directory": "packages/automation/issue-workflow-file" },
+  "repository": { "type": "git", "url": "git+https://github.com/jyqj/relay-harness.git", "directory": "packages/automation/issue-workflow-file" },
   "type": "module",
   "main": "lib/index.js",
   "types": "lib/types/index.d.ts",
@@ -16,20 +16,20 @@
   "files": ["lib/index.js", "lib/invariant.js", "lib/types/**/*.d.ts"],
   "license": "MIT",
   "peerDependencies": {
-    "@deepseek-ai/dsh-invariants": "workspace:^",
-    "@deepseek-ai/dsh-issue-workflow": "workspace:^",
-    "@deepseek-ai/dsh-llm": "workspace:^",
-    "@deepseek-ai/cordis": "workspace:^",
-    "@deepseek-ai/schemastery": "workspace:^"
+    "@relay-harness/rlh-invariants": "workspace:^",
+    "@relay-harness/rlh-issue-workflow": "workspace:^",
+    "@relay-harness/rlh-llm": "workspace:^",
+    "@relay-harness/cordis": "workspace:^",
+    "@relay-harness/schemastery": "workspace:^"
   },
   "dependencies": {
-    "@deepseek-ai/schemastery": "workspace:^",
+    "@relay-harness/schemastery": "workspace:^",
     "yaml": "^2.8.2"
   },
   "devDependencies": {
-    "@deepseek-ai/dsh-invariants": "workspace:^",
-    "@deepseek-ai/dsh-issue-workflow": "workspace:^",
-    "@deepseek-ai/dsh-llm": "workspace:^",
-    "@deepseek-ai/cordis": "workspace:^"
+    "@relay-harness/rlh-invariants": "workspace:^",
+    "@relay-harness/rlh-issue-workflow": "workspace:^",
+    "@relay-harness/rlh-llm": "workspace:^",
+    "@relay-harness/cordis": "workspace:^"
   }
 }

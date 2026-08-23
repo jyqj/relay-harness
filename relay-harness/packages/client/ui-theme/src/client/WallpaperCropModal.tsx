@@ -2,7 +2,7 @@
  * Crop a wallpaper to the current window aspect before persisting it.
  */
 import { useEffect, useRef, useState } from 'react'
-import { Button, Modal } from '@deepseek-ai/dsh-client-ui-primitives'
+import { Button, Modal } from '@relay-harness/rlh-client-ui-primitives'
 import { cropWallpaper, wallpaperCropRect } from '../wallpaper.ts'
 import type { ThemeKey } from './locales.ts'
 import { sliderFillStyle } from './slider.ts'

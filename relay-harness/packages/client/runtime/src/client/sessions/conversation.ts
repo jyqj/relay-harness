@@ -5,15 +5,15 @@
 // views. callId/approvalId stay plain string here (narrow to real brands when
 // convenient).
 
-import type { CommandId } from '@deepseek-ai/dsh-commands/brand'
-import type { MessageId } from '@deepseek-ai/dsh-llm/brand'
-import type { ContentBlock } from '@deepseek-ai/dsh-llm/types'
-import type { ImageAttachmentRef } from '@deepseek-ai/dsh-attachment'
-import type { LlmRetryEventData } from '@deepseek-ai/dsh-llm-retry/types'
-import type { TodoItem } from '@deepseek-ai/dsh-session/types'
+import type { CommandId } from '@relay-harness/rlh-commands/brand'
+import type { MessageId } from '@relay-harness/rlh-llm/brand'
+import type { ContentBlock } from '@relay-harness/rlh-llm/types'
+import type { ImageAttachmentRef } from '@relay-harness/rlh-attachment'
+import type { LlmRetryEventData } from '@relay-harness/rlh-llm-retry/types'
+import type { TodoItem } from '@relay-harness/rlh-session/types'
 import type {
   RpcError, SessionId, SubagentAddress, ToolCallView, ToolResultView,
-} from '@deepseek-ai/dsh-api-remotes/client'
+} from '@relay-harness/rlh-api-remotes/client'
 import type { PendingInteraction } from './pending.ts'
 import type { ContextProvenanceView, KnownContextForm } from './context-provenance.ts'
 import type {

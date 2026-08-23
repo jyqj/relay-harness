@@ -2,9 +2,9 @@ import { mkdir, mkdtemp, readFile, symlink, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { afterEach, describe, expect, it } from 'vitest'
-import { Context } from '@deepseek-ai/cordis'
-import LocalSubprocessRuntime from '@deepseek-ai/dsh-subprocess-local'
-import { TrackerIssueId, type TrackerIssue } from '@deepseek-ai/dsh-tracker'
+import { Context } from '@relay-harness/cordis'
+import LocalSubprocessRuntime from '@relay-harness/rlh-subprocess-local'
+import { TrackerIssueId, type TrackerIssue } from '@relay-harness/rlh-tracker'
 import LocalIssueWorkspaceProvisioner, { issueWorkspaceKey } from '../src/index.ts'
 
 const roots: string[] = []
@@ -46,12 +46,12 @@ describe('issueWorkspaceKey', () => {
 
 describe('LocalIssueWorkspaceProvisioner', () => {
   it('runs one-time setup, reuses the directory, and runs per-attempt hooks', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'dsh-issue-workspace-'))
+    const root = await mkdtemp(join(tmpdir(), 'rlh-issue-workspace-'))
     roots.push(root)
     const { ctx, subprocess } = await boot({
       root,
       afterCreate: 'printf setup > setup.txt',
-      beforeRun: 'printf "$DSH_ISSUE_IDENTIFIER" > before.txt',
+      beforeRun: 'printf "$RLH_ISSUE_IDENTIFIER" > before.txt',
       afterRun: 'printf after > after.txt',
       beforeRemove: 'printf remove > ../removed.txt',
     })
@@ -72,7 +72,7 @@ describe('LocalIssueWorkspaceProvisioner', () => {
   })
 
   it('removes a new partial workspace when after-create fails', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'dsh-issue-workspace-'))
+    const root = await mkdtemp(join(tmpdir(), 'rlh-issue-workspace-'))
     roots.push(root)
     const { ctx, subprocess } = await boot({ root, afterCreate: 'exit 7' })
     await expect(ctx.issueWorkspace.prepare(issue('ENG-7'))).rejects.toThrow(/exit 7/)
@@ -82,8 +82,8 @@ describe('LocalIssueWorkspaceProvisioner', () => {
   })
 
   it('rejects an existing symlink that escapes the configured root', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'dsh-issue-workspace-'))
-    const outside = await mkdtemp(join(tmpdir(), 'dsh-issue-outside-'))
+    const root = await mkdtemp(join(tmpdir(), 'rlh-issue-workspace-'))
+    const outside = await mkdtemp(join(tmpdir(), 'rlh-issue-outside-'))
     roots.push(root, outside)
     await writeFile(join(outside, 'sentinel'), 'keep')
     await symlink(outside, join(root, 'ENG-9'))
@@ -94,7 +94,7 @@ describe('LocalIssueWorkspaceProvisioner', () => {
   })
 
   it('locates without creation and rejects relative roots and destructive paths outside root', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'dsh-issue-workspace-'))
+    const root = await mkdtemp(join(tmpdir(), 'rlh-issue-workspace-'))
     roots.push(root)
     const ctx = new Context()
     expect(() => new LocalIssueWorkspaceProvisioner(ctx, { root: 'relative' })).toThrow(/absolute/)
@@ -121,7 +121,7 @@ describe('LocalIssueWorkspaceProvisioner', () => {
   })
 
   it('rejects a root resolving to a file and an existing non-directory issue path', async () => {
-    const base = await mkdtemp(join(tmpdir(), 'dsh-issue-workspace-'))
+    const base = await mkdtemp(join(tmpdir(), 'rlh-issue-workspace-'))
     roots.push(base)
     const file = join(base, 'root-file')
     const link = join(base, 'root-link')
@@ -140,7 +140,7 @@ describe('LocalIssueWorkspaceProvisioner', () => {
   })
 
   it('contains best-effort hook failures and times out a blocking hook', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'dsh-issue-workspace-'))
+    const root = await mkdtemp(join(tmpdir(), 'rlh-issue-workspace-'))
     roots.push(root)
     const { ctx, subprocess } = await boot({
       root,

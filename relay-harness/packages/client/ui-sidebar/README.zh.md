@@ -1,4 +1,4 @@
-# @deepseek-ai/dsh-client-ui-sidebar
+# @relay-harness/rlh-client-ui-sidebar
 
 [English](README.md) | 中文
 

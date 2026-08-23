@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-08-21-provider-scheduled-failure-recovery.md
-2026-08-21-provider-scheduled-failure-recovery.md: 3fc2e71ed178db023ef8cae446325c556321a7eb
-2026-08-21-provider-scheduled-failure-recovery.zh.md: 3dd90f160d797be90095c01cc3b37fc6579ab909
+2026-08-21-provider-scheduled-failure-recovery.md: 411602bc1de98cf896a892d068042c840051d972
+2026-08-21-provider-scheduled-failure-recovery.zh.md: 1652bc6e21405b3ac986e7385571a1991a02c74d

@@ -35,7 +35,7 @@ export function serializeComposerFileLink(path: string): string {
  * start in the workspace file tree so the composer can tell them apart from
  * OS file drags and plain text selections.
  */
-export const COMPOSER_MENTION_DRAG_TYPE = 'application/x-dshd-composer-mention'
+export const COMPOSER_MENTION_DRAG_TYPE = 'application/x-rlhd-composer-mention'
 
 export function composerMentionFromTreePath(treePath: string): string | null {
   const relativePath = treePath.replace(/\/+$/, '')

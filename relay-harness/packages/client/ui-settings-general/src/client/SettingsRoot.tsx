@@ -16,8 +16,8 @@ import {
   IconAgentPresetOutline16, IconCloseOutline16, IconDataOutline16,
   IconPersonalizationOutline16, IconSettingsOutline16,
   usePresence,
-} from '@deepseek-ai/dsh-client-ui-primitives'
-import type { PresenceState } from '@deepseek-ai/dsh-client-ui-primitives'
+} from '@relay-harness/rlh-client-ui-primitives'
+import type { PresenceState } from '@relay-harness/rlh-client-ui-primitives'
 import type { SettingsRootComponentProps, SettingsSectionRow } from './shell-contract.ts'
 import { UpdateAction } from './UpdateAction.tsx'
 import css from './SettingsRoot.module.css'
@@ -69,12 +69,12 @@ function SettingsPanel({ rows, renderSlot, activeId, motionState, open, onSelect
     <div
       className={css.overlay}
       role="presentation"
-      data-dsh-motion="overlay"
+      data-rlh-motion="overlay"
       data-state={motionState}
       aria-hidden={open ? undefined : true}
     >
-      <div className={css.mask} data-dsh-motion-part="mask" aria-hidden="true" onClick={onClose} />
-      <div className={css.panel} data-dsh-motion-part="panel" role="dialog" aria-modal="true" aria-labelledby={titleId}>
+      <div className={css.mask} data-rlh-motion-part="mask" aria-hidden="true" onClick={onClose} />
+      <div className={css.panel} data-rlh-motion-part="panel" role="dialog" aria-modal="true" aria-labelledby={titleId}>
         <nav className={css.nav}>
           <div className={css.navTitle} id={titleId}>{renderSlot('settings.header', {})}</div>
           <div className={css.navList}>
@@ -83,7 +83,7 @@ function SettingsPanel({ rows, renderSlot, activeId, motionState, open, onSelect
                 key={row.id}
                 type="button"
                 className={clsx(css.navCell, row.id === active && css.active)}
-                data-dsh-settings-section={row.id}
+                data-rlh-settings-section={row.id}
                 aria-current={row.id === active ? 'true' : undefined}
                 onClick={() => { onSelect(row.id) }}
               >
@@ -103,7 +103,7 @@ function SettingsPanel({ rows, renderSlot, activeId, motionState, open, onSelect
           </div>
           <div className={css.options}>
             {active !== undefined && (
-              <div key={active} data-dsh-motion="swap">
+              <div key={active} data-rlh-motion="swap">
                 {renderSlot('settings.section', { close: onClose }, { only: active })}
               </div>
             )}
@@ -163,7 +163,7 @@ export function SettingsRoot(props: SettingsRootComponentProps) {
         <button
           type="button"
           className={clsx(css.trigger, !wide && css.rail)}
-          data-dsh-settings-trigger
+          data-rlh-settings-trigger
           aria-haspopup="dialog"
           aria-expanded={open}
           onClick={() => { setOpen(true) }}

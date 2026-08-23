@@ -1,4 +1,4 @@
-# @deepseek-ai/dsh-client-ui-session-tree
+# @relay-harness/rlh-client-ui-session-tree
 
 English | [中文](README.zh.md)
 
@@ -20,4 +20,4 @@ Opening, filtering, labeling, and arranging the Tree do not affect provider requ
 
 - Layout and labels use browser `localStorage`; they do not roam between devices.
 - Opening the Tree reads complete visible-Session histories in protocol-sized pages. Very large workspaces need a later viewport-driven history cache.
-- Pi-style abandoned-branch summarization is not automatic. DSH preserves the old branch and forks from the selected stable Turn without adding hidden model-visible context.
+- Pi-style abandoned-branch summarization is not automatic. RLH preserves the old branch and forks from the selected stable Turn without adding hidden model-visible context.

@@ -4,7 +4,7 @@
   overflow: hidden;
   box-sizing: border-box;
   height: 32px;
-  border: 1px solid var(--dsw-alias-border-l2);
+  border: 1px solid var(--rlw-alias-border-l2);
   border-radius: 18px;
   background: transparent;
   -webkit-app-region: no-drag;
@@ -17,11 +17,11 @@
   gap: 4px;
   height: 32px;
   padding: 6px 12px;
-  border: 1px solid var(--dsw-alias-border-l2);
+  border: 1px solid var(--rlw-alias-border-l2);
   border-radius: 18px;
   background: transparent;
-  color: var(--dsw-alias-label-primary);
-  font-family: var(--dsw-font-family);
+  color: var(--rlw-alias-label-primary);
+  font-family: var(--rlw-font-family);
   font-size: 13px;
   font-weight: 400;
   line-height: 20px;
@@ -31,11 +31,11 @@
 }
 
 .init:hover:not(:disabled) {
-  background: var(--dsw-alias-interactive-bg-hover);
+  background: var(--rlw-alias-interactive-bg-hover);
 }
 
 .init:disabled {
-  color: var(--dsw-alias-label-dimmed);
+  color: var(--rlw-alias-label-dimmed);
   cursor: not-allowed;
 }
 
@@ -52,8 +52,8 @@
   border: none;
   border-radius: 0;
   background: transparent;
-  color: var(--dsw-alias-label-primary);
-  font-family: var(--dsw-font-family);
+  color: var(--rlw-alias-label-primary);
+  font-family: var(--rlw-font-family);
   font-size: 13px;
   font-weight: 400;
   line-height: 20px;
@@ -73,12 +73,12 @@
 
 .primary:hover:not(:disabled),
 .chevron:hover:not(:disabled) {
-  background: var(--dsw-alias-interactive-bg-hover);
+  background: var(--rlw-alias-interactive-bg-hover);
 }
 
 .primary:disabled,
 .chevron:disabled {
-  color: var(--dsw-alias-label-dimmed);
+  color: var(--rlw-alias-label-dimmed);
   cursor: not-allowed;
 }
 
@@ -90,5 +90,5 @@
   width: 1px;
   align-self: stretch;
   margin: 6px 0;
-  background: var(--dsw-alias-border-l2);
+  background: var(--rlw-alias-border-l2);
 }

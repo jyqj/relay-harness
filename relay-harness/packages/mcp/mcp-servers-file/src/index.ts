@@ -1,11 +1,11 @@
 /**
- * File-backed MCP server catalog: watches `$DSH_HOME/mcp-servers.yaml` and
- * mounts one `@deepseek-ai/dsh-mcp-client` instance per enabled record.
- * @module @deepseek-ai/dsh-mcp-servers-file
+ * File-backed MCP server catalog: watches `$RLH_HOME/mcp-servers.yaml` and
+ * mounts one `@relay-harness/rlh-mcp-client` instance per enabled record.
+ * @module @relay-harness/rlh-mcp-servers-file
  */
 
-import type { Context } from '@deepseek-ai/cordis'
-import z from '@deepseek-ai/schemastery'
+import type { Context } from '@relay-harness/cordis'
+import z from '@relay-harness/schemastery'
 import { McpServersFile, type McpServersFileOptions } from './service.ts'
 
 /** Plugin configuration. Merges with the Zod `Config` schema below. */
@@ -44,7 +44,7 @@ export const name = 'mcp-servers-file'
 /** Plugin configuration schema. */
 export const Config: z<Config> = z.object({
   path: z.string(),
-  dshHome: z.string(),
+  rlhHome: z.string(),
   watch: z.boolean().default(true),
   debounceMs: z.number().min(0).default(100),
 })

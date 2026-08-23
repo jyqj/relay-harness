@@ -4,8 +4,8 @@
  */
 import { useEffect, useRef, useState } from 'react'
 import clsx from 'clsx'
-import { Button } from '@deepseek-ai/dsh-client-ui-primitives'
-import { writeClipboard } from '@deepseek-ai/dsh-client-ui-primitives'
+import { Button } from '@relay-harness/rlh-client-ui-primitives'
+import { writeClipboard } from '@relay-harness/rlh-client-ui-primitives'
 import { getReservedThemeIds } from '../builtin-families.ts'
 import {
   duplicateThemeFamily, normalizeImportedThemeFamily,

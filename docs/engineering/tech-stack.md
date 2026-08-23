@@ -1,4 +1,6 @@
-# Rust 技术基线
+# Rust 技术基线（历史蓝图）
+
+> **状态说明（2026-08-23）**：本文的 Rust workspace 方案已被 [ADR-0005](../adr/0005-adopt-ts-harness-runtime.md) 取代——运行时采用 [`relay-harness/`](../../relay-harness/README.md) TypeScript Harness。保留本文用于对照模块职责映射；实现层技术事实以 `relay-harness/docs/architecture.md` 为权威。
 
 ## 1. 已确认
 

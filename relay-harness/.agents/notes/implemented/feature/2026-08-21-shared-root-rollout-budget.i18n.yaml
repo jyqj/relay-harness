@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-08-21-shared-root-rollout-budget.md
-2026-08-21-shared-root-rollout-budget.md: c4040d48237e8845daa8d07b1104ee1fe89ddc64
-2026-08-21-shared-root-rollout-budget.zh.md: a9f9a3c983cd653d03deff07d690122f52a56c2c
+2026-08-21-shared-root-rollout-budget.md: cb06c93afc0602c3bbca436f3cba9cc6590a5951
+2026-08-21-shared-root-rollout-budget.zh.md: 7ee5acd24cec115bbf2f4256fc47c49a850f34ee

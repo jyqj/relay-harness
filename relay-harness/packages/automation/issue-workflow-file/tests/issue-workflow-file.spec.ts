@@ -2,7 +2,7 @@ import { mkdtemp, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { Context } from '@deepseek-ai/cordis'
+import { Context } from '@relay-harness/cordis'
 import FileIssueWorkflow, { parseIssueWorkflow } from '../src/index.ts'
 
 const roots: string[] = []
@@ -89,7 +89,7 @@ describe('parseIssueWorkflow', () => {
 
 describe('FileIssueWorkflow', () => {
   it('commits valid revisions and keeps the last good snapshot after a bad reload', async () => {
-    const root = await mkdtemp(join(tmpdir(), 'dsh-issue-workflow-'))
+    const root = await mkdtemp(join(tmpdir(), 'rlh-issue-workflow-'))
     roots.push(root)
     const path = join(root, 'WORKFLOW.md')
     await writeFile(path, valid)

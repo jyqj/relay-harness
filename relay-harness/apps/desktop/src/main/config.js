@@ -1,3 +1,4 @@
+// @ts-check
 const fs = require('fs');
 const path = require('path');
 const { app } = require('electron');
@@ -13,12 +14,12 @@ const DEFAULTS = {
   port: 3080,
   apiKey: '',
   baseUrl: '',
-  dshBin: '',
+  rlhBin: '',
   nodeBin: '',
   closeToTray: DEFAULT_CLOSE_TO_TRAY,
   openAtLogin: false,
   openDevTools: false,
-  theme: 'deepseek',
+  theme: 'relay',
   locale: 'zh',
   githubToken: '',
   remoteEnabled: false,
@@ -84,6 +85,7 @@ function normalizeRendererConfigPatch(patch) {
       continue;
     }
     if (key === 'githubToken') {
+      // oxlint-disable-next-line no-control-regex -- rejecting control characters is the point: they would forge HTTP header lines.
       if (typeof value !== 'string' || value.length > 512 || /[\r\n\0]/.test(value)) {
         throw new TypeError('githubToken must be a valid string');
       }
@@ -189,7 +191,7 @@ function isUnsafeWorkspace(dir) {
 
 function defaultWorkspace() {
   if (app.isPackaged) {
-    return path.join(app.getPath('documents'), 'Deepseek-Harness-Desktop');
+    return path.join(app.getPath('documents'), 'Relay-Harness-Desktop');
   }
   return projectRoot();
 }

@@ -1,13 +1,13 @@
 /**
  * Provider-local LLM circuit breaker over Agent request outcomes.
- * @module @deepseek-ai/dsh-llm-circuit-breaker
+ * @module @relay-harness/rlh-llm-circuit-breaker
  */
 
-import type { Context } from '@deepseek-ai/cordis'
-import z from '@deepseek-ai/schemastery'
-import { LlmError } from '@deepseek-ai/dsh-llm'
-import type {} from '@deepseek-ai/dsh-agent'
-import type {} from '@deepseek-ai/dsh-session'
+import type { Context } from '@relay-harness/cordis'
+import z from '@relay-harness/schemastery'
+import { LlmError } from '@relay-harness/rlh-llm'
+import type {} from '@relay-harness/rlh-agent'
+import type {} from '@relay-harness/rlh-session'
 import { CircuitBreaker, CircuitBreakerOpenError } from './breaker.ts'
 import type { CircuitBreakerPolicy } from './breaker.ts'
 

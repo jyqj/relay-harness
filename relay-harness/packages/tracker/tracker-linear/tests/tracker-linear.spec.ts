@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { Context } from '@deepseek-ai/cordis'
-import TrackerRegistry from '@deepseek-ai/dsh-tracker'
-import type { JsonValue } from '@deepseek-ai/dsh-session'
+import { Context } from '@relay-harness/cordis'
+import TrackerRegistry from '@relay-harness/rlh-tracker'
+import type { JsonValue } from '@relay-harness/rlh-session'
 import { apply, Config, LinearTrackerProvider } from '../src/index.ts'
 
 const baseIssue = {
@@ -116,7 +116,7 @@ describe('LinearTrackerProvider', () => {
     }
     vi.stubGlobal('fetch', vi.fn(async (_url, init: RequestInit) => {
       const payload = JSON.parse(typeof init.body === 'string' ? init.body : '') as { query: string }
-      const nodes = payload.query.includes('DshLinearPoll') ? [null, {}, sparse] : [null]
+      const nodes = payload.query.includes('RlhLinearPoll') ? [null, {}, sparse] : [null]
       return new Response(JSON.stringify({
         data: { issues: { nodes, pageInfo: { hasNextPage: false, endCursor: null } } },
       }), { status: 200 })
@@ -164,7 +164,7 @@ describe('LinearTrackerProvider', () => {
     let viewers = 0
     vi.stubGlobal('fetch', vi.fn(async (_url, init: RequestInit) => {
       const payload = JSON.parse(typeof init.body === 'string' ? init.body : '') as { query: string }
-      if (payload.query.includes('DshLinearViewer')) {
+      if (payload.query.includes('RlhLinearViewer')) {
         viewers += 1
         return new Response(JSON.stringify({ data: { viewer: { id: 'user-1' } } }), { status: 200 })
       }

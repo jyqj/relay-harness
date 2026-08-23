@@ -1,9 +1,9 @@
 /**
  * Package-private bridge from Code Mode to its outer request snapshot.
- * @module @deepseek-ai/dsh-tools/request-snapshot
+ * @module @relay-harness/rlh-tools/request-snapshot
  */
 
-import type { ToolSchema } from '@deepseek-ai/dsh-llm'
+import type { ToolSchema } from '@relay-harness/rlh-llm'
 import type {
   ToolExecution,
   ToolExecutionInput,

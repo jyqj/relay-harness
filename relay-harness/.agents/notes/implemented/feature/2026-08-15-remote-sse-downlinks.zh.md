@@ -10,7 +10,7 @@ Status: implemented
 
 ## 决策
 
-`ConnectionController` 在 `window.__DSH_BOOT_GATE__` 兑现之前不会发起 `host.describe` 或任一条 WebSocket。外壳在任何插件 `apply` 之前创建该 Promise，并只在 `loader.await()` 之后兑现——每个 `/plugins/*/client.js` 脚本都已加载且每条 fiber 都为 ACTIVE。若在下载这些脚本期间就发起 describe 或两条 CONNECTING 的 WebSocket，会占满手机浏览器每个来源的 HTTP/1.1 连接槽，剩余插件脚本永远完不成，`loader.await()` 不返回，启动转圈一直停在页面上。运行时插件只在同一 Promise 兑现之后才调用 `connection.start`（页面没有门禁时立即调用）。`stop()` 之后的 `start` 会新建循环；循环仍在跑时再次 `start` 会替换它。`client-hmr` 只在回环上打开 `EventSource('/plugins/events')`。门禁之后，控制器完成 `host.describe`，等待 `onConnected`（运行时等待 `session.list` 与 `workspace.list`），再打开 socket。`WebApiClient` 用 `randomUuid()` 铸造 unary `rpcId`，公网 HTTP（没有 `crypto.randomUUID`）也能发出 `host.describe`。`WebApiClient` 在每个源上（包括经中继的手机）都用 WebSocket。手机载体不是两条 HTTP SSE GET。未带 `Accept: text/event-stream` 的普通网络 GET 仍返回 426。
+`ConnectionController` 在 `window.__RLH_BOOT_GATE__` 兑现之前不会发起 `host.describe` 或任一条 WebSocket。外壳在任何插件 `apply` 之前创建该 Promise，并只在 `loader.await()` 之后兑现——每个 `/plugins/*/client.js` 脚本都已加载且每条 fiber 都为 ACTIVE。若在下载这些脚本期间就发起 describe 或两条 CONNECTING 的 WebSocket，会占满手机浏览器每个来源的 HTTP/1.1 连接槽，剩余插件脚本永远完不成，`loader.await()` 不返回，启动转圈一直停在页面上。运行时插件只在同一 Promise 兑现之后才调用 `connection.start`（页面没有门禁时立即调用）。`stop()` 之后的 `start` 会新建循环；循环仍在跑时再次 `start` 会替换它。`client-hmr` 只在回环上打开 `EventSource('/plugins/events')`。门禁之后，控制器完成 `host.describe`，等待 `onConnected`（运行时等待 `session.list` 与 `workspace.list`），再打开 socket。`WebApiClient` 用 `randomUuid()` 铸造 unary `rpcId`，公网 HTTP（没有 `crypto.randomUUID`）也能发出 `host.describe`。`WebApiClient` 在每个源上（包括经中继的手机）都用 WebSocket。手机载体不是两条 HTTP SSE GET。未带 `Accept: text/event-stream` 的普通网络 GET 仍返回 426。
 
 ## 考虑过的替代
 

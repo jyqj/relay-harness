@@ -1,3 +1,4 @@
+// @ts-check
 function sessionTitle(row) {
   if (row?.blank) return '新会话';
   const title = row?.projections?.values?.title;

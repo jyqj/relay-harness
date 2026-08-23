@@ -1,16 +1,16 @@
 /**
  * Markdown/YAML file provider with startup validation and last-known-good reload.
- * @module @deepseek-ai/dsh-issue-workflow-file
+ * @module @relay-harness/rlh-issue-workflow-file
  */
 
 import { createHash } from 'node:crypto'
 import { isAbsolute } from 'node:path'
 import { readFile } from 'node:fs/promises'
-import { Context, Service } from '@deepseek-ai/cordis'
-import z from '@deepseek-ai/schemastery'
+import { Context, Service } from '@relay-harness/cordis'
+import z from '@relay-harness/schemastery'
 import { parse as parseYaml } from 'yaml'
-import { IssueWorkflow, type IssueWorkflowPolicy, type IssueWorkflowSnapshot } from '@deepseek-ai/dsh-issue-workflow'
-import { deepFreeze } from '@deepseek-ai/dsh-llm'
+import { IssueWorkflow, type IssueWorkflowPolicy, type IssueWorkflowSnapshot } from '@relay-harness/rlh-issue-workflow'
+import { deepFreeze } from '@relay-harness/rlh-llm'
 
 const DEFAULT_CONTINUATION = 'Continue the current tracker issue from the existing workspace and session context. Complete the remaining work or update the tracker when genuinely blocked.'
 

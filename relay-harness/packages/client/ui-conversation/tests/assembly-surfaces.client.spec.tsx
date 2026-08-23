@@ -3,12 +3,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, waitFor, within } from '@testing-library/react'
 import { useState } from 'react'
-import { LocaleRuntime, COMMON_NS } from '@deepseek-ai/dsh-client-locale/client'
-import { zh as commonZh } from '@deepseek-ai/dsh-client-locale/src/locales/zh.ts'
-import type { ISession, SessionId } from '@deepseek-ai/dsh-client-runtime/client'
-import type { PropsRenderSlots } from '@deepseek-ai/dsh-client-ui-slots'
-import { SlotTestRuntime, usePinnedBrowserLanguages, stubSettingsScope } from '@deepseek-ai/dsh-client-test-runtime'
-import { apply, inject, type EmptyWorkspaceOwnerProps, type UserActionOwnerProps } from '@deepseek-ai/dsh-client-ui-conversation/client'
+import { LocaleRuntime, COMMON_NS } from '@relay-harness/rlh-client-locale/client'
+import { zh as commonZh } from '@relay-harness/rlh-client-locale/src/locales/zh.ts'
+import type { ISession, SessionId } from '@relay-harness/rlh-client-runtime/client'
+import type { PropsRenderSlots } from '@relay-harness/rlh-client-ui-slots'
+import { SlotTestRuntime, usePinnedBrowserLanguages, stubSettingsScope } from '@relay-harness/rlh-client-test-runtime'
+import { apply, inject, type EmptyWorkspaceOwnerProps, type UserActionOwnerProps } from '@relay-harness/rlh-client-ui-conversation/client'
 import { chatSnapshotFixture } from './chat-snapshot-fixture.client.ts'
 
 usePinnedBrowserLanguages('zh-CN')

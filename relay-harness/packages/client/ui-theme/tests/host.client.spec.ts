@@ -1,10 +1,10 @@
-import { Context } from '@deepseek-ai/cordis'
+import { Context } from '@relay-harness/cordis'
 import { describe, expect, it } from 'vitest'
-import type { WebServer } from '@deepseek-ai/dsh-host-webserver'
-import { SettingsProvider, settingsNamespace, type SettingsNamespace } from '@deepseek-ai/dsh-settings'
+import type { WebServer } from '@relay-harness/rlh-host-webserver'
+import { SettingsProvider, settingsNamespace, type SettingsNamespace } from '@relay-harness/rlh-settings'
 import {
   DEFAULT_THEME_SETTINGS, THEME_SETTINGS_NAMESPACE, apply,
-} from '@deepseek-ai/dsh-client-ui-theme'
+} from '@relay-harness/rlh-client-ui-theme'
 import { resolveThemeSettings, type ThemeSettings } from '../src/theme-settings.ts'
 
 class MemorySettings extends SettingsProvider {

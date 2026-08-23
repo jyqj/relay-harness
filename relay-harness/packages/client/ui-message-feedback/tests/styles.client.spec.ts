@@ -1,7 +1,7 @@
 /**
  * Feedback controls stylesheet contract, asserted against the CSS text on disk.
  *
- * A `--dsw-*` name the theme never declares fails silently, and for this sheet
+ * A `--rlw-*` name the theme never declares fails silently, and for this sheet
  * it failed loudly in the product: `border`, `background`, and the primary
  * button's fill and label each named a token that does not exist, so every one
  * of those declarations was invalid at computed-value time and dropped. The
@@ -51,9 +51,9 @@ describe('MessageFeedbackActions theme styles', () => {
     // has no fallback and does not inherit a usable value: the entire
     // declaration is thrown away, so the control renders as if the line had
     // never been written. Every theme-variable prefix the sheets actually use,
-    // not just `--dsw-`: a `--dsh-` name reads as a plausible sibling and would
+    // not just `--rlw-`: a `--rlh-` name reads as a plausible sibling and would
     // otherwise slip past into an invalid declaration.
-    const named = [...css.matchAll(/var\((--(?:dsw|dsh|ds)-[a-z0-9-]+)/g)].map(match => match[1])
+    const named = [...css.matchAll(/var\((--(?:rlw|rlh|rl)-[a-z0-9-]+)/g)].map(match => match[1])
     // Vacuity guard: the sheet has to actually name tokens, or the filter below
     // is satisfied by an empty list and this test proves nothing.
     expect(named.length).toBeGreaterThan(5)
@@ -64,7 +64,7 @@ describe('MessageFeedbackActions theme styles', () => {
   it('never falls back to a literal colour', () => {
     // A token that resolves is never the problem; an undeclared one takes this
     // branch, and a literal here is a single colour for both themes.
-    expect(css).not.toMatch(/var\(--dsw-[a-z0-9-]+\s*,\s*(?:#|rgb|rgba|hsl|hsla)/)
+    expect(css).not.toMatch(/var\(--rlw-[a-z0-9-]+\s*,\s*(?:#|rgb|rgba|hsl|hsla)/)
   })
 
   it('keeps the note editor out of the row as a fixed portal, not a flex item', () => {

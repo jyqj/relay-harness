@@ -2,11 +2,11 @@
 
 [English](memory.md) | 中文
 
-长期记忆在多个 Agent 会话之间保存受治理的知识，但不替代产生知识的追加式 SessionEvent 证据。[`@deepseek-ai/dsh-memory`](../../packages/memory/memory) 负责 Provider 无关的 `ctx.longTermMemory` 与 `ctx.memoryExtractionQueue` seam；[`memory-sqlite`](../../packages/memory/memory-sqlite) 是随附的单一 Owner；[`memory-agent`](../../packages/memory/memory-agent)、[`memory-extractor-llm`](../../packages/memory/memory-extractor-llm) 与 [`tool-memory`](../../packages/memory/tool-memory) 是相互独立的 Consumer。
+长期记忆在多个 Agent 会话之间保存受治理的知识，但不替代产生知识的追加式 SessionEvent 证据。[`@relay-harness/rlh-memory`](../../packages/memory/memory) 负责 Provider 无关的 `ctx.longTermMemory` 与 `ctx.memoryExtractionQueue` seam；[`memory-sqlite`](../../packages/memory/memory-sqlite) 是随附的单一 Owner；[`memory-agent`](../../packages/memory/memory-agent)、[`memory-extractor-llm`](../../packages/memory/memory-extractor-llm) 与 [`tool-memory`](../../packages/memory/tool-memory) 是相互独立的 Consumer。
 
 ## Scope 与标识
 
-每个操作都提供精确的 `MemoryScope`：工作区、用户和稳定 Agent 标识。Session id 是证据和轮次结算标识，不是长期 Scope；相同 Scope 的会话可以互相召回。标准 preset 从会话 cwd 派生工作区，使用本地操作系统用户名，并把 Agent id 固定为 `deepseek-harness`。
+每个操作都提供精确的 `MemoryScope`：工作区、用户和稳定 Agent 标识。Session id 是证据和轮次结算标识，不是长期 Scope；相同 Scope 的会话可以互相召回。标准 preset 从会话 cwd 派生工作区，使用本地操作系统用户名，并把 Agent id 固定为 `relay-harness`。
 
 `MemoryId` 标识一条逻辑记忆。id 保持稳定，`revision` 递增。Provider 保留每个完整版本，并独立物化当前条目及其召回索引。
 

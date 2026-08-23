@@ -8,10 +8,10 @@
 
 import type {
   ConfigurableProviderView, CredentialView, IApiClient, SettingsNamespaceView,
-} from '@deepseek-ai/dsh-api-remotes/client'
-import type { SnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
-import { createSnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
-import type { SettingsDescribeFace } from '@deepseek-ai/dsh-client-ui-settings/client'
+} from '@relay-harness/rlh-api-remotes/client'
+import type { SnapshotStore } from '@relay-harness/rlh-client-runtime/client'
+import { createSnapshotStore } from '@relay-harness/rlh-client-runtime/client'
+import type { SettingsDescribeFace } from '@relay-harness/rlh-client-ui-settings/client'
 import type { SettingsSchemaOperations } from './schema-operations.ts'
 
 /**

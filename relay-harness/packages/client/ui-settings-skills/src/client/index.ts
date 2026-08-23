@@ -2,10 +2,10 @@
  * Skills settings section plugin, browser half.
  */
 
-import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
-import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
-import type {} from '@deepseek-ai/dsh-client-locale/client'
-import type {} from '@deepseek-ai/dsh-api-remotes/client'
+import type { ClientContext } from '@relay-harness/rlh-client-runtime/client'
+import type {} from '@relay-harness/rlh-client-ui-settings/client'
+import type {} from '@relay-harness/rlh-client-locale/client'
+import type {} from '@relay-harness/rlh-api-remotes/client'
 import { SkillsSection } from './SkillsSection.tsx'
 import type { SkillsSectionInjected } from './SkillsSection.tsx'
 import { en, zh, type SkillsSettingsKey } from './locales.ts'
@@ -13,7 +13,7 @@ import { en, zh, type SkillsSettingsKey } from './locales.ts'
 export type { SkillsSectionInjected, SkillsSectionProps } from './SkillsSection.tsx'
 export type { SkillsSettingsKey } from './locales.ts'
 
-declare module '@deepseek-ai/dsh-client-ui-slots' {
+declare module '@relay-harness/rlh-client-ui-slots' {
   interface LocaleNamespaceMap {
     /** Skills settings copy. */
     'settings.skills': SkillsSettingsKey

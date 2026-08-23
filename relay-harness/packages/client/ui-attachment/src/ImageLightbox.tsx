@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
-import { IconCloseOutline16, usePresence } from '@deepseek-ai/dsh-client-ui-primitives'
+import { IconCloseOutline16, usePresence } from '@relay-harness/rlh-client-ui-primitives'
 import css from './ImageLightbox.module.css'
 
 /** Lightbox strings the owner resolves from its own locale namespace. */
@@ -58,12 +58,12 @@ export function ImageLightbox({ open = true, src, alt, labels, onClose }: {
       role="dialog"
       aria-modal="true"
       aria-label={labels.dialog}
-      data-dsh-motion="overlay"
+      data-rlh-motion="overlay"
       data-state={state}
       aria-hidden={open ? undefined : true}
     >
-      <div className={css.mask} data-dsh-motion-part="mask" aria-hidden="true" onMouseDown={onClose} />
-      <img className={css.image} data-dsh-motion-part="panel" src={src} alt={alt} />
+      <div className={css.mask} data-rlh-motion-part="mask" aria-hidden="true" onMouseDown={onClose} />
+      <img className={css.image} data-rlh-motion-part="panel" src={src} alt={alt} />
       <button ref={closeRef} type="button" className={css.close} aria-label={labels.close} onClick={onClose}>
         <IconCloseOutline16 size={16} />
       </button>

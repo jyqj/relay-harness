@@ -1,13 +1,13 @@
 {
-  "name": "@deepseek-ai/dsh-host-directory-picker-auto",
-  "description": "Adaptive chooser of the directory-picker seam: resolves the host situation at boot and mounts the native or browse backend for the DeepSeek Harness web GUI host",
+  "name": "@relay-harness/rlh-host-directory-picker-auto",
+  "description": "Adaptive chooser of the directory-picker seam: resolves the host situation at boot and mounts the native or browse backend for the Relay Harness web GUI host",
   "version": "0.1.0-rc.8",
   "publishConfig": {
     "access": "public"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+    "url": "git+https://github.com/jyqj/relay-harness.git",
     "directory": "packages/host/directory-picker-auto"
   },
   "type": "module",
@@ -32,25 +32,25 @@
   ],
   "license": "MIT",
   "peerDependencies": {
-    "@deepseek-ai/cordis": "workspace:^",
-    "@deepseek-ai/cordis-plugin-loader": "workspace:^",
-    "@deepseek-ai/dsh-client-ui-directory-picker-browse": "workspace:^",
-    "@deepseek-ai/dsh-client-ui-directory-picker-native": "workspace:^",
-    "@deepseek-ai/dsh-host-directory-picker-browse": "workspace:^",
-    "@deepseek-ai/dsh-host-directory-picker-native": "workspace:^",
-    "@deepseek-ai/dsh-host-webserver": "workspace:^",
-    "@deepseek-ai/dsh-invariants": "workspace:^"
+    "@relay-harness/cordis": "workspace:^",
+    "@relay-harness/cordis-plugin-loader": "workspace:^",
+    "@relay-harness/rlh-client-ui-directory-picker-browse": "workspace:^",
+    "@relay-harness/rlh-client-ui-directory-picker-native": "workspace:^",
+    "@relay-harness/rlh-host-directory-picker-browse": "workspace:^",
+    "@relay-harness/rlh-host-directory-picker-native": "workspace:^",
+    "@relay-harness/rlh-host-webserver": "workspace:^",
+    "@relay-harness/rlh-invariants": "workspace:^"
   },
   "devDependencies": {
-    "@deepseek-ai/cordis": "workspace:^",
-    "@deepseek-ai/cordis-plugin-include": "workspace:^",
-    "@deepseek-ai/cordis-plugin-loader": "workspace:^",
-    "@deepseek-ai/dsh-client-ui-directory-picker-browse": "workspace:^",
-    "@deepseek-ai/dsh-client-ui-directory-picker-native": "workspace:^",
-    "@deepseek-ai/dsh-host-directory-picker": "workspace:^",
-    "@deepseek-ai/dsh-host-directory-picker-browse": "workspace:^",
-    "@deepseek-ai/dsh-host-directory-picker-native": "workspace:^",
-    "@deepseek-ai/dsh-host-webserver": "workspace:^",
-    "@deepseek-ai/dsh-invariants": "workspace:^"
+    "@relay-harness/cordis": "workspace:^",
+    "@relay-harness/cordis-plugin-include": "workspace:^",
+    "@relay-harness/cordis-plugin-loader": "workspace:^",
+    "@relay-harness/rlh-client-ui-directory-picker-browse": "workspace:^",
+    "@relay-harness/rlh-client-ui-directory-picker-native": "workspace:^",
+    "@relay-harness/rlh-host-directory-picker": "workspace:^",
+    "@relay-harness/rlh-host-directory-picker-browse": "workspace:^",
+    "@relay-harness/rlh-host-directory-picker-native": "workspace:^",
+    "@relay-harness/rlh-host-webserver": "workspace:^",
+    "@relay-harness/rlh-invariants": "workspace:^"
   }
 }

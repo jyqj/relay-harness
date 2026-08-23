@@ -2,7 +2,7 @@
 /** Vision-model picker lists only catalog rows that advertise image input. */
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import type { RpcResponse, SettingsNamespaceView } from '@deepseek-ai/dsh-api-remotes/client'
+import type { RpcResponse, SettingsNamespaceView } from '@relay-harness/rlh-api-remotes/client'
 import { VISION_FALLBACK_NS, VisionModelPicker } from '../src/client/VisionModelPicker.tsx'
 import { en } from '../src/client/locales.ts'
 

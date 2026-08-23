@@ -1,5 +1,5 @@
-import { LlmAdapter, LlmError } from '@deepseek-ai/dsh-llm'
-import type { GenerateOptions, StreamChunk } from '@deepseek-ai/dsh-llm'
+import { LlmAdapter, LlmError } from '@relay-harness/rlh-llm'
+import type { GenerateOptions, StreamChunk } from '@relay-harness/rlh-llm'
 
 export type Outcome = 'server' | 'auth' | 'success'
 

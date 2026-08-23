@@ -25,7 +25,7 @@ afterEach(() => {
 })
 
 async function scratch(): Promise<string> {
-  return mkdtemp(join(tmpdir(), 'dsh-atomic-write-'))
+  return mkdtemp(join(tmpdir(), 'rlh-atomic-write-'))
 }
 
 describe('writeFileAtomic', () => {

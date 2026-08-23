@@ -10,7 +10,7 @@ Status: implemented
 
 ## 决策
 
-`GitProgressToast` 是 `ui-git` 包内的进度卡片，只用 `--dsw-alias-*` token。官方 `Toast` 原子是顶部居中、3 秒淡出，撑不过一段 hook，因此 Git 进度不走它。
+`GitProgressToast` 是 `ui-git` 包内的进度卡片，只用 `--rlw-alias-*` token。官方 `Toast` 原子是顶部居中、3 秒淡出，撑不过一段 hook，因此 Git 进度不走它。
 
 `GitActionsControl` 在点击堆叠操作、Pull 或 Initialize Git 的同一拍打开卡片，不等任何 IPC 返回。堆叠 Commit/Push/PR 用上次已知 status 拼阶段文案并立刻出卡，再重读状态（push/create_pr 走 `gitFetchForStatus`，仅 commit 走本地 `gitStatus`）。堆叠动作占用 `busy` 时 `BranchMenu` 为 `disabled`，切换或新建不能改写正在进行的 commit、push 或 PR。桌面 `gitCommit` / `gitPush` / `gitPull` 把清洗后的 stdout/stderr 行通过 `shell:git-progress` 按 `actionId` 推过来，并跟踪 `GIT_TRACE2_EVENT`，在 `child_start` 上改标题。`child_exit` 先读 Git 生产字段 `exit_code`（再回落到 `exitCode` / `code`），失败 leftover hook 才能改成 `hook exited N`。`hook_finished` 清掉最后一行并回到当前阶段标题。这三条命令按 `COMMIT_TIMEOUT_MS` 等待 10 分钟；`gitPull` 是 `git pull --ff-only`。git 子进程继承去掉 Electron `npm_config_electron_*`、也不带 `GIT_CEILING_DIRECTORIES` 的环境。成功标题只描述实际跑过的动作。Push/PR 的成功 CTA 等动作后的 fetch 与 PR 查找落定再算，因此默认分支上切功能分支继续可以给出 Create PR，推到已有 PR 的引用可以给出 View PR。仅提交的成功卡片用本地 porcelain，不被 fetch 或 `gh` 挡住。失败留到关闭。复制写入整段 dump。显示详情保留短标题，并在下方展开其余 dump；dump 与标题相同时不出现该控件。`gitFailureMessage` 返回去掉 CRLF 警告的完整 dump（含 `hint:` 行），而不是只取一行标记。初始化、分支切换/新建、以及打开文件失败都落在同一张卡片上。
 

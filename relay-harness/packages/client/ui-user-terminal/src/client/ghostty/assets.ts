@@ -1,9 +1,9 @@
 /**
  * Plugin-hosted Ghostty artifacts. The desktop host loads these with Vite `?url`;
- * dsh serves the same bytes at `/plugins/<id>/assets/<file>`.
+ * rlh serves the same bytes at `/plugins/<id>/assets/<file>`.
  */
 
-const PLUGIN_ID = '@deepseek-ai/dsh-client-ui-user-terminal'
+const PLUGIN_ID = '@relay-harness/rlh-client-ui-user-terminal'
 
 function ghosttyAssetUrl(filename: string): string {
   return `/plugins/${PLUGIN_ID}/assets/${filename}`

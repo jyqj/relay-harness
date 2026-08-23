@@ -1,6 +1,6 @@
 /** Session-log titlebar visibility stored in the Host user-settings document. */
 
-import z from '@deepseek-ai/schemastery'
+import z from '@relay-harness/schemastery'
 
 /** Settings namespace owned by the Session-log export plugin. */
 export const SESSION_LOG_EXPORT_SETTINGS_NAMESPACE = 'session-log-export'

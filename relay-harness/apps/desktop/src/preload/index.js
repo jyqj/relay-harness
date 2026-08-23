@@ -1,9 +1,10 @@
+// @ts-check
 const { contextBridge, ipcRenderer } = require('electron');
 
 const SHELL_ROLES = new Set(['boot', 'harness']);
 
 function shellRole(argv = process.argv) {
-  const prefix = '--dshd-shell-role=';
+  const prefix = '--rlhd-shell-role=';
   const value = argv.find((item) => typeof item === 'string' && item.startsWith(prefix));
   const role = value ? value.slice(prefix.length) : '';
   return SHELL_ROLES.has(role) ? role : null;

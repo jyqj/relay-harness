@@ -1,6 +1,6 @@
 /**
  * SQLite schema ownership and durable-row validation.
- * @module @deepseek-ai/dsh-session-persistence-sqlite/schema
+ * @module @relay-harness/rlh-session-persistence-sqlite/schema
  */
 
 import { randomUUID } from 'node:crypto'
@@ -12,12 +12,12 @@ import {
   SessionId,
   isSessionOrigin,
   type SessionHeader,
-} from '@deepseek-ai/dsh-session'
+} from '@relay-harness/rlh-session'
 import { sql } from './sql.ts'
 
 /** Current physical-record schema with packed and compressed event rows. */
 export const SCHEMA_VERSION = 17
-/** Application id reserved for DeepSeek Harness SQLite session databases. */
+/** Application id reserved for Relay Harness SQLite session databases. */
 export const SESSION_PERSISTENCE_SQLITE_APPLICATION_ID = 0x44534850
 
 /** A materialized session's metadata and monotonic revision. */
@@ -28,7 +28,7 @@ export interface SessionRow {
   readonly cwd: string | null
   readonly parent_session: string | null
   readonly seed_length: number | null
-  readonly origin: 'subagent' | 'dshbot' | null
+  readonly origin: 'subagent' | 'rlhbot' | null
   readonly incarnation: string
   readonly revision: number
   readonly delegation_depth: number | null
@@ -289,7 +289,7 @@ export function decodeSessionRow(value: unknown): SessionRow {
   if (cwd !== null && !isAbsolute(cwd)) throw new Error('stored session cwd must be absolute')
   const parent = nullableStringField(row, 'parent_session')
   const origin = nullableStringField(row, 'origin')
-  if (origin !== null && !isSessionOrigin(origin)) throw new Error('stored session origin must be "subagent" or "dshbot"')
+  if (origin !== null && !isSessionOrigin(origin)) throw new Error('stored session origin must be "subagent" or "rlhbot"')
   const incarnation = nonemptyStringField(row, 'incarnation')
   if (!UUID.test(incarnation)) throw new Error('stored session incarnation must be a UUID')
   return {

@@ -1,5 +1,5 @@
 {
-  "name": "@deepseek-ai/dsh-api-remotes",
+  "name": "@relay-harness/rlh-api-remotes",
   "description": "Remote BFF assembly and Host Agent/Session lookup policy",
   "version": "0.1.0-rc.8",
   "publishConfig": {
@@ -7,7 +7,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/deepseek-ai/deepseek-harness.git",
+    "url": "git+https://github.com/jyqj/relay-harness.git",
     "directory": "packages/api/remotes"
   },
   "type": "module",
@@ -33,10 +33,10 @@
     "./src/*": "./src/*",
     "./package.json": "./package.json"
   },
-  "dsh": {
+  "rlh": {
     "client": {
       "inject": [
-        "@deepseek-ai/dsh-api-gateway"
+        "@relay-harness/rlh-api-gateway"
       ],
       "platform": "web",
       "immediately": true
@@ -55,54 +55,54 @@
     "lib/types/**/*.d.ts"
   ],
   "dependencies": {
-    "@deepseek-ai/dsh-typert-protocol": "workspace:^"
+    "@relay-harness/rlh-typert-protocol": "workspace:^"
   },
   "peerDependencies": {
-    "@deepseek-ai/dsh-agent": "workspace:^",
-    "@deepseek-ai/dsh-agent-presets": "workspace:^",
-    "@deepseek-ai/dsh-api-gateway": "workspace:^",
-    "@deepseek-ai/dsh-commands": "workspace:^",
-    "@deepseek-ai/dsh-cordis-host-runner": "workspace:^",
-    "@deepseek-ai/dsh-credentials": "workspace:^",
-    "@deepseek-ai/dsh-file-reference": "workspace:^",
-    "@deepseek-ai/dsh-goal": "workspace:^",
-    "@deepseek-ai/dsh-host-plugin-inventory": "workspace:^",
-    "@deepseek-ai/dsh-host-mcp-servers": "workspace:^",
-    "@deepseek-ai/dsh-host-skill-inventory": "workspace:^",
-    "@deepseek-ai/dsh-invariants": "workspace:^",
-    "@deepseek-ai/dsh-issue-orchestration": "workspace:^",
-    "@deepseek-ai/dsh-issue-orchestrator": "workspace:^",
-    "@deepseek-ai/dsh-llm": "workspace:^",
-    "@deepseek-ai/dsh-message-feedback": "workspace:^",
-    "@deepseek-ai/dsh-session": "workspace:^",
-    "@deepseek-ai/dsh-session-persistence": "workspace:^",
-    "@deepseek-ai/dsh-session-reference": "workspace:^",
-    "@deepseek-ai/dsh-settings": "workspace:^",
-    "@deepseek-ai/dsh-typert-registry": "workspace:^",
-    "@deepseek-ai/cordis": "workspace:^"
+    "@relay-harness/rlh-agent": "workspace:^",
+    "@relay-harness/rlh-agent-presets": "workspace:^",
+    "@relay-harness/rlh-api-gateway": "workspace:^",
+    "@relay-harness/rlh-commands": "workspace:^",
+    "@relay-harness/rlh-cordis-host-runner": "workspace:^",
+    "@relay-harness/rlh-credentials": "workspace:^",
+    "@relay-harness/rlh-file-reference": "workspace:^",
+    "@relay-harness/rlh-goal": "workspace:^",
+    "@relay-harness/rlh-host-plugin-inventory": "workspace:^",
+    "@relay-harness/rlh-host-mcp-servers": "workspace:^",
+    "@relay-harness/rlh-host-skill-inventory": "workspace:^",
+    "@relay-harness/rlh-invariants": "workspace:^",
+    "@relay-harness/rlh-issue-orchestration": "workspace:^",
+    "@relay-harness/rlh-issue-orchestrator": "workspace:^",
+    "@relay-harness/rlh-llm": "workspace:^",
+    "@relay-harness/rlh-message-feedback": "workspace:^",
+    "@relay-harness/rlh-session": "workspace:^",
+    "@relay-harness/rlh-session-persistence": "workspace:^",
+    "@relay-harness/rlh-session-reference": "workspace:^",
+    "@relay-harness/rlh-settings": "workspace:^",
+    "@relay-harness/rlh-typert-registry": "workspace:^",
+    "@relay-harness/cordis": "workspace:^"
   },
   "devDependencies": {
-    "@deepseek-ai/dsh-agent": "workspace:^",
-    "@deepseek-ai/dsh-agent-presets": "workspace:^",
-    "@deepseek-ai/dsh-api-gateway": "workspace:^",
-    "@deepseek-ai/dsh-commands": "workspace:^",
-    "@deepseek-ai/dsh-cordis-host-runner": "workspace:^",
-    "@deepseek-ai/dsh-credentials": "workspace:^",
-    "@deepseek-ai/dsh-file-reference": "workspace:^",
-    "@deepseek-ai/dsh-goal": "workspace:^",
-    "@deepseek-ai/dsh-host-plugin-inventory": "workspace:^",
-    "@deepseek-ai/dsh-host-mcp-servers": "workspace:^",
-    "@deepseek-ai/dsh-host-skill-inventory": "workspace:^",
-    "@deepseek-ai/dsh-invariants": "workspace:^",
-    "@deepseek-ai/dsh-issue-orchestration": "workspace:^",
-    "@deepseek-ai/dsh-issue-orchestrator": "workspace:^",
-    "@deepseek-ai/dsh-llm": "workspace:^",
-    "@deepseek-ai/dsh-message-feedback": "workspace:^",
-    "@deepseek-ai/dsh-session": "workspace:^",
-    "@deepseek-ai/dsh-session-persistence": "workspace:^",
-    "@deepseek-ai/dsh-session-reference": "workspace:^",
-    "@deepseek-ai/dsh-settings": "workspace:^",
-    "@deepseek-ai/dsh-typert-registry": "workspace:^",
-    "@deepseek-ai/cordis": "workspace:^"
+    "@relay-harness/rlh-agent": "workspace:^",
+    "@relay-harness/rlh-agent-presets": "workspace:^",
+    "@relay-harness/rlh-api-gateway": "workspace:^",
+    "@relay-harness/rlh-commands": "workspace:^",
+    "@relay-harness/rlh-cordis-host-runner": "workspace:^",
+    "@relay-harness/rlh-credentials": "workspace:^",
+    "@relay-harness/rlh-file-reference": "workspace:^",
+    "@relay-harness/rlh-goal": "workspace:^",
+    "@relay-harness/rlh-host-plugin-inventory": "workspace:^",
+    "@relay-harness/rlh-host-mcp-servers": "workspace:^",
+    "@relay-harness/rlh-host-skill-inventory": "workspace:^",
+    "@relay-harness/rlh-invariants": "workspace:^",
+    "@relay-harness/rlh-issue-orchestration": "workspace:^",
+    "@relay-harness/rlh-issue-orchestrator": "workspace:^",
+    "@relay-harness/rlh-llm": "workspace:^",
+    "@relay-harness/rlh-message-feedback": "workspace:^",
+    "@relay-harness/rlh-session": "workspace:^",
+    "@relay-harness/rlh-session-persistence": "workspace:^",
+    "@relay-harness/rlh-session-reference": "workspace:^",
+    "@relay-harness/rlh-settings": "workspace:^",
+    "@relay-harness/rlh-typert-registry": "workspace:^",
+    "@relay-harness/cordis": "workspace:^"
   }
 }

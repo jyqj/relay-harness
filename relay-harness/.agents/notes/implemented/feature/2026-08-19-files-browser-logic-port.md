@@ -10,11 +10,11 @@ The desktop Files and Browser occupants already owned search, save, and a loopba
 
 ## Decision
 
-This desktop ports those Files/Browser loops from the local reference tree `C:\Ai\t3code` and rebrands every live identifier to `dshd`. Effect/Atom/Schema peel to Promises and `webContents`. Playwright Chromium, `playwright-core`, and `__t3PlaywrightInjected` are not shipped; automation is CDP on the existing guest. Chrome stays official dsh `ui-primitives` plus `--dsw-alias-*` (no Pierre, lucide, shadcn, or Tailwind).
+This desktop ports those Files/Browser loops from the local reference tree `C:\Ai\t3code` and rebrands every live identifier to `rlhd`. Effect/Atom/Schema peel to Promises and `webContents`. Playwright Chromium, `playwright-core`, and `__t3PlaywrightInjected` are not shipped; automation is CDP on the existing guest. Chrome stays official rlh `ui-primitives` plus `--rlw-alias-*` (no Pierre, lucide, shadcn, or Tailwind).
 
 The guest BrowserView is `contextIsolation: false`, `sandbox: true`, and `nodeIntegration: false` so the pick overlay can use `ipcRenderer`. The harness main window stays `contextIsolation: true`. The PiP window stays `contextIsolation: true`. Guest documents may be any `http(s)`; `file:` documents are cancelled. Address bar `normalizePreviewUrl` treats a bare loopback host as `http` and a bare public host as `https`. The harness main window loopback wall is unchanged.
 
-dshd extras stay: dirty-tab Keep/Discard/Save, `error.changed`, occupancy hide (`overlayOpen || pipOpen`), and the token-prefixed workspace file server. Preview IPC that reaches the guest is harness-authorized only. Recording is host-renderer `MediaRecorder`; artifacts land under `userData/preview-recordings/`.
+rlhd extras stay: dirty-tab Keep/Discard/Save, `error.changed`, occupancy hide (`overlayOpen || pipOpen`), and the token-prefixed workspace file server. Preview IPC that reaches the guest is harness-authorized only. Recording is host-renderer `MediaRecorder`; artifacts land under `userData/preview-recordings/`.
 
 ## Alternatives considered
 
@@ -24,7 +24,7 @@ dshd extras stay: dirty-tab Keep/Discard/Save, `error.changed`, occupancy hide (
 
 **Pack a second Chromium.** Rejected: Playwright's browser download would bloat and break electron-builder; CDP on the existing guest is the wiring.
 
-**Copy Pierre into the slot tree.** Rejected: design language requires `ui-primitives` and `--dsw-alias-*`; a second icon/component kit is a second skin.
+**Copy Pierre into the slot tree.** Rejected: design language requires `ui-primitives` and `--rlw-alias-*`; a second icon/component kit is a second skin.
 
 **Drop guest `sandbox`.** Rejected: pick needs `ipcRenderer` in the guest, which `contextIsolation: false` already provides; sandbox stays on.
 

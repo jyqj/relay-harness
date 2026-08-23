@@ -6,11 +6,11 @@
 // entries. Tool composition belongs to ui-tool and its machinery spec.
 
 import { describe, expect, it, vi } from 'vitest'
-import { SlotTestRuntime, usePinnedBrowserLanguages, stubSettingsScope } from '@deepseek-ai/dsh-client-test-runtime'
-import { resolveSlotLabel } from '@deepseek-ai/dsh-client-ui-slots'
-import { LocaleRuntime } from '@deepseek-ai/dsh-client-locale/client'
-import type { SessionId } from '@deepseek-ai/dsh-client-runtime/client'
-import { apply, inject } from '@deepseek-ai/dsh-client-ui-conversation/client'
+import { SlotTestRuntime, usePinnedBrowserLanguages, stubSettingsScope } from '@relay-harness/rlh-client-test-runtime'
+import { resolveSlotLabel } from '@relay-harness/rlh-client-ui-slots'
+import { LocaleRuntime } from '@relay-harness/rlh-client-locale/client'
+import type { SessionId } from '@relay-harness/rlh-client-runtime/client'
+import { apply, inject } from '@relay-harness/rlh-client-ui-conversation/client'
 import type { ApprovalComposerInjected } from '../src/client/contract/slots.ts'
 import type { BeamRowInjected } from '../src/client/settings/BeamRow.tsx'
 import type { ResizeRowInjected } from '../src/client/settings/ResizeRow.tsx'

@@ -4,18 +4,18 @@
 // owned draft, and the hero workspace picker (switching = retargetWorkspace).
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render } from '@testing-library/react'
-import { bindSnapshotSelector } from '@deepseek-ai/dsh-client-test-runtime'
+import { bindSnapshotSelector } from '@relay-harness/rlh-client-test-runtime'
 import {
   createSnapshotStore, EMPTY_CHAT_SNAPSHOT, EMPTY_CONVERSATION_VIEWS,
-} from '@deepseek-ai/dsh-client-runtime/client'
+} from '@relay-harness/rlh-client-runtime/client'
 import type {
   ConversationSnapshot, SessionId, SessionListState, WorkspaceId, WorkspaceListState, WorkspaceView,
-} from '@deepseek-ai/dsh-client-runtime/client'
+} from '@relay-harness/rlh-client-runtime/client'
 import type { ConversationRootProps } from '../src/client/skeleton/ConversationRoot.tsx'
-import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
-import { makeTranslate } from '@deepseek-ai/dsh-client-test-runtime'
-import { en as commonEn } from '@deepseek-ai/dsh-client-locale/src/locales/en.ts'
-import { zh as commonZh } from '@deepseek-ai/dsh-client-locale/src/locales/zh.ts'
+import type { ClientContext } from '@relay-harness/rlh-client-runtime/client'
+import { makeTranslate } from '@relay-harness/rlh-client-test-runtime'
+import { en as commonEn } from '@relay-harness/rlh-client-locale/src/locales/en.ts'
+import { zh as commonZh } from '@relay-harness/rlh-client-locale/src/locales/zh.ts'
 import { createChatStore } from '../src/client/stores.ts'
 import { SessionInputShell } from '../src/client/input/facade.ts'
 import { en, zh } from '../src/client/locales.ts'
@@ -95,7 +95,7 @@ function mount(
     /** Drop the session's summary row entirely (a session the list has not caught up with). */
     omitSummaryRow?: boolean
     /** Classify the selected child as a subagent or a desktop-plugin contact. */
-    summaryOrigin?: 'subagent' | 'dshbot'
+    summaryOrigin?: 'subagent' | 'rlhbot'
     /** A composer block another plugin raised for this session. */
     composerBlock?: { reason: string }
     /** Mutable view ledger used by registration-order regressions. */
@@ -382,8 +382,8 @@ describe('ConversationRoot resident composer', () => {
     expect(host).not.toBeNull()
     expect(seat).not.toBeNull()
     expect(header).not.toBeNull()
-    expect(header?.querySelector('[data-dshd-caption="title"]')).not.toBeNull()
-    expect(header?.querySelector('[data-dshd-caption="blank"]')).toBeNull()
+    expect(header?.querySelector('[data-rlhd-caption="title"]')).not.toBeNull()
+    expect(header?.querySelector('[data-rlhd-caption="blank"]')).toBeNull()
     // Header is column chrome above the scrollport; the seat sticks inside it.
     expect(host?.contains(header)).toBe(false)
     expect(host?.contains(seat)).toBe(true)
@@ -415,8 +415,8 @@ describe('ConversationRoot resident composer', () => {
     const header = b.view.container.querySelector('header')
     expect(host).not.toBeNull()
     expect(header?.getAttribute('aria-hidden')).toBe('true')
-    expect(header?.querySelector('[data-dshd-caption="blank"]')).not.toBeNull()
-    expect(header?.querySelector('[data-dshd-caption="title"]')).toBeNull()
+    expect(header?.querySelector('[data-rlhd-caption="blank"]')).not.toBeNull()
+    expect(header?.querySelector('[data-rlhd-caption="title"]')).toBeNull()
     expect(b.view.getByText('探索未至之境')).toBeTruthy()
     expect(b.view.getByText('预览版')).toBeTruthy()
     expect(b.view.queryByTestId('view-chat')).toBeNull()
@@ -542,12 +542,12 @@ describe('ConversationRoot resident composer', () => {
     expect(b.view.getByText('one')).toBeTruthy()
   })
 
-  it('a blank dshbot session skips the new-session hero and docks the composer', () => {
+  it('a blank rlhbot session skips the new-session hero and docks the composer', () => {
     const b = mount(
       conversationSnapshot({ composerPhase: 'blank', blank: true }),
       undefined,
       undefined,
-      { summaryOrigin: 'dshbot', summaryBlank: true },
+      { summaryOrigin: 'rlhbot', summaryBlank: true },
     )
     const root = b.view.container.querySelector('[data-phase]')
     const header = b.view.container.querySelector('header')
@@ -557,7 +557,7 @@ describe('ConversationRoot resident composer', () => {
     expect(b.slotCalls).not.toContain('conversation.hero.workspace')
     expect(b.slotCalls).not.toContain('conversation.hero.agentPreset')
     expect(header?.getAttribute('aria-hidden')).toBeNull()
-    expect(header?.querySelector('[data-dshd-caption="title"]')).not.toBeNull()
+    expect(header?.querySelector('[data-rlhd-caption="title"]')).not.toBeNull()
     expect(b.view.getByTestId('view-chat')).toBeTruthy()
     const box = b.view.getByRole('textbox')
     expect(b.view.container.querySelector('[data-conversation-scroll]')?.contains(box)).toBe(true)

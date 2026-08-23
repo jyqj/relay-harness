@@ -1,13 +1,13 @@
 /**
  * Durable completed-turn capture and auxiliary-LLM memory extraction worker.
  *
- * @module @deepseek-ai/dsh-memory-extractor-llm
+ * @module @relay-harness/rlh-memory-extractor-llm
  */
 
 import { createHash, randomUUID } from 'node:crypto'
-import type { Context } from '@deepseek-ai/cordis'
-import z from '@deepseek-ai/schemastery'
-import { memoryContainsSecret } from '@deepseek-ai/dsh-memory'
+import type { Context } from '@relay-harness/cordis'
+import z from '@relay-harness/schemastery'
+import { memoryContainsSecret } from '@relay-harness/rlh-memory'
 import type {
   MemoryEvidence,
   MemoryExtractionJob,
@@ -16,11 +16,11 @@ import type {
   MemoryId,
   MemoryScope,
   MemoryTrust,
-} from '@deepseek-ai/dsh-memory/types'
-import { BlockAssembler, createUserMessage as createLlmUserMessage } from '@deepseek-ai/dsh-llm'
-import type { FinishReason, GenerateOptions } from '@deepseek-ai/dsh-llm'
-import { deadline, MAX_TIMER_DELAY_MS } from '@deepseek-ai/dsh-timeout'
-import type { Session } from '@deepseek-ai/dsh-session'
+} from '@relay-harness/rlh-memory/types'
+import { BlockAssembler, createUserMessage as createLlmUserMessage } from '@relay-harness/rlh-llm'
+import type { FinishReason, GenerateOptions } from '@relay-harness/rlh-llm'
+import { deadline, MAX_TIMER_DELAY_MS } from '@relay-harness/rlh-timeout'
+import type { Session } from '@relay-harness/rlh-session'
 import {
   MEMORY_EXTRACTION_PROMPT_VERSION,
   MEMORY_EXTRACTION_SYSTEM_PROMPT,
@@ -37,7 +37,7 @@ const DEFAULT_VERIFIED_TOOL_NAMES = [
   'bash', 'pwsh', 'read', 'write', 'edit', 'str_replace_editor', 'glob', 'grep',
 ]
 const DEFAULT_USER_ID = 'local'
-const DEFAULT_AGENT_ID = 'deepseek-harness'
+const DEFAULT_AGENT_ID = 'relay-harness'
 
 /** Automatic extraction capture, routing, retry, and budget policy. */
 export interface Config {
@@ -45,7 +45,7 @@ export interface Config {
   enabled?: boolean
   /** Stable user identity inside each workspace. Defaults to `local`. */
   userId?: string
-  /** Stable Agent identity shared across sessions. Defaults to `deepseek-harness`. */
+  /** Stable Agent identity shared across sessions. Defaults to `relay-harness`. */
   agentId?: string
   /** Optional explicit workspace identity; omission uses session cwd, then `global`. */
   workspaceId?: string
@@ -220,7 +220,7 @@ async function extractJob(
     model: job.route.model,
     system: MEMORY_EXTRACTION_SYSTEM_PROMPT,
     messages: [createLlmUserMessage({
-      source: { kind: 'plugin', plugin: 'dsh-memory-extractor-llm' },
+      source: { kind: 'plugin', plugin: 'rlh-memory-extractor-llm' },
       content: [{ type: 'text', text: prompt }],
     })],
     maxTokens: config.maxOutputTokens,

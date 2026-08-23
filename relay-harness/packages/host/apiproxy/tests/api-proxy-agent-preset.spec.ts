@@ -8,18 +8,18 @@
 import { mkdtempSync, realpathSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { Context } from '@deepseek-ai/cordis'
-import AgentRegistry, { type AgentFactory } from '@deepseek-ai/dsh-agent'
-import type { Agent } from '@deepseek-ai/dsh-agent'
-import SessionStore, { SessionId, type Session } from '@deepseek-ai/dsh-session'
-import UserQuestionService from '@deepseek-ai/dsh-user-questions'
+import { Context } from '@relay-harness/cordis'
+import AgentRegistry, { type AgentFactory } from '@relay-harness/rlh-agent'
+import type { Agent } from '@relay-harness/rlh-agent'
+import SessionStore, { SessionId, type Session } from '@relay-harness/rlh-session'
+import UserQuestionService from '@relay-harness/rlh-user-questions'
 import { RpcId, type RpcRequest } from '../src/api/rpc.ts'
 import type { HostFrame } from '../src/api/events.ts'
 import {
   InvalidPresetIdError, PresetExistsError, resolveSessionPreset, UnknownPresetError,
-} from '@deepseek-ai/dsh-agent-presets'
-import type {} from '@deepseek-ai/dsh-agent-presets/types'
-import { GoalId } from '@deepseek-ai/dsh-goal'
+} from '@relay-harness/rlh-agent-presets'
+import type {} from '@relay-harness/rlh-agent-presets/types'
+import { GoalId } from '@relay-harness/rlh-goal'
 import { createApiProxy } from '../src/api-proxy.ts'
 import { describe, expect, it } from 'vitest'
 
@@ -106,7 +106,7 @@ async function harness(
   persistence?: unknown,
   options: { userIds?: readonly string[]; defaults?: Record<string, unknown> } = {},
 ) {
-  const cwd = realpathSync(mkdtempSync(join(tmpdir(), 'dsh-apiproxy-preset-')))
+  const cwd = realpathSync(mkdtempSync(join(tmpdir(), 'rlh-apiproxy-preset-')))
   const ctx = new Context()
   await ctx.plugin(SessionStore)
   await ctx.plugin(AgentRegistry)
@@ -161,16 +161,16 @@ describe('session.create with an agent preset', () => {
     expect(ctx.sessions.get(SessionId('s2'))?.header.agentPreset).toBe('standard')
   })
 
-  it('stamps origin dshbot on the session header', async () => {
+  it('stamps origin rlhbot on the session header', async () => {
     const { api, ctx } = await harness(['standard'])
 
     const created = await api.sessions.create(request({
       sessionId: SessionId('bot-1'),
-      origin: 'dshbot',
+      origin: 'rlhbot',
     }))
 
     expect(created.result.ok).toBe(true)
-    expect(ctx.sessions.get(SessionId('bot-1'))?.header.origin).toBe('dshbot')
+    expect(ctx.sessions.get(SessionId('bot-1'))?.header.origin).toBe('rlhbot')
   })
 
   it('rejects an unknown preset and names the ones that exist', async () => {

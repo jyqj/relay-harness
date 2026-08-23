@@ -1,33 +1,33 @@
-# Deepseek-Harness-Desktop
+# Relay-Harness-Desktop
 
 English | [中文](README.zh.md)
 
-Desktop client based on the official DeepSeek Harness Web UI.
+Desktop client based on the official Relay Harness Web UI.
 
-Themes, wallpapers, and other personalization options. Download, install, and run — DSH is bundled.
+Themes, wallpapers, and other personalization options. Download, install, and run — RLH is bundled.
 
-[Download](https://github.com/ChisaAlter/Deepseek-Harness-Desktop/releases/latest) · [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)
+[Download](https://github.com/jyqj/relay-harness/releases/latest) · [Relay Harness](https://github.com/jyqj/relay-harness)
 
 ## Install
 
-Grab a build from [Releases](https://github.com/ChisaAlter/Deepseek-Harness-Desktop/releases/latest). No local Node required.
+Grab a build from [Releases](https://github.com/jyqj/relay-harness/releases/latest). No local Node required.
 
 | | |
 | --- | --- |
-| Windows x64 | `Deepseek-Harness-Desktop-Setup-*.exe` |
-| macOS Apple Silicon | `Deepseek-Harness-Desktop-*-mac-arm64.dmg` |
+| Windows x64 | `Relay-Harness-Desktop-Setup-*.exe` |
+| macOS Apple Silicon | `Relay-Harness-Desktop-*-mac-arm64.dmg` |
 | Intel Mac, Linux | [Run from source](#run-from-source) |
 
-The macOS build is unsigned: right-click → Open, or run `xattr -cr /Applications/Deepseek-Harness-Desktop.app`.
+The macOS build is unsigned: right-click → Open, or run `xattr -cr /Applications/Relay-Harness-Desktop.app`.
 
 ## Features
 
-- **Official UI** — Chat, tool calls, and approvals are `dsh web`. There is no custom chat page.
+- **Official UI** — Chat, tool calls, and approvals are `rlh web`. There is no custom chat page.
 - **Git** — Switch branches, commit, push, and open a pull request from the title bar.
 - **Files and terminal** — `Ctrl+\` opens the right column (Files / Diff / Browser / Agents); `` Ctrl+` `` opens the bottom terminal. A selection can join chat.
 - **Models** — Thinking intensity for third-party models, vision fallback; the latest user message can be edited and resent.
 - **Appearance** — Light / dark themes. Pick a wallpaper or browse the gallery with categories, search, favorites, and window-aware cropping.
-- **Extensions** — Manage MCP, Skills, and plugins in Settings. The marketplace is the bundled [dsh-market](https://github.com/dsh-market/dsh-market) plugin (`dshmarket`).
+- **Extensions** — Manage MCP, Skills, and plugins in Settings. The marketplace is the bundled [rlh-market](https://github.com/dsh-market/dsh-market) plugin (`rlhmarket`).
 - **Desktop** — Minimize to tray, auto-update, Harness crash recovery, and a startup path that can skip a broken user plugin tree.
 
 `Ctrl+,` opens Settings.

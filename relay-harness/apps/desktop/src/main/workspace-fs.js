@@ -1,3 +1,4 @@
+// @ts-check
 const fs = require('node:fs');
 const path = require('node:path');
 const { spawn } = require('node:child_process');
@@ -28,10 +29,6 @@ function setWorkspaceAuthority(authority) {
 function authority() {
   if (workspaceAuthority === null) workspaceAuthority = loadWorkspaceAuthority();
   return workspaceAuthority;
-}
-
-function asCwd(cwd) {
-  return authority().resolveAuthorizedCwd(cwd);
 }
 
 function resolveInside(cwd, relativePath) {

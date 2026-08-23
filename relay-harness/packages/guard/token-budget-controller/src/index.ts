@@ -6,14 +6,14 @@
  * diminishing-returns detection that stops steering once consecutive
  * continuations produce too little new output. Configuration and semantics
  * live in the package README.
- * @module @deepseek-ai/dsh-token-budget-controller
+ * @module @relay-harness/rlh-token-budget-controller
  */
 
-import type { Context } from '@deepseek-ai/cordis'
-import z from '@deepseek-ai/schemastery'
-import type { Agent } from '@deepseek-ai/dsh-agent'
-import { createUserMessage } from '@deepseek-ai/dsh-llm'
-import type { MessageSource } from '@deepseek-ai/dsh-llm'
+import type { Context } from '@relay-harness/cordis'
+import z from '@relay-harness/schemastery'
+import type { Agent } from '@relay-harness/rlh-agent'
+import { createUserMessage } from '@relay-harness/rlh-llm'
+import type { MessageSource } from '@relay-harness/rlh-llm'
 
 export const name = 'token-budget-controller'
 

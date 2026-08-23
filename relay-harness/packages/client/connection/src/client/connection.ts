@@ -23,7 +23,7 @@ const CONNECTION_DEFAULTS: Required<ConnectionConfig> = {
 }
 
 function readBootGate(): Promise<void> | undefined {
-  return (globalThis as { __DSH_BOOT_GATE__?: Promise<void> }).__DSH_BOOT_GATE__
+  return (globalThis as { __RLH_BOOT_GATE__?: Promise<void> }).__RLH_BOOT_GATE__
 }
 
 function sleep(ms: number, signal: AbortSignal): Promise<void> {

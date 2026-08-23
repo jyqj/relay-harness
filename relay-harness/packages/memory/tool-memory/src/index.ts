@@ -1,20 +1,20 @@
 /**
  * Model-facing long-term-memory search and governed write tools.
  *
- * @module @deepseek-ai/dsh-tool-memory
+ * @module @relay-harness/rlh-tool-memory
  */
 
-import type { Context } from '@deepseek-ai/cordis'
-import z from '@deepseek-ai/schemastery'
-import type { Agent } from '@deepseek-ai/dsh-agent'
-import { MemoryId, memoryExcludesDerivedTool } from '@deepseek-ai/dsh-memory'
+import type { Context } from '@relay-harness/cordis'
+import z from '@relay-harness/schemastery'
+import type { Agent } from '@relay-harness/rlh-agent'
+import { MemoryId, memoryExcludesDerivedTool } from '@relay-harness/rlh-memory'
 import type {
   MemoryEvidence,
   MemoryScope,
   MemoryTrust,
-} from '@deepseek-ai/dsh-memory/types'
-import { defineTool } from '@deepseek-ai/dsh-tools'
-import type { ToolRunContext } from '@deepseek-ai/dsh-tools'
+} from '@relay-harness/rlh-memory/types'
+import { defineTool } from '@relay-harness/rlh-tools'
+import type { ToolRunContext } from '@relay-harness/rlh-tools'
 
 export const name = 'tool-memory'
 export const inject = ['longTermMemory', 'tools']
@@ -22,14 +22,14 @@ export const inject = ['longTermMemory', 'tools']
 const MEMORY_KINDS = ['preference', 'fact', 'constraint', 'decision', 'procedure', 'lesson'] as const
 const SEARCH_STATUSES = ['active', 'candidate', 'disputed'] as const
 const DEFAULT_USER_ID = 'local'
-const DEFAULT_AGENT_ID = 'deepseek-harness'
+const DEFAULT_AGENT_ID = 'relay-harness'
 const DEFAULT_SEARCH_LIMIT = 10
 
 /** Model-facing memory-tool configuration. */
 export interface Config {
   /** Stable user identity inside each workspace. Defaults to `local`. */
   userId?: string
-  /** Stable Agent identity shared across recallable sessions. Defaults to `deepseek-harness`. */
+  /** Stable Agent identity shared across recallable sessions. Defaults to `relay-harness`. */
   agentId?: string
   /** Explicit workspace identity; omission uses the calling session cwd, then `global`. */
   workspaceId?: string

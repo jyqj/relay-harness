@@ -87,11 +87,11 @@ function buildMenu({ onOpenWorkspace, onRestart, onReload }) {
       submenu: [
         {
           label: 'Web UI 指南',
-          click: () => shell.openExternal('https://deepseek-harness.github.io/deepseek-harness/guide/'),
+          click: () => shell.openExternal('https://relay-harness.github.io/relay-harness/guide/'),
         },
         {
           label: 'Python SDK',
-          click: () => shell.openExternal('https://deepseek-harness.github.io/deepseek-harness/guide/python-sdk'),
+          click: () => shell.openExternal('https://relay-harness.github.io/relay-harness/guide/python-sdk'),
         },
         { type: 'separator' },
         {

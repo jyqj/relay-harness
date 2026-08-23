@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/proposed/process/2026-07-13-human-review-skill-maintenance.md
-2026-07-13-human-review-skill-maintenance.md: b741c8b595fcd36613cb246af483863d1e056697
-2026-07-13-human-review-skill-maintenance.zh.md: 9191a4ed24002c533d139637501fe56afbd34c34
+2026-07-13-human-review-skill-maintenance.md: 367e660a2cdb6f9b859a3c8f1f9241f1529261fd
+2026-07-13-human-review-skill-maintenance.zh.md: 554ec6c7608e2cf466d2abf80e5f8f0f9946fb0b

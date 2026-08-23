@@ -6,11 +6,11 @@ Status: implemented
 
 ## Problem
 
-Settings 的 MCP 页用一次性 `mcpServers.list` 快照列出服务器。`dsh-mcp-client` 的重连监督器耗尽尝试次数后，`connection.health` 会一直停在 `failed`，直到子 fiber 被 dispose。刷新只是再 list 一次，所以每条已放弃的行都停在「连接失败」。最近一次尝试的错误只在 tooltip 里，HTTP 401 看起来像管理页本身坏了。
+Settings 的 MCP 页用一次性 `mcpServers.list` 快照列出服务器。`rlh-mcp-client` 的重连监督器耗尽尝试次数后，`connection.health` 会一直停在 `failed`，直到子 fiber 被 dispose。刷新只是再 list 一次，所以每条已放弃的行都停在「连接失败」。最近一次尝试的错误只在 tooltip 里，HTTP 401 看起来像管理页本身坏了。
 
 ## Decision
 
-`mcpServersFile.remount(id)` 会 dispose 并重新挂载一个受管子实例，不改写 `$DSH_HOME/mcp-servers.yaml`。Host Remote `mcpServers.retry` 仅限 loopback，并拒绝组成配置 id。Settings 页在任一行处于 `connecting` 或 `reconnecting` 时每 2 秒轮询 `list`，在行上显示 `connection.lastError`，刷新会先重新挂载健康为 `failed` 的受管行，再 list。
+`mcpServersFile.remount(id)` 会 dispose 并重新挂载一个受管子实例，不改写 `$RLH_HOME/mcp-servers.yaml`。Host Remote `mcpServers.retry` 仅限 loopback，并拒绝组成配置 id。Settings 页在任一行处于 `connecting` 或 `reconnecting` 时每 2 秒轮询 `list`，在行上显示 `connection.lastError`，刷新会先重新挂载健康为 `failed` 的受管行，再 list。
 
 ## Alternatives considered
 

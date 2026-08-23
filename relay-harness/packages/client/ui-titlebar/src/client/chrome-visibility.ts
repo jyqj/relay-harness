@@ -6,7 +6,7 @@
  */
 import {
   createSnapshotStore, type SettingsScope, type SnapshotStore,
-} from '@deepseek-ai/dsh-client-runtime/client'
+} from '@relay-harness/rlh-client-runtime/client'
 
 /**
  * Live visibility plus Host writability for one boolean chrome field.

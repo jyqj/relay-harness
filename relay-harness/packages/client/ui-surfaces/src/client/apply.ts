@@ -1,7 +1,7 @@
 /** Registers the right-panel surfaces shell into the layout-owned column. */
-import type { ClientContext, SessionId } from '@deepseek-ai/dsh-client-runtime/client'
-import type {} from '@deepseek-ai/dsh-client-locale/client'
-import type {} from '@deepseek-ai/dsh-client-ui-layout/client'
+import type { ClientContext, SessionId } from '@relay-harness/rlh-client-runtime/client'
+import type {} from '@relay-harness/rlh-client-locale/client'
+import type {} from '@relay-harness/rlh-client-ui-layout/client'
 import { en, NS, zh, type SurfacesKey } from './locales.ts'
 import { wrapOpenPath } from './openpath-intercept.ts'
 import { relativeTo } from './paths.ts'
@@ -46,7 +46,7 @@ export interface BrowserOwnerProps {
   occluded?: boolean
 }
 
-declare module '@deepseek-ai/dsh-client-ui-slots' {
+declare module '@relay-harness/rlh-client-ui-slots' {
   interface LocaleNamespaceMap {
     /** Right-panel surfaces copy. */
     surfaces: SurfacesKey
@@ -80,8 +80,8 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
   }
 }
 
-const OPEN_SURFACE_EVENT = 'dshd-open-surface'
-const PENDING_PREVIEW_URL_KEY = 'dshd-pending-preview-url'
+const OPEN_SURFACE_EVENT = 'rlhd-open-surface'
+const PENDING_PREVIEW_URL_KEY = 'rlhd-pending-preview-url'
 const BROWSER_DOCUMENTS = new Set(['.html', '.htm', '.xhtml', '.svg', '.pdf'])
 
 interface DesktopShell {

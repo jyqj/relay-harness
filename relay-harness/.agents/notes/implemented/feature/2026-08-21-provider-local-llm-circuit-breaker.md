@@ -10,9 +10,9 @@ Request retry can recover an isolated transient failure, but repeated failures f
 
 ## Decision
 
-`@deepseek-ai/dsh-llm-circuit-breaker` is an opt-in guard plugin. It owns one `CircuitBreaker` per resolved provider route and checks after downstream `agent/request` route selection but before transport dispatch. An open route throws `LlmError` with code `CIRCUIT_OPEN` and the remaining cool-down as `providerRetryAfterMs`.
+`@relay-harness/rlh-llm-circuit-breaker` is an opt-in guard plugin. It owns one `CircuitBreaker` per resolved provider route and checks after downstream `agent/request` route selection but before transport dispatch. An open route throws `LlmError` with code `CIRCUIT_OPEN` and the remaining cool-down as `providerRetryAfterMs`.
 
-The state machine uses a live time window, minimum sample count, failure-rate threshold, open duration, and bounded half-open probes. Defaults follow the imported client preset: 60-second window, five samples, 0.5 threshold, 60-second open duration, and one probe. DSH's provider-neutral transient failure codes replace the reference's HTTP-specific client code. Other errors count as successful connectivity samples, so authorization or caller-invalid failures do not claim provider unavailability.
+The state machine uses a live time window, minimum sample count, failure-rate threshold, open duration, and bounded half-open probes. Defaults follow the imported client preset: 60-second window, five samples, 0.5 threshold, 60-second open duration, and one probe. RLH's provider-neutral transient failure codes replace the reference's HTTP-specific client code. Other errors count as successful connectivity samples, so authorization or caller-invalid failures do not claim provider unavailability.
 
 Committed assistant messages record success from their durable provider source. `agent/request-error` records each failed attempt before delegating recovery, so retries contribute their actual outcomes. A half-open probe slot is reclaimed after one open duration if cancellation prevents any outcome; success closes and clears history, while failure reopens. Provider maps are process-local and isolated.
 

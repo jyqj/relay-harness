@@ -1,6 +1,6 @@
 import { useEffect, useState, type KeyboardEvent, type ReactNode } from 'react'
-import { IconRefreshOutline16, Input, Tooltip, writeClipboard } from '@deepseek-ai/dsh-client-ui-primitives'
-import type { InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
+import { IconRefreshOutline16, Input, Tooltip, writeClipboard } from '@relay-harness/rlh-client-ui-primitives'
+import type { InjectFace, PropsLocale, PropsRuntime } from '@relay-harness/rlh-client-ui-slots'
 import { serializeComposerFileLink } from './composerMention.ts'
 import { filterEntries } from './filter.ts'
 import { FileTree, joinRel, type TreeEntry } from './FileTree.tsx'

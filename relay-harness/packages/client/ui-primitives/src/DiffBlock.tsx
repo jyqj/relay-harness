@@ -5,7 +5,7 @@
 // changed-row comparison, this block renders the old and new sides in full.
 // Both front ends share the line-terminator rule and distinct-path file count.
 // Output never soft-wraps — an aligned source line keeps its indentation and
-// scrolls horizontally instead of folding. Colors resolve through --dsw-*
+// scrolls horizontally instead of folding. Colors resolve through --rlw-*
 // tokens; geometry mirrors CodeBlock.
 
 import { useCallback, useMemo, useState } from 'react'
@@ -49,7 +49,7 @@ interface DiffRow {
   text: string
 }
 
-/** Local exhaustiveness helper — this package does not depend on `dsh-llm`. */
+/** Local exhaustiveness helper — this package does not depend on `rlh-llm`. */
 /* v8 ignore next 3 -- closed-union backstop; only reached if a row kind is forged */
 function assertNever(value: never): never {
   throw new Error(`unreachable diff row kind: ${String(value)}`)

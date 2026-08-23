@@ -6,7 +6,7 @@ Status: implemented
 
 ## 问题
 
-当前会话 id 存在源限定的 `localStorage`（`dsh.sessions.current`）。手机经桌面网关进来是新源，恢复失败。`startInitialSelection` 于是去连接最近 Workspace 的空白会话。输入栏看起来是空的，Host 里桌面那些对话其实还在，只是藏在手机侧栏抽屉里。之后若源里仍把那条空白会话记为当前，会一直停在空输入栏。
+当前会话 id 存在源限定的 `localStorage`（`rlh.sessions.current`）。手机经桌面网关进来是新源，恢复失败。`startInitialSelection` 于是去连接最近 Workspace 的空白会话。输入栏看起来是空的，Host 里桌面那些对话其实还在，只是藏在手机侧栏抽屉里。之后若源里仍把那条空白会话记为当前，会一直停在空输入栏。
 
 ## 决策
 
@@ -16,7 +16,7 @@ Status: implemented
 
 **每个新源继续造空白会话。** 否决：手机远程连的是同一个 Host；用户要看已经有的对话，不是空输入栏。
 
-**用配对 Cookie 共享 `dsh.sessions.current`。** 否决：选中哪条会话是浏览器本地的查看事实。Cookie 是每台手机的访问令牌；见 [paired-remote-devices](2026-08-14-paired-remote-devices.md)。
+**用配对 Cookie 共享 `rlh.sessions.current`。** 否决：选中哪条会话是浏览器本地的查看事实。Cookie 是每台手机的访问令牌；见 [paired-remote-devices](2026-08-14-paired-remote-devices.md)。
 
 ## 后果
 

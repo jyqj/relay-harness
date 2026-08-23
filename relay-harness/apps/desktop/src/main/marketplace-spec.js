@@ -1,11 +1,12 @@
+// @ts-check
 'use strict';
 
 /**
- * Marketplace catalog install-spec allow list shared by mapping and `dsh plugin add`.
+ * Marketplace catalog install-spec allow list shared by mapping and `rlh plugin add`.
  * Host `installPlugin` stays github-only; `#path:` and registry npm live only here.
  */
 
-const { isValidGithubSpec, isValidPackageName } = require('../host/install-dsh-plugin-client');
+const { isValidGithubSpec, isValidPackageName } = require('../host/install-rlh-plugin-client');
 
 /** Catalog `github:owner/repo#path:/<posix>` spec. Posix safety is checked separately. */
 const GITHUB_PATH_SPEC = /^github:([^/#]+)\/([^/#]+)#path:\/(.+)$/;
@@ -67,7 +68,7 @@ function isValidMarketplacePathSpec(spec, plugin) {
 }
 
 /**
- * Whether a mapped install spec may reach `dsh plugin add`.
+ * Whether a mapped install spec may reach `rlh plugin add`.
  * @param {string} spec
  * @param {{ homepage?: string, npm?: string | null }} plugin
  * @returns {boolean}

@@ -35,7 +35,7 @@ interface ScaffoldApi {
 }
 
 describe('web e2e: shipped MCP and Skills settings catalogs', () => {
-  it.skipIf(process.env.DSH_SNAPSHOT === 'record')('opens both real catalog pages without errors or user configuration writes', async () => {
+  it.skipIf(process.env.RLH_SNAPSHOT === 'record')('opens both real catalog pages without errors or user configuration writes', async () => {
     const scaffoldApi = await import(SCAFFOLD_MODULE) as ScaffoldApi
     const mode = scaffoldApi.webSnapshotMode()
     let scaffold: CatalogScaffold | undefined

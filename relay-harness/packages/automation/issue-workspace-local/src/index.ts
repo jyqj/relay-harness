@@ -1,16 +1,16 @@
 /**
  * Local filesystem/subprocess provider for deterministic per-issue workspaces.
- * @module @deepseek-ai/dsh-issue-workspace-local
+ * @module @relay-harness/rlh-issue-workspace-local
  */
 
 import { createHash } from 'node:crypto'
 import { lstat, mkdir, realpath, rm } from 'node:fs/promises'
 import { isAbsolute, join, relative, resolve } from 'node:path'
-import { Context } from '@deepseek-ai/cordis'
-import z from '@deepseek-ai/schemastery'
-import { IssueWorkspaceProvisioner, type IssueWorkspace } from '@deepseek-ai/dsh-issue-workspace'
-import type { TrackerIssue } from '@deepseek-ai/dsh-tracker'
-import type {} from '@deepseek-ai/dsh-subprocess'
+import { Context } from '@relay-harness/cordis'
+import z from '@relay-harness/schemastery'
+import { IssueWorkspaceProvisioner, type IssueWorkspace } from '@relay-harness/rlh-issue-workspace'
+import type { TrackerIssue } from '@relay-harness/rlh-tracker'
+import type {} from '@relay-harness/rlh-subprocess'
 
 /** Lifecycle scripts run in the workspace through the managed subprocess seam. */
 export interface Config {
@@ -212,9 +212,9 @@ export class LocalIssueWorkspaceProvisioner extends IssueWorkspaceProvisioner {
       graceMs: this.config.processGraceMs,
       signal: hookSignal,
       env: {
-        DSH_ISSUE_ID: issue.id,
-        DSH_ISSUE_IDENTIFIER: issue.identifier,
-        DSH_ISSUE_TITLE: issue.title,
+        RLH_ISSUE_ID: issue.id,
+        RLH_ISSUE_IDENTIFIER: issue.identifier,
+        RLH_ISSUE_TITLE: issue.title,
       },
     })
     const outcome = await child.done
