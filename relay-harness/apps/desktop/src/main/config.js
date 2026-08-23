@@ -86,7 +86,7 @@ function normalizeRendererConfigPatch(patch) {
       continue;
     }
     if (key === 'githubToken') {
-      // oxlint-disable-next-line no-control-regex -- rejecting control characters is the point: they would forge HTTP header lines.
+      // Rejecting control characters is the point: they would forge HTTP header lines.
       if (typeof value !== 'string' || value.length > 512 || /[\r\n\0]/.test(value)) {
         throw new TypeError('githubToken must be a valid string');
       }

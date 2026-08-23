@@ -33,7 +33,7 @@
     "@types/ws": "^8.18.1",
     "electron": "^43.4.0",
     "electron-builder": "^26.15.3",
-    "pnpm": "11.8.0"
+    "pnpm": "11.22.0"
   },
   "build": {
     "appId": "com.relayharness.desktop",
