@@ -18,9 +18,9 @@ import {
 export interface ThemeBootPayload {
   /** Durable color-scheme preference. */
   preference: ThemePreference
-  /** Derived tokens for the light half (empty for the DeepSeek family). */
+  /** Derived tokens for the light half (empty for the Relay family). */
   lightTokens: ThemeTokens
-  /** Derived tokens for the dark half (empty for the DeepSeek family). */
+  /** Derived tokens for the dark half (empty for the Relay family). */
   darkTokens: ThemeTokens
   /** Interface font size in px. */
   fontSizeInterface: number

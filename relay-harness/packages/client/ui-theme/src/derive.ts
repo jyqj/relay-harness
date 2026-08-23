@@ -29,7 +29,7 @@ export const NAV_ITEM_ACTIVE_ACCENT_MIN_CONTRAST = 1.4
 /**
  * Derive alias-layer tokens from three seed colors and contrast.
  * The canvas stays `seeds.background`. Accent paints every colorful chrome
- * token the sheets otherwise pin to DeepSeek blue (send, links, user bubble,
+ * token the sheets otherwise pin to the Relay accent blue (send, links, user bubble,
  * sidebar selection) and tints raised surfaces so a custom family is visible
  * without opening Settings. Incomplete coverage is intentional: unset names
  * keep the CSS-sheet values.

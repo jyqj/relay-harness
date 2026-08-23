@@ -24,16 +24,16 @@ function family(
  * Product default: empty derived tokens so the CSS sheets stay authoritative.
  * Seed colors still drive the library swatches.
  */
-export const DEEPSEEK_FAMILY: ThemeFamily = family(
+export const RELAY_FAMILY: ThemeFamily = family(
   DEFAULT_FAMILY_ID,
-  'DeepSeek',
+  'Relay',
   seeds('#4176e6', '#ffffff', '#0f1115', 46),
   seeds('#6ea8ff', '#151517', '#f5f5f5', 41),
 )
 
 /** Built-in families in display order. */
 export const BUILTIN_THEME_FAMILIES: readonly ThemeFamily[] = Object.freeze([
-  DEEPSEEK_FAMILY,
+  RELAY_FAMILY,
   family(
     'midnight',
     '午夜',
@@ -96,7 +96,7 @@ export function isBuiltinFamilyId(id: string): boolean {
  * Resolve a family id against builtins then custom documents.
  * @param id - requested id.
  * @param customThemes - user-created families.
- * @returns the matching family, or DeepSeek when the id is unknown.
+ * @returns the matching family, or the Relay default when the id is unknown.
  */
 export function resolveThemeFamily(
   id: string,
@@ -104,7 +104,7 @@ export function resolveThemeFamily(
 ): ThemeFamily {
   return getBuiltinFamily(id)
     ?? customThemes.find(family => family.id === id)
-    ?? DEEPSEEK_FAMILY
+    ?? RELAY_FAMILY
 }
 
 /**

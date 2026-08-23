@@ -3,11 +3,11 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const DEFAULT_FAMILY_ID = 'deepseek';
+const DEFAULT_FAMILY_ID = 'relay';
 
 const FAMILY_SEEDS = {
-  deepseek: {
-    name: 'DeepSeek',
+  relay: {
+    name: 'Relay',
     light: { accent: '#4176e6', background: '#ffffff', foreground: '#0f1115' },
     dark: { accent: '#679efe', background: '#151517', foreground: '#f5f5f5' },
   },

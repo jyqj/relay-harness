@@ -45,11 +45,11 @@ describe('ThemeRuntime', () => {
     const snapshot = theme.getTheme()
     expect(snapshot.preference).toBe('system')
     // jsdom matchMedia is absent; system resolves to light.
-    expect(snapshot.active.id).toBe('deepseek')
+    expect(snapshot.active.id).toBe('relay')
     expect(snapshot.active.colorScheme).toBe('light')
     expect(snapshot.active.tokens).toMatchObject({ '--rlw-alias-glass-opacity': '80%' })
-    expect(snapshot.activeLightThemeId).toBe('deepseek')
-    expect(snapshot.activeDarkThemeId).toBe('deepseek')
+    expect(snapshot.activeLightThemeId).toBe('relay')
+    expect(snapshot.activeDarkThemeId).toBe('relay')
     expect(snapshot.themes.map(t => t.id)).toEqual(['light', 'dark'])
   })
 
@@ -247,7 +247,7 @@ describe('ThemeRuntime', () => {
       const media = stubMedia(true)
       const { theme, events } = make()
       expect(theme.getTheme().preference).toBe('system')
-      expect(theme.getTheme().active.id).toBe('deepseek')
+      expect(theme.getTheme().active.id).toBe('relay')
       expect(theme.getTheme().active.colorScheme).toBe('dark')
       media.flip()
       expect(theme.getTheme().active.colorScheme).toBe('light')
@@ -273,7 +273,7 @@ describe('ThemeRuntime', () => {
     })
   })
 
-  it('setThemeHalf persists one half and derives tokens for non-DeepSeek families', () => {
+  it('setThemeHalf persists one half and derives tokens for non-Relay families', () => {
     const { theme, host } = make()
     theme.setTheme('light')
     theme.setThemeHalf('light', 'celadon')
@@ -311,10 +311,10 @@ describe('ThemeRuntime', () => {
     theme.setPreviewFamily(draft)
     expect(events).toHaveLength(published)
     theme.setPreviewFamily(null)
-    expect(theme.getTheme().active.id).toBe('deepseek')
+    expect(theme.getTheme().active.id).toBe('relay')
   })
 
-  it('adopts half ids from Host and keeps DeepSeek tokens empty besides glass', () => {
+  it('adopts half ids from Host and keeps Relay tokens empty besides glass', () => {
     const { theme, host } = make()
     host.publish({
       status: 'ready',
@@ -328,7 +328,7 @@ describe('ThemeRuntime', () => {
     expect(theme.getTheme().active.tokens['--rlw-alias-bg-base']).toBeUndefined()
   })
 
-  it('stores custom families and falls back to DeepSeek when the active one is removed', () => {
+  it('stores custom families and falls back to Relay when the active one is removed', () => {
     const { theme, host } = make()
     const custom = {
       id: 'grove',
@@ -343,11 +343,11 @@ describe('ThemeRuntime', () => {
     expect(theme.getTheme().active.id).toBe('grove')
     theme.setThemeHalf('dark', 'grove')
     theme.setCustomThemes([])
-    expect(theme.getTheme().activeLightThemeId).toBe('deepseek')
-    expect(theme.getTheme().activeDarkThemeId).toBe('deepseek')
+    expect(theme.getTheme().activeLightThemeId).toBe('relay')
+    expect(theme.getTheme().activeDarkThemeId).toBe('relay')
     flushWrites()
-    expect(host.set).toHaveBeenCalledWith('activeLightThemeId', 'deepseek')
-    expect(host.set).toHaveBeenCalledWith('activeDarkThemeId', 'deepseek')
+    expect(host.set).toHaveBeenCalledWith('activeLightThemeId', 'relay')
+    expect(host.set).toHaveBeenCalledWith('activeDarkThemeId', 'relay')
   })
 
   it('resolves a registered extension theme and falls back when the id is unknown', () => {

@@ -6,9 +6,9 @@
 
 ## ① 架构叙述
 
-> This document describes the architecture of the Relay Harness — the foundation of **DeepSeek Code**. The governing principle, from the microkernel design discussion: **everything is a plugin**. The core is deliberately tiny — a handful of abstract services plus one concrete loop plugin (`rlh-agent-loop`) — and every product feature is a plugin against the extension API described here, without modifying the loop.
+> This document describes the architecture of the Relay Harness — the foundation of **Relay Code**. The governing principle, from the microkernel design discussion: **everything is a plugin**. The core is deliberately tiny — a handful of abstract services plus one concrete loop plugin (`rlh-agent-loop`) — and every product feature is a plugin against the extension API described here, without modifying the loop.
 
-本文介绍 Relay Harness 整体架构，它是 **DeepSeek Code** 的底层基座。微内核设计讨论中确立了核心设计准则：**一切皆插件**。内核刻意做得极精简，仅包含少量抽象服务，外加一个实体循环插件 `rlh-agent-loop`。所有产品功能均基于本文定义的扩展接口开发为独立插件，无需改动主循环逻辑。
+本文介绍 Relay Harness 整体架构，它是 **Relay Code** 的底层基座。微内核设计讨论中确立了核心设计准则：**一切皆插件**。内核刻意做得极精简，仅包含少量抽象服务，外加一个实体循环插件 `rlh-agent-loop`。所有产品功能均基于本文定义的扩展接口开发为独立插件，无需改动主循环逻辑。
 
 > Dependency rule: extension plugins depend on interfaces, never on `rlh-agent-loop` (the loop is swappable); the sanctioned exception is the composition bundle `rlh-agent-spine-demo`, whose job is assembling the concrete spine.
 
@@ -38,9 +38,9 @@
 
 覆盖率门禁（`pnpm run test:coverage`）：作为合入门禁校验，要求 `packages/*/*/src` 目录下每个文件行覆盖率达到 100%。未覆盖代码行大多是无用死代码，门禁标记这类代码是提示删除，而非单纯补充测试。行覆盖率是必要条件，但远不充分：它仅能证明代码被执行过，无法保证功能符合线上预期。
 
-> We are DeepSeek — do not ration real-API tests. A no-key test proves the plumbing; only a with-key run proves the agent works against a real model. Write many: real prompts that write files, multi-turn conversations, tool use, cancellation mid-stream. Cheapest and highest-value are **smoke tests** that boot the real example, send one real prompt, and check the world — they catch the "green unit tests, broken product" class that mocks structurally cannot. The self-skip exists only so secretless CI and keyless contributors aren't blocked; it is not a cost signal.
+> We are Relay Harness — do not ration real-API tests. A no-key test proves the plumbing; only a with-key run proves the agent works against a real model. Write many: real prompts that write files, multi-turn conversations, tool use, cancellation mid-stream. Cheapest and highest-value are **smoke tests** that boot the real example, send one real prompt, and check the world — they catch the "green unit tests, broken product" class that mocks structurally cannot. The self-skip exists only so secretless CI and keyless contributors aren't blocked; it is not a cost signal.
 
-我们是 DeepSeek：真实接口相关测试不得刻意缩减用例数量。无密钥测试仅能验证底层通路；只有携带有效密钥执行的用例，才能确认 agent（智能体）可正常对接真实模型。请大量编写此类测试：包含文件写入类真实提示词、多轮对话、工具调用、流式中途取消等场景。
+我们是 Relay Harness：真实接口相关测试不得刻意缩减用例数量。无密钥测试仅能验证底层通路；只有携带有效密钥执行的用例，才能确认 agent（智能体）可正常对接真实模型。请大量编写此类测试：包含文件写入类真实提示词、多轮对话、工具调用、流式中途取消等场景。
 
 成本最低、收益最高的是**冒烟测试**：拉起完整真实示例，发送一条真实提示，并检查文件、进程等外部可观察结果。这类用例能捕获一类问题——单元测试全部绿灯，但产品实际运行故障，单靠 mock 完全无法发现这类缺陷。
 

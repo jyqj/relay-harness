@@ -6,7 +6,7 @@ import z from '@relay-harness/schemastery'
 export type ThemeTokens = Record<string, string>
 
 /** Default built-in family; empty derived tokens keep the CSS sheets. */
-export const DEFAULT_FAMILY_ID = 'deepseek'
+export const DEFAULT_FAMILY_ID = 'relay'
 
 /** Contrast slider default, matching a mid-range mix. */
 export const DEFAULT_CONTRAST = 46

@@ -2,7 +2,7 @@
 
 [English](README.md) | 中文
 
-Relay Harness（`rlh`）是由 [DeepSeek AI](https://deepseek.com) 开发的开源 agent harness（智能体框架）。
+Relay Harness（`rlh`）是一个开源的 agent harness（智能体框架），由 MIT 许可的 DeepSeek Harness 更名而来（上游版权信息见 [LICENSE](LICENSE)）。
 
 它采用**一切皆插件**的架构，并由 [Cordis](https://github.com/cordiverse/cordis) 驱动，其设计参见论文 [_A Programming Paradigm for Spatiotemporal Composability_](https://github.com/cordiverse/paper)。
 
@@ -40,24 +40,7 @@ pnpm rlh web
 
 - 欢迎通过 [GitHub Discussions](https://github.com/jyqj/relay-harness/discussions) 提交反馈或 bug 报告。
 - 为你的插件仓库添加 [`rlh-plugin`](https://github.com/topics/rlh-plugin) 话题，便于被发现。
-- 欢迎加入 Relay Harness 企微群：扫码添加企微小助手并填写入群问卷，完成后小助手会邀请你入群。
-
-<table>
-  <thead>
-    <tr>
-      <th align="center">企微小助手</th>
-      <th align="center">入群问卷</th>
-      <th align="center">微信公众号</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td align="center"><img src="https://cdn.deepseek.com/harness/readme/community-wecom-assistant.png" alt="Relay Harness 企微小助手二维码" width="180" height="180"></td>
-      <td align="center"><a href="https://trtgsjkv6r.feishu.cn/share/base/form/shrcnIt5twSVdLGD52KJBckGCgg"><img src="https://cdn.deepseek.com/harness/readme/community-wecom-survey.png" alt="Relay Harness 入群问卷二维码" width="180" height="180"></a></td>
-      <td align="center"><img src="https://cdn.deepseek.com/harness/readme/community-wechat-official-account.png" alt="Relay Harness 团队微信公众号二维码" width="180" height="180"></td>
-    </tr>
-  </tbody>
-</table>
+- 欢迎加入 <a href="https://discord.gg/Ycq5dCaS4">Relay Harness Discord 社区</a>。
 
 ## 参与贡献
 

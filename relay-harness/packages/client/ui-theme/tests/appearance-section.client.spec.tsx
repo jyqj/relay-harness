@@ -91,8 +91,8 @@ function snap(overrides: Partial<AppearanceSyncSnapshot> = {}): AppearanceSyncSn
   return {
     preference: DEFAULT_THEME_SETTINGS.preference,
     active: { colorScheme: overrides.preference === 'dark' ? 'dark' : 'light' },
-    activeLightThemeId: 'deepseek',
-    activeDarkThemeId: 'deepseek',
+    activeLightThemeId: 'relay',
+    activeDarkThemeId: 'relay',
     customThemes,
     glassOpacity: DEFAULT_THEME_SETTINGS.glassOpacity,
     wallpaperImage: '',
@@ -190,7 +190,7 @@ describe('AppearanceSection', () => {
   it('creates from the first family when neither half id is present', () => {
     mount('system', { activeDarkThemeId: 'missing', activeLightThemeId: 'also-missing' })
     fireEvent.click(screen.getByRole('button', { name: '创建主题' }))
-    expect(screen.getByDisplayValue(/DeepSeek/)).toBeDefined()
+    expect(screen.getByDisplayValue(/Relay/)).toBeDefined()
     fireEvent.click(screen.getByRole('button', { name: '取消' }))
   })
 
@@ -215,7 +215,7 @@ describe('AppearanceSection', () => {
   it('creates, edits, and saves a custom family from the current half', () => {
     const b = mount('system')
     fireEvent.click(screen.getByRole('button', { name: '创建主题' }))
-    const name = screen.getByDisplayValue(/DeepSeek/)
+    const name = screen.getByDisplayValue(/Relay/)
     fireEvent.change(name, { target: { value: 'My Grove' } })
     fireEvent.click(screen.getByRole('button', { name: '保存' }))
     expect(b.setCustomThemes).toHaveBeenCalled()

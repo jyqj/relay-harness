@@ -300,7 +300,7 @@ export function wallpaperCanvasSolidity(solidity: number): number {
  * glass solidity. A 100% mix stores the solid color, not a color-mix.
  * The terminal pane stays the opaque canvas fallback (or a family's solid
  * `--rlw-alias-bg-base`) so TUI SGR does not sit on wallpaper glass.
- * @param tokens - current alias tokens (may be empty for DeepSeek).
+ * @param tokens - current alias tokens (may be empty for Relay).
  * @param mode - resolved half, picks the sheet fallbacks.
  * @param solidity - percent of the solid fill kept (the user's glass opacity).
  * @returns a new token dictionary.

@@ -71,12 +71,12 @@ describe('theme boot index transform', () => {
     expect(html.startsWith('<main>loading</main><script>')).toBe(true)
   })
 
-  it('embeds derived tokens for a non-DeepSeek half and writes them before React', () => {
+  it('embeds derived tokens for a non-Relay half and writes them before React', () => {
     mockSystemDark(false)
     const payload = buildThemeBootPayload({
       preference: 'light',
       activeLightThemeId: 'celadon',
-      activeDarkThemeId: 'deepseek',
+      activeDarkThemeId: 'relay',
       customThemes: [],
       glassOpacity: 70,
       wallpaperImage: '',

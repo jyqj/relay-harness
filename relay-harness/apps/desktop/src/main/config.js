@@ -19,7 +19,7 @@ const DEFAULTS = {
   closeToTray: DEFAULT_CLOSE_TO_TRAY,
   openAtLogin: false,
   openDevTools: false,
-  theme: 'deepseek',
+  theme: 'relay',
   locale: 'zh',
   githubToken: '',
   remoteEnabled: false,
