@@ -10,7 +10,7 @@
   "scripts": {
     "start": "node scripts/run-electron.js",
     "icon": "node scripts/run-render-icon.js",
-    "test": "node --test \"src/**/*.test.js\" \"mobile/web/**/*.test.js\"",
+    "test": "node --test \"src/**/*.test.js\" \"mobile/web/**/*.test.js\" \"vendor/*.test.js\"",
     "typecheck": "tsc -p tsconfig.json",
     "setup:harness": "pnpm --dir ../.. run build",
     "pack": "node scripts/run-electron-builder.cjs --dir --publish never",

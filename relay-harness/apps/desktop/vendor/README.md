@@ -1,3 +1,5 @@
 Desktop-only bundled plugins and the upstream import pin live here. Harness source is the monorepo root and is not duplicated under this directory.
 
-The vendored `rlhmarket`/`rlhbot` trees intentionally track their `node_modules/` and `lib/` in git: the desktop installer must bundle them offline via electron-builder `extraResources`, and `src/main/rlhmarket-preset.test.js` asserts both the tracked state and the packaging path.
+The vendored `rlhmarket`/`rlhbot` trees track their `node_modules/` and `lib/` in git: the desktop installer bundles them offline through electron-builder `extraResources`, which copies each tree whole. The repository-wide `node_modules/`, `dist/`, and `lib/` ignores would swallow those subtrees, so [`../.gitignore`](../.gitignore) un-ignores each one by name; add a matching pair when vendoring a new plugin.
+
+[`plugins.json`](plugins.json) records each vendored plugin's upstream source, the version pinned, and any subtree the drop does not carry, with the reason. [`vendor-plugins.test.js`](vendor-plugins.test.js) checks every entry point a plugin's `package.json` declares against that record, and fails when a subtree listed as absent turns up — so a restored subtree cannot stay recorded as missing, and the suites that skip on it cannot stay skipped.
