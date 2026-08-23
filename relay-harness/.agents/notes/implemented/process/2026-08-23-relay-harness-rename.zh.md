@@ -24,6 +24,7 @@ Harness 一直以一个并不属于自己的名字发布。所有 npm 包位于 
 | CSS 自定义属性 | `--dsw-*`、`--ds-*` | `--rlw-*`、`--rl-*` |
 | 仓库 URL | `github.com/deepseek-ai/deepseek-harness` | `github.com/jyqj/relay-harness` |
 | 桌面应用 id | `ai.deepseek.harness.gui` | `com.relayharness.desktop` |
+| 移动端 bundle id | `ai.deepseek.harness.mobile` | `com.relayharness.mobile` |
 
 目录名与文件名沿用同一套 token：`.agents/skills/dsh-*` 改为 `rlh-*`，`dshbot` 改为 `rlhbot`，`install-dsh-plugin*` 改为 `install-rlh-plugin*`。
 

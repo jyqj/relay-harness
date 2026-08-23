@@ -11,10 +11,10 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "ai.deepseek.harness.mobile"
+      "bundleIdentifier": "com.relayharness.mobile"
     },
     "android": {
-      "package": "ai.deepseek.harness.mobile",
+      "package": "com.relayharness.mobile",
       "usesCleartextTraffic": true
     },
     "web": {

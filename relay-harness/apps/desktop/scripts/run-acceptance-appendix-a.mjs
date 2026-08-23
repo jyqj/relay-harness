@@ -93,7 +93,7 @@ try {
   const t3 = await userTurn(
     'TC-CHAT-003',
     `下面是工作区文件 ${readme.name} 的内容，用三句话总结它是什么产品：\n\n${readme.text}`,
-    (r) => r.length > 20 && /Deepseek|Harness|Desktop|桌面|客户端|产品/i.test(r),
+    (r) => r.length > 20 && /Relay|Harness|Desktop|桌面|客户端|产品/i.test(r),
   )
   const t4 = await userTurn(
     'TC-CHAT-004',

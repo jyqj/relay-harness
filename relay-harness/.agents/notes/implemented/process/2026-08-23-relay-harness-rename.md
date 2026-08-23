@@ -24,6 +24,7 @@ The product is **Relay Harness**, abbreviated **rlh**. The rename covers every b
 | CSS custom properties | `--dsw-*`, `--ds-*` | `--rlw-*`, `--rl-*` |
 | Repository URL | `github.com/deepseek-ai/deepseek-harness` | `github.com/jyqj/relay-harness` |
 | Desktop app id | `ai.deepseek.harness.gui` | `com.relayharness.desktop` |
+| Mobile bundle id | `ai.deepseek.harness.mobile` | `com.relayharness.mobile` |
 
 Directory and file names follow the same tokens: `.agents/skills/dsh-*` became `rlh-*`, `dshbot` became `rlhbot`, and `install-dsh-plugin*` became `install-rlh-plugin*`.
 
