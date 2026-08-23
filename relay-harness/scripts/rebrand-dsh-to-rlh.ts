@@ -47,7 +47,10 @@ const PROTECTED: RegExp[] = [
   /\bawesome-dsh-plugin\b/g,
   /(?:https?:\/\/)?(?:www\.)?dshmarket\.com/g,
   /(?:github\.com|github\/stars)\/dsh-market\/dsh-market(?:\.git)?/g,
-  /\bdsh-market\b/g,
+  // The upstream repository name as a link label. Only the label: the market's
+  // own route namespace, log tag, and state directory are bundled-plugin
+  // surface and rename with the client half that calls them.
+  /\[dsh-market\]\(/g,
   // Community plugin identities: npm names and GitHub install specs owned by others.
   // The GitHub pattern runs to the end of the URL path so release tags such as
   // `/releases/download/dsh-0.1.2/` stay on the owner's side of the boundary.

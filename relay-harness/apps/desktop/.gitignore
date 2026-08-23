@@ -1,9 +1,16 @@
+# The vendored plugin trees ship whole to the installer, so their installed and
+# built subtrees are tracked despite the repository-wide ignores for build
+# output. vendor/README.md owns the rule; vendor/vendor-plugins.test.js gates it.
 node_modules/
 !vendor/rlhmarket/node_modules/
 !vendor/rlhmarket/node_modules/**
 dist/
 !vendor/rlhmarket/node_modules/**/dist/
 !vendor/rlhmarket/node_modules/**/dist/**
+!vendor/rlhmarket/lib/
+!vendor/rlhmarket/lib/**
+!vendor/rlhbot/lib/
+!vendor/rlhbot/lib/**
 dist-release/
 out/
 /release/
