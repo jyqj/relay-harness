@@ -7,15 +7,19 @@
 import { Context, Service } from '@deepseek-ai/cordis'
 import { HarnessError } from '@deepseek-ai/dsh-llm'
 import type {
+  WorkflowActiveRunSnapshot,
   WorkflowAgentEndInfo,
   WorkflowAgentInfo,
+  WorkflowMeta,
   WorkflowResultInfo,
+  WorkflowRunId,
   WorkflowRunInfo,
 } from './types.ts'
 import type { WorkflowRun, WorkflowStartRequest } from './runtime-types.ts'
 
 export { WorkflowRunId } from './types.ts'
 export type {
+  WorkflowActiveRunSnapshot,
   WorkflowAgentEndInfo,
   WorkflowAgentInfo,
   WorkflowAgentOutcome,
@@ -116,6 +120,7 @@ export type WorkflowErrorCode =
   | 'AGENT_START'
   | 'AGENT_RESULT'
   | 'RESULT_UNSERIALIZABLE'
+  | 'RUN_ACTIVE'
   | 'JOURNAL_UNAVAILABLE'
   | 'JOURNAL_INVALID'
   | 'JOURNAL_DIVERGENCE'
@@ -160,6 +165,8 @@ export function isFatalWorkflowError(error: unknown): boolean {
  * result settles.
  */
 export abstract class WorkflowEngine extends Service {
+  private readonly active = new Map<WorkflowRunId, WorkflowActiveRunSnapshot>()
+
   constructor(ctx: Context) {
     super(ctx, 'workflowEngine')
   }
@@ -173,11 +180,31 @@ export abstract class WorkflowEngine extends Service {
   abstract start(request: WorkflowStartRequest): WorkflowRun
 
   /**
+   * Return detached snapshots of runs whose start event has committed without
+   * a matching end event. The service event stream is the sole state owner;
+   * callers receive no cancellation or disposal authority.
+   * @returns Active runs in start order.
+   */
+  activeRuns(): readonly WorkflowActiveRunSnapshot[] {
+    return [...this.active.values()].map(snapshot => ({
+      ...snapshot,
+      meta: cloneWorkflowMeta(snapshot.meta),
+    }))
+  }
+
+  /** Reject a run identity that already has an unmatched start event. */
+  protected assertWorkflowRunAvailable(id: WorkflowRunId): void {
+    if (!this.active.has(id)) return
+    throw new WorkflowError(`workflow run '${id}' is already active`, 'RUN_ACTIVE')
+  }
+
+  /**
    * Emit a lifecycle event while containing and logging each listener failure.
    * @param name - the `workflow/*` event to dispatch.
    * @param args - the event's payload, matching its declared signature.
    */
   protected emitWorkflowEvent(name: WorkflowEventName, ...args: unknown[]): void {
+    this.projectWorkflowEvent(name, args)
     for (const callback of this.ctx.events.dispatch('emit', [name, ...args])) {
       try {
         const returned: unknown = (callback as (...payload: unknown[]) => unknown)(...args)
@@ -188,6 +215,49 @@ export abstract class WorkflowEngine extends Service {
         this.ctx.logger.warn(`workflow: ${name} listener threw: ${renderListenerError(error)}`)
       }
     }
+  }
+
+  /** Project the trusted same-process event tuple into the active-run table. */
+  private projectWorkflowEvent(name: WorkflowEventName, args: readonly unknown[]): void {
+    const info = args[0] as WorkflowRunInfo
+    if (name === 'workflow/start') {
+      this.assertWorkflowRunAvailable(info.id)
+      const now = Date.now()
+      this.active.set(info.id, {
+        id: info.id,
+        meta: cloneWorkflowMeta(info.meta),
+        startedAt: now,
+        lastProgressAt: now,
+        agentsStarted: 0,
+        activeAgents: 0,
+      })
+      return
+    }
+    const current = this.active.get(info.id)
+    if (current === undefined) return
+    if (name === 'workflow/end') {
+      this.active.delete(info.id)
+      return
+    }
+    const phase = name === 'workflow/phase' ? args[1] as string : current.phase
+    const agentsStarted = current.agentsStarted + (name === 'workflow/agent-start' ? 1 : 0)
+    const activeAgents = current.activeAgents
+      + (name === 'workflow/agent-start' ? 1 : name === 'workflow/agent-end' ? -1 : 0)
+    this.active.set(info.id, {
+      ...current,
+      lastProgressAt: Date.now(),
+      ...(phase === undefined ? {} : { phase }),
+      agentsStarted,
+      activeAgents: Math.max(0, activeAgents),
+    })
+  }
+}
+
+/** Copy the complete mutable meta graph exposed to callers. */
+function cloneWorkflowMeta(meta: WorkflowMeta): WorkflowMeta {
+  return {
+    ...meta,
+    ...(meta.phases === undefined ? {} : { phases: meta.phases.map(phase => ({ ...phase })) }),
   }
 }
 

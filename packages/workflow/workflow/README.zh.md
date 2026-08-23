@@ -10,13 +10,15 @@
 
 ## 服务与运行契约
 
-`WorkflowEngine.start(request): WorkflowRun` 会同步完成足够多的校验，在运行创建前拒绝格式错误的 meta 块、无法解析的脚本、不可用的提供方路由或不受支持的单次运行限制。返回后，`WorkflowRun.result` 绝不拒绝：执行失败以 `stopReason: 'error'` 兑现，取消则在引擎有限的宽限时间内以 `cancelled` 兑现。
+`WorkflowEngine.start(request): WorkflowRun` 会同步完成足够多的校验，在运行创建前拒绝格式错误的 meta 块、无法解析的脚本、不可用的提供方路由、不受支持的单次运行限制或重复的活动 `resumeRunId`。返回后，`WorkflowRun.result` 绝不拒绝：执行失败以 `stopReason: 'error'` 兑现，取消则在引擎有限的宽限时间内以 `cancelled` 兑现。
 
 运行由持有方负责。引擎插件卸载会阻止新的启动，但不会撤销已接受的运行。持有方必须在每条路径上调用 `dispose()`；dispose（资源释放）会取消剩余工作，并在文档规定的期限内达到或放弃完全停稳。
 
 `WorkflowStartRequest` 包含 `{ meta, script, args?, subagentProvider?, maxTotalAgents?, resumeRunId?, parent, signal? }`。`parent` 把每个子 agent（智能体）归属于调用 agent。`subagentProvider` 可以为该次运行的所有子 agent 指定路由，同时不向脚本公开提供方选择；省略时使用引擎配置的提供方。`maxTotalAgents` 可以为一次运行降低引擎的部署上限，同样对脚本不可见。`resumeRunId` 要求具备持久 replay 的引擎重启同一脚本并重放已完成的 host-call prefix；不具备持久 replay 的引擎会拒绝它。实现会同步拒绝无效路由和限制。`meta` 与 `args` 是普通数据，不是脚本片段。
 
 `WorkflowRun` 公开 `{ id, meta, result, cancel(reason?), dispose() }`。`WorkflowResult` 包含 `{ value, stopReason, error?, agentsStarted }`；`value` 是普通 JSON 数据或 `null`。
+
+`WorkflowEngine.activeRuns()` 按启动顺序返回分离的 `WorkflowActiveRunSnapshot` 值。每个值包含身份、meta、`startedAt`、`lastProgressAt`、最新的可选 `phase`、`agentsStarted` 与 `activeAgents`。引擎的成对生命周期事件拥有这份进程内投影；快照不公开活动句柄，不能取消或 dispose 运行。运行的 `workflow/end` 事件提交后，它会离开投影。
 
 ## 事件
 
@@ -38,6 +40,7 @@
 - `AGENT_START`：提供方的异步启动调用被拒绝；
 - `AGENT_RESULT`：已发布子 agent 的结果因基础设施故障而被拒绝；
 - `RESULT_UNSERIALIZABLE`：脚本/worker 值不是普通 JSON 数据；
+- `RUN_ACTIVE`：请求的持久运行身份已有尚未配对的 start；
 - `CANCELLED`：取消会接管该运行，待处理和未来的钩子都会拒绝。
 
 子 agent 若以非完成的结束原因正常兑现，并不属于基础设施异常：`agent()` 返回 `null`，使脚本可以处理普通的子 agent 失败。
@@ -56,6 +59,6 @@
 - **恢复取决于引擎**：worker-thread 提供方在配置 journal root 后可以 replay 已完成的 `agent()` 调用；通用 seam 不承诺存储、跨进程锁或任意脚本局部值的 checkpoint。
 - **没有已保存或嵌套工作流**：该 seam 只启动调用方提供的脚本，工作流脚本不会收到用于递归编排的 `workflow()` 钩子。
 - **没有 token 预算词汇**：引擎会限制并发、条目和子 agent，但请求与结果都不会统计跨子 agent 的模型 token。
-- **运行由持有方负责，不由服务跟踪**：卸载引擎不会发现独立的活动句柄；每个消费方都必须 dispose 自己启动的运行。
+- **快照不代表所有权**：服务跟踪活动事实而非活动句柄；卸载引擎不会 dispose 已接受的运行，每个消费方仍必须 dispose 自己启动的运行。
 
 暂缓实现的工作流接口见[动态工作流 Agent Note（agent 决策记录）](../../../.agents/notes/implemented/feature/2026-07-05-dynamic-workflows.md)。

@@ -3,6 +3,7 @@
 import type { Context } from '@deepseek-ai/cordis'
 import commandsRemote from '@deepseek-ai/dsh-commands/remote'
 import goalsRemote from '@deepseek-ai/dsh-goal/remote'
+import issueOrchestrationRemote from '@deepseek-ai/dsh-issue-orchestrator/remote'
 import dynamicRemote from '@deepseek-ai/dsh-cordis-host-runner/remote'
 import fileReferencesRemote from '@deepseek-ai/dsh-file-reference/remote'
 import pluginInventoryRemote from '@deepseek-ai/dsh-host-plugin-inventory/remote'
@@ -23,6 +24,7 @@ export type {
 export type {} from '@deepseek-ai/dsh-commands/remote'
 export type {} from '@deepseek-ai/dsh-file-reference/remote'
 export type {} from '@deepseek-ai/dsh-goal/remote'
+export type {} from '@deepseek-ai/dsh-issue-orchestrator/remote'
 export type {} from '@deepseek-ai/dsh-host-plugin-inventory/remote'
 export type {} from '@deepseek-ai/dsh-host-mcp-servers/remote'
 export type {} from '@deepseek-ai/dsh-host-skill-inventory/remote'
@@ -40,6 +42,13 @@ export type {} from '@deepseek-ai/dsh-credentials/types'
 export type {} from '@deepseek-ai/dsh-llm/types'
 export type {} from '@deepseek-ai/dsh-agent-presets/types'
 export type {} from '@deepseek-ai/dsh-settings/types'
+export type {} from '@deepseek-ai/dsh-issue-orchestration/client'
+export type {
+  IssueCommand,
+  IssueOrchestrationEntry,
+  IssueOrchestrationSnapshot,
+  IssueRefreshResult,
+} from '@deepseek-ai/dsh-issue-orchestration/client'
 
 /**
  * The carrier's Client-facing types, re-exported so a business package names one
@@ -124,7 +133,7 @@ export async function apply(ctx: Context): Promise<() => Promise<void>> {
   const disposers: Array<() => Promise<void>> = []
   try {
     for (const contribution of [
-      commandsRemote, goalsRemote, dynamicRemote, fileReferencesRemote,
+      commandsRemote, goalsRemote, issueOrchestrationRemote, dynamicRemote, fileReferencesRemote,
       pluginInventoryRemote, mcpServersRemote, skillInventoryRemote, messageFeedbackRemote, sessionReferencesRemote,
     ]) {
       disposers.push(await ctx.remote.$mount(contribution))

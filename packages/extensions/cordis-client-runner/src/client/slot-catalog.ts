@@ -1740,6 +1740,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     slotInject: '',
     declaredBy: 'an entry in \'root\' (client-ui-layout), so it exists while that entry is mounted',
     occupants: [
+      'client-ui-issue-orchestration IssueOrchestrationPanel id \'issue-orchestration\'',
       'client-ui-session-tree SessionTreeCanvas id \'session-tree\'',
     ],
     replaceRisk: 'none',
@@ -1821,6 +1822,7 @@ export const CLIENT_SLOT_API: readonly ClientSlotEntry[] = [
     declaredBy: 'an entry in \'root\' (client-ui-layout), so it exists while that entry is mounted',
     occupants: [
       'client-ui-git GitActionsControl id \'git-actions\'',
+      'client-ui-issue-orchestration IssueOrchestrationAction id \'issue-orchestration\'',
       'client-ui-session-tree SessionTreeTitlebarAction id \'session-tree\'',
       'client-ui-titlebar PanelToggles id \'panel-toggles\'',
       'session-log-export SessionLogDownloadHeaderAction id \'session-log-download\'',

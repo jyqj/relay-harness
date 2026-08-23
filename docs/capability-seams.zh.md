@@ -67,6 +67,7 @@ flowchart LR
   pkg_storage_domain["storage-domain"]
   svc_storageDomain["ctx.storageDomain<br/>Domain data facility"]
   pkg_workspace["workspace"]
+  pkg_issue_orchestrator["issue-orchestrator"]
   svc_messageFeedback["ctx.messageFeedback<br/>Lifecycle-bound message feedback"]
   svc_workspaceRegistry["ctx.workspaceRegistry<br/>Workspace entity registry"]
   svc_sessionQuery["ctx.sessionQuery<br/>Session reads, traces, filters, and search"]
@@ -206,6 +207,22 @@ flowchart LR
   svc_workflowEngine["ctx.workflowEngine<br/>Workflow script engine"]
   pkg_workflow_worker_thread["workflow-worker-thread"]
   pkg_tool_workflow["tool-workflow"]
+  pkg_tracker["tracker"]
+  svc_trackers["ctx.trackers<br/>Issue tracker provider registry"]
+  pkg_tracker_linear["tracker-linear"]
+  pkg_issue_workflow["issue-workflow"]
+  svc_issueWorkflow["ctx.issueWorkflow<br/>Repository issue policy"]
+  pkg_issue_workflow_file["issue-workflow-file"]
+  pkg_issue_workspace["issue-workspace"]
+  svc_issueWorkspace["ctx.issueWorkspace<br/>Per-issue directory lifecycle"]
+  pkg_issue_workspace_local["issue-workspace-local"]
+  pkg_issue_runner["issue-runner"]
+  svc_issueRunner["ctx.issueRunner<br/>Issue attempt execution"]
+  pkg_issue_runner_agent["issue-runner-agent"]
+  pkg_issue_orchestration["issue-orchestration"]
+  svc_issueOrchestration["ctx.issueOrchestration<br/>Durable issue scheduling"]
+  pkg_api_remotes["api-remotes"]
+  pkg_client_ui_issue_orchestration["client-ui-issue-orchestration"]
   pkg_lsp["lsp"]
   svc_lsp["ctx.lsp<br/>Language-server navigation seam"]
   pkg_lsp_local["lsp-local"]
@@ -249,6 +266,14 @@ flowchart LR
   pkg_fs_sandbox --> svc_fs
   pkg_goal --> svc_goals
   pkg_invariants --> svc_invariants
+  pkg_issue_orchestration --> svc_issueOrchestration
+  pkg_issue_orchestrator --> svc_issueOrchestration
+  pkg_issue_runner --> svc_issueRunner
+  pkg_issue_runner_agent --> svc_issueRunner
+  pkg_issue_workflow --> svc_issueWorkflow
+  pkg_issue_workflow_file --> svc_issueWorkflow
+  pkg_issue_workspace --> svc_issueWorkspace
+  pkg_issue_workspace_local --> svc_issueWorkspace
   pkg_jobs --> svc_jobs
   pkg_jobs_local --> svc_jobs
   pkg_llm --> svc_llm
@@ -313,6 +338,8 @@ flowchart LR
   pkg_terminal_bash --> svc_terminals
   pkg_token_meter --> svc_tokenMeter
   pkg_tools --> svc_tools
+  pkg_tracker --> svc_trackers
+  pkg_tracker_linear --> svc_trackers
   pkg_typert_registry --> svc_typert
   pkg_user_questions --> svc_userQuestions
   pkg_web --> svc_web
@@ -352,6 +379,11 @@ flowchart LR
   svc_invariants --> pkg_agent_loop
   svc_invariants --> pkg_scope
   svc_invariants --> pkg_session
+  svc_issueOrchestration --> pkg_api_remotes
+  svc_issueOrchestration --> pkg_client_ui_issue_orchestration
+  svc_issueRunner --> pkg_issue_orchestrator
+  svc_issueWorkflow --> pkg_issue_orchestrator
+  svc_issueWorkspace --> pkg_issue_orchestrator
   svc_jobs --> pkg_tool_bash
   svc_jobs --> pkg_tool_jobs
   svc_jobs --> pkg_tool_subagent
@@ -404,6 +436,7 @@ flowchart LR
   svc_skills --> pkg_tool_skill
   svc_spillStore --> pkg_spill_policy
   svc_storage --> pkg_storage_domain
+  svc_storageDomain --> pkg_issue_orchestrator
   svc_storageDomain --> pkg_message_feedback
   svc_storageDomain --> pkg_workspace
   svc_subagents --> pkg_tool_ralph
@@ -434,6 +467,7 @@ flowchart LR
   svc_tools --> pkg_tool_terminal
   svc_tools --> pkg_tool_todo
   svc_tools --> pkg_tool_web
+  svc_trackers --> pkg_issue_orchestrator
   svc_typert --> pkg_api_gateway
   svc_typert --> pkg_typert_loader
   svc_userQuestions --> pkg_tool_ask_user
@@ -466,7 +500,7 @@ flowchart LR
 | `ctx.credentials` | `seam` | [`credentials`](../packages/credentials/credentials) | [`credentials-local`](../packages/credentials/credentials-local) | [`llm-deepseek`](../packages/llm/llm-deepseek), [`llm-pi-ai`](../packages/llm/llm-pi-ai), `apiproxy` | - | 配置携带对机密信息的引用；提供方拥有实际值。消费方按操作解析，因此轮换后的凭据会在紧接着的下一次请求中生效；Web 网关提供不含实际值的视图和只写存储。 |
 | `ctx.sessionTelemetry` | `seam` | [`session-telemetry`](../packages/session/session-telemetry) | [`session-telemetry-otel`](../packages/session/session-telemetry-otel) | - | - | 该 seam 捕获会话记录、进行脱敏并交给一个后端；没有其他组件消费该服务，其输出会离开当前进程。 |
 | `ctx.storage` | `seam` | [`storage`](../packages/storage/storage) | [`storage-json`](../packages/storage/storage-json), [`storage-sqlite`](../packages/storage/storage-sqlite) | [`storage-domain`](../packages/storage/storage-domain) | - | 各后端以不同名称并列注册；数据形态（领域优先）挂载到枢纽上，并将类型化操作转换为不透明的 KV 单元原语。 |
-| `ctx.storageDomain` | `core` | [`storage-domain`](../packages/storage/storage-domain) | - | [`workspace`](../packages/workspace/workspace), [`message-feedback`](../packages/feedback/message-feedback) | - | 等待所有已配置后端就绪，然后将领域形态发布为一个受生命周期约束的服务，用于类型化持久状态。 |
+| `ctx.storageDomain` | `core` | [`storage-domain`](../packages/storage/storage-domain) | - | [`workspace`](../packages/workspace/workspace), [`message-feedback`](../packages/feedback/message-feedback), [`issue-orchestrator`](../packages/automation/issue-orchestrator) | - | 等待所有已配置后端就绪，然后将领域形态发布为一个受生命周期约束的服务，用于类型化持久状态。 |
 | `ctx.messageFeedback` | `core` | [`message-feedback`](../packages/feedback/message-feedback) | - | - | - | 拥有本地逐 assistant 消息反馈、生命周期与目标校验、逐条目 compare-and-set 及 Host 一元 Remote 契约，且不进入 Session 历史或遥测。 |
 | `ctx.workspaceRegistry` | `core` | [`workspace`](../packages/workspace/workspace) | - | `apiproxy` | - | 通过领域设施拥有带 WorkspaceId 品牌类型的记录；稳定的 sessionIds 账户驱动 Host RPC 与 GUI 投影。 |
 | `ctx.sessionQuery` | `seam` | [`session-query`](../packages/session-query/session-query) | [`session-query-sqlite`](../packages/session-query/session-query-sqlite) | [`session-reference`](../packages/context/session-reference), [`tool-session-query`](../packages/session-query/tool-session-query) | - | 该接口提供精确读取、过滤和追踪；具体后端还提供全文协调、排序、摘要片段和游标世代，而模型消费方负责工作区权限与不含游标的渲染。 |
@@ -510,6 +544,11 @@ flowchart LR
 | `ctx.webServer` | `core` | `webserver` | - | `connection`, `modules`, `hmr` | - | 普通的 node:http 载体：具名路由注册表、索引转换 tap，以及静态 dist 回退；Web 传输插件注册自己的路由。 |
 | `ctx.clientModules` | `core` | `modules` | - | `hmr` | - | 通过增量 `dsh.client` 扫描组合 __DSH_BOOT__ 入口图，提供插件组合包，并通知重建／图变更订阅方。 |
 | `ctx.workflowEngine` | `seam` | [`workflow`](../packages/workflow/workflow) | [`workflow-worker-thread`](../packages/workflow/workflow-worker-thread) | [`tool-workflow`](../packages/workflow/tool-workflow), [`tool-ralph`](../packages/workflow/tool-ralph) | - | 每个上下文使用一个引擎，与 bash 相同，且没有具名提供方注册表；通用工作流与固定 Ralph 消费方启动运行，其中的 agent() 调用通过 ctx.subagents 扇出。 |
+| `ctx.trackers` | `seam` | [`tracker`](../packages/tracker/tracker) | [`tracker-linear`](../packages/tracker/tracker-linear) | [`issue-orchestrator`](../packages/automation/issue-orchestrator) | - | 具名 Provider 拥有原生 Tracker 读取，并为每个获准 Issue Run 捕获一个不可变 Host Tool 与凭据环境变量别名 binding。 |
+| `ctx.issueWorkflow` | `seam` | [`issue-workflow`](../packages/automation/issue-workflow) | [`issue-workflow-file`](../packages/automation/issue-workflow-file) | [`issue-orchestrator`](../packages/automation/issue-orchestrator) | - | 一个 last-known-good 版本提供 Tracker 路由、调度策略、首轮模板和 continuation 模板。 |
+| `ctx.issueWorkspace` | `seam` | [`issue-workspace`](../packages/automation/issue-workspace) | [`issue-workspace-local`](../packages/automation/issue-workspace-local) | [`issue-orchestrator`](../packages/automation/issue-orchestrator) | - | Provider 独立于 Workspace Registry 的 Session 分组，定位、准备、执行 hook 并删除 Issue 目录。 |
+| `ctx.issueRunner` | `seam` | [`issue-runner`](../packages/automation/issue-runner) | [`issue-runner-agent`](../packages/automation/issue-runner-agent) | [`issue-orchestrator`](../packages/automation/issue-orchestrator) | - | Provider 发布一个 holder-owned Run，包含捕获的 Tracker 工具、进展、取消和静止结算。 |
+| `ctx.issueOrchestration` | `seam` | [`issue-orchestration`](../packages/automation/issue-orchestration) | [`issue-orchestrator`](../packages/automation/issue-orchestrator) | [`api-remotes`](../packages/api/remotes), [`client-ui-issue-orchestration`](../packages/client/ui-issue-orchestration) | - | 一个持久单写者拥有 claim、运行 attempt、retry、block、reconciliation、capacity 和 Operator 命令。 |
 | `ctx.lsp` | `seam` | [`lsp`](../packages/lsp/lsp) | `lsp-local` | [`tool-lsp`](../packages/lsp/tool-lsp) | - | 提供方注册与选择，加上恰好四种操作的标准化查询执行；该 seam 不提供协议逃生口，后端必须转换为标准化请求和结果。 |
 | `ctx.apiProxy` | `core` | `apiproxy` | - | `connection` | - | 与传输无关的 Host 网关接口：它分派浏览器 API 调用，每条打开的 Host 流自行订阅转发事件，而不是由广播方法向其推送。 |
 | `ctx.dynamicCordisRunner` | `core` | [`cordis-host-runner`](../packages/extensions/cordis-host-runner) | - | [`tool-cordis`](../packages/extensions/tool-cordis) | - | 拥有内存定义注册表、Host 半的 vm 沙箱和 request-run 往返流程；浏览器页面通过其 Remote 命名空间在线访问同一服务。 |

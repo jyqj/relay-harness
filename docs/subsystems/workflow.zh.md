@@ -113,6 +113,12 @@ interface WorkflowRun {
 }
 ```
 
+## 活动运行投影
+
+`WorkflowEngine.activeRuns()` 是面向运维和集成消费方的进程内查询，可以在不取得活动句柄的情况下读取当前事实。服务把成对生命周期事件投影为按启动顺序排列的 `WorkflowActiveRunSnapshot` 值，其中包含运行身份与 meta、`startedAt`、`lastProgressAt`、最新的可选 `phase`、累计 `agentsStarted` 与当前 `activeAgents`。返回的 meta 和 phase 数组都是分离副本。匹配的 `workflow/end` 会在 end 监听器执行前移除该运行；使用同一活动 id 再次启动会以 `RUN_ACTIVE` 失败，而不是替换投影。
+
+该投影不是持久调度器或所有权注册表。它不会在进程重启后恢复运行，也不公开 `cancel` 或 `dispose`；收到 `WorkflowRun` 的消费方仍负责资源释放。
+
 ## 失败纪律：`WorkflowError.fatal`
 
 脚本内部的钩子误用：错误参数、未知或延迟的 `agent()` 选项、超出[结构化输出子集](../../packages/core/tools/README.md)的 schema、超出上限、seam 启动失败、取消，都会抛出 `fatal: true` 的 `WorkflowError`。`parallel()`/`pipeline()` 组合器对 fatal 错误直接重新抛出，而非将该项映射为 `null`：一个拼写错误的选项必须明确报错并终止脚本，绝不能消融为看似普通子 agent 失败的结果。逐项的 `null` 保留给子运行失败（非 `completed` 的 stop reason）和阶段内的普通脚本错误。
@@ -151,9 +157,17 @@ Workflow Service Definition contract. Invalid requests throw before publication;
  * @returns the live run; its `result` resolves when the script settles.
  */
 abstract start(request: WorkflowStartRequest): WorkflowRun
+
+/**
+ * Return detached snapshots of runs whose start event has committed without
+ * a matching end event. The service event stream is the sole state owner;
+ * callers receive no cancellation or disposal authority.
+ * @returns Active runs in start order.
+ */
+activeRuns(): readonly WorkflowActiveRunSnapshot[]
 ```
 
-Source: [`packages/workflow/workflow/src/index.ts:162`](../../packages/workflow/workflow/src/index.ts)
+Source: [`packages/workflow/workflow/src/index.ts:167`](../../packages/workflow/workflow/src/index.ts)
 
 <a id="workflow-events"></a>
 
@@ -179,7 +193,7 @@ One `agent()` call settled (clean result, child failure, or run cancellation). P
 'workflow/agent-end'(info: WorkflowRunInfo, agent: WorkflowAgentEndInfo): void
 ```
 
-Source: [`packages/workflow/workflow/src/index.ts:79`](../../packages/workflow/workflow/src/index.ts)
+Source: [`packages/workflow/workflow/src/index.ts:83`](../../packages/workflow/workflow/src/index.ts)
 
 <a id="workflowagent-start--emit"></a>
 
@@ -200,7 +214,7 @@ One `agent()` call established a published child run. Paired with Events['workfl
 'workflow/agent-start'(info: WorkflowRunInfo, agent: WorkflowAgentInfo): void
 ```
 
-Source: [`packages/workflow/workflow/src/index.ts:68`](../../packages/workflow/workflow/src/index.ts)
+Source: [`packages/workflow/workflow/src/index.ts:72`](../../packages/workflow/workflow/src/index.ts)
 
 <a id="workflowend--emit"></a>
 
@@ -221,7 +235,7 @@ A workflow run settled (any stop reason). Fired when WorkflowRun.result resolves
 'workflow/end'(info: WorkflowRunInfo, result: WorkflowResultInfo): void
 ```
 
-Source: [`packages/workflow/workflow/src/index.ts:89`](../../packages/workflow/workflow/src/index.ts)
+Source: [`packages/workflow/workflow/src/index.ts:93`](../../packages/workflow/workflow/src/index.ts)
 
 <a id="workflowlog--emit"></a>
 
@@ -239,7 +253,7 @@ The script emitted a narration line (a `log(message)` call).
 'workflow/log'(info: WorkflowRunInfo, message: string): void
 ```
 
-Source: [`packages/workflow/workflow/src/index.ts:58`](../../packages/workflow/workflow/src/index.ts)
+Source: [`packages/workflow/workflow/src/index.ts:62`](../../packages/workflow/workflow/src/index.ts)
 
 <a id="workflowphase--emit"></a>
 
@@ -258,7 +272,7 @@ The script entered a phase (a `phase(title)` call) — progress grouping for obs
 'workflow/phase'(info: WorkflowRunInfo, title: string): void
 ```
 
-Source: [`packages/workflow/workflow/src/index.ts:51`](../../packages/workflow/workflow/src/index.ts)
+Source: [`packages/workflow/workflow/src/index.ts:55`](../../packages/workflow/workflow/src/index.ts)
 
 <a id="workflowstart--emit"></a>
 
@@ -276,5 +290,5 @@ A workflow run started — the script's meta block validated, the body about to 
 'workflow/start'(info: WorkflowRunInfo): void
 ```
 
-Source: [`packages/workflow/workflow/src/index.ts:43`](../../packages/workflow/workflow/src/index.ts)
+Source: [`packages/workflow/workflow/src/index.ts:47`](../../packages/workflow/workflow/src/index.ts)
 <!-- END GENERATED cordis-surface -->

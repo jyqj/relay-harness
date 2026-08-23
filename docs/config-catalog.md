@@ -918,6 +918,70 @@ export interface Config {
 
 Source: [`packages/runtime-diagnostics/invariants/src/index.ts:15`](../packages/runtime-diagnostics/invariants/src/index.ts)
 
+<a id="deepseek-aidsh-issue-runner-agent"></a>
+
+## `@deepseek-ai/dsh-issue-runner-agent`
+
+Requires: `agents` · `tools`
+
+```ts config-catalog
+/** Agent route and execution limits for issue attempts. */
+export interface Config {
+  /** LLM provider route for every issue Agent. */
+  readonly provider: string
+  /** Model id on the selected provider route. */
+  readonly model: string
+  /** Optional per-request output-token ceiling. */
+  readonly maxTokens?: number
+}
+```
+
+Source: [`packages/automation/issue-runner-agent/src/index.ts:16`](../packages/automation/issue-runner-agent/src/index.ts)
+
+<a id="deepseek-aidsh-issue-workflow-file"></a>
+
+## `@deepseek-ai/dsh-issue-workflow-file`
+
+```ts config-catalog
+/** Absolute repository workflow document selection. */
+export interface Config {
+  /** Absolute Markdown workflow document path. */
+  readonly path: string
+}
+```
+
+Source: [`packages/automation/issue-workflow-file/src/index.ts:18`](../packages/automation/issue-workflow-file/src/index.ts)
+
+<a id="deepseek-aidsh-issue-workspace-local"></a>
+
+## `@deepseek-ai/dsh-issue-workspace-local`
+
+Requires: `subprocess`
+
+```ts config-catalog
+/** Lifecycle scripts run in the workspace through the managed subprocess seam. */
+export interface Config {
+  /** Absolute parent directory containing every issue workspace. */
+  readonly root: string
+  /** Shell script run once after a new directory is created. */
+  readonly afterCreate?: string
+  /** Attempt-blocking shell script run immediately before the Agent starts. */
+  readonly beforeRun?: string
+  /** Best-effort shell script run after every published attempt settles. */
+  readonly afterRun?: string
+  /** Best-effort shell script run before terminal directory removal. */
+  readonly beforeRemove?: string
+  /** Silence deadline for each hook process in milliseconds. */
+  readonly hookTimeoutMs?: number
+  /** TERM-to-KILL process-tree cleanup grace in milliseconds. */
+  readonly processGraceMs?: number
+  /** Per-stream in-memory diagnostic cap in bytes. */
+  readonly maxOutputBytes?: number
+}
+```
+
+Source: [`packages/automation/issue-workspace-local/src/index.ts:16`](../packages/automation/issue-workspace-local/src/index.ts)
+
 <a id="deepseek-aidsh-jobs-local"></a>
 
 ## `@deepseek-ai/dsh-jobs-local`
@@ -3252,6 +3316,36 @@ export type ToolPresentationMode = 'native' | 'code' | 'both'
 
 Source: [`packages/core/tools/src/index.ts:723`](../packages/core/tools/src/index.ts)
 
+<a id="deepseek-aidsh-tracker-linear"></a>
+
+## `@deepseek-ai/dsh-tracker-linear`
+
+Requires: `trackers`
+
+```ts config-catalog
+/** Linear endpoint, scope, routing, auth, and provider-name configuration. */
+export interface Config {
+  /** Registry name used by workflow policy (default `linear`). */
+  readonly providerName?: string
+  /** HTTPS Linear GraphQL endpoint. */
+  readonly endpoint?: string
+  /** Optional literal API key; prefer `apiKeyEnv` for repository-owned composition. */
+  readonly apiKey?: string
+  /** Host environment variable carrying the API key (default `LINEAR_API_KEY`). */
+  readonly apiKeyEnv?: string
+  /** Linear project slug that scopes every scheduler read. */
+  readonly projectSlug: string
+  /** Optional assignee id or `me` routing filter. */
+  readonly assignee?: string
+  /** States treated as terminal when evaluating blockers. */
+  readonly terminalStates?: string[]
+  /** New-work states whose non-terminal blockers prevent dispatch. */
+  readonly blockNewStates?: string[]
+}
+```
+
+Source: [`packages/tracker/tracker-linear/src/index.ts:42`](../packages/tracker/tracker-linear/src/index.ts)
+
 <a id="deepseek-aidsh-typert-loader"></a>
 
 ## `@deepseek-ai/dsh-typert-loader`
@@ -3474,6 +3568,8 @@ export interface Config {
    * 5000 ms); also bounds `dispose()`.
    */
   disposeGraceMs?: number
+  /** Maximum silence between worker protocol events before the run fails; `0` disables the watchdog. */
+  stallTimeoutMs?: number
   /** Absolute directory for durable per-run journals; omission disables resume. */
   journalRoot?: string
 }
@@ -3506,6 +3602,7 @@ These load from a `cordis.yml` entry with no `config:` block; they declare no co
 - `@deepseek-ai/dsh-client-ui-git` ([`packages/client/ui-git/src/index.ts`](../packages/client/ui-git/src/index.ts))
 - `@deepseek-ai/dsh-client-ui-goal` ([`packages/client/ui-goal/src/index.ts`](../packages/client/ui-goal/src/index.ts))
 - `@deepseek-ai/dsh-client-ui-input-trigger` ([`packages/client/ui-input-trigger/src/index.ts`](../packages/client/ui-input-trigger/src/index.ts))
+- `@deepseek-ai/dsh-client-ui-issue-orchestration` ([`packages/client/ui-issue-orchestration/src/index.ts`](../packages/client/ui-issue-orchestration/src/index.ts))
 - `@deepseek-ai/dsh-client-ui-jobs` ([`packages/client/ui-jobs/src/index.ts`](../packages/client/ui-jobs/src/index.ts))
 - `@deepseek-ai/dsh-client-ui-layout` ([`packages/client/ui-layout/src/index.ts`](../packages/client/ui-layout/src/index.ts))
 - `@deepseek-ai/dsh-client-ui-message-edit` ([`packages/client/ui-message-edit/src/index.ts`](../packages/client/ui-message-edit/src/index.ts))
@@ -3550,6 +3647,8 @@ These load from a `cordis.yml` entry with no `config:` block; they declare no co
 - `@deepseek-ai/dsh-host-mcp-servers` — requires `mcpServersFile` · `loader` ([`packages/host/mcp-servers/src/index.ts`](../packages/host/mcp-servers/src/index.ts))
 - `@deepseek-ai/dsh-host-plugin-inventory` — requires `loader` ([`packages/host/plugin-inventory/src/index.ts`](../packages/host/plugin-inventory/src/index.ts))
 - `@deepseek-ai/dsh-host-skill-inventory` — requires `agents` · `skills` ([`packages/host/skill-inventory/src/index.ts`](../packages/host/skill-inventory/src/index.ts))
+- `@deepseek-ai/dsh-issue-automation` ([`packages/bundle/issue-automation/src/index.ts`](../packages/bundle/issue-automation/src/index.ts))
+- `@deepseek-ai/dsh-issue-orchestrator` — requires `trackers` · `issueWorkflow` · `issueWorkspace` · `issueRunner` · `storageDomain` ([`packages/automation/issue-orchestrator/src/index.ts`](../packages/automation/issue-orchestrator/src/index.ts))
 - `@deepseek-ai/dsh-llm` ([`packages/llm/llm/src/index.ts`](../packages/llm/llm/src/index.ts))
 - `@deepseek-ai/dsh-lsp` ([`packages/lsp/lsp/src/index.ts`](../packages/lsp/lsp/src/index.ts))
 - `@deepseek-ai/dsh-schedule` — requires `agents` · `sessions` · `tools` · `sessionPersistence` ([`packages/schedule/schedule/src/index.ts`](../packages/schedule/schedule/src/index.ts))
@@ -3566,6 +3665,7 @@ These load from a `cordis.yml` entry with no `config:` block; they declare no co
 - `@deepseek-ai/dsh-tool-call-timeout-policy` — requires `tools` ([`packages/guard/timeout-policy/src/index.ts`](../packages/guard/timeout-policy/src/index.ts))
 - `@deepseek-ai/dsh-tool-cordis` — requires `tools` · `systemPrompt` · `dynamicCordisRunner` · `cordisInspect` ([`packages/extensions/tool-cordis/src/index.ts`](../packages/extensions/tool-cordis/src/index.ts))
 - `@deepseek-ai/dsh-tool-subagent-control` — requires `tools` · `subagents` ([`packages/subagent/tool-subagent-control/src/index.ts`](../packages/subagent/tool-subagent-control/src/index.ts))
+- `@deepseek-ai/dsh-tracker` ([`packages/tracker/tracker/src/index.ts`](../packages/tracker/tracker/src/index.ts))
 - `@deepseek-ai/dsh-user-questions` ([`packages/interaction/user-questions/src/index.ts`](../packages/interaction/user-questions/src/index.ts))
 - `@deepseek-ai/dsh-workspace` — requires `storageDomain` · `sessionPersistence` ([`packages/workspace/workspace/src/index.ts`](../packages/workspace/workspace/src/index.ts))
 
@@ -3580,6 +3680,10 @@ Abstract service classes — a deployment loads a concrete implementation packag
 - `@deepseek-ai/dsh-file-reference` — abstract `FileReferenceService` ([`packages/context/file-reference/src/index.ts`](../packages/context/file-reference/src/index.ts))
 - `@deepseek-ai/dsh-fs` — abstract `FileSystem` ([`packages/fs/fs/src/index.ts`](../packages/fs/fs/src/index.ts))
 - `@deepseek-ai/dsh-host-directory-picker` — abstract `DirectoryPicker` ([`packages/host/directory-picker/src/index.ts`](../packages/host/directory-picker/src/index.ts))
+- `@deepseek-ai/dsh-issue-orchestration` — abstract `IssueOrchestration` ([`packages/automation/issue-orchestration/src/index.ts`](../packages/automation/issue-orchestration/src/index.ts))
+- `@deepseek-ai/dsh-issue-runner` — abstract `IssueRunner` ([`packages/automation/issue-runner/src/index.ts`](../packages/automation/issue-runner/src/index.ts))
+- `@deepseek-ai/dsh-issue-workflow` — abstract `IssueWorkflow` ([`packages/automation/issue-workflow/src/index.ts`](../packages/automation/issue-workflow/src/index.ts))
+- `@deepseek-ai/dsh-issue-workspace` — abstract `IssueWorkspaceProvisioner` ([`packages/automation/issue-workspace/src/index.ts`](../packages/automation/issue-workspace/src/index.ts))
 - `@deepseek-ai/dsh-jobs` — abstract `JobRegistry` ([`packages/jobs/jobs/src/index.ts`](../packages/jobs/jobs/src/index.ts))
 - `@deepseek-ai/dsh-memory` — abstract `LongTermMemory` ([`packages/memory/memory/src/index.ts`](../packages/memory/memory/src/index.ts))
 - `@deepseek-ai/dsh-sandbox` — abstract `SandboxProvider` ([`packages/sandbox/sandbox/src/index.ts`](../packages/sandbox/sandbox/src/index.ts))

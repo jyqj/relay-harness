@@ -69,6 +69,53 @@ describe('dsh-workflow (interface)', () => {
     ])
   })
 
+  it('owns detached active-run snapshots and rejects duplicate live identities', async () => {
+    const ctx = new Context()
+    await ctx.plugin(StubEngine)
+    const engine = ctx.workflowEngine as StubEngine
+    const now = vi.spyOn(Date, 'now').mockReturnValue(500)
+      .mockReturnValueOnce(100)
+      .mockReturnValueOnce(200)
+      .mockReturnValueOnce(300)
+      .mockReturnValueOnce(400)
+    const info: WorkflowRunInfo = {
+      id: WorkflowRunId('tracked'),
+      meta: { name: 'tracked', description: 'visible', phases: [{ title: 'Build' }] },
+    }
+
+    engine.emit('workflow/start', info)
+    engine.emit('workflow/phase', info, 'Build')
+    engine.emit('workflow/agent-start', info, { seq: 1, label: 'child', childId: 'child-1' })
+    engine.emit('workflow/log', info, 'working')
+    const [snapshot] = engine.activeRuns()
+    expect(snapshot).toEqual({
+      id: 'tracked',
+      meta: info.meta,
+      startedAt: 100,
+      lastProgressAt: 400,
+      phase: 'Build',
+      agentsStarted: 1,
+      activeAgents: 1,
+    })
+    if (snapshot === undefined) throw new Error('missing active workflow snapshot')
+    snapshot.meta.name = 'mutated'
+    snapshot.meta.phases![0]!.title = 'mutated'
+    expect(engine.activeRuns()[0]?.meta).toEqual(info.meta)
+    expect(() => { engine.emit('workflow/start', info) })
+      .toThrow(expect.objectContaining({ code: 'RUN_ACTIVE' }))
+
+    engine.emit('workflow/agent-end', info, {
+      seq: 1,
+      label: 'child',
+      childId: 'child-1',
+      outcome: 'completed',
+    })
+    expect(engine.activeRuns()[0]?.activeAgents).toBe(0)
+    engine.emit('workflow/end', info, { stopReason: 'completed', agentsStarted: 1 })
+    expect(engine.activeRuns()).toEqual([])
+    now.mockRestore()
+  })
+
   it('contains an asynchronously rejected listener without starving peers', async () => {
     const ctx = new Context()
     await ctx.plugin(StubEngine)

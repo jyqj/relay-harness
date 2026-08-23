@@ -821,6 +821,103 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     ],
   },
   {
+    key: 'issueOrchestration',
+    summary: 'Operator/query surface over one durable orchestration authority.',
+    description: 'Operator/query surface over one durable orchestration authority.',
+    methods: [
+      {
+        signature: 'abstract snapshot(): IssueOrchestrationSnapshot',
+        description: 'Read current operator state.',
+        parameters: [],
+        returns: 'A detached complete operator snapshot.',
+      },
+      {
+        signature: 'abstract refresh(): IssueRefreshResult',
+        description: 'Request an immediate poll.',
+        parameters: [],
+        returns: 'A receipt saying whether it was coalesced.',
+      },
+      {
+        signature: 'abstract retry(command: IssueCommand): Promise<void>',
+        description: 'Retry non-running work.',
+        parameters: [{ name: 'command', description: 'Issue to retry now.' }],
+        returns: 'After durability.',
+      },
+      {
+        signature: 'abstract release(command: IssueCommand): Promise<void>',
+        description: 'Release non-running work.',
+        parameters: [{ name: 'command', description: 'Issue claim to release.' }],
+        returns: 'After durability.',
+      },
+    ],
+  },
+  {
+    key: 'issueRunner',
+    summary: 'Provider-neutral publisher of holder-owned issue runs.',
+    description: 'Provider-neutral publisher of holder-owned issue runs.',
+    methods: [
+      {
+        signature: 'abstract start(request: IssueRunRequest): Promise<IssueRun>',
+        description: 'Prepare and publish one run, or reject before returning a handle.',
+        parameters: [{ name: 'request', description: 'Captured issue, workspace, policy, tools, and callbacks.' }],
+        returns: 'The holder-owned published run.',
+      },
+    ],
+  },
+  {
+    key: 'issueWorkflow',
+    summary: 'Last-known-good workflow provider with explicit reload.',
+    description: 'Last-known-good workflow provider with explicit reload.',
+    methods: [
+      {
+        signature: 'abstract current(): IssueWorkflowSnapshot',
+        description: 'Read the current workflow.',
+        parameters: [],
+        returns: 'The immutable authoritative revision.',
+      },
+      {
+        signature: 'abstract reload(): Promise<boolean>',
+        description: 'Re-read the workflow source.',
+        parameters: [],
+        returns: 'True only when a different valid revision commits.',
+      },
+    ],
+  },
+  {
+    key: 'issueWorkspace',
+    summary: 'Provider-neutral workspace creation, attempt hooks, and terminal cleanup.',
+    description: 'Provider-neutral workspace creation, attempt hooks, and terminal cleanup.',
+    methods: [
+      {
+        signature: 'abstract prepare(issue: TrackerIssue, signal?: AbortSignal): Promise<IssueWorkspace>',
+        description: 'Create or reuse one issue workspace.',
+        parameters: [{ name: 'issue', description: 'Issue to prepare.' }, { name: 'signal', description: 'Cancellation.' }],
+        returns: 'Prepared workspace after setup.',
+      },
+      {
+        signature: 'abstract locate(issue: TrackerIssue, signal?: AbortSignal): Promise<IssueWorkspace>',
+        description: 'Locate without mutation.',
+        parameters: [{ name: 'issue', description: 'Issue to locate.' }, { name: 'signal', description: 'Cancellation.' }],
+        returns: 'Deterministic workspace without mutation.',
+      },
+      {
+        signature: 'abstract beforeRun(workspace: IssueWorkspace, issue: TrackerIssue, signal?: AbortSignal): Promise<void>',
+        description: 'Run attempt-blocking setup.',
+        parameters: [{ name: 'workspace', description: 'Prepared workspace.' }, { name: 'issue', description: 'Owning issue.' }, { name: 'signal', description: 'Cancellation.' }],
+      },
+      {
+        signature: 'abstract afterRun(workspace: IssueWorkspace, issue: TrackerIssue): Promise<void>',
+        description: 'Run best-effort attempt cleanup.',
+        parameters: [{ name: 'workspace', description: 'Prepared workspace.' }, { name: 'issue', description: 'Owning issue.' }],
+      },
+      {
+        signature: 'abstract remove(workspace: IssueWorkspace, issue: TrackerIssue): Promise<void>',
+        description: 'Remove one terminal workspace.',
+        parameters: [{ name: 'workspace', description: 'Prepared workspace.' }, { name: 'issue', description: 'Owning terminal issue.' }],
+      },
+    ],
+  },
+  {
     key: 'jobs',
     summary: 'Abstract background job registry.',
     description: 'Abstract background job registry. Subclass, implement the abstract methods, and load the subclass as a plugin — it registers as `ctx.jobs` (one implementation per context; loading a second throws, which is cordis\' standard duplicate-service behavior).\n\nImplementations must honor these semantics:\n\n- Registrations outlive producer and controller fibers. Owner and service disposal cancel live work and await compliant producers; a throwing teardown cancel force-fails only the record. Teardown cancellation also marks the record reported, because a record its owner is being destroyed for has no reader left.\n- Owned-job access is fenced by the owner\'s session id. Ids are predictable, so authorization — not secrecy — is the boundary.\n- Settlement is first-wins: one terminal record, released waiters, and one round of contained listener notification, even against a late producer outcome. Completion is announced last, after the record is committed and every other observer of the settlement has seen it, because a reporter may open a model turn synchronously.\n- start refuses work while no attached job controller serves the spec\'s owner, so a producer cannot start work that owner cannot collect or stop. One registry serves every composition in the process, so this question — and completion-listener delivery — is owner-relative rather than process-wide: registrations made from an unscoped context serve every owner, and registrations made under an agent composition\'s scope serve exactly the agents composed under it.',
@@ -2232,6 +2329,37 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     ],
   },
   {
+    key: 'trackers',
+    summary: 'Provider-neutral registry with effect-scoped registration and run-scoped tool capture.',
+    description: 'Provider-neutral registry with effect-scoped registration and run-scoped tool capture.',
+    methods: [
+      {
+        signature: 'register(provider: TrackerProvider): () => void',
+        description: 'Register a provider.',
+        parameters: [{ name: 'provider', description: 'Provider to own until caller disposal.' }],
+        returns: 'Exact effect disposer.',
+      },
+      {
+        signature: 'require(name: string): TrackerProvider',
+        description: 'Resolve a provider.',
+        parameters: [{ name: 'name', description: 'Registered provider name.' }],
+        returns: 'Exact provider or throws.',
+      },
+      {
+        signature: 'list(): readonly string[]',
+        description: 'List providers.',
+        parameters: [],
+        returns: 'Provider names in registration order.',
+      },
+      {
+        signature: 'bindTools(name: string): TrackerToolBinding',
+        description: 'Capture and validate one provider\'s exact tool/configuration snapshot. Provider removal blocks later captures but does not revoke a returned binding.',
+        parameters: [{ name: 'name', description: 'Registered provider to capture.' }],
+        returns: 'Validated immutable tool binding.',
+      },
+    ],
+  },
+  {
     key: 'typert',
     summary: 'Registry of generated schemas, package reflection, invocations, and Remote dependency providers.',
     description: 'Registry of generated schemas, package reflection, invocations, and Remote dependency providers.',
@@ -2418,6 +2546,12 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         description: 'Parse and execute a workflow script.',
         parameters: [{ name: 'request', description: 'the script, its `args`, the parent agent, and an optional cancel signal.' }],
         returns: 'the live run; its `result` resolves when the script settles.',
+      },
+      {
+        signature: 'activeRuns(): readonly WorkflowActiveRunSnapshot[]',
+        description: 'Return detached snapshots of runs whose start event has committed without a matching end event. The service event stream is the sole state owner; callers receive no cancellation or disposal authority.',
+        parameters: [],
+        returns: 'Active runs in start order.',
       },
     ],
   },
@@ -2699,6 +2833,22 @@ export const EVENT_API: readonly EventApiEntry[] = [
     parameters: [{ name: 'payload', description: '.change - fresh current projection or clear tombstone.' }],
   },
   {
+    name: 'issue-orchestration/changed',
+    mode: 'emit',
+    signature: '\'issue-orchestration/changed\'(revision: number): void',
+    summary: 'Durable orchestration state changed; observers re-read `snapshot()`.',
+    description: 'Durable orchestration state changed; observers re-read `snapshot()`.',
+    parameters: [{ name: 'revision', description: 'Authoritative process-local projection revision.' }],
+  },
+  {
+    name: 'issue-workflow/updated',
+    mode: 'emit',
+    signature: '\'issue-workflow/updated\'(next: IssueWorkflowSnapshot, previous: IssueWorkflowSnapshot): void',
+    summary: 'A new validated workflow revision became authoritative.',
+    description: 'A new validated workflow revision became authoritative.',
+    parameters: [{ name: 'next', description: 'Newly committed immutable snapshot.' }, { name: 'previous', description: 'Replaced last-known-good snapshot.' }],
+  },
+  {
     name: 'llm/adapters-updated',
     mode: 'emit',
     signature: '\'llm/adapters-updated\'(): void',
@@ -2873,6 +3023,22 @@ export const EVENT_API: readonly EventApiEntry[] = [
     summary: 'Observe the frozen, lossless-JSON final outcome.',
     description: 'Observe the frozen, lossless-JSON final outcome. Listener failures are contained. Scope-filtered dispatch (`@deepseek-ai/dsh-scope`): keyed by `exec.agent`.',
     parameters: [{ name: 'exec', description: 'the execution object that traversed the pipeline.' }, { name: 'result', description: 'a deep-frozen snapshot of the final returned result.' }],
+  },
+  {
+    name: 'tracker/provider-added',
+    mode: 'emit',
+    signature: '\'tracker/provider-added\'(provider: TrackerProvider): void',
+    summary: 'A provider became available after its registry insertion committed.',
+    description: 'A provider became available after its registry insertion committed.',
+    parameters: [{ name: 'provider', description: 'Exact registered provider.' }],
+  },
+  {
+    name: 'tracker/provider-removed',
+    mode: 'emit',
+    signature: '\'tracker/provider-removed\'(name: string): void',
+    summary: 'A provider was removed before this notification.',
+    description: 'A provider was removed before this notification.',
+    parameters: [{ name: 'name', description: 'Removed provider name.' }],
   },
   {
     name: 'workflow/agent-end',
@@ -3541,6 +3707,54 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'InvokeRemoteRequest',
     declaration: 'export interface InvokeRemoteRequest {\n    readonly namespace: string;\n    readonly method: string;\n    readonly args: Readonly<Record<string, unknown>>;\n    readonly signal?: AbortSignal;\n}',
+  },
+  {
+    name: 'IssueCommand',
+    declaration: 'export interface IssueCommand {\n    readonly issueId: TrackerIssueId;\n}',
+  },
+  {
+    name: 'IssueOrchestrationEntry',
+    declaration: 'export interface IssueOrchestrationEntry {\n    readonly issue: TrackerIssue;\n    readonly status: \'claimed\' | \'running\' | \'retrying\' | \'blocked\';\n    readonly attempt: number;\n    readonly workspacePath?: string;\n    readonly sessionId?: SessionId;\n    readonly startedAt?: number;\n    readonly lastProgressAt?: number;\n    readonly nextRetryAt?: number;\n    readonly error?: string;\n    readonly updatedAt: number;\n}',
+  },
+  {
+    name: 'IssueOrchestrationSnapshot',
+    declaration: 'export interface IssueOrchestrationSnapshot {\n    readonly revision: number;\n    readonly workflowRevision: string;\n    readonly checking: boolean;\n    readonly nextPollAt?: number;\n    readonly running: readonly IssueOrchestrationEntry[];\n    readonly retrying: readonly IssueOrchestrationEntry[];\n    readonly blocked: readonly IssueOrchestrationEntry[];\n}',
+  },
+  {
+    name: 'IssueRefreshResult',
+    declaration: 'export interface IssueRefreshResult {\n    readonly queued: true;\n    readonly coalesced: boolean;\n    readonly requestedAt: number;\n}',
+  },
+  {
+    name: 'IssueRun',
+    declaration: 'export interface IssueRun {\n    readonly id: IssueRunId;\n    readonly sessionId: SessionId;\n    readonly result: Promise<IssueRunResult>;\n    cancel(reason?: string): void;\n    dispose(): Promise<void>;\n}',
+  },
+  {
+    name: 'IssueRunEvent',
+    declaration: 'export interface IssueRunEvent {\n    readonly at: number;\n    readonly kind: \'session-started\' | \'assistant\' | \'tool\' | \'turn-ended\';\n    readonly sessionId: SessionId;\n    readonly event?: SessionEvent;\n}',
+  },
+  {
+    name: 'IssueRunId',
+    declaration: 'export type IssueRunId = Branded<\'IssueRunId\'>;',
+  },
+  {
+    name: 'IssueRunRequest',
+    declaration: 'export interface IssueRunRequest {\n    readonly issue: TrackerIssue;\n    readonly workspace: IssueWorkspace;\n    readonly attempt: number;\n    readonly prompt: string;\n    readonly continuationPrompt: (turn: number, maxTurns: number) => string;\n    readonly maxTurns: number;\n    readonly trackerTools: TrackerToolBinding;\n    readonly refreshIssue: (signal: AbortSignal) => Promise<TrackerIssue | undefined>;\n    readonly shouldContinue: (issue: TrackerIssue) => boolean;\n    readonly onEvent?: (event: IssueRunEvent) => void;\n    readonly signal?: AbortSignal;\n}',
+  },
+  {
+    name: 'IssueRunResult',
+    declaration: 'export interface IssueRunResult {\n    readonly stopReason: \'completed\' | \'failed\' | \'blocked\' | \'cancelled\';\n    readonly sessionId: SessionId;\n    readonly turns: number;\n    readonly error?: string;\n}',
+  },
+  {
+    name: 'IssueWorkflowPolicy',
+    declaration: 'export interface IssueWorkflowPolicy {\n    readonly trackerProvider: string;\n    readonly activeStates: readonly string[];\n    readonly terminalStates: readonly string[];\n    readonly requiredLabels: readonly string[];\n    readonly pollIntervalMs: number;\n    readonly maxConcurrentRuns: number;\n    readonly maxConcurrentRunsByState: Readonly<Record<string, number>>;\n    readonly maxTurns: number;\n    readonly continuationRetryMs: number;\n    readonly failureRetryBaseMs: number;\n    readonly maxRetryBackoffMs: number;\n    readonly stallTimeoutMs: number;\n    readonly promptTemplate: string;\n    readonly continuationTemplate: string;\n}',
+  },
+  {
+    name: 'IssueWorkflowSnapshot',
+    declaration: 'export interface IssueWorkflowSnapshot {\n    readonly path: string;\n    readonly revision: string;\n    readonly loadedAt: number;\n    readonly policy: IssueWorkflowPolicy;\n}',
+  },
+  {
+    name: 'IssueWorkspace',
+    declaration: 'export interface IssueWorkspace {\n    readonly issueId: TrackerIssueId;\n    readonly path: string;\n    readonly created: boolean;\n    readonly preparedAt: number;\n}',
   },
   {
     name: 'JobDoneListener',
@@ -5003,6 +5217,34 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface ToolSchema {\n    name: string;\n    description: string;\n    parameters: Record<string, unknown>;\n}',
   },
   {
+    name: 'TrackerIssue',
+    declaration: 'export interface TrackerIssue {\n    readonly id: TrackerIssueId;\n    readonly nativeRef?: Readonly<Record<string, JsonValue>>;\n    readonly identifier: string;\n    readonly title: string;\n    readonly description?: string;\n    readonly priority?: number;\n    readonly state: string;\n    readonly branchName?: string;\n    readonly url?: string;\n    readonly assigneeId?: string;\n    readonly labels: readonly string[];\n    readonly blockedBy: readonly TrackerIssueId[];\n    readonly dispatchable: boolean;\n    readonly createdAt?: number;\n    readonly updatedAt?: number;\n    readonly revision?: string;\n}',
+  },
+  {
+    name: 'TrackerIssueId',
+    declaration: 'export type TrackerIssueId = Branded<\'TrackerIssueId\'>;',
+  },
+  {
+    name: 'TrackerProvider',
+    declaration: 'export interface TrackerProvider {\n    readonly name: string;\n    fetchIssuesByStates(states: readonly string[], signal?: AbortSignal): Promise<readonly TrackerIssue[]>;\n    fetchIssuesByIds(ids: readonly TrackerIssueId[], signal?: AbortSignal): Promise<readonly TrackerIssue[]>;\n    bindTools(): TrackerToolBinding;\n}',
+  },
+  {
+    name: 'TrackerToolBinding',
+    declaration: 'export interface TrackerToolBinding {\n    readonly provider: string;\n    readonly tools: readonly TrackerToolSpec[];\n    readonly secretEnvironmentNames: readonly string[];\n    execute(name: string, arguments_: JsonValue, context: TrackerToolContext, signal?: AbortSignal): Promise<TrackerToolResult>;\n}',
+  },
+  {
+    name: 'TrackerToolContext',
+    declaration: 'export interface TrackerToolContext {\n    readonly issue: TrackerIssue;\n}',
+  },
+  {
+    name: 'TrackerToolResult',
+    declaration: 'export interface TrackerToolResult {\n    readonly success: boolean;\n    readonly value: JsonValue;\n}',
+  },
+  {
+    name: 'TrackerToolSpec',
+    declaration: 'export interface TrackerToolSpec {\n    readonly name: string;\n    readonly description: string;\n    readonly parameters: Readonly<Record<string, JsonValue>>;\n}',
+  },
+  {
     name: 'TurnEndCancelCause',
     declaration: 'export type TurnEndCancelCause = AgentCancelCause | {\n    readonly kind: \'legacy\';\n};',
   },
@@ -5153,6 +5395,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'WebUpgradeRoute',
     declaration: 'export interface WebUpgradeRoute {\n    path: string;\n    handler: (req: IncomingMessage, socket: Duplex, head: Buffer) => void | Promise<void>;\n}',
+  },
+  {
+    name: 'WorkflowActiveRunSnapshot',
+    declaration: 'export interface WorkflowActiveRunSnapshot extends WorkflowRunInfo {\n    readonly startedAt: number;\n    readonly lastProgressAt: number;\n    readonly phase?: string;\n    readonly agentsStarted: number;\n    readonly activeAgents: number;\n}',
   },
   {
     name: 'WorkflowAgentEndInfo',

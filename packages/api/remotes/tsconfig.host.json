@@ -44,6 +44,9 @@
       "path": "../../settings/settings"
     },
     {
+      "path": "../../automation/issue-orchestration"
+    },
+    {
       "path": "../../runtime-diagnostics/invariants"
     },
     {

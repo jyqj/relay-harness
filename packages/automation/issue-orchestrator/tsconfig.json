@@ -1,0 +1,17 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": { "rootDir": "src", "outDir": "lib/types" },
+  "include": ["src"],
+  "references": [
+    { "path": "../../../vendor/cosmokit" },
+    { "path": "../../../vendor/cordis" },
+    { "path": "../../tracker/tracker" },
+    { "path": "../../typert/protocol" },
+    { "path": "../issue-orchestration" },
+    { "path": "../issue-runner" },
+    { "path": "../issue-workflow" },
+    { "path": "../issue-workspace" },
+    { "path": "../../storage/storage-domain" },
+    { "path": "../../runtime-diagnostics/invariants" }
+  ]
+}

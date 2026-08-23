@@ -10,13 +10,15 @@ The package root is the Host face. The browser-safe `@deepseek-ai/dsh-workflow/t
 
 ## Service and run contract
 
-`WorkflowEngine.start(request): WorkflowRun` validates enough synchronously to reject a malformed meta block, unparseable script, unavailable provider route, or unsupported per-run limit before a run exists. Once returned, `WorkflowRun.result` never rejects: execution failures resolve with `stopReason: 'error'`, and cancellation resolves with `cancelled` within the engine's bounded grace.
+`WorkflowEngine.start(request): WorkflowRun` validates enough synchronously to reject a malformed meta block, unparseable script, unavailable provider route, unsupported per-run limit, or duplicate active `resumeRunId` before a run exists. Once returned, `WorkflowRun.result` never rejects: execution failures resolve with `stopReason: 'error'`, and cancellation resolves with `cancelled` within the engine's bounded grace.
 
 A run is holder-owned. Engine-plugin unload prevents new starts but does not revoke accepted runs. The holder must call `dispose()` on every path; disposal cancels remaining work and reaches or abandons quiescence within the documented bound.
 
 `WorkflowStartRequest` contains `{ meta, script, args?, subagentProvider?, maxTotalAgents?, resumeRunId?, parent, signal? }`. `parent` attributes every child agent to the invoking agent. `subagentProvider` optionally routes every child in that run without exposing provider choice to the script; omission uses the engine's configured provider. `maxTotalAgents` optionally lowers the engine's deployment ceiling for one run and is likewise invisible to the script. `resumeRunId` asks a durable engine to restart the same script and replay its completed host-call prefix; engines without durable replay reject it. An implementation rejects invalid routes and limits synchronously. `meta` and `args` are plain data, not script fragments.
 
 `WorkflowRun` exposes `{ id, meta, result, cancel(reason?), dispose() }`. `WorkflowResult` contains `{ value, stopReason, error?, agentsStarted }`; `value` is plain JSON data or `null`.
+
+`WorkflowEngine.activeRuns()` returns detached `WorkflowActiveRunSnapshot` values in start order. Each value contains identity and meta plus `startedAt`, `lastProgressAt`, the latest optional `phase`, `agentsStarted`, and `activeAgents`. The engine's paired lifecycle events own this process-local projection; snapshots expose no live handle and cannot cancel or dispose a run. A run leaves the projection when its `workflow/end` event commits.
 
 ## Events
 
@@ -38,6 +40,7 @@ Same-process event payloads are borrowed immutable values. Every listener is ind
 - `AGENT_START` — the provider's async start rejected.
 - `AGENT_RESULT` — a published child's result rejected with an infrastructure fault.
 - `RESULT_UNSERIALIZABLE` — a script/worker value is not plain JSON data.
+- `RUN_ACTIVE` — the requested durable run identity already has an unmatched start.
 - `CANCELLED` — cancellation owns the run and pending/future hooks reject.
 
 A child that resolves normally with a non-completed stop reason is not an infrastructure exception: `agent()` returns `null`, allowing the script to handle an ordinary child failure.
@@ -56,6 +59,6 @@ No direct invalidation; the named consumer owns any request-prefix changes.
 - **Resume is engine-specific** — the worker-thread provider can replay completed `agent()` calls when configured with a journal root; the generic seam does not promise storage, cross-process locking, or checkpointing of arbitrary script-local values.
 - **No saved or nested workflows** — the seam starts caller-supplied scripts only, and a workflow script receives no `workflow()` hook for recursive orchestration.
 - **No token-budget vocabulary** — engines cap concurrency, items, and children, but neither the request nor result accounts for model tokens across children.
-- **Runs are holder-owned, not service-tracked** — unloading the engine does not discover independent live handles; every consumer must dispose the run it started.
+- **Snapshots are not ownership** — the service tracks active facts but not live handles; unloading the engine does not dispose accepted runs, and every consumer must dispose the run it started.
 
 See the [dynamic-workflows Agent Note](../../../.agents/notes/implemented/feature/2026-07-05-dynamic-workflows.md) for the deferred workflow API.

@@ -21,6 +21,14 @@ pnpm run dist:desktop
 pnpm run dist:desktop:mac
 ```
 
+## Alternatives considered
+
+**Keep the desktop repository and nested Harness fork separate.** Rejected because every shared UI, runtime, or protocol change would continue to require two edits and a synchronization step whose output could drift from both sources.
+
+**Copy only packaged Harness artifacts into the Electron application.** Rejected because packaged output is not a maintainable source boundary for the planned desktop fork, and source-mode development would still test a different tree from distribution.
+
+**Rewrite the Electron shell while moving into the monorepo.** Rejected because the shell already owned working desktop, mobile-remote, plugin, and distribution behavior. The integration changes repository ownership without replacing independent application behavior.
+
 ## Consequences
 
 Desktop UI packages such as titlebar, Files, Git, Diff, surfaces, preview, terminal, MCP settings, and Skills settings are ordinary Harness workspaces. Their tests and type declarations participate in the same build as the rest of Harness. Desktop-only Electron main/preload/renderer code remains under `apps/desktop/`; mobile remote and bundled `dshmarket`/`dshbot` assets remain owned by that application.

@@ -186,6 +186,28 @@ function expectWorkflowError(result: WorkflowResult, fragment: string): void {
 
 describe('dsh-workflow-worker-thread', () => {
   describe('script execution over a real worker thread', () => {
+    it('fails a silent unattended run through the configured stall watchdog', async () => {
+      const { ctx, parent } = await setup({
+        manual: true,
+        deferStart: true,
+        config: { stallTimeoutMs: 500 },
+      })
+      const handle = ctx.workflowEngine.start({
+        ...scripted("return await agent('never settles')"),
+        parent,
+      })
+      expect(ctx.workflowEngine.activeRuns()).toHaveLength(1)
+      const result = await handle.result
+      expect(result).toMatchObject({
+        value: null,
+        stopReason: 'error',
+        error: 'workflow stalled: no progress for 500 ms',
+        agentsStarted: 1,
+      })
+      expect(ctx.workflowEngine.activeRuns()).toEqual([])
+      await handle.dispose()
+    })
+
     it('replays completed agent calls on resume and rejects an edited script fingerprint', async () => {
       const journalRoot = mkdtempSync(join(tmpdir(), 'dsh-workflow-resume-'))
       try {
@@ -216,6 +238,23 @@ describe('dsh-workflow-worker-thread', () => {
           parent,
           resumeRunId: first.id,
         })).toThrow(expect.objectContaining({ code: 'JOURNAL_DIVERGENCE' }))
+      } finally {
+        rmSync(journalRoot, { recursive: true, force: true })
+      }
+    })
+
+    it('rejects a resume id while its original run is still active', async () => {
+      const journalRoot = mkdtempSync(join(tmpdir(), 'dsh-workflow-active-resume-'))
+      try {
+        const { ctx, parent } = await setup({ manual: true, config: { journalRoot } })
+        const source = scripted("return await agent('pending')")
+        const first = ctx.workflowEngine.start({ ...source, parent })
+        await waitFor(() => { expect(ctx.workflowEngine.activeRuns()).toHaveLength(1) })
+        expect(() => ctx.workflowEngine.start({ ...source, parent, resumeRunId: first.id }))
+          .toThrow(expect.objectContaining({ code: 'RUN_ACTIVE' }))
+        first.cancel('test complete')
+        await first.result
+        await first.dispose()
       } finally {
         rmSync(journalRoot, { recursive: true, force: true })
       }

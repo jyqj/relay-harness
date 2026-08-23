@@ -111,6 +111,9 @@ export class WorkerRun implements WorkflowRun {
   private workerDeathObserved = false
   private cancelReason: string | undefined
   private graceTimer: NodeJS.Timeout | undefined
+  private stallTimer: NodeJS.Timeout | undefined
+  /** A watchdog timeout closes worker-message admission before physical termination. */
+  private stalled = false
   private readonly worker: Worker
   /** Set on `exit`: the thread is gone, so posting has nowhere to go. */
   private workerGone = false
@@ -139,6 +142,7 @@ export class WorkerRun implements WorkflowRun {
     init: WorkerInit,
     private readonly provider: string,
     private readonly disposeGraceMs: number,
+    private readonly stallTimeoutMs: number,
     private readonly journal: WorkflowJournal | undefined,
     private readonly observer: ExecutionObserver,
     signal: AbortSignal | undefined,
@@ -157,6 +161,7 @@ export class WorkerRun implements WorkflowRun {
       this.workerGone = true
       this.onWorkerDeath(`workflow worker exited before the run settled (exit code ${code})`, true)
     })
+    this.armStallTimer()
     if (signal?.aborted) {
       this.cancel('workflow start signal already aborted')
     } else if (signal !== undefined) {
@@ -188,6 +193,7 @@ export class WorkerRun implements WorkflowRun {
     // closure until the grace expires - a bounded leak per completed run.
     if (this.settled || this.terminalClaimed || this.cancelReason !== undefined) return
     this.cancelReason = reason ?? 'workflow cancelled'
+    this.clearStallTimer()
     this.post(HostToWorkerType.Cancel, { reason: this.cancelReason })
     this.abortChildren(this.cancelReason)
     this.graceTimer = setTimeout(() => {
@@ -255,7 +261,8 @@ export class WorkerRun implements WorkflowRun {
 
   /** Post one message to the worker (payload looked up from the tag's map entry), tolerating a thread that is already gone. */
   private post<T extends HostToWorkerType>(type: T, payload: HostToWorkerPayloads[T]): void {
-    if (this.workerGone || this.workerDeathObserved) return
+    if (this.workerGone || this.workerDeathObserved || this.stalled) return
+    this.armStallTimer()
     try {
       this.worker.postMessage({ type, ...payload })
     } catch (error: unknown) {
@@ -272,7 +279,8 @@ export class WorkerRun implements WorkflowRun {
     // emit `exit`. The first death signal is the host's logical delivery
     // barrier: nothing arriving afterward may create a child, narrate after
     // workflow/end, or compete with the chosen outcome.
-    if (this.workerDeathObserved) return
+    if (this.workerDeathObserved || this.stalled) return
+    this.armStallTimer()
     switch (message.type) {
       case WorkerToHostType.Ready:
         this.post(HostToWorkerType.Go, {})
@@ -321,6 +329,9 @@ export class WorkerRun implements WorkflowRun {
     }
     if (this.workerDeathObserved) {
       return { reason: 'workflow worker gone', rendered: 'workflow worker is no longer available' }
+    }
+    if (this.stalled) {
+      return { reason: 'workflow stalled', rendered: 'workflow run stalled without progress' }
     }
     if (this.terminalClaimed) {
       return { reason: 'workflow settled', rendered: 'workflow run already settled' }
@@ -620,6 +631,7 @@ export class WorkerRun implements WorkflowRun {
   /** Process an error/messageerror/exit signal; `exit` also performs the final disposal sweep. */
   private onWorkerDeath(message: string, isExit: boolean): void {
     if (!this.workerDeathObserved) {
+      this.clearStallTimer()
       // Close message admission BEFORE cleanup callbacks: Node can deliver a
       // message queued before the crash after its `error` event. Treating the
       // first death signal as a logical barrier prevents that late message
@@ -711,7 +723,40 @@ export class WorkerRun implements WorkflowRun {
     this.settled = true
     this.detachInputSignal()
     clearTimeout(this.graceTimer)
+    this.clearStallTimer()
     this.settleResolve(result)
+  }
+
+  /** Re-arm the opt-in silence watchdog after one accepted protocol event. */
+  private armStallTimer(): void {
+    if (this.stallTimeoutMs === 0 || this.settled || this.terminalClaimed || this.cancelReason !== undefined) return
+    this.clearStallTimer()
+    this.stallTimer = setTimeout(() => { this.onStall() }, this.stallTimeoutMs)
+    this.stallTimer.unref()
+  }
+
+  /** Fail and terminate one run that emitted no protocol progress before its configured deadline. */
+  private onStall(): void {
+    this.stallTimer = undefined
+    /* v8 ignore next -- a cleared/re-armed timer cannot reenter before another event-loop turn */
+    if (this.settled || this.terminalClaimed || this.cancelReason !== undefined || this.workerDeathObserved) return
+    this.stalled = true
+    this.terminalClaimed = true
+    this.reapChildren('workflow stalled')
+    this.endStrandedAgents()
+    this.settleResult({
+      value: null,
+      stopReason: 'error',
+      error: `workflow stalled: no progress for ${this.stallTimeoutMs} ms`,
+      agentsStarted: this.hostStarted,
+    })
+    void this.worker.terminate()
+  }
+
+  /** Disarm the watchdog without changing terminal ownership. */
+  private clearStallTimer(): void {
+    clearTimeout(this.stallTimer)
+    this.stallTimer = undefined
   }
 }
 

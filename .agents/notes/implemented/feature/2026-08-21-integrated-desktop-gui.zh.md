@@ -21,6 +21,14 @@ pnpm run dist:desktop
 pnpm run dist:desktop:mac
 ```
 
+## Alternatives considered
+
+**继续分开维护桌面仓库和嵌套 Harness fork。** 不予采用，因为每次共享 UI、Runtime 或协议变化仍需编辑两处并执行同步步骤，而同步结果可能同时偏离两个 Source。
+
+**只把打包后的 Harness artifact 复制进 Electron 应用。** 不予采用，因为 packaged output 不是计划中桌面二开的可维护源码边界，source-mode 开发仍会测试与分发不同的源码树。
+
+**迁入 monorepo 时重写 Electron 壳。** 不予采用，因为现有壳已经拥有可工作的桌面、手机远程、插件和分发行为。集成只改变仓库 Owner，不替换独立应用行为。
+
 ## 结果
 
 标题栏、Files、Git、Diff、surfaces、preview、终端、MCP 设置和 Skills 设置等桌面 UI 包成为普通 Harness workspace，其测试和类型声明参与 Harness 的统一构建。Electron 独有的 main/preload/renderer 代码保留在 `apps/desktop/`；手机远程和内置 `dshmarket`/`dshbot` 资源仍由该应用负责。

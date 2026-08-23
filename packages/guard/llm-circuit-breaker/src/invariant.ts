@@ -11,6 +11,7 @@ import type { InvariantInstaller } from '@deepseek-ai/dsh-invariants'
 export const name = 'llm-circuit-breaker-invariant'
 /** Required invariant registry. */
 export const inject = ['invariants']
+/** No runtime invariant: request/result event relationships are owned by the Agent Loop invariant. */
 const install: InvariantInstaller = () => {}
 
 /**

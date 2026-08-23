@@ -65,6 +65,7 @@ flowchart LR
   pkg_storage_domain["storage-domain"]
   svc_storageDomain["ctx.storageDomain<br/>Domain data facility"]
   pkg_workspace["workspace"]
+  pkg_issue_orchestrator["issue-orchestrator"]
   svc_messageFeedback["ctx.messageFeedback<br/>Lifecycle-bound message feedback"]
   svc_workspaceRegistry["ctx.workspaceRegistry<br/>Workspace entity registry"]
   svc_sessionQuery["ctx.sessionQuery<br/>Session reads, traces, filters, and search"]
@@ -204,6 +205,22 @@ flowchart LR
   svc_workflowEngine["ctx.workflowEngine<br/>Workflow script engine"]
   pkg_workflow_worker_thread["workflow-worker-thread"]
   pkg_tool_workflow["tool-workflow"]
+  pkg_tracker["tracker"]
+  svc_trackers["ctx.trackers<br/>Issue tracker provider registry"]
+  pkg_tracker_linear["tracker-linear"]
+  pkg_issue_workflow["issue-workflow"]
+  svc_issueWorkflow["ctx.issueWorkflow<br/>Repository issue policy"]
+  pkg_issue_workflow_file["issue-workflow-file"]
+  pkg_issue_workspace["issue-workspace"]
+  svc_issueWorkspace["ctx.issueWorkspace<br/>Per-issue directory lifecycle"]
+  pkg_issue_workspace_local["issue-workspace-local"]
+  pkg_issue_runner["issue-runner"]
+  svc_issueRunner["ctx.issueRunner<br/>Issue attempt execution"]
+  pkg_issue_runner_agent["issue-runner-agent"]
+  pkg_issue_orchestration["issue-orchestration"]
+  svc_issueOrchestration["ctx.issueOrchestration<br/>Durable issue scheduling"]
+  pkg_api_remotes["api-remotes"]
+  pkg_client_ui_issue_orchestration["client-ui-issue-orchestration"]
   pkg_lsp["lsp"]
   svc_lsp["ctx.lsp<br/>Language-server navigation seam"]
   pkg_lsp_local["lsp-local"]
@@ -247,6 +264,14 @@ flowchart LR
   pkg_fs_sandbox --> svc_fs
   pkg_goal --> svc_goals
   pkg_invariants --> svc_invariants
+  pkg_issue_orchestration --> svc_issueOrchestration
+  pkg_issue_orchestrator --> svc_issueOrchestration
+  pkg_issue_runner --> svc_issueRunner
+  pkg_issue_runner_agent --> svc_issueRunner
+  pkg_issue_workflow --> svc_issueWorkflow
+  pkg_issue_workflow_file --> svc_issueWorkflow
+  pkg_issue_workspace --> svc_issueWorkspace
+  pkg_issue_workspace_local --> svc_issueWorkspace
   pkg_jobs --> svc_jobs
   pkg_jobs_local --> svc_jobs
   pkg_llm --> svc_llm
@@ -311,6 +336,8 @@ flowchart LR
   pkg_terminal_bash --> svc_terminals
   pkg_token_meter --> svc_tokenMeter
   pkg_tools --> svc_tools
+  pkg_tracker --> svc_trackers
+  pkg_tracker_linear --> svc_trackers
   pkg_typert_registry --> svc_typert
   pkg_user_questions --> svc_userQuestions
   pkg_web --> svc_web
@@ -350,6 +377,11 @@ flowchart LR
   svc_invariants --> pkg_agent_loop
   svc_invariants --> pkg_scope
   svc_invariants --> pkg_session
+  svc_issueOrchestration --> pkg_api_remotes
+  svc_issueOrchestration --> pkg_client_ui_issue_orchestration
+  svc_issueRunner --> pkg_issue_orchestrator
+  svc_issueWorkflow --> pkg_issue_orchestrator
+  svc_issueWorkspace --> pkg_issue_orchestrator
   svc_jobs --> pkg_tool_bash
   svc_jobs --> pkg_tool_jobs
   svc_jobs --> pkg_tool_subagent
@@ -402,6 +434,7 @@ flowchart LR
   svc_skills --> pkg_tool_skill
   svc_spillStore --> pkg_spill_policy
   svc_storage --> pkg_storage_domain
+  svc_storageDomain --> pkg_issue_orchestrator
   svc_storageDomain --> pkg_message_feedback
   svc_storageDomain --> pkg_workspace
   svc_subagents --> pkg_tool_ralph
@@ -432,6 +465,7 @@ flowchart LR
   svc_tools --> pkg_tool_terminal
   svc_tools --> pkg_tool_todo
   svc_tools --> pkg_tool_web
+  svc_trackers --> pkg_issue_orchestrator
   svc_typert --> pkg_api_gateway
   svc_typert --> pkg_typert_loader
   svc_userQuestions --> pkg_tool_ask_user
@@ -464,7 +498,7 @@ flowchart LR
 | `ctx.credentials` | `seam` | [`credentials`](../packages/credentials/credentials) | [`credentials-local`](../packages/credentials/credentials-local) | [`llm-deepseek`](../packages/llm/llm-deepseek), [`llm-pi-ai`](../packages/llm/llm-pi-ai), `apiproxy` | - | Configuration carries references to secrets; providers own the values. Consumers resolve per operation, so a rotated credential reaches the very next request; the web gateway exposes value-free views and write-only storage. |
 | `ctx.sessionTelemetry` | `seam` | [`session-telemetry`](../packages/session/session-telemetry) | [`session-telemetry-otel`](../packages/session/session-telemetry-otel) | - | - | The seam captures, redacts, and hands session records to one backend; nothing else consumes the service — its output leaves the process. |
 | `ctx.storage` | `seam` | [`storage`](../packages/storage/storage) | [`storage-json`](../packages/storage/storage-json), [`storage-sqlite`](../packages/storage/storage-sqlite) | [`storage-domain`](../packages/storage/storage-domain) | - | Backends register side by side under names; data forms (domain first) mount on the hub and translate typed operations into opaque KV-unit primitives. |
-| `ctx.storageDomain` | `core` | [`storage-domain`](../packages/storage/storage-domain) | - | [`workspace`](../packages/workspace/workspace), [`message-feedback`](../packages/feedback/message-feedback) | - | Waits for every configured backend, then publishes the domain form as one lifecycle-bound service for typed durable state. |
+| `ctx.storageDomain` | `core` | [`storage-domain`](../packages/storage/storage-domain) | - | [`workspace`](../packages/workspace/workspace), [`message-feedback`](../packages/feedback/message-feedback), [`issue-orchestrator`](../packages/automation/issue-orchestrator) | - | Waits for every configured backend, then publishes the domain form as one lifecycle-bound service for typed durable state. |
 | `ctx.messageFeedback` | `core` | [`message-feedback`](../packages/feedback/message-feedback) | - | - | - | Owns local per-assistant-message feedback, lifecycle and target validation, per-item compare-and-set, and the Host unary Remote contract without entering Session history or telemetry. |
 | `ctx.workspaceRegistry` | `core` | [`workspace`](../packages/workspace/workspace) | - | `apiproxy` | - | Owns WorkspaceId-branded records over the domain facility; stable sessionIds accounts drive Host RPC and GUI projections. |
 | `ctx.sessionQuery` | `seam` | [`session-query`](../packages/session-query/session-query) | [`session-query-sqlite`](../packages/session-query/session-query-sqlite) | [`session-reference`](../packages/context/session-reference), [`tool-session-query`](../packages/session-query/tool-session-query) | - | The interface supplies exact reads, filters, and traces; its concrete backend adds full-text reconciliation, ranking, snippets, and cursor generations, while the model consumer owns workspace authority and cursor-free rendering. |
@@ -508,6 +542,11 @@ flowchart LR
 | `ctx.webServer` | `core` | `webserver` | - | `connection`, `modules`, `hmr` | - | Plain node:http carrier: named-route registry, index transform taps, and the static dist fallback; web-transport plugins register their own routes. |
 | `ctx.clientModules` | `core` | `modules` | - | `hmr` | - | Composes the __DSH_BOOT__ entry graph from an incremental dsh.client scan, serves plugin bundles, and notifies rebuilt/graph-changed subscribers. |
 | `ctx.workflowEngine` | `seam` | [`workflow`](../packages/workflow/workflow) | [`workflow-worker-thread`](../packages/workflow/workflow-worker-thread) | [`tool-workflow`](../packages/workflow/tool-workflow), [`tool-ralph`](../packages/workflow/tool-ralph) | - | One engine per context, as in bash, with no named-provider registry; the general workflow and fixed Ralph consumers start runs whose agent() calls fan out through ctx.subagents. |
+| `ctx.trackers` | `seam` | [`tracker`](../packages/tracker/tracker) | [`tracker-linear`](../packages/tracker/tracker-linear) | [`issue-orchestrator`](../packages/automation/issue-orchestrator) | - | Named providers own native tracker reads and capture one immutable host-tool and credential-alias binding for each admitted issue run. |
+| `ctx.issueWorkflow` | `seam` | [`issue-workflow`](../packages/automation/issue-workflow) | [`issue-workflow-file`](../packages/automation/issue-workflow-file) | [`issue-orchestrator`](../packages/automation/issue-orchestrator) | - | One last-known-good revision supplies tracker routing, scheduling policy, and first-turn and continuation templates. |
+| `ctx.issueWorkspace` | `seam` | [`issue-workspace`](../packages/automation/issue-workspace) | [`issue-workspace-local`](../packages/automation/issue-workspace-local) | [`issue-orchestrator`](../packages/automation/issue-orchestrator) | - | The provider locates, prepares, hooks, and removes issue directories independently from the Workspace Registry session grouping. |
+| `ctx.issueRunner` | `seam` | [`issue-runner`](../packages/automation/issue-runner) | [`issue-runner-agent`](../packages/automation/issue-runner-agent) | [`issue-orchestrator`](../packages/automation/issue-orchestrator) | - | A provider publishes one holder-owned run with captured tracker tools, progress, cancellation, and quiescent settlement. |
+| `ctx.issueOrchestration` | `seam` | [`issue-orchestration`](../packages/automation/issue-orchestration) | [`issue-orchestrator`](../packages/automation/issue-orchestrator) | [`api-remotes`](../packages/api/remotes), [`client-ui-issue-orchestration`](../packages/client/ui-issue-orchestration) | - | One durable single writer owns claims, running attempts, retries, blocks, reconciliation, capacity, and operator commands. |
 | `ctx.lsp` | `seam` | [`lsp`](../packages/lsp/lsp) | `lsp-local` | [`tool-lsp`](../packages/lsp/tool-lsp) | - | Provider registration and selection plus normalized query execution over exactly four operations; the seam offers no protocol escape hatch, so a backend translates into the normalized request and result. |
 | `ctx.apiProxy` | `core` | `apiproxy` | - | `connection` | - | The transport-agnostic host gateway face: it dispatches browser API calls, and each open host stream subscribes to the events it forwards rather than being pushed to through a broadcast verb. |
 | `ctx.dynamicCordisRunner` | `core` | [`cordis-host-runner`](../packages/extensions/cordis-host-runner) | - | [`tool-cordis`](../packages/extensions/tool-cordis) | - | Owns the in-memory definition registry, the vm sandbox for host halves, and the request-run round trip; browser pages reach the same service over the wire through its remote namespace. |

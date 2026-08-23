@@ -94,6 +94,20 @@ export interface WorkflowRunInfo {
   meta: WorkflowMeta
 }
 
+/** In-memory operator projection for one run that has started but not ended. */
+export interface WorkflowActiveRunSnapshot extends WorkflowRunInfo {
+  /** Host epoch milliseconds when `workflow/start` committed. */
+  readonly startedAt: number
+  /** Host epoch milliseconds of the latest accepted workflow lifecycle event. */
+  readonly lastProgressAt: number
+  /** Latest declared phase title, when the script has entered a phase. */
+  readonly phase?: string
+  /** Number of child starts accepted by the workflow event stream. */
+  readonly agentsStarted: number
+  /** Number of accepted child starts without a matching end. */
+  readonly activeAgents: number
+}
+
 /** One `agent()` call's identity within a run (the `workflow/agent-start` payload). */
 export interface WorkflowAgentInfo {
   /** 1-based sequence number of this `agent()` call within the run. */

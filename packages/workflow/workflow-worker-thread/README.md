@@ -50,6 +50,8 @@ For each `agent()` call:
 
 Provider starts are tracked separately from published children. If cancellation, worker death, or normal workflow settlement closes admission while a start is pending, the shared signal aborts it. A provider that nevertheless fulfills after closure is disposed by the host and never announced to the worker.
 
+The optional `stallTimeoutMs` watchdog starts with the worker and re-arms after each accepted host/worker protocol message in either direction. Silence beyond the configured interval claims an `error` result, aborts and disposes children, pairs stranded lifecycle events, closes later message admission, and terminates the worker. A long-running child therefore needs a deployment interval larger than its longest expected event silence. The default `0` disables this policy.
+
 ## Value boundary
 
 Values leaving the script pass through `materializeFromRealm`, which accepts plain, lossless JSON data and rejects exotic prototypes, functions, symbols, cycles, sparse arrays, non-finite numbers, and nested `undefined`. The walk runs in the worker, and defines object keys as data properties so `__proto__` cannot mutate a prototype.
@@ -84,6 +86,7 @@ The host keeps a ledger of forwarded child starts. A graceful worker supplies th
 | `maxItemsPerCall` | `4096` | Items accepted by one `parallel()` or `pipeline()` call. |
 | `syncTimeoutMs` | `5000` | VM timeout for the script's initial synchronous slice. |
 | `disposeGraceMs` | `5000` | Bound before force-settlement/termination and for public disposal. |
+| `stallTimeoutMs` | `0` | Maximum host/worker protocol silence before an error and termination; `0` disables it. |
 | `journalRoot` | omitted | Absolute directory enabling durable per-run JSONL and `resumeRunId`. |
 
 An owning consumer may set `WorkflowStartRequest.subagentProvider`, `WorkflowStartRequest.maxTotalAgents`, and `WorkflowStartRequest.resumeRunId` for one run. These are engine-level policy, not script hooks. A per-run total-child cap may lower but never raise the configured `maxTotalAgents` ceiling. The ordinary `workflow` tool exposes only `resumeRunId`; provider and cap remain deployment-owned.

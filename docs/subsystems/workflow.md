@@ -113,6 +113,12 @@ interface WorkflowRun {
 }
 ```
 
+## Active-run projection
+
+`WorkflowEngine.activeRuns()` is the process-local query for operator and integration consumers that need current facts without acquiring a live handle. The service projects paired lifecycle events into start-ordered `WorkflowActiveRunSnapshot` values containing the run identity and meta, `startedAt`, `lastProgressAt`, latest optional `phase`, cumulative `agentsStarted`, and current `activeAgents`. Returned meta and phase arrays are detached copies. The matching `workflow/end` removes the run before end listeners execute, and a second start with the same active id fails with `RUN_ACTIVE` instead of replacing the projection.
+
+The projection is not a durable scheduler or ownership registry. It does not restore runs after process restart and does not expose `cancel` or `dispose`; the consumer that received `WorkflowRun` remains responsible for disposal.
+
 ## Failure discipline: `WorkflowError.fatal`
 
 Hook misuse inside a script — bad arguments, unknown/deferred `agent()` options, a schema outside the [structured-output subset](../../packages/core/tools/README.md), a tripped cap, a seam start failure, cancellation — throws a `WorkflowError` with `fatal: true`. The `parallel()`/`pipeline()` combinators RE-THROW fatal errors instead of mapping the item to `null`: a typo'd option must kill the script loudly, never dissolve into something that reads as an ordinary child failure. The per-item `null` is reserved for child-run failures (a non-`completed` stop reason) and ordinary in-stage script errors.
@@ -151,9 +157,17 @@ Workflow Service Definition contract. Invalid requests throw before publication;
  * @returns the live run; its `result` resolves when the script settles.
  */
 abstract start(request: WorkflowStartRequest): WorkflowRun
+
+/**
+ * Return detached snapshots of runs whose start event has committed without
+ * a matching end event. The service event stream is the sole state owner;
+ * callers receive no cancellation or disposal authority.
+ * @returns Active runs in start order.
+ */
+activeRuns(): readonly WorkflowActiveRunSnapshot[]
 ```
 
-Source: [`packages/workflow/workflow/src/index.ts:162`](../../packages/workflow/workflow/src/index.ts)
+Source: [`packages/workflow/workflow/src/index.ts:167`](../../packages/workflow/workflow/src/index.ts)
 
 <a id="workflow-events"></a>
 
@@ -179,7 +193,7 @@ One `agent()` call settled (clean result, child failure, or run cancellation). P
 'workflow/agent-end'(info: WorkflowRunInfo, agent: WorkflowAgentEndInfo): void
 ```
 
-Source: [`packages/workflow/workflow/src/index.ts:79`](../../packages/workflow/workflow/src/index.ts)
+Source: [`packages/workflow/workflow/src/index.ts:83`](../../packages/workflow/workflow/src/index.ts)
 
 <a id="workflowagent-start--emit"></a>
 
@@ -200,7 +214,7 @@ One `agent()` call established a published child run. Paired with Events['workfl
 'workflow/agent-start'(info: WorkflowRunInfo, agent: WorkflowAgentInfo): void
 ```
 
-Source: [`packages/workflow/workflow/src/index.ts:68`](../../packages/workflow/workflow/src/index.ts)
+Source: [`packages/workflow/workflow/src/index.ts:72`](../../packages/workflow/workflow/src/index.ts)
 
 <a id="workflowend--emit"></a>
 
@@ -221,7 +235,7 @@ A workflow run settled (any stop reason). Fired when WorkflowRun.result resolves
 'workflow/end'(info: WorkflowRunInfo, result: WorkflowResultInfo): void
 ```
 
-Source: [`packages/workflow/workflow/src/index.ts:89`](../../packages/workflow/workflow/src/index.ts)
+Source: [`packages/workflow/workflow/src/index.ts:93`](../../packages/workflow/workflow/src/index.ts)
 
 <a id="workflowlog--emit"></a>
 
@@ -239,7 +253,7 @@ The script emitted a narration line (a `log(message)` call).
 'workflow/log'(info: WorkflowRunInfo, message: string): void
 ```
 
-Source: [`packages/workflow/workflow/src/index.ts:58`](../../packages/workflow/workflow/src/index.ts)
+Source: [`packages/workflow/workflow/src/index.ts:62`](../../packages/workflow/workflow/src/index.ts)
 
 <a id="workflowphase--emit"></a>
 
@@ -258,7 +272,7 @@ The script entered a phase (a `phase(title)` call) — progress grouping for obs
 'workflow/phase'(info: WorkflowRunInfo, title: string): void
 ```
 
-Source: [`packages/workflow/workflow/src/index.ts:51`](../../packages/workflow/workflow/src/index.ts)
+Source: [`packages/workflow/workflow/src/index.ts:55`](../../packages/workflow/workflow/src/index.ts)
 
 <a id="workflowstart--emit"></a>
 
@@ -276,5 +290,5 @@ A workflow run started — the script's meta block validated, the body about to 
 'workflow/start'(info: WorkflowRunInfo): void
 ```
 
-Source: [`packages/workflow/workflow/src/index.ts:43`](../../packages/workflow/workflow/src/index.ts)
+Source: [`packages/workflow/workflow/src/index.ts:47`](../../packages/workflow/workflow/src/index.ts)
 <!-- END GENERATED cordis-surface -->

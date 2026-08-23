@@ -52,6 +52,8 @@ export interface Config {
    * 5000 ms); also bounds `dispose()`.
    */
   disposeGraceMs?: number
+  /** Maximum silence between worker protocol events before the run fails; `0` disables the watchdog. */
+  stallTimeoutMs?: number
   /** Absolute directory for durable per-run journals; omission disables resume. */
   journalRoot?: string
 }
@@ -127,6 +129,7 @@ class WorkerThreadWorkflowEngine extends WorkflowEngine {
     maxItemsPerCall: z.natural().min(1).default(4096),
     syncTimeoutMs: z.natural().min(1).default(5000),
     disposeGraceMs: z.natural().default(5000),
+    stallTimeoutMs: z.natural().default(0),
     journalRoot: z.string(),
   })
 
@@ -162,6 +165,7 @@ class WorkerThreadWorkflowEngine extends WorkflowEngine {
       throw new WorkflowError('workflow resume requires configured journalRoot', 'JOURNAL_UNAVAILABLE')
     }
     const id = request.resumeRunId ?? WorkflowRunId(randomUUID())
+    this.assertWorkflowRunAvailable(id)
     const info: WorkflowRunInfo = { id, meta }
     const limits: WorkerLimits = {
       maxConcurrentAgents: this.config.maxConcurrentAgents === 0
@@ -217,6 +221,7 @@ class WorkerThreadWorkflowEngine extends WorkflowEngine {
       init,
       subagentProvider,
       this.config.disposeGraceMs,
+      this.config.stallTimeoutMs,
       journal,
       {
         phase: (title) => { this.emitWorkflowEvent('workflow/phase', info, title) },

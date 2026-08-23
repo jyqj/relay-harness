@@ -37,6 +37,12 @@
       "path": "../../goal/goal"
     },
     {
+      "path": "../../automation/issue-orchestration"
+    },
+    {
+      "path": "../../automation/issue-orchestrator"
+    },
+    {
       "path": "../../feedback/message-feedback"
     },
     {

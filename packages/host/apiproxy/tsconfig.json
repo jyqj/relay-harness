@@ -84,6 +84,9 @@
       "path": "../../interaction/commands"
     },
     {
+      "path": "../../automation/issue-orchestration"
+    },
+    {
       "path": "../../interaction/user-approval"
     },
     {

@@ -50,6 +50,8 @@ worker 仍提供实用的隔离：
 
 提供方启动与已发布子 agent 分开跟踪。如果启动仍在等待，而取消、worker 死亡或正常工作流结算关闭了接纳，共享信号会中止该启动。即便提供方随后兑现，宿主也会 dispose 它，且绝不向 worker 通知。
 
+可选的 `stallTimeoutMs` watchdog 会随 worker 启动，并在每条被接受的双向宿主／worker 协议消息后重新计时。静默超过配置时长会以 `error` 结果接管运行，中止并 dispose 子 agent，为滞留的生命周期事件配对，关闭后续消息准入并终止 worker。因此，长时间运行的子 agent 需要把部署时长设为大于最长预期事件静默时间。默认值 `0` 会禁用此策略。
+
 ## 值边界
 
 离开脚本的值会经过 `materializeFromRealm`；该函数接受普通的无损 JSON 数据，并拒绝特殊原型、函数、symbol、循环、稀疏数组、非有限数和嵌套 `undefined`。遍历在 worker 内执行，并把对象键定义为数据属性，使 `__proto__` 无法改变原型。
@@ -84,6 +86,7 @@ worker 错误、消息失败或提前退出会在清理前关闭消息接纳，�
 | `maxItemsPerCall` | `4096` | 一次 `parallel()` 或 `pipeline()` 调用接受的条目数。 |
 | `syncTimeoutMs` | `5000` | 脚本最初同步片段的 VM 超时时间。 |
 | `disposeGraceMs` | `5000` | 强制结算/终止之前的期限，也是公开 dispose 的期限。 |
+| `stallTimeoutMs` | `0` | 触发错误与终止前允许的最长宿主／worker 协议静默时间；`0` 表示禁用。 |
 | `journalRoot` | 省略 | 启用持久逐 run JSONL 与 `resumeRunId` 的绝对目录。 |
 
 负责该引擎的消费方可以为一次运行设置 `WorkflowStartRequest.subagentProvider`、`WorkflowStartRequest.maxTotalAgents` 与 `WorkflowStartRequest.resumeRunId`。它们属于引擎级策略，不是脚本 hook。每次运行的子 agent 总数上限可以降低、但绝不能提高已配置的 `maxTotalAgents` 上限。普通 `workflow` 工具只公开 `resumeRunId`；提供方与上限仍由部署拥有。
