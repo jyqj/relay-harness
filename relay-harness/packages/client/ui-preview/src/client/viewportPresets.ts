@@ -2,12 +2,19 @@
 
 import type { PreviewViewportSetting } from './viewport.ts'
 
+/** One standard device the device toolbar can emulate. */
 export interface PreviewViewportPreset {
+  /** Stable id a saved viewport setting refers to. */
   readonly id: string
+  /** Device name as the picker shows it. */
   readonly label: string
+  /** Which group the picker files the device under. */
   readonly category: 'Desktop' | 'Tablet' | 'Phone'
+  /** The dimensions as the picker shows them. */
   readonly detail: string
+  /** CSS viewport width. */
   readonly width: number
+  /** CSS viewport height. */
   readonly height: number
 }
 
@@ -22,8 +29,11 @@ export const DEFAULT_DEVICE_VIEWPORT = {
   height: 667,
 } as const satisfies Exclude<PreviewViewportSetting, { readonly _tag: 'fill' }>
 
-// Keep this in Chrome DevTools' default-device order. Dimensions are CSS
-// viewport sizes from Chromium's EmulatedDevices.ts standard catalog.
+/**
+ * The devices the toolbar offers, in Chrome DevTools' default-device order.
+ * Dimensions are CSS viewport sizes from Chromium's EmulatedDevices.ts
+ * standard catalog.
+ */
 export const PREVIEW_VIEWPORT_PRESETS: readonly PreviewViewportPreset[] = [
   {
     id: 'iphone-se',

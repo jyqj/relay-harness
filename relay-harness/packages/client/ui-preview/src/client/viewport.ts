@@ -36,12 +36,22 @@ export interface BrowserViewportLayout {
   readonly fillsPanel: boolean
 }
 
+/** Height in CSS pixels the device toolbar takes from the preview panel. */
 export const BROWSER_DEVICE_TOOLBAR_HEIGHT = 32
+
+/** Thickness in CSS pixels of the drag rails around the guest viewport. */
 export const BROWSER_VIEWPORT_RESIZE_RAIL_SIZE = 10
+
+/** Smallest width or height a viewport may be resized to. */
 export const PREVIEW_VIEWPORT_MIN_DIMENSION = 240
+
+/** Largest width or height a viewport may be resized to. */
 export const PREVIEW_VIEWPORT_MAX_DIMENSION = 3840
+
+/** Largest viewport area, which caps the two dimensions together at 4K. */
 export const PREVIEW_VIEWPORT_MAX_AREA = 3840 * 2160
 
+/** Which rail a viewport resize drag grabbed, and so which edges it moves. */
 export type BrowserViewportResizeDirection =
   | 'north'
   | 'northeast'

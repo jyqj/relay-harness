@@ -7,16 +7,21 @@ interface FileTreeDragTransfer {
   setData(format: string, data: string): void
 }
 
+/** The part of a `dragstart` event this controller reads. */
 export interface FileTreeDragStartEvent {
+  /** The drag's payload, absent when the platform withheld one. */
   readonly dataTransfer: FileTreeDragTransfer | null
+  /** The event path, searched for the tree row the drag started on. */
   composedPath(): readonly unknown[]
 }
 
+/** What the controller needs back from the file tree. */
 export interface FileTreeDragMentionHost {
   /** Drop the tree's gesture-applied selection of the dragged row. */
   deselect(treePath: string): void
 }
 
+/** The file tree's drag handlers, and the drag state they maintain. */
 export interface FileTreeDragMentionController {
   /**
    * True from the moment a row drag starts until it ends. The tree selects
@@ -26,7 +31,9 @@ export interface FileTreeDragMentionController {
   isDragInProgress(): boolean
   /** Mirror of the tree's current selection, needed for multi-row drags. */
   handleSelectionChange(selectedPaths: readonly string[]): void
+  /** Tag a starting row drag with the mentions for the rows it carries. */
   handleDragStart(event: FileTreeDragStartEvent): void
+  /** Release the drag and deselect the rows it carried. */
   handleDragEnd(): void
 }
 
@@ -43,6 +50,8 @@ const itemPathOf = (node: unknown): string | null => {
  * from acting like a click: while the drag runs, selection changes are
  * suppressed, and when it ends the dragged rows are deselected so nothing is
  * left highlighted and a later click on them still fires a selection change.
+ * @param host - the tree, which the controller asks to drop a row's selection.
+ * @returns the handlers the tree installs, plus the drag state it consults.
  */
 export function createFileTreeDragMentionController(
   host: FileTreeDragMentionHost,

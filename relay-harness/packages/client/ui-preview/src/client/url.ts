@@ -51,8 +51,11 @@ export function isPreviewableUrl(rawUrl: string): boolean {
  * and never includes the raw input or parse-cause text.
  */
 export class PreviewUrlNormalizationError extends Error {
+  /** Which of the three ways the input failed. */
   readonly reason: 'empty' | 'parse' | 'unsupported-protocol'
+  /** Length of the raw input, reported in place of the input itself. */
   readonly inputLength: number
+  /** The protocol the input named, when it named one. */
   readonly protocol?: string
 
   /**

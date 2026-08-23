@@ -1,8 +1,12 @@
 /** Host-renderer MediaRecorder for Browser preview (frames arrive over IPC). */
 
+/** How long a start waits for the first frame before giving up on a size. */
 export const BROWSER_RECORDING_FIRST_FRAME_SIZE_TIMEOUT_MS = 5_000
+
+/** How long a start waits for the frame size to stop changing before recording. */
 export const BROWSER_RECORDING_STARTUP_SETTLE_TIMEOUT_MS = 5_000
 
+/** The step of the recording lifecycle a `BrowserRecordingOperationError` failed in. */
 export type BrowserRecordingOperation =
   | 'initialize-media-recorder'
   | 'subscribe-frames'
@@ -15,26 +19,41 @@ export type BrowserRecordingOperation =
   | 'save-artifact'
   | 'cleanup'
 
+/** One screencast frame as it crosses IPC from the host. */
 export interface PreviewRecordingFrame {
+  /** Which preview the frame came from. */
   id: string
+  /** The frame image, base64-encoded. */
   data: string
+  /** The frame's width in device pixels. */
   width: number
+  /** The frame's height in device pixels. */
   height: number
 }
 
+/** The host calls this recording needs, injected so the renderer stays testable. */
 export interface BrowserRecordingBridge {
+  /** Ask the host to begin screencasting one preview. */
   previewStartRecording: (id: string) => Promise<{ ok: boolean; message?: string }>
+  /** Ask the host to stop screencasting; omitting the id stops whatever is active. */
   previewStopRecording: (id?: string) => Promise<{ ok: boolean; message?: string }>
+  /** Subscribe to screencast frames; the return value unsubscribes. */
   onPreviewRecordingFrame: (handler: (frame: PreviewRecordingFrame) => void) => () => void
+  /** Hand the encoded recording to the host to write, which answers with its path. */
   previewSaveRecording: (
     id: string,
     input: { mimeType: string; data: ArrayBuffer },
   ) => Promise<{ ok: boolean; path?: string; message?: string }>
 }
 
+/** Thrown when the host cannot screencast the preview at all. */
 export class BrowserRecordingUnavailableError extends Error {
+  /** The preview the caller asked to record. */
   readonly previewId: string
 
+  /**
+   * @param previewId - the preview the caller asked to record.
+   */
   constructor(previewId: string) {
     super('Browser recording is unavailable.')
     this.name = 'BrowserRecordingUnavailableError'
@@ -42,10 +61,17 @@ export class BrowserRecordingUnavailableError extends Error {
   }
 }
 
+/** Thrown when a second preview asks to record while one already is. */
 export class BrowserRecordingConflictError extends Error {
+  /** The preview whose request was refused. */
   readonly requestedId: string
+  /** The preview already recording. */
   readonly activeId: string
 
+  /**
+   * @param requestedId - the preview whose request was refused.
+   * @param activeId - the preview already recording.
+   */
   constructor(requestedId: string, activeId: string) {
     super('Browser recording is already active.')
     this.name = 'BrowserRecordingConflictError'
@@ -54,11 +80,23 @@ export class BrowserRecordingConflictError extends Error {
   }
 }
 
+/**
+ * Thrown when the frame size the screencast reported yields no drawable
+ * canvas, so there is nothing for the encoder to capture.
+ */
 export class BrowserRecordingCanvasUnavailableError extends Error {
+  /** The preview being recorded. */
   readonly previewId: string
+  /** The frame width that produced no canvas. */
   readonly width: number
+  /** The frame height that produced no canvas. */
   readonly height: number
 
+  /**
+   * @param previewId - the preview being recorded.
+   * @param width - the frame width that produced no canvas.
+   * @param height - the frame height that produced no canvas.
+   */
   constructor(previewId: string, width: number, height: number) {
     super('Browser recording canvas is unavailable.')
     this.name = 'BrowserRecordingCanvasUnavailableError'
@@ -68,11 +106,21 @@ export class BrowserRecordingCanvasUnavailableError extends Error {
   }
 }
 
+/**
+ * Thrown when one step of the recording lifecycle fails, naming the step so a
+ * report says where recording broke rather than only that it did.
+ */
 export class BrowserRecordingOperationError extends Error {
+  /** The lifecycle step that failed. */
   readonly operation: BrowserRecordingOperation
+  /** The preview being recorded. */
   readonly previewId: string
+  /** Whatever the step threw, when it threw something. */
   override readonly cause: unknown
 
+  /**
+   * @param input - the failing step, its preview, and the underlying error.
+   */
   constructor(input: { operation: BrowserRecordingOperation; previewId: string; cause?: unknown }) {
     super(`Browser recording operation ${input.operation} failed.`)
     this.name = 'BrowserRecordingOperationError'

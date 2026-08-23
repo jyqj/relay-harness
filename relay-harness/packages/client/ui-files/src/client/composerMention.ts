@@ -1,5 +1,11 @@
 const SIMPLE_MENTION_PATH_REGEX = /^[^\s@"\\]+$/
 
+/**
+ * Render a workspace path as an `@`-mention argument, quoting it only when it
+ * contains a character the composer's token scanner would read as a boundary.
+ * @param path - workspace-relative path.
+ * @returns the path, bare or double-quoted with backslash escapes.
+ */
 export function serializeComposerMentionPath(path: string): string {
   if (SIMPLE_MENTION_PATH_REGEX.test(path)) {
     return path
@@ -25,6 +31,12 @@ function encodeMarkdownLinkDestination(path: string): string {
     .replaceAll('\\', '%5C')
 }
 
+/**
+ * Render a workspace path as a Markdown link labelled with its basename, the
+ * form a file mention takes once it lands in the draft.
+ * @param path - workspace-relative path.
+ * @returns a Markdown link whose destination round-trips the full path.
+ */
 export function serializeComposerFileLink(path: string): string {
   const label = escapeMarkdownLinkLabel(composerFileLinkBasename(path))
   return `[${label}](${encodeMarkdownLinkDestination(path)})`
@@ -37,6 +49,13 @@ export function serializeComposerFileLink(path: string): string {
  */
 export const COMPOSER_MENTION_DRAG_TYPE = 'application/x-rlhd-composer-mention'
 
+/**
+ * The mention a file-tree drag carries for one tree path. A directory path
+ * keeps its trailing separators off the link, and the workspace root has no
+ * mention to offer.
+ * @param treePath - path as the file tree spells it.
+ * @returns the Markdown link to insert, or null when the path is empty.
+ */
 export function composerMentionFromTreePath(treePath: string): string | null {
   const relativePath = treePath.replace(/\/+$/, '')
   if (relativePath.length === 0) {
@@ -45,6 +64,12 @@ export function composerMentionFromTreePath(treePath: string): string | null {
   return serializeComposerFileLink(relativePath)
 }
 
+/**
+ * Whether a drag came from the workspace file tree rather than the OS or a
+ * text selection, which the composer decides from the drag's payload types.
+ * @param types - the drag's `DataTransfer.types`.
+ * @returns true when the drag carries a composer mention.
+ */
 export function dataTransferHasComposerMention(types: readonly string[]): boolean {
   return types.includes(COMPOSER_MENTION_DRAG_TYPE)
 }

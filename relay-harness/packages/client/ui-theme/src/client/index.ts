@@ -412,6 +412,7 @@ export class ThemeRuntime {
    * Persist desktop wallpaper catalog preferences without exposing desktop APIs to the web bundle.
    * `{ wallpaperSources }` replaces the sanitized source list. The bing / catalog-url
    * patch remains so Appearance still typechecks.
+   * @param patch - the source list to replace, or the bing and catalog-url preferences to merge.
    */
   setWallpaperSources(
     patch: Partial<Pick<ThemeSettings, 'wallpaperBingEnabled' | 'wallpaperCatalogUrls' | 'wallpaperSources'>>,

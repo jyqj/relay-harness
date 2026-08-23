@@ -2,9 +2,13 @@
 
 /** Options for `installFileEditorDismissal`. */
 export interface FileEditorDismissalOptions {
+  /** FilePreview element (`data-file-preview`). */
   root: HTMLElement
+  /** Source textarea; blur and collapse its caret. */
   editor: { blur(): void; setSelectionRange?(start: number, end: number): void }
+  /** When true, pointerdown and Escape do nothing. */
   isBlocked: () => boolean
+  /** Clear the preview's selected line range. */
   onDismiss: () => void
 }
 
@@ -35,18 +39,11 @@ function isFileEditorFocused(root: HTMLElement): boolean {
  * Dismiss the Files textarea selection on pointerdown outside `root` or Escape
  * while that textarea is focused. `isBlocked` skips both handlers (a comment
  * overlay would set it). Cleanup removes the document listeners.
- * @param options.root - FilePreview element (`data-file-preview`).
- * @param options.editor - source textarea; blur and collapse its caret.
- * @param options.isBlocked - when true, pointerdown and Escape do nothing.
- * @param options.onDismiss - clear the preview's selected line range.
+ * @param options - the preview root, its textarea, and the dismissal hooks.
  * @returns a disposer that removes the listeners.
  */
-export function installFileEditorDismissal({
-  root,
-  editor,
-  isBlocked,
-  onDismiss,
-}: FileEditorDismissalOptions): () => void {
+export function installFileEditorDismissal(options: FileEditorDismissalOptions): () => void {
+  const { root, editor, isBlocked, onDismiss } = options
   const handlePointerDown = (event: PointerEvent): void => {
     if (isBlocked() || event.composedPath().includes(root)) return
     dismissFileEditorInteraction({ editor, onDismiss })
