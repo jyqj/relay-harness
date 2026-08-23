@@ -3505,14 +3505,6 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface DownloadsApi {\n    sessionLog(request: {\n        sessionId: SessionId;\n        includeDescendants?: boolean;\n    }, signal: AbortSignal): Promise<Response>;\n}',
   },
   {
-    name: 'RlhEnvironment',
-    declaration: 'export type RlhEnvironment = Readonly<Record<RlhEnvironmentKey, string>>;',
-  },
-  {
-    name: 'RlhEnvironmentKey',
-    declaration: 'export type RlhEnvironmentKey = `${typeof RLH_ENV_PREFIX}${string}`;',
-  },
-  {
     name: 'DynamicCordisPackage',
     declaration: 'export interface DynamicCordisPackage {\n    pluginId: CordisDynamicPluginId;\n    packageId: CordisDynamicPackageId;\n    pluginRunId: CordisDynamicPluginRunId;\n    name: string;\n}',
   },
@@ -4315,6 +4307,14 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'ReviseMemoryInput',
     declaration: 'export interface ReviseMemoryInput {\n    readonly scope: MemoryScope;\n    readonly id: MemoryId;\n    readonly content?: string;\n    readonly summary?: string | null;\n    readonly importance?: number;\n    readonly confidence?: number;\n    readonly trust?: MemoryTrust;\n    readonly status?: Exclude<MemoryStatus, \'tombstoned\'>;\n    readonly validUntil?: number | null;\n    readonly evidence: readonly MemoryEvidence[];\n}',
+  },
+  {
+    name: 'RlhEnvironment',
+    declaration: 'export type RlhEnvironment = Readonly<Record<RlhEnvironmentKey, string>>;',
+  },
+  {
+    name: 'RlhEnvironmentKey',
+    declaration: 'export type RlhEnvironmentKey = `${typeof RLH_ENV_PREFIX}${string}`;',
   },
   {
     name: 'RpcError',

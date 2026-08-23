@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-08-19-sidebar-tabs-rlhbot-origin.md
-2026-08-19-sidebar-tabs-rlhbot-origin.md: 93d54ca446f1da57cf7e96c4666d2f6272288fee
-2026-08-19-sidebar-tabs-rlhbot-origin.zh.md: 97c5dd00e2d568690ea8a2d19f5f5a9b89171114
+2026-08-19-sidebar-tabs-rlhbot-origin.md: de4a5597b8793af970e66d112ceab0616016a9fd
+2026-08-19-sidebar-tabs-rlhbot-origin.zh.md: 19b5a65721428c7ff8dc51f4485d734761cf75e1

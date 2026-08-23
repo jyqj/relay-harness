@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-08-23-desktop-app-position-and-gates.md
-2026-08-23-desktop-app-position-and-gates.md: d7b18fdfbcfd2b86ab5cda3f7017422795ea1525
-2026-08-23-desktop-app-position-and-gates.zh.md: 0dfbcdac8f7a575c3d3705c6cde3c9023cda449a
+2026-08-23-desktop-app-position-and-gates.md: 9562cab822191a8d302b4f88aad70e9be51ad8ce
+2026-08-23-desktop-app-position-and-gates.zh.md: 7fb452507f42ed1a90043a8b32b3d96f9263d60c

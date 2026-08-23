@@ -30,7 +30,9 @@ const SELF = 'scripts/rebrand-dsh-to-rlh.ts'
 /** Spans that must survive every content rule, in match order. */
 const PROTECTED: RegExp[] = [
   // Links into frozen archived Agent Notes keep their historical dsh filenames.
-  /[\w\-./]*notes\/archived\/[\w\-./]*/g,
+  // `archived/` names only that tree here, so relative links such as
+  // `../../archived/feature/…` are protected alongside repository-rooted ones.
+  /[\w\-./]*archived\/[\w\-./]*/g,
   // This script's own filename names the migration, not the product.
   /rebrand-dsh-to-rlh(?:\.ts)?/g,
   // Third-party plugin registry: live HTTP endpoints and community plugin pages.

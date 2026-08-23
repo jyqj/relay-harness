@@ -8,7 +8,7 @@ English | [中文](2026-08-23-desktop-app-position-and-gates.zh.md)
 
 `apps/desktop` is the largest single body of code in the repository that no static gate reads. It is roughly 38,000 lines of plain JavaScript across 96 non-test files, and until this change the only automated signal over it was `node --test`. The root oxlint configuration is type-aware, which is why it ignores `**/*.js` outright, and the desktop is in no TypeScript project, so neither `pnpm run lint` nor `pnpm run typecheck` ever saw it. A rename that missed a `require` path, or a function left dead by a refactor, surfaced only when a user launched the app.
 
-The [Relay Harness rename](../process/2026-08-23-relay-harness-rename.md) made the gap concrete: renaming `install-dsh-plugin-client.js` moved a module every `require` in the tree had to follow, with nothing but the test suite to catch a miss.
+The [Relay Harness rename](../process/2026-08-23-relay-harness-rename.md) made the gap concrete: renaming `install-rlh-plugin-client.js` moved a module every `require` in the tree had to follow, with nothing but the test suite to catch a miss.
 
 Its position was also unsettled. The repository now hosts a Relay product-documentation layer above the harness ([ADR-0005](../../../../../docs/adr/0005-adopt-ts-harness-runtime.md)), which raises whether the Electron shell is a harness application or a Relay product shell that should sit at the outer repository root.
 

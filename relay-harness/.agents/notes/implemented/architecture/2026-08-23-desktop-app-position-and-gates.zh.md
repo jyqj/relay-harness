@@ -8,7 +8,7 @@ Status: implemented
 
 `apps/desktop` 是仓库中最大的、没有任何静态门禁读取的代码体：96 个非测试文件、约 38000 行纯 JavaScript，在本次改动前，覆盖它的自动化信号只有 `node --test`。根 oxlint 配置启用类型感知，因而直接忽略 `**/*.js`；桌面端又不属于任何 TypeScript project，于是 `pnpm run lint` 与 `pnpm run typecheck` 从未看过它。一次改名漏掉某个 `require` 路径，或重构留下的死函数，只有在用户启动应用时才会暴露。
 
-[Relay Harness 更名](../process/2026-08-23-relay-harness-rename.md)让这个缺口变得具体：把 `install-dsh-plugin-client.js` 改名，意味着树内每一处 `require` 都必须跟进，而能发现遗漏的只有测试套件。
+[Relay Harness 更名](../process/2026-08-23-relay-harness-rename.md)让这个缺口变得具体：把 `install-rlh-plugin-client.js` 改名，意味着树内每一处 `require` 都必须跟进，而能发现遗漏的只有测试套件。
 
 它的位置也悬而未决。仓库现在在 harness 之上托管了一层 Relay 产品文档（[ADR-0005](../../../../../docs/adr/0005-adopt-ts-harness-runtime.md)），这就引出一个问题：Electron 壳层究竟是 harness 的应用，还是应当上移到外层仓库根目录的 Relay 产品壳。
 

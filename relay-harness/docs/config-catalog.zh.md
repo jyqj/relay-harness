@@ -1590,7 +1590,7 @@ export interface Config {
   workspaceId?: string
   /** Provider candidate cap before model-context packing. Defaults to 10. */
   candidateLimit?: number
-  /** Complete memory message character cap, including safety framing. Defaults to 3200. */
+  /** Complete memory message cap in Unicode code points, including safety framing. Defaults to 3200. */
   maxContextChars?: number
   /** Whether delegated subagents receive and settle memory. Defaults to false. */
   includeSubagents?: boolean
@@ -1670,6 +1670,8 @@ export interface Config {
   maxContentChars?: number
   /** Largest accepted summary in Unicode code points. Defaults to 500. */
   maxSummaryChars?: number
+  /** Age at which another process's ownership heartbeat is considered dead. Defaults to 30000. */
+  ownerStaleMs?: number
 }
 
 /** Supported SQLite journal modes. */
@@ -2561,6 +2563,22 @@ export type CodexPermissionMode =
 
 来源：[`packages/subagent/subagent-codex/src/index.ts:36`](../packages/subagent/subagent-codex/src/index.ts)
 
+<a id="relay-harnessrlh-subagent-fork-in-process"></a>
+
+## `@relay-harness/rlh-subagent-fork-in-process`
+
+需要：`subagents`
+
+```ts config-catalog
+/** Config: the registry name to register the provider under. */
+export interface Config {
+  /** Provider name on `ctx.subagents` (default `fork`). */
+  providerName: string
+}
+```
+
+来源：[`packages/subagent/subagent-fork-in-process/src/index.ts:31`](../packages/subagent/subagent-fork-in-process/src/index.ts)
+
 <a id="relay-harnessrlh-subagent-rlh-sdk"></a>
 
 ## `@relay-harness/rlh-subagent-rlh-sdk`
@@ -2613,22 +2631,6 @@ export interface Config {
 ```
 
 来源：[`packages/subagent/subagent-rlh-sdk/src/index.ts:29`](../packages/subagent/subagent-rlh-sdk/src/index.ts)
-
-<a id="relay-harnessrlh-subagent-fork-in-process"></a>
-
-## `@relay-harness/rlh-subagent-fork-in-process`
-
-需要：`subagents`
-
-```ts config-catalog
-/** Config: the registry name to register the provider under. */
-export interface Config {
-  /** Provider name on `ctx.subagents` (default `fork`). */
-  providerName: string
-}
-```
-
-来源：[`packages/subagent/subagent-fork-in-process/src/index.ts:31`](../packages/subagent/subagent-fork-in-process/src/index.ts)
 
 <a id="relay-harnessrlh-subagent-spawn-in-process"></a>
 
@@ -3328,21 +3330,21 @@ export type ToolPresentationMode = 'native' | 'code' | 'both'
 /** Linear endpoint, scope, routing, auth, and provider-name configuration. */
 export interface Config {
   /** Registry name used by workflow policy (default `linear`). */
-  readonly providerName?: string
+  readonly providerName: string
   /** HTTPS Linear GraphQL endpoint. */
-  readonly endpoint?: string
+  readonly endpoint: string
   /** Optional literal API key; prefer `apiKeyEnv` for repository-owned composition. */
   readonly apiKey?: string
   /** Host environment variable carrying the API key (default `LINEAR_API_KEY`). */
-  readonly apiKeyEnv?: string
+  readonly apiKeyEnv: string
   /** Linear project slug that scopes every scheduler read. */
   readonly projectSlug: string
   /** Optional assignee id or `me` routing filter. */
   readonly assignee?: string
   /** States treated as terminal when evaluating blockers. */
-  readonly terminalStates?: string[]
+  readonly terminalStates: string[]
   /** New-work states whose non-terminal blockers prevent dispatch. */
-  readonly blockNewStates?: string[]
+  readonly blockNewStates: string[]
 }
 ```
 
