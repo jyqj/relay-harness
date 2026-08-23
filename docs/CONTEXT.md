@@ -37,7 +37,7 @@ work **没有 Project 前置概念**。一次 work 自带自己的目标、对�
 
 ### Agent 侧（本项目重点）
 
-Rust 实现，负责：
+TypeScript 实现（Relay Harness，见 [ADR-0005](adr/0005-adopt-ts-harness-runtime.md)；运行时代码在 [`relay-harness/`](../relay-harness/README.md)），负责：
 
 - chat/work 会话与 Agent Loop；
 - Prompt Enhancing 的上下文组织；
@@ -87,4 +87,4 @@ Rust 实现，负责：
 
 ## 当前阶段
 
-当前处于初版文档收口阶段，尚未开始代码开发。未裁决的计费细节和长期记忆实现路径继续标记为 `[待决策]`。
+运行时已采用 [`relay-harness/`](../relay-harness/README.md)（TypeScript Harness，[ADR-0005](adr/0005-adopt-ts-harness-runtime.md)），Agent Loop、会话恢复、工具、Subagent 等基础能力已实现。Relay 产品语义仍是缺口：chat/work 双模式、Prompt Enhancing、中转调度客户端和模型强度展示尚未在 harness 之上落地。未裁决的计费细节和长期记忆实现路径继续标记为 `[待决策]`。

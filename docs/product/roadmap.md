@@ -1,6 +1,8 @@
 # 产品与工程路线图
 
 > 阶段按依赖关系推进，不代表已实现能力。
+>
+> **状态说明（2026-08-23）**：运行时已改用 [`relay-harness/`](../../relay-harness/README.md) TypeScript Harness（[ADR-0005](../adr/0005-adopt-ts-harness-runtime.md)）。P0 中 Agent Loop、状态机、工具、checkpoint、权限门等条目已由 harness 等价能力覆盖；中转调度客户端与路由信号仍是缺口。
 
 ## P0：Rust Agent 基础
 

@@ -449,9 +449,9 @@ export async function launchWebScaffold(options: LaunchOptions = {}): Promise<We
     // workspace, keeping the composition untouched.
     { id: 'agent-instructions', disabled: true },
     { id: 'session-title-llm', disabled: true },
-    // Fixture sessions must never leave the process: the shipped row defaults
-    // to the production OTLP endpoint (or whatever DSH_TELEMETRY_OTLP_URL
-    // names in the ambient environment). A scenario that pins a real backend
+    // Fixture sessions must never leave the process: the shipped row has no
+    // built-in endpoint but honors whatever DSH_TELEMETRY_OTLP_URL names in
+    // the ambient environment. A scenario that pins a real backend
     // disclosure passes a local dead endpoint instead of disabling the row.
     options.telemetryUrl === undefined
       ? { id: 'session-telemetry-otel', disabled: true }
