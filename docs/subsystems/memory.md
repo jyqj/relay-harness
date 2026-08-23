@@ -40,7 +40,7 @@ The auxiliary call uses `purpose: 'memory-extraction'`, a fixed JSON-only instru
 
 ## SQLite retrieval
 
-The local provider maintains Unicode and trigram FTS5 indexes over current non-tombstoned entries. It fuses channel ranks, then applies bounded importance and trust weights. Queries and every metadata filter are SQL parameters; caller Scope is mandatory. The canonical database rejects unrelated files and unknown schema versions instead of resetting them. Schema version 2 adds deterministic content hashes and extraction jobs; version-1 stores migrate in place.
+The local provider maintains Unicode and trigram FTS5 indexes over current non-tombstoned entries. It fuses channel ranks, then applies bounded importance and trust weights. Queries and every metadata filter are SQL parameters; caller Scope is mandatory. The canonical database rejects unrelated files and unknown schema versions instead of resetting them. Schema version 2 adds deterministic content hashes and extraction jobs; version 3 adds the single-owner heartbeat table. Earlier stores migrate in place.
 
 <!-- BEGIN GENERATED cordis-surface (gen-cordis-catalog.ts) — do not edit between markers -->
 

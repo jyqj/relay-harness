@@ -122,7 +122,7 @@ export function WallpaperCropModal({
         onWheel={(event) => {
           event.preventDefault()
           const delta = event.deltaY < 0 ? ZOOM_STEP * 4 : -ZOOM_STEP * 4
-          setZoom((value) => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, value + delta)))
+          setZoom(value => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, value + delta)))
         }}
         onPointerDown={(event) => {
           const frame = event.currentTarget

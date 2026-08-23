@@ -69,7 +69,8 @@ export function ThemeLibrary({
   const startCreate = (): void => {
     const source = families.find(family => family.id === activeDarkThemeId)
       ?? families.find(family => family.id === activeLightThemeId)
-      ?? families[0]!
+      ?? families[0]
+    if (source === undefined) return
     openDraft(duplicateThemeFamily(source, reserved))
   }
 
@@ -133,7 +134,7 @@ export function ThemeLibrary({
             type="file"
             accept="application/json,.json"
             hidden
-            onChange={event => {
+            onChange={(event) => {
               const file = event.currentTarget.files?.[0]
               event.currentTarget.value = ''
               if (file) void importFile(file)

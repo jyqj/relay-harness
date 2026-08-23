@@ -2,7 +2,7 @@
 
 [English](README.md) | 中文
 
-`ctx.trackers` 的 Linear GraphQL Provider。它分页读取项目范围候选项、批量按精确 ID 对账、规范化标签／阻塞关系／负责人路由，并捕获由 Host 执行的 `linear_graphql` 工具。Linear token 只保留在 Provider 闭包中；binding 声明 token 环境变量别名，供子进程清理。
+`ctx.trackers` 的 Linear GraphQL Provider。它分页读取项目范围候选项、批量按精确 ID 对账、规范化标签／阻塞关系／负责人路由，并捕获由 Host 执行的 `linear_graphql` 工具。Linear token 只保留在 Provider 闭包中；binding 中的 token 环境变量别名是声明性元数据——子进程清理由 subprocess seam 的通用凭据特征父环境擦除完成，不读取该列表。
 
 ## 模型体验
 

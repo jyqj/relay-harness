@@ -40,7 +40,7 @@ Recall-form 用户消息保留在原始 Session 日志中，但不会生成 Sess
 
 ## SQLite 检索
 
-本地 Provider 为当前非 tombstoned 条目维护 Unicode 与 trigram FTS5 索引。它融合各渠道排名，再应用有界 importance 和 trust 权重。查询和每个元数据筛选器都是 SQL 参数；调用者 Scope 为必填。规范数据库会拒绝无关文件和未知 schema 版本，而不是重置它们。schema version 2 增加确定性 content hash 与提取 job；version-1 store 会原地迁移。
+本地 Provider 为当前非 tombstoned 条目维护 Unicode 与 trigram FTS5 索引。它融合各渠道排名，再应用有界 importance 和 trust 权重。查询和每个元数据筛选器都是 SQL 参数；调用者 Scope 为必填。规范数据库会拒绝无关文件和未知 schema 版本，而不是重置它们。schema version 2 增加确定性 content hash 与提取 job；version 3 增加单 owner 心跳表。更早的 store 会原地迁移。
 
 <!-- BEGIN GENERATED cordis-surface (gen-cordis-catalog.ts) — do not edit between markers -->
 

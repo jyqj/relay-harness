@@ -150,7 +150,7 @@ export class FakeApiClient implements IApiClient {
       response.result.ok
         ? { ...response, result: { ok: true as const, value: { blank: true, ...response.result.value } } }
         : response
-    )) as ReturnType<IApiClient['sessions']['create']>),
+    ))),
     history: (payload: { sessionId: SessionId; beforeSeq?: number; maxMessages?: number }) =>
       this.record('session.history', payload, this.onHistory(payload)),
     models: (payload: unknown) => this.record('session.models', payload, this.onModels(payload)),

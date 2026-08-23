@@ -34,6 +34,8 @@ export function apply(ctx: ClientContext): void {
   void load()
 
   const command = async (operation: 'retry' | 'release', issueId: string): Promise<void> => {
+    // TODO(types): brand `TrackerIssueId` on the generated remote command payload instead of
+    // widening through `as never` (same temporary cast as the other branded-id client commands).
     const result = await ctx.remote.issueOrchestration[operation]({ issueId: issueId as never })
     if (!result.ok) throw new Error(`${result.error.code}: ${result.error.message}`)
     await load()

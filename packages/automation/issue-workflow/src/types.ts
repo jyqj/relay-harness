@@ -11,6 +11,8 @@ export interface IssueWorkflowPolicy {
   readonly maxConcurrentRunsByState: Readonly<Record<string, number>>
   readonly maxTurns: number
   readonly continuationRetryMs: number
+  /** Maximum continuation redispatches after the first attempt for one still-eligible issue; 0 disables the bound. */
+  readonly maxContinuationAttempts: number
   readonly failureRetryBaseMs: number
   readonly maxRetryBackoffMs: number
   readonly stallTimeoutMs: number

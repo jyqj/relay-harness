@@ -45,16 +45,16 @@ export interface FilesShellInjected {
   writeFile: (cwd: string, relativePath: string, text: string) => Promise<WriteFileResult>
   mentionFile: (sessionId: string, relativePath: string) => void
   appendComposerText?: (sessionId: string, text: string) => void
-  listEditors?: () => Promise<{ id: string, label: string }[]>
+  listEditors?: () => Promise<{ id: string; label: string }[]>
   openInEditor?: (input: {
     editor: string
     cwd: string
     relativePath: string
     line?: number
     column?: number
-  }) => Promise<{ ok: boolean, message?: string }>
-  showItemInFolder?: (cwd: string, relativePath: string) => Promise<{ ok: boolean, message?: string }>
-  openWithSystemDefault?: (cwd: string, relativePath: string) => Promise<{ ok: boolean, message?: string }>
+  }) => Promise<{ ok: boolean; message?: string }>
+  showItemInFolder?: (cwd: string, relativePath: string) => Promise<{ ok: boolean; message?: string }>
+  openWithSystemDefault?: (cwd: string, relativePath: string) => Promise<{ ok: boolean; message?: string }>
 }
 
 interface FilesShell {
@@ -62,16 +62,16 @@ interface FilesShell {
   readFile?: (cwd: string, relativePath: string) => Promise<ReadFileResult>
   readFileMedia?: (cwd: string, relativePath: string) => Promise<ReadFileMediaResult>
   writeFile?: (cwd: string, relativePath: string, text: string) => Promise<WriteFileResult>
-  listEditors?: () => Promise<{ id: string, label: string }[]>
+  listEditors?: () => Promise<{ id: string; label: string }[]>
   openInEditor?: (input: {
     editor: string
     cwd: string
     relativePath: string
     line?: number
     column?: number
-  }) => Promise<{ ok: boolean, message?: string }>
-  showItemInFolder?: (cwd: string, relativePath: string) => Promise<{ ok: boolean, message?: string }>
-  openWithSystemDefault?: (cwd: string, relativePath: string) => Promise<{ ok: boolean, message?: string }>
+  }) => Promise<{ ok: boolean; message?: string }>
+  showItemInFolder?: (cwd: string, relativePath: string) => Promise<{ ok: boolean; message?: string }>
+  openWithSystemDefault?: (cwd: string, relativePath: string) => Promise<{ ok: boolean; message?: string }>
 }
 
 function missingList(): ListDirResult {
@@ -105,7 +105,7 @@ export function readFilesShell(): Omit<FilesShellInjected, 'mentionFile' | 'appe
     readFileMedia: (cwd, relativePath) => shell?.readFileMedia?.(cwd, relativePath) ?? Promise.resolve(missingMedia()),
     writeFile: (cwd, relativePath, text) => shell?.writeFile?.(cwd, relativePath, text) ?? Promise.resolve(missingWrite()),
     listEditors: () => shell?.listEditors?.() ?? Promise.resolve([]),
-    openInEditor: (input) => shell?.openInEditor?.(input) ?? Promise.resolve(missingWrite()),
+    openInEditor: input => shell?.openInEditor?.(input) ?? Promise.resolve(missingWrite()),
     showItemInFolder: (cwd, relativePath) => (
       shell?.showItemInFolder?.(cwd, relativePath) ?? Promise.resolve(missingWrite())
     ),

@@ -181,7 +181,7 @@ describe('AgentsPanel', () => {
         startedAt: 1,
       }],
     }
-    const localized: AgentsPanelProps['t'] = (key) => (
+    const localized: AgentsPanelProps['t'] = key => (
       key === 'jobs.status.failed' ? '失败' : ((en as Record<string, string>)[key] ?? key)
     )
     render(

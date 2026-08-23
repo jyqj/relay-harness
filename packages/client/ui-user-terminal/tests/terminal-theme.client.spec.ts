@@ -17,7 +17,7 @@ function mockCanvasFromFillStyle(): void {
     return {
       clearRect() {},
       get fillStyle() { return ctx.fillStyle },
-      set fillStyle(value: string) { ctx.fillStyle = String(value) },
+      set fillStyle(value: string) { ctx.fillStyle = value },
       fillRect() {},
       getImageData() {
         const rgb = /rgba?\(\s*([\d.]+)[\s,]+([\d.]+)[\s,]+([\d.]+)/.exec(ctx.fillStyle)
@@ -81,7 +81,8 @@ describe('terminalThemeFromApp', () => {
       return new Proxy(styles, {
         get(target, prop, receiver) {
           if (prop === 'backgroundColor' || prop === 'color') return 'transparent'
-          return Reflect.get(target, prop, receiver)
+          const value: unknown = Reflect.get(target, prop, receiver)
+          return value
         },
       })
     })
@@ -112,10 +113,12 @@ describe('terminalThemeFromApp', () => {
       return new Proxy(styles, {
         get(target, prop, receiver) {
           if (prop === 'backgroundColor') return 'oklch(0.4 0.1 250)'
-          return Reflect.get(target, prop, receiver)
+          const value: unknown = Reflect.get(target, prop, receiver)
+          return value
         },
       })
     })
+    // oxlint-disable-next-line typescript/unbound-method -- delegates non-2d context requests to the native factory captured before the spy
     const real = HTMLCanvasElement.prototype.getContext
     vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(function mock(
       this: HTMLCanvasElement,
@@ -145,7 +148,8 @@ describe('terminalThemeFromApp', () => {
       return new Proxy(styles, {
         get(target, prop, receiver) {
           if (prop === 'backgroundColor') return 'oklch(0.2 0.1 40)'
-          return Reflect.get(target, prop, receiver)
+          const value: unknown = Reflect.get(target, prop, receiver)
+          return value
         },
       })
     })
@@ -157,7 +161,8 @@ describe('terminalThemeFromApp', () => {
       return new Proxy(styles, {
         get(target, prop, receiver) {
           if (prop === 'backgroundColor') return 'oklch(0.2 0.1 40)'
-          return Reflect.get(target, prop, receiver)
+          const value: unknown = Reflect.get(target, prop, receiver)
+          return value
         },
       })
     })
@@ -212,7 +217,8 @@ describe('readXtermFont', () => {
         return new Proxy(styles, {
           get(target, prop, receiver) {
             if (prop === 'fontFamily') return '"SF Mono"'
-            return Reflect.get(target, prop, receiver)
+            const value: unknown = Reflect.get(target, prop, receiver)
+            return value
           },
         })
       }

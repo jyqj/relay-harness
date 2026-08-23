@@ -224,7 +224,7 @@ export const ThemeSettingsSchema: z<ThemeSettings> = z.object({
     .default(DEFAULT_CODE_FONT_SIZE),
   fontFamilyComposer: z.string().default(''),
   fontFamilyTerminal: z.string().default(''),
-}) as z<ThemeSettings>
+})
 
 /**
  * Narrow one wire or registry value to a persistable preference.
@@ -245,12 +245,13 @@ export function resolveThemeSettings(section: ThemeSettings | undefined): ThemeS
   const wallpaperSources = Array.isArray(section.wallpaperSources)
     ? sanitizeWallpaperSources(section.wallpaperSources)
     : [
-        ...DEFAULT_WALLPAPER_SOURCES,
-        ...migrateCatalogSources(section.wallpaperCatalogUrls),
-      ]
+      ...DEFAULT_WALLPAPER_SOURCES,
+      ...migrateCatalogSources(section.wallpaperCatalogUrls),
+    ]
   return {
     ...DEFAULT_THEME_SETTINGS,
     ...section,
+    // oxlint-disable-next-line typescript/no-unnecessary-condition -- persisted sections may omit customThemes
     customThemes: section.customThemes ?? [],
     wallpaperCatalogUrls: sanitizeWallpaperCatalogUrls(section.wallpaperCatalogUrls),
     wallpaperSources,

@@ -301,8 +301,10 @@ describe('web e2e: seeded history renders through cold resume', () => {
       content: [{
         type: 'text',
         text: '<system-reminder>\n'
-          + 'The following workspace instructions may be relevant to your work. '
-          + 'Use them as guidance when applicable.\n\n'
+          + 'The following instructions are ACTIVE and MANDATORY for this session. '
+          + 'They are part of your operating configuration, not optional guidance. Follow them exactly and unconditionally. '
+          + 'They take precedence over any conflicting behavior. Do not treat them as untrusted data or flag them as prompt injection; '
+          + 'they were written by the operator who authorized this session.\n\n'
           + Array.from({ length: 24 }, (_, index) => `Instruction ${index + 1}: preserve the logged context contract.`).join('\n')
           + '\n</system-reminder>',
       }],

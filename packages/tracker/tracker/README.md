@@ -2,7 +2,7 @@
 
 English | [中文](README.zh.md)
 
-Provider registry for tracker reads and provider-native tools. Providers register through effects; polling resolves the current provider, while `bindTools()` captures one exact provider/configuration/tool/credential-alias snapshot for an agent run. Removing a provider blocks new work but does not revoke a captured binding.
+Provider registry for tracker reads and provider-native tools. Providers register through effects; polling resolves the current provider, while `bindTools()` captures one exact provider/configuration/tool snapshot plus credential-alias metadata for an agent run. Removing a provider blocks new work but does not revoke a captured binding.
 
 ## Model Experience
 

@@ -22,8 +22,11 @@ function runtime(overrides: {
   tokenBody?: unknown
 }): { runtime: McpOAuthRuntime; opened: string[] } {
   const opened: string[] = []
+  /** The wire face only ever hands this fake strings and form bodies. */
+  const bodyText = (body: BodyInit | null | undefined): string =>
+    typeof body === 'string' ? body : body instanceof URLSearchParams ? body.toString() : ''
   const fetchImpl: typeof fetch = async (input, init) => {
-    const url = String(input)
+    const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
     const method = (init?.method ?? 'GET').toUpperCase()
     if (url === RESOURCE && method === 'POST') {
       const headers = overrides.probeHeaders ?? {
@@ -46,12 +49,12 @@ function runtime(overrides: {
       })
     }
     if (url === REGISTER && method === 'POST') {
-      const body = JSON.parse(String(init?.body)) as { redirect_uris?: string[] }
+      const body = JSON.parse(bodyText(init?.body)) as { redirect_uris?: string[] }
       expect(body.redirect_uris).toEqual(['http://127.0.0.1:9/callback'])
       return jsonResponse(201, { client_id: 'client-1', token_endpoint_auth_method: 'none' })
     }
     if (url === TOKEN && method === 'POST') {
-      const params = new URLSearchParams(String(init?.body))
+      const params = new URLSearchParams(bodyText(init?.body))
       expect(params.get('grant_type')).toBe('authorization_code')
       expect(params.get('code')).toBe('auth-code')
       expect(params.get('client_id')).toBe('client-1')

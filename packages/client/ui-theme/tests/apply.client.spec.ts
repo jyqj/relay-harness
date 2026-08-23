@@ -123,7 +123,13 @@ describe('ui-theme apply', () => {
     face.setTheme('system')
     expect(theme.getTheme().preference).toBe('system')
     expect(instance.getSnapshot().preference).toBe('system')
-    await vi.waitFor(() => { expect(b.mutate).toHaveBeenCalledTimes(2) })
+    // Both writes went through the 300 ms debounced host-write queue, so the
+    // interim 'dark' never reaches the wire: one coalesced mutate carries the
+    // final 'system'.
+    await vi.waitFor(() => { expect(b.mutate).toHaveBeenCalledTimes(1) })
+    expect(b.mutate.mock.calls.at(-1)?.[0]).toMatchObject({
+      ops: [{ op: 'set', path: ['preference'], value: 'system' }],
+    })
   })
 
   it('loads Host settings at boot, refreshes its namespace, and keeps remote browsers process-local', async () => {

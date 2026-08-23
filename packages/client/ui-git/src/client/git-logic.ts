@@ -25,7 +25,8 @@ export interface VcsStatus {
   aheadCount: number
   behindCount: number
   aheadOfDefaultCount?: number
-  /** True when no-upstream ahead vs the default/base ref could not be counted. Titlebar Push treats this as pushable; Create PR still uses aheadCount only. */
+  /** True when no-upstream ahead vs the default/base ref could not be counted.
+   * Titlebar Push treats this as pushable; Create PR still uses aheadCount only. */
   aheadUnreliable?: boolean
   /** Changed paths with numstat; 0/0 when porcelain has no numstat. */
   workingTree: {
@@ -199,20 +200,20 @@ export function buildMenuItems(
     },
     hasOpenPr
       ? {
-          id: 'pr',
-          label: `View ${terminology.shortLabel}`,
-          disabled: !canOpenPr,
-          icon: 'pr',
-          kind: 'open_pr',
-        }
+        id: 'pr',
+        label: `View ${terminology.shortLabel}`,
+        disabled: !canOpenPr,
+        icon: 'pr',
+        kind: 'open_pr',
+      }
       : {
-          id: 'pr',
-          label: `Create ${terminology.shortLabel}`,
-          disabled: !canCreatePr,
-          icon: 'pr',
-          kind: 'open_dialog',
-          dialogAction: 'create_pr',
-        },
+        id: 'pr',
+        label: `Create ${terminology.shortLabel}`,
+        disabled: !canCreatePr,
+        icon: 'pr',
+        kind: 'open_dialog',
+        dialogAction: 'create_pr',
+      },
   ]
 }
 

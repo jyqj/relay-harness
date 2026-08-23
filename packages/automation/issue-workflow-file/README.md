@@ -2,7 +2,7 @@
 
 English | [中文](README.zh.md)
 
-Markdown/YAML provider. YAML front matter carries tracker routing, polling, concurrency, retry, continuation, and stall policy; the Markdown body is the strict first-turn template. Startup requires one valid document. Later invalid or missing revisions are logged and the last valid snapshot remains authoritative.
+Markdown/YAML provider. YAML front matter carries tracker routing, polling, concurrency, retry, continuation, and stall policy; the Markdown body is the strict first-turn template. Startup requires one valid document. `orchestration.max_continuation_attempts` (default 5, `0` disables the bound) limits how often a completed-but-still-eligible issue is redispatched. Later invalid or missing revisions are logged and the last valid snapshot remains authoritative.
 
 ## Model Experience
 

@@ -57,7 +57,7 @@ describe('createFileTreeDragMentionController', () => {
   it('deselects the dragged row exactly once when the drag ends', () => {
     const deselected: Array<string> = []
     const controller = createFileTreeDragMentionController({
-      deselect: (path) => deselected.push(path),
+      deselect: path => deselected.push(path),
     })
     controller.handleDragStart({
       dataTransfer: makeTransfer(),
@@ -72,7 +72,7 @@ describe('createFileTreeDragMentionController', () => {
   it('drags the whole selection when the dragged row is part of it', () => {
     const deselected: Array<string> = []
     const controller = createFileTreeDragMentionController({
-      deselect: (path) => deselected.push(path),
+      deselect: path => deselected.push(path),
     })
     controller.handleSelectionChange(['docs/index.md', 'docs/api.md', 'src/app.ts'])
     const transfer = makeTransfer()
@@ -101,7 +101,7 @@ describe('createFileTreeDragMentionController', () => {
   it('does not deselect anything when no drag was started', () => {
     const deselected: Array<string> = []
     const controller = createFileTreeDragMentionController({
-      deselect: (path) => deselected.push(path),
+      deselect: path => deselected.push(path),
     })
     controller.handleDragEnd()
     expect(deselected).toEqual([])

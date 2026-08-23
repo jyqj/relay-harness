@@ -2,7 +2,7 @@
 
 [English](README.md) | 中文
 
-Markdown／YAML Provider。YAML front matter 承载 Tracker 路由、轮询、并发、重试、continuation 和 stall 策略；Markdown 正文是严格的首轮模板。启动必须读到有效文档；后续无效或缺失版本会记录错误，并继续使用最后一个有效 snapshot。
+Markdown／YAML Provider。YAML front matter 承载 Tracker 路由、轮询、并发、重试、continuation 和 stall 策略；Markdown 正文是严格的首轮模板。启动必须读到有效文档。`orchestration.max_continuation_attempts`（默认 5，`0` 关闭上限）限制一个完成后仍可执行的 Issue 被再派发的次数；后续无效或缺失版本会记录错误，并继续使用最后一个有效 snapshot。
 
 ## 模型体验
 

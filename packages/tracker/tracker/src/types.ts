@@ -50,6 +50,12 @@ export interface TrackerToolResult {
 export interface TrackerToolBinding {
   readonly provider: string
   readonly tools: readonly TrackerToolSpec[]
+  /**
+   * Environment names that carry the provider credential, captured as declarative metadata.
+   * No runtime consumer wires this list today: managed-child scrubbing is the subprocess
+   * seam's generic credential-shaped `scrubbedParentEnv()` base, which never forwards
+   * credential-shaped names regardless of this declaration.
+   */
   readonly secretEnvironmentNames: readonly string[]
   execute(
     name: string,

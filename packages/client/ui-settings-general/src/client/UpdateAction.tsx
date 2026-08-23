@@ -39,7 +39,6 @@ export function UpdateAction({ wide, t }: UpdateActionProps): ReactNode {
     }).catch(() => {})
     return () => { cancelled = true }
     // The bridge is a stable window global; check once per mount.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {

@@ -463,7 +463,7 @@ describe('AppearanceSection', () => {
     expect(b.setWallpaperSources).toHaveBeenCalledWith(expect.objectContaining({
       wallpaperSources: expect.arrayContaining([
         expect.objectContaining({ kind: 'catalog', url: 'https://example.com/pack.json', name: '我的' }),
-      ]),
+      ]) as WallpaperSource[],
     }))
     const added = b.setWallpaperSources.mock.calls[0]![0] as { wallpaperSources: WallpaperSource[] }
     act(() => { b.store.actions.sync(snap({ wallpaperSources: added.wallpaperSources }), 1) })
@@ -474,7 +474,7 @@ describe('AppearanceSection', () => {
     expect(b.setWallpaperSources).toHaveBeenLastCalledWith(expect.objectContaining({
       wallpaperSources: expect.arrayContaining([
         expect.objectContaining({ kind: 'catalog', name: '新目录' }),
-      ]),
+      ]) as WallpaperSource[],
     }))
     const edited = b.setWallpaperSources.mock.calls.at(-1)![0] as { wallpaperSources: WallpaperSource[] }
     act(() => { b.store.actions.sync(snap({ wallpaperSources: edited.wallpaperSources }), 2) })
@@ -482,7 +482,7 @@ describe('AppearanceSection', () => {
     expect(b.setWallpaperSources).toHaveBeenLastCalledWith(expect.objectContaining({
       wallpaperSources: expect.not.arrayContaining([
         expect.objectContaining({ kind: 'catalog' }),
-      ]),
+      ]) as WallpaperSource[],
     }))
   })
 })

@@ -248,10 +248,28 @@ function normalizedParents(summaries: readonly SessionSummary[]): Map<SessionId,
 }
 
 /**
+ * The Session a card id belongs to, so persisted presentation state can be
+ * retained across progressive history loads.
+ * @param cardId - card id as built by `buildSessionTreeGraph`.
+ * @returns the owning Session id, or undefined for foreign keys.
+ */
+export function sessionOfCardId(cardId: string): SessionId | undefined {
+  if (cardId.startsWith('session:')) return cardId.slice('session:'.length) as SessionId
+  if (cardId.startsWith('turn:')) {
+    // startSeq is the suffix after the final separator; a Session id may itself contain colons.
+    const cut = cardId.lastIndexOf(':')
+    return cut === 'turn:'.length - 1 ? undefined : cardId.slice('turn:'.length, cut) as SessionId
+  }
+  return undefined
+}
+
+/**
  * Build the complete conversation graph before query/filter/collapse projection.
+ * Sessions whose history has not loaded yet contribute one stub card anchored at
+ * their inherited prefix, so the lineage structure is complete from list metadata alone.
  * @param sessions - global Session list snapshot.
  * @param sessionIds - selected workspace family in display order.
- * @param histories - complete history keyed by Session id.
+ * @param histories - complete history keyed by Session id; missing entries degrade to a stub card.
  * @param positions - persisted card-position overrides.
  * @returns complete card and connector graph.
  */

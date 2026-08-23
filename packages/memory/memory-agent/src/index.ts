@@ -59,7 +59,7 @@ export interface Config {
   workspaceId?: string
   /** Provider candidate cap before model-context packing. Defaults to 10. */
   candidateLimit?: number
-  /** Complete memory message character cap, including safety framing. Defaults to 3200. */
+  /** Complete memory message cap in Unicode code points, including safety framing. Defaults to 3200. */
   maxContextChars?: number
   /** Whether delegated subagents receive and settle memory. Defaults to false. */
   includeSubagents?: boolean
@@ -223,7 +223,7 @@ function renderRecall(
   let text = renderRecallText(retained)
   for (const candidate of candidates) {
     const proposed = renderRecallText([...retained, candidate])
-    if (proposed.length > maxChars) break
+    if (Array.from(proposed).length > maxChars) break
     retained.push(candidate)
     text = proposed
   }
@@ -310,7 +310,7 @@ function resolveConfig(config: Config): ResolvedConfig {
   const maxContextChars = config.maxContextChars ?? DEFAULT_MAX_CONTEXT_CHARS
   positiveInteger('candidateLimit', candidateLimit)
   positiveInteger('maxContextChars', maxContextChars)
-  if (maxContextChars < renderRecallText([]).length + 1) {
+  if (maxContextChars < Array.from(renderRecallText([])).length + 1) {
     throw new Error('memory-agent maxContextChars cannot fit framing plus one character')
   }
   return {

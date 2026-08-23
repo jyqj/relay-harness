@@ -2,7 +2,7 @@
 
 [English](README.md) | 中文
 
-持久化单写者 Scheduler。每次 tick 会 reload last-known-good 策略，先对账 running 与 blocked Issue，再 dispatch；每个候选项都按 ID 重验；执行全局与 per-state capacity；在 Workspace 或 Agent 副作用前持久化 claim；检测事件静默；应用有界指数退避；保留 blocked 状态；并把 Host 中断运行恢复成排队重试。
+持久化单写者 Scheduler。每次 tick 会 reload last-known-good 策略，先对账 running 与 blocked Issue，再 dispatch；每个候选项都按 ID 重验；执行全局与 per-state capacity；在 Workspace 或 Agent 副作用前持久化 claim；检测事件静默；应用有界指数退避；对完成后仍可执行的 Issue 用独立指数退避和终态上限约束 continuation 再派发；保留 blocked 状态；并把 Host 中断运行恢复成排队重试。启动清理只触碰有持久 claim 记录的 Issue。
 
 Storage-domain 记录是跨重启事实源。Live handle 和 timer 只是投影：重启不会假装恢复未知进程，也不会忘记 claim、Workspace、attempt 或 blocker。
 
@@ -25,4 +25,4 @@ Storage-domain 记录是跨重启事实源。Live handle 和 timer 只是投影�
 ## 已知限制与延期工作
 
 - **单进程 Authority** — 持久状态可跨重启恢复，但多 Host active/active 调度需要带 compare-and-set ownership 的 lease backend。
-- **没有 dead-letter 终态** — 重复失败会继续有界退避重试，直到 Tracker 策略变化或 Operator 释放。
+- **失败无 dead-letter 终态** — 重复运行失败会继续有界退避重试，直到 Tracker 策略变化或 Operator 释放；完成后 Issue 仍无进展的循环会在 continuation 上限处停在 blocked 状态。

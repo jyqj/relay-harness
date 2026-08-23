@@ -107,5 +107,5 @@ export function desktopShell(): DesktopShell | null {
  * @returns true only when both getConfig and saveConfig exist.
  */
 export function canPersistCloseBehavior(shell: DesktopShell | null = desktopShell()): boolean {
-  return Boolean(shell?.getConfig && shell?.saveConfig)
+  return Boolean(shell?.getConfig && shell.saveConfig)
 }

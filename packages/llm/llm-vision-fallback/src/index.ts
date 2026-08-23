@@ -116,7 +116,8 @@ function finishError(finish: FinishReason): Error | undefined {
   }
 }
 
-/** Model-facing framing of one substituted description. Images may come from user attachments or tool reads, so the framing never claims a source. */
+/** Model-facing framing of one substituted description. Images may come from user
+ * attachments or tool reads, so the framing never claims a source. */
 function substitutionText(name: string | undefined, description: string): string {
   const label = name === undefined || name === '' ? '图片' : `图片「${name}」`
   return `【${label}——此处有一张你无法直接查看的图片；以下是识图模型生成的描述】\n${description}\n【图片描述结束】`

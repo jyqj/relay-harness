@@ -52,7 +52,7 @@ export class FileSaveCoordinator {
     const contents = this.latestContents
     const revision = this.latestRevision
     const result = await this.options.persist(contents)
-    const succeeded = result.ok === true
+    const succeeded = result.ok
     if (succeeded) {
       this.options.onConfirmed(contents)
     }

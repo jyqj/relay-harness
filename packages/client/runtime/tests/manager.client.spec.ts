@@ -922,7 +922,7 @@ describe('connected generation', () => {
     await openedSession.open()
     manager.get(S2) // instantiated but never opened
     const historyCallsBefore = api.callsOf('session.history').length
-    manager.handleConnected()
+    void manager.handleConnected()
     await vi.waitFor(() => {
       expect(api.callsOf('session.list').length).toBe(1)
       // Only the opened instance repulls history; the cold one stays silent.
@@ -937,7 +937,7 @@ describe('connected generation', () => {
     }
     const manager = new SessionManager(api, fakeRemote(), S2, address)
 
-    manager.handleConnected()
+    void manager.handleConnected()
 
     await vi.waitFor(() => {
       expect(api.callsOf('subagent.list')).toContainEqual({ parentSessionId: S1 })
@@ -1040,7 +1040,7 @@ describe('pending-interaction list status', () => {
     // …and a replayed frame arriving before onConnected (stream open precedes
     // the readiness handshake) survives the later handleConnected untouched.
     manager.handleMuxEnvelope({ rpcId: 'ra' as never, payload: { type: 'approval/requested', sessionId: S1, approvalId: 'ap1' as never, toolName: 'rm' } })
-    manager.handleConnected()
+    void manager.handleConnected()
     expect(manager.getListSnapshot().items[0]?.pendingInteraction).toBe('approval')
   })
 

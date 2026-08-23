@@ -35,7 +35,7 @@ export interface FileTreeProps {
   onShowInFolder?: ((path: string) => void) | undefined
   onOpenInEditor?: ((editor: string, path: string) => void) | undefined
   onOpenWithSystemDefault?: ((path: string) => void) | undefined
-  editors?: readonly { id: string, label: string }[] | undefined
+  editors?: readonly { id: string; label: string }[] | undefined
   showInFolderLabel?: string | undefined
   openWithSystemDefaultLabel?: string | undefined
   /** Case-insensitive name filter; empty shows every row. */
@@ -89,6 +89,7 @@ export function FileTree({
   if (inherited === undefined && owned.current === undefined) {
     owned.current = createFileTreeDragMentionController({ deselect: () => {} })
   }
+  // oxlint-disable-next-line typescript/no-non-null-assertion -- owned.current is assigned above whenever inherited is undefined
   const dragMention = inherited ?? owned.current!
   const visible = filterEntries(entries, query, childrenByPath)
   return (
@@ -162,7 +163,7 @@ function TreeNode({
   onShowInFolder: FileTreeProps['onShowInFolder']
   onOpenInEditor: FileTreeProps['onOpenInEditor']
   onOpenWithSystemDefault: FileTreeProps['onOpenWithSystemDefault']
-  editors: readonly { id: string, label: string }[]
+  editors: readonly { id: string; label: string }[]
   showInFolderLabel: FileTreeProps['showInFolderLabel']
   openWithSystemDefaultLabel: FileTreeProps['openWithSystemDefaultLabel']
   query: string

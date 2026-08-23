@@ -354,7 +354,7 @@ describe('ModelsSection', () => {
     const { set, update, face } = await mountFirstRun()
     const key = screen.getByLabelText<HTMLInputElement>(en.keyInput)
     fireEvent.change(key, { target: { value: '  sk-live  ' } })
-    fireEvent.click(screen.getByText(en.apply))
+    fireEvent.click(screen.getByText<HTMLButtonElement>(en.apply))
     await waitFor(() => { expect(set).toHaveBeenCalledWith({ ref: 'DEEPSEEK_API_KEY', value: 'sk-live' }) })
     expect(update).not.toHaveBeenCalled()
     // The saved key re-loads the join; the settings answer rides the shared
@@ -437,7 +437,7 @@ describe('ModelsSection', () => {
     // effective value (which may reflect a launch-environment override).
     expect(baseURL.placeholder).toBe('https://api.deepseek.com')
     fireEvent.change(baseURL, { target: { value: 'https://next2' } })
-    fireEvent.click(screen.getByText(en.apply))
+    fireEvent.click(screen.getByText<HTMLButtonElement>(en.apply))
     await waitFor(() => { expect(mutate).toHaveBeenCalledTimes(1) })
     // Only the field that actually changed: reasoningEffort was already
     // 'high' in the loaded profile, so it produces no op.
@@ -465,7 +465,7 @@ describe('ModelsSection', () => {
     fireEvent.change(names[2] as HTMLInputElement, { target: { value: 'Private Preview' } })
     // Only row 3 is open, so its capacity is addressed by its own label.
     fireEvent.change(screen.getByLabelText(`${en.contextWindow} 3`), { target: { value: '131072' } })
-    fireEvent.click(screen.getByText(en.apply))
+    fireEvent.click(screen.getByText<HTMLButtonElement>(en.apply))
 
     await waitFor(() => { expect(mutate).toHaveBeenCalledTimes(1) })
     expect(mutate.mock.calls[0]?.[0]).toEqual({
@@ -488,7 +488,7 @@ describe('ModelsSection', () => {
     fireEvent.click(screen.getByText(en.addModel))
     const ids = screen.getAllByLabelText(new RegExp(en.modelId))
     fireEvent.change(ids[2] as HTMLInputElement, { target: { value: 'deepseek-v4-flash' } })
-    fireEvent.click(screen.getByText(en.apply))
+    fireEvent.click(screen.getByText<HTMLButtonElement>(en.apply))
 
     await screen.findByText(`Model 3: ${en.modelIdDuplicate}`)
     expect(mutate).not.toHaveBeenCalled()
@@ -581,7 +581,7 @@ describe('ModelsSection', () => {
 
     fireEvent.change(windows[1] as HTMLInputElement, { target: { value: '256K' } })
     fireEvent.blur(windows[1] as HTMLInputElement)
-    fireEvent.click(screen.getByText(en.apply))
+    fireEvent.click(screen.getByText<HTMLButtonElement>(en.apply))
 
     await waitFor(() => { expect(mutate).toHaveBeenCalledTimes(1) })
     expect(mutate.mock.calls[0]?.[0]).toEqual({
@@ -611,7 +611,7 @@ describe('ModelsSection', () => {
     // The text the user typed is still there to correct.
     expect((windows[0] as HTMLInputElement).value).toBe('1 gazillion')
 
-    fireEvent.click(screen.getByText(en.apply))
+    fireEvent.click(screen.getByText<HTMLButtonElement>(en.apply))
     await screen.findByText(`Model 1: ${en.modelContextInvalid}`)
     expect(mutate).not.toHaveBeenCalled()
   })
@@ -728,7 +728,7 @@ describe('ModelsSection', () => {
 
     // Reset put the draft back where it started, so Apply writes nothing at
     // all rather than persisting whatever the stale text had parsed to.
-    fireEvent.click(screen.getByText(en.apply))
+    fireEvent.click(screen.getByText<HTMLButtonElement>(en.apply))
     await waitFor(() => { expect(screen.queryByText(en.apply)).toBeNull() })
     expect(mutate).not.toHaveBeenCalled()
   })
@@ -754,7 +754,7 @@ describe('ModelsSection', () => {
     expandRow(1)
     expect(screen.queryByLabelText(`${en.maxTokens} 1`)).toBeNull()
 
-    fireEvent.click(screen.getByText(en.apply))
+    fireEvent.click(screen.getByText<HTMLButtonElement>(en.apply))
     await waitFor(() => { expect(mutate).toHaveBeenCalledTimes(1) })
     expect(mutate.mock.calls[0]?.[0]).toEqual({
       ns: 'llm-deepseek',
@@ -820,7 +820,7 @@ describe('ModelsSection', () => {
     const windows = capacityInputs(en.contextWindow)
     fireEvent.change(names[0] as HTMLInputElement, { target: { value: '' } })
     fireEvent.change(windows[0] as HTMLInputElement, { target: { value: '' } })
-    fireEvent.click(screen.getByText(en.apply))
+    fireEvent.click(screen.getByText<HTMLButtonElement>(en.apply))
 
     await waitFor(() => { expect(mutate).toHaveBeenCalledTimes(1) })
     expect(mutate.mock.calls[0]?.[0]).toEqual({
@@ -844,7 +844,7 @@ describe('ModelsSection', () => {
     const url = screen.getByLabelText<HTMLInputElement>(en.baseUrl)
     expect(url.value).toBe('https://base')
     fireEvent.change(url, { target: { value: '' } })
-    fireEvent.click(screen.getByText(en.apply))
+    fireEvent.click(screen.getByText<HTMLButtonElement>(en.apply))
     await waitFor(() => { expect(mutate).toHaveBeenCalledTimes(1) })
     expect(replace).not.toHaveBeenCalled()
     expect(update).not.toHaveBeenCalled()
@@ -890,7 +890,7 @@ describe('ModelsSection', () => {
     const { update } = await mountDeepSeekCard()
     fireEvent.click(screen.getByText(en.customized))
     fireEvent.change(screen.getByLabelText(en.baseUrl), { target: { value: 'not-a-url' } })
-    fireEvent.click(screen.getByText(en.apply))
+    fireEvent.click(screen.getByText<HTMLButtonElement>(en.apply))
     await screen.findByText(/baseURL/)
     expect(update).not.toHaveBeenCalled()
   })
@@ -907,7 +907,7 @@ describe('ModelsSection', () => {
     const url = screen.getByLabelText<HTMLInputElement>(en.baseUrl)
     expect(url.value).toBe('https://proxy')
     fireEvent.change(url, { target: { value: 'https://proxy/v2' } })
-    fireEvent.click(screen.getByText(en.apply))
+    fireEvent.click(screen.getByText<HTMLButtonElement>(en.apply))
     await waitFor(() => { expect(mutate).toHaveBeenCalledTimes(1) })
     // Only the edited field travels: apiKeyEnv and headers were already stored
     // with these values, so no op restates them.
@@ -931,7 +931,7 @@ describe('ModelsSection', () => {
     const addKey = screen.getByLabelText<HTMLInputElement>(en.keyInput)
     expect(addKey.placeholder).toBe(en.keyPlaceholderNative)
     fireEvent.change(addKey, { target: { value: 'sk-ant' } })
-    fireEvent.click(screen.getByText(en.apply))
+    fireEvent.click(screen.getByText<HTMLButtonElement>(en.apply))
     await waitFor(() => { expect(mutate).toHaveBeenCalledTimes(1) })
     expect(mutate.mock.calls[0]?.[0]).toEqual({
       ns: 'llm-pi-ai',
@@ -945,7 +945,7 @@ describe('ModelsSection', () => {
     const { mutate, set } = await mountSection()
     fireEvent.click(screen.getByText(en.add))
     await screen.findByLabelText(en.provider)
-    fireEvent.click(screen.getByText(en.apply))
+    fireEvent.click(screen.getByText<HTMLButtonElement>(en.apply))
     await waitFor(() => { expect(mutate).toHaveBeenCalledOnce() })
     expect(mutate.mock.calls[0]?.[0]).toEqual({
       ns: 'llm-pi-ai',
@@ -977,7 +977,7 @@ describe('ModelsSection', () => {
     fireEvent.click(screen.getByText(en.add))
     await screen.findByLabelText(en.provider)
     fireEvent.change(screen.getByLabelText<HTMLInputElement>(en.keyInput), { target: { value: 'sk-ant' } })
-    fireEvent.click(screen.getByText(en.apply))
+    fireEvent.click(screen.getByText<HTMLButtonElement>(en.apply))
     await screen.findByText('credential store unavailable')
     expect(mutate).toHaveBeenCalledOnce()
     face.settings.describe.mockResolvedValue(ok({
@@ -992,7 +992,7 @@ describe('ModelsSection', () => {
       await controller.load()
     })
     expect(controller.store.getSnapshot().namespaces.get('llm-pi-ai')?.revision).toBe(1)
-    fireEvent.click(screen.getByText(en.apply))
+    fireEvent.click(screen.getByText<HTMLButtonElement>(en.apply))
     await waitFor(() => { expect(set).toHaveBeenCalledTimes(2) })
     expect(mutate).toHaveBeenCalledOnce()
     expect(set).toHaveBeenLastCalledWith({ ref: 'ANTHROPIC_API_KEY', value: 'sk-ant' })
@@ -1020,7 +1020,7 @@ describe('ModelsSection', () => {
     fireEvent.click(screen.getByText(en.add))
     await screen.findByLabelText(en.provider)
     fireEvent.change(screen.getByLabelText<HTMLInputElement>(en.keyInput), { target: { value: 'sk-x' } })
-    fireEvent.click(screen.getByText(en.apply))
+    fireEvent.click(screen.getByText<HTMLButtonElement>(en.apply))
     await screen.findByText(/unknown pi-ai provider/)
     expect(set).not.toHaveBeenCalled()
   })
@@ -1059,7 +1059,7 @@ describe('ModelsSection', () => {
     })
     fireEvent.click(screen.getByText(en.customized))
     fireEvent.change(screen.getByLabelText<HTMLInputElement>(en.baseUrl), { target: { value: 'https://mine' } })
-    fireEvent.click(screen.getByText(en.apply))
+    fireEvent.click(screen.getByText<HTMLButtonElement>(en.apply))
     await screen.findByText(en.conflict)
     expect(set).not.toHaveBeenCalled()
   })
@@ -1071,10 +1071,10 @@ describe('ModelsSection', () => {
     await mountDeepSeekCard({ mutate: vi.fn(() => Promise.reject(new Error('connection lost'))) })
     fireEvent.click(screen.getByText(en.customized))
     fireEvent.change(screen.getByLabelText<HTMLInputElement>(en.baseUrl), { target: { value: 'https://next' } })
-    fireEvent.click(screen.getByText(en.apply))
+    fireEvent.click(screen.getByText<HTMLButtonElement>(en.apply))
     await screen.findByText('connection lost')
     // Not stuck in `applying…`: the finally cleared busy, so Apply is live again.
-    expect(screen.getByText(en.apply)).toBeTruthy()
+    expect(screen.getByText<HTMLButtonElement>(en.apply)).toBeTruthy()
   })
 
   it('surfaces a shadowed credential write on the card', async () => {
@@ -1083,7 +1083,7 @@ describe('ModelsSection', () => {
     })
     const key = screen.getByLabelText<HTMLInputElement>(en.keyInput)
     fireEvent.change(key, { target: { value: 'sk-live' } })
-    fireEvent.click(screen.getByText(en.apply))
+    fireEvent.click(screen.getByText<HTMLButtonElement>(en.apply))
     await screen.findByText(/shadowed by the read-only environment/)
     expect(screen.queryByRole('status')).toBeNull()
   })
@@ -1108,7 +1108,7 @@ describe('ModelsSection', () => {
     const editorKey = await screen.findByLabelText<HTMLInputElement>(en.keyInput)
     expect(editorKey.placeholder).toBe(en.keyPlaceholderNative)
     fireEvent.change(editorKey, { target: { value: 'sk-live' } })
-    fireEvent.click(screen.getByText(en.apply))
+    fireEvent.click(screen.getByText<HTMLButtonElement>(en.apply))
     await waitFor(() => { expect(set).toHaveBeenCalledTimes(1) })
   })
 
@@ -1377,7 +1377,7 @@ describe('input types', () => {
     // No declaration yet: the inheritance hint shows, and nothing is stored.
     expect(screen.getByText(en.inputInherited)).toBeTruthy()
     fireEvent.click(screen.getByLabelText(`${en.inputImage} 1`))
-    fireEvent.click(screen.getByText(en.apply))
+    fireEvent.click(screen.getByText<HTMLButtonElement>(en.apply))
     await waitFor(() => { expect(mutate).toHaveBeenCalledTimes(1) })
     expect(mutate.mock.calls[0]?.[0]).toEqual({
       ns: 'llm-pi-ai',
@@ -1429,14 +1429,14 @@ describe('input types', () => {
     // blocks the write and the hint explains inheritance.
     expect(text.checked).toBe(false)
     expect(screen.getByText(en.defaultInputHint)).toBeTruthy()
-    expect((screen.getByText(en.apply) as HTMLButtonElement).disabled).toBe(false)
+    expect(screen.getByText<HTMLButtonElement>(en.apply).disabled).toBe(false)
     fireEvent.click(text)
     fireEvent.click(screen.getByLabelText(en.inputText))
     // An explicitly emptied set is refused, like the host grammar refuses it.
     expect(await screen.findByText(en.defaultInputEmpty)).toBeTruthy()
-    expect((screen.getByText(en.apply) as HTMLButtonElement).disabled).toBe(true)
+    expect(screen.getByText<HTMLButtonElement>(en.apply).disabled).toBe(true)
     fireEvent.click(screen.getByLabelText(en.inputImage))
-    fireEvent.click(screen.getByText(en.apply))
+    fireEvent.click(screen.getByText<HTMLButtonElement>(en.apply))
     await waitFor(() => { expect(mutate).toHaveBeenCalledTimes(1) })
     expect(mutate.mock.calls[0]?.[0]).toEqual({
       ns: 'llm-pi-ai',

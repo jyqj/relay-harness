@@ -169,16 +169,20 @@ export class ComposerSubmissionPolicy {
     const section = snap.value
     if (section === undefined) return
     if (this.busyEnter.getSnapshot() !== section.busyEnter) this.busyEnter.set(section.busyEnter)
+    // oxlint-disable-next-line typescript/no-unnecessary-boolean-literal-compare -- omitted Host toggles fall back to defaults
     const nextBeam = section.composerBeam !== false
     if (this.composerBeam.getSnapshot() !== nextBeam) this.composerBeam.set(nextBeam)
+    // oxlint-disable-next-line typescript/no-unnecessary-boolean-literal-compare -- omitted Host toggles fall back to defaults
     const nextResize = section.composerResize === true
     if (this.composerResize.getSnapshot() !== nextResize) this.composerResize.set(nextResize)
     const nextHeight = typeof section.composerResizeHeight === 'number' ? section.composerResizeHeight : null
     if (this.composerResizeHeight.getSnapshot() !== nextHeight) this.composerResizeHeight.set(nextHeight)
     const nextWidth = typeof section.composerResizeWidth === 'number' ? section.composerResizeWidth : null
     if (this.composerResizeWidth.getSnapshot() !== nextWidth) this.composerResizeWidth.set(nextWidth)
+    // oxlint-disable-next-line typescript/no-unnecessary-boolean-literal-compare -- omitted Host toggles fall back to defaults
     const nextStats = section.statsLine !== false
     if (this.statsLine.getSnapshot() !== nextStats) this.statsLine.set(nextStats)
+    // oxlint-disable-next-line typescript/no-unnecessary-boolean-literal-compare -- omitted Host toggles fall back to defaults
     const nextTabs = section.viewTabs !== false
     if (this.viewTabs.getSnapshot() !== nextTabs) this.viewTabs.set(nextTabs)
   }

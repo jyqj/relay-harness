@@ -110,7 +110,7 @@ export function CommitDialog({
           : (
             <>
               <ul className={css.list}>
-                {files.map(file => {
+                {files.map((file) => {
                   const isExcluded = excluded.has(file.path)
                   return (
                     <li key={file.path} className={css.row}>

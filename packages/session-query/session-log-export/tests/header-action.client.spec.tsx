@@ -76,7 +76,7 @@ describe('Session export titlebar action', () => {
     b.view.rerender(<SessionLogDownloadHeaderAction {...({
       ...b.props,
       useSessions: useSessionsStub(sessionList(OTHER)),
-    } as unknown as SessionLogDownloadDialogProps)} />)
+    })} />)
     fireEvent.click(b.view.getByRole('button', { name: 'Session log' }))
     await waitFor(() => { expect(b.request).toHaveBeenCalledWith(OTHER) })
     expect(b.request).not.toHaveBeenCalledWith(SID)
@@ -93,7 +93,7 @@ describe('Session export titlebar action', () => {
     b.view.rerender(<SessionLogDownloadHeaderAction {...({
       ...b.props,
       useSessions: useSessionsStub(sessionList(SID)),
-    } as unknown as SessionLogDownloadDialogProps)} />)
+    })} />)
     const button = b.view.getByRole('button', { name: 'Session log' })
     fireEvent.click(button)
     await waitFor(() => { expect(b.request).toHaveBeenCalledWith(SID) })
@@ -105,7 +105,7 @@ describe('Session export titlebar action', () => {
     b.view.rerender(<SessionLogDownloadHeaderAction {...({
       ...b.props,
       useSessions: useSessionsStub(sessionList(undefined)),
-    } as unknown as SessionLogDownloadDialogProps)} />)
+    })} />)
     expect(b.view.queryByRole('button', { name: 'Session log' })).toBeNull()
   })
 

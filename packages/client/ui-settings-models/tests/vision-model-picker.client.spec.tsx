@@ -160,7 +160,7 @@ describe('VisionModelPicker', () => {
 
   it('disables the control while the document is read-only', async () => {
     mount({ writable: false })
-    expect((await screen.findByLabelText(en.visionModel) as HTMLSelectElement).disabled).toBe(true)
+    expect((await screen.findByLabelText<HTMLSelectElement>(en.visionModel)).disabled).toBe(true)
   })
 
   it('ignores a catalog reply that lands after unmount', async () => {

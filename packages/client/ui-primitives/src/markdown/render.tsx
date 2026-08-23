@@ -384,7 +384,7 @@ function renderListItem(
       ? findTaskListMarkerOffset(context.source, start)
       : undefined
     const interactive = offset !== undefined && onTaskChecked !== undefined
-    const checkbox = interactive && offset !== undefined && onTaskChecked !== undefined
+    const checkbox = interactive
       ? (
         <input
           key="task-checkbox"
@@ -392,7 +392,7 @@ function renderListItem(
           checked={item.checked === true}
           disabled={false}
           data-task-offset={offset}
-          onChange={event => { onTaskChecked(offset, event.currentTarget.checked) }}
+          onChange={(event) => { onTaskChecked(offset, event.currentTarget.checked) }}
         />
       )
       : <input key="task-checkbox" type="checkbox" checked={item.checked === true} disabled />

@@ -936,7 +936,7 @@ describe('ChatView', () => {
         kind: 'context', seq: 1, time: 1_000, content: [], source: null,
         provenance: { role: 'inject', label: 'fixture' },
         form: null,
-      } as ConversationNode],
+      }],
     }, { agentPreset: 'dshbot-room' })
     const view = render(<h.ChatView {...h.props} />)
     expect(view.queryByRole('button', { name: /上下文注入/ })).toBeNull()

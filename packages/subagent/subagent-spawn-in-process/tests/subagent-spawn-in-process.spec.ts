@@ -168,13 +168,15 @@ describe('dsh-subagent-spawn-in-process', () => {
   })
 
   it('rejects without publishing when the request signal is already aborted', async () => {
-    // An already-aborted signal emits no future event, so start must check it before listening and
-    // settle aborted without running the child. The empty model script proves no turn occurs.
+    // An already-aborted signal emits no future event, so start must settle
+    // aborted without running the child. Root-tree admission rejects it with
+    // the signal's own platform reason before the provider runs, so the empty
+    // model script proves no turn occurs.
     const controller = new AbortController()
     controller.abort()
     const { ctx, parent } = await setup([])
     await expect(start(ctx, 'spawn', { prompt: [{ type: 'text', text: 'p' }], parent, signal: controller.signal }))
-      .rejects.toThrow('aborted before child publication')
+      .rejects.toThrow('This operation was aborted')
   })
 
   it('same-tick cancellation rejects start and prevents child publication', async () => {

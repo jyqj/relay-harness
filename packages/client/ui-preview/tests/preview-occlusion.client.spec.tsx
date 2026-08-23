@@ -70,7 +70,6 @@ function mount(): {
 }
 
 class ResizeObserverStub {
-  constructor(_callback: ResizeObserverCallback) {}
   observe(): void {}
   disconnect(): void {}
   unobserve(): void {}

@@ -44,7 +44,7 @@ function collectMatches(
   pattern.lastIndex = 0
   for (const rawMatch of line.matchAll(pattern)) {
     const raw = rawMatch[0]
-    const start = rawMatch.index ?? -1
+    const start = rawMatch.index
     if (start < 0 || raw.length === 0) continue
     const trimmed = trimClosingDelimiters(raw)
     if (trimmed.length === 0) continue
@@ -97,7 +97,7 @@ export function splitPathAndPosition(value: string): {
   let path = value
   const columnMatch = path.match(/:(\d+)$/)
   if (!columnMatch?.[1]) return { path, line: undefined, column: undefined }
-  let column: string | undefined = columnMatch[1]
+  const column: string | undefined = columnMatch[1]
   path = path.slice(0, -columnMatch[0].length)
   const lineMatch = path.match(/:(\d+)$/)
   if (lineMatch?.[1]) {

@@ -29,7 +29,7 @@ const ghosttyState = vi.hoisted(() => ({ instances: [] as Array<{
     onCopy: (text: string) => void
     beforeKey: (event: KeyboardEvent) => boolean
     onLinkActivate: (text: string, event: MouseEvent) => void
-    font?: { family?: string, size?: number }
+    font?: { family?: string; size?: number }
     theme?: unknown
   }
   getSelection: () => string
@@ -79,10 +79,10 @@ vi.mock('../src/client/ghostty/surface.ts', () => {
         throw error
       }
       if (ghosttyState.delayMs > 0) {
-        await new Promise<void>(resolve => { window.setTimeout(resolve, ghosttyState.delayMs) })
+        await new Promise<void>((resolve) => { window.setTimeout(resolve, ghosttyState.delayMs) })
       }
       const surface = new FakeGhosttySurface(options)
-      ghosttyState.instances.push(surface as never)
+      ghosttyState.instances.push(surface)
       return surface
     }
     write(data: string): void { this.writes.push(data) }
@@ -138,15 +138,15 @@ function sessionList(cwd: string | undefined): SessionListState {
   const byId = current === undefined
     ? {}
     : {
-        [SID]: {
-          id: SID,
-          displayTitle: 'proj',
-          running: false,
-          blank: false,
-          updatedAt: 1,
-          ...(cwd ? { cwd } : {}),
-        },
-      }
+      [SID]: {
+        id: SID,
+        displayTitle: 'proj',
+        running: false,
+        blank: false,
+        updatedAt: 1,
+        ...(cwd ? { cwd } : {}),
+      },
+    }
   return {
     ids: current === undefined ? [] : [SID],
     byId,
@@ -161,6 +161,7 @@ function sessionList(cwd: string | undefined): SessionListState {
 function bindStore(instance: ReturnType<ReturnType<typeof createTerminalSessionStore>['create']>) {
   return {
     useStore: <S,>(sel: (state: ReturnType<typeof instance.getSnapshot>) => S) => {
+      // oxlint-disable-next-line typescript/unbound-method -- store methods do not read `this`
       const snap = useSyncExternalStore(instance.subscribe, instance.getSnapshot, instance.getSnapshot)
       return sel(snap)
     },
@@ -281,10 +282,10 @@ describe('TerminalDrawer', () => {
   it('creates a PTY on New and closes it from the toolbar', async () => {
     const b = mount({ cwd: '/work' })
     fireEvent.click(screen.getByRole('button', { name: 'New terminal' }))
-    await waitFor(() => expect(b.ptyCreate).toHaveBeenCalledWith({ cwd: '/work' }))
+    await waitFor(() =>{  expect(b.ptyCreate).toHaveBeenCalledWith({ cwd: '/work' }) })
     expect(await screen.findByRole('log', { name: 'pty-1' })).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Close terminal' }))
-    await waitFor(() => expect(b.ptyKill).toHaveBeenCalledWith('pty-1'))
+    await waitFor(() =>{  expect(b.ptyKill).toHaveBeenCalledWith('pty-1') })
     expect(screen.queryByRole('log', { name: 'pty-1' })).toBeNull()
   })
 
@@ -472,7 +473,7 @@ describe('TerminalDrawer', () => {
       observe(el: Element) {
         Object.defineProperty(el, 'clientHeight', { configurable: true, value: 200 })
         Object.defineProperty(el, 'clientWidth', { configurable: true, value: 800 })
-        const run = () => { this.cb([] as never, this as never) }
+        const run = () => { this.cb([] as never, this) }
         observers.push(run)
         run()
       }
@@ -480,7 +481,7 @@ describe('TerminalDrawer', () => {
       unobserve() {}
     })
     const b = mount({ cwd: '/work', surface: true })
-    await waitFor(() => expect(b.ptyCreate).toHaveBeenCalledTimes(2))
+    await waitFor(() =>{  expect(b.ptyCreate).toHaveBeenCalledTimes(2) })
     for (const run of observers) run()
     await Promise.resolve()
     expect(b.ptyCreate).toHaveBeenCalledTimes(2)
@@ -494,7 +495,7 @@ describe('TerminalDrawer', () => {
       constructor(cb: ResizeObserverCallback) { this.cb = cb }
       observe(el: Element) {
         Object.defineProperty(el, 'clientHeight', { configurable: true, value: 200 })
-        this.cb([] as never, this as never)
+        this.cb([] as never, this)
       }
       disconnect() {}
       unobserve() {}
@@ -521,7 +522,7 @@ describe('TerminalDrawer', () => {
     fireEvent.click(screen.getAllByRole('button', { name: 'New terminal' })[0]!)
     await screen.findAllByRole('log', { name: 'pty-1' })
     for (const handler of b.exitHandlers) handler({ id: 'pty-1', code: 0 })
-    await waitFor(() => expect(instance.getSnapshot().sessions).toHaveLength(0))
+    await waitFor(() =>{  expect(instance.getSnapshot().sessions).toHaveLength(0) })
     expect(screen.queryByRole('log', { name: 'pty-1' })).toBeNull()
   })
 
@@ -544,10 +545,11 @@ describe('TerminalDrawer', () => {
     vi.stubGlobal('ResizeObserver', class {
       cb: ResizeObserverCallback
       constructor(cb: ResizeObserverCallback) { this.cb = cb }
+      // oxlint-disable-next-line sonarjs/no-identical-functions -- duplicated ResizeObserver stub keeps cases independently editable
       observe(el: Element) {
         Object.defineProperty(el, 'clientHeight', { configurable: true, value: 200 })
         Object.defineProperty(el, 'clientWidth', { configurable: true, value: 800 })
-        const run = () => { this.cb([] as never, this as never) }
+        const run = () => { this.cb([] as never, this) }
         observers.push(run)
         run()
       }
@@ -555,9 +557,9 @@ describe('TerminalDrawer', () => {
       unobserve() {}
     })
     const b = mount({ cwd: '/work' })
-    await waitFor(() => expect(b.ptyCreate).toHaveBeenCalledTimes(1))
+    await waitFor(() =>{  expect(b.ptyCreate).toHaveBeenCalledTimes(1) })
     fireEvent.click(screen.getByRole('button', { name: 'Close terminal' }))
-    await waitFor(() => expect(b.ptyKill).toHaveBeenCalledWith('pty-1'))
+    await waitFor(() =>{  expect(b.ptyKill).toHaveBeenCalledWith('pty-1') })
     expect(screen.queryByRole('log', { name: 'pty-1' })).toBeNull()
     for (const run of observers) run()
     await Promise.resolve()
@@ -580,10 +582,10 @@ describe('TerminalDrawer', () => {
     expect(term.fontFamily.length).toBeGreaterThan(0)
     expect(term.themeWrites.length).toBeGreaterThanOrEqual(2)
     document.documentElement.classList.add('dark')
-    await waitFor(() => expect(term.themeWrites.length).toBeGreaterThanOrEqual(3))
+    await waitFor(() =>{  expect(term.themeWrites.length).toBeGreaterThanOrEqual(3) })
     document.documentElement.classList.remove('dark')
     document.body.setAttribute('data-ds-dark-theme', '')
-    await waitFor(() => expect(term.themeWrites.length).toBeGreaterThanOrEqual(4))
+    await waitFor(() =>{  expect(term.themeWrites.length).toBeGreaterThanOrEqual(4) })
     document.body.removeAttribute('data-ds-dark-theme')
   })
 
@@ -612,7 +614,7 @@ describe('TerminalDrawer', () => {
     const b = mount({ cwd: '/work' })
     fireEvent.click(screen.getByRole('button', { name: 'New terminal' }))
     await screen.findByRole('log', { name: 'pty-1' })
-    await waitFor(() => expect(ghosttyState.instances.at(-1)).toBeTruthy())
+    await waitFor(() =>{  expect(ghosttyState.instances.at(-1)).toBeTruthy() })
     expect(b.ptyWrite).not.toHaveBeenCalledWith('pty-1', '\x1b[?61;4c')
   })
 
@@ -621,7 +623,7 @@ describe('TerminalDrawer', () => {
     fireEvent.click(screen.getByRole('button', { name: 'New terminal' }))
     await screen.findByRole('log', { name: 'pty-1' })
     fireEvent.click(screen.getByRole('button', { name: 'New terminal' }))
-    await waitFor(() => expect(b.instance.getSnapshot().sessions).toHaveLength(2))
+    await waitFor(() =>{  expect(b.instance.getSnapshot().sessions).toHaveLength(2) })
     const list = screen.getByRole('list', { name: 'Terminal sessions' })
     expect(list).toBeTruthy()
     expect(screen.getByRole('button', { name: /^Group 2$/ })).toBeTruthy()
@@ -634,7 +636,7 @@ describe('TerminalDrawer', () => {
     fireEvent.click(screen.getByRole('button', { name: /^Terminal 1$/ }))
     expect(b.instance.getSnapshot().activeId).toBe('pty-1')
     fireEvent.click(screen.getByRole('button', { name: /^Close terminal Terminal 2$/ }))
-    await waitFor(() => expect(b.ptyKill).toHaveBeenCalledWith('pty-2'))
+    await waitFor(() =>{  expect(b.ptyKill).toHaveBeenCalledWith('pty-2') })
     expect(b.instance.getSnapshot().sessions.map(session => session.id)).toEqual(['pty-1'])
     expect(screen.queryByRole('list', { name: 'Terminal sessions' })).toBeNull()
   })
@@ -657,13 +659,13 @@ describe('TerminalDrawer', () => {
       observe(el: Element) {
         Object.defineProperty(el, 'clientHeight', { configurable: true, value: 200 })
         Object.defineProperty(el, 'clientWidth', { configurable: true, value: 800 })
-        this.cb([] as never, this as never)
+        this.cb([] as never, this)
       }
       disconnect() {}
       unobserve() {}
     })
     const b = mount({ cwd: '/work' })
-    await waitFor(() => expect(b.ptyCreate).toHaveBeenCalledTimes(1))
+    await waitFor(() =>{  expect(b.ptyCreate).toHaveBeenCalledTimes(1) })
     await screen.findByRole('log', { name: 'pty-1' })
     expect(b.instance.getSnapshot().sessions[0]?.cols).toBe(DEFAULT_TERMINAL_COLS)
     expect(b.instance.getSnapshot().sessions[0]?.rows).toBe(DEFAULT_TERMINAL_ROWS)
@@ -685,7 +687,7 @@ describe('TerminalDrawer', () => {
   it('resizes the PTY from Ghostty fit once the host has a used box', async () => {
     const b = mount({ cwd: '/work' })
     fireEvent.click(screen.getByRole('button', { name: 'New terminal' }))
-    await waitFor(() => expect(b.ptyCreate).toHaveBeenCalledTimes(1))
+    await waitFor(() =>{  expect(b.ptyCreate).toHaveBeenCalledTimes(1) })
     const log = await screen.findByRole('log', { name: 'pty-1' })
     Object.defineProperty(log, 'clientWidth', { configurable: true, value: 800 })
     Object.defineProperty(log, 'clientHeight', { configurable: true, value: 200 })
@@ -704,7 +706,7 @@ describe('TerminalDrawer', () => {
   it('keeps the scrollback position on the settle fit unless the viewport was at the bottom', async () => {
     const b = mount({ cwd: '/work' })
     fireEvent.click(screen.getByRole('button', { name: 'New terminal' }))
-    await waitFor(() => expect(b.ptyCreate).toHaveBeenCalledTimes(1))
+    await waitFor(() =>{  expect(b.ptyCreate).toHaveBeenCalledTimes(1) })
     await screen.findByRole('log', { name: 'pty-1' })
     const term = await waitFor(() => {
       const next = ghosttyState.instances.at(-1)
@@ -733,7 +735,7 @@ describe('TerminalDrawer', () => {
     })
     const before = term.scrollToBottomCalls
     term.atBottom = false
-    await new Promise(resolve => {
+    await new Promise((resolve) => {
       window.setTimeout(resolve, FIT_SETTLE_MS + 20)
     })
     expect(term.scrollToBottomCalls).toBe(before)
@@ -761,7 +763,7 @@ describe('TerminalDrawer', () => {
     const b = mount({ cwd: '/work' })
     fireEvent.click(screen.getByRole('button', { name: 'New terminal' }))
     await screen.findByRole('log', { name: 'pty-1' })
-    await waitFor(() => expect(ghosttyState.instances.at(-1)).toBeTruthy())
+    await waitFor(() =>{  expect(ghosttyState.instances.at(-1)).toBeTruthy() })
     expect(b.ptyResize).not.toHaveBeenCalled()
   })
 
@@ -797,19 +799,20 @@ describe('TerminalDrawer', () => {
     vi.stubGlobal('ResizeObserver', class {
       cb: ResizeObserverCallback
       constructor(cb: ResizeObserverCallback) { this.cb = cb }
+      // oxlint-disable-next-line sonarjs/no-identical-functions -- duplicated ResizeObserver stub keeps cases independently editable
       observe(el: Element) {
         Object.defineProperty(el, 'clientHeight', { configurable: true, value: 200 })
         Object.defineProperty(el, 'clientWidth', { configurable: true, value: 800 })
-        this.cb([] as never, this as never)
+        this.cb([] as never, this)
       }
       disconnect() {}
       unobserve() {}
     })
     ghosttyState.throwFit = true
     const throwing = mount({ cwd: '/work' })
-    await waitFor(() => expect(throwing.ptyCreate).toHaveBeenCalledTimes(1))
+    await waitFor(() =>{  expect(throwing.ptyCreate).toHaveBeenCalledTimes(1) })
     await screen.findByRole('log', { name: 'pty-1' })
-    await new Promise(resolve => {
+    await new Promise((resolve) => {
       window.setTimeout(resolve, FIT_SETTLE_MS + PTY_RESIZE_DEBOUNCE_MS + 50)
     })
     expect(throwing.ptyResize).not.toHaveBeenCalled()
@@ -818,9 +821,9 @@ describe('TerminalDrawer', () => {
     ghosttyState.cols = 0
     ghosttyState.rows = 0
     const empty = mount({ cwd: '/work' })
-    await waitFor(() => expect(empty.ptyCreate).toHaveBeenCalledTimes(1))
+    await waitFor(() =>{  expect(empty.ptyCreate).toHaveBeenCalledTimes(1) })
     await screen.findByRole('log', { name: 'pty-1' })
-    await new Promise(resolve => {
+    await new Promise((resolve) => {
       window.setTimeout(resolve, FIT_SETTLE_MS + PTY_RESIZE_DEBOUNCE_MS + 50)
     })
     expect(empty.ptyResize).not.toHaveBeenCalled()
@@ -831,10 +834,11 @@ describe('TerminalDrawer', () => {
     vi.stubGlobal('ResizeObserver', class {
       cb: ResizeObserverCallback
       constructor(cb: ResizeObserverCallback) { this.cb = cb }
+      // oxlint-disable-next-line sonarjs/no-identical-functions -- duplicated ResizeObserver stub keeps cases independently editable
       observe(el: Element) {
         Object.defineProperty(el, 'clientHeight', { configurable: true, value: 200 })
         Object.defineProperty(el, 'clientWidth', { configurable: true, value: 800 })
-        const run = () => { this.cb([] as never, this as never) }
+        const run = () => { this.cb([] as never, this) }
         observers.push(run)
         run()
       }
@@ -847,7 +851,7 @@ describe('TerminalDrawer', () => {
       ptyCreate,
       t: key => (zh as Record<string, string>)[key] ?? key,
     })
-    await waitFor(() => expect(screen.getByText('无法启动终端')).toBeTruthy())
+    await waitFor(() =>{  expect(screen.getByText('无法启动终端')).toBeTruthy() })
     expect(ptyCreate).toHaveBeenCalledTimes(1)
     for (const run of observers) run()
     await Promise.resolve()
@@ -856,7 +860,7 @@ describe('TerminalDrawer', () => {
 })
 
 describe('TerminalPane', () => {
-  function renderPane(overrides: { active?: boolean, session?: TerminalSessionRecord } = {}) {
+  function renderPane(overrides: { active?: boolean; session?: TerminalSessionRecord } = {}) {
     return render(
       <TerminalPane
         id="pty-1"
@@ -884,7 +888,7 @@ describe('TerminalPane', () => {
       if (next === undefined) throw new Error('ghostty not ready')
       return next
     })
-    await new Promise<void>(resolve => { window.requestAnimationFrame(() => { resolve() }) })
+    await new Promise<void>((resolve) => { window.requestAnimationFrame(() => { resolve() }) })
     expect(term.focusCalls).toBe(0)
   })
 
@@ -920,7 +924,7 @@ describe('TerminalPane', () => {
     ghosttyState.delayMs = 20
     const view = renderPane()
     view.unmount()
-    await new Promise<void>(resolve => { window.setTimeout(resolve, 40) })
+    await new Promise<void>((resolve) => { window.setTimeout(resolve, 40) })
     expect(ghosttyState.instances.at(-1)?.disposed).toBe(true)
   })
 })

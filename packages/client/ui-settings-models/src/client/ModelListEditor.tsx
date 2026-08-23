@@ -149,12 +149,12 @@ function effortsOf(model: ModelDraft): Record<string, string | null> {
  * first). The wire spelling is the same string (`text: text`); audio and
  * other modalities wait for pi-ai upstream support.
  */
-const INPUT_CHOICES = [
+export const INPUT_CHOICES = [
   { id: 'text', key: 'inputText' },
   { id: 'image', key: 'inputImage' },
 ] as const satisfies readonly { id: string; key: keyof typeof en }[]
 
-type InputId = (typeof INPUT_CHOICES)[number]['id']
+export type InputId = (typeof INPUT_CHOICES)[number]['id']
 
 /** One model's declared input types, or `undefined` when it declares none. */
 function inputOf(model: ModelDraft): readonly InputId[] | undefined {
@@ -165,7 +165,7 @@ function inputOf(model: ModelDraft): readonly InputId[] | undefined {
 }
 
 /** Reorder a declared set into the canonical choice order. */
-function orderedInput(selected: readonly InputId[]): InputId[] {
+export function orderedInput(selected: readonly InputId[]): InputId[] {
   return INPUT_CHOICES.filter(choice => selected.includes(choice.id)).map(choice => choice.id)
 }
 
@@ -282,6 +282,7 @@ export function ModelListEditor(props: ModelListEditorProps): ReactNode {
 
   const toggleEffort = (index: number, model: ModelDraft, id: EffortId): void => {
     const dict = effortsOf(model)
+    // oxlint-disable-next-line typescript/no-dynamic-delete -- EffortId varies at runtime; toggle semantics require key deletion
     if (Object.prototype.hasOwnProperty.call(dict, id)) delete dict[id]
     else dict[id] = id === 'off' ? null : id
     const stillOffers = EFFORT_CHOICES.some(choice => Object.prototype.hasOwnProperty.call(dict, choice.id))
@@ -560,7 +561,7 @@ export function ModelListEditor(props: ModelListEditorProps): ReactNode {
         title={t('fetchTitle')}
         closeLabel={t('close')}
         description={t('fetchDescription')}
-        className={styles['fetchDialog'] as string}
+        className={styles['fetchDialog']}
         footer={(
           <>
             <Button variant="outline" onClick={closePicker}>{t('cancel')}</Button>

@@ -49,7 +49,7 @@ export const TERMINAL_MINIMUM_CONTRAST = 1
  * @param buffer - xterm's active buffer, when the renderer exposes one.
  * @returns true when the viewport is at (or has no measurable) bottom.
  */
-export function shouldFollowOutput(buffer: { viewportY?: number, baseY?: number } | undefined): boolean {
+export function shouldFollowOutput(buffer: { viewportY?: number; baseY?: number } | undefined): boolean {
   if (buffer === undefined) return true
   if (typeof buffer.viewportY !== 'number' || typeof buffer.baseY !== 'number') return true
   return buffer.viewportY >= buffer.baseY

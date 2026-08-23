@@ -31,6 +31,9 @@ interface LiveRun {
 
 type IssueTable = KvTable<TrackerIssueId, IssueOrchestrationRecord>
 
+/** Poll cadence for a tick whose policy read failed and left no cached interval; matches the workflow-file default. */
+const TICK_FALLBACK_POLL_INTERVAL_MS = 30_000
+
 function normalized(value: string): string {
   return value.trim().toLowerCase()
 }
@@ -110,6 +113,7 @@ export class DurableIssueOrchestrator extends TypertRemoteService {
   private chain: Promise<void> = Promise.resolve()
   private timer: ReturnType<typeof setTimeout> | undefined
   private nextPollAt: number | undefined
+  private lastPollIntervalMs: number | undefined
   private checking = false
   private stopping = false
   private revision = 0
@@ -235,6 +239,8 @@ export class DurableIssueOrchestrator extends TypertRemoteService {
     if (this.stopping) return
     this.checking = true
     this.publish()
+    // Resolve the failure cadence before any throwing call so a broken workflow read cannot stall the poll loop.
+    const fallbackDelayMs = this.fallbackPollDelayMs()
     try {
       await this.ctx.issueWorkflow.reload()
       const policy = this.ctx.issueWorkflow.current().policy
@@ -244,10 +250,23 @@ export class DurableIssueOrchestrator extends TypertRemoteService {
       this.schedule(this.nextDriveDelay(policy))
     } catch (error: unknown) {
       this.ctx.logger.error(`issue orchestrator poll failed: ${String(error)}`)
-      this.schedule(this.ctx.issueWorkflow.current().policy.pollIntervalMs)
+      this.schedule(fallbackDelayMs)
     } finally {
       this.checking = false
       this.publish()
+    }
+  }
+
+  /** Poll cadence for a failed tick; never throws, so the loop always re-arms. */
+  private fallbackPollDelayMs(): number {
+    try {
+      const { pollIntervalMs } = this.ctx.issueWorkflow.current().policy
+      this.lastPollIntervalMs = pollIntervalMs
+      return pollIntervalMs
+    } catch {
+      /* v8 ignore next -- an unreadable workflow before any successful tick never cached an interval;
+         the workflow-file default keeps polling. */
+      return this.lastPollIntervalMs ?? TICK_FALLBACK_POLL_INTERVAL_MS
     }
   }
 
@@ -266,23 +285,32 @@ export class DurableIssueOrchestrator extends TypertRemoteService {
     }
   }
 
+  /**
+   * Remove workspaces for claimed issues that ended terminal. Only issues with a durable
+   * claim record are touched: a record-less tracker directory is never deleted, so startup
+   * cost scales with locally claimed work, not with the provider's terminal backlog.
+   */
   private async cleanupTerminalWorkspaces(): Promise<void> {
     const { policy } = this.ctx.issueWorkflow.current()
-    const provider = this.ctx.trackers.require(policy.trackerProvider)
-    let issues: readonly TrackerIssue[]
-    try {
-      issues = await provider.fetchIssuesByStates(policy.terminalStates)
-    } catch (error: unknown) {
-      this.ctx.logger.warn(`issue orchestrator startup terminal cleanup skipped: ${String(error)}`)
-      return
-    }
-    for (const issue of issues) {
+    const groups = this.groupRecords(['claimed', 'running', 'retrying', 'blocked'])
+    for (const [providerName, records] of groups) {
+      let issues: readonly TrackerIssue[]
       try {
-        const workspace = await this.ctx.issueWorkspace.locate(issue)
-        await this.ctx.issueWorkspace.remove(workspace, issue)
-        if (this.requireTable().get(issue.id) !== undefined) await this.delete(issue.id)
+        issues = await this.ctx.trackers.require(providerName).fetchIssuesByIds(records.map(([id]) => id))
       } catch (error: unknown) {
-        this.ctx.logger.warn(`terminal workspace cleanup failed for ${issue.identifier}: ${String(error)}`)
+        this.ctx.logger.warn(`issue orchestrator startup terminal cleanup skipped for provider ${providerName}: ${String(error)}`)
+        continue
+      }
+      const visible = new Map(issues.map(issue => [issue.id, issue]))
+      for (const [id, record] of records) {
+        const issue = visible.get(id)
+        if (issue === undefined || !terminalIssue(issue, policy)) continue
+        try {
+          await this.cleanupRecord(record, issue)
+          await this.delete(id)
+        } catch (error: unknown) {
+          this.ctx.logger.warn(`terminal workspace cleanup failed for ${issue.identifier}: ${String(error)}`)
+        }
       }
     }
   }
@@ -366,21 +394,31 @@ export class DurableIssueOrchestrator extends TypertRemoteService {
   }
 
   private async dispatchDueRetries(policy: IssueWorkflowPolicy): Promise<void> {
-    const due = [...this.requireTable().entries()]
-      .filter(([, record]) => record.status === 'retrying' && (record.nextRetryAt ?? 0) <= Date.now())
-    for (const [id, record] of due) {
-      if (!this.hasCapacity(record.issue, policy)) {
-        await this.put(id, {
-          ...record,
-          nextRetryAt: Date.now() + policy.pollIntervalMs,
-          error: 'waiting for an orchestration capacity slot',
-          updatedAt: Date.now(),
-        })
+    for (const [providerName, all] of this.groupRecords(['retrying'])) {
+      const records = all.filter(([, record]) => (record.nextRetryAt ?? 0) <= Date.now())
+      if (records.length === 0) continue
+      const provider = this.ctx.trackers.require(providerName)
+      let issues: readonly TrackerIssue[]
+      try {
+        issues = await provider.fetchIssuesByIds(records.map(([id]) => id))
+      } catch (error: unknown) {
+        for (const [, record] of records) {
+          await this.scheduleFailure(record.provider, record.issue, record.attempt, record.workspacePath, error, policy)
+        }
         continue
       }
-      const provider = this.ctx.trackers.require(record.provider)
-      try {
-        const [issue] = await provider.fetchIssuesByIds([id])
+      const visible = new Map(issues.map(issue => [issue.id, issue]))
+      for (const [id, record] of records) {
+        if (!this.hasCapacity(record.issue, policy)) {
+          await this.put(id, {
+            ...record,
+            nextRetryAt: Date.now() + policy.pollIntervalMs,
+            error: 'waiting for an orchestration capacity slot',
+            updatedAt: Date.now(),
+          })
+          continue
+        }
+        const issue = visible.get(id)
         if (issue === undefined) {
           await this.delete(id)
         } else if (terminalIssue(issue, policy)) {
@@ -391,25 +429,31 @@ export class DurableIssueOrchestrator extends TypertRemoteService {
         } else {
           await this.dispatch(provider, issue, record.attempt, policy)
         }
-      } catch (error: unknown) {
-        await this.scheduleFailure(record.provider, record.issue, record.attempt, record.workspacePath, error, policy)
       }
     }
   }
 
   private async dispatchCandidates(policy: IssueWorkflowPolicy): Promise<void> {
     const provider = this.ctx.trackers.require(policy.trackerProvider)
-    const issues = [...await provider.fetchIssuesByStates(policy.activeStates)].sort(compareIssues)
-    for (const issue of issues) {
-      if (!issueEligible(issue, policy) || !this.hasCapacity(issue, policy)) continue
-      if (this.requireTable().get(issue.id) !== undefined) continue
-      try {
-        const [fresh] = await provider.fetchIssuesByIds([issue.id])
-        if (fresh === undefined || !issueEligible(fresh, policy)) continue
-        await this.dispatch(provider, fresh, 1, policy)
-      } catch (error: unknown) {
+    const candidates = [...await provider.fetchIssuesByStates(policy.activeStates)]
+      .sort(compareIssues)
+      .filter(issue => issueEligible(issue, policy) && this.requireTable().get(issue.id) === undefined)
+    if (candidates.length === 0) return
+    let fresh: readonly TrackerIssue[]
+    try {
+      fresh = await provider.fetchIssuesByIds(candidates.map(issue => issue.id))
+    } catch (error: unknown) {
+      for (const issue of candidates) {
         await this.scheduleFailure(provider.name, issue, 1, undefined, error, policy)
       }
+      return
+    }
+    const visible = new Map(fresh.map(issue => [issue.id, issue]))
+    for (const issue of candidates) {
+      if (!this.hasCapacity(issue, policy)) continue
+      const exact = visible.get(issue.id)
+      if (exact === undefined || !issueEligible(exact, policy)) continue
+      await this.dispatch(provider, exact, 1, policy)
     }
   }
 
@@ -534,20 +578,50 @@ export class DurableIssueOrchestrator extends TypertRemoteService {
         if (refreshed !== undefined && terminalIssue(refreshed, policy)) await this.cleanupRecord(record, refreshed)
         await this.delete(issueId)
       } else {
-        await this.put(issueId, {
-          ...record,
-          issue: refreshed,
-          status: 'retrying',
-          attempt: 1,
-          nextRetryAt: Date.now() + policy.continuationRetryMs,
-          error: 'issue remains active after the completed run',
-          updatedAt: Date.now(),
-        })
-        this.schedule(policy.continuationRetryMs)
+        await this.scheduleContinuation(record, refreshed, policy)
       }
     } catch (error: unknown) {
       await this.scheduleFailure(record.provider, live.issue, record.attempt, live.workspace.path, error, policy)
     }
+  }
+
+  /**
+   * Requeue a completed run whose issue stayed eligible: the attempt increments (never resets),
+   * the delay grows exponentially from `continuationRetryMs`, and the configured continuation
+   * bound parks the issue in blocked state so a no-progress loop stays operator-visible.
+   */
+  private async scheduleContinuation(
+    record: IssueOrchestrationRecord,
+    refreshed: TrackerIssue,
+    policy: IssueWorkflowPolicy,
+  ): Promise<void> {
+    if (policy.maxContinuationAttempts > 0 && record.attempt > policy.maxContinuationAttempts) {
+      const error = `issue stayed eligible after ${String(record.attempt)} attempts; continuation bound of ${String(policy.maxContinuationAttempts)} reached`
+      this.ctx.logger.warn(`issue orchestrator parked ${refreshed.identifier}: ${error}`)
+      await this.put(record.issue.id, {
+        ...record,
+        issue: refreshed,
+        status: 'blocked',
+        error,
+        updatedAt: Date.now(),
+      })
+      return
+    }
+    const attempt = record.attempt + 1
+    const delay = Math.min(
+      policy.continuationRetryMs * (2 ** Math.min(Math.max(0, record.attempt - 1), 20)),
+      policy.maxRetryBackoffMs,
+    )
+    await this.put(record.issue.id, {
+      ...record,
+      issue: refreshed,
+      status: 'retrying',
+      attempt,
+      nextRetryAt: Date.now() + delay,
+      error: 'issue remains active after the completed run',
+      updatedAt: Date.now(),
+    })
+    this.schedule(delay)
   }
 
   private async scheduleFailure(

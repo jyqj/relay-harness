@@ -30,7 +30,7 @@ export function CloseBehaviorRow({ t }: CloseBehaviorRowProps) {
   useEffect(() => {
     let cancelled = false
     void shell?.getConfig?.().then((config) => {
-      if (!cancelled && typeof config?.closeToTray === 'boolean') {
+      if (!cancelled && typeof config.closeToTray === 'boolean') {
         setCloseToTray(config.closeToTray)
       }
     }).catch(() => {

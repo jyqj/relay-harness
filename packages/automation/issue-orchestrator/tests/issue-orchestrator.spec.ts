@@ -40,6 +40,7 @@ const policy: IssueWorkflowPolicy = {
   maxConcurrentRunsByState: {},
   maxTurns: 2,
   continuationRetryMs: 10,
+  maxContinuationAttempts: 0,
   failureRetryBaseMs: 20,
   maxRetryBackoffMs: 100,
   stallTimeoutMs: 60_000,
@@ -270,16 +271,44 @@ describe('DurableIssueOrchestrator', () => {
     await harness.fiber.dispose()
   })
 
-  it('queues a short continuation retry while the completed issue remains active', async () => {
+  it('queues a growing continuation retry while the completed issue remains active', async () => {
     const harness = await boot()
     await eventually(() => harness.runner.pending[0])
     harness.runner.pending[0]?.settle({
       stopReason: 'completed', sessionId: SessionId('session-1'), turns: 2,
     })
-    const retrying = await eventually(() => harness.ctx.issueOrchestration.snapshot().retrying[0])
-    expect(retrying).toMatchObject({ attempt: 1, error: 'issue remains active after the completed run' })
+    const first = await eventually(() => harness.ctx.issueOrchestration.snapshot().retrying[0])
+    expect(first).toMatchObject({ attempt: 2, error: 'issue remains active after the completed run' })
     await eventually(() => harness.runner.pending[1])
-    expect(harness.runner.pending[1]?.request.attempt).toBe(1)
+    expect(harness.runner.pending[1]?.request.attempt).toBe(2)
+    harness.runner.pending[1]?.settle({
+      stopReason: 'completed', sessionId: SessionId('session-2'), turns: 2,
+    })
+    const second = await eventually(() => harness.ctx.issueOrchestration.snapshot().retrying[0]?.attempt === 3
+      ? harness.ctx.issueOrchestration.snapshot().retrying[0] : undefined)
+    expect(second).toMatchObject({ attempt: 3 })
+    // Exponential continuation backoff: each redispatch waits longer than the previous one.
+    expect((second.nextRetryAt ?? 0) - second.updatedAt).toBeGreaterThan((first.nextRetryAt ?? 0) - first.updatedAt)
+    await harness.fiber.dispose()
+  })
+
+  it('parks a still-eligible issue in blocked state at the continuation bound', async () => {
+    const harness = await boot([issue()], {
+      policy: { continuationRetryMs: 10, maxContinuationAttempts: 2, maxRetryBackoffMs: 100 },
+    })
+    for (let run = 0; run < 3; run += 1) {
+      await eventually(() => harness.runner.pending[run])
+      harness.runner.pending[run]?.settle({
+        stopReason: 'completed', sessionId: SessionId(`session-${String(run + 1)}`), turns: 1,
+      })
+    }
+    const parked = await eventually(() => {
+      const entry = harness.ctx.issueOrchestration.snapshot().blocked[0]
+      return entry?.error?.includes('continuation bound of 2 reached') ? entry : undefined
+    })
+    expect(parked).toMatchObject({ attempt: 3, workspacePath: '/work/ENG-1' })
+    await new Promise(resolve => setTimeout(resolve, 50))
+    expect(harness.runner.pending).toHaveLength(3)
     await harness.fiber.dispose()
   })
 
@@ -316,9 +345,14 @@ describe('DurableIssueOrchestrator', () => {
   })
 
   it('contains startup terminal-fetch and cleanup failures', async () => {
-    const first = await boot([], {
-      policy: { terminalStates: ['Done'] },
-      tracker: { fetchIssuesByStates: () => Promise.reject(new Error('tracker offline')) },
+    const fetchPool = new MemoryMediaPool()
+    await seedRecord(fetchPool, {
+      provider: 'memory', workflowRevision: 'old', issue: issue('Done'), status: 'blocked', attempt: 2,
+      updatedAt: 1,
+    })
+    const first = await boot([issue('Done')], {
+      pool: fetchPool,
+      tracker: { fetchIssuesByIds: () => Promise.reject(new Error('tracker offline')) },
     })
     await first.fiber.dispose()
 
@@ -468,6 +502,62 @@ describe('DurableIssueOrchestrator', () => {
     await harness.fiber.dispose()
   })
 
+  it('batches exact-id revalidation into one provider read per tick group', async () => {
+    let candidateCalls = 0
+    const harness = await boot([issue(), secondIssue()], {
+      policy: { maxConcurrentRuns: 2 },
+      tracker: {
+        fetchIssuesByIds: (ids) => {
+          candidateCalls += 1
+          return Promise.resolve([issue(), secondIssue()].filter(item => ids.includes(item.id)))
+        },
+      },
+    })
+    await eventually(() => harness.runner.pending.length === 2 ? true : undefined)
+    expect(candidateCalls).toBe(1)
+    await harness.fiber.dispose()
+
+    const pool = new MemoryMediaPool()
+    await seedRecord(pool, {
+      provider: 'memory', workflowRevision: 'old', issue: issue(), status: 'retrying', attempt: 2,
+      nextRetryAt: 0, updatedAt: 1,
+    })
+    await seedRecord(pool, {
+      provider: 'memory', workflowRevision: 'old', issue: secondIssue(), status: 'retrying', attempt: 2,
+      nextRetryAt: 0, updatedAt: 1,
+    })
+    let retryCalls = 0
+    const due = await boot([issue(), secondIssue()], {
+      pool,
+      policy: { maxConcurrentRuns: 2 },
+      tracker: {
+        fetchIssuesByIds: (ids) => {
+          retryCalls += 1
+          return Promise.resolve([issue(), secondIssue()].filter(item => ids.includes(item.id)))
+        },
+      },
+    })
+    await eventually(() => due.runner.pending.length === 2 ? true : undefined)
+    // One startup claim cleanup read plus one due-retry revalidation read for both records.
+    expect(retryCalls).toBe(2)
+    await due.fiber.dispose()
+  })
+
+  it('keeps polling when the workflow read fails inside a tick', async () => {
+    let changes = 0
+    const harness = await boot([], {
+      policy: { pollIntervalMs: 10 },
+      onContext: (ctx) => { ctx.on('issue-orchestration/changed', () => { changes += 1 }) },
+    })
+    await eventually(() => changes >= 4 ? true : undefined)
+    const broken = new Error('workflow read failed')
+    harness.workflow.reload = () => Promise.reject(broken)
+    harness.workflow.current = () => { throw broken }
+    const atBreak = changes
+    await eventually(() => changes >= atBreak + 4 ? true : undefined)
+    await harness.fiber.dispose()
+  })
+
   it('contains a complete poll failure and diagnoses a direct pre-initialization read', async () => {
     const direct = new DurableIssueOrchestrator(new Context())
     expect(() => direct.snapshot()).toThrow(/domain is not open/)
@@ -525,10 +615,13 @@ describe('DurableIssueOrchestrator', () => {
     await harness.fiber.dispose()
   })
 
-  it('cleans a terminal workspace even when no orchestration record exists', async () => {
-    const harness = await boot([issue('Done')])
-    expect(harness.workspace.removed).toContain('/work/ENG-1')
-    expect(harness.ctx.issueOrchestration.snapshot().blocked).toEqual([])
+  it('leaves a record-less terminal issue untouched at startup', async () => {
+    let stateFetches = 0
+    const harness = await boot([issue('Done')], {
+      tracker: { fetchIssuesByStates: (states) => { stateFetches += 1; return Promise.resolve(states.includes('Done') ? [issue('Done')] : []) } },
+    })
+    expect(harness.workspace.removed).toEqual([])
+    expect(stateFetches).toBe(0)
     await harness.fiber.dispose()
   })
 

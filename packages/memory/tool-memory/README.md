@@ -4,7 +4,7 @@ English | [中文](README.zh.md)
 
 Provider-neutral memory tools. Every call derives the exact user/workspace/Agent scope from the calling Agent. Search and read never widen it. Writes serialize per scope through a tool resource intent.
 
-`memory_remember` activates a memory only when `evidence_quote` exactly occurs in a direct user message or successful tool result. Without that evidence, the provider receives an `agent-proposed` candidate, which proactive recall ignores. `memory_update` applies the same rule to content changes and activation. `memory_forget` requires an exact quote from a direct user deletion request before it can append a tombstone. The provider independently enforces active trust, evidence, and secret rejection.
+`memory_remember` activates a memory only when `evidence_quote` exactly occurs in a direct user message or successful tool result. Without that evidence, the provider receives an `agent-proposed` candidate, which proactive recall ignores. `memory_update` applies the same rule to content changes and activation. `memory_forget` requires an exact quote from a direct user deletion request before it can append a tombstone. Successful results of the memory tools themselves, other `session_*` projections, and `skill` output are derived state and never verify a write, mirroring extraction source exclusion, so recalled memory cannot launder itself into fresh evidence. The provider independently enforces active trust, evidence, and secret rejection.
 
 ## Configuration
 
@@ -25,7 +25,7 @@ When this Consumer is present, the request tool catalog contains `memory_search`
 
 #### Token effect
 
-The five schemas are present on every request in the owning preset. Tool results add data-dependent JSON only after a call; search compacts each result content to 320 characters and applies the configured result count.
+The five schemas are present on every request in the owning preset. Tool results add data-dependent JSON only after a call; search compacts each result content to 320 Unicode code points and applies the configured result count.
 
 #### KV Cache effect
 

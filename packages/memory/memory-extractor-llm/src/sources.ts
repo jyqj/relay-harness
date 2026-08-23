@@ -1,7 +1,7 @@
 /** Completed-turn projection into bounded, evidence-carrying extraction sources. */
 
 import { createHash } from 'node:crypto'
-import { memoryContainsSecret } from '@deepseek-ai/dsh-memory'
+import { memoryContainsSecret, memoryExcludesDerivedTool } from '@deepseek-ai/dsh-memory'
 import type {
   MemoryExtractionRoute,
   MemoryExtractionSource,
@@ -71,7 +71,7 @@ export function collectExtractionSources(
     const result = event.data.message.content[0]
     if (result.isError === true) continue
     const call = calls.get(result.toolCallId)
-    if (call === undefined || excludesDerivedTool(call.data.name)) continue
+    if (call === undefined || memoryExcludesDerivedTool(call.data.name)) continue
     const text = clipText(contentText(result.content), config.maxSourceChars)
     if (text === '' || memoryContainsSecret(text)) continue
     const verified = config.verifiedToolNames.has(call.data.name)
@@ -140,10 +140,6 @@ function sourcePriority(source: MemoryExtractionSource): number {
 
 function sourceLastSeq(source: MemoryExtractionSource): number {
   return source.evidence.eventSeqs.at(-1) ?? -1
-}
-
-function excludesDerivedTool(name: string): boolean {
-  return name.startsWith('memory_') || name.startsWith('session_') || name === 'skill'
 }
 
 function contentText(content: readonly ContentBlock[]): string {

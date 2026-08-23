@@ -59,12 +59,17 @@ describe('parseIssueWorkflow', () => {
       activeStates: ['Todo', 'In Progress'], terminalStates: ['Done', 'Closed', 'Cancelled'],
       requiredLabels: [], pollIntervalMs: 30_000, maxConcurrentRuns: 10,
       maxConcurrentRunsByState: {}, maxTurns: 20, continuationRetryMs: 1000,
+      maxContinuationAttempts: 5,
       failureRetryBaseMs: 10_000, maxRetryBackoffMs: 300_000, stallTimeoutMs: 300_000,
     })
     expect(parseIssueWorkflow(valid.replace(
       'stall_timeout_ms: 1000',
       'stall_timeout_ms: 0\n  continuation_prompt: Continue exactly.',
     )).continuationTemplate).toBe('Continue exactly.')
+    expect(parseIssueWorkflow(valid.replace(
+      'continuation_retry_ms: 10',
+      'continuation_retry_ms: 10\n  max_continuation_attempts: 0',
+    )).maxContinuationAttempts).toBe(0)
   })
 
   it.each([
@@ -76,6 +81,7 @@ describe('parseIssueWorkflow', () => {
     ['positive integer type', valid.replace('max_turns: 3', 'max_turns: nope'), /positive/],
     ['negative stall', valid.replace('stall_timeout_ms: 1000', 'stall_timeout_ms: -1'), /non-negative/],
     ['stall integer type', valid.replace('stall_timeout_ms: 1000', 'stall_timeout_ms: nope'), /non-negative/],
+    ['negative continuation bound', valid.replace('continuation_retry_ms: 10', 'continuation_retry_ms: 10\n  max_continuation_attempts: -1'), /non-negative/],
   ])('rejects %s', (_label, text, error) => {
     expect(() => parseIssueWorkflow(text)).toThrow(error)
   })

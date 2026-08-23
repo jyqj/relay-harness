@@ -633,10 +633,13 @@ describe('task admission and package contracts', () => {
 
     const invalidCwdAbort = new AbortController()
     invalidCwdAbort.abort(new Error('cancel invalid cwd startup'))
+    // Root-tree admission rejects an already-aborted signal with the caller's
+    // own reason before the provider runs, so the provider's pre-SDK guard is
+    // unreachable from this side.
     await expect(ctx.subagents.start('claude-diagnostic', {
       ...request(undefined, invalidCwdAbort.signal),
       parent: invalidCwdParent,
-    })).rejects.toThrow('aborted before SDK startup')
+    })).rejects.toThrow('cancel invalid cwd startup')
     expect(queryMock).not.toHaveBeenCalled()
     warn.mockClear()
 

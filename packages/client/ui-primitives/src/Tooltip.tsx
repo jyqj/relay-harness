@@ -1,7 +1,6 @@
 // Hover/focus label bubble (figma tooltip pill: dark plate, white text).
-// TODO: interaction is a placeholder (horizontal overflow clamps and a
-// vertical collision flips the bubble to the other side, but there is no
-// arrow) — visuals and behavior get a proper pass later.
+// Horizontal overflow clamps and a vertical collision flips the bubble to the
+// other side; there is no arrow.
 // The anchor is the child element itself (cloneElement, no wrapper node), so
 // attaching a tooltip never changes the anchor's layout context. The bubble is
 // position:fixed and coordinates come from the anchor's rect at show time, so
@@ -9,7 +8,7 @@
 // without a portal.
 
 import { cloneElement, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import type { FocusEventHandler, MouseEventHandler, MutableRefObject, ReactElement, Ref } from 'react'
+import type { FocusEventHandler, KeyboardEventHandler, MouseEventHandler, MutableRefObject, ReactElement, Ref } from 'react'
 import { usePresence } from './usePresence.ts'
 import css from './Tooltip.module.css'
 
@@ -23,6 +22,7 @@ interface AnchorProps {
   onMouseLeave?: MouseEventHandler | undefined
   onFocus?: FocusEventHandler | undefined
   onBlur?: FocusEventHandler | undefined
+  onKeyDown?: KeyboardEventHandler | undefined
 }
 
 type TooltipLabel = string | (() => string)
@@ -37,7 +37,8 @@ type TooltipLabel = string | (() => string)
  * @param props.maxWidth - bubble width cap in pixels, for labels long enough that the default
  * half-viewport cap would render a slab wider than the surface the anchor sits on.
  * @param props.children - a single anchor element; its own ref (callback or object) is forwarded alongside the tooltip's.
- * @returns the cloned anchor plus a fixed-position bubble while hovered/focused.
+ * @returns the cloned anchor plus a fixed-position bubble while hovered/focused; Escape dismisses it
+ * without moving focus, and the next hover/focus shows it again.
  */
 export function Tooltip({ label, side = 'right', delayMs = 0, disabled = false, maxWidth, children }: { label: TooltipLabel; side?: TooltipSide; delayMs?: number; disabled?: boolean; maxWidth?: number; children: ReactElement<AnchorProps> }) {
   const anchor = useRef<HTMLElement | null>(null)
@@ -156,6 +157,12 @@ export function Tooltip({ label, side = 'right', delayMs = 0, disabled = false, 
     cancelShow()
     if (!triggers.current.hover && !triggers.current.focus) setVisible(false)
   }
+  // Escape dismisses the bubble the keyboard reader did not ask to keep: focus
+  // stays on the anchor, and a later hover or refocus shows the bubble again.
+  const dismiss = () => {
+    cancelShow()
+    setVisible(false)
+  }
 
   return (
     <>
@@ -165,6 +172,7 @@ export function Tooltip({ label, side = 'right', delayMs = 0, disabled = false, 
         onMouseLeave: (e) => { children.props.onMouseLeave?.(e); triggers.current.hover = false; cancelShow(); setVisible(false) },
         onFocus: (e) => { children.props.onFocus?.(e); triggers.current.focus = true; cancelShow(); show() },
         onBlur: (e) => { children.props.onBlur?.(e); triggers.current.focus = false; hide() },
+        onKeyDown: (e) => { children.props.onKeyDown?.(e); if (e.key === 'Escape') dismiss() },
       })}
       {mounted && pos !== null && (
         <span

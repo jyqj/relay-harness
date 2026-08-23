@@ -18,13 +18,13 @@ Issue Automation 是可选 Host 子系统，把 Provider-scoped Tracker 队列�
 
 ## Durable scheduling
 
-Issue Orchestrator storage domain 是唯一状态 Owner。Dispatch 先提交 `claimed`，再准备 Workspace 并启动 Runner，最后提交 `running`。失败会提交 `retrying`，包含下一 attempt、due time、Workspace 和有界指数退避错误。需要 Operator 操作的请求提交 `blocked`，不建立 retry timer。Host 启动把中断的 `claimed` 或 `running` row 转成即时重试；不会把未知进程呈现为已恢复。
+Issue Orchestrator storage domain 是唯一状态 Owner。Dispatch 先提交 `claimed`，再准备 Workspace 并启动 Runner，最后提交 `running`。失败会提交 `retrying`，包含下一 attempt、due time、Workspace 和有界指数退避错误。需要 Operator 操作的请求提交 `blocked`，不建立 retry timer。完成后仍可执行的 Issue 会作为 continuation 重新入队：attempt 递增，延迟从 `continuationRetryMs` 起指数增长，`maxContinuationAttempts` 上限会把 Issue 停在 `blocked` 状态等待 Operator 处理。Host 启动把中断的 `claimed` 或 `running` row 转成即时重试；不会把未知进程呈现为已恢复。启动 Workspace 清理只触碰有持久 claim 记录的 Issue，本地无记录的 Tracker 目录绝不会被删除，启动成本跟随本地 claim 的工作量而不是 Provider 的终态积压。
 
 每次 tick 都 reload 策略、对账 running 与 blocked ID、检查 last-progress 静默、处理到期 retry、读取候选项、按 Provider priority 与时间排序，并在 dispatch 前按精确 ID 重验每个选中项。全局和规范化 per-state capacity 同时计算 claimed 与 running row，因此 Workspace 设置过程不会超额分配。
 
 ## Linear Provider and operator UI
 
-首个 Provider 是 Linear。Scheduler 读取保持项目范围和分页；按精确 ID 的读取采用批处理。捕获的 `linear_graphql` 工具在 Host 使用捕获 token 执行，binding 同时声明 token 环境变量别名供 managed child 清理。其原始原生可达范围是有意选择；仓库 Workflow 拥有允许的变更和 Provider 幂等性。
+首个 Provider 是 Linear。Scheduler 读取保持项目范围和分页；按精确 ID 的读取采用批处理。捕获的 `linear_graphql` 工具在 Host 使用捕获 token 执行；binding 中的 token 环境变量别名是声明性元数据：managed child 清理由 subprocess seam 的通用凭据特征父环境擦除完成，不消费该列表。其原始原生可达范围是有意选择；仓库 Workflow 拥有允许的变更和 Provider 幂等性。
 
 生成的 `issueOrchestration` Remote 暴露 snapshot 与 Operator 命令。可选浏览器插件订阅 `issue-orchestration/changed`、刷新一个 observable snapshot，并贡献标题栏 badge 与 running／retrying／blocked overlay。它不改变 Session 或模型上下文。
 

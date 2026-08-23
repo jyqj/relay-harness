@@ -14,7 +14,7 @@ The Consumer retains the prepared handle until the durable final `turn/end`. Com
 | `agentId` | `deepseek-harness` | Stable Agent scope shared across sessions. |
 | `workspaceId` | session cwd, then `global` | Optional explicit stable workspace scope. |
 | `candidateLimit` | `10` | Provider candidates before packing. |
-| `maxContextChars` | `3200` | Complete recall message cap, including safety framing. |
+| `maxContextChars` | `3200` | Complete recall message cap in Unicode code points, including safety framing. |
 | `includeSubagents` | `false` | Whether delegated sessions receive recall. |
 
 ## Model Experience
@@ -27,7 +27,7 @@ The first request of a qualifying turn contains the direct user message followed
 
 #### Token effect
 
-Conditional and capped. No message is added when no active candidate fits. Otherwise the complete recall message is at most `maxContextChars` characters and remains in history until compaction replaces it.
+Conditional and capped. No message is added when no active candidate fits. Otherwise the complete recall message is at most `maxContextChars` Unicode code points and remains in history until compaction replaces it.
 
 #### KV Cache effect
 

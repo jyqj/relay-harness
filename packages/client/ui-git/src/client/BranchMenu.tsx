@@ -56,7 +56,12 @@ const CREATE_ID = '__create__'
  * @param props - shell ops, cwd, current ref, copy, and change callback.
  * @returns the picker, or nothing outside a repository.
  */
-export function BranchMenu({ cwd, currentRef, t, onChanged, onError, disabled = false, compact = false, gitBranchList, gitSwitchBranch, gitCreateBranch }: BranchMenuProps) {
+export function BranchMenu(
+  {
+    cwd, currentRef, t, onChanged, onError, disabled = false, compact = false,
+    gitBranchList, gitSwitchBranch, gitCreateBranch,
+  }: BranchMenuProps,
+) {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [refs, setRefs] = useState<BranchRef[] | null>(null)

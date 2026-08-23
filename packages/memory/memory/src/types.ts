@@ -88,7 +88,9 @@ export interface MemoryEntry {
   /** Human-readable reason retained by a tombstone revision. */
   readonly tombstoneReason?: string
   readonly evidence: readonly MemoryEvidence[]
+  /** Committed injections into a model request; see `usefulAccessCount` for retrieval hits. */
   readonly accessCount: number
+  /** Hits returned by search or recall; providers increment it fail-open on the read path. */
   readonly usefulAccessCount: number
 }
 

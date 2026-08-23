@@ -36,7 +36,7 @@ interface WorkspacesFace {
 function layoutFace(ctx: ClientContext): Pick<TerminalShellInjected, 'toggleTerminalDrawer' | 'setTerminalDrawer'> {
   return {
     toggleTerminalDrawer: () => { ctx.layout.toggleTerminalDrawer() },
-    setTerminalDrawer: px => { ctx.layout.setTerminalDrawer(px) },
+    setTerminalDrawer: (px) => { ctx.layout.setTerminalDrawer(px) },
   }
 }
 
@@ -51,7 +51,9 @@ function workflowFace(ctx: ClientContext): Pick<
       appendToDraft(ctx, sessionId, fragment)
     },
     writeClipboard: async (text) => {
-      const clipboard = globalThis.navigator?.clipboard
+      // oxlint-disable-next-line typescript/no-unnecessary-condition -- jsdom leaves navigator.clipboard undefined
+      const clipboard = globalThis.navigator.clipboard
+      // oxlint-disable-next-line typescript/no-unnecessary-condition -- jsdom leaves navigator.clipboard undefined
       if (clipboard === undefined) return
       await clipboard.writeText(text)
     },

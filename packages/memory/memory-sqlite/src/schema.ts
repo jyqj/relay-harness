@@ -2,13 +2,15 @@
 
 import type { DatabaseSync } from 'node:sqlite'
 import { createHash } from 'node:crypto'
+import { readFileSync } from 'node:fs'
 import { mkdir, open } from 'node:fs/promises'
+import { hostname } from 'node:os'
 import { dirname, resolve } from 'node:path'
 
 /** SQLite application id for canonical DSH memory stores (`DSHM`). */
 export const MEMORY_SQLITE_APPLICATION_ID = 0x4453484D
 /** Canonical schema version. Unlike derived indexes, unknown versions fail closed. */
-export const MEMORY_SQLITE_SCHEMA_VERSION = 2
+export const MEMORY_SQLITE_SCHEMA_VERSION = 3
 
 /** Supported SQLite journal modes. */
 export type JournalMode = 'wal' | 'delete' | 'truncate' | 'persist'
@@ -187,6 +189,14 @@ function ensureSchema(db: DatabaseSync): void {
     CREATE INDEX IF NOT EXISTS memory_extraction_jobs_claim
     ON memory_extraction_jobs(status, available_at, lease_until, created_at)
   `)
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS memory_store_owner (
+      id            INTEGER PRIMARY KEY CHECK (id = 1),
+      pid           INTEGER NOT NULL,
+      boot_id       TEXT NOT NULL,
+      heartbeat_at  INTEGER NOT NULL
+    ) STRICT
+  `)
   db.exec(`PRAGMA user_version = ${MEMORY_SQLITE_SCHEMA_VERSION}`)
 }
 
@@ -221,4 +231,111 @@ function migrateVersionOne(db: DatabaseSync): void {
 export function memoryContentHash(kind: string, content: string): string {
   const normalized = content.normalize('NFKC').trim().replace(/\s+/gu, ' ').toLowerCase()
   return createHash('sha256').update(`${kind}\0${normalized}`).digest('hex')
+}
+
+/** Process identity recorded in the single-owner heartbeat row. */
+export interface MemoryStoreOwner {
+  readonly pid: number
+  readonly bootId: string
+}
+
+let cachedBootId: string | undefined
+
+function processBootId(): string {
+  if (cachedBootId === undefined) {
+    try {
+      cachedBootId = readFileSync('/proc/sys/kernel/random/boot_id', 'utf8').trim()
+    } catch {
+      // The proc file exists only on Linux; other hosts fall back to the host
+      // name, where pid reuse after a reboot is bounded by heartbeat staleness.
+      cachedBootId = hostname()
+    }
+  }
+  return cachedBootId
+}
+
+/**
+ * Identify the current process as one memory-store owner candidate.
+ * @returns pid plus a per-boot (Linux) or per-host identity.
+ */
+export function currentMemoryStoreOwner(): MemoryStoreOwner {
+  return { pid: process.pid, bootId: processBootId() }
+}
+
+/**
+ * Atomically claim single-process ownership of one canonical store.
+ * @param db - initialized canonical database handle.
+ * @param owner - current process identity.
+ * @param staleMs - age at which a foreign heartbeat is considered dead.
+ * @param label - database path used in failure guidance.
+ * @throws when a fresh heartbeat from another process still owns the store.
+ */
+export function claimMemoryStoreOwnership(
+  db: DatabaseSync,
+  owner: MemoryStoreOwner,
+  staleMs: number,
+  label: string,
+): void {
+  const now = Date.now()
+  db.exec('BEGIN IMMEDIATE')
+  try {
+    const row = db.prepare(
+      'SELECT pid, boot_id, heartbeat_at FROM memory_store_owner WHERE id = 1',
+    ).get() as { pid: number; boot_id: string; heartbeat_at: number } | undefined
+    if (row !== undefined && (row.pid !== owner.pid || row.boot_id !== owner.bootId)
+      && row.heartbeat_at > now - staleMs) {
+      throw new Error(
+        `memory database at "${label}" has a fresh owner heartbeat from process ${row.pid}`
+        + ` (boot ${row.boot_id}, ${now - row.heartbeat_at}ms old); run one memory-owning process`
+        + ' per database path, or disable the memory-sqlite plugin in the other process',
+      )
+    }
+    db.prepare(`
+      INSERT INTO memory_store_owner (id, pid, boot_id, heartbeat_at)
+      VALUES (1, ?, ?, ?)
+      ON CONFLICT(id) DO UPDATE SET
+        pid = excluded.pid,
+        boot_id = excluded.boot_id,
+        heartbeat_at = excluded.heartbeat_at
+    `).run(owner.pid, owner.bootId, now)
+    db.exec('COMMIT')
+  } catch (error: unknown) {
+    db.exec('ROLLBACK')
+    throw error
+  }
+}
+
+/**
+ * Refresh this process's ownership heartbeat inside an open write transaction.
+ * @param db - handle with a write transaction already open.
+ * @param owner - current process identity.
+ * @param staleMs - age at which a foreign heartbeat can be reclaimed.
+ * @param label - database path used in failure guidance.
+ * @throws when another live process took over the store while this one was idle.
+ */
+export function refreshMemoryStoreOwner(
+  db: DatabaseSync,
+  owner: MemoryStoreOwner,
+  staleMs: number,
+  label: string,
+): void {
+  const now = Date.now()
+  const changed = db.prepare(`
+    UPDATE memory_store_owner
+    SET pid = ?, boot_id = ?, heartbeat_at = ?
+    WHERE id = 1 AND ((pid = ? AND boot_id = ?) OR heartbeat_at <= ?)
+  `).run(owner.pid, owner.bootId, now, owner.pid, owner.bootId, now - staleMs).changes
+  if (changed !== 1) {
+    throw new Error(`memory database at "${label}" is owned by another live process`)
+  }
+}
+
+/**
+ * Release ownership on clean provider shutdown so an immediate restart is admitted.
+ * @param db - initialized canonical database handle.
+ * @param owner - current process identity.
+ */
+export function releaseMemoryStoreOwnership(db: DatabaseSync, owner: MemoryStoreOwner): void {
+  db.prepare('DELETE FROM memory_store_owner WHERE id = 1 AND pid = ? AND boot_id = ?')
+    .run(owner.pid, owner.bootId)
 }

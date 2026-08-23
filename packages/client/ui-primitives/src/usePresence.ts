@@ -17,7 +17,8 @@ export type PresenceState = 'open' | 'closed'
  * @returns true when `prefers-reduced-motion: reduce` matches.
  */
 function prefersReducedMotion(): boolean {
-  return globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true
+  // oxlint-disable-next-line typescript/no-unnecessary-condition -- jsdom environments may lack matchMedia
+  return globalThis.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches ?? false
 }
 
 /**

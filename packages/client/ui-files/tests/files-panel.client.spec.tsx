@@ -1258,7 +1258,7 @@ describe('FilePreview', () => {
     )
     const editor = await screen.findByLabelText('note.md')
     fireEvent.change(editor, { target: { value: '# Saved' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    fireEvent.click(screen.getByRole<HTMLButtonElement>('button', { name: 'Save' }))
     await waitFor(() => {
       expect(writeFile).toHaveBeenCalledWith('/tmp/proj', 'note.md', '# Saved')
     })
@@ -1291,10 +1291,10 @@ describe('FilePreview', () => {
     )
     const editor = await screen.findByLabelText('a.ts')
     fireEvent.change(editor, { target: { value: 'y' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    fireEvent.click(screen.getByRole<HTMLButtonElement>('button', { name: 'Save' }))
     expect(await screen.findByText('disk full')).toBeTruthy()
-    expect((screen.getByLabelText('a.ts') as HTMLTextAreaElement).value).toBe('y')
-    expect(screen.getByRole('button', { name: 'Save' })).toBeTruthy()
+    expect(screen.getByLabelText<HTMLTextAreaElement>('a.ts').value).toBe('y')
+    expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Save' })).toBeTruthy()
   })
 
   it('keeps an unsaved draft when the parent stays mounted but hidden', async () => {
@@ -1305,9 +1305,9 @@ describe('FilePreview', () => {
           relativePath="a.ts"
           active
           onDirtyChange={() => {}}
-        registerSave={() => {}}
-        readBuffer={() => undefined}
-        writeBuffer={() => {}}
+          registerSave={() => {}}
+          readBuffer={() => undefined}
+          writeBuffer={() => {}}
           useSession={neverHook}
           useSessions={sel => sel(sessionList('/tmp/proj'))}
           useWorkspaces={neverHook}
@@ -1332,9 +1332,9 @@ describe('FilePreview', () => {
           relativePath="a.ts"
           active
           onDirtyChange={() => {}}
-        registerSave={() => {}}
-        readBuffer={() => undefined}
-        writeBuffer={() => {}}
+          registerSave={() => {}}
+          readBuffer={() => undefined}
+          writeBuffer={() => {}}
           useSession={neverHook}
           useSessions={sel => sel(sessionList('/tmp/proj'))}
           useWorkspaces={neverHook}
@@ -1358,9 +1358,9 @@ describe('FilePreview', () => {
           relativePath="a.ts"
           active
           onDirtyChange={() => {}}
-        registerSave={() => {}}
-        readBuffer={() => undefined}
-        writeBuffer={() => {}}
+          registerSave={() => {}}
+          readBuffer={() => undefined}
+          writeBuffer={() => {}}
           useSession={neverHook}
           useSessions={sel => sel(sessionList('/tmp/proj'))}
           useWorkspaces={neverHook}
@@ -1376,7 +1376,7 @@ describe('FilePreview', () => {
         />
       </div>,
     )
-    expect((screen.getByLabelText('a.ts') as HTMLTextAreaElement).value).toBe('unsaved keep-alive')
+    expect(screen.getByLabelText<HTMLTextAreaElement>('a.ts').value).toBe('unsaved keep-alive')
   })
 
   it('keeps the editor when writeFile throws', async () => {
@@ -1405,9 +1405,9 @@ describe('FilePreview', () => {
     )
     const editor = await screen.findByLabelText('a.ts')
     fireEvent.change(editor, { target: { value: 'kept' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    fireEvent.click(screen.getByRole<HTMLButtonElement>('button', { name: 'Save' }))
     expect(await screen.findByText('Could not save the file.')).toBeTruthy()
-    expect((screen.getByLabelText('a.ts') as HTMLTextAreaElement).value).toBe('kept')
+    expect(screen.getByLabelText<HTMLTextAreaElement>('a.ts').value).toBe('kept')
   })
 
   it('uses the write error copy when save fails without a message', async () => {
@@ -1436,9 +1436,9 @@ describe('FilePreview', () => {
     )
     const editor = await screen.findByLabelText('a.ts')
     fireEvent.change(editor, { target: { value: 'z' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    fireEvent.click(screen.getByRole<HTMLButtonElement>('button', { name: 'Save' }))
     expect(await screen.findByText('Could not save the file.')).toBeTruthy()
-    expect((screen.getByLabelText('a.ts') as HTMLTextAreaElement).value).toBe('z')
+    expect(screen.getByLabelText<HTMLTextAreaElement>('a.ts').value).toBe('z')
   })
   it('keeps dirty reporting when cwd becomes undefined', async () => {
     const onDirtyChange = vi.fn()
@@ -1495,7 +1495,7 @@ describe('FilePreview', () => {
     expect(await screen.findByText('A workspace is required to browse files.')).toBeTruthy()
     // Dirty must not flip to false when cwd disappears (confirm still protects the buffer).
     expect(onDirtyChange).not.toHaveBeenCalledWith(false)
-    expect((screen.getByLabelText('a.ts') as HTMLTextAreaElement).value).toBe('dirty')
+    expect(screen.getByLabelText<HTMLTextAreaElement>('a.ts').value).toBe('dirty')
   })
 
   it('keeps a dirty draft when disk content changes under the buffer', async () => {
@@ -1533,7 +1533,7 @@ describe('FilePreview', () => {
       />,
     )
     expect(await screen.findByLabelText('a.ts')).toBeTruthy()
-    expect((screen.getByLabelText('a.ts') as HTMLTextAreaElement).value).toBe('edited')
+    expect(screen.getByLabelText<HTMLTextAreaElement>('a.ts').value).toBe('edited')
     disk = 'v2'
     cleanup()
     render(
@@ -1568,7 +1568,7 @@ describe('FilePreview', () => {
       />,
     )
     expect(await screen.findByLabelText('a.ts')).toBeTruthy()
-    expect((screen.getByLabelText('a.ts') as HTMLTextAreaElement).value).toBe('edited')
+    expect(screen.getByLabelText<HTMLTextAreaElement>('a.ts').value).toBe('edited')
     expect(buffer.text).toBe('v2')
     expect(buffer.draft).toBe('edited')
   })
@@ -1643,7 +1643,7 @@ describe('FilePreview', () => {
     expect(await screen.findByText('gone')).toBeTruthy()
     expect(buffer.draft).toBe('edited')
     expect(buffer.text).toBe('v1')
-    expect((screen.getByLabelText('a.ts') as HTMLTextAreaElement).value).toBe('edited')
+    expect(screen.getByLabelText<HTMLTextAreaElement>('a.ts').value).toBe('edited')
   })
 
   it('saves a dirty draft after the last read failed', async () => {
@@ -1673,8 +1673,8 @@ describe('FilePreview', () => {
       />,
     )
     expect(await screen.findByText('gone')).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Save' })).toBeTruthy()
-    expect((screen.getByLabelText('a.ts') as HTMLTextAreaElement).value).toBe('edited')
+    expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Save' })).toBeTruthy()
+    expect(screen.getByLabelText<HTMLTextAreaElement>('a.ts').value).toBe('edited')
     await act(async () => {
       expect(await save?.()).toBe(true)
     })
@@ -1707,7 +1707,7 @@ describe('FilePreview', () => {
       />,
     )
     expect(await screen.findByText('gone')).toBeTruthy()
-    expect((await screen.findByLabelText('note.md') as HTMLTextAreaElement).value).toBe('# edited')
+    expect((await screen.findByLabelText<HTMLTextAreaElement>('note.md')).value).toBe('# edited')
   })
 
   it('keeps a dirty draft editable and saveable after a truncated reread', async () => {
@@ -1736,8 +1736,8 @@ describe('FilePreview', () => {
       />,
     )
     expect(await screen.findByText('File is too large; showing the beginning.')).toBeTruthy()
-    expect((screen.getByLabelText('a.ts') as HTMLTextAreaElement).value).toBe('edited')
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    expect(screen.getByLabelText<HTMLTextAreaElement>('a.ts').value).toBe('edited')
+    fireEvent.click(screen.getByRole<HTMLButtonElement>('button', { name: 'Save' }))
     await waitFor(() => {
       expect(writeFile).toHaveBeenCalledWith('/tmp/proj', 'a.ts', 'edited')
     })
@@ -1769,7 +1769,7 @@ describe('FilePreview', () => {
       />,
     )
     expect(await screen.findByText('File is too large; showing the beginning.')).toBeTruthy()
-    expect((await screen.findByLabelText('note.md') as HTMLTextAreaElement).value).toBe('# edited')
+    expect((await screen.findByLabelText<HTMLTextAreaElement>('note.md')).value).toBe('# edited')
   })
 
   it('keeps a dirty draft editable and saveable after a binary reread', async () => {
@@ -1798,8 +1798,8 @@ describe('FilePreview', () => {
       />,
     )
     expect(await screen.findByText('This binary file cannot be previewed.')).toBeTruthy()
-    expect((screen.getByLabelText('a.ts') as HTMLTextAreaElement).value).toBe('edited')
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    expect(screen.getByLabelText<HTMLTextAreaElement>('a.ts').value).toBe('edited')
+    fireEvent.click(screen.getByRole<HTMLButtonElement>('button', { name: 'Save' }))
     await waitFor(() => {
       expect(writeFile).toHaveBeenCalledWith('/tmp/proj', 'a.ts', 'edited')
     })
@@ -1831,8 +1831,8 @@ describe('FilePreview', () => {
       />,
     )
     expect(await screen.findByText('A workspace is required to browse files.')).toBeTruthy()
-    expect((await screen.findByLabelText('note.md') as HTMLTextAreaElement).value).toBe('# edited')
-    expect((screen.getByRole('button', { name: 'Save' }) as HTMLButtonElement).disabled).toBe(true)
+    expect((await screen.findByLabelText<HTMLTextAreaElement>('note.md')).value).toBe('# edited')
+    expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Save' }).disabled).toBe(true)
   })
 
   it('does not mount the editor until the first read settles', async () => {
@@ -1853,7 +1853,7 @@ describe('FilePreview', () => {
         useInput={neverHook}
         inputActions={undefined}
         listDir={async () => ({ ok: false })}
-        readFile={() => new Promise(resolve => { resolveRead = resolve })}
+        readFile={() => new Promise((resolve) => { resolveRead = resolve })}
         readFileMedia={async () => ({ ok: false })}
         mentionFile={() => {}}
         writeFile={async () => ({ ok: true })}
@@ -1865,7 +1865,7 @@ describe('FilePreview', () => {
       resolveRead?.({ ok: true, text: 'from-disk', binary: false })
     })
     expect(await screen.findByLabelText('a.ts')).toBeTruthy()
-    expect((screen.getByLabelText('a.ts') as HTMLTextAreaElement).value).toBe('from-disk')
+    expect(screen.getByLabelText<HTMLTextAreaElement>('a.ts').value).toBe('from-disk')
   })
 
   it('refuses save once when disk diverged, then overwrites on the second save', async () => {
@@ -1900,11 +1900,11 @@ describe('FilePreview', () => {
     const editor = await screen.findByLabelText('a.ts')
     fireEvent.change(editor, { target: { value: 'mine' } })
     disk = 'theirs'
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    fireEvent.click(screen.getByRole<HTMLButtonElement>('button', { name: 'Save' }))
     expect(await screen.findByText('The file changed on disk. Save again to overwrite.')).toBeTruthy()
     expect(writeFile).not.toHaveBeenCalled()
-    expect((screen.getByLabelText('a.ts') as HTMLTextAreaElement).value).toBe('mine')
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    expect(screen.getByLabelText<HTMLTextAreaElement>('a.ts').value).toBe('mine')
+    fireEvent.click(screen.getByRole<HTMLButtonElement>('button', { name: 'Save' }))
     await waitFor(() => {
       expect(writeFile).toHaveBeenCalledWith('/tmp/proj', 'a.ts', 'mine')
     })
@@ -1950,14 +1950,14 @@ describe('FilePreview', () => {
     )
     const { rerender } = render(preview(false))
     expect(await screen.findByLabelText('a.ts')).toBeTruthy()
-    expect((screen.getByLabelText('a.ts') as HTMLTextAreaElement).value).toBe('edited')
+    expect(screen.getByLabelText<HTMLTextAreaElement>('a.ts').value).toBe('edited')
     expect(reads).toEqual([])
     disk = 'v2'
     rerender(preview(false))
     expect(reads).toEqual([])
     rerender(preview(true))
     await waitFor(() => { expect(reads).toEqual(['v2']) })
-    expect((screen.getByLabelText('a.ts') as HTMLTextAreaElement).value).toBe('edited')
+    expect(screen.getByLabelText<HTMLTextAreaElement>('a.ts').value).toBe('edited')
     expect(buffer.text).toBe('v2')
     expect(buffer.draft).toBe('edited')
   })
@@ -2098,7 +2098,7 @@ describe('FilePreview', () => {
     const editor = await screen.findByLabelText('a.ts')
     fireEvent.change(editor, { target: { value: 'mine' } })
     disk = 'theirs'
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    fireEvent.click(screen.getByRole<HTMLButtonElement>('button', { name: 'Save' }))
     expect(await screen.findByText('The file changed on disk. Save again to overwrite.')).toBeTruthy()
     expect(writeFile).not.toHaveBeenCalled()
     unmount()
@@ -2197,7 +2197,7 @@ describe('FilePreview', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Rendered' }))
     fireEvent.click(await screen.findByRole('checkbox'))
     fireEvent.click(screen.getByRole('button', { name: 'Source' }))
-    expect((await screen.findByLabelText('todo.md') as HTMLTextAreaElement).value).toBe('- [x] milk')
+    expect((await screen.findByLabelText<HTMLTextAreaElement>('todo.md')).value).toBe('- [x] milk')
   })
 
   it('shows project and directory crumbs in the toolbar', async () => {
@@ -2342,6 +2342,7 @@ describe('FilePreview', () => {
       left: 0,
       toJSON: () => ({}),
     }
+    // oxlint-disable-next-line typescript/unbound-method -- restores the native rect getter captured before the override
     const originalRect = HTMLTextAreaElement.prototype.getBoundingClientRect
     HTMLTextAreaElement.prototype.getBoundingClientRect = () => rect
     Object.defineProperty(HTMLTextAreaElement.prototype, 'clientHeight', {
@@ -2359,7 +2360,8 @@ describe('FilePreview', () => {
       return new Proxy(style, {
         get(target, prop, receiver) {
           if (prop === 'lineHeight') return '20px'
-          return Reflect.get(target, prop, receiver)
+          const value: unknown = Reflect.get(target, prop, receiver)
+          return value
         },
       })
     })
@@ -2420,6 +2422,7 @@ describe('FilePreview', () => {
       left: 0,
       toJSON: () => ({}),
     }
+    // oxlint-disable-next-line typescript/unbound-method -- restores the native rect getter captured before the override
     const originalRect = HTMLTextAreaElement.prototype.getBoundingClientRect
     HTMLTextAreaElement.prototype.getBoundingClientRect = () => rect
     Object.defineProperty(HTMLTextAreaElement.prototype, 'clientHeight', {
@@ -2437,7 +2440,8 @@ describe('FilePreview', () => {
       return new Proxy(style, {
         get(target, prop, receiver) {
           if (prop === 'lineHeight') return '20px'
-          return Reflect.get(target, prop, receiver)
+          const value: unknown = Reflect.get(target, prop, receiver)
+          return value
         },
       })
     })

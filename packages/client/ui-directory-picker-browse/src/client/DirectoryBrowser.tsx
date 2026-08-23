@@ -126,11 +126,16 @@ function isVolumeRoot(path: string): boolean {
 /**
  * The listing's platform separator, inferred from the home path the host
  * stamped — never from typed text or entry paths, where a backslash is a
- * legal POSIX name character. Still a heuristic at the last step: a POSIX
- * home directory whose own name contains a backslash would misread.
- * TODO: replace with a host-stamped `separator` field on the wire
- * DirectoryListing so the platform fact travels verbatim (the trade-off is
- * recorded in the directory-picker capability seam Agent Note).
+ * legal POSIX name character.
+ * TODO: the wire `DirectoryListing` (packages/host/apiproxy/src/api/host.ts,
+ * mirrored by packages/host/directory-picker) carries no platform fact, so
+ * this stays a heuristic until the host stamps a `separator: '\\' | '/'`
+ * field on every listing response. Failure mode today: a POSIX home
+ * directory whose own name contains a backslash (`/home/u\ser`) reads as
+ * Windows, so `draftDirectory`/`levelDirectory` treat every backslash in
+ * typed text as a separator and split paths the host would accept as single
+ * names. Adding the field is a wire change that must also update the
+ * directory-picker capability seam (trade-off recorded in its Agent Note).
  */
 function separatorOf(listing: DirectoryListing): '\\' | '/' {
   return listing.home.includes('\\') ? '\\' : '/'

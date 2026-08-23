@@ -42,7 +42,8 @@ describe('readPreviewAnnotationTheme', () => {
       return new Proxy(styles, {
         get(target, prop, receiver) {
           if (prop === 'colorScheme') return 'dark'
-          return Reflect.get(target, prop, receiver)
+          const value: unknown = Reflect.get(target, prop, receiver)
+          return value
         },
       })
     })
@@ -61,7 +62,8 @@ describe('readPreviewAnnotationTheme', () => {
           if (prop === 'getPropertyValue') {
             return (name: string) => target.getPropertyValue(name)
           }
-          return Reflect.get(target, prop, receiver)
+          const value: unknown = Reflect.get(target, prop, receiver)
+          return value
         },
       })
     })

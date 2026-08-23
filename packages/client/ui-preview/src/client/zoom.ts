@@ -11,10 +11,11 @@ export const ZOOM_EPSILON = 0.001
 
 function findZoomStep(current: number): number {
   const index = ZOOM_LEVELS.findIndex(
-    (level) => Math.abs(level - current) < ZOOM_EPSILON || level > current,
+    level => Math.abs(level - current) < ZOOM_EPSILON || level > current,
   )
   if (index < 0) return ZOOM_LEVELS.length - 1
-  return Math.abs(ZOOM_LEVELS[index]! - current) < ZOOM_EPSILON ? index : index - 1
+  const level = ZOOM_LEVELS[index]
+  return level !== undefined && Math.abs(level - current) < ZOOM_EPSILON ? index : index - 1
 }
 
 /**

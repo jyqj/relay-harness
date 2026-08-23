@@ -82,7 +82,7 @@ describe('browser recording', () => {
   beforeEach(() => {
     frameSubscription.listener = null
     vi.clearAllMocks()
-    vi.stubGlobal('MediaRecorder', FakeMediaRecorder as unknown as typeof MediaRecorder)
+    vi.stubGlobal('MediaRecorder', FakeMediaRecorder)
     class ImmediateImage {
       private loadListener: EventListenerOrEventListenerObject | undefined
 
@@ -96,7 +96,7 @@ describe('browser recording', () => {
         else this.loadListener?.handleEvent(event)
       }
     }
-    vi.stubGlobal('Image', ImmediateImage as unknown as typeof Image)
+    vi.stubGlobal('Image', ImmediateImage)
   })
 
   afterEach(() => {
@@ -113,6 +113,7 @@ describe('browser recording', () => {
       captureStream: () => ({}),
       getContext: () => ({ drawImage, fillRect, fillStyle: '' }),
     }
+    // oxlint-disable-next-line typescript/unbound-method, typescript/no-deprecated -- delegates non-canvas tags to the native factory
     const nativeCreateElement = Document.prototype.createElement
     vi.spyOn(document, 'createElement').mockImplementation(function createElement(
       this: Document,
@@ -133,8 +134,8 @@ describe('browser recording', () => {
     await stopBrowserRecording('pv-1')
     expect(previewStopRecording).toHaveBeenCalled()
     expect(previewSaveRecording).toHaveBeenCalledWith('pv-1', expect.objectContaining({
-      mimeType: expect.stringContaining('webm'),
-      data: expect.any(ArrayBuffer),
+      mimeType: expect.stringContaining('webm') as string,
+      data: expect.any(ArrayBuffer) as ArrayBuffer,
     }))
   })
 })

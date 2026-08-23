@@ -375,4 +375,55 @@ describe('Tooltip', () => {
     )
     expect(screen.queryByRole('tooltip')).toBeNull()
   })
+
+  it('dismisses the bubble on Escape while the anchor keeps focus, then reshows on refocus', () => {
+    render(
+      <Tooltip label="Dismissable">
+        <button type="button">anchor</button>
+      </Tooltip>,
+    )
+    const anchor = screen.getByText('anchor')
+    fireEvent.focus(anchor)
+    expect(screen.getByRole('tooltip')).toBeTruthy()
+    fireEvent.keyDown(anchor, { key: 'Escape' })
+    expect(screen.queryByRole('tooltip')).toBeNull()
+    // Escape dismisses, not suppresses: the next focus edge (or hover) shows
+    // the bubble again.
+    fireEvent.focus(anchor)
+    expect(screen.getByRole('tooltip')).toBeTruthy()
+  })
+
+  it('cancels a pending delayed show when Escape arrives first', () => {
+    vi.useFakeTimers()
+    try {
+      render(
+        <Tooltip label="Timing details" delayMs={500}>
+          <button type="button">anchor</button>
+        </Tooltip>,
+      )
+      const anchor = screen.getByText('anchor')
+      fireEvent.mouseEnter(anchor)
+      act(() => { vi.advanceTimersByTime(250) })
+      fireEvent.keyDown(anchor, { key: 'Escape' })
+      act(() => { vi.advanceTimersByTime(500) })
+      expect(screen.queryByRole('tooltip')).toBeNull()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('chains the anchor\'s own keydown ahead of the Escape dismissal', () => {
+    const onKeyDown = vi.fn()
+    render(
+      <Tooltip label="Chained">
+        <button type="button" onKeyDown={onKeyDown}>anchor</button>
+      </Tooltip>,
+    )
+    const anchor = screen.getByText('anchor')
+    fireEvent.mouseEnter(anchor)
+    expect(screen.getByRole('tooltip')).toBeTruthy()
+    fireEvent.keyDown(anchor, { key: 'Escape' })
+    expect(onKeyDown).toHaveBeenCalledOnce()
+    expect(screen.queryByRole('tooltip')).toBeNull()
+  })
 })

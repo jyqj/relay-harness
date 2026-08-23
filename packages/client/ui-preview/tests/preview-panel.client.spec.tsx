@@ -246,7 +246,6 @@ async function openGuest(b: ReturnType<typeof mount>): Promise<void> {
 }
 
 class ResizeObserverStub {
-  constructor(_callback: ResizeObserverCallback) {}
   observe(): void {}
   disconnect(): void {}
   unobserve(): void {}
@@ -295,8 +294,9 @@ class ImmediateImage {
 
 beforeEach(() => {
   vi.stubGlobal('ResizeObserver', ResizeObserverStub)
-  vi.stubGlobal('MediaRecorder', FakeMediaRecorder as unknown as typeof MediaRecorder)
-  vi.stubGlobal('Image', ImmediateImage as unknown as typeof Image)
+  vi.stubGlobal('MediaRecorder', FakeMediaRecorder)
+  vi.stubGlobal('Image', ImmediateImage)
+  // oxlint-disable-next-line typescript/unbound-method, typescript/no-deprecated -- delegates non-canvas tags to the pre-spy native factory
   const nativeCreateElement = Document.prototype.createElement
   vi.spyOn(document, 'createElement').mockImplementation(function createElement(
     this: Document,
@@ -329,7 +329,7 @@ afterEach(() => {
 
 describe('PreviewPanel', () => {
   it('shows Chinese unavailable copy when preview IPC is absent', () => {
-    const zhT: PreviewPanelProps['t'] = key => {
+    const zhT: PreviewPanelProps['t'] = (key) => {
       const zh = {
         title: '\u6d4f\u89c8\u5668',
         unavailable: '\u6d4f\u89c8\u5668\u9884\u89c8\u4ec5\u5728\u684c\u9762\u5e94\u7528\u4e2d\u53ef\u7528\u3002',
@@ -400,7 +400,7 @@ describe('PreviewPanel', () => {
       canGoBack: true,
       canGoForward: false,
     })
-    expect((screen.getByRole('textbox', { name: 'Browser' }) as HTMLInputElement).value).toBe('http://127.0.0.1:3000')
+    expect(screen.getByRole<HTMLInputElement>('textbox', { name: 'Browser' }).value).toBe('http://127.0.0.1:3000')
     act(() => {
       send({
         ok: true,
@@ -410,8 +410,8 @@ describe('PreviewPanel', () => {
         canGoForward: false,
       })
     })
-    expect((screen.getByRole('textbox', { name: 'Browser' }) as HTMLInputElement).value).toBe('http://127.0.0.1:3000/app')
-    expect((screen.getByRole('button', { name: 'Back' }) as HTMLButtonElement).disabled).toBe(false)
+    expect(screen.getByRole<HTMLInputElement>('textbox', { name: 'Browser' }).value).toBe('http://127.0.0.1:3000/app')
+    expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Back' }).disabled).toBe(false)
   })
   it('opens https://example.com through previewOpen', async () => {
     const b = mount()
@@ -428,7 +428,7 @@ describe('PreviewPanel', () => {
   it('normalizes a bare public host then opens it', async () => {
     const b = mount()
     typeUrl('example.com')
-    expect((screen.getByRole('textbox', { name: 'Browser' }) as HTMLInputElement).value).toBe('example.com')
+    expect(screen.getByRole<HTMLInputElement>('textbox', { name: 'Browser' }).value).toBe('example.com')
     submitBar()
     await waitFor(() => {
       expect(b.previewOpen).toHaveBeenCalledWith(expect.objectContaining({
@@ -539,12 +539,12 @@ describe('PreviewPanel', () => {
 
   it('opens the typed URL in the system browser before a guest exists', () => {
     const b = mount()
-    expect((screen.getByRole('button', { name: 'Open in system browser' }) as HTMLButtonElement).disabled).toBe(true)
+    expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Open in system browser' }).disabled).toBe(true)
     typeUrl('http://127.0.0.1:3000')
-    fireEvent.click(screen.getByRole('button', { name: 'Open in system browser' }))
+    fireEvent.click(screen.getByRole<HTMLButtonElement>('button', { name: 'Open in system browser' }))
     expect(b.openExternal).toHaveBeenCalledWith('http://127.0.0.1:3000/')
     typeUrl('   ')
-    expect((screen.getByRole('button', { name: 'Open in system browser' }) as HTMLButtonElement).disabled).toBe(true)
+    expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Open in system browser' }).disabled).toBe(true)
     submitBar()
     expect(b.previewOpen).not.toHaveBeenCalled()
   })
@@ -573,7 +573,7 @@ describe('PreviewPanel', () => {
   it('drives back, forward, reload, and DevTools after a guest is open', async () => {
     const b = mount()
     await openGuest(b)
-    fireEvent.click(screen.getByRole('button', { name: 'Back' }))
+    fireEvent.click(screen.getByRole<HTMLButtonElement>('button', { name: 'Back' }))
     await waitFor(() => {
       expect(b.previewBack).toHaveBeenCalledWith('pv-1')
     })
@@ -581,12 +581,12 @@ describe('PreviewPanel', () => {
     await waitFor(() => {
       expect(b.previewForward).toHaveBeenCalledWith('pv-1')
     })
-    fireEvent.click(screen.getByRole('button', { name: 'Reload' }))
+    fireEvent.click(screen.getByRole<HTMLButtonElement>('button', { name: 'Reload' }))
     await waitFor(() => {
       expect(b.previewReload).toHaveBeenCalledWith('pv-1')
     })
     fireEvent.click(screen.getByRole('button', { name: 'More' }))
-    fireEvent.click(screen.getByRole('menuitem', { name: 'Developer tools' }))
+    fireEvent.click(screen.getByRole<HTMLButtonElement>('menuitem', { name: 'Developer tools' }))
     await waitFor(() => {
       expect(b.previewOpenDevTools).toHaveBeenCalledWith('pv-1')
     })
@@ -648,12 +648,12 @@ describe('PreviewPanel', () => {
     expect(input.placeholder).toBe('Search or enter URL')
     expect(input.value).toBe('')
     expect(screen.queryByRole('button', { name: 'Open' })).toBeNull()
-    expect(screen.getByRole('button', { name: 'Back' })).toBeTruthy()
+    expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Back' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Forward' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Reload' })).toBeTruthy()
+    expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Reload' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'More' })).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'More' }))
-    expect((screen.getByRole('menuitem', { name: 'Developer tools' }) as HTMLButtonElement).disabled).toBe(true)
+    expect(screen.getByRole<HTMLButtonElement>('menuitem', { name: 'Developer tools' }).disabled).toBe(true)
   })
 
   it('restores the committed URL on Escape and hides the guest while More is open', async () => {
@@ -821,7 +821,7 @@ describe('PreviewPanel', () => {
 
   it('disables reload and stop when no guest is open', () => {
     mount()
-    expect((screen.getByRole('button', { name: 'Reload' }) as HTMLButtonElement).disabled).toBe(true)
+    expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Reload' }).disabled).toBe(true)
   })
 
   it('keeps the guest hidden after PiP opens and More closes, then shows after PiP close', async () => {
@@ -970,7 +970,7 @@ describe('PreviewPanel', () => {
       expect(b.previewPickElement).toHaveBeenCalledWith('pv-1')
     })
     expect(b.previewSetAnnotationTheme).toHaveBeenCalledWith('pv-1', expect.objectContaining({
-      primary: expect.any(String),
+      primary: expect.any(String) as string,
     }))
     expect(JSON.stringify(b.previewSetAnnotationTheme.mock.calls[0]?.[1])).not.toMatch(
       new RegExp(`--${['t', '3'].join('')}-`),
@@ -1152,8 +1152,8 @@ describe('PreviewPanel', () => {
       expect(last.height).toBeLessThan(600)
     })
     expect(screen.getByRole('toolbar', { name: 'Device toolbar' })).toBeTruthy()
-    expect((screen.getByRole('spinbutton', { name: 'Viewport width' }) as HTMLInputElement).value).toBe('375')
-    expect((screen.getByRole('spinbutton', { name: 'Viewport height' }) as HTMLInputElement).value).toBe('667')
+    expect(screen.getByRole<HTMLInputElement>('spinbutton', { name: 'Viewport width' }).value).toBe('375')
+    expect(screen.getByRole<HTMLInputElement>('spinbutton', { name: 'Viewport height' }).value).toBe('667')
     expect(screen.getByText('iPhone SE')).toBeTruthy()
     expect(document.querySelector('[data-preset-id="iphone-se"]')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Rotate viewport' })).toBeTruthy()
@@ -1337,7 +1337,7 @@ describe('PreviewPanel', () => {
     await waitFor(() => {
       expect(b.previewNavigate).toHaveBeenCalled()
     })
-    fireEvent.click(screen.getByRole('button', { name: 'Reload' }))
+    fireEvent.click(screen.getByRole<HTMLButtonElement>('button', { name: 'Reload' }))
     await waitFor(() => {
       expect(b.previewReload).toHaveBeenCalledWith('pv-1')
     })

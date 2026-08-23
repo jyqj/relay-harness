@@ -46,6 +46,8 @@ describe('release families', () => {
 
     expect(members.some(member => member.directory.startsWith('packages/experimental/'))).toBe(false)
     expect(members.map(member => member.name)).not.toContain('@deepseek-ai/dsh-experimental-agent-team')
+    // The desktop app keeps its own installer version line outside this family.
+    expect(members.some(member => member.directory.startsWith('apps/desktop/'))).toBe(false)
   })
 
   it('bumps private dsh packages without adding release tags', () => {

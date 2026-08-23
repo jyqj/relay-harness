@@ -317,68 +317,68 @@ export function DiffPanel({
           <>
             {opError !== null ? <p className={css.opError} role="alert">{opError}</p> : null}
             {entries !== null ? (
-          <>
-            {truncated ? <p className={css.message}>{t('truncated')}</p> : null}
-            {staged.length === 0 && unstaged.length === 0 ? (
+              <>
+                {truncated ? <p className={css.message}>{t('truncated')}</p> : null}
+                {staged.length === 0 && unstaged.length === 0 ? (
+                  <p className={css.message}>{t('empty.changes')}</p>
+                ) : (
+                  <>
+                    {staged.length > 0 ? (
+                      <section>
+                        <h4 className={css.group}>{t('group.staged')}</h4>
+                        {staged.map(entry => fileRow(entry.path, (
+                          <button
+                            type="button"
+                            className={css.action}
+                            onClick={(event) => {
+                              event.stopPropagation()
+                              void runOp(gitUnstage, entry.path)
+                            }}
+                          >
+                            {t('unstage')}
+                          </button>
+                        )))}
+                      </section>
+                    ) : null}
+                    {unstaged.length > 0 ? (
+                      <section>
+                        <h4 className={css.group}>{t('group.unstaged')}</h4>
+                        {unstaged.map(entry => fileRow(entry.path, (
+                          <>
+                            <button
+                              type="button"
+                              className={css.action}
+                              onClick={(event) => {
+                                event.stopPropagation()
+                                void runOp(gitStage, entry.path)
+                              }}
+                            >
+                              {t('stage')}
+                            </button>
+                            <button
+                              type="button"
+                              className={css.action}
+                              onClick={(event) => {
+                                event.stopPropagation()
+                                setDiscardPath(entry.path)
+                              }}
+                            >
+                              {t('discard')}
+                            </button>
+                          </>
+                        )))}
+                      </section>
+                    ) : null}
+                  </>
+                )}
+              </>
+            ) : files.length === 0 ? (
               <p className={css.message}>{t('empty.changes')}</p>
             ) : (
               <>
-                {staged.length > 0 ? (
-                  <section>
-                    <h4 className={css.group}>{t('group.staged')}</h4>
-                    {staged.map(entry => fileRow(entry.path, (
-                      <button
-                        type="button"
-                        className={css.action}
-                        onClick={(event) => {
-                          event.stopPropagation()
-                          void runOp(gitUnstage, entry.path)
-                        }}
-                      >
-                        {t('unstage')}
-                      </button>
-                    )))}
-                  </section>
-                ) : null}
-                {unstaged.length > 0 ? (
-                  <section>
-                    <h4 className={css.group}>{t('group.unstaged')}</h4>
-                    {unstaged.map(entry => fileRow(entry.path, (
-                      <>
-                        <button
-                          type="button"
-                          className={css.action}
-                          onClick={(event) => {
-                            event.stopPropagation()
-                            void runOp(gitStage, entry.path)
-                          }}
-                        >
-                          {t('stage')}
-                        </button>
-                        <button
-                          type="button"
-                          className={css.action}
-                          onClick={(event) => {
-                            event.stopPropagation()
-                            setDiscardPath(entry.path)
-                          }}
-                        >
-                          {t('discard')}
-                        </button>
-                      </>
-                    )))}
-                  </section>
-                ) : null}
+                {truncated ? <p className={css.message}>{t('truncated')}</p> : null}
+                {files.map(file => fileRow(file.path, null))}
               </>
-            )}
-          </>
-        ) : files.length === 0 ? (
-          <p className={css.message}>{t('empty.changes')}</p>
-        ) : (
-          <>
-            {truncated ? <p className={css.message}>{t('truncated')}</p> : null}
-            {files.map(file => fileRow(file.path, null))}
-          </>
             )}
           </>
         )}

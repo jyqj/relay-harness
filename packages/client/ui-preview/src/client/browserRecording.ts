@@ -86,9 +86,9 @@ type BrowserRecordingLifecycle =
   | { readonly phase: 'starting' }
   | { readonly phase: 'recording' }
   | {
-      readonly phase: 'stopping'
-      readonly stopPromise: Promise<{ ok: boolean; path?: string; message?: string }>
-    }
+    readonly phase: 'stopping'
+    readonly stopPromise: Promise<{ ok: boolean; path?: string; message?: string }>
+  }
 
 interface ActiveRecording {
   readonly previewId: string
@@ -112,7 +112,7 @@ let unsubscribeFrames: (() => void) | null = null
 
 const preferredMimeType = (): string => {
   const candidates = ['video/webm', 'video/webm;codecs=vp9', 'video/mp4']
-  return candidates.find((candidate) => MediaRecorder.isTypeSupported(candidate)) ?? 'video/webm'
+  return candidates.find(candidate => MediaRecorder.isTypeSupported(candidate)) ?? 'video/webm'
 }
 
 const drawFrame = (frame: PreviewRecordingFrame): void => {
@@ -163,7 +163,7 @@ const drawFrame = (frame: PreviewRecordingFrame): void => {
 const stopMediaRecorder = async (recorder: MediaRecorder | null): Promise<void> => {
   if (!recorder || recorder.state === 'inactive') return
   const stopped = new Promise<void>((resolve) => {
-    recorder.addEventListener('stop', () => resolve(), { once: true })
+    recorder.addEventListener('stop', () =>{  resolve() }, { once: true })
   })
   recorder.stop()
   await stopped
@@ -181,19 +181,23 @@ const clearActiveRecording = (recording: ActiveRecording): void => {
 
 const waitForFirstFrameSize = async (recording: ActiveRecording): Promise<boolean> => {
   if (recording.frameSizeEstablished) return true
-  let timeout: ReturnType<typeof setTimeout> | null = null
+  // Cleared without a null test: the executor assigns the timer synchronously, and
+  // clearTimeout tolerates an unset handle.
+  let timeout: ReturnType<typeof setTimeout> | undefined
   const outcome = await Promise.race([
     recording.firstFrameSize,
     new Promise<'timeout'>((resolve) => {
-      timeout = setTimeout(() => resolve('timeout'), BROWSER_RECORDING_FIRST_FRAME_SIZE_TIMEOUT_MS)
+      timeout = setTimeout(() => { resolve('timeout') }, BROWSER_RECORDING_FIRST_FRAME_SIZE_TIMEOUT_MS)
     }),
   ])
-  if (timeout !== null) clearTimeout(timeout)
+  clearTimeout(timeout)
   return outcome === 'frame'
 }
 
 const waitForRecordingStartupToSettle = async (recording: ActiveRecording): Promise<void> => {
-  let timeout: ReturnType<typeof setTimeout> | null = null
+  // Cleared without a null test: the executor assigns the timer synchronously, and
+  // clearTimeout tolerates an unset handle.
+  let timeout: ReturnType<typeof setTimeout> | undefined
   try {
     await Promise.race([
       recording.startupSettled,
@@ -210,7 +214,7 @@ const waitForRecordingStartupToSettle = async (recording: ActiveRecording): Prom
       cause,
     })
   } finally {
-    if (timeout !== null) clearTimeout(timeout)
+    clearTimeout(timeout)
   }
 }
 
@@ -224,7 +228,6 @@ export async function startBrowserRecording(
   previewId: string,
   bridge: BrowserRecordingBridge,
 ): Promise<{ ok: boolean; message?: string }> {
-  if (!bridge) throw new BrowserRecordingUnavailableError(previewId)
   const activeRecording = activeRecordings.get(previewId)
   if (activeRecording) {
     if (activeRecording.lifecycle.phase === 'recording') return { ok: true }
@@ -254,7 +257,7 @@ export async function startBrowserRecording(
     chunks,
     startupSettled,
     firstFrameSize,
-    settleFirstFrameSize: (outcome) => settleFirstFrameSize?.(outcome),
+    settleFirstFrameSize: outcome => settleFirstFrameSize?.(outcome),
     recorder: null,
     mimeType: null,
     frameSizeEstablished: false,
@@ -276,8 +279,8 @@ export async function startBrowserRecording(
     }
     try {
       const started = await bridge.previewStartRecording(previewId)
-      if (!started?.ok) {
-        throw new Error(started?.message ?? 'start recording failed')
+      if (!started.ok) {
+        throw new Error(started.message ?? 'start recording failed')
       }
     } catch (cause) {
       clearActiveRecording(recording)
@@ -383,8 +386,8 @@ const finalizeBrowserRecording = async (
         mimeType: recording.mimeType,
         data: await blob.arrayBuffer(),
       })
-      if (!saved?.ok) {
-        throw new Error(saved?.message ?? 'save recording failed')
+      if (!saved.ok) {
+        throw new Error(saved.message ?? 'save recording failed')
       }
       return saved.path === undefined ? { ok: true } : { ok: true, path: saved.path }
     } catch (cause) {
@@ -415,7 +418,7 @@ export function stopBrowserRecording(
   const recording = activeRecordings.get(previewId)
   if (!recording) return Promise.resolve({ ok: true })
   if (recording.lifecycle.phase === 'stopping') return recording.lifecycle.stopPromise
-  const stopPromise = finalizeBrowserRecording(recording).catch((error) => {
+  const stopPromise = finalizeBrowserRecording(recording).catch((error: unknown) => {
     throw error
   })
   recording.lifecycle = { phase: 'stopping', stopPromise }

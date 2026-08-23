@@ -111,7 +111,7 @@ export function DeviceToolbar({
   }
 
   const updateCustomDimension = (axis: 'width' | 'height', value: string): void => {
-    setCustomSize(current => {
+    setCustomSize((current) => {
       const base = current === null
         ? { width: String(setting.width), height: String(setting.height) }
         : current
@@ -333,7 +333,7 @@ export function DeviceToolbar({
                 height: String(setting.height),
               })
             }}
-            onChange={event => { updateCustomDimension('width', event.target.value) }}
+            onChange={(event) => { updateCustomDimension('width', event.target.value) }}
             onBlur={applyCustomSize}
           />
           <span className={css.deviceTimes} aria-hidden="true">×</span>
@@ -352,7 +352,7 @@ export function DeviceToolbar({
                 height: String(setting.height),
               })
             }}
-            onChange={event => { updateCustomDimension('height', event.target.value) }}
+            onChange={(event) => { updateCustomDimension('height', event.target.value) }}
             onBlur={applyCustomSize}
           />
         </form>
@@ -376,8 +376,8 @@ export function DeviceToolbar({
           style={railStyle(entry.direction)}
           aria-label={t(entry.labelKey)}
           data-browser-viewport-rail={entry.direction}
-          onPointerDown={event => { onRailPointerDown(entry.direction, event) }}
-          onKeyDown={event => { onRailKeyDown(entry.direction, event) }}
+          onPointerDown={(event) => { onRailPointerDown(entry.direction, event) }}
+          onKeyDown={(event) => { onRailKeyDown(entry.direction, event) }}
         />
       ))}
     </>

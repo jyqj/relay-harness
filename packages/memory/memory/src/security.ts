@@ -1,4 +1,4 @@
-/** Shared conservative secret detection for memory admission and extraction. */
+/** Shared conservative admission guards for memory extraction and verified writes. */
 
 const SECRET_PATTERNS = [
   /-----BEGIN [A-Z ]*PRIVATE KEY-----/u,
@@ -13,4 +13,14 @@ const SECRET_PATTERNS = [
  */
 export function memoryContainsSecret(content: string): boolean {
   return SECRET_PATTERNS.some(pattern => pattern.test(content))
+}
+
+/**
+ * Whether one tool's successful results are derived memory/session state that
+ * must never verify a memory revision as fresh evidence.
+ * @param name - tool name from the `tool/call` event paired with the result.
+ * @returns whether the tool projects derived harness state rather than new observations.
+ */
+export function memoryExcludesDerivedTool(name: string): boolean {
+  return name.startsWith('memory_') || name.startsWith('session_') || name === 'skill'
 }

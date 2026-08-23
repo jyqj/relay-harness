@@ -205,7 +205,7 @@ export function PreviewPanel({
   zoomFactorRef.current = zoomFactor
 
   const rememberHostSize = (occupant: PreviewBounds): void => {
-    setHostSize(prev => {
+    setHostSize((prev) => {
       if (prev !== null && prev.width === occupant.width && prev.height === occupant.height) return prev
       return { width: occupant.width, height: occupant.height }
     })
@@ -471,7 +471,7 @@ export function PreviewPanel({
     }
     if (id === 'pick') {
       const theme = readPreviewAnnotationTheme()
-      void previewSetAnnotationTheme?.(previewId, theme)
+      void previewSetAnnotationTheme(previewId, theme)
       void previewPickElement(previewId).then((result) => {
         if (!result.ok) return
         const markdown = formatPickedAnnotationMarkdown(result)

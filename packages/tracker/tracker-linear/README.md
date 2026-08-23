@@ -2,7 +2,7 @@
 
 English | [中文](README.zh.md)
 
-Linear GraphQL provider for `ctx.trackers`. It pages project-scoped candidate reads, batches exact-id reconciliation reads, normalizes labels/blockers/assignee routing, and captures a host-executed `linear_graphql` tool. The Linear token stays in the provider closure; the binding declares token environment aliases for child-process scrubbing.
+Linear GraphQL provider for `ctx.trackers`. It pages project-scoped candidate reads, batches exact-id reconciliation reads, normalizes labels/blockers/assignee routing, and captures a host-executed `linear_graphql` tool. The Linear token stays in the provider closure; the binding's token environment aliases are declarative metadata — child-process scrubbing is the subprocess seam's generic credential-shaped parent scrub and does not read this list.
 
 ## Model Experience
 

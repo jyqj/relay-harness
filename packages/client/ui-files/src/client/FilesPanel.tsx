@@ -78,7 +78,7 @@ export function FilesPanel({
   const [copied, setCopied] = useState(false)
   const [generation, setGeneration] = useState(0)
   const [query, setQuery] = useState('')
-  const [editors, setEditors] = useState<readonly { id: string, label: string }[]>([])
+  const [editors, setEditors] = useState<readonly { id: string; label: string }[]>([])
 
   useEffect(() => {
     if (cwd === undefined) {
@@ -193,7 +193,7 @@ export function FilesPanel({
           value={query}
           placeholder={t('search')}
           aria-label={t('search')}
-          onChange={event => { setQuery(event.target.value) }}
+          onChange={(event) => { setQuery(event.target.value) }}
           onKeyDown={onSearchKey}
         />
         <Tooltip label={copied ? t('copied') : t('refresh')} side="bottom">

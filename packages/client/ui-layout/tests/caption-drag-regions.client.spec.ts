@@ -15,10 +15,10 @@ import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 
 /** Repo-relative posix path of a scanned stylesheet. */
-type CssFile = { path: string, text: string }
+type CssFile = { path: string; text: string }
 
 /** Innermost rule block; `@media` context is irrelevant to region geometry. */
-type CssBlock = { selector: string, body: string }
+type CssBlock = { selector: string; body: string }
 
 const repoRoot = fileURLToPath(new URL('../../../..', import.meta.url))
 

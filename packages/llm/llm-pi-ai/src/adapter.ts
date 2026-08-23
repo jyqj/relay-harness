@@ -177,7 +177,7 @@ function reasoningInfo(
     reasoning: {
       efforts: levels.map(level => ({
         id: ReasoningEffortId(level),
-        name: THINKING_LEVEL_LABEL[level] ?? `${level.charAt(0).toUpperCase()}${level.slice(1)}`,
+        name: THINKING_LEVEL_LABEL[level],
       })),
       ...defaultLevel === undefined ? {} : { defaultEffort: ReasoningEffortId(defaultLevel) },
     },

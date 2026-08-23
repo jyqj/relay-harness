@@ -40,7 +40,7 @@ interface DesktopPreviewShell {
   previewWorkspaceFile?: (input: {
     cwd: string
     relativePath: string
-  }) => Promise<{ ok?: boolean, url?: string } | null | undefined>
+  }) => Promise<{ ok?: boolean; url?: string } | null | undefined>
 }
 
 function currentCwd(useSessions: FilePreviewProps['useSessions']): string | undefined {
@@ -425,7 +425,7 @@ export function FilePreview({
   // Unmount/Discard must not flush. Hook destroy runs in declaration order, so
   // this empty-deps cleanup runs before dispose; relativePath change skips it.
   useEffect(() => () => {
-    persistContentsRef.current = async () => ({ ok: false })
+    persistContentsRef.current = () => Promise.resolve({ ok: false })
   }, [])
 
   const coordinatorRef = useRef<FileSaveCoordinator | null>(null)
@@ -447,7 +447,7 @@ export function FilePreview({
     }
   }, [relativePath])
 
-  const saveRef = useRef<() => Promise<boolean>>(async () => false)
+  const saveRef = useRef<() => Promise<boolean>>(() => Promise.resolve(false))
   const save = async (): Promise<boolean> => {
     if (cwd === undefined || !dirty) return false
     const result = await persistContents(cwd, relativePath, draftRef.current)
@@ -575,7 +575,6 @@ export function FilePreview({
               className={css.iconButton}
               aria-label={t('preview.browser')}
               onClick={() => {
-                if (cwd === undefined) return
                 void previewBrowserDocument(cwd, relativePath)
               }}
             >
@@ -588,7 +587,7 @@ export function FilePreview({
             <Button
               variant="ghost"
               size="sm"
-              onMouseDown={event => { event.preventDefault() }}
+              onMouseDown={(event) => { event.preventDefault() }}
               onClick={() => { addSelectionToChat(selectedLineRange) }}
             >
               {t('preview.comment')}
@@ -638,8 +637,8 @@ export function FilePreview({
                 className={clsx(css.editor, wordWrap && css.wrap)}
                 value={draft}
                 aria-label={relativePath}
-                onChange={event => { applyDraft(event.target.value) }}
-                onSelect={event => { syncTextareaSelection(event.currentTarget) }}
+                onChange={(event) => { applyDraft(event.target.value) }}
+                onSelect={(event) => { syncTextareaSelection(event.currentTarget) }}
               />
             )}
           </>

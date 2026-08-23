@@ -18,13 +18,13 @@ Issue automation is an optional Host subsystem that turns a provider-scoped trac
 
 ## Durable scheduling
 
-The issue-orchestrator storage domain is the single state owner. Dispatch first commits `claimed`, then prepares the workspace and starts the runner, then commits `running`. A failure commits `retrying` with the next attempt, due time, workspace, and bounded exponential-backoff error. A request that needs operator action commits `blocked` without a retry timer. Host startup converts interrupted `claimed` or `running` rows into immediate retries; it never presents an unknown process as resumed.
+The issue-orchestrator storage domain is the single state owner. Dispatch first commits `claimed`, then prepares the workspace and starts the runner, then commits `running`. A failure commits `retrying` with the next attempt, due time, workspace, and bounded exponential-backoff error. A request that needs operator action commits `blocked` without a retry timer. A completed run whose issue stays eligible requeues as a continuation: the attempt increments, the delay grows exponentially from `continuationRetryMs`, and the `maxContinuationAttempts` bound parks the issue in `blocked` state for operator review. Host startup converts interrupted `claimed` or `running` rows into immediate retries; it never presents an unknown process as resumed. Startup workspace cleanup touches only issues with a durable claim record, so a record-less tracker directory is never deleted and startup cost tracks locally claimed work, not the provider terminal backlog.
 
 Every tick reloads policy, reconciles running and blocked ids, checks last-progress silence, processes due retries, fetches candidates, sorts by provider priority and age, and revalidates each selected candidate by exact id before dispatch. Global and normalized per-state capacity count both claimed and running rows, so workspace setup cannot oversubscribe the limit.
 
 ## Linear Provider and operator UI
 
-The first Provider is Linear. Scheduler reads stay project-scoped and paginated; exact-id reads are batched. The captured `linear_graphql` tool executes on the Host with the captured token, while the binding declares token environment aliases for managed-child scrubbing. Its raw native reach is intentional; the repository Workflow owns allowed mutations and provider idempotency.
+The first Provider is Linear. Scheduler reads stay project-scoped and paginated; exact-id reads are batched. The captured `linear_graphql` tool executes on the Host with the captured token, while the binding's token environment aliases are declarative metadata: managed-child scrubbing is the subprocess seam's generic credential-shaped parent-environment scrub and does not consume this list. Its raw native reach is intentional; the repository Workflow owns allowed mutations and provider idempotency.
 
 The generated `issueOrchestration` Remote exposes snapshot and operator commands. The optional browser plugin subscribes to `issue-orchestration/changed`, refreshes one observable snapshot, and contributes a titlebar badge plus a running/retrying/blocked overlay. It changes no Session or model context.
 

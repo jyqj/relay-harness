@@ -12,6 +12,8 @@ import type { ObjectJsonSchema } from '@deepseek-ai/dsh-tools'
 
 const ISSUE_PAGE_SIZE = 50
 const DEFAULT_ENDPOINT = 'https://api.linear.app/graphql'
+const DEFAULT_TERMINAL_STATES: readonly string[] = ['Done', 'Closed', 'Cancelled', 'Canceled', 'Duplicate']
+const DEFAULT_BLOCK_NEW_STATES: readonly string[] = ['Todo']
 
 const ISSUE_FIELDS = `
   id identifier title description priority branchName url createdAt updatedAt
@@ -41,32 +43,44 @@ const VIEWER_QUERY = 'query DshLinearViewer { viewer { id } }'
 /** Linear endpoint, scope, routing, auth, and provider-name configuration. */
 export interface Config {
   /** Registry name used by workflow policy (default `linear`). */
-  readonly providerName?: string
+  readonly providerName: string
   /** HTTPS Linear GraphQL endpoint. */
-  readonly endpoint?: string
+  readonly endpoint: string
   /** Optional literal API key; prefer `apiKeyEnv` for repository-owned composition. */
   readonly apiKey?: string
   /** Host environment variable carrying the API key (default `LINEAR_API_KEY`). */
-  readonly apiKeyEnv?: string
+  readonly apiKeyEnv: string
   /** Linear project slug that scopes every scheduler read. */
   readonly projectSlug: string
   /** Optional assignee id or `me` routing filter. */
   readonly assignee?: string
   /** States treated as terminal when evaluating blockers. */
-  readonly terminalStates?: string[]
+  readonly terminalStates: string[]
   /** New-work states whose non-terminal blockers prevent dispatch. */
+  readonly blockNewStates: string[]
+}
+
+/** Input accepted by {@link Config}; schema defaults fill the omitted fields. */
+export interface ConfigInput {
+  readonly providerName?: string
+  readonly endpoint?: string
+  readonly apiKey?: string
+  readonly apiKeyEnv?: string
+  readonly projectSlug: string
+  readonly assignee?: string
+  readonly terminalStates?: string[]
   readonly blockNewStates?: string[]
 }
 
-export const Config: z<Config> = z.object({
+export const Config: z<ConfigInput, Config> = z.object({
   providerName: z.string().default('linear'),
   endpoint: z.string().default(DEFAULT_ENDPOINT),
   apiKey: z.string().role('secret'),
   apiKeyEnv: z.string().default('LINEAR_API_KEY'),
   projectSlug: z.string(),
   assignee: z.string(),
-  terminalStates: z.array(z.string()).default(['Done', 'Closed', 'Cancelled', 'Canceled', 'Duplicate']),
-  blockNewStates: z.array(z.string()).default(['Todo']),
+  terminalStates: z.array(z.string()).default([...DEFAULT_TERMINAL_STATES]),
+  blockNewStates: z.array(z.string()).default([...DEFAULT_BLOCK_NEW_STATES]),
 })
 
 interface ResolvedConfig {
@@ -172,7 +186,8 @@ export class LinearTrackerProvider implements TrackerProvider {
         first: batch.length,
         relationFirst: ISSUE_PAGE_SIZE,
       }, signal)
-      const nodes = arrayAt(body, 'data', 'issues', 'nodes')
+      const nodes = object(object(object(body, 'response').data, 'data').issues, 'issues').nodes
+      if (!Array.isArray(nodes)) throw new Error('Linear issues nodes must be an array')
       for (const node of nodes) {
         const issue = this.normalizeIssue(node, assignee, true)
         if (issue === undefined) throw new Error('Linear returned a malformed issue during id refresh')
@@ -324,24 +339,21 @@ export class LinearTrackerProvider implements TrackerProvider {
 export const name = 'tracker-linear'
 export const inject = ['trackers']
 
-/** Register one fully resolved Linear provider. */
+/** Register one fully resolved Linear provider; the schema supplies every defaulted field. */
 export function apply(ctx: Context, config: Config): void {
-  const providerName = config.providerName ?? 'linear'
-  const endpoint = config.endpoint ?? DEFAULT_ENDPOINT
-  const apiKeyEnv = config.apiKeyEnv ?? 'LINEAR_API_KEY'
-  const apiKey = config.apiKey ?? process.env[apiKeyEnv]
-  if (providerName.trim().length === 0) throw new Error('tracker-linear: providerName must be non-blank')
-  if (!URL.canParse(endpoint) || new URL(endpoint).protocol !== 'https:') throw new Error('tracker-linear: endpoint must be HTTPS')
-  if (apiKey === undefined || apiKey.trim().length === 0) throw new Error(`tracker-linear: missing API key (${apiKeyEnv})`)
+  const apiKey = config.apiKey ?? process.env[config.apiKeyEnv]
+  if (config.providerName.trim().length === 0) throw new Error('tracker-linear: providerName must be non-blank')
+  if (!URL.canParse(config.endpoint) || new URL(config.endpoint).protocol !== 'https:') throw new Error('tracker-linear: endpoint must be HTTPS')
+  if (apiKey === undefined || apiKey.trim().length === 0) throw new Error(`tracker-linear: missing API key (${config.apiKeyEnv})`)
   if (config.projectSlug.trim().length === 0) throw new Error('tracker-linear: projectSlug must be non-blank')
   ctx.trackers.register(new LinearTrackerProvider({
-    providerName,
-    endpoint,
+    providerName: config.providerName,
+    endpoint: config.endpoint,
     apiKey,
-    apiKeyEnv,
+    apiKeyEnv: config.apiKeyEnv,
     projectSlug: config.projectSlug,
     ...(config.assignee === undefined ? {} : { assignee: config.assignee.trim() }),
-    terminalStates: config.terminalStates ?? ['Done', 'Closed', 'Cancelled', 'Canceled', 'Duplicate'],
-    blockNewStates: config.blockNewStates ?? ['Todo'],
+    terminalStates: config.terminalStates,
+    blockNewStates: config.blockNewStates,
   }))
 }

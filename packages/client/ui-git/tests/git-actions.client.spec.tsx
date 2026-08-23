@@ -714,7 +714,7 @@ describe('GitActionsControl', () => {
       _message: string,
       _filePaths: readonly string[] | undefined,
       _actionId: number | undefined,
-      _options?: { featureBranch?: boolean } | undefined,
+      _options?: { featureBranch?: boolean }  ,
     ) => new Promise<{ ok: boolean }>((resolve) => {
       finish = resolve
     }))
@@ -880,6 +880,7 @@ describe('GitActionsControl', () => {
     mount({
       cwd: '/work',
       git: status(),
+      // oxlint-disable-next-line typescript/unbound-method -- snapshot store methods do not read `this`
       useTitlebarGit: sel => useSyncExternalStore(titlebarGit.subscribe, () => sel(titlebarGit.getSnapshot())),
     })
     expect(await screen.findByRole('button', { name: 'Commit' })).toBeTruthy()
@@ -899,6 +900,7 @@ describe('GitActionsControl', () => {
       cwd: '/work',
       git: status({ isRepo: false, refName: null, hasPrimaryRemote: false }),
       gitInit,
+      // oxlint-disable-next-line typescript/unbound-method -- snapshot store methods do not read `this`
       useTitlebarGit: sel => useSyncExternalStore(titlebarGit.subscribe, () => sel(titlebarGit.getSnapshot())),
     })
     fireEvent.click(await screen.findByRole('button', { name: 'Initialize Git' }))
@@ -918,6 +920,7 @@ describe('GitActionsControl', () => {
         hasWorkingTreeChanges: true,
         workingTree: filesTree([{ path: 'a.ts', insertions: 1, deletions: 0 }]),
       })),
+      // oxlint-disable-next-line typescript/unbound-method -- snapshot store methods do not read `this`
       useTitlebarGit: sel => useSyncExternalStore(titlebarGit.subscribe, () => sel(titlebarGit.getSnapshot())),
     })
     fireEvent.click(await screen.findByRole('button', { name: 'Git actions' }))

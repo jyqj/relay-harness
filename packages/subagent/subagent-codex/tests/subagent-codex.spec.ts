@@ -2194,11 +2194,14 @@ describe('run lifecycle and quiescence', () => {
 
     const invalidCwdAbort = new AbortController()
     invalidCwdAbort.abort(new Error('cancel invalid cwd startup'))
+    // Root-tree admission rejects an already-aborted signal with the caller's
+    // own reason before the provider runs, so the provider's pre-startup guard
+    // is unreachable from this side.
     await expect(ctx.subagents.start('codex-diagnostic', {
       prompt: [{ type: 'text', text: 'task' }],
       parent: invalidCwdParent,
       signal: invalidCwdAbort.signal,
-    })).rejects.toThrow('aborted before app-server startup')
+    })).rejects.toThrow('cancel invalid cwd startup')
     expect(spawn).not.toHaveBeenCalled()
 
     const starting = ctx.subagents.start('codex-diagnostic', {

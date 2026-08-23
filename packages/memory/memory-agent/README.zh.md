@@ -14,7 +14,7 @@ Consumer 会保留 prepared handle，直到持久的最终 `turn/end`。complete
 | `agentId` | `deepseek-harness` | 跨会话共享的稳定 Agent Scope。 |
 | `workspaceId` | 会话 cwd，其次 `global` | 可选的显式稳定工作区 Scope。 |
 | `candidateLimit` | `10` | 装入前的 Provider 候选数。 |
-| `maxContextChars` | `3200` | 包含安全框架的完整召回消息上限。 |
+| `maxContextChars` | `3200` | 包含安全框架的完整召回消息上限，以 Unicode code point 计。 |
 | `includeSubagents` | `false` | delegated 会话是否接收召回。 |
 
 ## 模型体验
@@ -27,7 +27,7 @@ Consumer 会保留 prepared handle，直到持久的最终 `turn/end`。complete
 
 #### Token 影响
 
-有条件且受限。没有 active 候选可装入时不增加消息；否则完整召回消息最多为 `maxContextChars` 个字符，并保留到 compaction 替换它为止。
+有条件且受限。没有 active 候选可装入时不增加消息；否则完整召回消息最多为 `maxContextChars` 个 Unicode code point，并保留到 compaction 替换它为止。
 
 #### KV 缓存影响
 

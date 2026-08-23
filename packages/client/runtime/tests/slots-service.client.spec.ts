@@ -132,16 +132,16 @@ describe('load-time validation', () => {
 
   it('require() passes for a declared slot, including the built-in root', async () => {
     const bench = await boot()
-    expect(() => bench.svc.require('root')).not.toThrow()
+    expect(() =>{  bench.svc.require('root') }).not.toThrow()
     bench.erased.register({
       name: 'root', children: { 't.host': { kind: 'single', scope: 'root' } },
     }, C)
-    expect(() => bench.svc.require('t.host')).not.toThrow()
+    expect(() =>{  bench.svc.require('t.host') }).not.toThrow()
   })
 
   it('require() throws synchronously for an undeclared slot', async () => {
     const bench = await boot()
-    expect(() => bench.svc.require('t.host')).toThrow(/slot "t.host" is not declared/)
+    expect(() =>{  bench.svc.require('t.host') }).toThrow(/slot "t.host" is not declared/)
   })
 
   it('require() sees declaration collapse immediately', async () => {
@@ -149,9 +149,9 @@ describe('load-time validation', () => {
     const disposeFrame = bench.erased.register({
       name: 'root', children: { 't.host': { kind: 'single', scope: 'root' } },
     }, C)
-    expect(() => bench.svc.require('t.host')).not.toThrow()
+    expect(() =>{  bench.svc.require('t.host') }).not.toThrow()
     disposeFrame()
-    expect(() => bench.svc.require('t.host')).toThrow(/slot "t.host" is not declared/)
+    expect(() =>{  bench.svc.require('t.host') }).toThrow(/slot "t.host" is not declared/)
   })
 
   it('throws on a duplicate declaration, naming the slot and the prior declarant', async () => {

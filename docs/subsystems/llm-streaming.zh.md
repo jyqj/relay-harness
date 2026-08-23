@@ -917,7 +917,7 @@ async rewriteMessages( session: Session, route: { provider: string; model: strin
 
 Types: [Session](session.md)
 
-Source: [`packages/llm/llm-vision-fallback/src/index.ts:130`](../../packages/llm/llm-vision-fallback/src/index.ts)
+Source: [`packages/llm/llm-vision-fallback/src/index.ts:131`](../../packages/llm/llm-vision-fallback/src/index.ts)
 
 <a id="llm-events"></a>
 

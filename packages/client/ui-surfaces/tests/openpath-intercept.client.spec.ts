@@ -67,8 +67,10 @@ describe('wrapOpenPath', () => {
       currentSessionId: () => 'sess-1',
       openInSurfaces: () => true,
     })
+    // oxlint-disable-next-line typescript/unbound-method -- identity assertions on a vi.fn mock with no `this`
     expect(workspaces.openPath).not.toBe(original)
     dispose()
+    // oxlint-disable-next-line typescript/unbound-method -- identity assertions on a vi.fn mock with no `this`
     expect(workspaces.openPath).toBe(original)
     await workspaces.openPath('/tmp/proj/a.ts')
     expect(original).toHaveBeenCalledOnce()
@@ -82,6 +84,7 @@ describe('wrapOpenPath', () => {
       currentSessionId: () => 'sess-1',
       openInSurfaces: () => true,
     })
+    // oxlint-disable-next-line typescript/unbound-method -- identity assertions on a vi.fn mock with no `this`
     const innerFn = workspaces.openPath
     const outerOpened = vi.fn(() => true)
     const outer = wrapOpenPath(workspaces, {
@@ -92,8 +95,10 @@ describe('wrapOpenPath', () => {
     await workspaces.openPath('/tmp/a.ts')
     expect(outerOpened).toHaveBeenCalledOnce()
     outer()
+    // oxlint-disable-next-line typescript/unbound-method -- identity assertions on a vi.fn mock with no `this`
     expect(workspaces.openPath).toBe(innerFn)
     inner()
+    // oxlint-disable-next-line typescript/unbound-method -- identity assertions on a vi.fn mock with no `this`
     expect(workspaces.openPath).toBe(original)
   })
 
@@ -116,6 +121,7 @@ describe('wrapOpenPath', () => {
     await workspaces.openPath('/tmp/a.ts')
     expect(outerOpened).toHaveBeenCalledOnce()
     expect(innerOpened).not.toHaveBeenCalled()
+    // oxlint-disable-next-line typescript/unbound-method -- identity assertions on a vi.fn mock with no `this`
     expect(workspaces.openPath).not.toBe(original)
   })
 

@@ -99,7 +99,7 @@ describe('web e2e: post-merge assembled desktop UI', () => {
     onTestFailed(() => saveFailureShot(page, 'web-e2e-post-merge-frame'))
     const frame = page.locator('[class*="frame"]').first()
     await frame.waitFor({ timeout: 15_000 })
-    const columnCount = await frame.evaluate((el) => getComputedStyle(el).gridTemplateColumns.trim().split(/\s+/).length)
+    const columnCount = await frame.evaluate(el => getComputedStyle(el).gridTemplateColumns.trim().split(/\s+/).length)
     expect(columnCount).toBe(4)
 
     const composer = page.locator('[data-composer-card]')

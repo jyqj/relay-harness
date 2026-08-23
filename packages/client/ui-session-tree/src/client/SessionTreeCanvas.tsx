@@ -1,5 +1,5 @@
 import {
-  useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent,
+  useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent,
 } from 'react'
 import type { HistoryEntry, SessionId, WorkspaceId } from '@deepseek-ai/dsh-client-connection/client'
 import type {
@@ -7,7 +7,7 @@ import type {
 } from '@deepseek-ai/dsh-client-ui-slots'
 import type { SnapshotStore } from '@deepseek-ai/dsh-client-runtime/client'
 import {
-  buildSessionTreeGraph, currentPathCuts, sessionIdsForAnchor, visibleSessionTreeGraph,
+  buildSessionTreeGraph, currentPathCuts, sessionIdsForAnchor, sessionOfCardId, visibleSessionTreeGraph,
   type SessionTreeCard,
 } from './model.ts'
 import type { SessionTreeOpenState } from './controller.ts'
@@ -43,6 +43,9 @@ function boundedZoom(value: number): number {
   return Math.min(4, Math.max(0.35, Math.round(value * 100) / 100))
 }
 
+/** Upper bound on concurrent per-Session history fetches while progressive loading drains its queue. */
+const HISTORY_LOAD_CONCURRENCY = 4
+
 function connector(from: SessionTreeCard, to: SessionTreeCard): string {
   const x1 = from.position.x + 300
   const y1 = from.position.y + 112
@@ -62,7 +65,7 @@ export function SessionTreeCanvas({
   const workspaces = useWorkspaces(value => value)
   const tree = useStore(value => value)
   const [histories, setHistories] = useState<Record<string, readonly HistoryEntry[]>>({})
-  const [loading, setLoading] = useState(false)
+  const [loadingCount, setLoadingCount] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [draft, setDraft] = useState('')
   const [dragPreview, setDragPreview] = useState<{ id: string; x: number; y: number } | null>(null)
@@ -73,6 +76,8 @@ export function SessionTreeCanvas({
   const closeTreeRef = useRef(closeTree)
   loadHistoryRef.current = loadHistory
   closeTreeRef.current = closeTree
+  const historiesRef = useRef(histories)
+  historiesRef.current = histories
   const anchorSessionId = openState.anchorSessionId ?? sessions.current
   const sessionIds = useMemo(() => anchorSessionId === undefined
     ? []
@@ -82,19 +87,56 @@ export function SessionTreeCanvas({
     return `${id}:${value?.updatedAt ?? 0}:${value?.running ? 1 : 0}:${value?.seedLength ?? ''}`
   }).join('|')
 
+  // Progressive history loading: lineage (parentId, seedLength) travels in the
+  // Session list metadata, so the graph renders complete structure from stub
+  // cards and a Session's full history is fetched only once the operator
+  // selects one of its cards. A revision change (appended events, a running
+  // toggle) refreshes the already-loaded share without fetching anything new,
+  // and closing the overlay aborts every in-flight read on the wire.
+  const historyQueueRef = useRef<SessionId[]>([])
+  const historyInflightRef = useRef<Set<SessionId>>(new Set())
+  const historyActiveRef = useRef(0)
+  const historyControllerRef = useRef<AbortController | null>(null)
+  const pumpHistoryQueue = useCallback((): void => {
+    for (;;) {
+      const controller = historyControllerRef.current
+      if (controller === null) return
+      if (historyActiveRef.current >= HISTORY_LOAD_CONCURRENCY) return
+      const next = historyQueueRef.current.shift()
+      if (next === undefined) return
+      historyActiveRef.current += 1
+      setLoadingCount(historyActiveRef.current)
+      loadHistoryRef.current(next, controller.signal).then(
+        (entries) => {
+          if (!controller.signal.aborted) setHistories(prev => ({ ...prev, [next]: entries }))
+        },
+        (reason: unknown) => {
+          if (!controller.signal.aborted) setError(reason instanceof Error ? reason.message : String(reason))
+        },
+      ).finally(() => {
+        historyInflightRef.current.delete(next)
+        historyActiveRef.current -= 1
+        setLoadingCount(historyActiveRef.current)
+        pumpHistoryQueue()
+      })
+    }
+  }, [])
+  const requestSessionHistory = useCallback((sessionId: SessionId): void => {
+    if (sessionId in historiesRef.current || historyInflightRef.current.has(sessionId)) return
+    historyInflightRef.current.add(sessionId)
+    historyQueueRef.current.push(sessionId)
+    pumpHistoryQueue()
+  }, [pumpHistoryQueue])
+
   useEffect(() => {
-    if (!openState.open || sessionIds.length === 0) return
+    if (!openState.open) return
     const controller = new AbortController()
-    setLoading(true)
+    historyControllerRef.current = controller
+    const loaded = Object.keys(historiesRef.current).filter(id => sessionIds.includes(id as SessionId)) as SessionId[]
+    historyQueueRef.current = loaded
+    historyInflightRef.current = new Set(loaded)
     setError(null)
-    Promise.all(sessionIds.map(async id => [id, await loadHistoryRef.current(id, controller.signal)] as const))
-      .then((entries) => {
-        if (!controller.signal.aborted) setHistories(Object.fromEntries(entries))
-      })
-      .catch((reason: unknown) => {
-        if (!controller.signal.aborted) setError(reason instanceof Error ? reason.message : String(reason))
-      })
-      .finally(() => { if (!controller.signal.aborted) setLoading(false) })
+    pumpHistoryQueue()
     return () => { controller.abort() }
   }, [openState.open, revision])
 
@@ -108,12 +150,29 @@ export function SessionTreeCanvas({
     filterMode: tree.filterMode,
     query: tree.query,
   }), [completeGraph, tree.collapsed, tree.filterMode, tree.labels, tree.query])
-  const validCardIds = completeGraph.cards.map(card => card.id).join('\u0000')
-  const historiesComplete = sessionIds.every(id => histories[id] !== undefined)
+  // Prune keeps persisted presentation state for existing cards plus, while a
+  // listed Session's history has not loaded yet, that Session's older turn-card
+  // entries — loading it later must not lose saved positions, labels, and
+  // collapse choices.
+  const pruneIds = useMemo(() => {
+    const ids = new Set(completeGraph.cards.map(card => card.id))
+    const pending = new Set(sessionIds.filter(id => histories[id] === undefined))
+    if (pending.size > 0) {
+      for (const key of [
+        ...Object.keys(tree.positions),
+        ...Object.keys(tree.collapsed),
+        ...Object.keys(tree.labels),
+      ]) {
+        const owner = sessionOfCardId(key)
+        if (owner !== undefined && pending.has(owner)) ids.add(key)
+      }
+    }
+    return [...ids]
+  }, [completeGraph, histories, sessionIds, tree.collapsed, tree.labels, tree.positions])
+  const validCardIds = pruneIds.join('\u0000')
   useEffect(() => {
-    if (!historiesComplete) return
-    actions.prune(completeGraph.cards.map(card => card.id))
-  }, [historiesComplete, validCardIds])
+    actions.prune(pruneIds)
+  }, [validCardIds])
   const selected = completeGraph.cards.find(card => card.id === tree.selectedCardId) ?? null
   const pathCuts = useMemo(() => currentPathCuts(sessions), [sessions])
   const onCurrentPath = (card: SessionTreeCard): boolean => {
@@ -255,7 +314,7 @@ export function SessionTreeCanvas({
         <button type="button" className={css.primary} onClick={closeTree}>{t('conversation')}</button>
       </header>
       {error !== null && <div className={css.error} role="alert">{error}<button type="button" onClick={() => { setError(null) }}>×</button></div>}
-      {loading && <div className={css.loading}>{t('loading')}</div>}
+      {loadingCount > 0 && <div className={css.loading}>{t('loading')}</div>}
       <div
         ref={viewportRef}
         className={css.viewport}
@@ -269,7 +328,7 @@ export function SessionTreeCanvas({
           zoomAtCenter(event.deltaY > 0 ? -0.1 : 0.1)
         }}
       >
-        {displayedCards.length === 0 && !loading && <div className={css.empty}>{t('empty')}</div>}
+        {displayedCards.length === 0 && loadingCount === 0 && <div className={css.empty}>{t('empty')}</div>}
         <div className={css.world} style={{ transform: `translate(${camera.x}px, ${camera.y}px) scale(${camera.zoom})` }}>
           <svg className={css.connectors} aria-hidden="true">
             {graph.edges.map((edge) => {
@@ -300,7 +359,7 @@ export function SessionTreeCanvas({
                 data-current={current || undefined}
                 data-current-path={onCurrentPath(card) || undefined}
                 style={{ left: card.position.x, top: card.position.y }}
-                onClick={() => { actions.selectCard(card.id) }}
+                onClick={() => { actions.selectCard(card.id); requestSessionHistory(card.sessionId) }}
               >
                 <button className={css.dragHandle} type="button" onPointerDown={(event) => { beginCardDrag(event, card) }} aria-label={t('moveCard')}>•••</button>
                 <div className={css.cardHead}>

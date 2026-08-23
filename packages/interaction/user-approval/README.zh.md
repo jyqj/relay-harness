@@ -18,7 +18,7 @@
 
 #### 模型看到的内容
 
-首次请求和有效策略每次变化时，都会在保留的历史后追加一份完整运行时上下文快照。在 `ask` 下，审批上下文内容会说明系统可以咨询已配置的应答者，缺少可用应答者时则以拒绝方式关闭。在 `never` 下，它会说明确定性的拒绝与非升权后果。未变化的请求会保留先前快照，不增加另一条消息。
+首次请求和有效策略每次变化时，都会在保留的历史后追加一份完整运行时上下文快照。在 `ask` 下，审批上下文内容会说明系统可以咨询已配置的应答者，缺少可用应答者时则以拒绝方式关闭。在 `never` 下，它会说明完全访问操作无需审批，任何剩余审批请求都会被拒绝。未变化的请求会保留先前快照，不增加另一条消息。
 
 ##### Ask 策略贡献
 
@@ -29,7 +29,7 @@ Approval policy: ask. Operations that require approval may ask through the confi
 ##### Never 策略贡献
 
 ```markdown
-Approval prompts are disabled in this session: actions that require approval are rejected automatically — do not request sandbox escalation (do not set `sandbox_permissions`).
+Approval prompts are disabled in this session. Full-access operations run without approval; operations that still require approval are rejected automatically.
 ```
 
 #### Token 影响

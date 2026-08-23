@@ -83,7 +83,7 @@ export function WallpaperGalleryModal({
             <p className={css.hint}>{t('wallpaper.galleryEmpty')}</p>
           ) : (
             <div className={css.galleryGrid}>
-              {items.map((item) => (
+              {items.map(item => (
                 <button
                   key={`${item.source}:${item.id}`}
                   type="button"

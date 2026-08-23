@@ -7,7 +7,7 @@
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import type { Agent } from '@deepseek-ai/dsh-agent'
-import { MemoryId } from '@deepseek-ai/dsh-memory'
+import { MemoryId, memoryExcludesDerivedTool } from '@deepseek-ai/dsh-memory'
 import type {
   MemoryEvidence,
   MemoryScope,
@@ -243,6 +243,8 @@ function verifiedEvidence(
   quote: string,
 ): { trust: Exclude<MemoryTrust, 'agent-proposed' | 'external'>; evidence: MemoryEvidence } {
   const normalized = requireText('evidence_quote', quote)
+  const toolNames = new Map(agent.session.events.flatMap(event =>
+    event.type === 'tool/call' ? [[event.data.callId, event.data.name] as const] : []))
   for (let index = agent.session.events.length - 1; index >= 0; index -= 1) {
     const event = agent.session.events[index]
     if (event?.type === 'user/message' && event.data.source.kind === 'user') {
@@ -260,7 +262,9 @@ function verifiedEvidence(
     }
     if (event?.type === 'tool/result') {
       const result = event.data.message.content[0]
-      if (result.isError !== true && nestedText(result.content).includes(normalized)) {
+      const toolName = toolNames.get(result.toolCallId)
+      if (result.isError !== true && toolName !== undefined && !memoryExcludesDerivedTool(toolName)
+        && nestedText(result.content).includes(normalized)) {
         return {
           trust: 'action-verified',
           evidence: {
@@ -355,5 +359,6 @@ function requireText(name: string, value: string): string {
 
 function compact(value: string, limit: number): string {
   const normalized = value.replace(/\s+/gu, ' ').trim()
-  return normalized.length <= limit ? normalized : `${normalized.slice(0, limit - 1)}…`
+  const points = Array.from(normalized)
+  return points.length <= limit ? normalized : `${points.slice(0, limit - 1).join('')}…`
 }

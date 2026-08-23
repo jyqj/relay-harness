@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { Context, Service } from '@deepseek-ai/cordis'
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   ConversationEventRegistry, ConversationNodeAssembler, SlotRegistry,
@@ -302,7 +302,7 @@ function panelProps(data: WorkflowRunChatData, sessions = listState(), openSessi
 }
 
 describe('WorkflowRunPanel', () => {
-  it('keeps live run and phase controls manual across ordinary updates and outer hiding', () => {
+  it('keeps live run and phase controls manual across ordinary updates and outer hiding', async () => {
     const running: WorkflowRunChatData = {
       name: 'audit', status: 'running', phases: [phase({ key: 'research', phase: 'Research' })],
     }
@@ -315,7 +315,8 @@ describe('WorkflowRunPanel', () => {
 
     fireEvent.click(phaseHeader)
     expect(phaseHeader.getAttribute('aria-expanded')).toBe('false')
-    expect(screen.queryByText('worker')).toBeNull()
+    // Collapsed content stays mounted through the disclosure's exit transition.
+    await waitFor(() => { expect(screen.queryByText('worker')).toBeNull() })
     fireEvent.click(runHeader)
     expect(runHeader.getAttribute('aria-expanded')).toBe('false')
 
@@ -330,7 +331,7 @@ describe('WorkflowRunPanel', () => {
       })],
     })} />)
     expect(runHeader.getAttribute('aria-expanded')).toBe('false')
-    expect(screen.queryByRole('button', { name: /Research/ })).toBeNull()
+    await waitFor(() => { expect(screen.queryByRole('button', { name: /Research/ })).toBeNull() })
     fireEvent.keyDown(runHeader, { key: 'ArrowDown' })
     expect(runHeader.getAttribute('aria-expanded')).toBe('false')
     fireEvent.keyDown(runHeader, { key: ' ' })
@@ -343,12 +344,12 @@ describe('WorkflowRunPanel', () => {
 
     fireEvent.click(runHeader)
     expect(runHeader.getAttribute('aria-expanded')).toBe('false')
-    expect(screen.queryByRole('button', { name: /Research/ })).toBeNull()
+    await waitFor(() => { expect(screen.queryByRole('button', { name: /Research/ })).toBeNull() })
     fireEvent.keyDown(runHeader, { key: ' ' })
     expect(screen.getByRole('button', { name: /Research/ }).getAttribute('aria-expanded')).toBe('true')
   })
 
-  it('folds each normal completion once and opens a new same-key activity cycle', () => {
+  it('folds each normal completion once and opens a new same-key activity cycle', async () => {
     const running: WorkflowRunChatData = {
       name: 'audit', status: 'running', phases: [phase()],
     }
@@ -369,7 +370,7 @@ describe('WorkflowRunPanel', () => {
     view.rerender(<WorkflowRunPanel {...panelProps(phaseCompleted)} />)
     const phaseHeader = screen.getByRole('button', { name: /未分阶段/ })
     expect(phaseHeader.getAttribute('aria-expanded')).toBe('false')
-    expect(screen.queryByText('done')).toBeNull()
+    await waitFor(() => { expect(screen.queryByText('done')).toBeNull() })
     fireEvent.click(phaseHeader)
     expect(screen.getByText('done')).toBeTruthy()
 
@@ -424,7 +425,7 @@ describe('WorkflowRunPanel', () => {
     expect(screen.getByRole('button', { name: /未分阶段/ }).getAttribute('aria-expanded')).toBe('true')
   })
 
-  it('refolds a phase when a complete activity cycle arrives as one clean update', () => {
+  it('refolds a phase when a complete activity cycle arrives as one clean update', async () => {
     const firstMember = {
       seq: 1, label: 'first', childId: 'child-1' as SessionId, status: 'completed' as const,
     }
@@ -446,8 +447,10 @@ describe('WorkflowRunPanel', () => {
     })} />)
     expect(runHeader.getAttribute('aria-expanded')).toBe('true')
     expect(screen.getByRole('button', { name: /未分阶段/ }).getAttribute('aria-expanded')).toBe('false')
-    expect(screen.queryByText('first')).toBeNull()
-    expect(screen.queryByText('second')).toBeNull()
+    await waitFor(() => {
+      expect(screen.queryByText('first')).toBeNull()
+      expect(screen.queryByText('second')).toBeNull()
+    })
 
     phaseView.rerender(<WorkflowRunPanel {...panelProps({
       ...phaseClean,
@@ -459,7 +462,7 @@ describe('WorkflowRunPanel', () => {
       }] })],
     })} />)
     expect(runHeader.getAttribute('aria-expanded')).toBe('false')
-    expect(screen.queryByRole('button', { name: /未分阶段/ })).toBeNull()
+    await waitFor(() => { expect(screen.queryByRole('button', { name: /未分阶段/ })).toBeNull() })
   })
 
   it('initializes a newly observed phase before it becomes interactive', () => {
@@ -484,7 +487,7 @@ describe('WorkflowRunPanel', () => {
     expect(build.getAttribute('aria-expanded')).toBe('false')
   })
 
-  it('derives the zero-member running and completed states from the current run status', () => {
+  it('derives the zero-member running and completed states from the current run status', async () => {
     const running: WorkflowRunChatData = { name: 'empty', status: 'running', phases: [] }
     const view = render(<WorkflowRunPanel {...panelProps(running)} />)
     expect(screen.getByRole('button', { name: /^empty/ }).getAttribute('aria-expanded')).toBe('true')
@@ -492,7 +495,7 @@ describe('WorkflowRunPanel', () => {
     view.rerender(<WorkflowRunPanel {...panelProps({ ...running, status: 'completed' })} />)
     const header = screen.getByRole('button', { name: /^empty/ })
     expect(header.getAttribute('aria-expanded')).toBe('false')
-    expect(screen.queryByText('没有启动成员')).toBeNull()
+    await waitFor(() => { expect(screen.queryByText('没有启动成员')).toBeNull() })
     fireEvent.click(header)
     expect(screen.getByText('没有启动成员')).toBeTruthy()
   })
@@ -552,7 +555,7 @@ describe('WorkflowRunPanel', () => {
     expect(screen.getByText('失败 1 · 已取消 1')).toBeTruthy()
   })
 
-  it('keeps clean sibling phases independent and preserves empty versus absent names', () => {
+  it('keeps clean sibling phases independent and preserves empty versus absent names', async () => {
     render(<WorkflowRunPanel {...panelProps({
       name: 'audit', status: 'completed',
       phases: [
@@ -576,14 +579,14 @@ describe('WorkflowRunPanel', () => {
     expect(screen.getByText('空成员名')).toBeTruthy()
     expect(screen.getByText('second')).toBeTruthy()
     fireEvent.click(activePhase)
-    expect(screen.queryByText('second')).toBeNull()
+    await waitFor(() => { expect(screen.queryByText('second')).toBeNull() })
     expect(screen.getByText('空成员名')).toBeTruthy()
     fireEvent.click(runHeader)
     fireEvent.click(runHeader)
     expect(screen.getByRole('button', { name: /空阶段名/ }).getAttribute('aria-expanded')).toBe('true')
     expect(screen.getByRole('button', { name: /未分阶段/ }).getAttribute('aria-expanded')).toBe('false')
     fireEvent.click(screen.getByRole('button', { name: /空阶段名/ }))
-    expect(screen.queryByText('空成员名')).toBeNull()
+    await waitFor(() => { expect(screen.queryByText('空成员名')).toBeNull() })
   })
 
   it('renders mixed and interrupted aggregate status while attention stays visible', () => {

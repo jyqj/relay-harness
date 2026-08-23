@@ -41,6 +41,13 @@ import type {
   SearchMemoryInput,
 } from '@deepseek-ai/dsh-memory/types'
 import { memoryContentHash, openMemoryDatabase, type JournalMode } from './schema.ts'
+import {
+  claimMemoryStoreOwnership,
+  currentMemoryStoreOwner,
+  refreshMemoryStoreOwner,
+  releaseMemoryStoreOwnership,
+  type MemoryStoreOwner,
+} from './schema.ts'
 
 export {
   MEMORY_SQLITE_APPLICATION_ID,
@@ -55,6 +62,7 @@ const MAX_SEARCH_LIMIT = 50
 const DEFAULT_MAX_CONTENT_CHARS = 8_000
 const DEFAULT_MAX_SUMMARY_CHARS = 500
 const MAX_EVIDENCE_EXCERPT_CHARS = 4_096
+const DEFAULT_OWNER_STALE_MS = 30_000
 
 /** SQLite provider configuration. */
 export interface Config {
@@ -68,6 +76,8 @@ export interface Config {
   maxContentChars?: number
   /** Largest accepted summary in Unicode code points. Defaults to 500. */
   maxSummaryChars?: number
+  /** Age at which another process's ownership heartbeat is considered dead. Defaults to 30000. */
+  ownerStaleMs?: number
 }
 
 interface ResolvedConfig {
@@ -76,6 +86,7 @@ interface ResolvedConfig {
   maxSearchLimit: number
   maxContentChars: number
   maxSummaryChars: number
+  ownerStaleMs: number
 }
 
 interface SearchRow {
@@ -155,12 +166,14 @@ export class SqliteLongTermMemory extends LongTermMemory {
     maxSearchLimit: z.number().step(1).min(1).max(MAX_SEARCH_LIMIT).default(MAX_SEARCH_LIMIT),
     maxContentChars: z.number().step(1).min(1).default(DEFAULT_MAX_CONTENT_CHARS),
     maxSummaryChars: z.number().step(1).min(1).default(DEFAULT_MAX_SUMMARY_CHARS),
+    ownerStaleMs: z.number().step(1).min(1_000).default(DEFAULT_OWNER_STALE_MS),
   })
 
   /** Validated and defaulted canonical-store configuration. */
   readonly config: ResolvedConfig
   private db: DatabaseSync | undefined
   private closed = false
+  private readonly owner: MemoryStoreOwner = currentMemoryStoreOwner()
 
   constructor(ctx: Context, config: Config) {
     super(ctx)
@@ -177,6 +190,13 @@ export class SqliteLongTermMemory extends LongTermMemory {
 
   protected async [Service.init](): Promise<void> {
     this.db = await openMemoryDatabase(this.config.path, this.config.journalMode)
+    try {
+      claimMemoryStoreOwnership(this.db, this.owner, this.config.ownerStaleMs, this.config.path)
+    } catch (error: unknown) {
+      this.db.close()
+      this.db = undefined
+      throw error
+    }
   }
 
   override prepare(input: PrepareMemoryTurnInput, signal: AbortSignal): Promise<PreparedMemoryTurn> {
@@ -258,6 +278,7 @@ export class SqliteLongTermMemory extends LongTermMemory {
         `).run(id)
         this.recordSignal(id, 'injected', input.prepared.sessionId, input.prepared.turn)
       }
+      this.refreshOwner(db)
       db.exec('COMMIT')
     } catch (error: unknown) {
       db.exec('ROLLBACK')
@@ -280,7 +301,7 @@ export class SqliteLongTermMemory extends LongTermMemory {
   override remember(input: RememberMemoryInput, signal?: AbortSignal): Promise<MemoryEntry> {
     signal?.throwIfAborted()
     validateRemember(input, this.config)
-    const existing = this.findExact(input.scope, input.kind, input.content)
+    const existing = this.findExact(input.scope, input.kind, input.content, ['candidate', 'active', 'disputed'])
     if (existing !== undefined) {
       if (input.status === 'active' && existing.status !== 'active') {
         return this.revise({
@@ -295,6 +316,7 @@ export class SqliteLongTermMemory extends LongTermMemory {
       }
       return Promise.resolve(existing)
     }
+    const superseded = this.findExact(input.scope, input.kind, input.content, ['superseded', 'tombstoned'])
     const now = Date.now()
     const entry: MemoryEntry = {
       id: MemoryId(randomUUID()),
@@ -310,11 +332,22 @@ export class SqliteLongTermMemory extends LongTermMemory {
       createdAt: now,
       updatedAt: now,
       ...input.validUntil === undefined ? {} : { validUntil: input.validUntil },
+      ...superseded === undefined ? {} : { supersedes: superseded.id },
       evidence: snapshotEvidence(input.evidence),
       accessCount: 0,
       usefulAccessCount: 0,
     }
-    this.writeEntry(entry)
+    if (superseded === undefined) {
+      this.writeEntry(entry)
+      return Promise.resolve(snapshotEntry(entry))
+    }
+    this.writeEntry(entry, {
+      ...superseded,
+      revision: superseded.revision + 1,
+      status: 'superseded',
+      supersededBy: entry.id,
+      updatedAt: now,
+    })
     return Promise.resolve(snapshotEntry(entry))
   }
 
@@ -392,8 +425,15 @@ export class SqliteLongTermMemory extends LongTermMemory {
   close(): Promise<void> {
     if (this.closed) return Promise.resolve()
     this.closed = true
-    this.db?.close()
-    this.db = undefined
+    if (this.db !== undefined) {
+      try {
+        releaseMemoryStoreOwnership(this.db, this.owner)
+      } catch {
+        // Ownership release is best-effort; heartbeat staleness bounds any leftover claim.
+      }
+      this.db.close()
+      this.db = undefined
+    }
     return Promise.resolve()
   }
 
@@ -418,7 +458,7 @@ export class SqliteLongTermMemory extends LongTermMemory {
       })
     }
     const max = Math.max(0, ...scores.values())
-    return [...scores.entries()]
+    const hits = [...scores.entries()]
       .map(([id, fused]): MemorySearchHit => {
         const entry = entries.get(id) as MemoryEntry
         const relevance = max === 0 ? 0 : fused / max
@@ -431,6 +471,32 @@ export class SqliteLongTermMemory extends LongTermMemory {
       .filter(hit => statuses.includes(hit.entry.status))
       .sort((a, b) => b.score - a.score || b.entry.updatedAt - a.entry.updatedAt || a.entry.id.localeCompare(b.entry.id))
       .slice(0, input.limit)
+    this.countUsefulAccesses(hits)
+    return hits
+  }
+
+  private countUsefulAccesses(hits: readonly MemorySearchHit[]): void {
+    if (hits.length === 0) return
+    const db = this.requireDb()
+    try {
+      db.exec('BEGIN IMMEDIATE')
+      const update = db.prepare(`
+        UPDATE memory_entries
+        SET useful_access_count = useful_access_count + 1,
+            entry_json = json_set(entry_json, '$.usefulAccessCount', useful_access_count + 1)
+        WHERE memory_id = ?
+      `)
+      for (const hit of hits) update.run(hit.entry.id)
+      db.exec('COMMIT')
+    } catch {
+      // Search and recall stay available when access accounting cannot commit;
+      // the read path fails open by contract.
+      try {
+        db.exec('ROLLBACK')
+      } catch {
+        // The connection itself failed; SQLite owns that diagnosis.
+      }
+    }
   }
 
   private queryChannel(table: 'memory_fts_unicode' | 'memory_fts_trigram', query: string, input: SearchMemoryInput): SearchRow[] {
@@ -470,80 +536,87 @@ export class SqliteLongTermMemory extends LongTermMemory {
     return parseEntry(row.entry_json)
   }
 
-  private writeEntry(entry: MemoryEntry): void {
-    validateEntry(entry, this.config)
+  private writeEntry(...entries: MemoryEntry[]): void {
+    for (const entry of entries) validateEntry(entry, this.config)
     const db = this.requireDb()
-    const json = JSON.stringify(entry)
     db.exec('BEGIN IMMEDIATE')
     try {
-      db.prepare(`
-        INSERT INTO memory_revisions (
-          memory_id, revision, workspace_id, user_id, agent_id, entry_json, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?)
-      `).run(
-        entry.id,
-        entry.revision,
-        entry.scope.workspaceId,
-        entry.scope.userId,
-        entry.scope.agentId,
-        json,
-        entry.updatedAt,
-      )
-      db.prepare(`
-        INSERT INTO memory_entries (
-          memory_id, revision, workspace_id, user_id, agent_id, kind, status, trust, content_hash,
-          importance, confidence, valid_until, updated_at, access_count,
-          useful_access_count, entry_json
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ON CONFLICT(memory_id) DO UPDATE SET
-          revision = excluded.revision,
-          workspace_id = excluded.workspace_id,
-          user_id = excluded.user_id,
-          agent_id = excluded.agent_id,
-          kind = excluded.kind,
-          status = excluded.status,
-          trust = excluded.trust,
-          content_hash = excluded.content_hash,
-          importance = excluded.importance,
-          confidence = excluded.confidence,
-          valid_until = excluded.valid_until,
-          updated_at = excluded.updated_at,
-          access_count = excluded.access_count,
-          useful_access_count = excluded.useful_access_count,
-          entry_json = excluded.entry_json
-      `).run(
-        entry.id,
-        entry.revision,
-        entry.scope.workspaceId,
-        entry.scope.userId,
-        entry.scope.agentId,
-        entry.kind,
-        entry.status,
-        entry.trust,
-        memoryContentHash(entry.kind, entry.content),
-        entry.importance,
-        entry.confidence,
-        entry.validUntil ?? null,
-        entry.updatedAt,
-        entry.accessCount,
-        entry.usefulAccessCount,
-        json,
-      )
-      for (const table of ['memory_fts_unicode', 'memory_fts_trigram'] as const) {
-        db.prepare(`DELETE FROM ${table} WHERE memory_id = ?`).run(entry.id)
-        if (entry.status !== 'tombstoned' && entry.status !== 'superseded') {
-          db.prepare(`INSERT INTO ${table} (memory_id, content, summary) VALUES (?, ?, ?)`).run(
-            entry.id,
-            entry.content,
-            entry.summary ?? '',
-          )
+      for (const entry of entries) {
+        const json = JSON.stringify(entry)
+        db.prepare(`
+          INSERT INTO memory_revisions (
+            memory_id, revision, workspace_id, user_id, agent_id, entry_json, created_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?)
+        `).run(
+          entry.id,
+          entry.revision,
+          entry.scope.workspaceId,
+          entry.scope.userId,
+          entry.scope.agentId,
+          json,
+          entry.updatedAt,
+        )
+        db.prepare(`
+          INSERT INTO memory_entries (
+            memory_id, revision, workspace_id, user_id, agent_id, kind, status, trust, content_hash,
+            importance, confidence, valid_until, updated_at, access_count,
+            useful_access_count, entry_json
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          ON CONFLICT(memory_id) DO UPDATE SET
+            revision = excluded.revision,
+            workspace_id = excluded.workspace_id,
+            user_id = excluded.user_id,
+            agent_id = excluded.agent_id,
+            kind = excluded.kind,
+            status = excluded.status,
+            trust = excluded.trust,
+            content_hash = excluded.content_hash,
+            importance = excluded.importance,
+            confidence = excluded.confidence,
+            valid_until = excluded.valid_until,
+            updated_at = excluded.updated_at,
+            access_count = excluded.access_count,
+            useful_access_count = excluded.useful_access_count,
+            entry_json = excluded.entry_json
+        `).run(
+          entry.id,
+          entry.revision,
+          entry.scope.workspaceId,
+          entry.scope.userId,
+          entry.scope.agentId,
+          entry.kind,
+          entry.status,
+          entry.trust,
+          memoryContentHash(entry.kind, entry.content),
+          entry.importance,
+          entry.confidence,
+          entry.validUntil ?? null,
+          entry.updatedAt,
+          entry.accessCount,
+          entry.usefulAccessCount,
+          json,
+        )
+        for (const table of ['memory_fts_unicode', 'memory_fts_trigram'] as const) {
+          db.prepare(`DELETE FROM ${table} WHERE memory_id = ?`).run(entry.id)
+          if (entry.status !== 'tombstoned' && entry.status !== 'superseded') {
+            db.prepare(`INSERT INTO ${table} (memory_id, content, summary) VALUES (?, ?, ?)`).run(
+              entry.id,
+              entry.content,
+              entry.summary ?? '',
+            )
+          }
         }
       }
+      this.refreshOwner(db)
       db.exec('COMMIT')
     } catch (error: unknown) {
       db.exec('ROLLBACK')
       throw error
     }
+  }
+
+  private refreshOwner(db: DatabaseSync): void {
+    refreshMemoryStoreOwner(db, this.owner, this.config.ownerStaleMs, this.config.path)
   }
 
   private recordSignal(
@@ -564,37 +637,47 @@ export class SqliteLongTermMemory extends LongTermMemory {
     const payloadJson = JSON.stringify(payload)
     const dedupeKey = extractionDedupeKey(payload)
     const id = MemoryExtractionJobId(`memory-extraction-${dedupeKey}`)
-    const existing = this.requireDb().prepare(
-      'SELECT * FROM memory_extraction_jobs WHERE dedupe_key = ?',
-    ).get(dedupeKey) as ExtractionJobRow | undefined
-    if (existing !== undefined) {
-      if (existing.payload_json !== payloadJson || existing.max_attempts !== input.maxAttempts) {
-        throw new Error(`memory extraction job ${existing.id} was enqueued with different input`)
+    const db = this.requireDb()
+    db.exec('BEGIN IMMEDIATE')
+    try {
+      const existing = db.prepare(
+        'SELECT * FROM memory_extraction_jobs WHERE dedupe_key = ?',
+      ).get(dedupeKey) as ExtractionJobRow | undefined
+      if (existing !== undefined) {
+        if (existing.payload_json !== payloadJson || existing.max_attempts !== input.maxAttempts) {
+          throw new Error(`memory extraction job ${existing.id} was enqueued with different input`)
+        }
+        db.exec('COMMIT')
+        return Promise.resolve(parseExtractionJob(existing))
       }
-      return Promise.resolve(parseExtractionJob(existing))
+      const now = Date.now()
+      db.prepare(`
+        INSERT INTO memory_extraction_jobs (
+          id, dedupe_key, workspace_id, user_id, agent_id, session_id, turn,
+          source_hash, payload_json, status, max_attempts, available_at,
+          created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?)
+      `).run(
+        id,
+        dedupeKey,
+        input.scope.workspaceId,
+        input.scope.userId,
+        input.scope.agentId,
+        input.sessionId,
+        input.turn,
+        input.sourceHash,
+        payloadJson,
+        input.maxAttempts,
+        now,
+        now,
+        now,
+      )
+      this.refreshOwner(db)
+      db.exec('COMMIT')
+    } catch (error: unknown) {
+      db.exec('ROLLBACK')
+      throw error
     }
-    const now = Date.now()
-    this.requireDb().prepare(`
-      INSERT INTO memory_extraction_jobs (
-        id, dedupe_key, workspace_id, user_id, agent_id, session_id, turn,
-        source_hash, payload_json, status, max_attempts, available_at,
-        created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?)
-    `).run(
-      id,
-      dedupeKey,
-      input.scope.workspaceId,
-      input.scope.userId,
-      input.scope.agentId,
-      input.sessionId,
-      input.turn,
-      input.sourceHash,
-      payloadJson,
-      input.maxAttempts,
-      now,
-      now,
-      now,
-    )
     return Promise.resolve(this.requireExtractionJob(id))
   }
 
@@ -632,6 +715,7 @@ export class SqliteLongTermMemory extends LongTermMemory {
             lease_owner = ?, lease_until = ?, updated_at = ?
         WHERE id = ?
       `).run(workerId, now + input.leaseMs, now, candidate.id)
+      this.refreshOwner(db)
       const claimed = this.requireExtractionJob(MemoryExtractionJobId(candidate.id))
       db.exec('COMMIT')
       return Promise.resolve(claimed)
@@ -694,12 +778,17 @@ export class SqliteLongTermMemory extends LongTermMemory {
     return parseExtractionJob(row)
   }
 
-  private findExact(scope: MemoryScope, kind: MemoryKind, content: string): MemoryEntry | undefined {
+  private findExact(
+    scope: MemoryScope,
+    kind: MemoryKind,
+    content: string,
+    statuses: readonly MemoryStatus[],
+  ): MemoryEntry | undefined {
     const row = this.requireDb().prepare(`
       SELECT entry_json FROM memory_entries
       WHERE workspace_id = ? AND user_id = ? AND agent_id = ?
         AND kind = ? AND content_hash = ?
-        AND status NOT IN ('superseded', 'tombstoned')
+        AND status IN (${statuses.map(() => '?').join(', ')})
       ORDER BY updated_at DESC, memory_id ASC
       LIMIT 1
     `).get(
@@ -708,6 +797,7 @@ export class SqliteLongTermMemory extends LongTermMemory {
       scope.agentId,
       kind,
       memoryContentHash(kind, content),
+      ...statuses,
     ) as { entry_json: string } | undefined
     return row === undefined ? undefined : parseEntry(row.entry_json)
   }
@@ -725,10 +815,12 @@ function resolveConfig(config: Config): ResolvedConfig {
   const maxSearchLimit = config.maxSearchLimit ?? MAX_SEARCH_LIMIT
   const maxContentChars = config.maxContentChars ?? DEFAULT_MAX_CONTENT_CHARS
   const maxSummaryChars = config.maxSummaryChars ?? DEFAULT_MAX_SUMMARY_CHARS
+  const ownerStaleMs = config.ownerStaleMs ?? DEFAULT_OWNER_STALE_MS
   assertPositiveSafeInteger('maxSearchLimit', maxSearchLimit)
   assertPositiveSafeInteger('maxContentChars', maxContentChars)
   assertPositiveSafeInteger('maxSummaryChars', maxSummaryChars)
-  return { path, journalMode, maxSearchLimit, maxContentChars, maxSummaryChars }
+  assertPositiveSafeInteger('ownerStaleMs', ownerStaleMs)
+  return { path, journalMode, maxSearchLimit, maxContentChars, maxSummaryChars, ownerStaleMs }
 }
 
 function validateRemember(input: RememberMemoryInput, limits: Pick<ResolvedConfig, 'maxContentChars' | 'maxSummaryChars'>): void {

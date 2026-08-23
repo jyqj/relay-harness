@@ -22,27 +22,30 @@ afterEach(() => { vi.restoreAllMocks() })
 
 describe('parseDshArgs', () => {
   it('routes profile boots and the web alias, handing the rest to the app', () => {
-    expect(parse(['--profile', 'tui'])).toEqual({ mode: 'profile', profile: 'tui', patches: [], args: [] })
+    expect(parse(['--profile', 'tui']))
+      .toEqual({ mode: 'profile', profile: 'tui', patches: [], args: [], skipUserPlugins: false })
     expect(parse(['--profile', 'tui', '--patch', 'a.yml', '--patch', 'b.yml']))
-      .toEqual({ mode: 'profile', profile: 'tui', patches: ['a.yml', 'b.yml'], args: [] })
-    expect(parse(['web'])).toEqual({ mode: 'profile', profile: 'web', patches: [], args: [] })
+      .toEqual({ mode: 'profile', profile: 'tui', patches: ['a.yml', 'b.yml'], args: [], skipUserPlugins: false })
+    expect(parse(['--profile', 'tui', '--skip-user-plugins']))
+      .toEqual({ mode: 'profile', profile: 'tui', patches: [], args: [], skipUserPlugins: true })
+    expect(parse(['web'])).toEqual({ mode: 'profile', profile: 'web', patches: [], args: [], skipUserPlugins: false })
     expect(parse(['web', '--patch', 'web.yml']))
-      .toEqual({ mode: 'profile', profile: 'web', patches: ['web.yml'], args: [] })
+      .toEqual({ mode: 'profile', profile: 'web', patches: ['web.yml'], args: [], skipUserPlugins: false })
   })
 
   it('ends the launcher flags at the first token it does not own', () => {
     // App flags, including its -h, and positionals reach the app verbatim.
     expect(parse(['--profile', 'tui', '--resume', 'abc']))
-      .toEqual({ mode: 'profile', profile: 'tui', patches: [], args: ['--resume', 'abc'] })
+      .toEqual({ mode: 'profile', profile: 'tui', patches: [], args: ['--resume', 'abc'], skipUserPlugins: false })
     expect(parse(['--profile', 'web', '-h']))
-      .toEqual({ mode: 'profile', profile: 'web', patches: [], args: ['-h'] })
+      .toEqual({ mode: 'profile', profile: 'web', patches: [], args: ['-h'], skipUserPlugins: false })
     expect(parse(['web', '--host', '127.0.0.1', '--port', '8080', '--no-open', '--future-web-flag']))
-      .toEqual({ mode: 'profile', profile: 'web', patches: [], args: ['--host', '127.0.0.1', '--port', '8080', '--no-open', '--future-web-flag'] })
+      .toEqual({ mode: 'profile', profile: 'web', patches: [], args: ['--host', '127.0.0.1', '--port', '8080', '--no-open', '--future-web-flag'], skipUserPlugins: false })
     expect(parse(['--profile', 'headless', 'run', 'the', 'tests']))
-      .toEqual({ mode: 'profile', profile: 'headless', patches: [], args: ['run', 'the', 'tests'] })
+      .toEqual({ mode: 'profile', profile: 'headless', patches: [], args: ['run', 'the', 'tests'], skipUserPlugins: false })
     // Launcher flags placed after that boundary belong to the app too.
     expect(parse(['--profile', 'tui', '--patch', 'a.yml', '--resume', 'b', '--patch', 'late.yml']))
-      .toEqual({ mode: 'profile', profile: 'tui', patches: ['a.yml'], args: ['--resume', 'b', '--patch', 'late.yml'] })
+      .toEqual({ mode: 'profile', profile: 'tui', patches: ['a.yml'], args: ['--resume', 'b', '--patch', 'late.yml'], skipUserPlugins: false })
   })
 
   it('routes the plugin pnpm forwarder', () => {
@@ -59,15 +62,15 @@ describe('parseDshArgs', () => {
 
   it('routes profile and web config dumps', () => {
     expect(parse(['--profile', 'web', '--dump-config']))
-      .toEqual({ mode: 'dump-config', profile: 'web', defaultOnly: false, patches: [] })
+      .toEqual({ mode: 'dump-config', profile: 'web', defaultOnly: false, patches: [], skipUserPlugins: false })
     expect(parse(['--profile', 'web', '--dump-default-config']))
-      .toEqual({ mode: 'dump-config', profile: 'web', defaultOnly: true, patches: [] })
+      .toEqual({ mode: 'dump-config', profile: 'web', defaultOnly: true, patches: [], skipUserPlugins: false })
     expect(parse(['--profile', 'tui', '--dump-config', '--patch', 'x.yml']))
-      .toEqual({ mode: 'dump-config', profile: 'tui', defaultOnly: false, patches: ['x.yml'] })
+      .toEqual({ mode: 'dump-config', profile: 'tui', defaultOnly: false, patches: ['x.yml'], skipUserPlugins: false })
     expect(parse(['web', '--dump-config']))
-      .toEqual({ mode: 'dump-config', profile: 'web', defaultOnly: false, patches: [] })
+      .toEqual({ mode: 'dump-config', profile: 'web', defaultOnly: false, patches: [], skipUserPlugins: false })
     expect(parse(['web', '--dump-default-config']))
-      .toEqual({ mode: 'dump-config', profile: 'web', defaultOnly: true, patches: [] })
+      .toEqual({ mode: 'dump-config', profile: 'web', defaultOnly: true, patches: [], skipUserPlugins: false })
   })
 
   it('rejects missing profile, removed flags, and contradictory inputs', () => {

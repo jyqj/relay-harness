@@ -297,13 +297,13 @@ describe('SurfacesRoot', () => {
     fireEvent.click(screen.getByRole('button', { name: /Files/ }))
     const filesDraft = await screen.findByLabelText('files draft')
     fireEvent.change(filesDraft, { target: { value: 'unsaved edit' } })
-    expect((screen.getByLabelText('files draft') as HTMLInputElement).value).toBe('unsaved edit')
+    expect(screen.getByLabelText<HTMLInputElement>('files draft').value).toBe('unsaved edit')
     fireEvent.click(screen.getByRole('button', { name: 'Open a surface' }))
     fireEvent.click(screen.getByRole('menuitem', { name: 'Terminal' }))
     expect(document.querySelector('[data-surfaces-occupant="idle"]')).toBeTruthy()
     expect((document.querySelector('[data-occupant="files"] input') as HTMLInputElement).value).toBe('unsaved edit')
     fireEvent.click(screen.getByRole('button', { name: 'Files' }))
-    expect((screen.getByLabelText('files draft') as HTMLInputElement).value).toBe('unsaved edit')
+    expect(screen.getByLabelText<HTMLInputElement>('files draft').value).toBe('unsaved edit')
   })
 
   it('passes active to Browser and only closes the guest when that tab closes', async () => {
@@ -512,7 +512,7 @@ describe('SurfacesRoot', () => {
     fireEvent.click(screen.getByRole('button', { name: /Files/ }))
     fireEvent.click(await screen.findByRole('button', { name: 'open-file' }))
     fireEvent.change(await screen.findByLabelText('file draft'), { target: { value: 'unsaved edit' } })
-    expect((screen.getByLabelText('file draft') as HTMLTextAreaElement).value).toBe('unsaved edit')
+    expect(screen.getByLabelText<HTMLTextAreaElement>('file draft').value).toBe('unsaved edit')
     view.rerender(
       <SurfacesRoot
         sessionId={other}
@@ -548,8 +548,8 @@ describe('SurfacesRoot', () => {
         t={t}
       />,
     )
-    expect(await screen.findByLabelText('file draft')).toBeTruthy()
-    expect((screen.getByLabelText('file draft') as HTMLTextAreaElement).value).toBe('unsaved edit')
+    expect(await screen.findByLabelText<HTMLTextAreaElement>('file draft')).toBeTruthy()
+    expect(screen.getByLabelText<HTMLTextAreaElement>('file draft').value).toBe('unsaved edit')
     fireEvent.click(screen.getByRole('button', { name: 'Close a.ts' }))
     expect(await screen.findByRole('dialog', { name: 'Discard unsaved changes?' })).toBeTruthy()
   })
@@ -706,6 +706,7 @@ describe('SurfacesRoot', () => {
       onDirtyChange: (dirty: boolean) => void
       readBuffer: () => { text: string; draft: string } | undefined
       writeBuffer: (buffer: { text: string; draft: string } | null) => void
+    // oxlint-disable-next-line sonarjs/no-identical-functions -- test-local copies keep cases independently editable
     }) => {
       const remembered = readBuffer()
       const [draft, setDraft] = useState(remembered?.draft ?? 'disk')
@@ -721,6 +722,7 @@ describe('SurfacesRoot', () => {
         />
       )
     }
+    // oxlint-disable-next-line sonarjs/no-identical-functions -- test-local copies keep cases independently editable
     const renderSlot: SurfacesRootProps['renderSlot'] = (name, owner) => {
       if (name === 'surfaces.files') {
         return (
@@ -747,6 +749,7 @@ describe('SurfacesRoot', () => {
     }
     const current = 'session-1' as SessionId
     const other = 'session-2' as SessionId
+    // oxlint-disable-next-line sonarjs/no-identical-functions -- test-local copies keep cases independently editable
     const listFor = (id: SessionId): SurfacesRootProps['useSessions'] => {
       const state = {
         current: id,
@@ -833,7 +836,7 @@ describe('SurfacesRoot', () => {
         t={t}
       />,
     )
-    expect((await screen.findByLabelText('file draft') as HTMLTextAreaElement).value).toBe('session-one')
+    expect((await screen.findByLabelText<HTMLTextAreaElement>('file draft')).value).toBe('session-one')
     view.rerender(
       <SurfacesRoot
         sessionId={other}
@@ -851,7 +854,7 @@ describe('SurfacesRoot', () => {
         t={t}
       />,
     )
-    expect((await screen.findByLabelText('file draft') as HTMLTextAreaElement).value).toBe('session-two')
+    expect((await screen.findByLabelText<HTMLTextAreaElement>('file draft')).value).toBe('session-two')
   })
 
   it('saves then closes a dirty file tab from the confirm dialog', async () => {
@@ -1002,6 +1005,7 @@ describe('SurfacesRoot', () => {
       readBuffer: () => { text: string; draft: string } | undefined
       writeBuffer: (buffer: { text: string; draft: string } | null) => void
       onDirtyChange: (dirty: boolean) => void
+    // oxlint-disable-next-line sonarjs/no-identical-functions -- test-local copies keep cases independently editable
     }) => {
       const remembered = readBuffer()
       const [draft, setDraft] = useState(remembered?.draft ?? 'disk')
@@ -1017,6 +1021,7 @@ describe('SurfacesRoot', () => {
         />
       )
     }
+    // oxlint-disable-next-line sonarjs/no-identical-functions -- test-local copies keep cases independently editable
     const renderSlot: SurfacesRootProps['renderSlot'] = (name, owner) => {
       if (name === 'surfaces.files') {
         return (
@@ -1063,7 +1068,7 @@ describe('SurfacesRoot', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'open-file' }))
     fireEvent.change(await screen.findByLabelText('file draft'), { target: { value: 'unsaved edit' } })
     await waitFor(() => {
-      expect((screen.getByLabelText('file draft') as HTMLTextAreaElement).value).toBe('unsaved edit')
+      expect(screen.getByLabelText<HTMLTextAreaElement>('file draft').value).toBe('unsaved edit')
     })
     fireEvent(window, new Event('pagehide'))
     expect(loadPersistedDrafts().get('session-1:file:a.ts')).toEqual({ text: 'disk', draft: 'unsaved edit' })
@@ -1086,8 +1091,8 @@ describe('SurfacesRoot', () => {
         t={t}
       />,
     )
-    expect(await screen.findByLabelText('file draft')).toBeTruthy()
-    expect((screen.getByLabelText('file draft') as HTMLTextAreaElement).value).toBe('unsaved edit')
+    expect(await screen.findByLabelText<HTMLTextAreaElement>('file draft')).toBeTruthy()
+    expect(screen.getByLabelText<HTMLTextAreaElement>('file draft').value).toBe('unsaved edit')
   })
 
   it('does not restore a discarded dirty file after the persist debounce', async () => {
@@ -1151,7 +1156,7 @@ describe('SurfacesRoot', () => {
     expect(loadPersistedDrafts().has('session-1:file:a.ts')).toBe(false)
     const raw = localStorage.getItem(`${SURFACES_PERSIST_PREFIX}session-1`)
     if (raw !== null) {
-      expect(JSON.parse(raw).surfaces.some((surface: { id: string }) => surface.id === 'file:a.ts')).toBe(false)
+      expect((JSON.parse(raw) as { surfaces: { id: string }[] }).surfaces.some(surface => surface.id === 'file:a.ts')).toBe(false)
     }
   })
 })

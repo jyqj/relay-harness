@@ -3746,7 +3746,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'IssueWorkflowPolicy',
-    declaration: 'export interface IssueWorkflowPolicy {\n    readonly trackerProvider: string;\n    readonly activeStates: readonly string[];\n    readonly terminalStates: readonly string[];\n    readonly requiredLabels: readonly string[];\n    readonly pollIntervalMs: number;\n    readonly maxConcurrentRuns: number;\n    readonly maxConcurrentRunsByState: Readonly<Record<string, number>>;\n    readonly maxTurns: number;\n    readonly continuationRetryMs: number;\n    readonly failureRetryBaseMs: number;\n    readonly maxRetryBackoffMs: number;\n    readonly stallTimeoutMs: number;\n    readonly promptTemplate: string;\n    readonly continuationTemplate: string;\n}',
+    declaration: 'export interface IssueWorkflowPolicy {\n    readonly trackerProvider: string;\n    readonly activeStates: readonly string[];\n    readonly terminalStates: readonly string[];\n    readonly requiredLabels: readonly string[];\n    readonly pollIntervalMs: number;\n    readonly maxConcurrentRuns: number;\n    readonly maxConcurrentRunsByState: Readonly<Record<string, number>>;\n    readonly maxTurns: number;\n    readonly continuationRetryMs: number;\n    readonly maxContinuationAttempts: number;\n    readonly failureRetryBaseMs: number;\n    readonly maxRetryBackoffMs: number;\n    readonly stallTimeoutMs: number;\n    readonly promptTemplate: string;\n    readonly continuationTemplate: string;\n}',
   },
   {
     name: 'IssueWorkflowSnapshot',

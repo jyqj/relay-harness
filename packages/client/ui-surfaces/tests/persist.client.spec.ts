@@ -4,7 +4,8 @@
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
-  cancelPersist, collectDirtyDrafts, loadPersistedDrafts, loadPersistedState, persistSession, readBucket, readDrafts, SURFACES_PERSIST_PREFIX, writeSession,
+  cancelPersist, collectDirtyDrafts, loadPersistedDrafts, loadPersistedState, persistSession, readBucket, readDrafts,
+  SURFACES_PERSIST_PREFIX, writeSession,
 } from '../src/client/persist.ts'
 import { createSurfacesStore, sessionSurfaces } from '../src/client/stores.ts'
 import type { SessionSurfaces } from '../src/client/stores.ts'
@@ -163,7 +164,7 @@ describe('surfaces persist', () => {
     })
     expect(loadPersistedDrafts().get('sess-1:file:a.ts')).toEqual({ text: 'disk', draft: 'edited' })
     expect(loadPersistedDrafts().has('sess-1:file:gone.ts')).toBe(false)
-    expect(JSON.parse(localStorage.getItem(`${SURFACES_PERSIST_PREFIX}sess-1`) ?? '{}').drafts).toEqual({
+    expect((JSON.parse(localStorage.getItem(`${SURFACES_PERSIST_PREFIX}sess-1`) ?? '{}') as { drafts: Record<string, { text: string; draft: string }> }).drafts).toEqual({
       'file:a.ts': { text: 'disk', draft: 'edited' },
     })
 

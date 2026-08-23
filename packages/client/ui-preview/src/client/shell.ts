@@ -189,7 +189,10 @@ export interface PreviewShellInjected {
   previewAutomationType: (id: string, input: PreviewAutomationTypeInput) => Promise<{ ok: boolean; message?: string }>
   previewAutomationPress: (id: string, input: PreviewAutomationPressInput) => Promise<{ ok: boolean; message?: string }>
   previewAutomationScroll: (id: string, input: PreviewAutomationScrollInput) => Promise<{ ok: boolean; message?: string }>
-  previewAutomationEvaluate: (id: string, input: PreviewAutomationEvaluateInput) => Promise<{ ok: boolean; value?: unknown; message?: string }>
+  previewAutomationEvaluate: (
+    id: string,
+    input: PreviewAutomationEvaluateInput,
+  ) => Promise<{ ok: boolean; value?: unknown; message?: string }>
   previewAutomationWaitFor: (id: string, input: PreviewAutomationWaitForInput) => Promise<{ ok: boolean; message?: string }>
   previewState: (id: string) => Promise<PreviewNavState>
   onPreviewStateChange: (handler: (state: PreviewNavState) => void) => () => void

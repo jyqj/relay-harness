@@ -244,6 +244,7 @@ export function gatesForMode(selected: Mode): Gate[] {
         pnpmScript('cordis-config', 'verify-cordis-config', { label: 'Cordis config' }),
         pnpmScript('client-domain-graph', 'verify-client-domain-graph', { label: 'client domain graph' }),
         pnpmScript('test', 'test'),
+        desktopTestGate(),
         pnpmScript('issue-management', 'test:issue-management', { label: 'Issue management policy' }),
         pnpmScript('duplication', 'duplication'),
         snapshotGate(),
@@ -284,6 +285,7 @@ function ciPrimaryGates(): Gate[] {
     pnpmScript('typecheck', 'typecheck:contracts-ready', { needs: ['typert-contracts'] }),
     lintGate({ needs: ['typert-contracts'] }),
     pnpmScript('duplication', 'duplication'),
+    desktopTestGate(),
     ...coverageGates(),
     ...nodeCompatSmokeGates(),
     snapshotGate(),
@@ -375,9 +377,18 @@ function runningNodeMajor(): number {
   return major
 }
 
+/**
+ * Desktop shell unit tests: plain `node --test` suites under `apps/desktop`
+ * with no build prerequisite, so static lanes can run them straight after install.
+ */
+function desktopTestGate(): Gate {
+  return pnpmScript('desktop-tests', 'test:desktop', { label: 'desktop tests' })
+}
+
 function ciStaticGates(options: { ownsBuild: boolean }): Gate[] {
   return [
     ...ciSharedStaticGates(),
+    desktopTestGate(),
     ...options.ownsBuild ? [ciBuildGate()] : [],
     ...docSyncLeafGates({
       includeDocTypecheck: options.ownsBuild,

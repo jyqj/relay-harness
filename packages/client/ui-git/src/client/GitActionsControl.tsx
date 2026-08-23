@@ -51,7 +51,13 @@ export interface GitActionsInjected {
   gitFetchForStatus: (cwd: string) => Promise<VcsStatus | null>
   gitReadPullRequest: (cwd: string) => Promise<GitResult & { pr?: VcsStatus['pr'] }>
   gitInit: (cwd: string) => Promise<GitResult>
-  gitCommit: (cwd: string, message: string, filePaths?: readonly string[], actionId?: number, options?: { featureBranch?: boolean }) => Promise<GitResult>
+  gitCommit: (
+    cwd: string,
+    message: string,
+    filePaths?: readonly string[],
+    actionId?: number,
+    options?: { featureBranch?: boolean },
+  ) => Promise<GitResult>
   gitPush: (cwd: string, actionId?: number) => Promise<GitResult>
   gitPull: (cwd: string, actionId?: number) => Promise<GitResult>
   onGitProgress: (handler: (event: GitProgressEvent) => void) => () => void
@@ -233,8 +239,8 @@ export function GitActionsControl({
 
   const succeedProgress = (
     title: string,
-    description?: string | undefined,
-    action?: { label: string; onAction: () => void } | undefined,
+    description?: string  ,
+    action?: { label: string; onAction: () => void }  ,
   ): void => {
     setProgress({
       tone: 'success',
@@ -388,11 +394,11 @@ export function GitActionsControl({
   )
   const pendingCopy = pending
     ? resolveDefaultBranchActionDialogCopy({
-        action: pending.action,
-        branchName: pending.branchName,
-        includesCommit: pending.includesCommit,
-        terminology: getChangeRequestTerminology(status?.sourceControlProvider),
-      })
+      action: pending.action,
+      branchName: pending.branchName,
+      includesCommit: pending.includesCommit,
+      terminology: getChangeRequestTerminology(status?.sourceControlProvider),
+    })
     : null
 
   const runInit = (): void => {
@@ -468,7 +474,7 @@ export function GitActionsControl({
         hasWorkingTreeChanges: Boolean(previewStatus?.hasWorkingTreeChanges),
         ...(options.featureBranch !== undefined ? { featureBranch: options.featureBranch } : {}),
         shouldPushBeforePr: action === 'create_pr'
-          && (!previewStatus?.hasUpstream || (previewStatus?.aheadCount ?? 0) > 0),
+          && (!previewStatus?.hasUpstream || previewStatus.aheadCount > 0),
         terminology: previewTerms,
       })[0] ?? 'Running git action...')
 
@@ -518,7 +524,7 @@ export function GitActionsControl({
       const needsPush = action === 'push'
         || action === 'commit_push'
         || action === 'commit_push_pr'
-        || (action === 'create_pr' && (!actionStatus?.hasUpstream || (actionStatus?.aheadCount ?? 0) > 0))
+        || (action === 'create_pr' && (!actionStatus?.hasUpstream || actionStatus.aheadCount > 0))
       if (needsPush) {
         if (!actionStatus?.refName) {
           failProgress('Cannot push from detached HEAD.')
@@ -736,7 +742,7 @@ export function GitActionsControl({
               </button>
             )}
             items={[
-              ...menuItems.map(item => {
+              ...menuItems.map((item) => {
                 const hint = getMenuActionDisabledReason({
                   item,
                   gitStatus: status,
@@ -791,7 +797,7 @@ export function GitActionsControl({
         onMessage={setCommitMessage}
         onToggleEdit={() => { setEditingFiles(next => !next) }}
         onTogglePath={(filePath) => {
-          setExcludedFiles(prev => {
+          setExcludedFiles((prev) => {
             const next = new Set(prev)
             if (next.has(filePath)) next.delete(filePath)
             else next.add(filePath)
@@ -912,7 +918,6 @@ export function GitActionsControl({
                 variant="primary"
                 size="sm"
                 onClick={() => {
-                  if (!pending) return
                   const next = pending
                   setPending(null)
                   void runStacked(next.action, {

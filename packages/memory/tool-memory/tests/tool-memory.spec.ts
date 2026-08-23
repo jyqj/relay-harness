@@ -1,5 +1,5 @@
 import { Context } from '@deepseek-ai/cordis'
-import { CallId, createUserMessage } from '@deepseek-ai/dsh-llm'
+import { CallId, createToolResultMessage, createUserMessage } from '@deepseek-ai/dsh-llm'
 import SqliteLongTermMemory from '@deepseek-ai/dsh-memory-sqlite'
 import * as ToolMemory from '@deepseek-ai/dsh-tool-memory'
 import SessionStore, { Session, SessionId } from '@deepseek-ai/dsh-session'
@@ -39,6 +39,20 @@ async function call(ctx: Context, agent: Agent & { session: Session }, name: str
     arguments: args,
     agent,
   })
+}
+
+function appendSuccessfulResult(
+  agent: Agent & { session: Session },
+  name: string,
+  text: string,
+): void {
+  const callId = CallId(`memory-result-${++callCounter}`)
+  const call = agent.session.append('tool/call', { turn: 1, step: 1, callId, name, arguments: '{}' })
+  agent.session.append('tool/result', {
+    turn: 1,
+    step: 1,
+    message: createToolResultMessage({ callId, content: [{ type: 'text', text }], isError: false }),
+  }, { surfaceOp: 'append', sourceEventSeqs: [call.seq] })
 }
 
 function value(result: Awaited<ReturnType<typeof call>>): string {
@@ -152,6 +166,71 @@ describe('memory tools', () => {
     })
     expect(result.isError).toBe(true)
     expect(result.content.flatMap(block => block.type === 'text' ? [block.text] : []).join('\n')).toContain('secret')
+    await ctx.fiber.dispose()
+  })
+
+  it('activates action-verified memory from a successful non-memory tool result', async () => {
+    const ctx = await harness()
+    const agent = agentWithPrompt('Check the deployment.')
+    appendSuccessfulResult(agent, 'bash', 'deployment color: blue')
+    const remembered = JSON.parse(value(await call(ctx, agent, 'memory_remember', {
+      kind: 'fact',
+      content: 'The deployment is blue.',
+      importance: 2,
+      evidence_quote: 'deployment color: blue',
+    }))) as { status: string; trust: string }
+    expect(remembered).toMatchObject({ status: 'active', trust: 'action-verified' })
+    await ctx.fiber.dispose()
+  })
+
+  it('rejects memory-tool results as activation or update evidence', async () => {
+    const ctx = await harness()
+    const agent = agentWithPrompt('Remember that the project codename is cobalt.')
+    const remembered = JSON.parse(value(await call(ctx, agent, 'memory_remember', {
+      kind: 'fact',
+      content: 'The project codename is cobalt.',
+      importance: 2,
+      evidence_quote: 'project codename is cobalt',
+    }))) as { id: string }
+    appendSuccessfulResult(agent, 'memory_search', 'codename confirmed as cobalt')
+
+    const deniedRemember = await call(ctx, agent, 'memory_remember', {
+      kind: 'fact',
+      content: 'The project codename is azure.',
+      importance: 2,
+      evidence_quote: 'codename confirmed as cobalt',
+    })
+    expect(deniedRemember.isError).toBe(true)
+    expect(deniedRemember.content.flatMap(block => block.type === 'text' ? [block.text] : []).join('\n'))
+      .toContain('not found in a direct user message or successful tool result')
+
+    const deniedUpdate = await call(ctx, agent, 'memory_update', {
+      id: remembered.id,
+      content: 'The project codename is azure.',
+      evidence_quote: 'codename confirmed as cobalt',
+    })
+    expect(deniedUpdate.isError).toBe(true)
+    const unchanged = JSON.parse(value(await call(ctx, agent, 'memory_read', { id: remembered.id }))) as { content: string }
+    expect(unchanged.content).toContain('cobalt')
+    await ctx.fiber.dispose()
+  })
+
+  it('compacts search content on Unicode code point boundaries', async () => {
+    const ctx = await harness()
+    const agent = agentWithPrompt('Remember the celebration banner.')
+    await call(ctx, agent, 'memory_remember', {
+      kind: 'fact',
+      content: `celebration banner ${'🎉'.repeat(400)}`,
+      importance: 1,
+      evidence_quote: 'celebration banner',
+    })
+    const searched = JSON.parse(value(await call(ctx, agent, 'memory_search', {
+      query: 'celebration banner',
+    }))) as Array<{ content: string }>
+    const points = Array.from(searched[0]?.content ?? '')
+    expect(points).toHaveLength(320)
+    expect(points.at(-1)).toBe('…')
+    expect(points.slice(19, -1).every(point => point === '🎉')).toBe(true)
     await ctx.fiber.dispose()
   })
 })

@@ -106,6 +106,30 @@ export function readFileAsDataUrl(file: File): Promise<string> {
 }
 
 /**
+ * Create the settle-once finisher shared by the image decoders: the first
+ * finish clears the armed timer, detaches the image handlers, and resolves.
+ * @param image - decoding image whose handlers are detached on settle.
+ * @param resolve - promise resolver receiving the settled value.
+ * @returns `finish` to settle once and `arm` to schedule the timeout fail-closed settle.
+ */
+function createImageFinish(
+  image: HTMLImageElement,
+  resolve: (value: string | null) => void,
+): { finish: (value: string | null) => void; arm: (timeoutMs: number) => void } {
+  let settled = false
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const finish = (value: string | null): void => {
+    if (settled) return
+    settled = true
+    clearTimeout(timer)
+    image.onload = null
+    image.onerror = null
+    resolve(value)
+  }
+  return { finish, arm: (timeoutMs) => { timer = setTimeout(() => { finish(null) }, timeoutMs) } }
+}
+
+/**
  * Downscale a data URL onto a JPEG canvas. Returns null when Image/canvas
  * cannot decode (jsdom) so the caller can keep the original.
  * @param dataUrl - already-validated raster data URL.
@@ -118,16 +142,8 @@ export function downscaleWallpaper(dataUrl: string): Promise<string | null> {
       return
     }
     const image = new Image()
-    let settled = false
-    const finish = (value: string | null): void => {
-      if (settled) return
-      settled = true
-      clearTimeout(timer)
-      image.onload = null
-      image.onerror = null
-      resolve(value)
-    }
-    const timer = setTimeout(() => { finish(null) }, 200)
+    const { finish, arm } = createImageFinish(image, resolve)
+    arm(200)
     const paint = (): void => {
       const width = image.naturalWidth || image.width
       const height = image.naturalHeight || image.height
@@ -224,16 +240,8 @@ export function cropWallpaper(dataUrl: string, rect: WallpaperCropRect): Promise
       return
     }
     const image = new Image()
-    let settled = false
-    const finish = (value: string | null): void => {
-      if (settled) return
-      settled = true
-      clearTimeout(timer)
-      image.onload = null
-      image.onerror = null
-      resolve(value)
-    }
-    const timer = setTimeout(() => { finish(null) }, 1000)
+    const { finish, arm } = createImageFinish(image, resolve)
+    arm(1000)
     image.onload = (): void => {
       const canvas = document.createElement('canvas')
       canvas.width = Math.max(1, rect.sw)
@@ -253,7 +261,7 @@ export function cropWallpaper(dataUrl: string, rect: WallpaperCropRect): Promise
     }
     image.onerror = () => { finish(null) }
     image.src = dataUrl
-    if (image.complete) image.onload(new Event('load') as unknown as Event)
+    if (image.complete) image.onload(new Event('load'))
   })
 }
 

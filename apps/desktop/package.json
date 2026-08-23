@@ -44,6 +44,8 @@
     "files": [
       "src/**/*",
       "!**/*.test.js",
+      "!src/main/release-ui-walk.js",
+      "!src/main/composer-official-qa.js",
       "mobile/web/**/*",
       "!mobile/web/**/*.test.js",
       "assets/**/*",

@@ -812,7 +812,7 @@ it('pins native DeepSeek image offload in the request sent by the assembled app'
         role: 'user',
         content: 'Current runtime context. This snapshot supersedes earlier runtime-context snapshots.\n\n'
           + 'Current DSH file policy: danger-full-access. The DSH file sandbox does not restrict file modifications by available operations.\n\n'
-          + 'Approval prompts are disabled in this session: actions that require approval are rejected automatically — do not request sandbox escalation (do not set `sandbox_permissions`).',
+          + 'Approval prompts are disabled in this session. Full-access operations run without approval; operations that still require approval are rejected automatically.',
       },
       {
         role: 'assistant',

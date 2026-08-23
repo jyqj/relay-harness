@@ -13,7 +13,7 @@ describe('fileBreadcrumbs', () => {
   })
 
   it('normalizes repeated separators', () => {
-    expect(fileBreadcrumbs('workspace', '/src//index.ts').map((crumb) => crumb.label)).toEqual([
+    expect(fileBreadcrumbs('workspace', '/src//index.ts').map(crumb => crumb.label)).toEqual([
       'workspace',
       'src',
       'index.ts',

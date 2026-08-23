@@ -56,7 +56,7 @@ export function formatFileCommentRange(startLine: number, endLine: number): stri
 export function remapFileCommentAnnotations(
   annotations: ReadonlyArray<{ lineNumber: number; metadata: { entries: FileCommentAnnotationEntry[] } }>,
 ): Array<{ lineNumber: number; metadata: { entries: FileCommentAnnotationEntry[] } }> {
-  return annotations.map((annotation) => ({
+  return annotations.map(annotation => ({
     ...annotation,
     metadata: {
       entries: annotation.metadata.entries.map((entry) => {

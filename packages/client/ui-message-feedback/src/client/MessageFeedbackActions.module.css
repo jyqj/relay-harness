@@ -60,6 +60,9 @@
    trigger rect. Portaled panels must layer above modal overlays (z 1000). */
 .notePanel {
   position: fixed;
+  /* The popover can clamp into the caption band's top 48px; without the hole
+     that segment would drag the window instead of editing the note. */
+  -webkit-app-region: no-drag;
   z-index: 1100;
   box-sizing: border-box;
   width: 320px;

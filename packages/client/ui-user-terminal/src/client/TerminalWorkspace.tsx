@@ -228,6 +228,7 @@ export function TerminalWorkspace({
       startY: event.clientY,
       startHeight: height > 0 ? height : TERMINAL_DRAWER_DEFAULT,
     }
+    // oxlint-disable-next-line typescript/no-unnecessary-condition -- jsdom does not implement pointer capture
     event.currentTarget.setPointerCapture?.(event.pointerId)
   }, [])
 
@@ -247,7 +248,9 @@ export function TerminalWorkspace({
   const onResizePointerEnd = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
     if (!drag.current || drag.current.pointerId !== event.pointerId) return
     drag.current = null
+    // oxlint-disable-next-line typescript/no-unnecessary-condition -- jsdom does not implement pointer capture
     if (event.currentTarget.hasPointerCapture?.(event.pointerId)) {
+      // oxlint-disable-next-line typescript/no-unnecessary-condition -- jsdom does not implement pointer capture
       event.currentTarget.releasePointerCapture?.(event.pointerId)
     }
   }, [])
@@ -261,7 +264,7 @@ export function TerminalWorkspace({
       atLimit={atLimit}
       activeId={activeId}
       t={t}
-      onSplit={direction => { void create(direction) }}
+      onSplit={(direction) => { void create(direction) }}
       maximizeLabel={maximized ? t('action.restore') : t('action.maximize')}
       onMaximize={() => {
         const max = maxDrawerHeight(window.innerHeight)
@@ -282,12 +285,12 @@ export function TerminalWorkspace({
 
   const paneGridStyle = splitDirection === 'vertical'
     ? {
-        gridTemplateRows: `repeat(${visibleIds.length}, minmax(0, 1fr))`,
-        gridTemplateColumns: 'minmax(0, 1fr)',
-      }
+      gridTemplateRows: `repeat(${visibleIds.length}, minmax(0, 1fr))`,
+      gridTemplateColumns: 'minmax(0, 1fr)',
+    }
     : {
-        gridTemplateColumns: `repeat(${visibleIds.length}, minmax(0, 1fr))`,
-      }
+      gridTemplateColumns: `repeat(${visibleIds.length}, minmax(0, 1fr))`,
+    }
 
   return (
     <aside ref={rootRef} className={css.root} data-terminal-owner={mode}>
@@ -317,7 +320,7 @@ export function TerminalWorkspace({
             data-split-direction={splitDirection}
             style={paneGridStyle}
           >
-            {visibleIds.map(id => {
+            {visibleIds.map((id) => {
               const session = sessions.find(item => item.id === id)
               return (
                 <div
@@ -343,7 +346,7 @@ export function TerminalWorkspace({
                     openLocalUrl={openLocalUrl}
                     openExternal={openExternal}
                     t={t}
-                    onData={bytes => { void ptyWrite(id, bytes) }}
+                    onData={(bytes) => { void ptyWrite(id, bytes) }}
                     onResize={(cols, rows) => {
                       actions.setSize(id, cols, rows)
                       void ptyResize(id, cols, rows)
@@ -373,6 +376,7 @@ export function TerminalWorkspace({
                       actions.activate(
                         group.terminalIds.includes(activeId)
                           ? activeId
+                          // oxlint-disable-next-line typescript/no-non-null-assertion -- empty groups are spliced out of the draft
                           : group.terminalIds[0]!,
                       )
                     }}
@@ -380,7 +384,7 @@ export function TerminalWorkspace({
                     {`${t('group.label')} ${groupIndex + 1}`}
                   </button>
                   <div className={css.groupItems}>
-                    {group.terminalIds.map(id => {
+                    {group.terminalIds.map((id) => {
                       const sessionIndex = sessions.findIndex(item => item.id === id)
                       const label = `${t('session.label')} ${sessionIndex + 1}`
                       return (

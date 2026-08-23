@@ -7,10 +7,10 @@
  * a key is entered; a blank key materializes a reference-free profile for
  * provider-native authentication);
  * the collapsed 自定义设置 area carries the per-family extras (`baseURL` for
- * both families, DeepSeek's id/name/context-window model catalog, and the
- * display name and wire protocol of a pi-ai route the adapter does not ship —
- * the two fields the create card asked that route for, editable here for the
- * same reason).
+ * both families, pi-ai's route-level default input types, DeepSeek's
+ * id/name/context-window model catalog, and the display name and wire protocol
+ * of a pi-ai route the adapter does not ship — the two fields the create card
+ * asked that route for, editable here for the same reason).
  * Reasoning effort is deliberately absent: it is a per-MODEL capability, and
  * the models under one provider disagree about it, so a provider-scoped
  * control can only be set to a value some of them reject. The composer's
@@ -29,7 +29,7 @@ import {
 } from './DeepSeekModelsEditor.tsx'
 import { apiKeyFailure } from './apiKey.ts'
 import { EditorFooter } from './EditorFooter.tsx'
-import { ModelListEditor } from './ModelListEditor.tsx'
+import { INPUT_CHOICES, ModelListEditor, orderedInput, type InputId } from './ModelListEditor.tsx'
 import { deriveKeyRef, messageOf, protocolChoices } from './store.ts'
 import type { SettingsSchemaOperations } from './schema-operations.ts'
 import type { en } from './locales.ts'
@@ -215,6 +215,29 @@ export function ProviderEditor(props: ProviderEditorProps): ReactNode {
   // The model list is validated by the same per-row checker for both families,
   // so a bad row is named by its position rather than by a blanket message.
   const modelFailure = validateDeepSeekModels(schema.getPath(draft, ['models']))
+  // The route-level default input set: absent means the route inherits the
+  // adapter's own fallback, while a set the user explicitly emptied is present
+  // but empty and refused — the host grammar requires at least one modality.
+  const routeInputDeclared = schema.hasPath(draft, ['defaultInput'])
+  const routeInput = schema.getPath(draft, ['defaultInput'])
+  const routeInputSelected: readonly InputId[] = Array.isArray(routeInput)
+    ? INPUT_CHOICES.filter(choice => routeInput.includes(choice.id)).map(choice => choice.id)
+    : []
+  const routeInputFailure = routeInputDeclared && routeInputSelected.length === 0
+    ? 'defaultInputEmpty' as const
+    : undefined
+  const toggleRouteInput = (id: InputId): void => {
+    setDraft((current) => {
+      const value = schema.getPath(current, ['defaultInput'])
+      const selected: readonly InputId[] = Array.isArray(value)
+        ? INPUT_CHOICES.filter(choice => value.includes(choice.id)).map(choice => choice.id)
+        : []
+      const next = selected.includes(id)
+        ? selected.filter(choice => choice !== id)
+        : [...selected, id]
+      return schema.setPath(current, ['defaultInput'], orderedInput(next))
+    })
+  }
   const keyFailure = apiKeyFailure(keyDraft)
   // What a probe or a write must carry: the typed key with paste whitespace
   // removed. A blank field yields an empty string, which both call sites read
@@ -263,6 +286,8 @@ export function ProviderEditor(props: ProviderEditorProps): ReactNode {
       if (failure !== undefined) {
         return `${t('model')} ${String(failure.index + 1)}: ${t(failure.key)}`
       }
+      /* v8 ignore next 2 -- unreachable from the card: the same failure disables submit */
+      if (routeInputFailure !== undefined) return t(routeInputFailure)
     }
     /* v8 ignore next -- apply is only reachable from the rendered card, which required a resolved node */
     if (props.credentialOnly !== true && node !== undefined && settingsPath.length === 0) {
@@ -458,6 +483,35 @@ export function ProviderEditor(props: ProviderEditorProps): ReactNode {
                 </div>
               )
               : null}
+            {/* The route's own fallback input set for models that declare none;
+                the create card does not offer it because a new route has no
+                models to fall back for until it has its first row. */}
+            {family === 'pi-ai'
+              ? (
+                <div className={styles['field']}>
+                  <span className={styles['fieldLabel']}>{t('defaultInputTitle')}</span>
+                  <div className={styles['effortOptions']}>
+                    {INPUT_CHOICES.map(choice => (
+                      <label className={styles['effortOption']} key={choice.id}>
+                        <input
+                          type="checkbox"
+                          checked={routeInputSelected.includes(choice.id)}
+                          disabled={disabled}
+                          aria-label={t(choice.key)}
+                          onChange={() => { toggleRouteInput(choice.id) }}
+                        />
+                        <span>{t(choice.key)}</span>
+                      </label>
+                    ))}
+                  </div>
+                  {routeInputFailure !== undefined
+                    ? <p className={styles['error']}>{t(routeInputFailure)}</p>
+                    : !routeInputDeclared
+                      ? <p className={styles['advancedHint']}>{t('defaultInputHint')}</p>
+                      : null}
+                </div>
+              )
+              : null}
             {/* Both families edit the same rows through the same contract; only
                 the extras differ — DeepSeek's inherited capacities, pi-ai's
                 endpoint interrogation. */}
@@ -506,6 +560,7 @@ export function ProviderEditor(props: ProviderEditorProps): ReactNode {
         busy={busy}
         submitDisabled={disabled || layout === 'unknown'
           || (props.credentialOnly !== true && modelFailure !== undefined)
+          || (props.credentialOnly !== true && routeInputFailure !== undefined)
           || shownKeyFailure !== undefined
           || (props.credentialRequired === true && keyValue.length === 0)}
         submitLabel={props.submitLabel ?? 'apply'}

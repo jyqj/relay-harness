@@ -39,7 +39,7 @@ export interface IssueRefreshResult {
 export class IssueOrchestrationError extends Error {
   constructor(
     message: string,
-    readonly code: 'ISSUE_NOT_FOUND' | 'ISSUE_RUNNING' | 'ISSUE_NOT_BLOCKED' | 'INVALID_OPERATION',
+    readonly code: 'ISSUE_NOT_FOUND' | 'ISSUE_RUNNING',
   ) {
     super(message)
     this.name = 'IssueOrchestrationError'

@@ -74,7 +74,7 @@ export function createFileTreeDragMentionController(
       // part of the current selection drags the whole selection.
       const dragged = selection.includes(itemPath) ? selection : [itemPath]
       const mentions = dragged
-        .map((path) => composerMentionFromTreePath(path))
+        .map(path => composerMentionFromTreePath(path))
         .filter((mention): mention is string => mention !== null)
       if (mentions.length === 0) {
         return

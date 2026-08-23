@@ -37,8 +37,8 @@
     - text: 标准模式
     - img
   - text: 权限 选择新会话的默认权限模式
-  - button "Workspace Write":
-    - text: Workspace Write
+  - button "Full access":
+    - text: Full access
     - img
   - text: 语言
   - button "中文":

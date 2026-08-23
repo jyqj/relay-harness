@@ -112,7 +112,7 @@ export function TerminalPane({
         setSelection(normalizeSelection(termRef.current?.getSelection() ?? ''))
       },
       onCopy: (text) => { void callbacksRef.current.writeClipboard(text) },
-      beforeKey: (event) => handleBeforeKey(event),
+      beforeKey: event => handleBeforeKey(event),
       onLinkActivate: (text, event) => {
         if (!isTerminalLinkActivation(event)) return
         activateTerminalTarget(text, callbacksRef.current.cwd, callbacksRef.current)
@@ -156,8 +156,6 @@ export function TerminalPane({
         terminal.dispose()
         writtenRef.current = 0
       }
-      /* v8 ignore next -- unmount during the create then() after teardown is assigned. */
-      if (cancelled) teardown()
     }).catch((error: unknown) => {
       /* v8 ignore next -- cancelled create failures are dropped like Ghostty. */
       if (cancelled) return

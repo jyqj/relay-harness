@@ -46,7 +46,7 @@ describe('normalizeToolTranscript', () => {
     expect(normalized.messages).toEqual(messages)
     expect(normalized.synthesized).toBe(0)
     expect(normalized.suppressed).toBe(0)
-    expect(() => assertToolTranscriptValid(normalized.messages)).not.toThrow()
+    expect(() =>{  assertToolTranscriptValid(normalized.messages) }).not.toThrow()
   })
 
   it('synthesizes results for missing pairs and closes the group before the transcript moves on', () => {
@@ -70,7 +70,7 @@ describe('normalizeToolTranscript', () => {
       content: [{ type: 'tool-result', isError: true, content: [{ type: 'text', text: TOOL_NOT_STARTED_TEXT }] }],
     })
     expect(rest[2]).toBe(messages[2])
-    expect(() => assertToolTranscriptValid(normalized.messages)).not.toThrow()
+    expect(() =>{  assertToolTranscriptValid(normalized.messages) }).not.toThrow()
   })
 
   it('re-emits settled results in block order when the log misplaced them', () => {
@@ -111,42 +111,42 @@ describe('normalizeToolTranscript', () => {
 
 describe('assertToolTranscriptValid', () => {
   it('accepts a canonical transcript', () => {
-    expect(() => assertToolTranscriptValid([
+    expect(() =>{  assertToolTranscriptValid([
       assistantWithCalls({ id: 'a', name: 'read' }, { id: 'b', name: 'read' }),
       resultFor('a'),
       resultFor('b'),
       createAssistantMessage({ content: [{ type: 'text', text: 'done' }], source: { provider: 'mock', model: 'mock' } }),
       user('ok'),
-    ])).not.toThrow()
+    ]) }).not.toThrow()
   })
 
   it('rejects trailing assistant tool calls with no results', () => {
-    expect(() => assertToolTranscriptValid([assistantWithCalls({ id: 'a', name: 'read' })])).toThrow(/no results/)
+    expect(() =>{  assertToolTranscriptValid([assistantWithCalls({ id: 'a', name: 'read' })]) }).toThrow(/no results/)
   })
 
   it('rejects an assistant call group that is not closed before the next message', () => {
-    expect(() => assertToolTranscriptValid([
+    expect(() =>{  assertToolTranscriptValid([
       assistantWithCalls({ id: 'a', name: 'read' }),
       user('moved on'),
-    ])).toThrow(/before the transcript moves on/)
+    ]) }).toThrow(/before the transcript moves on/)
   })
 
   it('rejects an assistant call group that is not closed before the next assistant message', () => {
-    expect(() => assertToolTranscriptValid([
+    expect(() =>{  assertToolTranscriptValid([
       assistantWithCalls({ id: 'a', name: 'read' }),
       assistantWithCalls({ id: 'b', name: 'read' }),
-    ])).toThrow(/before the next assistant message/)
+    ]) }).toThrow(/before the next assistant message/)
   })
 
   it('rejects an orphan tool result', () => {
-    expect(() => assertToolTranscriptValid([resultFor('ghost')])).toThrow(/no preceding assistant tool call/)
+    expect(() =>{  assertToolTranscriptValid([resultFor('ghost')]) }).toThrow(/no preceding assistant tool call/)
   })
 
   it('rejects out-of-order results', () => {
-    expect(() => assertToolTranscriptValid([
+    expect(() =>{  assertToolTranscriptValid([
       assistantWithCalls({ id: 'a', name: 'read' }, { id: 'b', name: 'read' }),
       resultFor('b'),
-    ])).toThrow(/out of order/)
+    ]) }).toThrow(/out of order/)
   })
 })
 
@@ -171,7 +171,7 @@ describe('deriveMessages canonicalization', () => {
     session.append('user/message', user('again'), { surfaceOp: 'append' })
 
     const messages = session.deriveMessages()
-    expect(() => assertToolTranscriptValid(messages)).not.toThrow()
+    expect(() =>{  assertToolTranscriptValid(messages) }).not.toThrow()
     const results = toolResults(messages)
     expect(results.map(message => String(message.source.callId))).toEqual(['c1', 'c2'])
     expect(results[0]!.content[0]).toMatchObject({ isError: true, content: [{ type: 'text', text: TOOL_OUTCOME_UNKNOWN_TEXT }] })

@@ -261,30 +261,27 @@ describe('connection lifecycle', () => {
 
   it('rejects a generation whose streams end during readiness and retries', async () => {
     const api = new FakeApiClient()
-    const firstDescribe = deferred<Awaited<ReturnType<FakeApiClient['onDescribe']>>>()
-    let describeCalls = 0
-    api.onDescribe = () => {
-      describeCalls++
-      return describeCalls === 1
-        ? firstDescribe.promise
-        : Promise.resolve(ok({ version: '0', cwd: '/f', attachedSessions: 0, home: '/h', canOpenPath: true, scratchCwd: '/scratch' }))
-    }
+    // Readiness is the unary describe handshake; downlinks open only after it,
+    // so the equivalent torn-carrier window is the stream-open wait: onOpen is
+    // parked and the carrier closes the streams before either fires.
+    api.holdStreamOpen = true
     const states: ConnectionState[] = []
     let connected = 0
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
     const controller = new ConnectionController(api, {
       onConnected: () => { connected++ },
       onStateChange: state => states.push(state),
-    }, FAST)
+    }, { ...FAST, streamOpenTimeoutMs: 50 })
     controller.start()
     try {
+      await vi.waitFor(() => { expect(connected).toBe(1) })
       await vi.waitFor(() => { expect(api.openMuxCount).toBe(1) })
       api.endStreams()
-      firstDescribe.resolve(ok({ version: '0', cwd: '/f', attachedSessions: 0, home: '/h', canOpenPath: true, scratchCwd: '/scratch' }))
 
-      await vi.waitFor(() => { expect(describeCalls).toBe(2) })
-      await vi.waitFor(() => { expect(connected).toBe(1) })
-      expect(states).toEqual(['reconnecting', 'connected'])
+      await vi.waitFor(() => { expect(connected).toBe(2) }) // new generation after backoff
+      expect(api.callsOf('host.describe')).toHaveLength(2)
+      expect(api.openMuxCount).toBe(1) // the dead generation's streams are gone
+      expect(states).toEqual(['connected', 'reconnecting', 'connected'])
     } finally {
       controller.stop()
       warnSpy.mockRestore()

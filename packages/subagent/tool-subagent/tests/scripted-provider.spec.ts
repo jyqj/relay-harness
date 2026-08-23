@@ -78,8 +78,10 @@ describe('scripted subagent provider fixture', () => {
     const ctx = await mount()
     const alreadyAborted = new AbortController()
     alreadyAborted.abort()
+    // Root-tree admission rejects an already-aborted signal with the signal's
+    // own platform reason before the provider runs.
     await expect(ctx.subagents.start('mock', baseRequest({ signal: alreadyAborted.signal })))
-      .rejects.toThrow('scripted subagent start aborted before publication')
+      .rejects.toThrow('This operation was aborted')
 
     const handoff = new AbortController()
     const pending = ctx.subagents.start('mock', baseRequest({ signal: handoff.signal }))

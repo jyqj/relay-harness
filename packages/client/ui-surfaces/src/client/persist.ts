@@ -34,7 +34,7 @@ export function cancelPersist(sessionId: string): void {
  * @param storage - `localStorage` in the browser; injectable in tests.
  * @returns a SurfacesState with only sanitized buckets.
  */
-export function loadPersistedState(storage: Storage | undefined = undefined): SurfacesState {
+export function loadPersistedState(storage?: Storage  ): SurfacesState {
   const resolved = resolveStorage(storage)
   if (resolved === undefined) return { bySession: {} }
   const bySession: SurfacesState['bySession'] = {}
@@ -54,7 +54,7 @@ export function loadPersistedState(storage: Storage | undefined = undefined): Su
  * @param storage - `localStorage` in the browser; injectable in tests.
  * @returns map keyed by `sessionId:surfaceId`.
  */
-export function loadPersistedDrafts(storage: Storage | undefined = undefined): Map<string, FileDraftBuffer> {
+export function loadPersistedDrafts(storage?: Storage  ): Map<string, FileDraftBuffer> {
   const drafts = new Map<string, FileDraftBuffer>()
   const resolved = resolveStorage(storage)
   if (resolved === undefined) return drafts
@@ -80,7 +80,7 @@ export function loadPersistedDrafts(storage: Storage | undefined = undefined): M
 export function persistSession(
   sessionId: string,
   bucket: SessionSurfaces,
-  storage: Storage | undefined = undefined,
+  storage?: Storage  ,
   drafts: Record<string, FileDraftBuffer> = {},
 ): void {
   const resolved = resolveStorage(storage)
@@ -104,7 +104,7 @@ export function persistSession(
 export function writeSession(
   sessionId: string,
   bucket: SessionSurfaces,
-  storage: Storage | undefined = undefined,
+  storage?: Storage  ,
   drafts: Record<string, FileDraftBuffer> = {},
 ): void {
   const resolved = resolveStorage(storage)

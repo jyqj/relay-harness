@@ -201,7 +201,9 @@ export function serializeThemeFamily(family: ThemeFamily): string {
  * @returns the decoded family.
  */
 export function parseThemeFamilyJson(raw: string): ThemeFamily {
-  return ThemeFamilySchema(JSON.parse(raw))
+  // The parsed document is typed only so it can enter the schema, which
+  // validates and defaults it before the value is trusted.
+  return ThemeFamilySchema(JSON.parse(raw) as ThemeFamily)
 }
 
 function canonicalizeSeeds(seeds: ThemeSeeds): ThemeSeeds {

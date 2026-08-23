@@ -1,6 +1,6 @@
 /** Cordis dynamic-plugin cards, inventory panel, business-view host, and `@pluginId` source. */
 
-import type { ClientContext, ISessions, SessionId } from '@deepseek-ai/dsh-client-runtime/client'
+import type { ClientContext, SessionId } from '@deepseek-ai/dsh-client-runtime/client'
 import type {} from '@deepseek-ai/dsh-client-ui-tool/client'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
 import type {} from '@deepseek-ai/dsh-client-ui-sidebar/client'
@@ -143,7 +143,7 @@ export function apply(ctx: ClientContext): void {
   })
 
   const rowsOf = (sessionId: SessionId, query: string) => {
-    const sessions = ctx.get('sessions') as ISessions | undefined
+    const sessions = ctx.get('sessions')
     if (sessions?.list.getSnapshot().byId[sessionId]?.agentPreset === 'dshbot-room') return []
     return inventory.getSnapshot().rows
       .filter(row => row.agentId === sessionId && String(row.pluginId).includes(query))

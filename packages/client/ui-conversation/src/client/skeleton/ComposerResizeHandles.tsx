@@ -165,6 +165,7 @@ export function useComposerResizeDrag(
       ),
     }
     /* v8 ignore next -- Pointer Capture is missing in jsdom; browsers have it */
+    // oxlint-disable-next-line typescript/no-unnecessary-condition -- jsdom lacks Pointer Capture at runtime despite the DOM type.
     e.currentTarget.setPointerCapture?.(e.pointerId)
   }, [cardRef, scrollRef])
 
@@ -190,6 +191,7 @@ export function useComposerResizeDrag(
     if (resizeDrag.current?.pointerId !== e.pointerId) return
     resizeDrag.current = null
     /* v8 ignore next -- Pointer Capture is missing in jsdom; browsers have it */
+    // oxlint-disable-next-line typescript/no-unnecessary-condition -- jsdom lacks Pointer Capture at runtime despite the DOM type.
     e.currentTarget.releasePointerCapture?.(e.pointerId)
     const scroll = scrollRef.current
     const card = cardRef.current

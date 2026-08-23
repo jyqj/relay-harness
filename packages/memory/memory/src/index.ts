@@ -25,7 +25,7 @@ import type {
 export type * from './types.ts'
 export { MemoryExtractionQueue } from './extraction.ts'
 export { default as MemoryExtractionQueueService } from './extraction.ts'
-export { memoryContainsSecret } from './security.ts'
+export { memoryContainsSecret, memoryExcludesDerivedTool } from './security.ts'
 
 /** Public type face paired with the runtime branding helper below. */
 export type MemoryId = MemoryIdValue

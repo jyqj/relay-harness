@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import TrackerRegistry from '@deepseek-ai/dsh-tracker'
 import type { JsonValue } from '@deepseek-ai/dsh-session'
-import { apply, LinearTrackerProvider } from '../src/index.ts'
+import { apply, Config, LinearTrackerProvider } from '../src/index.ts'
 
 const baseIssue = {
   id: 'linear-1',
@@ -129,17 +129,19 @@ describe('LinearTrackerProvider', () => {
     await expect(provider().fetchIssuesByIds(['linear-sparse' as never])).rejects.toThrow(/must be an object/)
   })
 
-  it('treats non-array candidate nodes as empty and rejects an object missing required exact-id fields', async () => {
+  it('treats non-array candidate nodes as empty and rejects malformed exact-id envelopes', async () => {
     const fetchMock = vi.fn()
       .mockResolvedValueOnce(new Response(JSON.stringify({
         data: { issues: { nodes: {}, pageInfo: { hasNextPage: false, endCursor: null } } },
       }), { status: 200 }))
       .mockResolvedValueOnce(new Response(JSON.stringify({ data: { issues: { nodes: [{}] } } }), { status: 200 }))
       .mockResolvedValueOnce(new Response(JSON.stringify({ data: { issues: { nodes: {} } } }), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ data: null }), { status: 200 }))
     vi.stubGlobal('fetch', fetchMock)
     await expect(provider().fetchIssuesByStates(['Todo'])).resolves.toEqual([])
     await expect(provider().fetchIssuesByIds(['missing' as never])).rejects.toThrow(/malformed issue/)
-    await expect(provider().fetchIssuesByIds(['invisible' as never])).resolves.toEqual([])
+    await expect(provider().fetchIssuesByIds(['malformed' as never])).rejects.toThrow(/nodes must be an array/)
+    await expect(provider().fetchIssuesByIds(['null-data' as never])).rejects.toThrow(/data must be an object/)
   })
 
   it('preserves requested id order across batches and omits invisible ids', async () => {
@@ -237,16 +239,16 @@ describe('LinearTrackerProvider', () => {
     const ctx = new Context()
     await ctx.plugin(TrackerRegistry)
     vi.stubEnv('LINEAR_TEST_KEY', 'env-secret')
-    apply(ctx, { projectSlug: 'project', apiKeyEnv: 'LINEAR_TEST_KEY' })
-    apply(ctx, {
+    apply(ctx, Config({ projectSlug: 'project', apiKeyEnv: 'LINEAR_TEST_KEY' }))
+    apply(ctx, Config({
       projectSlug: 'project', providerName: 'linear-assigned', apiKey: 'x', assignee: ' user-1 ',
       terminalStates: ['Done'], blockNewStates: ['Todo'], endpoint: 'https://linear.example/graphql',
-    })
+    }))
     expect(ctx.trackers.list()).toEqual(['linear', 'linear-assigned'])
-    expect(() => { apply(ctx, { projectSlug: 'project', providerName: ' ', apiKey: 'x' }) }).toThrow(/providerName/)
-    expect(() => { apply(ctx, { projectSlug: 'project', endpoint: 'http://linear.test', apiKey: 'x' }) }).toThrow(/HTTPS/)
-    expect(() => { apply(ctx, { projectSlug: 'project', apiKeyEnv: 'MISSING_LINEAR_KEY' }) }).toThrow(/missing API key/)
-    expect(() => { apply(ctx, { projectSlug: ' ', apiKey: 'x' }) }).toThrow(/projectSlug/)
+    expect(() => { apply(ctx, Config({ projectSlug: 'project', providerName: ' ', apiKey: 'x' })) }).toThrow(/providerName/)
+    expect(() => { apply(ctx, Config({ projectSlug: 'project', endpoint: 'http://linear.test', apiKey: 'x' })) }).toThrow(/HTTPS/)
+    expect(() => { apply(ctx, Config({ projectSlug: 'project', apiKeyEnv: 'MISSING_LINEAR_KEY' })) }).toThrow(/missing API key/)
+    expect(() => { apply(ctx, Config({ projectSlug: ' ', apiKey: 'x' })) }).toThrow(/projectSlug/)
     await ctx.fiber.dispose()
   })
 

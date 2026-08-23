@@ -2,7 +2,7 @@
 
 [English](README.md) | 中文
 
-Tracker 读取和 Provider 原生工具的 Provider Registry。Provider 通过 effect 注册；轮询解析当前 Provider，而 `bindTools()` 为一次 Agent 运行捕获完全一致的 Provider／配置／工具／凭据环境变量别名快照。移除 Provider 会阻止新工作，但不会撤销已捕获的 binding。
+Tracker 读取和 Provider 原生工具的 Provider Registry。Provider 通过 effect 注册；轮询解析当前 Provider，而 `bindTools()` 为一次 Agent 运行捕获完全一致的 Provider／配置／工具快照以及凭据环境变量别名元数据。移除 Provider 会阻止新工作，但不会撤销已捕获的 binding。
 
 ## 模型体验
 

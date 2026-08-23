@@ -38,6 +38,7 @@ interface RawDocument {
   }
   orchestration?: {
     continuation_retry_ms?: unknown
+    max_continuation_attempts?: unknown
     failure_retry_base_ms?: unknown
     stall_timeout_ms?: unknown
     continuation_prompt?: unknown
@@ -122,6 +123,7 @@ export function parseIssueWorkflow(text: string): IssueWorkflowPolicy {
     maxConcurrentRunsByState: stateLimits(agent.max_concurrent_runs_by_state),
     maxTurns: positive(agent.max_turns, 'agent.max_turns', 20),
     continuationRetryMs: positive(orchestration.continuation_retry_ms, 'orchestration.continuation_retry_ms', 1_000),
+    maxContinuationAttempts: nonNegative(orchestration.max_continuation_attempts, 'orchestration.max_continuation_attempts', 5),
     failureRetryBaseMs: positive(orchestration.failure_retry_base_ms, 'orchestration.failure_retry_base_ms', 10_000),
     maxRetryBackoffMs: positive(agent.max_retry_backoff_ms, 'agent.max_retry_backoff_ms', 300_000),
     stallTimeoutMs: nonNegative(orchestration.stall_timeout_ms, 'orchestration.stall_timeout_ms', 300_000),

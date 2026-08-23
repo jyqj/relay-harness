@@ -91,7 +91,7 @@ interface DesktopShell {
   previewWorkspaceFile?: (input: {
     cwd: string
     relativePath: string
-  }) => Promise<{ ok?: boolean, url?: string } | null | undefined>
+  }) => Promise<{ ok?: boolean; url?: string } | null | undefined>
   onOpenPreviewUrl?: (handler: (payload: { url?: string }) => void) => () => void
 }
 
@@ -172,7 +172,7 @@ function subscribeOpenPreviewUrl(): () => void {
   const subscribe = readWindowShell()?.onOpenPreviewUrl
   if (typeof subscribe !== 'function') return () => {}
   return subscribe((payload) => {
-    if (typeof payload?.url === 'string' && payload.url.length > 0) {
+    if (typeof payload.url === 'string' && payload.url.length > 0) {
       openPreviewSurface(payload.url)
     }
   })

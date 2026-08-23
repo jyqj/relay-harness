@@ -594,7 +594,7 @@ describe('SessionPersistenceSqlite schema ownership', () => {
     })
     expect(() => decodeSessionRow({ ...base, created_at: -1 })).toThrow(/created_at/)
     expect(() => decodeSessionRow({ ...base, origin: 'external' })).toThrow(/origin/)
-      expect(rowToMeta(decodeSessionRow({ ...base, origin: 'dshbot' }))).toMatchObject({ origin: 'dshbot' })
+    expect(rowToMeta(decodeSessionRow({ ...base, origin: 'dshbot' }))).toMatchObject({ origin: 'dshbot' })
     expect(() => decodeSessionRow({ ...base, delegation_depth: -1 })).toThrow(/delegation_depth/)
   })
 

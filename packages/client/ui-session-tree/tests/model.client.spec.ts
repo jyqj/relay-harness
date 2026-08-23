@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { HistoryEntry, SessionEvent, SessionId } from '@deepseek-ai/dsh-client-connection/client'
 import type { SessionListState, SessionSummary, WorkspaceListState } from '@deepseek-ai/dsh-client-runtime/client'
 import {
-  buildSessionTreeGraph, currentPathCuts, messageText, projectSessionTurns, sessionIdsForAnchor, visibleSessionTreeGraph,
+  buildSessionTreeGraph, currentPathCuts, messageText, projectSessionTurns, sessionIdsForAnchor, sessionOfCardId, visibleSessionTreeGraph,
 } from '../src/client/model.ts'
 
 const sid = (value: string): SessionId => value as SessionId
@@ -168,6 +168,30 @@ describe('Session Tree projection', () => {
     expect([...currentPathCuts(sessions([a, b], a.id))]).toEqual([
       [a.id, Number.POSITIVE_INFINITY], [b.id, 2],
     ])
+  })
+
+  it('parses card ids back to their owning Session', () => {
+    expect(sessionOfCardId('session:root')).toBe(sid('root'))
+    expect(sessionOfCardId('turn:root:17')).toBe(sid('root'))
+    // A Session id may itself contain colons; startSeq is the final segment.
+    expect(sessionOfCardId('turn:weird:id:17')).toBe(sid('weird:id'))
+    expect(sessionOfCardId('foreign')).toBeUndefined()
+  })
+
+  it('builds complete lineage from list metadata with a Session history still unloaded', () => {
+    const first = turn(0, 1, 'one', 'answer one')
+    const second = turn(first.length, 2, 'two', 'answer two')
+    const root = summary('root')
+    const child = summary('child', { parentId: root.id, seedLength: first.length })
+    const state = sessions([root, child])
+    // Only the root history has loaded; the child degrades to one stub card.
+    const graph = buildSessionTreeGraph(state, state.ids, { root: [...first, ...second] })
+    const rootFirst = graph.cards.find(card => card.sessionId === root.id && card.turn === 1)
+    const childStub = graph.cards.find(card => card.sessionId === child.id)
+    expect(rootFirst).toBeDefined()
+    expect(childStub).toMatchObject({ id: 'session:child', startSeq: first.length })
+    expect(childStub?.parentId).toBe(rootFirst?.id)
+    expect(graph.edges).toContainEqual({ from: rootFirst?.id, to: 'session:child', branch: true })
   })
 
   it('connects a restored child to the exact parent Turn before seedLength', () => {

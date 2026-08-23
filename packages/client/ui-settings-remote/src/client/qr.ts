@@ -14,7 +14,7 @@ export function qrSvg(text: string): string {
   if (!text) return ''
   const qr = encode(text)
   const size = qr.size
-  const rows = qr.data as unknown
+  const rows = qr.data
   /* v8 ignore next -- uqr version 1 is 21 modules; a non-array payload cannot be drawn */
   if (!Array.isArray(rows) || size < 21) return ''
   const parts: string[] = []

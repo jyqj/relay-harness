@@ -12,13 +12,13 @@ DeepSeek Harness 已能运行持久 Session、Subagent、Job、Schedule 和可�
 
 Issue Automation 是由独立 capability seam 组成的 opt-in layer。`@deepseek-ai/dsh-tracker` 注册 effect-scoped Provider，并为每次运行捕获一个 Provider／配置／工具／凭据环境变量别名 binding。`@deepseek-ai/dsh-issue-workflow-file` 读取仓库 Markdown／YAML 策略，拒绝无效启动文档，并在 reload 失败后保留最后有效版本。`@deepseek-ai/dsh-issue-workspace-local` 拥有确定性路径、canonical containment、设置回滚、有界 hook 和终态删除，不改变 `WorkspaceRegistry` 现有 Session 分组契约。
 
-`@deepseek-ai/dsh-issue-runner-agent` 在准备好的目录创建一个原生 Agent Session，在发布前安装捕获的 Tracker 工具；只要按精确 ID refresh 后 Issue 仍可执行，就在有界 continuation 轮次中复用同一 Session。`@deepseek-ai/dsh-issue-orchestrator` 是唯一调度写者。Storage-domain row 会在 Workspace 或 Agent 副作用前提交 `claimed`，并物化 `running`、`retrying` 或 `blocked`；启动时把中断的 claimed／running row 转成即时持久重试。每次 poll 都先对账 running 与 blocked Issue，再 dispatch 候选项；按精确 ID 重验每个候选项；执行全局与 per-state capacity；检测事件静默；并应用有界指数退避。Live handle 与 timer 是持久 row 的投影，而不是恢复事实。
+`@deepseek-ai/dsh-issue-runner-agent` 在准备好的目录创建一个原生 Agent Session，在发布前安装捕获的 Tracker 工具；只要按精确 ID refresh 后 Issue 仍可执行，就在有界 continuation 轮次中复用同一 Session。`@deepseek-ai/dsh-issue-orchestrator` 是唯一调度写者。Storage-domain row 会在 Workspace 或 Agent 副作用前提交 `claimed`，并物化 `running`、`retrying` 或 `blocked`；启动时把中断的 claimed／running row 转成即时持久重试。每次 poll 都先对账 running 与 blocked Issue，再 dispatch 候选项；按精确 ID 重验每个候选项；执行全局与 per-state capacity；检测事件静默；并应用有界指数退避。完成后仍可执行的再派发会递增 attempt 并使用指数 continuation 退避，在配置上限处停在 blocked 状态；启动 Workspace 清理只触碰有持久 claim 记录的 Issue。Live handle 与 timer 是持久 row 的投影，而不是恢复事实。
 
 首个完整 vertical slice 是 Linear。Provider 分页读取项目范围候选项、批量读取对账项、规范化路由事实，并暴露 session-bound、Host 执行的 `linear_graphql` 工具，而不把 token 交给 Agent。生成的 Typert contract 暴露 snapshot、refresh、retry 和 release。浏览器插件通过原生 titlebar／overlay contribution 呈现 running、retrying、blocked 条目。只有部署在 Web bundle 后加入 `@deepseek-ai/dsh-issue-automation` 时，才会组合完整 layer。
 
 ## Durable and security rules
 
-Issue 身份由 Provider 拥有并带 brand。记录保留接纳该 attempt 的 Provider 与 Workflow revision。Tracker tool binding 保证广告与执行使用同一个捕获 Provider。本地 Workspace 创建和删除都会重新验证 canonical root containment；复用目录在设置失败后不会被破坏性重置。Tracker 凭据保留在 Host 闭包中，Provider 声明环境变量别名供 managed child 清理。Operator 只能 retry 或 release 非运行记录；Tracker reconciliation 仍是停止 live work 的常规 Authority。
+Issue 身份由 Provider 拥有并带 brand。记录保留接纳该 attempt 的 Provider 与 Workflow revision。Tracker tool binding 保证广告与执行使用同一个捕获 Provider。本地 Workspace 创建和删除都会重新验证 canonical root containment；复用目录在设置失败后不会被破坏性重置。Tracker 凭据保留在 Host 闭包中；Provider 声明的环境变量别名是声明性元数据，managed child 清理由 subprocess seam 的通用凭据特征父环境擦除完成，该声明并不驱动它。Operator 只能 retry 或 release 非运行记录；Tracker reconciliation 仍是停止 live work 的常规 Authority。
 
 ## Alternatives considered
 
@@ -36,7 +36,7 @@ Issue 身份由 Provider 拥有并带 brand。记录保留接纳该 attempt 的 
 
 ## Verification
 
-Tracker 测试固定 effect dispose、捕获 binding 在移除后仍有效、未知工具失败、schema 校验、Linear 分页、路由规范化、Host auth、瞬时 Viewer 查询失败后的恢复和有界失败。Workspace 测试执行真实 managed hook，并固定一次性设置、复用、回滚、抗碰撞 key 和符号链接逃逸拒绝。Workflow 测试固定 typed parsing、严格失败、revision 变化和 last-known-good reload。原生 Runner 测试通过真实 Agent Loop 执行捕获的 Tracker 工具和两个 continuation 轮次。Orchestrator 测试固定持久 claim 到 run 发布、终态清理、blocked 持久化、Operator retry 和 refresh 合并。生成 Typert 输出、Host／Client type face、bundle 配置校验、包 invariant companion、原生 Client slot／组件测试和双语文档 gate 覆盖其余集成面。
+Tracker 测试固定 effect dispose、捕获 binding 在移除后仍有效、未知工具失败、schema 校验、Linear 分页、路由规范化、Host auth、瞬时 Viewer 查询失败后的恢复和有界失败。Workspace 测试执行真实 managed hook，并固定一次性设置、复用、回滚、抗碰撞 key 和符号链接逃逸拒绝。Workflow 测试固定 typed parsing、严格失败、revision 变化和 last-known-good reload。原生 Runner 测试通过真实 Agent Loop 执行捕获的 Tracker 工具和两个 continuation 轮次。Orchestrator 测试固定持久 claim 到 run 发布、终态清理、blocked 持久化、Operator retry 和 refresh 合并；bundle 的 REAL-composition 测试通过 Loader 在内存 Tracker stub 上启动已交付 patch。生成 Typert 输出、Host／Client type face、bundle 配置校验、包 invariant companion、原生 Client slot／组件测试和双语文档 gate 覆盖其余集成面。
 
 ## Consequences
 

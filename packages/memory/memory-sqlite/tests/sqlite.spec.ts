@@ -389,7 +389,134 @@ describe('SQLite long-term memory', () => {
     expect(await ctx.longTermMemory.read(scope, entry.id)).toMatchObject({ revision: 1 })
     await ctx.fiber.dispose()
     const migrated = new DatabaseSync(path)
-    expect(migrated.prepare('PRAGMA user_version').get()).toEqual({ user_version: 2 })
+    expect(migrated.prepare('PRAGMA user_version').get()).toEqual({ user_version: 3 })
     migrated.close()
+  })
+
+  it('supersedes a dead exact match with a bidirectional id chain when its content returns', async () => {
+    const ctx = await harness()
+    const created = await ctx.longTermMemory.remember({
+      scope,
+      kind: 'preference',
+      content: 'The user editor is neovim.',
+      importance: 2,
+      confidence: 1,
+      trust: 'user-stated',
+      status: 'active',
+      evidence: [userEvidence],
+    })
+    await ctx.longTermMemory.forget({
+      scope,
+      id: created.id,
+      reason: 'user requested deletion',
+      evidence: [userEvidence],
+    })
+    const revived = await ctx.longTermMemory.remember({
+      scope,
+      kind: 'preference',
+      content: 'The user editor is neovim.',
+      importance: 3,
+      confidence: 1,
+      trust: 'user-stated',
+      status: 'active',
+      evidence: [userEvidence],
+    })
+    expect(revived.id).not.toBe(created.id)
+    expect(revived.supersedes).toBe(created.id)
+    expect(await ctx.longTermMemory.read(scope, created.id)).toMatchObject({
+      status: 'superseded',
+      supersededBy: revived.id,
+      revision: 3,
+      tombstoneReason: 'user requested deletion',
+    })
+    const matchId: unknown = expect.objectContaining({ id: revived.id })
+    const revivedHit: unknown = expect.objectContaining({ entry: matchId })
+    expect(await ctx.longTermMemory.search({ scope, query: 'editor neovim', limit: 10 }))
+      .toEqual([revivedHit])
+    await ctx.fiber.dispose()
+  })
+
+  it('counts retrieval hits as useful accesses while committed injections count separately', async () => {
+    const ctx = await harness()
+    const created = await ctx.longTermMemory.remember({
+      scope,
+      kind: 'preference',
+      content: 'The user validation drink is lapsang souchong.',
+      importance: 3,
+      confidence: 1,
+      trust: 'user-stated',
+      status: 'active',
+      evidence: [userEvidence],
+    })
+    await ctx.longTermMemory.search({ scope, query: 'validation drink', limit: 10 })
+    expect(await ctx.longTermMemory.read(scope, created.id)).toMatchObject({ usefulAccessCount: 1, accessCount: 0 })
+    const prepared = await ctx.longTermMemory.prepare({
+      scope,
+      sessionId: SessionId('session-useful'),
+      turn: 1,
+      query: 'validation drink',
+      candidateLimit: 10,
+    }, new AbortController().signal)
+    await ctx.longTermMemory.commit({ prepared, recalledMemoryIds: [created.id] })
+    expect(await ctx.longTermMemory.read(scope, created.id)).toMatchObject({ usefulAccessCount: 2, accessCount: 1 })
+    await ctx.fiber.dispose()
+  })
+
+  it('keeps enqueue idempotent across two concurrent database connections', async () => {
+    const path = await databasePath()
+    const first = await harness(path)
+    const second = await harness(path)
+    const input = {
+      scope,
+      sessionId: SessionId('race-session'),
+      turn: 7,
+      promptVersion: 1 as const,
+      sourceHash: 'f'.repeat(64),
+      route: { provider: 'mock', model: 'mock' },
+      sources: [{ kind: 'user' as const, text: 'Remember cobalt.', evidence: userEvidence }],
+      maxAttempts: 2,
+    }
+    const [fromFirst, fromSecond] = await Promise.all([
+      first.memoryExtractionQueue.enqueue(input),
+      second.memoryExtractionQueue.enqueue(input),
+    ])
+    expect(fromSecond).toEqual(fromFirst)
+    const db = new DatabaseSync(path)
+    expect(db.prepare('SELECT COUNT(*) AS count FROM memory_extraction_jobs')
+      .get()).toEqual({ count: 1 })
+    db.close()
+    await first.fiber.dispose()
+    await second.fiber.dispose()
+  })
+
+  it('rejects a fresh foreign owner heartbeat, fails its writes loudly, and reclaims a stale one', async () => {
+    const path = await databasePath()
+    const owner = await harness(path)
+    const db = new DatabaseSync(path)
+    db.prepare('UPDATE memory_store_owner SET pid = ?, heartbeat_at = ? WHERE id = 1')
+      .run(process.pid + 1, Date.now())
+    await expect(harness(path)).rejects.toThrow('fresh owner heartbeat')
+    const zombieWrite = async (): Promise<unknown> => owner.longTermMemory.remember({
+      scope,
+      kind: 'fact',
+      content: 'Owned store rejects zombie writes.',
+      importance: 1,
+      confidence: 1,
+      trust: 'user-stated',
+      status: 'active',
+      evidence: [userEvidence],
+    })
+    await expect(zombieWrite()).rejects.toThrow('another live process')
+    db.prepare('UPDATE memory_store_owner SET heartbeat_at = ? WHERE id = 1')
+      .run(Date.now() - 31_000)
+    db.close()
+
+    const reclaimed = await harness(path)
+    const stored = new DatabaseSync(path)
+    expect(stored.prepare('SELECT pid FROM memory_store_owner WHERE id = 1').get())
+      .toEqual({ pid: process.pid })
+    stored.close()
+    await owner.fiber.dispose()
+    await reclaimed.fiber.dispose()
   })
 })

@@ -25,6 +25,7 @@ class FakeMemory extends LongTermMemory {
   committed: CommitMemoryTurnInput[] = []
   aborted: AbortMemoryTurnInput[] = []
   failure: Error | undefined
+  candidateContent = 'Use explicit file context for referenced files.'
 
   prepare(input: PrepareMemoryTurnInput): Promise<PreparedMemoryTurn> {
     if (this.failure !== undefined) return Promise.reject(this.failure)
@@ -35,7 +36,7 @@ class FakeMemory extends LongTermMemory {
       turn: input.turn,
       query: input.query,
       candidates: [{
-        entry: entry('Use explicit file context for referenced files.'),
+        entry: entry(this.candidateContent),
         score: 0.9,
         matchedBy: ['fts_unicode'],
       }],
@@ -176,6 +177,22 @@ describe('memory Agent Consumer', () => {
     provider.failure = new Error('offline')
     const decision = await prepare(ctx, agent)
     expect(decision.kind === 'enter' ? decision.messages : []).toHaveLength(1)
+    await ctx.fiber.dispose()
+  })
+
+  it('packs astral-plane recall content by Unicode code points', async () => {
+    const { ctx, provider, agent } = await harness()
+    provider.candidateContent = '🎉'.repeat(1_900)
+    const decision = await prepare(ctx, agent)
+    expect(decision.kind).toBe('enter')
+    if (decision.kind !== 'enter') throw new Error('expected enter')
+    expect(decision.messages).toHaveLength(2)
+    const recallBlock = decision.messages[1]?.content[0]
+    expect(recallBlock?.type).toBe('text')
+    const text = recallBlock?.type === 'text' ? recallBlock.text : ''
+    expect(Array.from(text).length).toBeLessThanOrEqual(3_200)
+    expect(text).toContain('🎉')
+    expect(text.isWellFormed()).toBe(true)
     await ctx.fiber.dispose()
   })
 

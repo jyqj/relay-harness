@@ -101,6 +101,18 @@ describe('gate graph validation', () => {
     },
   )
 
+  it.each(['ci-primary', 'ci-static', 'check-all'] as const)(
+    'keeps the desktop shell unit tests in %s',
+    (mode) => {
+      const subject = withPnpmEntrypoint(() => gatesForMode(mode).find(item => item.id === 'desktop-tests'))
+
+      expect(subject).toMatchObject({
+        displayCommand: 'pnpm run test:desktop',
+        args: ['/private/pnpm.cjs', 'run', 'test:desktop'],
+      })
+    },
+  )
+
   it('keeps native Windows coverage blocking while retaining the observational inventory', () => {
     const complete = withPnpmEntrypoint(() => gatesForMode('ci-windows-complete'))
     const observational = withPnpmEntrypoint(() => gatesForMode('ci-windows-observational'))

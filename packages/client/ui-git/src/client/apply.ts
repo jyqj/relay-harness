@@ -30,7 +30,13 @@ interface GitShell {
   gitFetchForStatus?: (cwd: string) => Promise<VcsStatus | null>
   gitReadPullRequest?: (cwd: string) => Promise<GitResult & { pr?: VcsStatus['pr'] }>
   gitInit?: (cwd: string) => Promise<GitResult>
-  gitCommit?: (cwd: string, message: string, filePaths?: readonly string[], actionId?: number, options?: { featureBranch?: boolean }) => Promise<GitResult>
+  gitCommit?: (
+    cwd: string,
+    message: string,
+    filePaths?: readonly string[],
+    actionId?: number,
+    options?: { featureBranch?: boolean },
+  ) => Promise<GitResult>
   gitPush?: (cwd: string, actionId?: number) => Promise<GitResult>
   gitPull?: (cwd: string, actionId?: number) => Promise<GitResult>
   onGitProgress?: (handler: (event: GitProgressEvent) => void) => () => void
@@ -65,7 +71,8 @@ function readGitShell(): Omit<GitActionsInjected, 'hooks'> {
     gitFetchForStatus: cwd => shell?.gitFetchForStatus?.(cwd) ?? Promise.resolve(null),
     gitReadPullRequest: cwd => shell?.gitReadPullRequest?.(cwd) ?? Promise.resolve({ ...unavailable(), pr: null }),
     gitInit: cwd => shell?.gitInit?.(cwd) ?? Promise.resolve(unavailable()),
-    gitCommit: (cwd, message, filePaths, actionId, options) => shell?.gitCommit?.(cwd, message, filePaths, actionId, options) ?? Promise.resolve(unavailable()),
+    gitCommit: (cwd, message, filePaths, actionId, options) =>
+      shell?.gitCommit?.(cwd, message, filePaths, actionId, options) ?? Promise.resolve(unavailable()),
     gitPush: (cwd, actionId) => shell?.gitPush?.(cwd, actionId) ?? Promise.resolve(unavailable()),
     gitPull: (cwd, actionId) => shell?.gitPull?.(cwd, actionId) ?? Promise.resolve(unavailable()),
     onGitProgress: handler => shell?.onGitProgress?.(handler) ?? (() => {}),

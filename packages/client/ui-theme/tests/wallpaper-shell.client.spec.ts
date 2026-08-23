@@ -39,7 +39,7 @@ describe('wallpaperShell', () => {
     host.shell = { listWallpaperCatalog, downloadWallpaper }
     const api = wallpaperShell()
     expect(api).not.toBeNull()
-    expectTypeOf(api!.listWallpaperCatalog).parameter(0).toMatchTypeOf<{
+    expectTypeOf(api!.listWallpaperCatalog).parameter(0).toExtend<{
       kind: 'bing' | 'wallhaven' | 'catalog'
       year?: number
       url?: string

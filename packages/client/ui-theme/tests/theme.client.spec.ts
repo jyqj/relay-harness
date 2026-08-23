@@ -476,7 +476,7 @@ describe('resolveThemeSettings wallpaper sources', () => {
     const resolved = resolveThemeSettings({
       ...DEFAULT_THEME_SETTINGS,
       wallpaperSources: undefined as never,
-    } as ThemeSettings)
+    })
     expect(resolved.wallpaperSources.map(source => source.id)).toEqual(['bing', 'wallhaven'])
     expect(resolved.wallpaperSources[0]).toMatchObject({ kind: 'bing', name: '必应' })
     expect(resolved.wallpaperSources[1]).toMatchObject({ kind: 'wallhaven', name: 'Wallhaven' })
@@ -485,7 +485,7 @@ describe('resolveThemeSettings wallpaper sources', () => {
 
   it('keeps an empty wallpaperSources array without re-seeding', () => {
     const parsed = ThemeSettingsSchema({ wallpaperSources: [] } as never)
-    expect(resolveThemeSettings(parsed as ThemeSettings).wallpaperSources).toEqual([])
+    expect(resolveThemeSettings(parsed).wallpaperSources).toEqual([])
     expect(resolveThemeSettings({
       ...DEFAULT_THEME_SETTINGS,
       wallpaperSources: [],
@@ -497,7 +497,7 @@ describe('resolveThemeSettings wallpaper sources', () => {
       ...DEFAULT_THEME_SETTINGS,
       wallpaperSources: undefined as never,
       wallpaperCatalogUrls: ['https://example.com/a.json'],
-    } as ThemeSettings)
+    })
     expect(resolved.wallpaperSources).toHaveLength(3)
     expect(resolved.wallpaperSources[2]).toMatchObject({
       kind: 'catalog',
@@ -514,7 +514,7 @@ describe('resolveThemeSettings wallpaper sources', () => {
       ...DEFAULT_THEME_SETTINGS,
       wallpaperSources: undefined as never,
       wallpaperCatalogUrls: [longUrl],
-    } as ThemeSettings)
+    })
     expect(resolved.wallpaperSources.map(source => source.id)).toEqual(['bing', 'wallhaven'])
     expect(resolved.wallpaperSources.some(source => source.kind === 'catalog')).toBe(false)
   })

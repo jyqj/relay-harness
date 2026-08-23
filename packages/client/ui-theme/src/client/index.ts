@@ -521,6 +521,7 @@ export class ThemeRuntime {
 
   private resolvedMode(): 'light' | 'dark' {
     if (this.preference === 'system') return this.media?.matches === true ? 'dark' : 'light'
+    // oxlint-disable-next-line typescript/no-unnecessary-condition -- preference also holds theme ids (setTheme cast), so the check is live
     if (this.preference === 'dark' || this.preference === 'light') return this.preference
     const registered = this.themes.find(t => t.id === this.preference)
     return registered?.colorScheme ?? 'light'

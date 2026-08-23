@@ -31,8 +31,20 @@ const {
 } = require('./window');
 const { showClosingOverlay } = require('./closing-overlay');
 const { hideOnClose } = require('./close-behavior');
-const { runReleaseUiWalk, connectConfiguredWorkspace, makeRecorder } = require('./release-ui-walk');
-const { runComposerOfficialQa } = require('./composer-official-qa');
+// The installer keeps only the smoke-support half of the QA surface: the full
+// walkers (release-ui-walk.js, composer-official-qa.js) are excluded by
+// build.files and load lazily below, so development QA runs (DSH_QA /
+// DSH_QA_COMPOSER, launched from the repository checkout) still reach them
+// while the packaged app carries no QA walker code.
+const { connectConfiguredWorkspace, makeRecorder } = require('./workspace-connect');
+
+function loadQaModule(name) {
+  try {
+    return require(name);
+  } catch {
+    return null;
+  }
+}
 
 const dsh = new DshManager();
 const remote = createDisabledRemote();
@@ -625,7 +637,11 @@ async function runSmoke(win) {
     result.titlebarHits = titlebarHits;
     console.log('[DSH_SMOKE_HITS]', JSON.stringify(titlebarHits));
     if (needsComposerQa) {
+      const runComposerOfficialQa = loadQaModule('./composer-official-qa')?.runComposerOfficialQa ?? null;
       try {
+        if (!runComposerOfficialQa) {
+          throw new Error('composer-official-qa module not packaged; run QA from the repository checkout');
+        }
         result.composerOfficialQa = await runComposerOfficialQa(wc, {
           pressEscape,
           clickTitlebarButton,
@@ -662,7 +678,11 @@ async function runSmoke(win) {
       }
     }
     if (needsReleaseQa) {
+      const runReleaseUiWalk = loadQaModule('./release-ui-walk')?.runReleaseUiWalk ?? null;
       try {
+        if (!runReleaseUiWalk) {
+          throw new Error('release-ui-walk module not packaged; run QA from the repository checkout');
+        }
         result.qa = await runReleaseUiWalk(wc, {
           pressEscape,
           clickTitlebarButton,

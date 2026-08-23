@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-08-23-durable-issue-automation.md
-2026-08-23-durable-issue-automation.md: 87c566759f67f85ea9337efb40c5f8da4e819051
-2026-08-23-durable-issue-automation.zh.md: aa4730709e889f0a5543cd3852eeb2dec112ebf3
+2026-08-23-durable-issue-automation.md: 7a10916e971d236305e148869c1934f2e11b044a
+2026-08-23-durable-issue-automation.zh.md: 316e2c41a31a9d4d1484c24b31d6dd1b80773c68

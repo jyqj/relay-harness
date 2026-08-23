@@ -110,7 +110,7 @@ export class McpServersFile extends Service {
   private readonly children = new Map<string, { fingerprint: string; handle: ChildHandle }>()
   private operations: Promise<void> = Promise.resolve()
   private mounter: McpClientMounter = defaultMounter
-  private authorizeHttp: (url: string) => Promise<McpOAuthTokens> = (url) => authorizeMcpHttp(url, defaultOAuthRuntime())
+  private authorizeHttp: (url: string) => Promise<McpOAuthTokens> = url => authorizeMcpHttp(url, defaultOAuthRuntime())
   private watcher: FSWatcher | undefined
   private closed = false
   private selfWrite: string | undefined

@@ -84,7 +84,7 @@ export function AboutSection({ t }: AboutSectionProps): ReactNode {
     if (!shell) return undefined
     let cancelled = false
     void shell.getConfig?.().then((config) => {
-      if (!cancelled && config?.appVersion) setVersion(config.appVersion)
+      if (!cancelled && config.appVersion) setVersion(config.appVersion)
     }).catch(() => {})
     void check()
     const stop = shell.onUpdateProgress?.((payload) => {

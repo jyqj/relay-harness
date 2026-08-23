@@ -975,6 +975,7 @@ describe('tool-call scheduler: failure quiescence', () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- the generic append signature is not spy-able without widening
     vi.spyOn(agent.session, 'append').mockImplementation(((...args: any[]) => {
       if (args[0] === 'tool/result') throw new Error('append failed')
+      // oxlint-disable-next-line typescript/no-unsafe-argument -- widened spy signature carries any[]
       return append(...args)
     }) as never)
 

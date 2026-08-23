@@ -89,7 +89,7 @@ export async function executeToolCalls(
 
   let next = 0
   let concluded = false
-  let failure: unknown | undefined
+  let failure: unknown
   try {
     while (next < planned.length) {
       // Classify through the same request snapshot that advertised the tool.
@@ -122,6 +122,7 @@ export async function executeToolCalls(
     for (const call of planned.slice(next)) appendSkippedToolCall(session, turn, step, call.block, NOT_STARTED_FAILURE)
     throw error
   }
+  // oxlint-disable-next-line typescript/only-throw-error -- rethrows the failed group outcome's scheduler error, `unknown` by contract
   if (failure !== undefined) throw failure
   return { concluded }
 }
@@ -284,19 +285,21 @@ async function runGroup(
         const slot = slots[committed]
         // oxlint-disable-next-line typescript/no-non-null-assertion -- bounded index
         const call = group[committed]!
+        // oxlint-disable-next-line typescript/no-non-null-assertion -- started slots always record their seq
+        const callSeq = callSeqs[committed]!
         if (slot !== undefined && !completionAttempted.has(committed)) {
           try {
             const result = slot.needsPost
               ? await scheduler.finalize(slot.exec, slot.result)
               : scheduler.finish(slot.exec, slot.result)
-            appendToolResult(session, turn, step, call.block, result, callSeqs[committed]!)
+            appendToolResult(session, turn, step, call.block, result, callSeq)
             for (const context of result.additionalContexts ?? []) acceptContext(context)
             concluded ||= result.concludesTurn === true
           } catch {
-            appendOutcomeUnknown(session, turn, step, call.block, callSeqs[committed]!)
+            appendOutcomeUnknown(session, turn, step, call.block, callSeq)
           }
         } else {
-          appendOutcomeUnknown(session, turn, step, call.block, callSeqs[committed]!)
+          appendOutcomeUnknown(session, turn, step, call.block, callSeq)
         }
         committed++
       }

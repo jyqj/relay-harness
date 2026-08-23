@@ -379,14 +379,29 @@ export function WorkflowRunPanel({ node, sessionId, useSessions, openSession, t 
   }, [disclosures.run.open, phaseFacts, runFacts])
 
   const toggleRun = (): void => {
-    setDisclosures(current => ({
-      ...current,
-      run: {
-        ...current.run,
-        open: !current.run.open,
-        pendingCleanCollapse: false,
-      },
-    }))
+    setDisclosures((current) => {
+      // Closing the outer run hides every phase, so their deferred closes
+      // settle here: the disclosure content stays mounted through its exit
+      // transition and keeps DOM focus, which would otherwise leave the
+      // pending flag armed until some later update.
+      if (!current.run.open) {
+        return { ...current, run: { ...current.run, open: true, pendingCleanCollapse: false } }
+      }
+      const phases = new Map(current.phases)
+      let settled = false
+      for (const [key, phase] of phases) {
+        const next = collapsePending(phase)
+        if (next !== phase) {
+          phases.set(key, next)
+          settled = true
+        }
+      }
+      return {
+        ...current,
+        run: { ...current.run, open: false, pendingCleanCollapse: false },
+        phases: settled ? phases : current.phases,
+      }
+    })
   }
   const togglePhase = (key: string): void => {
     setDisclosures((current) => {

@@ -18,7 +18,7 @@ The tools pipeline routes `ask` decisions through this seam and fails closed whe
 
 #### What the model sees
 
-The first request and each effective policy change append a full runtime-context snapshot after retained history. Under `ask`, the approval contribution states that configured answerers may be consulted and absence fails closed. Under `never`, it states the deterministic rejection and non-escalation consequence. Unchanged requests retain the earlier snapshot without adding another message.
+The first request and each effective policy change append a full runtime-context snapshot after retained history. Under `ask`, the approval contribution states that configured answerers may be consulted and absence fails closed. Under `never`, it states that full-access operations need no approval and any remaining approval request is rejected. Unchanged requests retain the earlier snapshot without adding another message.
 
 ##### Ask-policy contribution
 
@@ -29,7 +29,7 @@ Approval policy: ask. Operations that require approval may ask through the confi
 ##### Never-policy contribution
 
 ```markdown
-Approval prompts are disabled in this session: actions that require approval are rejected automatically — do not request sandbox escalation (do not set `sandbox_permissions`).
+Approval prompts are disabled in this session. Full-access operations run without approval; operations that still require approval are rejected automatically.
 ```
 
 #### Token effect
