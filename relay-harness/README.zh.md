@@ -2,7 +2,7 @@
 
 [English](README.md) | 中文
 
-Relay Harness（`rlh`）是一个开源的 agent harness（智能体框架），由 MIT 许可的 DeepSeek Harness 更名而来（上游版权信息见 [LICENSE](LICENSE)）。
+Relay Harness（`rlh`）是一个开源的 agent harness（智能体框架）。
 
 它采用**一切皆插件**的架构，并由 [Cordis](https://github.com/cordiverse/cordis) 驱动，其设计参见论文 [_A Programming Paradigm for Spatiotemporal Composability_](https://github.com/cordiverse/paper)。
 
@@ -55,5 +55,7 @@ pnpm rlh web
 ## 许可证
 
 [MIT](LICENSE)
+
+Relay Harness 由 DeepSeek Harness 更名而来，因此 [LICENSE](LICENSE) 保留了 MIT 条款要求的上游版权声明。
 
 第三方依赖及其许可证见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。

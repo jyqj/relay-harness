@@ -113,7 +113,7 @@ test('ensureDesktopInstallPlugin strips the legacy desktop-install patch block',
       '',
       LEGACY_DESKTOP_INSTALL_BEGIN,
       '- insert:',
-      '    - id: dsh-desktop-plugin-install',
+      '    - id: rlh-desktop-plugin-install',
       `      name: "${href}"`,
       LEGACY_DESKTOP_INSTALL_END,
       '',
@@ -129,7 +129,7 @@ test('ensureDesktopInstallPlugin strips the legacy desktop-install patch block',
     assert.equal(result.patchChanged, true);
     const patch = fs.readFileSync(path.join(profileDir, 'cordis.patch.yml'), 'utf8');
     assert.equal(patch.includes(LEGACY_DESKTOP_INSTALL_BEGIN), false);
-    assert.equal(patch.includes('id: dsh-desktop-plugin-install'), false);
+    assert.equal(patch.includes('id: rlh-desktop-plugin-install'), false);
     assert.equal(patch.split('install-rlh-plugin.mjs').length - 1, 1);
     assert.ok(patch.includes(DESKTOP_INSTALL_BEGIN));
     assert.ok(patch.includes('id: rlhd-desktop-plugin-install'));

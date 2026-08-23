@@ -128,7 +128,7 @@ const LIVE_REGISTRY = {
       },
       npm: null,
       stars: 2,
-      install: 'rlh plugin --profile web add "https://github.com/TianYa-DAO/dsh-wallpaper-engine/releases/download/rlh-0.1.2/dsh-wallpaper-engine-0.1.2.tgz"',
+      install: 'rlh plugin --profile web add "https://github.com/TianYa-DAO/dsh-wallpaper-engine/releases/download/dsh-0.1.2/dsh-wallpaper-engine-0.1.2.tgz"',
       added: '2026-08-16',
     },
   ],
