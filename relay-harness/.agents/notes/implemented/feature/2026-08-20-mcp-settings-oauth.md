@@ -30,5 +30,5 @@ The user adds `https://ardot.tencent.com/mcp` (or any OAuth HTTP MCP), clicks ç™
 
 ## Related
 
-[MCP and Skill settings management](2026-08-14-mcp-and-skill-settings.md).
-[MCP Settings polls health and remounts given-up children](../bug-fix/2026-08-20-mcp-settings-stale-health.md).
+- [MCP and Skill settings management](2026-08-14-mcp-and-skill-settings.md)
+- [MCP Settings polls health and remounts given-up children](../bug-fix/2026-08-20-mcp-settings-stale-health.md)

@@ -38,5 +38,5 @@ Host 套件覆盖 YAML CRUD、非法 `serverName`、重复 id、组成配置拒�
 
 ## Related
 
-[MCP Settings 轮询健康并重新挂载已放弃的子实例](../bug-fix/2026-08-20-mcp-settings-stale-health.md)。
-[MCP Settings 为 HTTP 服务器登录](2026-08-20-mcp-settings-oauth.md)。
+- [MCP Settings 轮询健康并重新挂载已放弃的子实例](../bug-fix/2026-08-20-mcp-settings-stale-health.md)
+- [MCP Settings 为 HTTP 服务器登录](2026-08-20-mcp-settings-oauth.md)
