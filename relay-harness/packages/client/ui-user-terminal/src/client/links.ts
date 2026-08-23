@@ -140,6 +140,14 @@ export function resolveOpenPath(rawPath: string, cwd: string): string {
   return path
 }
 
+/**
+ * Whether a click carries the modifier that opens a terminal link — Command on
+ * Apple platforms, Control elsewhere. An unknown platform answers false rather
+ * than guessing, since the wrong modifier would open links on plain clicks.
+ * @param event - the click's modifier state.
+ * @param platform - platform token, defaulting to the browser's.
+ * @returns whether the click opens the link under it.
+ */
 export function isTerminalLinkActivation(
   event: Pick<MouseEvent, 'metaKey' | 'ctrlKey'>,
   platform = typeof navigator === 'undefined' ? '' : navigator.platform,

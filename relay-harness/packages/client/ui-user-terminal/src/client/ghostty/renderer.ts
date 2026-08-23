@@ -6,14 +6,21 @@ import {
   type GhosttySnapshot,
 } from "./core";
 
+/** The size of one terminal cell, in device-independent pixels. */
 export interface GhosttyCellMetrics {
+  /** Advance width of one cell. */
   readonly width: number;
+  /** Height of one cell, which is the row pitch. */
   readonly height: number;
+  /** Offset from the cell's top to the text baseline. */
   readonly baseline: number;
 }
 
+/** A span of cells, inclusive of both ends, in grid coordinates. */
 export interface GhosttyCellRange {
+  /** First cell of the span. */
   readonly start: { readonly x: number; readonly y: number };
+  /** Last cell of the span. */
   readonly end: { readonly x: number; readonly y: number };
 }
 
@@ -35,6 +42,15 @@ function sameTextStyle(left: GhosttyCell, right: GhosttyCell): boolean {
   );
 }
 
+/**
+ * How far a run of same-styled text extends from one cell, so the renderer can
+ * draw it in a single call. The trailing half of a wide character continues the
+ * run, since it carries no text of its own.
+ * @param cells - one row of the grid.
+ * @param start - index the run begins at.
+ * @param sameStyle - whether a cell shares the run's style.
+ * @returns the index one past the run's last cell.
+ */
 export function ghosttyTextRunEnd(
   cells: readonly GhosttyCell[],
   start: number,
@@ -60,6 +76,16 @@ function fontForCell(cell: GhosttyCell, fontSize: number, fontFamily: string): s
   return `${style} ${weight} ${fontSize}px ${fontFamily}`;
 }
 
+/**
+ * Measure the cell one font renders into. The row pitch is the taller of a
+ * fixed ratio of the point size and the font's own extents, so a face with
+ * unusually tall glyphs does not overlap its neighbours; the baseline centers
+ * the glyph box within that pitch.
+ * @param context - a canvas context, whose font this sets as a side effect.
+ * @param fontSize - point size in pixels.
+ * @param fontFamily - CSS `font-family` value.
+ * @returns the cell size and baseline.
+ */
 export function measureGhosttyCell(
   context: CanvasRenderingContext2D,
   fontSize: number,
@@ -79,6 +105,16 @@ export function measureGhosttyCell(
   };
 }
 
+/**
+ * How many whole cells fit in a canvas, which is the grid size to resize the
+ * pty to. Always at least one column and one row, so a collapsed panel still
+ * yields a legal grid.
+ * @param width - canvas width in pixels.
+ * @param height - canvas height in pixels.
+ * @param metrics - the measured cell size.
+ * @param padding - inset on each side, in pixels.
+ * @returns the column and row counts.
+ */
 export function terminalGridSize(
   width: number,
   height: number,
@@ -91,6 +127,12 @@ export function terminalGridSize(
   };
 }
 
+/**
+ * Draw one terminal snapshot onto a canvas. Rows the snapshot marks unchanged
+ * are left as they are unless `forceFull` is set, so a steady screen costs
+ * almost nothing to keep on display.
+ * @param options - the canvas, the snapshot, and how to paint it.
+ */
 export function renderGhosttySnapshot(options: {
   readonly context: CanvasRenderingContext2D;
   readonly snapshot: GhosttySnapshot;
