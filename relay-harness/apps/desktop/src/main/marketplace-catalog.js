@@ -22,10 +22,36 @@ function cachePath() {
   return path.join(app.getPath('userData'), 'marketplace-cache.json');
 }
 
+/**
+ * Whether a registry override may be fetched.
+ *
+ * The catalog is the trust anchor for installs: `isAllowedMarketplaceSpec`
+ * validates each row against that same row's homepage, so whoever serves the
+ * catalog decides what is installable. Require transport authentication, and
+ * exempt only loopback, where a local development server has no network path
+ * an attacker could occupy.
+ * @param {string} value
+ * @returns {boolean}
+ */
+function isAllowedRegistryUrl(value) {
+  let parsed;
+  try {
+    parsed = new URL(value);
+  } catch {
+    return false;
+  }
+  if (parsed.protocol === 'https:') return true;
+  if (parsed.protocol !== 'http:') return false;
+  return parsed.hostname === 'localhost'
+    || parsed.hostname === '127.0.0.1'
+    || parsed.hostname === '[::1]';
+}
+
 function registryUrl() {
   const fromEnv = process.env.RLHD_MARKETPLACE_REGISTRY_URL;
-  if (typeof fromEnv === 'string' && fromEnv.trim()) {
-    return fromEnv.trim();
+  const override = typeof fromEnv === 'string' ? fromEnv.trim() : '';
+  if (override && isAllowedRegistryUrl(override)) {
+    return override;
   }
   return DEFAULT_REGISTRY_URL;
 }

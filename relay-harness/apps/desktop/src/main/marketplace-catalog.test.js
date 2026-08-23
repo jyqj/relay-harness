@@ -217,6 +217,33 @@ test.afterEach(() => {
   }
 });
 
+test('a plaintext non-loopback registry override is refused for the default registry', async () => {
+  process.env.RLHD_MARKETPLACE_REGISTRY_URL = 'http://registry.example.com/plugins.json';
+  const calls = mockFetch(async () => jsonResponse(LIVE_REGISTRY));
+  const { listMarketplace } = loadCatalog();
+  await listMarketplace();
+
+  assert.equal(calls[0].url, 'https://awesome-dsh-plugin.com/plugins.json');
+});
+
+test('a loopback registry override is honored for local development', async () => {
+  process.env.RLHD_MARKETPLACE_REGISTRY_URL = 'http://localhost:8080/plugins.json';
+  const calls = mockFetch(async () => jsonResponse(LIVE_REGISTRY));
+  const { listMarketplace } = loadCatalog();
+  await listMarketplace();
+
+  assert.equal(calls[0].url, 'http://localhost:8080/plugins.json');
+});
+
+test('a malformed registry override is refused for the default registry', async () => {
+  process.env.RLHD_MARKETPLACE_REGISTRY_URL = 'not a url';
+  const calls = mockFetch(async () => jsonResponse(LIVE_REGISTRY));
+  const { listMarketplace } = loadCatalog();
+  await listMarketplace();
+
+  assert.equal(calls[0].url, 'https://awesome-dsh-plugin.com/plugins.json');
+});
+
 test('live catalog maps npm, github, and #path: install tokens from plugins.json', async () => {
   process.env.RLHD_MARKETPLACE_REGISTRY_URL = FIXTURE_URL;
   const calls = mockFetch(async () => jsonResponse(LIVE_REGISTRY));
