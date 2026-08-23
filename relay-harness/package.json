@@ -28,7 +28,7 @@
     "typecheck": "npm run build:lib:host && npm run typecheck:contracts-ready",
     "typecheck:contracts-ready": "tsc -b tsconfig.client.json",
     "typecheck:desktop": "tsc -p apps/desktop/tsconfig.json",
-    "lint:desktop": "tsx scripts/run-oxlint.ts -c apps/desktop/.oxlintrc.json apps/desktop/src apps/desktop/mobile",
+    "lint:desktop": "tsx scripts/run-oxlint.ts -c apps/desktop/oxlintrc.json apps/desktop/src apps/desktop/mobile",
     "lint": "npm run build:lib:host && npm run lint:contracts-ready",
     "lint:contracts-ready": "tsx scripts/run-oxlint.ts .",
     "lint:fix": "npm run build:lib:host && npm run lint:fix:contracts-ready",

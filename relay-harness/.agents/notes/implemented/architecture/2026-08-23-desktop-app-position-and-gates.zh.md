@@ -34,7 +34,7 @@ Status: implemented
 
 [`apps/desktop/tsconfig.json`](../../../../apps/desktop/tsconfig.json) 设置 `checkJs: false`，因此类型检查以**逐文件**方式开启，靠文件首行的 `// @ts-check` 声明。96 个非测试文件中已有 67 个带上该声明，因为它们本就干净；其余 27 个尚未标注。带声明的文件即门禁，必须保持无错。扩大覆盖的方式是修好某个文件的类型并在同一次改动中加上声明；绝不能为了让改动通过而删除声明。`src/main/release-ui-walk.js` 与 `src/main/composer-official-qa.js` 整体排除——它们是在实时 Electron 页面内求值的发布 QA 脚本，打包产物本就不含它们。
 
-[`apps/desktop/.oxlintrc.json`](../../../../apps/desktop/.oxlintrc.json) 是独立配置，而非在根配置上开的例外，因为根配置的 `typeAware: true` 恰恰是纯 JavaScript 在那里无法被 lint 的原因。打开它发现了 16 个真实问题，包括 `workspace-fs.js` 里已死的 `asCwd`，以及某测试 `finally` 块内的 `throw`——它会把该测试中任何断言失败替换成清理错误。
+[`apps/desktop/oxlintrc.json`](../../../../apps/desktop/oxlintrc.json) 是独立配置，而非在根配置上开的例外，因为根配置的 `typeAware: true` 恰恰是纯 JavaScript 在那里无法被 lint 的原因。打开它发现了 16 个真实问题，包括 `workspace-fs.js` 里已死的 `asCwd`，以及某测试 `finally` 块内的 `throw`——它会把该测试中任何断言失败替换成清理错误。文件名有意不带前导点：oxlint 会把任何嵌套的 `.oxlintrc.json` 当作本次运行根配置的延伸，而这份配置设置了 `options.reportUnusedDisableDirectives`——该选项只允许出现在根配置里。若用会被发现的那个名字，全仓库的 `pnpm run lint` 会直接拒绝启动。
 
 ### 被 vendor 的 `node_modules` 保持入库
 
