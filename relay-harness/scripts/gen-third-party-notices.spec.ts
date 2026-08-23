@@ -231,10 +231,10 @@ describe('collectPythonDependencies', () => {
   it('excludes normalized local project names without exempting a third-party prefix', () => {
     const pyprojects = [
       '[project]\nname = "relay-harness-runtime-bin"\ndependencies = ["pydantic"]\n',
-      '[project]\nname = "relay-harness-sdk"\ndependencies = ["DeepSeek.Harness_Runtime-Bin", "deepseek-unrelated"]\n',
+      '[project]\nname = "relay-harness-sdk"\ndependencies = ["Relay.Harness_Runtime-Bin", "relay-unrelated"]\n',
     ]
     expect(() => collectPythonDependencies(pyprojects)).toThrow(
-      'python dependency deepseek-unrelated is missing from PYTHON_METADATA',
+      'python dependency relay-unrelated is missing from PYTHON_METADATA',
     )
   })
 })

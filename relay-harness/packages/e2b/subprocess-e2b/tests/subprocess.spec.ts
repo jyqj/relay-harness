@@ -110,7 +110,7 @@ class FakeSandbox {
   sdkKillStops = true
   alive = true
   zombieOnly = false
-  ambient = 'PATH=/ambient/bin\0KEEP=safe\0UNICODE=你好\0NPM_TOKEN=secret\0DSH_STALE=old\0BROKEN\0=bad\0'
+  ambient = 'PATH=/ambient/bin\0KEEP=safe\0UNICODE=你好\0NPM_TOKEN=secret\0RLH_STALE=old\0BROKEN\0=bad\0'
   environmentHome = '/home/user'
   environmentWire: string | undefined
   environmentRequest: ((signal: AbortSignal | undefined) => Promise<void>) | undefined
@@ -445,7 +445,7 @@ describe('E2BSubprocessHandle', () => {
       '/workspace/.rlh-e2b/processes/one/stderr.log',
     ])
     expect(fake.writtenFileData.get('/workspace/.rlh-e2b/processes/one/environment')).toBe(
-      'PATH=/bin\0UNICODE=你好\0HOME=/home/user\0FOO-BAR=hyphen-value\0--split-string=literal-value\0DEEPSEEK_API_KEY=explicit-secret\0DSH_MODE=test\0',
+      'PATH=/bin\0UNICODE=你好\0HOME=/home/user\0FOO-BAR=hyphen-value\0--split-string=literal-value\0DEEPSEEK_API_KEY=explicit-secret\0RLH_MODE=test\0',
     )
 
     let piped = ''

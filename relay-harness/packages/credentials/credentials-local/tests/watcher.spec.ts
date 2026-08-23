@@ -229,7 +229,7 @@ describe('watcher pipeline', () => {
     // this document holds nothing but credentials. A live reload must warn
     // and keep serving the last good snapshot rather than take the process
     // down or silently drop the entry it could not validate.
-    await writeCredentials(path, 'BAD-KEY: 2\nDSH_CRED_PIPE: b\n')
+    await writeCredentials(path, 'BAD-KEY: 2\nRLH_CRED_PIPE: b\n')
     const [instance] = await fakeInstances()
     instance!.watcher.emit('all', 'change', path)
     await new Promise(resolve => setTimeout(resolve, 50))

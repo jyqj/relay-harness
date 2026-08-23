@@ -70,7 +70,7 @@ describe('layering and reads', () => {
   it('serves file entries alongside comments and quoted values', async () => {
     const dir = await tempDir()
     const path = join(dir, '.credentials.yaml')
-    await writeCredentials(path, '# notes\nDSH_CRED_TEST: plain\nDSH_CRED_OTHER: "with space"\n')
+    await writeCredentials(path, '# notes\nRLH_CRED_TEST: plain\nRLH_CRED_OTHER: "with space"\n')
     const ctx = await boot({ path, watch: false })
     expect(await ctx.credentials.resolve(KEY)).toEqual({ value: 'plain', source: 'file' })
     expect(await ctx.credentials.resolve(OTHER)).toEqual({ value: 'with space', source: 'file' })
@@ -233,7 +233,7 @@ describe('document validation', () => {
     ['a key that is not a POSIX identifier', 'not-a-ref: value\n', /credential ref/],
     ['a non-string value', 'RLH_CRED_TEST: 123\n', /must be a string/],
     ['an empty value', 'RLH_CRED_TEST: ""\n', /is empty/],
-    ['duplicate keys', 'RLH_CRED_TEST: one\nDSH_CRED_TEST: two\n', /invalid document/],
+    ['duplicate keys', 'RLH_CRED_TEST: one\nRLH_CRED_TEST: two\n', /invalid document/],
     ['malformed yaml', 'RLH_CRED_TEST: "unterminated\n', /invalid document/],
   ])('fails boot on %s', async (_case, text, message) => {
     const dir = await tempDir()
@@ -289,11 +289,11 @@ describe('document writes', () => {
   it('patches one entry, preserving comments and every untouched entry', async () => {
     const dir = await tempDir()
     const path = join(dir, '.credentials.yaml')
-    await writeCredentials(path, '# deployment notes\nDSH_CRED_OTHER: keep\n\n# the one under edit\nDSH_CRED_TEST: old\n')
+    await writeCredentials(path, '# deployment notes\nRLH_CRED_OTHER: keep\n\n# the one under edit\nRLH_CRED_TEST: old\n')
     const ctx = await boot({ path, watch: false })
     await ctx.credentials.set(KEY, 'new value!')
     expect(await readFile(path, 'utf8')).toBe(
-      '# deployment notes\nDSH_CRED_OTHER: keep\n\n# the one under edit\nDSH_CRED_TEST: new value!\n',
+      '# deployment notes\nRLH_CRED_OTHER: keep\n\n# the one under edit\nRLH_CRED_TEST: new value!\n',
     )
   })
 
@@ -317,11 +317,11 @@ describe('document writes', () => {
     // Comments above an entry are that entry's annotation and go with it when
     // it is removed — including anything above the document's first entry.
     // Every other entry keeps its own comments.
-    await writeCredentials(path, '# about the doomed one\nDSH_CRED_TEST: gone\n# about the survivor\nDSH_CRED_OTHER: stays\n')
+    await writeCredentials(path, '# about the doomed one\nRLH_CRED_TEST: gone\n# about the survivor\nRLH_CRED_OTHER: stays\n')
     const ctx = await boot({ path, watch: false })
     const seen = updates(ctx)
     await ctx.credentials.unset(KEY)
-    expect(await readFile(path, 'utf8')).toBe('# about the survivor\nDSH_CRED_OTHER: stays\n')
+    expect(await readFile(path, 'utf8')).toBe('# about the survivor\nRLH_CRED_OTHER: stays\n')
     await ctx.credentials.unset(KEY)
     expect(seen).toEqual([KEY])
   })
@@ -380,7 +380,7 @@ describe('document writes', () => {
       ctx.credentials.set(KEY, 'one'),
       ctx.credentials.set(OTHER, 'two'),
     ])
-    expect(await readFile(path, 'utf8')).toBe('RLH_CRED_TEST: one\nDSH_CRED_OTHER: two\n')
+    expect(await readFile(path, 'utf8')).toBe('RLH_CRED_TEST: one\nRLH_CRED_OTHER: two\n')
   })
 
   it('refuses writes after disposal', async () => {
@@ -405,7 +405,7 @@ describe('real hot reload', () => {
     const ctx = await boot({ path, debounceMs: 10 })
     const seen = updates(ctx)
 
-    await writeCredentials(path, 'RLH_CRED_TEST: live\nDSH_CRED_OTHER: extra\n')
+    await writeCredentials(path, 'RLH_CRED_TEST: live\nRLH_CRED_OTHER: extra\n')
     await vi.waitFor(async () => {
       expect(await ctx.credentials.resolve(KEY)).toEqual({ value: 'live', source: 'file' })
     })

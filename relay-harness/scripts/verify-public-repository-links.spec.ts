@@ -31,7 +31,7 @@ describe('repository link policy', () => {
   })
 
   it('preserves frozen archived Agent Notes', () => {
-    const unavailableRepository = ['deepseek-ai', 'relay-harness-sdk'].join('/')
+    const unavailableRepository = [['deepseek', 'ai'].join('-'), ['deepseek', 'harness', 'sdk'].join('-')].join('/')
 
     expect(findUnavailableRepositoryReferences(
       '.agents/notes/archived/process/historical-record.md',

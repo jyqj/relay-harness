@@ -6,7 +6,7 @@ class SnapshotSession {
   scrollback = 'rlh> '
 
   startSend(request) {
-    const viewport = `${request.text}\nPTY_OK\ndsh> `
+    const viewport = `${request.text}\nPTY_OK\nrlh> `
     this.scrollback += viewport
     const result = {
       viewport,
