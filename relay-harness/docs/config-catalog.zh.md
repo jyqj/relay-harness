@@ -11,7 +11,7 @@
 
 `Requires:` 行列出插件通过 `inject` 注入的服务键：其 `cordis.yml` 树还必须加载这些服务的提供者。范围限定为 harness 层级（`packages/`）；配置树还可能加载的 vendored cordis 插件（`hmr`、控制台日志记录器等）固定为上游源代码（参见 [vendoring policy](../vendor/README.md)），未收录于此目录。
 
-<a id="deepseek-aidsh-acp"></a>
+<a id="relay-harnessrlh-acp"></a>
 
 ## `@relay-harness/rlh-acp`
 
@@ -33,7 +33,7 @@ export interface AcpConfig {
 
 来源：[`packages/acp/acp/src/index.ts:71`](../packages/acp/acp/src/index.ts)
 
-<a id="deepseek-aidsh-acp-demo"></a>
+<a id="relay-harnessrlh-acp-demo"></a>
 
 ## `@relay-harness/rlh-acp-demo`
 
@@ -84,11 +84,11 @@ export interface Config {
 }
 ```
 
-依赖：[`agentCore`](../packages/examples/agent-spine-demo/src/index.ts) · [`JsonlCompression`](../packages/session/session-persistence-jsonl/src/index.ts) · [`ToolsConfig`](#deepseek-aidsh-tools)
+依赖：[`agentCore`](../packages/examples/agent-spine-demo/src/index.ts) · [`JsonlCompression`](../packages/session/session-persistence-jsonl/src/index.ts) · [`ToolsConfig`](#relay-harnessrlh-tools)
 
 来源：[`packages/examples/acp-demo/src/index.ts:39`](../packages/examples/acp-demo/src/index.ts)
 
-<a id="deepseek-aidsh-agent-default-model"></a>
+<a id="relay-harnessrlh-agent-default-model"></a>
 
 ## `@relay-harness/rlh-agent-default-model`
 
@@ -104,7 +104,7 @@ export interface Config {
 
 来源：[`packages/core/agent-default-model/src/index.ts:41`](../packages/core/agent-default-model/src/index.ts)
 
-<a id="deepseek-aidsh-agent-instructions"></a>
+<a id="relay-harnessrlh-agent-instructions"></a>
 
 ## `@relay-harness/rlh-agent-instructions`
 
@@ -136,7 +136,7 @@ export interface Config {
 
 来源：[`packages/context/agent-instructions/src/config.ts:18`](../packages/context/agent-instructions/src/config.ts)
 
-<a id="deepseek-aidsh-agent-loop"></a>
+<a id="relay-harnessrlh-agent-loop"></a>
 
 ## `@relay-harness/rlh-agent-loop`
 
@@ -168,7 +168,7 @@ export interface Config {
 
 来源：[`packages/core/agent-loop/src/index.ts:255`](../packages/core/agent-loop/src/index.ts)
 
-<a id="deepseek-aidsh-agent-presets"></a>
+<a id="relay-harnessrlh-agent-presets"></a>
 
 ## `@relay-harness/rlh-agent-presets`
 
@@ -206,7 +206,7 @@ export type PresetTrust = 'system' | 'user'
 
 来源：[`packages/preset/agent-presets/src/preset.ts:52`](../packages/preset/agent-presets/src/preset.ts)
 
-<a id="deepseek-aidsh-agent-spine-demo"></a>
+<a id="relay-harnessrlh-agent-spine-demo"></a>
 
 ## `@relay-harness/rlh-agent-spine-demo`
 
@@ -294,11 +294,11 @@ export interface GoalConfig {
 }
 ```
 
-依赖：[`AgentLoopConfig`](#deepseek-aidsh-agent-loop) · [`GoalDomainConfig`](#deepseek-aidsh-goal) · [`InvariantConfig`](#deepseek-aidsh-invariants) · [`JobsConfig`](#deepseek-aidsh-jobs-local) · [`SessionTitleConfig`](#deepseek-aidsh-session-title) · [`SkillFileSystem`](../packages/skill/skill-filesystem/src/index.ts) · [`SkillRegistryConfig`](#deepseek-aidsh-skill) · [`SystemPromptConfig`](#deepseek-aidsh-system-prompt) · [`toolBash`](../packages/shell/tool-bash/src/index.ts) · [`toolGoal`](../packages/goal/tool-goal/src/index.ts) · [`toolJobs`](../packages/jobs/tool-jobs/src/index.ts) · [`ToolsConfig`](#deepseek-aidsh-tools) · [`toolSkill`](../packages/skill/tool-skill/src/index.ts) · [`workspaceContext`](../packages/context/agent-instructions/src/index.ts)
+依赖：[`AgentLoopConfig`](#relay-harnessrlh-agent-loop) · [`GoalDomainConfig`](#relay-harnessrlh-goal) · [`InvariantConfig`](#relay-harnessrlh-invariants) · [`JobsConfig`](#relay-harnessrlh-jobs-local) · [`SessionTitleConfig`](#relay-harnessrlh-session-title) · [`SkillFileSystem`](../packages/skill/skill-filesystem/src/index.ts) · [`SkillRegistryConfig`](#relay-harnessrlh-skill) · [`SystemPromptConfig`](#relay-harnessrlh-system-prompt) · [`toolBash`](../packages/shell/tool-bash/src/index.ts) · [`toolGoal`](../packages/goal/tool-goal/src/index.ts) · [`toolJobs`](../packages/jobs/tool-jobs/src/index.ts) · [`ToolsConfig`](#relay-harnessrlh-tools) · [`toolSkill`](../packages/skill/tool-skill/src/index.ts) · [`workspaceContext`](../packages/context/agent-instructions/src/index.ts)
 
 来源：[`packages/examples/agent-spine-demo/src/index.ts:92`](../packages/examples/agent-spine-demo/src/index.ts)
 
-<a id="deepseek-aidsh-agent-tool-presentation"></a>
+<a id="relay-harnessrlh-agent-tool-presentation"></a>
 
 ## `@relay-harness/rlh-agent-tool-presentation`
 
@@ -322,7 +322,7 @@ export interface Config {
 
 来源：[`packages/core/agent-tool-presentation/src/index.ts:38`](../packages/core/agent-tool-presentation/src/index.ts)
 
-<a id="deepseek-aidsh-attachment-local"></a>
+<a id="relay-harnessrlh-attachment-local"></a>
 
 ## `@relay-harness/rlh-attachment-local`
 
@@ -346,7 +346,7 @@ export interface Config {
 
 来源：[`packages/attachment/attachment-local/src/index.ts:31`](../packages/attachment/attachment-local/src/index.ts)
 
-<a id="deepseek-aidsh-bash-local"></a>
+<a id="relay-harnessrlh-bash-local"></a>
 
 ## `@relay-harness/rlh-bash-local`
 
@@ -372,7 +372,7 @@ export interface Config {
 
 来源：[`packages/shell/bash-local/src/index.ts:41`](../packages/shell/bash-local/src/index.ts)
 
-<a id="deepseek-aidsh-bash-sandbox"></a>
+<a id="relay-harnessrlh-bash-sandbox"></a>
 
 ## `@relay-harness/rlh-bash-sandbox`
 
@@ -389,11 +389,11 @@ export interface Config {
 export type Config = LocalConfig
 ```
 
-依赖：[`LocalConfig`](#deepseek-aidsh-bash-local)
+依赖：[`LocalConfig`](#relay-harnessrlh-bash-local)
 
 来源：[`packages/shell/bash-sandbox/src/index.ts:35`](../packages/shell/bash-sandbox/src/index.ts)
 
-<a id="deepseek-aidsh-behavior-correction"></a>
+<a id="relay-harnessrlh-behavior-correction"></a>
 
 ## `@relay-harness/rlh-behavior-correction`
 
@@ -427,7 +427,7 @@ export interface Config {
 
 来源：[`packages/guard/behavior-correction/src/index.ts:28`](../packages/guard/behavior-correction/src/index.ts)
 
-<a id="deepseek-aidsh-client-connection"></a>
+<a id="relay-harnessrlh-client-connection"></a>
 
 ## `@relay-harness/rlh-client-connection`
 
@@ -452,7 +452,7 @@ export interface ConnectionConfig {
 
 来源：[`packages/client/connection/src/index.ts:50`](../packages/client/connection/src/index.ts)
 
-<a id="deepseek-aidsh-client-hmr"></a>
+<a id="relay-harnessrlh-client-hmr"></a>
 
 ## `@relay-harness/rlh-client-hmr`
 
@@ -468,7 +468,7 @@ export interface Config {
 
 来源：[`packages/client/hmr/src/index.ts:31`](../packages/client/hmr/src/index.ts)
 
-<a id="deepseek-aidsh-code-runtime-worker-thread"></a>
+<a id="relay-harnessrlh-code-runtime-worker-thread"></a>
 
 ## `@relay-harness/rlh-code-runtime-worker-thread`
 
@@ -505,7 +505,7 @@ export interface Config {
 
 来源：[`packages/code-runtime/code-runtime-worker-thread/src/index.ts:25`](../packages/code-runtime/code-runtime-worker-thread/src/index.ts)
 
-<a id="deepseek-aidsh-compaction-basic"></a>
+<a id="relay-harnessrlh-compaction-basic"></a>
 
 ## `@relay-harness/rlh-compaction-basic`
 
@@ -551,7 +551,7 @@ export interface ModelCompactPolicyConfig extends CompactionPolicyConfig {
 
 来源：[`packages/compaction/compaction-basic/src/types.ts:38`](../packages/compaction/compaction-basic/src/types.ts)
 
-<a id="deepseek-aidsh-compaction-tool-result-pruner"></a>
+<a id="relay-harnessrlh-compaction-tool-result-pruner"></a>
 
 ## `@relay-harness/rlh-compaction-tool-result-pruner`
 
@@ -571,7 +571,7 @@ export interface ToolResultPruneConfig {
 
 来源：[`packages/compaction/compaction-tool-result-pruner/src/types.ts:4`](../packages/compaction/compaction-tool-result-pruner/src/types.ts)
 
-<a id="deepseek-aidsh-cordis-host-runner"></a>
+<a id="relay-harnessrlh-cordis-host-runner"></a>
 
 ## `@relay-harness/rlh-cordis-host-runner`
 
@@ -587,7 +587,7 @@ export interface Config {
 
 来源：[`packages/extensions/cordis-host-runner/src/index.ts:88`](../packages/extensions/cordis-host-runner/src/index.ts)
 
-<a id="deepseek-aidsh-credentials-local"></a>
+<a id="relay-harnessrlh-credentials-local"></a>
 
 ## `@relay-harness/rlh-credentials-local`
 
@@ -607,7 +607,7 @@ export interface Config {
 
 来源：[`packages/credentials/credentials-local/src/index.ts:55`](../packages/credentials/credentials-local/src/index.ts)
 
-<a id="deepseek-aidsh-e2b"></a>
+<a id="relay-harnessrlh-e2b"></a>
 
 ## `@relay-harness/rlh-e2b`
 
@@ -625,7 +625,7 @@ export interface Config {
 
 来源：[`packages/e2b/e2b/src/index.ts:43`](../packages/e2b/e2b/src/index.ts)
 
-<a id="deepseek-aidsh-experimental-agent-team"></a>
+<a id="relay-harnessrlh-experimental-agent-team"></a>
 
 ## `@relay-harness/rlh-experimental-agent-team`
 
@@ -649,7 +649,7 @@ export interface Config {
 
 来源：[`packages/experimental/agent-team/src/types.ts:125`](../packages/experimental/agent-team/src/types.ts)
 
-<a id="deepseek-aidsh-experimental-tool-agent-team"></a>
+<a id="relay-harnessrlh-experimental-tool-agent-team"></a>
 
 ## `@relay-harness/rlh-experimental-tool-agent-team`
 
@@ -667,7 +667,7 @@ export interface Config {
 
 来源：[`packages/experimental/tool-agent-team/src/index.ts:17`](../packages/experimental/tool-agent-team/src/index.ts)
 
-<a id="deepseek-aidsh-file-reference-local"></a>
+<a id="relay-harnessrlh-file-reference-local"></a>
 
 ## `@relay-harness/rlh-file-reference-local`
 
@@ -687,7 +687,7 @@ export interface Config {
 
 来源：[`packages/context/file-reference-local/src/index.ts:35`](../packages/context/file-reference-local/src/index.ts)
 
-<a id="deepseek-aidsh-fs-local"></a>
+<a id="relay-harnessrlh-fs-local"></a>
 
 ## `@relay-harness/rlh-fs-local`
 
@@ -706,7 +706,7 @@ export interface Config {
 
 来源：[`packages/fs/fs-local/src/index.ts:41`](../packages/fs/fs-local/src/index.ts)
 
-<a id="deepseek-aidsh-fs-sandbox"></a>
+<a id="relay-harnessrlh-fs-sandbox"></a>
 
 ## `@relay-harness/rlh-fs-sandbox`
 
@@ -722,11 +722,11 @@ export interface Config {
 export type Config = LocalConfig
 ```
 
-依赖：[`LocalConfig`](#deepseek-aidsh-fs-local)
+依赖：[`LocalConfig`](#relay-harnessrlh-fs-local)
 
 来源：[`packages/fs/fs-sandbox/src/index.ts:49`](../packages/fs/fs-sandbox/src/index.ts)
 
-<a id="deepseek-aidsh-goal"></a>
+<a id="relay-harnessrlh-goal"></a>
 
 ## `@relay-harness/rlh-goal`
 
@@ -742,7 +742,7 @@ export interface Config {
 
 来源：[`packages/goal/goal/src/index.ts:116`](../packages/goal/goal/src/index.ts)
 
-<a id="deepseek-aidsh-headless"></a>
+<a id="relay-harnessrlh-headless"></a>
 
 ## `@relay-harness/rlh-headless`
 
@@ -758,7 +758,7 @@ export interface Config {
 
 来源：[`packages/bundle/headless/src/index.ts:31`](../packages/bundle/headless/src/index.ts)
 
-<a id="deepseek-aidsh-hooks-claude-code"></a>
+<a id="relay-harnessrlh-hooks-claude-code"></a>
 
 ## `@relay-harness/rlh-hooks-claude-code`
 
@@ -796,7 +796,7 @@ export interface Config {
 
 来源：[`packages/hooks/hooks-claude-code/src/index.ts:45`](../packages/hooks/hooks-claude-code/src/index.ts)
 
-<a id="deepseek-aidsh-hooks-codex"></a>
+<a id="relay-harnessrlh-hooks-codex"></a>
 
 ## `@relay-harness/rlh-hooks-codex`
 
@@ -822,7 +822,7 @@ export interface Config {
 
 来源： [`packages/hooks/hooks-codex/src/index.ts:45`](../packages/hooks/hooks-codex/src/index.ts)
 
-<a id="deepseek-aidsh-host-apiproxy"></a>
+<a id="relay-harnessrlh-host-apiproxy"></a>
 
 ## `@relay-harness/rlh-host-apiproxy`
 
@@ -856,7 +856,7 @@ export interface Config {
 
 来源：[`packages/host/apiproxy/src/index.ts:41`](../packages/host/apiproxy/src/index.ts)
 
-<a id="deepseek-aidsh-host-directory-picker-browse"></a>
+<a id="relay-harnessrlh-host-directory-picker-browse"></a>
 
 ## `@relay-harness/rlh-host-directory-picker-browse`
 
@@ -870,7 +870,7 @@ export interface Config {
 
 来源：[`packages/host/directory-picker-browse/src/index.ts:181`](../packages/host/directory-picker-browse/src/index.ts)
 
-<a id="deepseek-aidsh-host-frontend-static"></a>
+<a id="relay-harnessrlh-host-frontend-static"></a>
 
 ## `@relay-harness/rlh-host-frontend-static`
 
@@ -886,7 +886,7 @@ export interface Config {
 
 来源：[`packages/host/frontend-static/src/index.ts:28`](../packages/host/frontend-static/src/index.ts)
 
-<a id="deepseek-aidsh-host-webserver"></a>
+<a id="relay-harnessrlh-host-webserver"></a>
 
 ## `@relay-harness/rlh-host-webserver`
 
@@ -902,7 +902,7 @@ export interface Config {
 
 来源：[`packages/host/webserver/src/index.ts:45`](../packages/host/webserver/src/index.ts)
 
-<a id="deepseek-aidsh-invariants"></a>
+<a id="relay-harnessrlh-invariants"></a>
 
 ## `@relay-harness/rlh-invariants`
 
@@ -920,7 +920,7 @@ export interface Config {
 
 来源：[`packages/runtime-diagnostics/invariants/src/index.ts:15`](../packages/runtime-diagnostics/invariants/src/index.ts)
 
-<a id="deepseek-aidsh-issue-runner-agent"></a>
+<a id="relay-harnessrlh-issue-runner-agent"></a>
 
 ## `@relay-harness/rlh-issue-runner-agent`
 
@@ -940,7 +940,7 @@ export interface Config {
 
 来源：[`packages/automation/issue-runner-agent/src/index.ts:16`](../packages/automation/issue-runner-agent/src/index.ts)
 
-<a id="deepseek-aidsh-issue-workflow-file"></a>
+<a id="relay-harnessrlh-issue-workflow-file"></a>
 
 ## `@relay-harness/rlh-issue-workflow-file`
 
@@ -954,7 +954,7 @@ export interface Config {
 
 来源：[`packages/automation/issue-workflow-file/src/index.ts:18`](../packages/automation/issue-workflow-file/src/index.ts)
 
-<a id="deepseek-aidsh-issue-workspace-local"></a>
+<a id="relay-harnessrlh-issue-workspace-local"></a>
 
 ## `@relay-harness/rlh-issue-workspace-local`
 
@@ -984,7 +984,7 @@ export interface Config {
 
 来源：[`packages/automation/issue-workspace-local/src/index.ts:16`](../packages/automation/issue-workspace-local/src/index.ts)
 
-<a id="deepseek-aidsh-jobs-local"></a>
+<a id="relay-harnessrlh-jobs-local"></a>
 
 ## `@relay-harness/rlh-jobs-local`
 
@@ -1001,7 +1001,7 @@ export interface Config {
 
 来源：[`packages/jobs/jobs-local/src/index.ts:31`](../packages/jobs/jobs-local/src/index.ts)
 
-<a id="deepseek-aidsh-llm-circuit-breaker"></a>
+<a id="relay-harnessrlh-llm-circuit-breaker"></a>
 
 ## `@relay-harness/rlh-llm-circuit-breaker`
 
@@ -1027,7 +1027,7 @@ export interface Config {
 
 来源： [`packages/guard/llm-circuit-breaker/src/index.ts:21`](../packages/guard/llm-circuit-breaker/src/index.ts)
 
-<a id="deepseek-aidsh-llm-deepseek"></a>
+<a id="relay-harnessrlh-llm-deepseek"></a>
 
 ## `@relay-harness/rlh-llm-deepseek`
 
@@ -1086,7 +1086,7 @@ export interface DeepSeekCatalogModel {
 
 来源：[`packages/llm/llm-deepseek/src/index.ts:66`](../packages/llm/llm-deepseek/src/index.ts)
 
-<a id="deepseek-aidsh-llm-pi-ai"></a>
+<a id="relay-harnessrlh-llm-pi-ai"></a>
 
 ## `@relay-harness/rlh-llm-pi-ai`
 
@@ -1336,7 +1336,7 @@ export type PiAiThinkingFormat = NonNullable<OpenAICompletionsCompat['thinkingFo
 
 来源：[`packages/llm/llm-pi-ai/src/config.ts:201`](../packages/llm/llm-pi-ai/src/config.ts)
 
-<a id="deepseek-aidsh-llm-replay"></a>
+<a id="relay-harnessrlh-llm-replay"></a>
 
 ## `@relay-harness/rlh-llm-replay`
 
@@ -1404,7 +1404,7 @@ export interface ReplayModelConfig {
 
 来源：[`packages/test-support/llm-replay/src/index.ts:776`](../packages/test-support/llm-replay/src/index.ts)
 
-<a id="deepseek-aidsh-llm-retry"></a>
+<a id="relay-harnessrlh-llm-retry"></a>
 
 ## `@relay-harness/rlh-llm-retry`
 
@@ -1417,7 +1417,7 @@ export type Config = Readonly<Record<string, never>>
 
 来源： [`packages/llm/llm-retry/src/index.ts:25`](../packages/llm/llm-retry/src/index.ts)
 
-<a id="deepseek-aidsh-llm-vision-fallback"></a>
+<a id="relay-harnessrlh-llm-vision-fallback"></a>
 
 ## `@relay-harness/rlh-llm-vision-fallback`
 
@@ -1435,7 +1435,7 @@ export interface Config {
 
 来源： [`packages/llm/llm-vision-fallback/src/index.ts:76`](../packages/llm/llm-vision-fallback/src/index.ts)
 
-<a id="deepseek-aidsh-lsp-stdio"></a>
+<a id="relay-harnessrlh-lsp-stdio"></a>
 
 ## `@relay-harness/rlh-lsp-stdio`
 
@@ -1477,7 +1477,7 @@ export interface LspLocalServerConfig {
 
 来源：[`packages/lsp/lsp-stdio/src/index.ts:82`](../packages/lsp/lsp-stdio/src/index.ts)
 
-<a id="deepseek-aidsh-mcp-client"></a>
+<a id="relay-harnessrlh-mcp-client"></a>
 
 ## `@relay-harness/rlh-mcp-client`
 
@@ -1550,7 +1550,7 @@ export interface ReconnectConfig {
 
 来源：[`packages/mcp/mcp-client/src/index.ts:98`](../packages/mcp/mcp-client/src/index.ts)
 
-<a id="deepseek-aidsh-mcp-servers-file"></a>
+<a id="relay-harnessrlh-mcp-servers-file"></a>
 
 ## `@relay-harness/rlh-mcp-servers-file`
 
@@ -1573,7 +1573,7 @@ export interface McpServersFileOptions {
 
 来源： [`packages/mcp/mcp-servers-file/src/index.ts:12`](../packages/mcp/mcp-servers-file/src/index.ts)
 
-<a id="deepseek-aidsh-memory-agent"></a>
+<a id="relay-harnessrlh-memory-agent"></a>
 
 ## `@relay-harness/rlh-memory-agent`
 
@@ -1599,7 +1599,7 @@ export interface Config {
 
 来源： [`packages/memory/memory-agent/src/index.ts:53`](../packages/memory/memory-agent/src/index.ts)
 
-<a id="deepseek-aidsh-memory-extractor-llm"></a>
+<a id="relay-harnessrlh-memory-extractor-llm"></a>
 
 ## `@relay-harness/rlh-memory-extractor-llm`
 
@@ -1653,7 +1653,7 @@ export interface Config {
 
 Source: [`packages/memory/memory-extractor-llm/src/index.ts:43`](../packages/memory/memory-extractor-llm/src/index.ts)
 
-<a id="deepseek-aidsh-memory-sqlite"></a>
+<a id="relay-harnessrlh-memory-sqlite"></a>
 
 ## `@relay-harness/rlh-memory-sqlite`
 
@@ -1678,7 +1678,7 @@ export type JournalMode = 'wal' | 'delete' | 'truncate' | 'persist'
 
 来源： [`packages/memory/memory-sqlite/src/index.ts:48`](../packages/memory/memory-sqlite/src/index.ts)
 
-<a id="deepseek-aidsh-message-feedback"></a>
+<a id="relay-harnessrlh-message-feedback"></a>
 
 ## `@relay-harness/rlh-message-feedback`
 
@@ -1694,7 +1694,7 @@ export interface Config {
 
 来源：[`packages/feedback/message-feedback/src/index.ts:49`](../packages/feedback/message-feedback/src/index.ts)
 
-<a id="deepseek-aidsh-permission-presets"></a>
+<a id="relay-harnessrlh-permission-presets"></a>
 
 ## `@relay-harness/rlh-permission-presets`
 
@@ -1733,7 +1733,7 @@ export interface PresetSpec {
 
 来源：[`packages/interaction/permission-presets/src/index.ts:140`](../packages/interaction/permission-presets/src/index.ts)
 
-<a id="deepseek-aidsh-persona"></a>
+<a id="relay-harnessrlh-persona"></a>
 
 ## `@relay-harness/rlh-persona`
 
@@ -1757,7 +1757,7 @@ export interface Config {
 
 来源：[`packages/preset/persona/src/index.ts:34`](../packages/preset/persona/src/index.ts)
 
-<a id="deepseek-aidsh-plan-mode"></a>
+<a id="relay-harnessrlh-plan-mode"></a>
 
 ## `@relay-harness/rlh-plan-mode`
 
@@ -1773,7 +1773,7 @@ export interface PlanModeConfig {
 
 来源：[`packages/plan/plan-mode/src/index.ts:71`](../packages/plan/plan-mode/src/index.ts)
 
-<a id="deepseek-aidsh-pwsh-local"></a>
+<a id="relay-harnessrlh-pwsh-local"></a>
 
 ## `@relay-harness/rlh-pwsh-local`
 
@@ -1806,7 +1806,7 @@ export interface Config {
 
 来源：[`packages/shell/pwsh-local/src/index.ts:58`](../packages/shell/pwsh-local/src/index.ts)
 
-<a id="deepseek-aidsh-pwsh-sandbox"></a>
+<a id="relay-harnessrlh-pwsh-sandbox"></a>
 
 ## `@relay-harness/rlh-pwsh-sandbox`
 
@@ -1824,11 +1824,11 @@ export interface Config {
 export type Config = LocalConfig
 ```
 
-依赖：[`LocalConfig`](#deepseek-aidsh-pwsh-local)
+依赖：[`LocalConfig`](#relay-harnessrlh-pwsh-local)
 
 来源：[`packages/shell/pwsh-sandbox/src/index.ts:40`](../packages/shell/pwsh-sandbox/src/index.ts)
 
-<a id="deepseek-aidsh-repeat-tool-reminder"></a>
+<a id="relay-harnessrlh-repeat-tool-reminder"></a>
 
 ## `@relay-harness/rlh-repeat-tool-reminder`
 
@@ -1862,7 +1862,7 @@ export interface Config {
 
 来源：[`packages/guard/repeat-tool-reminder/src/index.ts:28`](../packages/guard/repeat-tool-reminder/src/index.ts)
 
-<a id="deepseek-aidsh-rollout-budget-controller"></a>
+<a id="relay-harnessrlh-rollout-budget-controller"></a>
 
 ## `@relay-harness/rlh-rollout-budget-controller`
 
@@ -1884,7 +1884,7 @@ export interface Config {
 
 来源： [`packages/guard/rollout-budget-controller/src/index.ts:21`](../packages/guard/rollout-budget-controller/src/index.ts)
 
-<a id="deepseek-aidsh-sandbox-local"></a>
+<a id="relay-harnessrlh-sandbox-local"></a>
 
 ## `@relay-harness/rlh-sandbox-local`
 
@@ -1916,7 +1916,7 @@ export interface Config {
 
 来源：[`packages/sandbox/sandbox-local/src/index.ts:44`](../packages/sandbox/sandbox-local/src/index.ts)
 
-<a id="deepseek-aidsh-sandbox-policy"></a>
+<a id="relay-harnessrlh-sandbox-policy"></a>
 
 ## `@relay-harness/rlh-sandbox-policy`
 
@@ -1943,7 +1943,7 @@ export interface Config {
 
 来源：[`packages/sandbox/sandbox-policy/src/index.ts:67`](../packages/sandbox/sandbox-policy/src/index.ts)
 
-<a id="deepseek-aidsh-sdk-jsonrpc-server"></a>
+<a id="relay-harnessrlh-sdk-jsonrpc-server"></a>
 
 ## `@relay-harness/rlh-sdk-jsonrpc-server`
 
@@ -1967,7 +1967,7 @@ export interface JsonRpcConfig {
 
 来源：[`packages/sdk/server/src/index.ts:29`](../packages/sdk/server/src/index.ts)
 
-<a id="deepseek-aidsh-session-persistence-jsonl"></a>
+<a id="relay-harnessrlh-session-persistence-jsonl"></a>
 
 ## `@relay-harness/rlh-session-persistence-jsonl`
 
@@ -2006,7 +2006,7 @@ export type JsonlCompression = 'zstd' | 'none'
 
 来源：[`packages/session/session-persistence-jsonl/src/index.ts:60`](../packages/session/session-persistence-jsonl/src/index.ts)
 
-<a id="deepseek-aidsh-session-persistence-sqlite"></a>
+<a id="relay-harnessrlh-session-persistence-sqlite"></a>
 
 ## `@relay-harness/rlh-session-persistence-sqlite`
 
@@ -2033,7 +2033,7 @@ export type JournalMode = 'wal' | 'delete' | 'truncate' | 'persist'
 
 来源：[`packages/session/session-persistence-sqlite/src/index.ts:36`](../packages/session/session-persistence-sqlite/src/index.ts)
 
-<a id="deepseek-aidsh-session-projection-cache"></a>
+<a id="relay-harnessrlh-session-projection-cache"></a>
 
 ## `@relay-harness/rlh-session-projection-cache`
 
@@ -2056,7 +2056,7 @@ export interface Config {
 
 来源：[`packages/session/session-projection-cache/src/index.ts:42`](../packages/session/session-projection-cache/src/index.ts)
 
-<a id="deepseek-aidsh-session-query-sqlite"></a>
+<a id="relay-harnessrlh-session-query-sqlite"></a>
 
 ## `@relay-harness/rlh-session-query-sqlite`
 
@@ -2102,7 +2102,7 @@ export type JournalMode = 'wal' | 'delete' | 'truncate' | 'persist'
 
 来源：[`packages/session-query/session-query-sqlite/src/index.ts:89`](../packages/session-query/session-query-sqlite/src/index.ts)
 
-<a id="deepseek-aidsh-session-reference"></a>
+<a id="relay-harnessrlh-session-reference"></a>
 
 ## `@relay-harness/rlh-session-reference`
 
@@ -2122,7 +2122,7 @@ export interface Config {
 
 来源：[`packages/context/session-reference/src/config.ts:11`](../packages/context/session-reference/src/config.ts)
 
-<a id="deepseek-aidsh-session-telemetry-otel"></a>
+<a id="relay-harnessrlh-session-telemetry-otel"></a>
 
 ## `@relay-harness/rlh-session-telemetry-otel`
 
@@ -2168,7 +2168,7 @@ export enum SessionTelemetryMode {
 
 来源：[`packages/session/session-telemetry-otel/src/index.ts:91`](../packages/session/session-telemetry-otel/src/index.ts)
 
-<a id="deepseek-aidsh-session-title"></a>
+<a id="relay-harnessrlh-session-title"></a>
 
 ## `@relay-harness/rlh-session-title`
 
@@ -2188,7 +2188,7 @@ export interface Config {
 
 来源：[`packages/session/session-title/src/index.ts:79`](../packages/session/session-title/src/index.ts)
 
-<a id="deepseek-aidsh-session-title-all-prompts-llm"></a>
+<a id="relay-harnessrlh-session-title-all-prompts-llm"></a>
 
 ## `@relay-harness/rlh-session-title-all-prompts-llm`
 
@@ -2203,7 +2203,7 @@ export type Config = SessionTitleLlmConfig
 
 来源：[`packages/session/session-title-all-prompts-llm/src/index.ts:15`](../packages/session/session-title-all-prompts-llm/src/index.ts)
 
-<a id="deepseek-aidsh-session-title-first-prompt-llm"></a>
+<a id="relay-harnessrlh-session-title-first-prompt-llm"></a>
 
 ## `@relay-harness/rlh-session-title-first-prompt-llm`
 
@@ -2218,7 +2218,7 @@ export type Config = SessionTitleLlmConfig
 
 来源：[`packages/session/session-title-first-prompt-llm/src/index.ts:15`](../packages/session/session-title-first-prompt-llm/src/index.ts)
 
-<a id="deepseek-aidsh-settings-file"></a>
+<a id="relay-harnessrlh-settings-file"></a>
 
 ## `@relay-harness/rlh-settings-file`
 
@@ -2238,7 +2238,7 @@ export interface Config {
 
 来源：[`packages/settings/settings-file/src/index.ts:21`](../packages/settings/settings-file/src/index.ts)
 
-<a id="deepseek-aidsh-shell-env"></a>
+<a id="relay-harnessrlh-shell-env"></a>
 
 ## `@relay-harness/rlh-shell-env`
 
@@ -2252,7 +2252,7 @@ export interface Config {
 
 来源：[`packages/shell/shell-env/src/index.ts:29`](../packages/shell/shell-env/src/index.ts)
 
-<a id="deepseek-aidsh-skill"></a>
+<a id="relay-harnessrlh-skill"></a>
 
 ## `@relay-harness/rlh-skill`
 
@@ -2266,7 +2266,7 @@ export interface Config {
 
 来源：[`packages/skill/skill/src/index.ts:279`](../packages/skill/skill/src/index.ts)
 
-<a id="deepseek-aidsh-skill-filesystem"></a>
+<a id="relay-harnessrlh-skill-filesystem"></a>
 
 ## `@relay-harness/rlh-skill-filesystem`
 
@@ -2304,7 +2304,7 @@ export interface Config {
 
 来源：[`packages/skill/skill-filesystem/src/index.ts:49`](../packages/skill/skill-filesystem/src/index.ts)
 
-<a id="deepseek-aidsh-spill-local"></a>
+<a id="relay-harnessrlh-spill-local"></a>
 
 ## `@relay-harness/rlh-spill-local`
 
@@ -2322,7 +2322,7 @@ export interface Config {
 
 来源：[`packages/spill/spill-local/src/index.ts:22`](../packages/spill/spill-local/src/index.ts)
 
-<a id="deepseek-aidsh-spill-policy"></a>
+<a id="relay-harnessrlh-spill-policy"></a>
 
 ## `@relay-harness/rlh-spill-policy`
 
@@ -2342,7 +2342,7 @@ export interface Config {
 
 来源：[`packages/spill/spill-policy/src/index.ts:60`](../packages/spill/spill-policy/src/index.ts)
 
-<a id="deepseek-aidsh-storage-domain"></a>
+<a id="relay-harnessrlh-storage-domain"></a>
 
 ## `@relay-harness/rlh-storage-domain`
 
@@ -2365,7 +2365,7 @@ export interface Config {
 
 来源：[`packages/storage/storage-domain/src/index.ts:52`](../packages/storage/storage-domain/src/index.ts)
 
-<a id="deepseek-aidsh-storage-json"></a>
+<a id="relay-harnessrlh-storage-json"></a>
 
 ## `@relay-harness/rlh-storage-json`
 
@@ -2386,7 +2386,7 @@ export interface Config {
 
 来源：[`packages/storage/storage-json/src/index.ts:27`](../packages/storage/storage-json/src/index.ts)
 
-<a id="deepseek-aidsh-storage-sqlite"></a>
+<a id="relay-harnessrlh-storage-sqlite"></a>
 
 ## `@relay-harness/rlh-storage-sqlite`
 
@@ -2426,7 +2426,7 @@ export type JournalMode = 'wal' | 'delete' | 'truncate' | 'persist'
 
 来源：[`packages/storage/storage-sqlite/src/index.ts:24`](../packages/storage/storage-sqlite/src/index.ts)
 
-<a id="deepseek-aidsh-subagent"></a>
+<a id="relay-harnessrlh-subagent"></a>
 
 ## `@relay-harness/rlh-subagent`
 
@@ -2444,7 +2444,7 @@ export interface Config {
 
 来源： [`packages/subagent/subagent/src/index.ts:131`](../packages/subagent/subagent/src/index.ts)
 
-<a id="deepseek-aidsh-subagent-acp"></a>
+<a id="relay-harnessrlh-subagent-acp"></a>
 
 ## `@relay-harness/rlh-subagent-acp`
 
@@ -2497,7 +2497,7 @@ export type PermissionPolicy = 'allow' | 'reject'
 
 来源：[`packages/subagent/subagent-acp/src/index.ts:27`](../packages/subagent/subagent-acp/src/index.ts)
 
-<a id="deepseek-aidsh-subagent-claude-code"></a>
+<a id="relay-harnessrlh-subagent-claude-code"></a>
 
 ## `@relay-harness/rlh-subagent-claude-code`
 
@@ -2530,7 +2530,7 @@ export type ClaudeCodePermissionMode = typeof CLAUDE_CODE_PERMISSION_MODES[numbe
 
 来源：[`packages/subagent/subagent-claude-code/src/index.ts:38`](../packages/subagent/subagent-claude-code/src/index.ts)
 
-<a id="deepseek-aidsh-subagent-codex"></a>
+<a id="relay-harnessrlh-subagent-codex"></a>
 
 ## `@relay-harness/rlh-subagent-codex`
 
@@ -2561,7 +2561,7 @@ export type CodexPermissionMode =
 
 来源：[`packages/subagent/subagent-codex/src/index.ts:36`](../packages/subagent/subagent-codex/src/index.ts)
 
-<a id="deepseek-aidsh-subagent-rlh-sdk"></a>
+<a id="relay-harnessrlh-subagent-rlh-sdk"></a>
 
 ## `@relay-harness/rlh-subagent-rlh-sdk`
 
@@ -2614,7 +2614,7 @@ export interface Config {
 
 来源：[`packages/subagent/subagent-rlh-sdk/src/index.ts:29`](../packages/subagent/subagent-rlh-sdk/src/index.ts)
 
-<a id="deepseek-aidsh-subagent-fork-in-process"></a>
+<a id="relay-harnessrlh-subagent-fork-in-process"></a>
 
 ## `@relay-harness/rlh-subagent-fork-in-process`
 
@@ -2630,7 +2630,7 @@ export interface Config {
 
 来源：[`packages/subagent/subagent-fork-in-process/src/index.ts:31`](../packages/subagent/subagent-fork-in-process/src/index.ts)
 
-<a id="deepseek-aidsh-subagent-spawn-in-process"></a>
+<a id="relay-harnessrlh-subagent-spawn-in-process"></a>
 
 ## `@relay-harness/rlh-subagent-spawn-in-process`
 
@@ -2646,7 +2646,7 @@ export interface Config {
 
 来源：[`packages/subagent/subagent-spawn-in-process/src/index.ts:25`](../packages/subagent/subagent-spawn-in-process/src/index.ts)
 
-<a id="deepseek-aidsh-subprocess-e2b"></a>
+<a id="relay-harnessrlh-subprocess-e2b"></a>
 
 ## `@relay-harness/rlh-subprocess-e2b`
 
@@ -2662,7 +2662,7 @@ export interface Config {
 
 来源：[`packages/e2b/subprocess-e2b/src/index.ts:25`](../packages/e2b/subprocess-e2b/src/index.ts)
 
-<a id="deepseek-aidsh-system-prompt"></a>
+<a id="relay-harnessrlh-system-prompt"></a>
 
 ## `@relay-harness/rlh-system-prompt`
 
@@ -2689,7 +2689,7 @@ export interface Config {
 
 来源：[`packages/core/system-prompt/src/index.ts:186`](../packages/core/system-prompt/src/index.ts)
 
-<a id="deepseek-aidsh-terminal-bash"></a>
+<a id="relay-harnessrlh-terminal-bash"></a>
 
 ## `@relay-harness/rlh-terminal-bash`
 
@@ -2739,7 +2739,7 @@ export type ShellDialect = 'bash' | 'pwsh'
 
 来源：[`packages/terminal/terminal-bash/src/config.ts:10`](../packages/terminal/terminal-bash/src/config.ts)
 
-<a id="deepseek-aidsh-time-context"></a>
+<a id="relay-harnessrlh-time-context"></a>
 
 ## `@relay-harness/rlh-time-context`
 
@@ -2757,7 +2757,7 @@ export interface Config {
 
 来源：[`packages/context/time-context/src/index.ts:27`](../packages/context/time-context/src/index.ts)
 
-<a id="deepseek-aidsh-tmux-context"></a>
+<a id="relay-harnessrlh-tmux-context"></a>
 
 ## `@relay-harness/rlh-tmux-context`
 
@@ -2773,7 +2773,7 @@ export interface Config {
 
 来源：[`packages/context/tmux-context/src/index.ts:34`](../packages/context/tmux-context/src/index.ts)
 
-<a id="deepseek-aidsh-token-budget-controller"></a>
+<a id="relay-harnessrlh-token-budget-controller"></a>
 
 ## `@relay-harness/rlh-token-budget-controller`
 
@@ -2799,7 +2799,7 @@ export interface Config {
 
 来源：[`packages/guard/token-budget-controller/src/index.ts:25`](../packages/guard/token-budget-controller/src/index.ts)
 
-<a id="deepseek-aidsh-token-meter"></a>
+<a id="relay-harnessrlh-token-meter"></a>
 
 ## `@relay-harness/rlh-token-meter`
 
@@ -2810,7 +2810,7 @@ export type TokenMeterConfig = Record<string, never>
 
 来源：[`packages/llm/token-meter/src/types.ts:12`](../packages/llm/token-meter/src/types.ts)
 
-<a id="deepseek-aidsh-tool-bash"></a>
+<a id="relay-harnessrlh-tool-bash"></a>
 
 ## `@relay-harness/rlh-tool-bash`
 
@@ -2826,7 +2826,7 @@ export interface Config {
 
 来源：[`packages/shell/tool-bash/src/index.ts:34`](../packages/shell/tool-bash/src/index.ts)
 
-<a id="deepseek-aidsh-tool-bash-persistent"></a>
+<a id="relay-harnessrlh-tool-bash-persistent"></a>
 
 ## `@relay-harness/rlh-tool-bash-persistent`
 
@@ -2848,7 +2848,7 @@ export interface Config {
 
 来源：[`packages/shell/tool-bash-persistent/src/index.ts:432`](../packages/shell/tool-bash-persistent/src/index.ts)
 
-<a id="deepseek-aidsh-tool-fs"></a>
+<a id="relay-harnessrlh-tool-fs"></a>
 
 ## `@relay-harness/rlh-tool-fs`
 
@@ -2870,7 +2870,7 @@ export interface Config {
 
 来源：[`packages/fs/tool-fs/src/index.ts:25`](../packages/fs/tool-fs/src/index.ts)
 
-<a id="deepseek-aidsh-tool-fs-search"></a>
+<a id="relay-harnessrlh-tool-fs-search"></a>
 
 ## `@relay-harness/rlh-tool-fs-search`
 
@@ -2905,7 +2905,7 @@ export interface Config {
 
 来源：[`packages/fs/tool-fs-search/src/index.ts:73`](../packages/fs/tool-fs-search/src/index.ts)
 
-<a id="deepseek-aidsh-tool-goal"></a>
+<a id="relay-harnessrlh-tool-goal"></a>
 
 ## `@relay-harness/rlh-tool-goal`
 
@@ -2921,7 +2921,7 @@ export interface Config {
 
 来源：[`packages/goal/tool-goal/src/index.ts:26`](../packages/goal/tool-goal/src/index.ts)
 
-<a id="deepseek-aidsh-tool-jobs"></a>
+<a id="relay-harnessrlh-tool-jobs"></a>
 
 ## `@relay-harness/rlh-tool-jobs`
 
@@ -2955,7 +2955,7 @@ export type CompletionDelivery = 'quiet' | 'wakeup'
 
 来源：[`packages/jobs/tool-jobs/src/index.ts:32`](../packages/jobs/tool-jobs/src/index.ts)
 
-<a id="deepseek-aidsh-tool-lsp"></a>
+<a id="relay-harnessrlh-tool-lsp"></a>
 
 ## `@relay-harness/rlh-tool-lsp`
 
@@ -2975,7 +2975,7 @@ export interface Config {
 
 来源：[`packages/lsp/tool-lsp/src/index.ts:58`](../packages/lsp/tool-lsp/src/index.ts)
 
-<a id="deepseek-aidsh-tool-memory"></a>
+<a id="relay-harnessrlh-tool-memory"></a>
 
 ## `@relay-harness/rlh-tool-memory`
 
@@ -2997,7 +2997,7 @@ export interface Config {
 
 来源： [`packages/memory/tool-memory/src/index.ts:29`](../packages/memory/tool-memory/src/index.ts)
 
-<a id="deepseek-aidsh-tool-pwsh"></a>
+<a id="relay-harnessrlh-tool-pwsh"></a>
 
 ## `@relay-harness/rlh-tool-pwsh`
 
@@ -3013,7 +3013,7 @@ export interface Config {
 
 来源：[`packages/shell/tool-pwsh/src/index.ts:52`](../packages/shell/tool-pwsh/src/index.ts)
 
-<a id="deepseek-aidsh-tool-pwsh-persistent"></a>
+<a id="relay-harnessrlh-tool-pwsh-persistent"></a>
 
 ## `@relay-harness/rlh-tool-pwsh-persistent`
 
@@ -3035,7 +3035,7 @@ export interface Config {
 
 来源：[`packages/shell/tool-pwsh-persistent/src/index.ts:472`](../packages/shell/tool-pwsh-persistent/src/index.ts)
 
-<a id="deepseek-aidsh-tool-ralph"></a>
+<a id="relay-harnessrlh-tool-ralph"></a>
 
 ## `@relay-harness/rlh-tool-ralph`
 
@@ -3057,7 +3057,7 @@ export interface Config {
 
 来源：[`packages/workflow/tool-ralph/src/index.ts:23`](../packages/workflow/tool-ralph/src/index.ts)
 
-<a id="deepseek-aidsh-tool-session-query"></a>
+<a id="relay-harnessrlh-tool-session-query"></a>
 
 ## `@relay-harness/rlh-tool-session-query`
 
@@ -3075,7 +3075,7 @@ export interface Config {
 
 来源：[`packages/session-query/tool-session-query/src/index.ts:29`](../packages/session-query/tool-session-query/src/index.ts)
 
-<a id="deepseek-aidsh-tool-skill"></a>
+<a id="relay-harnessrlh-tool-skill"></a>
 
 ## `@relay-harness/rlh-tool-skill`
 
@@ -3091,7 +3091,7 @@ export interface Config {
 
 来源：[`packages/skill/tool-skill/src/index.ts:61`](../packages/skill/tool-skill/src/index.ts)
 
-<a id="deepseek-aidsh-tool-str-replace-editor"></a>
+<a id="relay-harnessrlh-tool-str-replace-editor"></a>
 
 ## `@relay-harness/rlh-tool-str-replace-editor`
 
@@ -3109,7 +3109,7 @@ export interface Config {
 
 来源： [`packages/fs/tool-str-replace-editor/src/index.ts:504`](../packages/fs/tool-str-replace-editor/src/index.ts)
 
-<a id="deepseek-aidsh-tool-subagent"></a>
+<a id="relay-harnessrlh-tool-subagent"></a>
 
 ## `@relay-harness/rlh-tool-subagent`
 
@@ -3174,7 +3174,7 @@ export interface Config {
 
 来源：[`packages/subagent/tool-subagent/src/index.ts:29`](../packages/subagent/tool-subagent/src/index.ts)
 
-<a id="deepseek-aidsh-tool-subagent-report"></a>
+<a id="relay-harnessrlh-tool-subagent-report"></a>
 
 ## `@relay-harness/rlh-tool-subagent-report`
 
@@ -3196,7 +3196,7 @@ export interface Config {
 
 来源：[`packages/subagent/tool-subagent-report/src/index.ts:27`](../packages/subagent/tool-subagent-report/src/index.ts)
 
-<a id="deepseek-aidsh-tool-terminal"></a>
+<a id="relay-harnessrlh-tool-terminal"></a>
 
 ## `@relay-harness/rlh-tool-terminal`
 
@@ -3214,7 +3214,7 @@ export interface Config {
 
 来源：[`packages/terminal/tool-terminal/src/index.ts:35`](../packages/terminal/tool-terminal/src/index.ts)
 
-<a id="deepseek-aidsh-tool-todo"></a>
+<a id="relay-harnessrlh-tool-todo"></a>
 
 ## `@relay-harness/rlh-tool-todo`
 
@@ -3236,7 +3236,7 @@ export interface Config {
 
 来源：[`packages/todo/tool-todo/src/index.ts:29`](../packages/todo/tool-todo/src/index.ts)
 
-<a id="deepseek-aidsh-tool-web"></a>
+<a id="relay-harnessrlh-tool-web"></a>
 
 ## `@relay-harness/rlh-tool-web`
 
@@ -3264,7 +3264,7 @@ export interface Config {
 
 来源：[`packages/web/tool-web/src/index.ts:37`](../packages/web/tool-web/src/index.ts)
 
-<a id="deepseek-aidsh-tool-workflow"></a>
+<a id="relay-harnessrlh-tool-workflow"></a>
 
 ## `@relay-harness/rlh-tool-workflow`
 
@@ -3282,7 +3282,7 @@ export interface Config {
 
 来源： [`packages/workflow/tool-workflow/src/index.ts:34`](../packages/workflow/tool-workflow/src/index.ts)
 
-<a id="deepseek-aidsh-tools"></a>
+<a id="relay-harnessrlh-tools"></a>
 
 ## `@relay-harness/rlh-tools`
 
@@ -3318,7 +3318,7 @@ export type ToolPresentationMode = 'native' | 'code' | 'both'
 
 来源： [`packages/core/tools/src/index.ts:719`](../packages/core/tools/src/index.ts)
 
-<a id="deepseek-aidsh-tracker-linear"></a>
+<a id="relay-harnessrlh-tracker-linear"></a>
 
 ## `@relay-harness/rlh-tracker-linear`
 
@@ -3348,7 +3348,7 @@ export interface Config {
 
 来源：[`packages/tracker/tracker-linear/src/index.ts:42`](../packages/tracker/tracker-linear/src/index.ts)
 
-<a id="deepseek-aidsh-typert-loader"></a>
+<a id="relay-harnessrlh-typert-loader"></a>
 
 ## `@relay-harness/rlh-typert-loader`
 
@@ -3364,7 +3364,7 @@ export interface Config {
 
 来源：[`packages/typert/loader/src/index.ts:47`](../packages/typert/loader/src/index.ts)
 
-<a id="deepseek-aidsh-user-approval"></a>
+<a id="relay-harnessrlh-user-approval"></a>
 
 ## `@relay-harness/rlh-user-approval`
 
@@ -3395,7 +3395,7 @@ export type ApprovalPolicy = 'ask' | 'never'
 
 来源：[`packages/interaction/user-approval/src/index.ts:177`](../packages/interaction/user-approval/src/index.ts)
 
-<a id="deepseek-aidsh-web"></a>
+<a id="relay-harnessrlh-web"></a>
 
 ## `@relay-harness/rlh-web`
 
@@ -3416,7 +3416,7 @@ export interface WebRuntimeConfig {
 
 来源：[`packages/web/web/src/index.ts:55`](../packages/web/web/src/index.ts)
 
-<a id="deepseek-aidsh-web-app"></a>
+<a id="relay-harnessrlh-web-app"></a>
 
 ## `@relay-harness/rlh-web-app`
 
@@ -3443,7 +3443,7 @@ export interface Config {
 
 来源：[`packages/bundle/web-app/src/index.ts:42`](../packages/bundle/web-app/src/index.ts)
 
-<a id="deepseek-aidsh-web-fetch-http"></a>
+<a id="relay-harnessrlh-web-fetch-http"></a>
 
 ## `@relay-harness/rlh-web-fetch-http`
 
@@ -3469,7 +3469,7 @@ export interface Config {
 
 来源：[`packages/web/web-fetch-http/src/index.ts:34`](../packages/web/web-fetch-http/src/index.ts)
 
-<a id="deepseek-aidsh-web-search-deepseek"></a>
+<a id="relay-harnessrlh-web-search-deepseek"></a>
 
 ## `@relay-harness/rlh-web-search-deepseek`
 
@@ -3497,7 +3497,7 @@ export interface Config {
 
 来源：[`packages/web/web-search-deepseek/src/index.ts:46`](../packages/web/web-search-deepseek/src/index.ts)
 
-<a id="deepseek-aidsh-web-search-exa"></a>
+<a id="relay-harnessrlh-web-search-exa"></a>
 
 ## `@relay-harness/rlh-web-search-exa`
 
@@ -3521,7 +3521,7 @@ export interface Config {
 
 来源：[`packages/web/web-search-exa/src/index.ts:38`](../packages/web/web-search-exa/src/index.ts)
 
-<a id="deepseek-aidsh-web-search-perplexity"></a>
+<a id="relay-harnessrlh-web-search-perplexity"></a>
 
 ## `@relay-harness/rlh-web-search-perplexity`
 
@@ -3545,7 +3545,7 @@ export interface Config {
 
 来源：[`packages/web/web-search-perplexity/src/index.ts:32`](../packages/web/web-search-perplexity/src/index.ts)
 
-<a id="deepseek-aidsh-workflow-worker-thread"></a>
+<a id="relay-harnessrlh-workflow-worker-thread"></a>
 
 ## `@relay-harness/rlh-workflow-worker-thread`
 

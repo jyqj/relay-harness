@@ -21,7 +21,7 @@ Provider 无关的记忆工具。每次调用都从调用 Agent 派生精确的�
 
 #### 模型看到什么
 
-该 Consumer 存在时，请求工具目录包含 `memory_search`、`memory_read`、`memory_remember`、`memory_update` 和 `memory_forget`；精确 schema 由生成的[工具目录](../../../docs/tool-catalog.md#deepseek-aidsh-tool-memory)负责。搜索返回紧凑元数据与内容，读取返回完整当前条目，写入以 JSON 文本返回已提交的当前版本。
+该 Consumer 存在时，请求工具目录包含 `memory_search`、`memory_read`、`memory_remember`、`memory_update` 和 `memory_forget`；精确 schema 由生成的[工具目录](../../../docs/tool-catalog.md#relay-harnessrlh-tool-memory)负责。搜索返回紧凑元数据与内容，读取返回完整当前条目，写入以 JSON 文本返回已提交的当前版本。
 
 #### Token 影响
 

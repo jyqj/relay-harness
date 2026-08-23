@@ -21,7 +21,7 @@ Provider-neutral memory tools. Every call derives the exact user/workspace/Agent
 
 #### What the model sees
 
-When this Consumer is present, the request tool catalog contains `memory_search`, `memory_read`, `memory_remember`, `memory_update`, and `memory_forget`; the generated [tool catalog](../../../docs/tool-catalog.md#deepseek-aidsh-tool-memory) owns their exact schemas. Search returns compact metadata and content, read returns the complete current entry, and writes return the committed current revision as JSON text.
+When this Consumer is present, the request tool catalog contains `memory_search`, `memory_read`, `memory_remember`, `memory_update`, and `memory_forget`; the generated [tool catalog](../../../docs/tool-catalog.md#relay-harnessrlh-tool-memory) owns their exact schemas. Search returns compact metadata and content, read returns the complete current entry, and writes return the committed current revision as JSON text.
 
 #### Token effect
 

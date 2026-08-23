@@ -43,7 +43,7 @@ This table connects model-visible tool names to the plugin package and service s
 | `@relay-harness/rlh-tool-workflow` | `workflow` | `ctx.tools`, `ctx.workflowEngine`, `ctx.systemPrompt`, `a calling Agent (exec.agent parents the script children)` | `tool/call`, `tool/result` | - | - |
 | `@relay-harness/rlh-tool-web` | `web_fetch`, `web_search` | `ctx.tools`, `ctx.web`, `ctx.systemPrompt` | `tool/call`, `tool/result` | - | web_search and web_fetch keep provider selection behind ctx.web so model-visible schemas stay stable across backend swaps. |
 
-<a id="deepseek-aidsh-tool-ask-user"></a>
+<a id="relay-harnessrlh-tool-ask-user"></a>
 
 ## `@relay-harness/rlh-tool-ask-user`
 
@@ -117,7 +117,7 @@ Source: [`packages/interaction/tool-ask-user/src/index.ts`](../packages/interact
 
 ask_user_question pauses the tool call until the active UI provider returns a human answer.
 
-<a id="deepseek-aidsh-tools"></a>
+<a id="relay-harnessrlh-tools"></a>
 
 ## `@relay-harness/rlh-tools`
 
@@ -149,7 +149,7 @@ Source: [`packages/core/tools/src/code-mode.ts`](../packages/core/tools/src/code
 
 Owned by the tool registry as a reserved transport outside filterable capability layers under `mode: code` / `mode: both` (see the Code Mode Agent Note). Under `code` it is the registry's only wire contribution; the other visible capabilities are declared in a generated SDK section in the loaded runtime's language, and a program calls them through bindings scheduled under the native concurrency contract (submission-ordered starts and policy; concurrency-safe bodies overlap up to `maxParallelSubCalls`) that re-enter the complete guarded tool pipeline and link each nested execution to this outer result.
 
-<a id="deepseek-aidsh-plan-mode"></a>
+<a id="relay-harnessrlh-plan-mode"></a>
 
 ## `@relay-harness/rlh-plan-mode`
 
@@ -176,7 +176,7 @@ Source: [`packages/plan/plan-mode/src/index.ts`](../packages/plan/plan-mode/src/
 
 exit_plan_mode stays in the model-facing schema while planning is inactive so transitions add no tool-catalog churn on top of the plan-policy change. Its execute path rejects calls outside plan mode; in plan mode it presents the plan over the user-questions seam (approve / keep planning with feedback), and approval logs plan mode inactive at the step boundary.
 
-<a id="deepseek-aidsh-tool-bash"></a>
+<a id="relay-harnessrlh-tool-bash"></a>
 
 ## `@relay-harness/rlh-tool-bash`
 
@@ -220,7 +220,7 @@ Source: [`packages/shell/tool-bash/src/index.ts`](../packages/shell/tool-bash/sr
 
 The bash tool is the model-facing consumer of the bash executor seam. A `run_in_background` run registers with the generic `ctx.jobs` runtime and is collected/stopped through the `job_*` tools from `@relay-harness/rlh-tool-jobs`; the `enableRunInBackground` config (default true) removes the parameter entirely when disabled.
 
-<a id="deepseek-aidsh-tool-pwsh"></a>
+<a id="relay-harnessrlh-tool-pwsh"></a>
 
 ## `@relay-harness/rlh-tool-pwsh`
 
@@ -264,7 +264,7 @@ Source: [`packages/shell/tool-pwsh/src/index.ts`](../packages/shell/tool-pwsh/sr
 
 The pwsh tool is the PowerShell-dialect consumer of the bash executor seam for Windows compositions (a PowerShell executor such as `@relay-harness/rlh-pwsh-local` backs `ctx.shell`); it mirrors the bash tool call-for-call minus sandbox controls — `run_in_background` runs register with the generic `ctx.jobs` runtime and are collected/stopped through the `job_*` tools, and the managed `RLH_*` environment comes from `@relay-harness/rlh-shell-env`. Each call runs in a fresh process (no persistent PTY session), with native `C:\...` paths and `$env:NAME` variables.
 
-<a id="deepseek-aidsh-tool-cordis"></a>
+<a id="relay-harnessrlh-tool-cordis"></a>
 
 ## `@relay-harness/rlh-tool-cordis`
 
@@ -502,7 +502,7 @@ Source: [`packages/extensions/tool-cordis/src/index.ts`](../packages/extensions/
 
 Not in any shipped tree (a deliberate opt-in — dynamic package code reaches the real runtime, see .agents/notes/implemented/feature/2026-07-08-self-referential-cordis-toolset.md). The toolset injects `ctx.dynamicCordisRunner` from `@relay-harness/rlh-cordis-host-runner`, which owns the definition registry and the vm sandbox; a composition missing it never activates the tools. A running package may register ADDITIONAL model-visible tools until it is stopped, undefined, or RLH restarts; a full changed request header logs those tool-set changes.
 
-<a id="deepseek-aidsh-tool-bash-persistent"></a>
+<a id="relay-harnessrlh-tool-bash-persistent"></a>
 
 ## `@relay-harness/rlh-tool-bash-persistent`
 
@@ -529,7 +529,7 @@ Source: [`packages/shell/tool-bash-persistent/src/index.ts`](../packages/shell/t
 
 One owner-isolated persistent bash tool; deployment composition supplies the PTY backend and may override the model-facing environment description.
 
-<a id="deepseek-aidsh-tool-pwsh-persistent"></a>
+<a id="relay-harnessrlh-tool-pwsh-persistent"></a>
 
 ## `@relay-harness/rlh-tool-pwsh-persistent`
 
@@ -556,7 +556,7 @@ Source: [`packages/shell/tool-pwsh-persistent/src/index.ts`](../packages/shell/t
 
 One owner-isolated persistent pwsh tool, the Windows counterpart of the persistent bash tool; deployment composition supplies a pwsh-dialect PTY backend and may override the model-facing environment description.
 
-<a id="deepseek-aidsh-tool-str-replace-editor"></a>
+<a id="relay-harnessrlh-tool-str-replace-editor"></a>
 
 ## `@relay-harness/rlh-tool-str-replace-editor`
 
@@ -626,7 +626,7 @@ Source: [`packages/fs/tool-str-replace-editor/src/index.ts`](../packages/fs/tool
 
 Standalone view/create/unique literal replace/line insert tool over the filesystem seam; it composes with any shell or terminal API.
 
-<a id="deepseek-aidsh-tool-fs"></a>
+<a id="relay-harnessrlh-tool-fs"></a>
 
 ## `@relay-harness/rlh-tool-fs`
 
@@ -743,7 +743,7 @@ Source: [`packages/fs/tool-fs/src/index.ts`](../packages/fs/tool-fs/src/index.ts
 
 The read-before-write/edit policy is added by `@relay-harness/rlh-fs-observation-policy` (an `fs/*` event-gate plugin, no schema change); a deployment that loads these tools is expected to also load it. `read_image` is not registered without `ctx.attachments`; its schema is route-independent, and execution refuses unless the exact routed model declares image input.
 
-<a id="deepseek-aidsh-tool-fs-search"></a>
+<a id="relay-harnessrlh-tool-fs-search"></a>
 
 ## `@relay-harness/rlh-tool-fs-search`
 
@@ -803,7 +803,7 @@ Source: [`packages/fs/tool-fs-search/src/index.ts`](../packages/fs/tool-fs-searc
 
 glob and grep are unconditional discovery tools that spawn the packaged ripgrep binary (`@vscode/ripgrep`) through ctx.subprocess as ordinary foreground calls (never background jobs) — no host `rg` install and no shell layer. The catalog uses `sampleOverCapGlobResults: true`; deployments must choose that behavior explicitly. Capped results save the complete formatted list through the optional ctx.spillStore backend; returned locators are follow-up-readable/searchable when the backend exposes local paths in co-located deployments.
 
-<a id="deepseek-aidsh-tool-terminal"></a>
+<a id="relay-harnessrlh-tool-terminal"></a>
 
 ## `@relay-harness/rlh-tool-terminal`
 
@@ -968,7 +968,7 @@ Source: [`packages/terminal/tool-terminal/src/index.ts`](../packages/terminal/to
 
 The six terminal tools are opt-in and complement one-shot shell/filesystem tools. `terminal_send(run_in_background: true)` registers with `ctx.jobs`; TUI, named key sequences, BEL, resize, auto-start, and cross-agent sharing are absent from the schema.
 
-<a id="deepseek-aidsh-tool-goal"></a>
+<a id="relay-harnessrlh-tool-goal"></a>
 
 ## `@relay-harness/rlh-tool-goal`
 
@@ -1062,7 +1062,7 @@ Source: [`packages/goal/tool-goal/src/index.ts`](../packages/goal/tool-goal/src/
 
 create, edit, pause, and resume require direct-human root authority; complete and blocked also accept the exact current goal round. The default blocked lower bound is three admitted rounds.
 
-<a id="deepseek-aidsh-schedule"></a>
+<a id="relay-harnessrlh-schedule"></a>
 
 ## `@relay-harness/rlh-schedule`
 
@@ -1159,7 +1159,7 @@ Source: [`packages/schedule/schedule/src/tools.ts`](../packages/schedule/schedul
 
 Registered only inside live root Agent scopes created after the opt-in Schedule plugin loads. Version 1 accepts after_seconds, explicit absolute at, and bounded fixed-rate every_seconds, and discloses session-local delivery; management reads and mutations require the shared Session persistence barrier.
 
-<a id="deepseek-aidsh-tool-lsp"></a>
+<a id="relay-harnessrlh-tool-lsp"></a>
 
 ## `@relay-harness/rlh-tool-lsp`
 
@@ -1207,7 +1207,7 @@ Source: [`packages/lsp/tool-lsp/src/index.ts`](../packages/lsp/tool-lsp/src/inde
 
 The lsp tool keeps provider selection and language-server subprocesses behind ctx.lsp, so its model-visible schema stays stable across providers. Requires a registered provider (e.g. `@relay-harness/rlh-lsp-stdio`) at runtime; without one, a query returns the structured `LSP_UNAVAILABLE` error rather than changing the schema.
 
-<a id="deepseek-aidsh-tool-memory"></a>
+<a id="relay-harnessrlh-tool-memory"></a>
 
 ## `@relay-harness/rlh-tool-memory`
 
@@ -1414,7 +1414,7 @@ Source: [`packages/memory/tool-memory/src/index.ts`](../packages/memory/tool-mem
 
 Search and read are Scope-bound. Remember and update activate only exact direct-user or successful-tool-result evidence; unverified proposals remain candidates, and forget requires a direct-user deletion excerpt.
 
-<a id="deepseek-aidsh-tool-ralph"></a>
+<a id="relay-harnessrlh-tool-ralph"></a>
 
 ## `@relay-harness/rlh-tool-ralph`
 
@@ -1445,7 +1445,7 @@ Source: [`packages/workflow/tool-ralph/src/index.ts`](../packages/workflow/tool-
 
 A fixed foreground workflow starts one fresh structured child per round; the model selects only the immutable objective and an optional round cap.
 
-<a id="deepseek-aidsh-tool-skill"></a>
+<a id="relay-harnessrlh-tool-skill"></a>
 
 ## `@relay-harness/rlh-tool-skill`
 
@@ -1470,7 +1470,7 @@ Load the full instructions for an available skill. Call this with the exact skil
 
 Source: [`packages/skill/tool-skill/src/index.ts`](../packages/skill/tool-skill/src/index.ts)
 
-<a id="deepseek-aidsh-tool-session-query"></a>
+<a id="relay-harnessrlh-tool-session-query"></a>
 
 ## `@relay-harness/rlh-tool-session-query`
 
@@ -1705,7 +1705,7 @@ Source: [`packages/session-query/tool-session-query/src/index.ts`](../packages/s
 
 The five read-only tools hide provider cursors and authorize every result from the immutable calling agent session. The package is opt-in; compositions that need enforced deadlines or bounded inline output also mount the generic timeout or spill policies.
 
-<a id="deepseek-aidsh-tool-subagent"></a>
+<a id="relay-harnessrlh-tool-subagent"></a>
 
 ## `@relay-harness/rlh-tool-subagent`
 
@@ -1741,7 +1741,7 @@ Source: [`packages/subagent/tool-subagent/src/index.ts`](../packages/subagent/to
 
 The registered tool name is the load-time `toolName` config (default `subagent`); the schema above is that default. The shipped compositions load this package once per subagent backend, so the model additionally sees `subagent_fork` bound to the fork backend. Each instance's description, `run_in_background` parameter, and system-prompt policy follow its own `backgroundMode` and `enableRunInBackground`, so the two shipped schemas are not identical: `subagent` is `continuable` and defaults omitted calls to background with automatic settlement delivery, while `subagent_fork` stays `one-shot` and defaults them to foreground — see `packages/bundle/base/cordis.patch.yml` and `examples/acp-agent/cordis.yml`.
 
-<a id="deepseek-aidsh-tool-subagent-control"></a>
+<a id="relay-harnessrlh-tool-subagent-control"></a>
 
 ## `@relay-harness/rlh-tool-subagent-control`
 
@@ -1816,7 +1816,7 @@ Source: [`packages/subagent/tool-subagent-control/src/index.ts`](../packages/sub
 
 The globally named control tools over continuable background subagents: provider-bound `tool-subagent` instances register distinct delegation tools, while this package registers `send_message` and `interrupt_agent` once, plus `list_agents` from its separately loaded `/list-agents` plugin (whose catalog rows use the sessionProjections and live Agent registries).
 
-<a id="deepseek-aidsh-tool-subagent-report"></a>
+<a id="relay-harnessrlh-tool-subagent-report"></a>
 
 ## `@relay-harness/rlh-tool-subagent-report`
 
@@ -1843,7 +1843,7 @@ Source: [`packages/subagent/tool-subagent-report/src/index.ts`](../packages/suba
 
 Registered per continuable in-process child rather than globally, so this schema is visible only inside such a child and survives its global `toolFilter`. The same contribution installs the child-scoped `tool:report` prompt section, which this catalog does not render. The parent-facing `send_message` tool is installed independently.
 
-<a id="deepseek-aidsh-tool-jobs"></a>
+<a id="relay-harnessrlh-tool-jobs"></a>
 
 ## `@relay-harness/rlh-tool-jobs`
 
@@ -1916,7 +1916,7 @@ Source: [`packages/jobs/tool-jobs/src/index.ts`](../packages/jobs/tool-jobs/src/
 
 The kind-agnostic background-job controller: background bash commands, PTY sends, and subagents are read, listed, and killed through the same three tools. Loading the plugin attaches the controller that arms producers' `ctx.jobs.start()`.
 
-<a id="deepseek-aidsh-experimental-tool-agent-team"></a>
+<a id="relay-harnessrlh-experimental-tool-agent-team"></a>
 
 ## `@relay-harness/rlh-experimental-tool-agent-team`
 
@@ -2232,7 +2232,7 @@ Source: [`packages/experimental/tool-agent-team/src/index.ts`](../packages/exper
 
 All ten tools are scoped to implicit Team Leads and durable teammates. The shipped rlh-base bundle keeps the package disabled; the documented Agent Teams profile patch enables it while disabling the legacy continuable-child control names.
 
-<a id="deepseek-aidsh-tool-todo"></a>
+<a id="relay-harnessrlh-tool-todo"></a>
 
 ## `@relay-harness/rlh-tool-todo`
 
@@ -2282,7 +2282,7 @@ Source: [`packages/todo/tool-todo/src/index.ts`](../packages/todo/tool-todo/src/
 
 todo_write is session-owned state; UIs render the latest todo/write event as a checklist. `allowParallelInProgress` is required with no default, so the catalog states its choice: `true`, whose description invites several `in_progress` items. A deployment choosing `false` receives the same tool with a description asking for exactly one active task.
 
-<a id="deepseek-aidsh-tool-workflow"></a>
+<a id="relay-harnessrlh-tool-workflow"></a>
 
 ## `@relay-harness/rlh-tool-workflow`
 
@@ -2381,7 +2381,7 @@ Constraints: concurrency and total-agent caps apply; no filesystem, network, tim
 
 Source: [`packages/workflow/tool-workflow/src/index.ts`](../packages/workflow/tool-workflow/src/index.ts)
 
-<a id="deepseek-aidsh-tool-web"></a>
+<a id="relay-harnessrlh-tool-web"></a>
 
 ## `@relay-harness/rlh-tool-web`
 

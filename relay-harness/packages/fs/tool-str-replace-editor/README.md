@@ -23,7 +23,7 @@ Every command resolves its absolute path to the provider's `FsTargetKey` before 
 
 #### What the model sees
 
-The generated [`str_replace_editor` schema](../../../docs/tool-catalog.md#deepseek-aidsh-tool-str-replace-editor), including the configured `description`. The plugin contributes no standalone system-prompt section.
+The generated [`str_replace_editor` schema](../../../docs/tool-catalog.md#relay-harnessrlh-tool-str-replace-editor), including the configured `description`. The plugin contributes no standalone system-prompt section.
 
 #### Token effect
 
