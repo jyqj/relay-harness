@@ -3,7 +3,7 @@
 Worktree: `.worktrees/marketplace-parity`  
 HEAD: `ecf69ec7f0` (`Match #path: marketplace cards as installed and sort 最新 by catalog added.`)  
 Base: `e2b83922c864778e7d7908e1ac15b3e8e1218cf0`  
-Live catalog sampled 2026-08-18: `https://awesome-rlh-plugin.com/plugins.json` (1367 plugins).  
+Live catalog sampled 2026-08-18: `https://awesome-dsh-plugin.com/plugins.json` (1367 plugins).  
 rlh-market live `main`: `src/sources.ts` `installTargetFor`, `src/install.ts` `retargetCollections` / `validateAddedPlugins` / `withHoistRecovery`.
 
 Layers: **0** original ask (对齐 rlh-market) · **1** user-approved architecture · **2** committed spec · **3** plan + SDD rulings · **4** shipped HEAD.
@@ -76,7 +76,7 @@ Layers: **0** original ask (对齐 rlh-market) · **1** user-approved architectu
 - **Claimed requirement:** Layer 1/2 — catalog timeout 4s actually aborting. Spec:45; plan:44 (`AbortController`). rlh-market: `AbortSignal.timeout(4000)`.
   **What shipped:** `FETCH_TIMEOUT_MS = 4000` + `controller.abort()` (`marketplace-catalog.js:9,197-221`). Fallback treats `AbortError` as `插件目录请求超时` (`225-227`). Tests cover throw/empty/non-object → snapshot (`marketplace-catalog.test.js:267-377`). **No test** advances fake timers or asserts `signal.aborted` / `AbortError`.
   **Class:** Implementation present. Test theater for the abort itself.
-  **User-visible cost if wrong:** If abort were a dead constant, a hung `awesome-rlh-plugin.com` would stall the Settings tab past 4s (refresh stays busy). Same 4s budget as rlh-market if the abort is live.
+  **User-visible cost if wrong:** If abort were a dead constant, a hung `awesome-dsh-plugin.com` would stall the Settings tab past 4s (refresh stays busy). Same 4s budget as rlh-market if the abort is live.
   **Severity:** Parked-but-real.
 
 - **Claimed requirement:** Layer 1/2 — `CACHE_VERSION` 3 / no GitHub topic fallback. Spec:50-55.
@@ -98,7 +98,7 @@ Layers: **0** original ask (对齐 rlh-market) · **1** user-approved architectu
   **Severity:** Parked-but-real.
 
 - **Claimed requirement:** `#path:` installed matching (HEAD + plan id `owner/name` with `#` in name). Sibling subpackages of one repo must not all show 已安装.
-  **What shipped:** `installedName` + `marketplacePathSuffix` (`MarketplaceSettingsTab.tsx:60-75`). Client spec:321-360 distinguishes `rlh-aionui-panel` vs `rlh-skins`.
+  **What shipped:** `installedName` + `marketplacePathSuffix` (`MarketplaceSettingsTab.tsx:60-75`). Client spec:321-360 distinguishes `dsh-aionui-panel` vs `dsh-skins`.
   **Class:** Shipped (fix/upgrade on this branch). Not a downgrade.
   **User-visible cost if wrong:** n/a at HEAD.
   **Severity:** (none — control)

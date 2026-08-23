@@ -57,8 +57,8 @@
 test('last-token npm fallback is empty when the row has no registry npm field', async () => {
   process.env.RLHD_MARKETPLACE_REGISTRY_URL = FIXTURE_URL;
   mockFetch(async () => jsonResponse({
-    name: 'awesome-rlh-plugin',
-    url: 'https://awesome-rlh-plugin.com',
+    name: 'awesome-dsh-plugin',
+    url: 'https://awesome-dsh-plugin.com',
     categories: { ui: { en: 'UI', zh: 'UI' } },
     plugins: [{
       name: 'stray-npm',
@@ -249,7 +249,7 @@ Client:
 ```ts
 it('explains uninstall already happened when Harness did not start', async () => {
   renderTab({
-    listInstalled: vi.fn(async () => ({ plugins: [{ name: '@rlh-external/rlh-loop', spec: 'github:owner/rlh-loop#abc' }] })),
+    listInstalled: vi.fn(async () => ({ plugins: [{ name: '@dsh-external/dsh-loop', spec: 'github:owner/dsh-loop#abc' }] })),
     uninstallPlugin: vi.fn(async () => ({ ok: true, harnessStarted: false })),
   })
   await waitFor(() => { expect(screen.getByText('rlh-loop')).toBeTruthy() })

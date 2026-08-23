@@ -31,6 +31,17 @@ const SELF = 'scripts/rebrand-dsh-to-rlh.ts'
 const PROTECTED: RegExp[] = [
   // Links into frozen archived Agent Notes keep their historical dsh filenames.
   /[\w\-./]*notes\/archived\/[\w\-./]*/g,
+  // Third-party plugin registry: live HTTP endpoints and community plugin pages.
+  /(?:https?:\/\/)?awesome-dsh-plugin\.com[^\s"'`),\]]*/g,
+  /github\.com\/awesome-dsh-plugin\/awesome-dsh-plugin/g,
+  /\bawesome-dsh-plugin\b/g,
+  /(?:https?:\/\/)?(?:www\.)?dshmarket\.com/g,
+  /(?:github\.com|github\/stars)\/dsh-market\/dsh-market(?:\.git)?/g,
+  // Community plugin identities: npm names and GitHub install specs owned by others.
+  /@dsh-external\/[\w.-]+/g,
+  /github:[\w.-]+\/dsh-[\w./#:-]+/g,
+  /github\.com\/[\w.-]+\/dsh-[\w.-]+/g,
+  /\bdsh-(?:composer-expand|status-rotator|aionui-panel|spotlight|genui|skins|web-ui|wallpaper-engine|whale-desktop-launcher)\b/g,
   // External ecosystem projects (not this repository's brand).
   /github\.com\/dataelement\/dsh-desktop/g,
   /github\.com\/bobby-sheng\/dshget-data/g,
@@ -39,6 +50,13 @@ const PROTECTED: RegExp[] = [
   /\bdsh-desktop\b/g,
   /\bDSH Get\b/g,
 ]
+
+/**
+ * Verbatim mirror of the third-party plugin registry. Every plugin name, owner,
+ * npm coordinate, and page URL belongs to its author, so only the leading CLI
+ * token of each `install` command names this repository's binary.
+ */
+const REGISTRY_SNAPSHOT = 'apps/desktop/src/main/marketplace-registry-snapshot.json'
 
 interface Rule {
   find: RegExp
@@ -136,7 +154,7 @@ function rewriteContent(text: string): string {
 }
 
 function renameTarget(path: string): string {
-  return path.split('/').map((component) => applyRules(component, NAME_RULES)).join('/')
+  return path.split('/').map(component => applyRules(component, NAME_RULES)).join('/')
 }
 
 function git(args: string[]): string {
@@ -155,7 +173,9 @@ for (const path of files) {
   const buffer = readFileSync(absolute)
   if (buffer.subarray(0, 8192).includes(0)) continue
   const text = buffer.toString('utf8')
-  const next = rewriteContent(text)
+  const next = path === REGISTRY_SNAPSHOT
+    ? text.replace(/("install":\s*")dsh /g, '$1rlh ')
+    : rewriteContent(text)
   if (next !== text) {
     contentChanged += 1
     if (DRY_RUN) console.log(`rewrite ${path}`)

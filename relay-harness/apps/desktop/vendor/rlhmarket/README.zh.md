@@ -7,7 +7,7 @@
 [English](README.md) | 中文
 
 [![npm](https://img.shields.io/npm/v/rlhmarket)](https://www.npmjs.com/package/rlhmarket)
-[![stars](https://img.shields.io/github/stars/rlh-market/rlh-market?style=flat)](https://github.com/rlh-market/rlh-market)
+[![stars](https://img.shields.io/github/stars/dsh-market/dsh-market?style=flat)](https://github.com/dsh-market/dsh-market)
 
 装在 Relay Harness 里的插件市场。打开设置 → **插件市场** → 逛一逛，点一下，装好。
 
@@ -38,7 +38,7 @@ rlh plugin --profile web add rlhmarket
 - **备份与恢复**——把 profile 的插件清单与配置导出为可读 JSON，换机导入，存到 WebDAV 并每日自动备份，或通过私有 GitHub Gist 跨机器同步；恢复采用**合并**方式（备份之后新装的插件会保留），写入前校验、失败自动回滚
 - **更新**——逐插件检测（npm 版本或锁定 commit 对比 HEAD），一键更新或全部更新；市场自己也走同一通道升级
 - **卸载**——两步确认防误触；本次会话装的插件即点即卸
-- **热禁用 / 启用**——开关会往 profile 的 `cordis.patch.yml`（官方补丁层，机制移植自 [rlh-plugin-hub](https://github.com/Noob-stupid/rlh-plugin-hub)）写入 `- id: …` + `disabled: true|false`：RLH 的 HMR 约 1 秒内重新组合，无需重启，loader 每次启动都会重新应用这个选择；手工改过的补丁行会显示成徽标，宿主基础设施插件禁止开关，补丁文件格式不对时绝不会被写得更糟
+- **热禁用 / 启用**——开关会往 profile 的 `cordis.patch.yml`（官方补丁层，机制移植自 [rlh-plugin-hub](https://github.com/Noob-stupid/dsh-plugin-hub)）写入 `- id: …` + `disabled: true|false`：RLH 的 HMR 约 1 秒内重新组合，无需重启，loader 每次启动都会重新应用这个选择；手工改过的补丁行会显示成徽标，宿主基础设施插件禁止开关，补丁文件格式不对时绝不会被写得更糟
 - **按需重启**——无法热加载的变更会在待重启提示旁显示一键重启；操作仅接受本机同源请求
 - **零术语**——缺组件（pnpm）时市场自己发现、一键自动装好，全程不见命令行
 - **导出日志**——一键生成脱敏纯文本日志方便反馈（home 路径与密钥形状已打码；任何数据都不会被上传）。市场版本号就在标题旁边，截图反馈时自带版本信息
@@ -53,7 +53,7 @@ rlh plugin --profile web add rlhmarket
 
 ## 安全
 
-- 只允许安装 [awesome-rlh-plugin](https://awesome-rlh-plugin.com) 精选列表内的来源,其它一律拒绝
+- 只允许安装 [awesome-dsh-plugin](https://awesome-dsh-plugin.com) 精选列表内的来源,其它一律拒绝
 - 构建脚本默认禁止执行（pnpm ≥10）,放行与否由你按包显式决定
 - 终端/命令行类插件装进网页版前会被明确提醒
 - 安装接口只接受同源 POST;市场不会向任何地方上报数据
@@ -65,17 +65,17 @@ rlh plugin --profile web add rlhmarket
 
 ## 提交你的插件
 
-**这个仓库是市场应用本身，不是插件目录。** 市场里的插件列表来自精选列表 [awesome-rlh-plugin](https://github.com/awesome-rlh-plugin/awesome-rlh-plugin)——想让你的插件上架，请去**那边**提 PR（在列表里加一条即可，站点和本市场会自动收录，通常一天内生效）。请不要往本仓库提插件条目。
+**这个仓库是市场应用本身，不是插件目录。** 市场里的插件列表来自精选列表 [awesome-dsh-plugin](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin)——想让你的插件上架，请去**那边**提 PR（在列表里加一条即可，站点和本市场会自动收录，通常一天内生效）。请不要往本仓库提插件条目。
 
 ## 路线图与反馈
 
-- **Bug** 提 [issue](https://github.com/rlh-market/rlh-market/issues)，附上市场页面的「导出日志」能让排查快十倍
-- **功能建议**放 [Roadmap](https://github.com/orgs/rlh-market/projects/1)。issues 只留「坏掉的东西」，所以提成 issue 的建议会被移到那边并关闭；讨论仍留在你写的地方
+- **Bug** 提 [issue](https://github.com/dsh-market/dsh-market/issues)，附上市场页面的「导出日志」能让排查快十倍
+- **功能建议**放 [Roadmap](https://github.com/orgs/dsh-market/projects/1)。issues 只留「坏掉的东西」，所以提成 issue 的建议会被移到那边并关闭；讨论仍留在你写的地方
 - 路线图上的每一项都欢迎社区 PR——动手前在对应条目里说一声，免得两个人重复造
 
 ## 数据源
 
-实时来自 [awesome-rlh-plugin.com/plugins.json](https://awesome-rlh-plugin.com/plugins.json)——精选条目、npm 映射、star 数由 CI 每日刷新——内置快照做离线兜底。
+实时来自 [awesome-dsh-plugin.com/plugins.json](https://awesome-dsh-plugin.com/plugins.json)——精选条目、npm 映射、star 数由 CI 每日刷新——内置快照做离线兜底。
 
 ## 友情链接
 
@@ -101,4 +101,4 @@ rlh plugin --profile web add @liustack/modlens
 
 ## 许可
 
-MIT · [rlhmarket.com](https://rlhmarket.com)
+MIT · [dshmarket.com](https://dshmarket.com)

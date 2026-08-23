@@ -6,7 +6,7 @@ const { pathToFileURL } = require('url');
 
 const PROFILE = 'web';
 const DROPPED = [
-  '@rlh-external/rlh-genui',
+  '@dsh-external/dsh-genui',
   '@huanlin/rlh-plugin-yet-another-subagent',
 ];
 const PATCH_BEGIN = '# --- rlhd-gui-plugin-toggles ---';

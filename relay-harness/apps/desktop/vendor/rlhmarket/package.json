@@ -8,9 +8,9 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/rlh-market/rlh-market.git"
+    "url": "git+https://github.com/dsh-market/dsh-market.git"
   },
-  "homepage": "https://rlhmarket.com",
+  "homepage": "https://dshmarket.com",
   "keywords": [
     "deepseek",
     "harness",
@@ -30,7 +30,7 @@
     "prepack": "npm run build && node scripts/preflight.mjs",
     "prepare": "npm run build",
     "validate:registry": "node scripts/validate-registry.mjs",
-    "snapshot": "curl -sf https://awesome-rlh-plugin.com/plugins.json -o data/registry-snapshot.json && curl -sf https://awesome-rlh-plugin.com/readmes.json -o data/readmes-snapshot.json",
+    "snapshot": "curl -sf https://awesome-dsh-plugin.com/plugins.json -o data/registry-snapshot.json && curl -sf https://awesome-dsh-plugin.com/readmes.json -o data/readmes-snapshot.json",
     "test:web": "vitest run --config vitest.web.config.ts",
     "build:site": "node scripts/build-site.mjs"
   },

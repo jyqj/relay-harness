@@ -1,6 +1,6 @@
 # 插件市场对齐 rlh-market
 
-Relay-Harness-Desktop 把现有插件市场升级到 [rlh-market](https://github.com/rlh-market/rlh-market)（`rlhmarket` 1.12.1）的产品行为，但不预装该插件，也不复制它的 `MarketSection.tsx` 或 HTTP 路由。
+Relay-Harness-Desktop 把现有插件市场升级到 [rlh-market](https://github.com/dsh-market/dsh-market)（`rlhmarket` 1.12.1）的产品行为，但不预装该插件，也不复制它的 `MarketSection.tsx` 或 HTTP 路由。
 
 视觉语言仍是官方 `rlh web`：只用 `ui-primitives` 和 `--rlw-alias-*`。见 [design-language.md](../../design-language.md)。
 
@@ -38,7 +38,7 @@ Relay-Harness-Desktop 把现有插件市场升级到 [rlh-market](https://github
 
 ## 目录
 
-`src/main/marketplace-catalog.js` 拉取 `https://awesome-rlh-plugin.com/plugins.json`。
+`src/main/marketplace-catalog.js` 拉取 `https://awesome-dsh-plugin.com/plugins.json`。
 测试可用 `RLHD_MARKETPLACE_REGISTRY_URL` 指向 fixture。
 渲染层不能设置这个变量。
 
@@ -209,7 +209,7 @@ profile 已经改成功但 `startHarness()` 失败：安装与卸载 IPC 都返�
 ## 同一变更里的文档
 
 - 目录与安装决定写一条 Agent Note。
-- README / README.en.md：市场是 awesome-rlh-plugin 精选目录，不是 GitHub topic。
+- README / README.en.md：市场是 awesome-dsh-plugin 精选目录，不是 GitHub topic。
 - `AGENTS.md` / 设计语言里仍说 `marketplace.css` 有平行色板的句子：独立页删掉后一并删掉这些警告。
 
 ## 文件（第一轮）

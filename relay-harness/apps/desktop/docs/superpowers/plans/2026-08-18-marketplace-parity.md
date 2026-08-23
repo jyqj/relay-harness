@@ -13,7 +13,7 @@ TDD 强制：每个任务先写失败测试并跑红，再写生产代码。不�
 - Host 的 `installPlugin(spec)` / `src/host/install-rlh-plugin-client.js` 的 `isValidGithubSpec` **不得放宽**，仍 github-only，不含 `#path:`。
 - 市场安装规格与 rlh-market `installTargetFor` 相同：合法 `npm` 字段，否则从 GitHub URL 得到 `github:` / `#path:`。`install` 最后 token 只在它已是允许规格时作为回退。禁止用 `isValidGithubSpec` 去验证 `#path:` 规格。
 - 允许的市场规格仅：该行 npm 包名（`isValidPackageName`）；`github:owner/repo`；`github:owner/repo#<gitRef>`（现有 git ref 规则）；`github:owner/repo#path:/<posix>`（`path:/` 后无 `..`、无 `:`、无反斜杠；owner/repo 与该行 `url` 解析出的 GitHub 仓库一致）。
-- 渲染层只传目录 `id`（`owner/name`，name 可含 `#`，例如 `DamonKoy/rlh-web-ui#rlh-aionui-panel`）。
+- 渲染层只传目录 `id`（`owner/name`，name 可含 `#`，例如 `DamonKoy/dsh-web-ui#dsh-aionui-panel`）。
 - `listMarketplace({ refresh?, locale? })`：`locale` 为 `zh` | `en`，默认 `zh`；`zh*` → `zh`，否则 `en`。
 - 磁盘缓存 `CACHE_VERSION` 3，TTL 1 小时；回退内存 → 磁盘 → 入库快照。`source` 为 `live` | `cache` | `snapshot`；非 live 必须带 `warning`。不要搜 GitHub `topic:rlh-plugin`。
 - 安装互斥：同时只跑一个 `rlh plugin add/remove`；第二次调用立刻返回忙碌错误。
@@ -40,11 +40,11 @@ TDD 强制：每个任务先写失败测试并跑红，再写生产代码。不�
 
 ### 行为
 
-- 拉取 `https://awesome-rlh-plugin.com/plugins.json`。测试用 `RLHD_MARKETPLACE_REGISTRY_URL` 指向 http fixture（`http://127.0.0.1` mock `fetch` 即可）。渲染层不能设这个变量。
+- 拉取 `https://awesome-dsh-plugin.com/plugins.json`。测试用 `RLHD_MARKETPLACE_REGISTRY_URL` 指向 http fixture（`http://127.0.0.1` mock `fetch` 即可）。渲染层不能设这个变量。
 - 超时 4 秒（AbortController）。成功响应必须是带**非空** `plugins` 数组的对象，否则当失败。
 - 缓存存**原始 registry JSON** + `fetchedAt` + `CACHE_VERSION` 3，路径仍 `app.getPath('userData')/marketplace-cache.json`。TTL **1 小时**。忽略 version≠3 的旧缓存。locale 在读取时映射，这样换语言不必重拉。
 - 回退：当前内存 registry → 磁盘缓存 → 打包快照。每一层都空：`ok: false`、`items: []`、可见 `warning`。`source`: 成功在线为 `live`；命中内存/磁盘为 `cache`；快照为 `snapshot`。
-- 快照是小型合法 `plugins.json`（约 6–10 条即可）：至少覆盖 npm 包、纯 `github:owner/repo`、`#path:` monorepo、deprecated、以及一条 `npm` 等于现有 `DROPPED` 之一（`@rlh-external/rlh-genui` 或 `@huanlin/rlh-plugin-yet-another-subagent`）。不要把 1300 条塞进单测或快照。
+- 快照是小型合法 `plugins.json`（约 6–10 条即可）：至少覆盖 npm 包、纯 `github:owner/repo`、`#path:` monorepo、deprecated、以及一条 `npm` 等于现有 `DROPPED` 之一（`@dsh-external/dsh-genui` 或 `@huanlin/rlh-plugin-yet-another-subagent`）。不要把 1300 条塞进单测或快照。
 - 保留 `resolveCommitSha(owner, repo, ref, token)`（仍打 GitHub commits API）。删除 `SEARCH_QUERY`、GitHub topic 搜索、`classifyPlugin` 导出。
 
 ### 映射（每条 plugin → MarketplaceItem）
@@ -79,7 +79,7 @@ TDD 强制：每个任务先写失败测试并跑红，再写生产代码。不�
 
 覆盖：
 
-1. live 映射：fixture 含 npm 行、`github:owner/repo` 行、`github:owner/repo#path:/packages/foo` 行；`installSpec` 分别为 `rlh-composer-expand`、`github:01Virex/rlh-status-rotator`、`github:DamonKoy/rlh-web-ui#path:/packages/rlh-aionui-panel`（或 fixture 里同等 token）；`id` 为 `owner/name`。
+1. live 映射：fixture 含 npm 行、`github:owner/repo` 行、`github:owner/repo#path:/packages/foo` 行；`installSpec` 分别为 `dsh-composer-expand`、`github:01Virex/dsh-status-rotator`、`github:DamonKoy/dsh-web-ui#path:/packages/dsh-aionui-panel`（或 fixture 里同等 token）；`id` 为 `owner/name`。
 2. `locale: 'zh'` 用中文简介和分类标签；`locale: 'en'` 用英文；默认 `zh`；`locale: 'zh-CN'` 当 `zh`。
 3. fetch 超时/抛错且无缓存时用快照，`source === 'snapshot'`，有 warning；`ok: true` 若快照非空。
 4. 内存/磁盘优先于快照；`refresh: true` 跳过 TTL 重新 fetch。
@@ -193,7 +193,7 @@ TDD 强制：每个任务先写失败测试并跑红，再写生产代码。不�
 
 收口文档与任何仍红的必改测试。
 
-- 桌面 `README.md`：插件市场改为 awesome-rlh-plugin 精选目录，设置页一键安装，无独立窗口。
+- 桌面 `README.md`：插件市场改为 awesome-dsh-plugin 精选目录，设置页一键安装，无独立窗口。
 - 删过期警告（中英）：
   - 根 `AGENTS.md` 里 marketplace.css 平行色板句
   - `docs/design-language.md` / `docs/design-language.en.md`

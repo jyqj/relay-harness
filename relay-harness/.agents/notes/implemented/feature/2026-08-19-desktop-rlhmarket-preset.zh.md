@@ -6,7 +6,7 @@ Status: implemented
 
 ## 问题
 
-桌面自研的插件市场（`settings.plugins.tab` id `marketplace`）不是 [rlh-market](https://github.com/rlh-market/rlh-market)。首次启动再跑 `rlh plugin add rlhmarket` 仍要访问 npm 仓库，离线用户会失败。
+桌面自研的插件市场（`settings.plugins.tab` id `marketplace`）不是 [rlh-market](https://github.com/dsh-market/dsh-market)。首次启动再跑 `rlh plugin add rlhmarket` 仍要访问 npm 仓库，离线用户会失败。
 
 ## 决策
 

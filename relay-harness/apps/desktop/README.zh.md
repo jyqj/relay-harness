@@ -27,7 +27,7 @@ macOS 构建未签名：右键选择“打开”，或执行 `xattr -cr /Applica
 - **文件与终端** — `Ctrl+\` 打开右栏（Files / Diff / Browser / Agents）；`` Ctrl+` `` 打开底部终端，选区可加入对话。
 - **模型** — 支持第三方模型思考强度、视觉兜底，以及编辑并重新发送最新用户消息。
 - **外观** — 支持浅色/深色主题，并可按分类、搜索、收藏和窗口比例选择壁纸。
-- **扩展** — 在设置中管理 MCP、Skills 和插件；市场由内置 [rlh-market](https://github.com/rlh-market/rlh-market) 插件（`rlhmarket`）提供。
+- **扩展** — 在设置中管理 MCP、Skills 和插件；市场由内置 [rlh-market](https://github.com/dsh-market/dsh-market) 插件（`rlhmarket`）提供。
 - **桌面能力** — 支持关闭到托盘、自动更新、Harness 崩溃恢复，以及跳过故障用户插件树的启动路径。
 
 `Ctrl+,` 打开设置。

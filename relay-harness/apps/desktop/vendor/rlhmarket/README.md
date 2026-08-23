@@ -7,7 +7,7 @@
 English | [中文](README.zh.md)
 
 [![npm](https://img.shields.io/npm/v/rlhmarket)](https://www.npmjs.com/package/rlhmarket)
-[![stars](https://img.shields.io/github/stars/rlh-market/rlh-market?style=flat)](https://github.com/rlh-market/rlh-market)
+[![stars](https://img.shields.io/github/stars/dsh-market/dsh-market?style=flat)](https://github.com/dsh-market/dsh-market)
 
 The plugin market inside Relay Harness. Open Settings → **Plugin Market** → browse, search, one-click install.
 
@@ -40,7 +40,7 @@ its own rlh: it may be older than the one `npm` would give you (#139).
 - **Backup & restore** — export your profile's plugin list and configuration as readable JSON, import it on another machine, store it on WebDAV with daily auto-backup, or sync through a private GitHub Gist; restores **merge** (plugins installed after the backup are kept), validate before writing, and roll back on failure
 - **Updates** — per-plugin update checks (npm version or pinned commit vs HEAD), one-click update, or update everything at once; the market updates itself the same way
 - **Uninstall** — two-step confirm; plugins installed this session are removed live
-- **Hot disable / enable** — toggles write `- id: …` + `disabled: true|false` into the profile's `cordis.patch.yml` (the official patch layer, mechanism ported from [rlh-plugin-hub](https://github.com/Noob-stupid/rlh-plugin-hub)): RLH's HMR re-composes within ~1s, no restart, and the loader re-applies the choice on every boot; hand-edited patch rows show as badges, host-infrastructure plugins are protected from toggling, and a malformed patch file is never made worse
+- **Hot disable / enable** — toggles write `- id: …` + `disabled: true|false` into the profile's `cordis.patch.yml` (the official patch layer, mechanism ported from [rlh-plugin-hub](https://github.com/Noob-stupid/dsh-plugin-hub)): RLH's HMR re-composes within ~1s, no restart, and the loader re-applies the choice on every boot; hand-edited patch rows show as badges, host-infrastructure plugins are protected from toggling, and a malformed patch file is never made worse
 - **Restart when needed** — changes that cannot hot-load show a one-click restart beside the pending-change banner; the action is restricted to same-origin loopback requests
 - **Zero jargon** — if a component is missing (pnpm), the market detects it and offers a one-click automatic setup
 - **Log export** — one click produces a sanitized plain-text log for bug reports (home paths and credential shapes are masked; nothing is ever sent anywhere). The market's version sits next to the page heading, so a screenshot of a problem already carries it
@@ -56,7 +56,7 @@ Installs prefer npm tarballs over full-repo GitHub downloads whenever a plugin p
 
 ## Security
 
-- Installs are restricted to sources listed in the curated [awesome-rlh-plugin](https://awesome-rlh-plugin.com) registry — anything else is rejected
+- Installs are restricted to sources listed in the curated [awesome-dsh-plugin](https://awesome-dsh-plugin.com) registry — anything else is rejected
 - Build scripts stay blocked by default (pnpm ≥10); allowing one is your explicit per-package choice
 - Terminal/CLI-surface plugins are flagged before you install them into the web profile
 - The install endpoint accepts same-origin POST only; the market never phones home
@@ -68,17 +68,17 @@ Installs prefer npm tarballs over full-repo GitHub downloads whenever a plugin p
 
 ## Submit your plugin
 
-**This repo is the market app, not the catalog.** The plugin list comes from the curated [awesome-rlh-plugin](https://github.com/awesome-rlh-plugin/awesome-rlh-plugin) registry — to get your plugin listed in the market, open a PR **there** (one entry in the list; the site and this market pick it up automatically, usually within a day). Please don't PR plugin entries against this repo.
+**This repo is the market app, not the catalog.** The plugin list comes from the curated [awesome-dsh-plugin](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin) registry — to get your plugin listed in the market, open a PR **there** (one entry in the list; the site and this market pick it up automatically, usually within a day). Please don't PR plugin entries against this repo.
 
 ## Roadmap & feedback
 
-- **Bugs** go in [issues](https://github.com/rlh-market/rlh-market/issues) — attaching the market's "Export log" makes diagnosis roughly ten times faster
-- **Feature ideas** go on the [Roadmap](https://github.com/orgs/rlh-market/projects/1). Issues are kept for things that are broken, so a proposal filed as an issue gets moved there and closed; the discussion stays where you wrote it either way
+- **Bugs** go in [issues](https://github.com/dsh-market/dsh-market/issues) — attaching the market's "Export log" makes diagnosis roughly ten times faster
+- **Feature ideas** go on the [Roadmap](https://github.com/orgs/dsh-market/projects/1). Issues are kept for things that are broken, so a proposal filed as an issue gets moved there and closed; the discussion stays where you wrote it either way
 - Every roadmap item welcomes community PRs — say so on the item before starting, so two people don't build it twice
 
 ## Data source
 
-Live from [awesome-rlh-plugin.com/plugins.json](https://awesome-rlh-plugin.com/plugins.json) — curated entries, npm mapping, and star counts refreshed daily by CI — with a bundled snapshot as offline fallback.
+Live from [awesome-dsh-plugin.com/plugins.json](https://awesome-dsh-plugin.com/plugins.json) — curated entries, npm mapping, and star counts refreshed daily by CI — with a bundled snapshot as offline fallback.
 
 ## Friends
 
@@ -104,4 +104,4 @@ rlh plugin --profile web add @liustack/modlens
 
 ## License
 
-MIT · [rlhmarket.com](https://rlhmarket.com)
+MIT · [dshmarket.com](https://dshmarket.com)

@@ -6,7 +6,7 @@ English | [中文](2026-08-19-desktop-rlhmarket-preset.zh.md)
 
 ## Problem
 
-The desktop clone of the marketplace (`settings.plugins.tab` id `marketplace`) was not [rlh-market](https://github.com/rlh-market/rlh-market). A first-boot `rlh plugin add rlhmarket` still needs the npm registry and fails closed for offline users.
+The desktop clone of the marketplace (`settings.plugins.tab` id `marketplace`) was not [rlh-market](https://github.com/dsh-market/dsh-market). A first-boot `rlh plugin add rlhmarket` still needs the npm registry and fails closed for offline users.
 
 ## Decision
 

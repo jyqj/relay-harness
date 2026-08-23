@@ -189,7 +189,7 @@ All install successes use rows where `npm` equals the last token, or `npm` is nu
 > `DROPPED` 对 id 和算出的包名都要比。
 > 裁定：list 过滤；getMarketplacePlugin 返回原始映射行（含 dropped）
 
-`DROPPED` is only package names (`plugins.js` 7–10). The only dropped fixture is `omdsh-dev/rlh-genui` / `@rlh-external/rlh-genui`. List hide can be explained entirely by `packageName`. `isDropped`’s `DROPPED.includes(item.id)` (`marketplace-catalog.js` 98–100) could be deleted without reddening tests. There is no row whose **id** is in `DROPPED` while `packageName` is not.
+`DROPPED` is only package names (`plugins.js` 7–10). The only dropped fixture is `omdsh-dev/dsh-genui` / `@dsh-external/dsh-genui`. List hide can be explained entirely by `packageName`. `isDropped`’s `DROPPED.includes(item.id)` (`marketplace-catalog.js` 98–100) could be deleted without reddening tests. There is no row whose **id** is in `DROPPED` while `packageName` is not.
 
 `getMarketplacePlugin` returning the dropped row **is** proven (`marketplace-catalog.test.js` 379–392). Install reject of that id **is** proven (`marketplace-install.test.js` 214–220).
 
@@ -281,7 +281,7 @@ function installedName(item: MarketplaceItem, installed: Map<string, string>): s
 }
 ```
 
-`spec.includes('owner/rlh-loop')` is true for `github:owner/rlh-loop-extra#abc`. A shorter catalog id can steal Installed / Uninstall from a longer repo. `#path:` sibling distinction is tested (`marketplace.client.spec.tsx` 321–361); prefix collision is not.
+`spec.includes('owner/rlh-loop')` is true for `github:owner/dsh-loop-extra#abc`. A shorter catalog id can steal Installed / Uninstall from a longer repo. `#path:` sibling distinction is tested (`marketplace.client.spec.tsx` 321–361); prefix collision is not.
 
 ### C2. Pending marketplace jump is cleared before the jump succeeds; consume only runs on `revealHarnessView`
 

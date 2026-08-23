@@ -5,7 +5,7 @@ const { DROPPED } = require('./plugins');
 const { isValidPackageName } = require('../host/install-rlh-plugin-client');
 const { isAllowedMarketplaceSpec } = require('./marketplace-spec');
 
-const DEFAULT_REGISTRY_URL = 'https://awesome-rlh-plugin.com/plugins.json';
+const DEFAULT_REGISTRY_URL = 'https://awesome-dsh-plugin.com/plugins.json';
 const CACHE_VERSION = 3;
 const CACHE_TTL_MS = 60 * 60 * 1000;
 const FETCH_TIMEOUT_MS = 4000;

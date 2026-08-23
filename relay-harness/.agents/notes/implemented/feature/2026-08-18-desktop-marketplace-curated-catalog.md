@@ -6,13 +6,13 @@ English | [中文](2026-08-18-desktop-marketplace-curated-catalog.zh.md)
 
 ## Problem
 
-Host `installPlugin` accepts only `github:owner/repo[#ref]`. The awesome-rlh-plugin registry includes npm and `#path:` rows that cannot go through that Host channel. Desktop therefore keeps a curated catalog fetch and an `installMarketplacePlugin(id)` whitelist for Host / IPC callers, separate from the product Settings market UI.
+Host `installPlugin` accepts only `github:owner/repo[#ref]`. The awesome-dsh-plugin registry includes npm and `#path:` rows that cannot go through that Host channel. Desktop therefore keeps a curated catalog fetch and an `installMarketplacePlugin(id)` whitelist for Host / IPC callers, separate from the product Settings market UI.
 
 ## Decision
 
 **Product marketplace UI is not this tab.** Settings → 插件市场 is the preset `rlhmarket` plugin (`settings.section` id `market`), owned by [Desktop presets rlhmarket](2026-08-19-desktop-rlhmarket-preset.md). This note owns the main-process curated catalog and the Host / IPC install whitelist. There is no `settings.plugins.tab` with id `marketplace`. Tray and menu `openMarketplace()` still never create a marketplace `BrowserWindow`.
 
-**The catalog is `https://awesome-rlh-plugin.com/plugins.json`.** The main process fetches it (`RLHD_MARKETPLACE_REGISTRY_URL` in tests). Timeout is 4 seconds. A success body is an object with a non-empty `plugins` array. `listMarketplace({ refresh?, locale? })` locale is `zh` | `en` (default `zh`; `zh*` maps to `zh`). Disk cache lives under `app.getPath('userData')` with `CACHE_VERSION` 3 and a 1-hour TTL. Fallback order is memory, then disk, then the packaged snapshot `src/main/marketplace-registry-snapshot.json`. `source` is `live` | `cache` | `snapshot`; non-live carries `warning`. Empty at every layer returns `ok: false`, `items: []`, and a visible warning. There is no GitHub topic search.
+**The catalog is `https://awesome-dsh-plugin.com/plugins.json`.** The main process fetches it (`RLHD_MARKETPLACE_REGISTRY_URL` in tests). Timeout is 4 seconds. A success body is an object with a non-empty `plugins` array. `listMarketplace({ refresh?, locale? })` locale is `zh` | `en` (default `zh`; `zh*` maps to `zh`). Disk cache lives under `app.getPath('userData')` with `CACHE_VERSION` 3 and a 1-hour TTL. Fallback order is memory, then disk, then the packaged snapshot `src/main/marketplace-registry-snapshot.json`. `source` is `live` | `cache` | `snapshot`; non-live carries `warning`. Empty at every layer returns `ok: false`, `items: []`, and a visible warning. There is no GitHub topic search.
 
 `installSpec` matches rlh-market `installTargetFor`: a valid registry `npm` name; otherwise `github:owner/repo` or `github:owner/repo#path:/<posix>` from the GitHub `url` (`/tree/<ref>/<posix>`). The last whitespace token of `install` is used only when `isAllowedMarketplaceSpec` accepts it: a last-token npm name must equal the row `npm` field (`npm: null` maps to empty `installSpec`). Tarball, git, and file URLs never become `installSpec`. Catalog `id` is `owner/name` (the name may contain `#`).
 

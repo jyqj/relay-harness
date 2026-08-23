@@ -6,13 +6,13 @@ Status: implemented
 
 ## 问题
 
-Host 的 `installPlugin` 只接受 `github:owner/repo[#ref]`。awesome-rlh-plugin 登记表含 npm 和 `#path:` 行，走不了该 Host 通道。桌面因此为主进程 / IPC 保留精选目录拉取和 `installMarketplacePlugin(id)` 白名单，与设置里的产品市场界面分开。
+Host 的 `installPlugin` 只接受 `github:owner/repo[#ref]`。awesome-dsh-plugin 登记表含 npm 和 `#path:` 行，走不了该 Host 通道。桌面因此为主进程 / IPC 保留精选目录拉取和 `installMarketplacePlugin(id)` 白名单，与设置里的产品市场界面分开。
 
 ## 决策
 
 **产品市场界面不是这个标签页。** 设置 → 插件市场是预置的 `rlhmarket` 插件（`settings.section` id `market`），由 [桌面预置 rlhmarket](2026-08-19-desktop-rlhmarket-preset.md) 拥有。本笔记拥有主进程精选目录和 Host／IPC 安装白名单。没有 id 为 `marketplace` 的 `settings.plugins.tab`。托盘和菜单的 `openMarketplace()` 仍绝不创建市场 `BrowserWindow`。
 
-**目录是 `https://awesome-rlh-plugin.com/plugins.json`。** 主进程拉取（测试用 `RLHD_MARKETPLACE_REGISTRY_URL`）。超时 4 秒。成功响应必须是带非空 `plugins` 数组的对象。`listMarketplace({ refresh?, locale? })` 的 `locale` 为 `zh` | `en`（默认 `zh`；`zh*` 映射为 `zh`）。磁盘缓存在 `app.getPath('userData')`，`CACHE_VERSION` 为 3，TTL 1 小时。回退顺序是内存、磁盘、打包快照 `src/main/marketplace-registry-snapshot.json`。`source` 为 `live` | `cache` | `snapshot`；非 live 必须带 `warning`。每一层都空时返回 `ok: false`、`items: []` 和可见警告。不搜 GitHub topic。
+**目录是 `https://awesome-dsh-plugin.com/plugins.json`。** 主进程拉取（测试用 `RLHD_MARKETPLACE_REGISTRY_URL`）。超时 4 秒。成功响应必须是带非空 `plugins` 数组的对象。`listMarketplace({ refresh?, locale? })` 的 `locale` 为 `zh` | `en`（默认 `zh`；`zh*` 映射为 `zh`）。磁盘缓存在 `app.getPath('userData')`，`CACHE_VERSION` 为 3，TTL 1 小时。回退顺序是内存、磁盘、打包快照 `src/main/marketplace-registry-snapshot.json`。`source` 为 `live` | `cache` | `snapshot`；非 live 必须带 `warning`。每一层都空时返回 `ok: false`、`items: []` 和可见警告。不搜 GitHub topic。
 
 `installSpec` 与 rlh-market 的 `installTargetFor` 一致：合法的目录 `npm` 包名；否则从 GitHub `url` 得到 `github:owner/repo` 或 `github:owner/repo#path:/<posix>`（`/tree/<ref>/<posix>`）。`install` 的最后一个空白分词只在 `isAllowedMarketplaceSpec` 接受时使用：last-token npm 必须等于该行 `npm` 字段（`npm` 为 null 时 `installSpec` 为空）。tarball、git、file URL 不会成为 `installSpec`。目录 `id` 是 `owner/name`（name 可含 `#`）。
 

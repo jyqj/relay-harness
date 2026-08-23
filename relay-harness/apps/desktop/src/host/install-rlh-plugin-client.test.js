@@ -31,8 +31,8 @@ test('allowBuilds accepts package, github.com/owner/repo, and name@git+https key
     '@scope/package',
     'github.com/owner/repo',
     '@scope/package',
-    'rlh-loop@git+https://github.com/owner/rlh-loop.git',
-  ]), ['@scope/package', 'github.com/owner/repo', 'rlh-loop@git+https://github.com/owner/rlh-loop.git']);
+    'rlh-loop@git+https://github.com/owner/dsh-loop.git',
+  ]), ['@scope/package', 'github.com/owner/repo', 'rlh-loop@git+https://github.com/owner/dsh-loop.git']);
   for (const value of [
     ['../prepare'],
     ['https://github.com/owner/repo'],
@@ -44,7 +44,7 @@ test('allowBuilds accepts package, github.com/owner/repo, and name@git+https key
 });
 
 test('package names reject shell syntax, paths, URLs, and extra arguments', () => {
-  assert.equal(isValidPackageName('@rlh-external/rlh-loop'), true);
+  assert.equal(isValidPackageName('@dsh-external/dsh-loop'), true);
   assert.equal(isValidPackageName('plain-package'), true);
   for (const value of [
     'pkg;calc',
@@ -131,8 +131,8 @@ test('a dropped-plugin error stays a failure without restart', () => {
   const result = normalizeInstallResult({
     ok: false,
     error: '该插件已退役，不再提供安装',
-    spec: 'github:x/rlh-genui',
-  }, 'github:x/rlh-genui');
+    spec: 'github:x/dsh-genui',
+  }, 'github:x/dsh-genui');
   assert.equal(result.restarting, false);
   assert.match(renderInstall(result), /Install failed/);
 });

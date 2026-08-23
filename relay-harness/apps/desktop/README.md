@@ -27,7 +27,7 @@ The macOS build is unsigned: right-click → Open, or run `xattr -cr /Applicatio
 - **Files and terminal** — `Ctrl+\` opens the right column (Files / Diff / Browser / Agents); `` Ctrl+` `` opens the bottom terminal. A selection can join chat.
 - **Models** — Thinking intensity for third-party models, vision fallback; the latest user message can be edited and resent.
 - **Appearance** — Light / dark themes. Pick a wallpaper or browse the gallery with categories, search, favorites, and window-aware cropping.
-- **Extensions** — Manage MCP, Skills, and plugins in Settings. The marketplace is the bundled [rlh-market](https://github.com/rlh-market/rlh-market) plugin (`rlhmarket`).
+- **Extensions** — Manage MCP, Skills, and plugins in Settings. The marketplace is the bundled [rlh-market](https://github.com/dsh-market/dsh-market) plugin (`rlhmarket`).
 - **Desktop** — Minimize to tray, auto-update, Harness crash recovery, and a startup path that can skip a broken user plugin tree.
 
 `Ctrl+,` opens Settings.

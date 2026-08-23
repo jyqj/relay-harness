@@ -215,8 +215,8 @@ test('installMarketplacePlugin leaves a floating github ref when no token is sto
   };
   try {
     const { calls, runPlugin } = recordRunner(() => {
-      writeProfileDep('@virex/rlh-status-rotator', GITHUB_SPEC);
-      writeClientPlugin('@virex/rlh-status-rotator');
+      writeProfileDep('@virex/dsh-status-rotator', GITHUB_SPEC);
+      writeClientPlugin('@virex/dsh-status-rotator');
     });
     const result = await installMarketplacePlugin(GITHUB_ID, { runPlugin, token: '' });
     assert.equal(result.ok, true);
@@ -237,12 +237,12 @@ test('installMarketplacePlugin pins a SHA when a GitHub token is stored', async 
   };
   try {
     const { calls, runPlugin } = recordRunner(() => {
-      writeProfileDep('@virex/rlh-status-rotator', 'github:01Virex/rlh-status-rotator#abc1234567890');
-      writeClientPlugin('@virex/rlh-status-rotator');
+      writeProfileDep('@virex/dsh-status-rotator', 'github:01Virex/dsh-status-rotator#abc1234567890');
+      writeClientPlugin('@virex/dsh-status-rotator');
     });
     const result = await installMarketplacePlugin(GITHUB_ID, { runPlugin, token: 'ghp_test' });
     assert.equal(result.ok, true);
-    assert.deepEqual(calls[0], ['add', 'github:01Virex/rlh-status-rotator#abc1234567890']);
+    assert.deepEqual(calls[0], ['add', 'github:01Virex/dsh-status-rotator#abc1234567890']);
   } finally {
     globalThis.fetch = previous;
   }
@@ -322,18 +322,18 @@ Exact `#path:` (sibling `foo` vs `foo-bar`):
 it('does not mark a #path: prefix sibling as installed', async () => {
   const panel = {
     ...ITEM,
-    id: 'DamonKoy/rlh-web-ui#panel',
+    id: 'DamonKoy/dsh-web-ui#panel',
     owner: 'DamonKoy',
     repo: 'panel',
     packageName: '',
-    homepage: 'https://github.com/DamonKoy/rlh-web-ui',
-    installSpec: 'github:DamonKoy/rlh-web-ui#path:/packages/foo',
+    homepage: 'https://github.com/DamonKoy/dsh-web-ui',
+    installSpec: 'github:DamonKoy/dsh-web-ui#path:/packages/foo',
   }
   const longer = {
     ...panel,
-    id: 'DamonKoy/rlh-web-ui#panel-bar',
+    id: 'DamonKoy/dsh-web-ui#panel-bar',
     repo: 'panel-bar',
-    installSpec: 'github:DamonKoy/rlh-web-ui#path:/packages/foo-bar',
+    installSpec: 'github:DamonKoy/dsh-web-ui#path:/packages/foo-bar',
   }
   renderTab({
     listMarketplace: vi.fn(async () => ({
@@ -343,7 +343,7 @@ it('does not mark a #path: prefix sibling as installed', async () => {
     listInstalled: vi.fn(async () => ({
       plugins: [{
         name: 'foo-bar',
-        spec: 'git+https://github.com/DamonKoy/rlh-web-ui.git#path:/packages/foo-bar',
+        spec: 'git+https://github.com/DamonKoy/dsh-web-ui.git#path:/packages/foo-bar',
       }],
     })),
   })
