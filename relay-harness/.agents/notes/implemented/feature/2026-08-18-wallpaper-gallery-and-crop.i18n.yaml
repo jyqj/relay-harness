@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-08-18-wallpaper-gallery-and-crop.md
-2026-08-18-wallpaper-gallery-and-crop.md: a479c312078a468871334f4b5772c34c3c2838cd
-2026-08-18-wallpaper-gallery-and-crop.zh.md: f039e13cb95ad8da67c3cf6915d2d59b9289ba49
+2026-08-18-wallpaper-gallery-and-crop.md: a746f722c3060bd73539b8ed670fc23bbe84d704
+2026-08-18-wallpaper-gallery-and-crop.zh.md: 17fea9c5dbb2bc0bf276031e088a14880b6795b2

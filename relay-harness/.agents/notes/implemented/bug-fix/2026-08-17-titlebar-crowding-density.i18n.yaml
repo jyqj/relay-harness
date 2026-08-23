@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/bug-fix/2026-08-17-titlebar-crowding-density.md
-2026-08-17-titlebar-crowding-density.md: d37c7833823c0ce24dcfabfc301e58b1b52b8ddb
-2026-08-17-titlebar-crowding-density.zh.md: ec12721aa4ac7c46cd6ece1b897553a49f879f10
+2026-08-17-titlebar-crowding-density.md: b1b57c3152eb870de85732a558871444530c17a9
+2026-08-17-titlebar-crowding-density.zh.md: 3284fb8e2da083a91d53a2b9d85cf19c856f1df9

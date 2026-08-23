@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-08-03-pi-ai-declared-provider-catalog.md
-2026-08-03-pi-ai-declared-provider-catalog.md: ccd9a59be0ba2f82438c0150556b1895f1a95220
-2026-08-03-pi-ai-declared-provider-catalog.zh.md: ca6d0297cfa44a903b11c56723e0199131e1ea9f
+2026-08-03-pi-ai-declared-provider-catalog.md: 6e8bcf903b9a45557830ab70073767fc36a54bd8
+2026-08-03-pi-ai-declared-provider-catalog.zh.md: e2378606b19745bea942345a40a87d0831c62f7a

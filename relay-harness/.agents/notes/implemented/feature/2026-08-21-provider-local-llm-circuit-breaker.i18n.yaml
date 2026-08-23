@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-08-21-provider-local-llm-circuit-breaker.md
-2026-08-21-provider-local-llm-circuit-breaker.md: e030f59fa3162b8c39563fa54cd84b2b9f782b7c
-2026-08-21-provider-local-llm-circuit-breaker.zh.md: 71ecb4c52e85b32d05f1b3dac356042aedd26ca3
+2026-08-21-provider-local-llm-circuit-breaker.md: c34fe8d5cb74a363f384e8b6b94ddfc16cfa42c8
+2026-08-21-provider-local-llm-circuit-breaker.zh.md: 81706c4e936341e204861d5f8e63e5037eb6c839

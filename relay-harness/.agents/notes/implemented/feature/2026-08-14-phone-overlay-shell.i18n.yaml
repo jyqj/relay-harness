@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-08-14-phone-overlay-shell.md
-2026-08-14-phone-overlay-shell.md: f50eeab4660e81ba52adf8dd938c47e820f43618
-2026-08-14-phone-overlay-shell.zh.md: f552c3b98a2cf5570db993d88a0bf72c33aa3a85
+2026-08-14-phone-overlay-shell.md: 4b926e92385165d8b64c6ffcfa748cd48a9f43c4
+2026-08-14-phone-overlay-shell.zh.md: 25071113905736fdf3426a9ff2dd956811d27217

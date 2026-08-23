@@ -12,7 +12,7 @@ The token also collides with itself. `rlh` names four different things across th
 
 ## Decision
 
-The product is **Relay Harness**, abbreviated **rlh**. The rename covers every brand-owned surface at once, executed by [`scripts/rebrand-rlh-to-rlh.ts`](../../../../scripts/rebrand-rlh-to-rlh.ts):
+The product is **Relay Harness**, abbreviated **rlh**. The rename covers every brand-owned surface at once, executed by [`scripts/rebrand-dsh-to-rlh.ts`](../../../../scripts/rebrand-dsh-to-rlh.ts):
 
 | Surface | Before | After |
 |---|---|---|

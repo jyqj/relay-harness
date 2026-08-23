@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-08-04-pointer-revealed-sidebar-scrollbars.md
-2026-08-04-pointer-revealed-sidebar-scrollbars.md: 5c6fff378932d3e63bc92ed27e9b0341effaf6b8
-2026-08-04-pointer-revealed-sidebar-scrollbars.zh.md: edfc6e34925ecb0526946c462f8cf4dc701275fd
+2026-08-04-pointer-revealed-sidebar-scrollbars.md: 8d6d51c3ab6766f4b138b0d98c474cb48528bcbf
+2026-08-04-pointer-revealed-sidebar-scrollbars.zh.md: 9cdbd289dbc1973c6c4e3911ec2bc60cbc39c374

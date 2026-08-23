@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/cookbook/maintaining-rlh-code-review.md
-maintaining-rlh-code-review.md: a8c2a66c065aaec5c03f0ab6965377d1d1eb14bd
-maintaining-rlh-code-review.zh.md: 60c10ca59d36aa5f36177487c4aa7927397bf2f3
+maintaining-rlh-code-review.md: a961dd31de4c90999c0b34ce9f43313d397ed19e
+maintaining-rlh-code-review.zh.md: 0276d2f43632679e7d0cfce1ec0532b2f71978f2

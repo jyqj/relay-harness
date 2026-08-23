@@ -12,7 +12,7 @@ Harness 一直以一个并不属于自己的名字发布。所有 npm 包位于 
 
 ## Decision
 
-产品名为 **Relay Harness**，缩写 **rlh**。更名一次性覆盖全部品牌所属表面，由 [`scripts/rebrand-rlh-to-rlh.ts`](../../../../scripts/rebrand-rlh-to-rlh.ts) 执行：
+产品名为 **Relay Harness**，缩写 **rlh**。更名一次性覆盖全部品牌所属表面，由 [`scripts/rebrand-dsh-to-rlh.ts`](../../../../scripts/rebrand-dsh-to-rlh.ts) 执行：
 
 | 表面 | 更名前 | 更名后 |
 |---|---|---|

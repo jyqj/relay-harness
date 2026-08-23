@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/bug-fix/2026-08-09-filesystem-absence-observation.md
-2026-08-09-filesystem-absence-observation.md: 40338c4806607b262b93222b4a73a34538414e51
-2026-08-09-filesystem-absence-observation.zh.md: ee8964454ea7e52a8246af78f26cd787267a946b
+2026-08-09-filesystem-absence-observation.md: f1f634717d7bd78ce84497b2e6e42da773f0a34e
+2026-08-09-filesystem-absence-observation.zh.md: 9be1454bd7dfa50260c9c3b8071c8728ed7dd5ac

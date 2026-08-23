@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-08-18-skip-user-plugins-recovery-boot.md
-2026-08-18-skip-user-plugins-recovery-boot.md: 194f41b7064f74897a9add597d93bbee95044b69
-2026-08-18-skip-user-plugins-recovery-boot.zh.md: 6ed0c15757469c25dcfdad682dfcbf7eddd743cd
+2026-08-18-skip-user-plugins-recovery-boot.md: f99ad8ad9453290ac2e2b9d73c4d728f85cf9246
+2026-08-18-skip-user-plugins-recovery-boot.zh.md: b70aa061b1b04b4d8b384fdbf577802ac75dce35

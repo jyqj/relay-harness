@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-08-21-integrated-desktop-gui.md
-2026-08-21-integrated-desktop-gui.md: bb75877bf68d38fb7c4b0a5d6d516ecf6d8a1b0b
-2026-08-21-integrated-desktop-gui.zh.md: 012681ded6badfe61f953b7cb1b28875f409c18c
+2026-08-21-integrated-desktop-gui.md: 8992cb307585aea3c023a9a8b11efa87f072a5f4
+2026-08-21-integrated-desktop-gui.zh.md: ddf0e49a6309d89c8c69e533b8b5521ed2e9d596

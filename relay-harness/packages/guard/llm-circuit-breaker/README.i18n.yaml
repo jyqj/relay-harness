@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/guard/llm-circuit-breaker/README.md
-README.md: 86da4263c47ce12a2c7e0d4bd4598c50cb17a6f9
-README.zh.md: 34ce85815c65b68d4bae1babb6a0dd0172c9671f
+README.md: be9b93662fd350fe2c3de8c6a66faea2648108a8
+README.zh.md: 75c06d3ba4ecb5a37ba90adcf72aa1b690a9018b
