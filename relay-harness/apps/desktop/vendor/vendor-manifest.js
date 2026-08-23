@@ -36,4 +36,56 @@ function absenceReason(name, subtree) {
   return manifest[name]?.missing?.[subtree];
 }
 
-module.exports = { absenceReason, manifest, missingSubtrees, vendorDir };
+/**
+ * The production install a vendored plugin's `package-lock.json` resolves to,
+ * as `name@version`. npm marks development-only entries, so what remains is
+ * what `npm ci --omit=dev` writes and what the installer must therefore carry.
+ *
+ * @param {string} name Vendored plugin directory name.
+ * @returns {string[]} Sorted `name@version` pairs, empty without a lockfile.
+ */
+function lockedProductionInstall(name) {
+  const lockPath = path.join(vendorDir, name, 'package-lock.json');
+  if (!fs.existsSync(lockPath)) return [];
+  const lock = JSON.parse(fs.readFileSync(lockPath, 'utf8'));
+  return Object.entries(lock.packages)
+    .filter(([key, entry]) => key.startsWith('node_modules/') && !entry.dev && !entry.devOptional)
+    .map(([key, entry]) => `${key.slice('node_modules/'.length)}@${entry.version}`)
+    .sort();
+}
+
+/**
+ * The packages a vendored plugin's working-copy `node_modules` contains, as
+ * `name@version`. The directory is build output rather than source, so it is
+ * absent until `pnpm run vendor:sync` writes it.
+ *
+ * @param {string} name Vendored plugin directory name.
+ * @returns {string[]} Sorted `name@version` pairs, empty without the directory.
+ */
+function installedPackages(name) {
+  const root = path.join(vendorDir, name, 'node_modules');
+  if (!fs.existsSync(root)) return [];
+  const directories = fs.readdirSync(root, { withFileTypes: true })
+    .filter(entry => entry.isDirectory() && !entry.name.startsWith('.'))
+    .flatMap(entry => entry.name.startsWith('@')
+      ? fs.readdirSync(path.join(root, entry.name)).map(scoped => `${entry.name}/${scoped}`)
+      : [entry.name]);
+  return directories
+    .map(directory => `${directory}@${JSON.parse(fs.readFileSync(path.join(root, directory, 'package.json'), 'utf8')).version}`)
+    .sort();
+}
+
+/** Vendored plugins whose production dependencies come from a lockfile. */
+function installablePlugins() {
+  return Object.keys(manifest).filter(name => fs.existsSync(path.join(vendorDir, name, 'package-lock.json')));
+}
+
+module.exports = {
+  absenceReason,
+  installablePlugins,
+  installedPackages,
+  lockedProductionInstall,
+  manifest,
+  missingSubtrees,
+  vendorDir,
+};

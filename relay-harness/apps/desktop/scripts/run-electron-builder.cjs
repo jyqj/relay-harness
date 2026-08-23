@@ -1,4 +1,14 @@
 const fsPromises = require('fs/promises')
+const { syncVendorInstalls } = require('./vendor-installs.js')
+
+// extraResources copies the vendored plugins whole, so their installs have to
+// exist before the pack. after-pack.js installs into the packaged tree when
+// this cannot reach the registry, and fails the build if that install is short.
+try {
+  syncVendorInstalls({ log: message => console.log(message) })
+} catch (error) {
+  console.warn(`vendored plugin install failed, leaving it to after-pack: ${error.message}`)
+}
 
 const originalWriteFile = fsPromises.writeFile
 const retryableCodes = new Set(['EBUSY', 'EACCES', 'EPERM', 'UNKNOWN'])

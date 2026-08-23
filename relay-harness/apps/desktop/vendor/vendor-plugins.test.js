@@ -2,10 +2,18 @@
 
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
+const { spawnSync } = require('node:child_process');
 const fs = require('node:fs');
 const path = require('node:path');
 
-const { manifest, missingSubtrees, vendorDir } = require('./vendor-manifest.js');
+const {
+  installablePlugins,
+  installedPackages,
+  lockedProductionInstall,
+  manifest,
+  missingSubtrees,
+  vendorDir,
+} = require('./vendor-manifest.js');
 
 /** Every file path a package manifest names as an entry point. */
 function declaredEntryPoints(pkg) {
@@ -21,6 +29,19 @@ function declaredEntryPoints(pkg) {
   collect(pkg.exports);
   return [...new Set(paths)];
 }
+
+/** Paths git tracks under `vendor/`, or null outside a checkout. */
+function trackedVendorPaths() {
+  const result = spawnSync('git', ['ls-files', '-z', '--', '.'], { cwd: vendorDir, encoding: 'utf8' });
+  if (result.status !== 0) return null;
+  return result.stdout.split('\0').filter(Boolean);
+}
+
+test('no vendored install is committed', { skip: trackedVendorPaths() ? false : 'not a git checkout' }, () => {
+  const committed = trackedVendorPaths().filter(file => file.split('/').includes('node_modules'));
+  assert.deepEqual(committed, [],
+    'vendored node_modules are installed from a lockfile, not committed — see vendor/README.md');
+});
 
 test('the vendor manifest names every vendored plugin directory', () => {
   const directories = fs.readdirSync(vendorDir, { withFileTypes: true })
@@ -45,6 +66,22 @@ for (const [name, record] of Object.entries(manifest)) {
     const expected = declaredEntryPoints(pkg).filter(entry => !absent.some(subtree => entry.startsWith(`${subtree}/`)));
     const broken = expected.filter(entry => !fs.existsSync(path.join(root, entry)));
     assert.deepEqual(broken, [], `${name} declares entry points that are not vendored: ${broken.join(', ')}`);
+  });
+
+  test(`vendored ${name}'s lockfile resolves every dependency it declares`, {
+    skip: installablePlugins().includes(name) ? false : `${name} vendors no package-lock.json`,
+  }, () => {
+    const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
+    const resolved = new Set(lockedProductionInstall(name).map(entry => entry.slice(0, entry.lastIndexOf('@'))));
+    const unresolved = Object.keys(pkg.dependencies ?? {}).filter(dependency => !resolved.has(dependency));
+    assert.deepEqual(unresolved, [], `vendor/${name}/package-lock.json cannot install: ${unresolved.join(', ')}`);
+  });
+
+  test(`vendored ${name}'s working install matches its lockfile`, {
+    skip: installedPackages(name).length > 0 ? false : `vendor/${name}/node_modules is not installed here`,
+  }, () => {
+    assert.deepEqual(installedPackages(name), lockedProductionInstall(name),
+      `run \`pnpm run vendor:sync\` from apps/desktop to bring vendor/${name}/node_modules back to its lockfile`);
   });
 
   test(`the manifest's record of what ${name} is missing is current`, () => {
