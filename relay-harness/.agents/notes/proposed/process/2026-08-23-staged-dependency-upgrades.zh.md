@@ -36,6 +36,12 @@ Status: proposed
 - 模型与沙箱 SDK（`@anthropic-ai/sdk`、`@openai/codex`、`@earendil-works/pi-ai`、`@modelcontextprotocol/sdk`、`e2b`）。这些包的真实行为只在带密钥的测试中显现；请运行那些用例，不要依赖无密钥套件。
 - 渲染与叶子库（`shiki`、`@shikijs/langs`、`katex`、`mermaid`、`lightningcss`、`fast-check`、`smol-toml`、`tsx`、`use-sync-external-store`）。这一组的预期结果就是快照变动；请审阅渲染后的 diff，而不是一律更新快照。
 
+*修订 —— 第二批已作为三个提交在更名分支上落地。* 理由与第一批相同：让一次提升可回滚的是组的边界，而不是 PR 的边界，三个提交给出三条边界。工具组移动了 `oxlint` 1.76.0 → 1.79.0、`playwright` 1.61.1 → 1.62.1、`pnpm` 11.8.0 → 11.22.0、`@yarnpkg/cli-dist` 4.17.1 → 4.18.0 与 `eslint-plugin-sonarjs` 4.1.0 → 4.2.0。模型组移动了 `@anthropic-ai/sdk` 0.93.0 → 0.120.0、`@anthropic-ai/claude-agent-sdk` 0.3.220 → 0.3.240、`@openai/codex` 0.147.0 → 0.149.0、`@modelcontextprotocol/sdk` 至 ^1.30.0（连同 `@modelcontextprotocol/server-everything` 2026.7.4 → 2026.8.18）以及 `e2b` 2.29.1 → 2.45.0。渲染组移动了 `shiki` 与 `@shikijs/langs` 4.3.1 → 4.4.3、`katex` 0.16.47 → 0.18.4、`mermaid` 11.16.0 → 11.17.0、`lightningcss` 1.32.0 → 1.33.0、`fast-check` 4.8.0 → 4.9.0、`smol-toml` 1.7.1 → 1.8.0、`tsx` 4.22.4 → 4.23.12、`use-sync-external-store` 1.2.0 → 1.6.0，以及四个 `@opentelemetry/*` 日志包 0.220.0 → 0.221.0。
+
+分组预判对了工作的形状，却未必对了方向。linter 确实改了规则，只是方向与预算的相反：`oxlint` 1.79 不再对转义控制字符报 `no-control-regex`，于是发现的是 `reportUnusedDisableDirectives` 之下的一条无用抑制，是删掉而不是新增。两处真正的契约位移都出自模型组 —— Claude Code 2.1.240 拒绝已禁用的 `ExitPlanMode` 时换了措辞，Codex 0.149 新增第十二个 `codexErrorInfo` 变体 `misalignmentPolicyViolation`，wire 现在直接命名它，而不再折叠为 `unknown`。渲染组给出了它应当给出的快照变动，且仅此而已：KaTeX 0.18 为其自身 HTML 分支内部那些过于通用的类名加了前缀（`base` → `katex-base` 及同类），我们的样式表与断言都不读这些名字，因此两份 math DOM 对照 fixture 恰好只按这一次改名位移。
+
+有两个原定包依据本批自身的规则被剔除，仍然悬而未决。`knip` 6.16.1 → 6.32.2 没有可以出发的绿色基线 —— `pnpm run knip` 在本分支头部已经是红的，因为 `apps/desktop` 进来时没有对应的 knip workspace 条目 —— 而 6.32 又几乎替换了整套发现集合，因此调和它是一次配置修复，不是一次提升。`@earendil-works/pi-ai` 0.82.1 → 0.84.2 破坏的是适配器断言的两项契约，而非一个版本字符串：携带 `maxTokens` 的请求不再以 `max_completion_tokens` 抵达 provider，而已经处于 abort 状态的调用方 signal 会让流以 `error` 而非 `aborted` 收尾 —— 那会把用户取消报成失败。两者各需自己的改动与自己的笔记。
+
 **第三批 —— major，每个包或每组耦合项单独一个 PR。** 这些是迁移而非升级，而且其中若干彼此耦合：
 
 - `react` + `react-dom` + `@types/react` + `@types/react-dom` + `@vitejs/plugin-react` 一起走；`zustand` 4 → 5 与 `use-sync-external-store` 也应并入同一次改动，因为 zustand 5 移除了默认导出，而 React 19 让那层 shim 不再必要。
