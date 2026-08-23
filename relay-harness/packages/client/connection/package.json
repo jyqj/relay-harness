@@ -39,7 +39,7 @@
   "license": "MIT",
   "dependencies": {
     "@relay-harness/schemastery": "workspace:^",
-    "ws": "^8.21.0"
+    "ws": "^8.21.3"
   },
   "files": [
     "lib/index.js",
@@ -48,26 +48,26 @@
     "lib/types/**/*.d.ts"
   ],
   "peerDependencies": {
-    "@relay-harness/rlh-host-webserver": "workspace:^",
-    "@relay-harness/rlh-invariants": "workspace:^",
     "@relay-harness/cordis": "workspace:^",
     "@relay-harness/rlh-attachment": "workspace:^",
-    "@relay-harness/rlh-host-apiproxy": "workspace:^",
     "@relay-harness/rlh-commands": "workspace:^",
+    "@relay-harness/rlh-host-apiproxy": "workspace:^",
+    "@relay-harness/rlh-host-webserver": "workspace:^",
+    "@relay-harness/rlh-invariants": "workspace:^",
     "@relay-harness/rlh-llm": "workspace:^",
     "@relay-harness/rlh-session": "workspace:^",
     "@relay-harness/rlh-tools": "workspace:^"
   },
   "devDependencies": {
-    "@relay-harness/rlh-host-webserver": "workspace:^",
-    "@relay-harness/rlh-invariants": "workspace:^",
-    "@types/ws": "^8.18.1",
     "@relay-harness/cordis": "workspace:^",
     "@relay-harness/rlh-attachment": "workspace:^",
-    "@relay-harness/rlh-host-apiproxy": "workspace:^",
     "@relay-harness/rlh-commands": "workspace:^",
+    "@relay-harness/rlh-host-apiproxy": "workspace:^",
+    "@relay-harness/rlh-host-webserver": "workspace:^",
+    "@relay-harness/rlh-invariants": "workspace:^",
     "@relay-harness/rlh-llm": "workspace:^",
     "@relay-harness/rlh-session": "workspace:^",
-    "@relay-harness/rlh-tools": "workspace:^"
+    "@relay-harness/rlh-tools": "workspace:^",
+    "@types/ws": "^8.18.1"
   }
 }

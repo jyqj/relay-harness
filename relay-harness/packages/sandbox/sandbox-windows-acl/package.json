@@ -38,16 +38,16 @@
   ],
   "license": "MIT",
   "peerDependencies": {
-    "@relay-harness/rlh-invariants": "workspace:^",
-    "@relay-harness/cordis": "workspace:^"
+    "@relay-harness/cordis": "workspace:^",
+    "@relay-harness/rlh-invariants": "workspace:^"
   },
   "dependencies": {
-    "koffi": "^3.1.0"
+    "koffi": "^3.1.6"
   },
   "devDependencies": {
+    "@relay-harness/cordis": "workspace:^",
     "@relay-harness/rlh-invariants": "workspace:^",
     "@relay-harness/rlh-pwsh-local": "workspace:^",
-    "@relay-harness/rlh-sandbox-local": "workspace:^",
-    "@relay-harness/cordis": "workspace:^"
+    "@relay-harness/rlh-sandbox-local": "workspace:^"
   }
 }

@@ -26,6 +26,10 @@ Land no dependency upgrades in the rename PR, and work the backlog afterwards in
 
 Two entries deserve a note even at patch level. `koffi` 3.1.1 → 3.1.6 is a native FFI addon behind the sandbox, filesystem, and subprocess packages on Windows and macOS — CI on Linux will not exercise most of it. `esbuild` 0.28.1 → 0.28.2 is pre-1.0, where the ecosystem convention puts breaking changes in the patch position; read its changelog rather than trusting the version shape.
 
+*Amendment — wave 1 landed on the rename branch.* At the requester's direction wave 1 shipped inside the rename branch as its own commit rather than as a follow-up PR. What the acceptance criterion below wanted from the PR boundary — a lockfile a reviewer can read as rename-only — the commit boundary still gives: the rename commits move no third-party version, and one later commit moves nothing else. Both changelogs were read and are bug-fix only. `koffi` 3.1.2 closes a buffer overflow in its string-length computation, 3.1.3 picks the right libc so a musl or Alpine ARM64 host stops crashing on load, and 3.1.6 fixes a crash calling `register()` before any library is loaded; `esbuild` 0.28.2 fixes tree shaking through a TypeScript `import` alias and a CSS minifier that dropped a `&` it had to keep.
+
+Fifteen of the sixteen landed. `@anthropic-ai/claude-agent-sdk` 0.3.220 → 0.3.240 was dropped under the wave's own rule, because the patch position understates it: the version ships a whole Claude Code build, and the new one refuses a disabled `ExitPlanMode` with different wording, which `packages/subagent/subagent-claude-code`'s real-product suite asserts on. That is a fixture to re-read, not a mechanical bump, so it belongs with wave 2's model-SDK group alongside `@anthropic-ai/sdk`.
+
 **Wave 2 — minor, in three groups.** Split by blast radius so a failure names its own cause:
 
 - Tooling that gates CI (`oxlint`, `knip`, `playwright`, `publint`, `pnpm`, `lefthook`). New linter versions ship new rules; expect findings and budget for fixing or explicitly disabling them, since a silent `--fix` pass would bury real ones.
@@ -54,7 +58,7 @@ Order the waves 1 → 2 → 3, and inside wave 3 do TypeScript before React: the
 
 ## Acceptance criteria
 
-- The rename PR merges with `pnpm-lock.yaml` showing workspace renames and no third-party version changes. The one non-rename entry is `node-pty`'s `patch_hash`, which moves because the patch text carries a renamed environment variable; the resolved version is unchanged.
+- The rename commits show `pnpm-lock.yaml` with workspace renames and no third-party version changes. The one non-rename entry is `node-pty`'s `patch_hash`, which moves because the patch text carries a renamed environment variable; the resolved version is unchanged. Wave 1's own commit is what moves third-party versions, and it moves nothing else.
 - Wave 1 lands as one commit with `doc-sync`, `lint`, `typecheck`, and the full test suite green, and the `koffi` and `esbuild` changelogs read rather than assumed.
 - Wave 2 lands as three commits, each independently revertable, with new lint findings resolved rather than suppressed wholesale.
 - Wave 3 lands one migration per PR, each carrying its own Agent Note where it changes an observable contract, with the ACP snapshot suite re-recorded and reviewed for the SDK crossing.

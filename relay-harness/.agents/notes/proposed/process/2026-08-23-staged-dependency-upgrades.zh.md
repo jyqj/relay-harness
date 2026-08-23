@@ -26,6 +26,10 @@ Status: proposed
 
 即便在 patch 级别，仍有两项值得单独说明。`koffi` 3.1.1 → 3.1.6 是沙箱、文件系统与子进程包在 Windows 和 macOS 上依赖的原生 FFI 插件 —— Linux CI 大部分覆盖不到。`esbuild` 0.28.1 → 0.28.2 处于 1.0 之前，按生态惯例破坏性变更就落在 patch 位上；请阅读其 changelog，不要凭版本号形状判断。
 
+*修订 —— 第一批已在更名分支上落地。* 按请求方要求，第一批不再另开 PR，而是作为更名分支上的一个独立提交落地。下方验收标准想从 PR 边界拿到的东西 —— 一份审阅者可以当作纯更名来读的 lockfile —— 提交边界同样给得出：更名提交不移动任何第三方版本，随后那一个提交也不夹带别的改动。两份 changelog 都已读过，全部是缺陷修复。`koffi` 3.1.2 修掉了字符串长度计算中的缓冲区溢出，3.1.3 改为正确识别 libc，使 musl 与 Alpine ARM64 主机不再在加载时崩溃，3.1.6 修掉了在加载任何库之前调用 `register()` 的崩溃；`esbuild` 0.28.2 修掉了经由 TypeScript `import` 别名的 tree shaking，以及 CSS 压缩器误删本该保留的 `&`。
+
+十六项中落地了十五项。`@anthropic-ai/claude-agent-sdk` 0.3.220 → 0.3.240 依据本批自身的规则被剔除，因为 patch 位低估了它：该版本随附一整套 Claude Code 构建，而新构建拒绝已禁用的 `ExitPlanMode` 时用词不同，`packages/subagent/subagent-claude-code` 的真实产物套件正断言在这句话上。这是一份需要重新阅读的 fixture，而非机械提升，因此它属于第二批的模型 SDK 组，与 `@anthropic-ai/sdk` 同行。
+
 **第二批 —— minor，分三组。** 按影响半径切分，让失败能指向自身成因：
 
 - 把守 CI 的工具链（`oxlint`、`knip`、`playwright`、`publint`、`pnpm`、`lefthook`）。新版 linter 会带来新规则，要预留处理或显式关闭这些发现的成本；一次静默的 `--fix` 会把真正的问题一起埋掉。
@@ -54,7 +58,7 @@ Status: proposed
 
 ## Acceptance criteria
 
-- 更名 PR 合入时，`pnpm-lock.yaml` 只体现 workspace 更名，不含任何第三方版本变更。唯一的非更名条目是 `node-pty` 的 `patch_hash`，它位移是因为补丁文本中带有一个被改名的环境变量；解析出的版本没有变化。
+- 更名提交中的 `pnpm-lock.yaml` 只体现 workspace 更名，不含任何第三方版本变更。唯一的非更名条目是 `node-pty` 的 `patch_hash`，它位移是因为补丁文本中带有一个被改名的环境变量；解析出的版本没有变化。移动第三方版本的是第一批自己的那个提交，而它不夹带别的改动。
 - 第一批作为一个提交落地，`doc-sync`、`lint`、`typecheck` 与完整测试套件全绿，且 `koffi` 与 `esbuild` 的 changelog 是读过的而非假定的。
 - 第二批作为三个提交落地，各自可独立回滚，新增的 lint 发现被逐一处理而非整体压制。
 - 第三批每次迁移一个 PR，凡改变可观察契约者各自附带 Agent Note；SDK 跨版本一项须重新录制并审阅 ACP 快照套件。
