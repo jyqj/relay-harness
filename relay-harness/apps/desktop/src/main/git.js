@@ -407,7 +407,7 @@ async function runGitWithProgress(cwd, args, emit, limits = {}) {
   try {
     const result = await runGit(cwd, args, {
       ...limits,
-      env: { ...monitor.env, ...(limits.env || {}) },
+      env: { ...monitor.env, ...limits.env },
       onLine: (line) => {
         monitor.poll();
         const hook = inferHookName(line);

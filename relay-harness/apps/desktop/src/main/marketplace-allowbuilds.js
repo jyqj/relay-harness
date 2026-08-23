@@ -1,3 +1,4 @@
+// @ts-check
 const { isValidAllowBuild, normalizeAllowBuilds } = require('../host/install-rlh-plugin-client');
 
 /**

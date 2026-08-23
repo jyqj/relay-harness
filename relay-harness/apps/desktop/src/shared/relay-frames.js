@@ -1,3 +1,4 @@
+// @ts-check
 function encodeFrame(header, body = Buffer.alloc(0)) {
   const json = Buffer.from(JSON.stringify(header), 'utf8');
   const prefix = Buffer.alloc(8);

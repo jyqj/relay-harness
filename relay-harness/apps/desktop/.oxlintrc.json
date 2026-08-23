@@ -1,0 +1,43 @@
+{
+  "$schema": "../../node_modules/oxlint/configuration_schema.json",
+  // The desktop shell is plain JavaScript, so it cannot join the repository's
+  // type-aware lint pass (root .oxlintrc.json ignores `**/*.js` for that
+  // reason). This config runs the type-independent rules over it instead,
+  // through `pnpm run lint:desktop`.
+  "plugins": ["unicorn", "oxc"],
+  "categories": {
+    "correctness": "error"
+  },
+  "options": {
+    "reportUnusedDisableDirectives": "error"
+  },
+  "env": {
+    "builtin": true,
+    "node": true,
+    // Renderer, preload, and injected-page sources run in Chromium.
+    "browser": true,
+    "es2024": true
+  },
+  "ignorePatterns": [
+    "**/node_modules/**",
+    "**/lib/**",
+    // Vendored plugin trees keep upstream style; see vendor/README.md.
+    "vendor/**",
+    "dist/**"
+  ],
+  "rules": {
+    "no-var": "error",
+    "prefer-const": "error",
+    "no-array-constructor": "error",
+    "no-unused-expressions": "error",
+    "no-unused-vars": [
+      "error",
+      {
+        "argsIgnorePattern": "^_",
+        "varsIgnorePattern": "^_",
+        "caughtErrorsIgnorePattern": "^_"
+      }
+    ],
+    "no-useless-constructor": "error"
+  }
+}

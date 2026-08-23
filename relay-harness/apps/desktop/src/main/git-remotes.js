@@ -1,3 +1,4 @@
+// @ts-check
 const { runGit } = require('./git-exec');
 
 function parseRemoteHost(remoteUrl) {

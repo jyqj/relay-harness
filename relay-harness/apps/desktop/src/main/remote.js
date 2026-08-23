@@ -387,7 +387,7 @@ class RemoteGateway extends EventEmitter {
   }
 
   async sync() {
-    const config = { ...(this.getConfig() || {}) };
+    const config = { ...this.getConfig() };
     const target = this.getTarget();
     if (!config.remoteEnabled) {
       await this.stop();
@@ -481,6 +481,7 @@ class RemoteGateway extends EventEmitter {
     if (this.relay) {
       await this.relay.disconnect();
     }
+    // oxlint-disable-next-line unicorn/no-useless-spread -- dropSockets deletes from the map being iterated.
     for (const id of [...this.sockets.keys()]) {
       this.dropSockets(id);
     }

@@ -1,3 +1,4 @@
+// @ts-check
 const OVERLAY_ID = 'rlhd-shell-closing';
 
 function overlayCss(theme) {

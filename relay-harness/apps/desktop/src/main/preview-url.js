@@ -1,3 +1,4 @@
+// @ts-check
 'use strict';
 
 /** Preview URL helpers (CJS twin of ui-preview `url.ts`). */

@@ -1,3 +1,4 @@
+// @ts-check
 const { tokenFromHeaders, tokensEqual } = require('./remote-auth');
 
 const RELAY_HOST_TOKEN_PATTERN = /^[A-Za-z0-9._~+/=-]{32,512}$/;

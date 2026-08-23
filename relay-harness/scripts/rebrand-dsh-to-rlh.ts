@@ -80,6 +80,8 @@ const RULES: Rule[] = [
   rule(/deepseek-harness/g, 'relay-harness'),
   rule(/Deepseek-Harness-Desktop/g, 'Relay-Harness-Desktop'),
   rule(/DeepSeekHarness/g, 'RelayHarness'),
+  rule(/DeepSeek-Harness/g, 'Relay-Harness'),
+  rule(/Deepseek-Harness/g, 'Relay-Harness'),
   rule(/DeepSeek Harness/g, 'Relay Harness'),
   rule(/Deepseek Harness/g, 'Relay Harness'),
   rule(/deepseek harness/g, 'relay harness'),

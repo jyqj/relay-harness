@@ -1,3 +1,4 @@
+// @ts-check
 const { app, dialog, globalShortcut, session } = require('electron');
 const path = require('path');
 const fs = require('fs');

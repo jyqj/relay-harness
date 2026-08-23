@@ -1,3 +1,4 @@
+// @ts-check
 const { run, runGit, asCwd, GH_TIMEOUT_MS } = require('./git-exec');
 const {
   normalizeGitRemoteUrl,

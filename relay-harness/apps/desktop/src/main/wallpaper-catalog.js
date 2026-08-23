@@ -1,3 +1,4 @@
+// @ts-check
 /** Fetch and parse wallpaper catalogs (Bing today/year, Wallhaven SFW, custom JSON). */
 
 const USER_AGENT = 'Relay-Harness-Desktop';

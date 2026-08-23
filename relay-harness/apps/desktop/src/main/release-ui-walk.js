@@ -8,7 +8,6 @@ const {
   pageEval,
   pageScript,
   clickNamed,
-  pressEnter,
   makeRecorder,
   connectConfiguredWorkspace,
 } = require('./workspace-connect');

@@ -1,3 +1,4 @@
+// @ts-check
 'use strict';
 
 const PREVIEW_PIP_FRAME_CHANNEL = 'rlhd-preview-pip-frame';

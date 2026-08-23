@@ -245,6 +245,8 @@ export function gatesForMode(selected: Mode): Gate[] {
         pnpmScript('client-domain-graph', 'verify-client-domain-graph', { label: 'client domain graph' }),
         pnpmScript('test', 'test'),
         desktopTestGate(),
+        desktopTypecheckGate(),
+        desktopLintGate(),
         pnpmScript('issue-management', 'test:issue-management', { label: 'Issue management policy' }),
         pnpmScript('duplication', 'duplication'),
         snapshotGate(),
@@ -286,6 +288,8 @@ function ciPrimaryGates(): Gate[] {
     lintGate({ needs: ['typert-contracts'] }),
     pnpmScript('duplication', 'duplication'),
     desktopTestGate(),
+    desktopTypecheckGate(),
+    desktopLintGate(),
     ...coverageGates(),
     ...nodeCompatSmokeGates(),
     snapshotGate(),
@@ -385,10 +389,29 @@ function desktopTestGate(): Gate {
   return pnpmScript('desktop-tests', 'test:desktop', { label: 'desktop tests' })
 }
 
+/**
+ * Desktop shell type checking: `tsc` over the JavaScript sources that opt in
+ * with `// @ts-check`. Reads only `apps/desktop`, so it runs beside the desktop
+ * tests without a build prerequisite.
+ */
+function desktopTypecheckGate(): Gate {
+  return pnpmScript('desktop-typecheck', 'typecheck:desktop', { label: 'desktop typecheck' })
+}
+
+/**
+ * Desktop shell linting: the type-independent rules the repository's type-aware
+ * pass cannot apply to plain JavaScript. Reads only `apps/desktop`.
+ */
+function desktopLintGate(): Gate {
+  return pnpmScript('desktop-lint', 'lint:desktop', { label: 'desktop lint' })
+}
+
 function ciStaticGates(options: { ownsBuild: boolean }): Gate[] {
   return [
     ...ciSharedStaticGates(),
     desktopTestGate(),
+    desktopTypecheckGate(),
+    desktopLintGate(),
     ...options.ownsBuild ? [ciBuildGate()] : [],
     ...docSyncLeafGates({
       includeDocTypecheck: options.ownsBuild,

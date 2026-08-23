@@ -1,3 +1,4 @@
+// @ts-check
 function titleFromProjection(value) {
   if (typeof value === 'string' && value.trim()) return value.trim();
   if (value && typeof value === 'object' && typeof value.title === 'string' && value.title.trim()) {

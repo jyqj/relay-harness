@@ -1,3 +1,4 @@
+// @ts-check
 'use strict';
 
 // Harness settings sections are kebab-case slot ids ('mcp', 'skills',

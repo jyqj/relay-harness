@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * GIT_TRACE2_EVENT tail: emit hook start/finish from git's
  * JSON event stream instead of guessing leftover/husky from stdout.

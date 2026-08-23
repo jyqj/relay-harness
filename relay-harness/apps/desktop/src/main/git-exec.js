@@ -88,7 +88,7 @@ function run(command, args, cwd, limits = {}) {
       cwd,
       windowsHide: true,
       stdio: ['ignore', 'pipe', 'pipe'],
-      env: { ...gitChildEnv(), ...(limits.env || {}) },
+      env: { ...gitChildEnv(), ...limits.env },
     });
     const stdoutChunks = [];
     const stderrChunks = [];
@@ -213,6 +213,7 @@ function gitFailureMessage(result, fallback) {
 }
 
 function sanitizeProgressText(line) {
+  // oxlint-disable-next-line no-control-regex -- ESC introduces the ANSI sequences this strips.
   const clean = String(line || '').replace(/\u001B\[[0-9;]*[A-Za-z]/g, '').trim();
   if (!clean || isGitAdviceLine(clean)) return '';
   return clean.length > 500 ? `${clean.slice(0, 499)}…` : clean;

@@ -6,28 +6,28 @@ Status: implemented
 
 ## Problem
 
-Harness 一直以一个并不属于自己的名字发布。所有 npm 包位于 `@deepseek-ai` scope，二进制名为 `dsh`，环境变量前缀是 `DSH_`，`BRAND_GUIDELINES.md` 还声明了 DeepSeek 商标归属。但本仓库属于 Relay 产品，DeepSeek 只是它通过 HTTP 调用的模型厂商，而非发布方。用别家公司的 scope 发布，是本项目无权做出的声明。
+Harness 一直以一个并不属于自己的名字发布。所有 npm 包位于 `@relay-harness` scope，二进制名为 `rlh`，环境变量前缀是 `RLH_`，`BRAND_GUIDELINES.md` 还声明了 DeepSeek 商标归属。但本仓库属于 Relay 产品，DeepSeek 只是它通过 HTTP 调用的模型厂商，而非发布方。用别家公司的 scope 发布，是本项目无权做出的声明。
 
-这个 token 还与自身冲突。`dsh` 在树里指代四种不同事物——npm scope 后缀、CLI 二进制、`package.json` 协议命名空间，以及 CSS 自定义属性族 `--dsw-*`——只改一部分会让读者无法分辨哪些出现属于品牌，哪些属于厂商 API 表面。
+这个 token 还与自身冲突。`rlh` 在树里指代四种不同事物——npm scope 后缀、CLI 二进制、`package.json` 协议命名空间，以及 CSS 自定义属性族 `--rlw-*`——只改一部分会让读者无法分辨哪些出现属于品牌，哪些属于厂商 API 表面。
 
 ## Decision
 
-产品名为 **Relay Harness**，缩写 **rlh**。更名一次性覆盖全部品牌所属表面，由 [`scripts/rebrand-dsh-to-rlh.ts`](../../../../scripts/rebrand-dsh-to-rlh.ts) 执行：
+产品名为 **Relay Harness**，缩写 **rlh**。更名一次性覆盖全部品牌所属表面，由 [`scripts/rebrand-rlh-to-rlh.ts`](../../../../scripts/rebrand-rlh-to-rlh.ts) 执行：
 
 | 表面 | 更名前 | 更名后 |
 |---|---|---|
-| npm scope 与包名 | `@deepseek-ai/dsh-<pkg>` | `@relay-harness/rlh-<pkg>` |
-| CLI 二进制与 `pnpm` 脚本 | `dsh` | `rlh` |
-| 环境变量 | `DSH_*` | `RLH_*` |
-| `package.json` 协议命名空间 | `"dsh": { client, profile, bundle }` | `"rlh": { … }` |
-| 浏览器引导全局量 | `window.__DSH_BOOT__` | `window.__RLH_BOOT__` |
-| CSS 自定义属性 | `--dsw-*`、`--ds-*` | `--rlw-*`、`--rl-*` |
-| 仓库 URL | `github.com/deepseek-ai/deepseek-harness` | `github.com/jyqj/relay-harness` |
-| 桌面应用 id | `ai.deepseek.harness.gui` | `com.relayharness.desktop` |
+| npm scope 与包名 | `@relay-harness/rlh-<pkg>` | `@relay-harness/rlh-<pkg>` |
+| CLI 二进制与 `pnpm` 脚本 | `rlh` | `rlh` |
+| 环境变量 | `RLH_*` | `RLH_*` |
+| `package.json` 协议命名空间 | `"rlh": { client, profile, bundle }` | `"rlh": { … }` |
+| 浏览器引导全局量 | `window.__RLH_BOOT__` | `window.__RLH_BOOT__` |
+| CSS 自定义属性 | `--rlw-*`、`--rl-*` | `--rlw-*`、`--rl-*` |
+| 仓库 URL | `github.com/jyqj/relay-harness` | `github.com/jyqj/relay-harness` |
+| 桌面应用 id | `com.relayharness.desktop` | `com.relayharness.desktop` |
 
-目录名与文件名沿用同一套 token：`.agents/skills/dsh-*` 改为 `rlh-*`，`dshbot` 改为 `rlhbot`，`install-dsh-plugin*` 改为 `install-rlh-plugin*`。
+目录名与文件名沿用同一套 token：`.agents/skills/rlh-*` 改为 `rlh-*`，`rlhbot` 改为 `rlhbot`，`install-rlh-plugin*` 改为 `install-rlh-plugin*`。
 
-[AGENTS.md](../../../../AGENTS.md) 的预发布立场决定了改动半径：没有外部消费者，因此旧 scope、旧二进制名和旧环境变量都不保留兼容别名。读取 `DSH_*` 变量不是受支持的回退路径，它只是未设置。
+[AGENTS.md](../../../../AGENTS.md) 的预发布立场决定了改动半径：没有外部消费者，因此旧 scope、旧二进制名和旧环境变量都不保留兼容别名。读取 `RLH_*` 变量不是受支持的回退路径，它只是未设置。
 
 ### 更名不触及的部分
 
@@ -45,20 +45,20 @@ Harness 一直以一个并不属于自己的名字发布。所有 npm 包位于 
 
 ## Alternatives considered
 
-**保留 `@deepseek-ai`，只改产品文案。** 代价最低，却恰好在唯一要紧的层面上是错的：npm scope 是发布身份。一边保留它、一边称产品为 Relay Harness，等于谎报发包方。
+**保留 `@relay-harness`，只改产品文案。** 代价最低，却恰好在唯一要紧的层面上是错的：npm scope 是发布身份。一边保留它、一边称产品为 Relay Harness，等于谎报发包方。
 
-**引入 `rlh` 作为别名，逐步弃用 `dsh`。** 在存在外部消费者时这是标准做法，但这里并没有外部消费者。别名会让每个门禁、文档和 fixture 需要覆盖的表面翻倍，换来的却是无人要求的兼容性。AGENTS.md 的预发布立场正是为了拒绝这笔交易而存在。
+**引入 `rlh` 作为别名，逐步弃用 `rlh`。** 在存在外部消费者时这是标准做法，但这里并没有外部消费者。别名会让每个门禁、文档和 fixture 需要覆盖的表面翻倍，换来的却是无人要求的兼容性。AGENTS.md 的预发布立场正是为了拒绝这笔交易而存在。
 
-**保留 `--dsw-*` CSS token 以减少改动量。** 有吸引力，因为 token 名是内部约定，渲染层并不关心。之所以否决，是因为该 token 族是已发布样式表中最显眼的 `ds` 残留，而半改完的词汇表比任何一个端点状态都更难推理。这些 token 与其他部分一同迁移。
+**保留 `--rlw-*` CSS token 以减少改动量。** 有吸引力，因为 token 名是内部约定，渲染层并不关心。之所以否决，是因为该 token 族是已发布样式表中最显眼的 `ds` 残留，而半改完的词汇表比任何一个端点状态都更难推理。这些 token 与其他部分一同迁移。
 
 **手工编辑而非编写 codemod。** 在约 5700 个文件的规模上直接否决。脚本还让排除项可供评审：受保护片段清单就是"何为厂商表面、何为品牌"的规格说明，任何手工编辑序列都无法陈述这一点。
 
 ## Consequences
 
-旧名字彻底消失且无迁移路径，这是在首个 tag 发布前更名所要付出的预期代价。已有 `$DSH_HOME` 目录、`PATH` 上的 `dsh`，或 shell 配置里 `DSH_*` 变量的使用者需要重新配置；磁盘上的会话数据不受影响，因为 `SESSION_FORMAT_VERSION` 未变。
+旧名字彻底消失且无迁移路径，这是在首个 tag 发布前更名所要付出的预期代价。已有 `$RLH_HOME` 目录、`PATH` 上的 `rlh`，或 shell 配置里 `RLH_*` 变量的使用者需要重新配置；磁盘上的会话数据不受影响，因为 `SESSION_FORMAT_VERSION` 未变。
 
 生成产物必须重新生成而非改写，因为其锚点由包名派生：`docs/config-catalog.md` 与 `docs/tool-catalog.md` 现在 slug 为 `relay-harnessrlh-*`，所有入链——包括生成器不产出的中文译文——都已重新指向。
 
-codemod 在迁移后保留在树内。它是幂等的——任何规则的输出都不匹配任何规则的输入——因此重跑即可发现被重新引入的零星 `dsh`，而受保护片段清单以可执行形式记录了厂商与品牌的边界。
+codemod 在迁移后保留在树内。它是幂等的——任何规则的输出都不匹配任何规则的输入——因此重跑即可发现被重新引入的零星 `rlh`，而受保护片段清单以可执行形式记录了厂商与品牌的边界。
 
-第三方市场坐标仍是脆弱之处。它们读起来像品牌 token，且只在安装或拉取时才失败，离出错的那次编辑很远。受保护模式逐一列举了受影响的插件名，因此当登记表快照新增一个 `dsh-` 前缀的社区插件时，需要先把该名字加入清单，再重跑 codemod。
+第三方市场坐标仍是脆弱之处。它们读起来像品牌 token，且只在安装或拉取时才失败，离出错的那次编辑很远。受保护模式逐一列举了受影响的插件名，因此当登记表快照新增一个 `rlh-` 前缀的社区插件时，需要先把该名字加入清单，再重跑 codemod。

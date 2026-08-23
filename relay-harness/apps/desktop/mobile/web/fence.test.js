@@ -13,7 +13,7 @@ function walk(dir, out = []) {
       walk(full, out);
       continue;
     }
-    if (/\.test\.js$/.test(entry.name)) continue;
+    if (entry.name.endsWith('.test.js')) continue;
     if (!/\.(js|html|css)$/.test(entry.name)) continue;
     out.push(full);
   }

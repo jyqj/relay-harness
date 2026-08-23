@@ -1,3 +1,4 @@
+// @ts-check
 'use strict';
 
 const START_PICK_CHANNEL = 'rlhd-preview-start-pick';

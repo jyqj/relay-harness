@@ -1,3 +1,4 @@
+// @ts-check
 function textFromBlocks(blocks) {
   if (!Array.isArray(blocks)) return '';
   return blocks.map((block) => {

@@ -72,7 +72,7 @@ class HarnessController extends EventEmitter {
     };
     this.pluginRecovery = {
       ...emptyPluginRecovery(),
-      ...((this.loadConfig() || {}).pluginRecovery || {}),
+      ...(this.loadConfig() || {}).pluginRecovery,
     };
 
     this.onRlhState = (snapshot) => {

@@ -217,7 +217,7 @@ async function installUpdate(onProgress) {
   }
   const dir = path.join(app.getPath('userData'), 'updates');
   fs.mkdirSync(dir, { recursive: true });
-  const safeName = path.basename(info.assetName || 'DeepSeek-Harness-Setup.exe').replace(/[^\w.\-]+/g, '_');
+  const safeName = path.basename(info.assetName || 'Relay-Harness-Setup.exe').replace(/[^\w.-]+/g, '_');
   const dest = path.join(dir, safeName);
   await downloadFile(info.assetUrl, dest, onProgress);
   if (typeof onProgress === 'function') {

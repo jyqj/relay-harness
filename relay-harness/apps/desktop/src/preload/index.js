@@ -1,3 +1,4 @@
+// @ts-check
 const { contextBridge, ipcRenderer } = require('electron');
 
 const SHELL_ROLES = new Set(['boot', 'harness']);

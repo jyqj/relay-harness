@@ -1,3 +1,4 @@
+// @ts-check
 function toWs(origin, path) {
   const url = new URL(path, `${String(origin || '').replace(/\/$/, '')}/`);
   url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';

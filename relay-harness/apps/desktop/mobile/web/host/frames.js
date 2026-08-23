@@ -1,3 +1,4 @@
+// @ts-check
 function hostLabel(host) {
   const cwd = String(host?.cwd || '').trim().replace(/[\\/]+$/, '');
   if (!cwd) return '已连接';

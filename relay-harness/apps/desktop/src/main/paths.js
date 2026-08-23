@@ -1,3 +1,4 @@
+// @ts-check
 const path = require('path');
 const { app } = require('electron');
 

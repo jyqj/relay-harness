@@ -154,11 +154,7 @@ test('resolveAuthorizedCwd accepts a workspace configured through a directory li
       fs.realpathSync(path.join(root, 'sub')),
     );
   } finally {
-    try {
-      fs.unlinkSync(link);
-    } catch (error) {
-      if (error.code !== 'ENOENT') throw error;
-    }
+    fs.rmSync(link, { force: true });
     fs.rmSync(root, { recursive: true, force: true });
   }
 });

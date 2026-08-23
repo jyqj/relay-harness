@@ -1,3 +1,4 @@
+// @ts-check
 const { Tray, Menu, nativeImage } = require('electron');
 const { showMain, iconImage, openHarnessSettings, openMarketplace } = require('./window');
 const { assetFile } = require('./paths');

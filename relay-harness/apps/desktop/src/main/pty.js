@@ -1,3 +1,4 @@
+// @ts-check
 const { randomUUID } = require('node:crypto');
 const { loadWorkspaceAuthority } = require('./workspace-authority');
 

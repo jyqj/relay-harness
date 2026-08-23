@@ -1,3 +1,4 @@
+// @ts-check
 'use strict';
 
 const LOG_ERROR_PATTERN = /ERR_[A-Z0-9_]+|Cannot find (?:package|module)|Error \[|plugin tree failed to load|cannot get property|cannot resolve profile bundle/;

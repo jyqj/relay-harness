@@ -1,3 +1,4 @@
+// @ts-check
 'use strict';
 
 /** Distance in CSS pixels between the highlight and the floating label. */

@@ -1,3 +1,4 @@
+// @ts-check
 const OFFER_VERSION = 1;
 
 function padBase64(value) {

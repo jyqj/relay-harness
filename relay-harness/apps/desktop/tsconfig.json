@@ -1,0 +1,35 @@
+{
+  // The desktop shell is plain JavaScript, so it stays outside the repository
+  // TypeScript solution (tsconfig.json / tsconfig.client.json) and is checked
+  // by `pnpm run typecheck:desktop` instead.
+  //
+  // `checkJs` is off so that checking is opted into per file with a leading
+  // `// @ts-check` pragma. Every file that carries the pragma is a gate: it
+  // must stay clean. Files without it are reachable for inference but report
+  // no diagnostics. Widen coverage by fixing a file's types and adding the
+  // pragma in the same change; see AGENTS.md § Type checking.
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": false,
+    "noEmit": true,
+    "target": "ES2023",
+    // Renderer, preload, and injected-page sources run in Chromium.
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "resolveJsonModule": true,
+    "strict": false,
+    "skipLibCheck": true,
+    "types": ["node"]
+  },
+  "include": ["src/**/*.js", "mobile/web/**/*.js"],
+  "exclude": [
+    "node_modules",
+    // Vendored plugin trees are pinned upstream source; see vendor/README.md.
+    "vendor",
+    // Release QA harnesses evaluated inside a live Electron page. They are
+    // excluded from the packaged build too (see package.json build.files).
+    "src/main/release-ui-walk.js",
+    "src/main/composer-official-qa.js"
+  ]
+}

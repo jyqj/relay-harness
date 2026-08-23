@@ -1,3 +1,4 @@
+// @ts-check
 const path = require('path');
 
 const DEFAULT_DOWNLOAD_NAME = 'download';
@@ -7,6 +8,7 @@ const WINDOWS_DEVICE_NAME = /^(?:con|prn|aux|nul|conin\$|conout\$|com[1-9\u00b9\
 function sanitizeDownloadFilename(value) {
   const leaf = path.posix.basename(String(value || '').replace(/\\/g, '/'));
   let name = leaf
+    // oxlint-disable-next-line no-control-regex -- stripping control characters is the point: they are illegal in filenames.
     .replace(/[\u0000-\u001f\u007f<>:"/\\|?*]/g, '_')
     .trim()
     .replace(/[. ]+$/g, '');
