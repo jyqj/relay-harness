@@ -164,8 +164,8 @@ test('keeps terminal Status aligned with the native close reason', () => {
 test('separates resolving and informational references', () => {
   assert.deepEqual(
     parseReferences({
-      body: 'Fixes #12\nRelated to #4\nRefs deepseekharness/rlh-test#7',
-      repository: 'deepseekharness/rlh-test',
+      body: 'Fixes #12\nRelated to #4\nRefs relay-harness/rlh-test#7',
+      repository: 'relay-harness/rlh-test',
     }),
     { all: [4, 7, 12], resolving: [12], related: [4, 7] },
   )
