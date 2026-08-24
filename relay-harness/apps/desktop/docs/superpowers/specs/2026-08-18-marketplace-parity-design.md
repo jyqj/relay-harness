@@ -1,5 +1,7 @@
 # 插件市场对齐 rlh-market
 
+> **冻结的历史快照**：本文按撰写时状态存档，不再更新；文中的品牌、主题与模型名反映当时事实，不代表当前品牌或现行规范。
+
 Relay-Harness-Desktop 把现有插件市场升级到 [rlh-market](https://github.com/dsh-market/dsh-market)（`rlhmarket` 1.12.1）的产品行为，但不预装该插件，也不复制它的 `MarketSection.tsx` 或 HTTP 路由。
 
 视觉语言仍是官方 `rlh web`：只用 `ui-primitives` 和 `--rlw-alias-*`。见 [design-language.md](../../design-language.md)。
