@@ -4,7 +4,7 @@
 
 这三份**默认关闭的参考配置**通过 [`@relay-harness/rlh-mcp-client`](../../packages/mcp/mcp-client/README.md) 将一个记忆系统连接到 RLH。请选择其中一份，或复制相同的通用 MCP 配置项来连接其他服务器。
 
-这些第三方配置仅作为互操作参考；收录不代表 DeepSeek 的认可、推荐、合作关系或持续支持承诺。
+这些第三方配置仅作为互操作参考；收录不代表 Relay Harness 的认可、推荐、合作关系或持续支持承诺。
 
 ## RLH 负责什么
 
