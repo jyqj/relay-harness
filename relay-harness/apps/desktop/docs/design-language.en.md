@@ -31,7 +31,7 @@ Terminal, diff, and code blocks keep official monospace / no-wrap rules. That is
 7. **Radius by role.** Primary capsule 18 (height 36) / compact 14 (height 28); input 8; menu 12; dialog 24; tooltip 8; icon hit-target 8. No 6px rectangles; no 999px except capsules and switches.
 8. **Font size always pairs with line-height.** Title 16/24, body 14/22, compact 12/18, tooltip 13/20. Weights 400 / 500 / 600 / 700; Figma 510 renders as 500. No `font-weight: 650`.
 9. **Spacing is a multiple of 4.** Padding, gap, and column gutters use 4 / 8 / 12 / 14 / 16 / 20 / 24.
-10. **Icons are 16px `currentColor`.** Use `ui-primitives` `ic_ds_*`. Dense title-bar chrome may use 14px. Do not add another icon pack or filled brand-color glyphs.
+10. **Icons are 16px `currentColor`.** Use `ui-primitives` `ic_rl_*`. Dense title-bar chrome may use 14px. Do not add another icon pack or filled brand-color glyphs.
 11. **Motion animates only opacity and transform.** Durations are `--rl-transition-duration*` (100–200ms, flip 400ms). New dialogs / menus use `usePresence` plus a `motion.css` recipe. Do not animate `backdrop-filter` or large-panel width/height, and do not add an animation library. Inventory and exceptions: [Motion](motion.en.md).
 12. **Shadows are lv1 / lv2 / lv3 only.** Menus and dialogs use `lv3`; composer and floating cards use `lv2`. No `0 18px 40px` slabs.
 13. **Glass stops at the official recipe.** Mask `blur(2px)` + `--rlw-alias-bg-mask-*`; raised surfaces `color-mix(..., var(--rlw-alias-glass-opacity), transparent)`. No heavier blur, no shadow on every layer.

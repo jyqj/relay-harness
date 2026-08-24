@@ -15,7 +15,7 @@ const icons = Object.fromEntries(
 ) as Record<string, (p: primitives.IconProps) => React.JSX.Element>
 const iconNames = Object.keys(icons)
 
-describe('ic_ds_ icon set', () => {
+describe('ic_rl_ icon set', () => {
   it('exports the full icon set (46 shared-library glyphs + 20 figma extracts + nine product glyphs outside those sets)', () => {
     expect(iconNames.length).toBe(77)
   })

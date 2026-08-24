@@ -31,7 +31,7 @@
 7. **圆角按角色。** 主按钮胶囊 18（高 36）/ 小按钮 14（高 28）；输入 8；菜单 12；对话框 24；Tooltip 8；图标点击区 8。不要 6px 方钮；999px 只给胶囊按钮和开关。
 8. **字号必须配行高。** 标题 16/24，正文 14/22，紧凑 12/18，Tooltip 13/20。字重 400 / 500 / 600 / 700；Figma 510 渲染为 500。禁止 `font-weight: 650`。
 9. **间距是 4 的倍数。** 控件内边距、gap、栏间距用 4 / 8 / 12 / 14 / 16 / 20 / 24。
-10. **图标 16px、`currentColor`。** 用 `ui-primitives` 的 `ic_ds_*`。密集标题栏可用 14px。不要引入另一套图标库或彩色填充图标。
+10. **图标 16px、`currentColor`。** 用 `ui-primitives` 的 `ic_rl_*`。密集标题栏可用 14px。不要引入另一套图标库或彩色填充图标。
 11. **动效只动 opacity 和 transform。** 时长走 `--rl-transition-duration*`（100–200ms，flip 400ms）。新对话框 / 菜单用 `usePresence` + `motion.css` recipe。禁止动画 `backdrop-filter` 和大面板宽高，禁止引入动画库。对照与例外见 [动效规范](motion.md)。
 12. **阴影只用 lv1 / lv2 / lv3。** 菜单和对话框用 `lv3`；输入条、悬浮卡片用 `lv2`。禁止 `0 18px 40px` 这类重阴影。
 13. **毛玻璃止于官方配方。** 遮罩 `blur(2px)` + `--rlw-alias-bg-mask-*`；抬起面用 `color-mix(..., var(--rlw-alias-glass-opacity), transparent)`。不要加更重的 blur，也不要每层都铺投影。
