@@ -5,7 +5,9 @@
  * - npm scope `@deepseek-ai/` -> `@relay-harness/` (harness and vendored packages)
  * - package/product names `deepseek-harness` / `DeepSeek Harness` -> `relay-harness` / `Relay Harness`
  * - CLI/bin/env/identifier tokens `dsh` / `Dsh` / `DSH_` -> `rlh` / `Rlh` / `RLH_`
- * - CSS custom properties `--dsw-*` -> `--rlw-*`, `--dsh-*` -> `--rlh-*`, `--ds-*` -> `--rl-*`
+ * - CSS custom properties `--dsw-*` -> `--rlw-*`, `--dsh-*` -> `--rlh-*`, `--ds-*` -> `--rl-*`,
+ *   component-local `--dsl-*` -> `--rll-*`
+ * - icon glyph names `ic_ds_*` -> `ic_rl_*`
  * - repository URLs -> github.com/jyqj/relay-harness
  *
  * Never touched: `pnpm-lock.yaml` (regenerate with `pnpm install`), frozen
@@ -53,6 +55,13 @@ const PROTECTED: RegExp[] = [
   /dshdesktop\.com/g,
   /\bdsh-desktop\b/g,
   /\bDSH Get\b/g,
+  // Upstream-attribution statements: LICENSE and README name the predecessor
+  // product on purpose; the retained copyright notice must keep its wording.
+  /derived from DeepSeek Harness/g,
+  /rebranded from the MIT-licensed DeepSeek Harness/g,
+  /MIT 许可的 DeepSeek Harness/g,
+  // The migration's own before -> after notation in Agent Notes.
+  /`dsh` → `rlh`/g,
 ]
 
 /**
@@ -92,8 +101,11 @@ const RULES: Rule[] = [
   // CSS custom properties (web tokens before the shorter motion prefix).
   rule(/--dsw-static-deepseek-/g, '--rlw-static-relay-'),
   rule(/--dsw-/g, '--rlw-'),
+  rule(/--dsl-/g, '--rll-'),
   rule(/dsw\|dsh\|ds/g, 'rlw|rlh|rl'),
   rule(/--ds-/g, '--rl-'),
+  // Icon glyph names (design-source coordinates now owned by Relay Harness).
+  rule(/ic_ds_/g, 'ic_rl_'),
   // Uppercase brand compounds (lookbehind keeps HANDSHAKE etc. intact).
   rule(/(?<![A-Za-z0-9])DSHMARKET/g, 'RLHMARKET'),
   rule(/(?<![A-Za-z0-9])DSHBOT/g, 'RLHBOT'),
