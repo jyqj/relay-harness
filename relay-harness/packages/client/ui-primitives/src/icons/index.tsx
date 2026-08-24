@@ -1,7 +1,7 @@
 /**
  * ic_ds_* icon set for the rlh web UI. All glyphs render fill="currentColor"
- * and take {size, className}. Batch A mirrors the deepsuite icon library
- * (same figma source); batch B glyphs are harness-only figma extracts.
+ * and take {size, className}. Batch A is the shared figma icon library;
+ * batch B glyphs are harness-only figma extracts.
  */
 import type { IconProps } from './props.ts'
 

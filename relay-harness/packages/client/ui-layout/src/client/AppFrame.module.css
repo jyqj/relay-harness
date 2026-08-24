@@ -7,7 +7,7 @@
   height: 100%;
   overflow: hidden;
   background: var(--rlw-alias-bg-base);
-  /* Collapse/expand animates the tracks on the deepsuite sider curve
+  /* Collapse/expand animates the tracks on the shared sider curve
      (--rl-ease-in-out / --rl-transition-duration-slow, ui-theme base.css). */
   transition:
     grid-template-columns var(--rl-transition-duration-slow) var(--rl-ease-in-out),

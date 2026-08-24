@@ -1,5 +1,6 @@
-/* Visual baseline: deepsuite `@deepseek/md` code-block.css. Highlight colors
-   stay on the existing shiki `--shiki-*` sheet (not Prism highlight.css). */
+/* Visual baseline: the rlh web code-block design language (docs/web-styling.md;
+   token sheets owned by ui-theme). Highlight colors stay on the existing shiki
+   `--shiki-*` sheet (not a Prism sheet). */
 
 .block {
   --dsl-code-block-banner-background-color: var(--rlw-alias-markdown-code-block-banner);

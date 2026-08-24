@@ -1,6 +1,6 @@
-/* Visual baseline: deepsuite `@deepseek/md` markdown.css, adapted to CSS
-   Modules. Cite pills, header anchors, and thinking-small variants are
-   intentionally absent (no matching DOM). Token names match that sheet. */
+/* Visual baseline: the rlh web markdown design language (docs/web-styling.md;
+   token sheets owned by ui-theme). Cite pills, header anchors, and
+   thinking-small variants are intentionally absent (no matching DOM). */
 
 .markdown {
   min-width: 0;
@@ -56,9 +56,8 @@
 }
 
 .markdown a {
-  /* deepsuite markdown.css uses brand-text (blue in newDesign); this sheet
-     keeps design-platform brand-text as near-black, so links use the blue
-     business-primary alias instead. */
+  /* The design-platform theme keeps the brand-text alias near-black, so
+     links use the blue business-primary alias instead. */
   color: var(--rlw-alias-state-business-primary);
   transition: box-shadow var(--rl-transition-duration) var(--rl-ease-in-out);
   position: relative;

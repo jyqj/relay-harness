@@ -93,7 +93,7 @@
   min-width: 0;
 }
 
-/* Running sweep glare — same deepsuite ShimmerText pattern as ToolRow. */
+/* Running sweep glare — same shimmer pattern as ToolRow. */
 .root[data-state='running']::after {
   content: '';
   position: absolute;
