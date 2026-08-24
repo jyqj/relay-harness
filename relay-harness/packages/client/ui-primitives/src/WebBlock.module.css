@@ -5,13 +5,13 @@
    list as a whole scrolls vertically within a capped height (see .sources). */
 
 .block {
-  --dsl-web-radius: 12px;
+  --rll-web-radius: 12px;
 
   margin: 16px 0;
   padding: 12px 14px;
   color: var(--rlw-alias-label-primary);
   background: var(--rlw-alias-markdown-code-block);
-  border-radius: var(--dsl-web-radius);
+  border-radius: var(--rll-web-radius);
 }
 
 /* The provider answer reads as body prose above the citation list; its own

@@ -5,15 +5,15 @@
    destroys its alignment. */
 
 .block {
-  --dsl-terminal-radius: 12px;
-  --dsl-terminal-line-height: 22px;
-  /* Rebindable by consumers (CodeBlock's --dsl-code-block-content-font
+  --rll-terminal-radius: 12px;
+  --rll-terminal-line-height: 22px;
+  /* Rebindable by consumers (CodeBlock's --rll-code-block-content-font
      pattern): a surface wanting the smaller code size rebinds this together
-     with --dsl-terminal-line-height on its own container. */
-  --dsl-terminal-font: var(--rlw-font-markdown-code-block);
+     with --rll-terminal-line-height on its own container. */
+  --rll-terminal-font: var(--rlw-font-markdown-code-block);
   /* The card's own left inset, holding the run-state dot in a column of its own
      so it never competes with the commands for horizontal space. */
-  --dsl-terminal-gutter: 30px;
+  --rll-terminal-gutter: 30px;
 
   position: relative;
   margin: 16px 0;
@@ -22,10 +22,10 @@
      cancelled the reservation and let the dot fall outside the card into a
      container that clips it. Owning the reservation here keeps the invariant
      with the component that depends on it. */
-  padding-left: var(--dsl-terminal-gutter);
+  padding-left: var(--rll-terminal-gutter);
   color: var(--rlw-alias-label-primary);
   background: var(--rlw-alias-markdown-code-block);
-  border-radius: var(--dsl-terminal-radius);
+  border-radius: var(--rll-terminal-radius);
   /* Clip the banner to the card's own radius: when a consumer adds a border,
      the banner's equal corner radius no longer nests inside it and leaves a
      notch at the corner. Nothing inside renders out of the box. */
@@ -43,10 +43,10 @@
      surface, then re-inset by the same amount so the prompt text and the dot
      keep their positions. The banner shares the card's own surface (no banner
      token): the l2 divider below is the section boundary. */
-  margin-left: calc(-1 * var(--dsl-terminal-gutter));
-  padding: 9px 14px 9px var(--dsl-terminal-gutter);
-  border-top-left-radius: var(--dsl-terminal-radius);
-  border-top-right-radius: var(--dsl-terminal-radius);
+  margin-left: calc(-1 * var(--rll-terminal-gutter));
+  padding: 9px 14px 9px var(--rll-terminal-gutter);
+  border-top-left-radius: var(--rll-terminal-radius);
+  border-top-right-radius: var(--rll-terminal-radius);
   /* A long multi-line command scrolls inside the banner (same cap as the
      IN/OUT card's sections) instead of pushing the output off screen. */
   max-height: 150px;
@@ -78,7 +78,7 @@
   flex-direction: column;
   min-width: 0;
   flex: 1;
-  font: var(--dsl-terminal-font);
+  font: var(--rll-terminal-font);
 }
 
 .promptLine {
@@ -87,7 +87,7 @@
   align-items: baseline;
   gap: 8px;
   min-width: 0;
-  line-height: var(--dsl-terminal-line-height);
+  line-height: var(--rll-terminal-line-height);
 }
 
 /* Out of flow inside the card's own gutter padding, so the reservation and the
@@ -96,7 +96,7 @@
    Centered against the row's line box, not the code font's baseline. */
 .runState {
   position: absolute;
-  left: calc(-1 * var(--dsl-terminal-gutter) + 8px);
+  left: calc(-1 * var(--rll-terminal-gutter) + 8px);
   top: 50%;
   transform: translateY(-50%);
 }
@@ -135,7 +135,7 @@
   flex: none;
   position: sticky;
   top: 0;
-  height: var(--dsl-terminal-line-height);
+  height: var(--rll-terminal-line-height);
   color: var(--rlw-alias-state-error-primary);
 }
 
@@ -152,7 +152,7 @@
   color: var(--rlw-alias-label-secondary);
   cursor: pointer;
   font: var(--rlw-font-xs-13);
-  line-height: var(--dsl-terminal-line-height);
+  line-height: var(--rll-terminal-line-height);
 }
 
 /* Vertical scrolling lives on the OUTPUT, not the card root: a root scroller
@@ -160,9 +160,9 @@
    the banner stays pinned and the bar sits inside the output's right padding.
    Unset, the max-height is none and the auto overflow never engages. */
 .output {
-  max-height: var(--dsl-terminal-output-max-height, none);
+  max-height: var(--rll-terminal-output-max-height, none);
   padding: 12px 14px 12px 0;
-  font: var(--dsl-terminal-font);
+  font: var(--rll-terminal-font);
   overflow-x: auto;
   overflow-y: auto;
 }
@@ -184,7 +184,7 @@
 
 /* No wrapping, no word-break: alignment is the payload of terminal output. */
 .line {
-  min-height: var(--dsl-terminal-line-height);
+  min-height: var(--rll-terminal-line-height);
   white-space: pre;
 }
 
@@ -206,6 +206,6 @@
 
 .empty {
   padding: 12px 14px 12px 0;
-  font: var(--dsl-terminal-font);
+  font: var(--rll-terminal-font);
   color: var(--rlw-alias-label-tertiary);
 }

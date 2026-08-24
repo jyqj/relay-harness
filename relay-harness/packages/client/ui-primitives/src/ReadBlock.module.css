@@ -5,17 +5,17 @@
    reading. */
 
 .block {
-  --dsl-read-radius: 12px;
-  --dsl-read-line-height: 22px;
+  --rll-read-radius: 12px;
+  --rll-read-line-height: 22px;
   /* Fixed-width gutter column for the line numbers, so the content edge stays
      put down the whole window regardless of how wide the numbers grow. */
-  --dsl-read-gutter: 48px;
+  --rll-read-gutter: 48px;
 
   position: relative;
   margin: 16px 0;
   color: var(--rlw-alias-label-primary);
   background: var(--rlw-alias-markdown-code-block);
-  border-radius: var(--dsl-read-radius);
+  border-radius: var(--rll-read-radius);
 }
 
 .banner {
@@ -25,8 +25,8 @@
   gap: 12px;
   padding: 9px 14px;
   background: var(--rlw-alias-markdown-code-block-banner);
-  border-top-left-radius: var(--dsl-read-radius);
-  border-top-right-radius: var(--dsl-read-radius);
+  border-top-left-radius: var(--rll-read-radius);
+  border-top-right-radius: var(--rll-read-radius);
 }
 
 .label {
@@ -80,14 +80,14 @@
    a source line's leading whitespace is meaningful and scrolls sideways. */
 .line {
   display: flex;
-  min-height: var(--dsl-read-line-height);
-  line-height: var(--dsl-read-line-height);
+  min-height: var(--rll-read-line-height);
+  line-height: var(--rll-read-line-height);
   white-space: pre;
 }
 
 .gutter {
   flex: none;
-  width: var(--dsl-read-gutter);
+  width: var(--rll-read-gutter);
   padding-right: 14px;
   text-align: right;
   color: var(--rlw-alias-label-tertiary);
@@ -103,7 +103,7 @@
 .expand {
   display: block;
   width: 100%;
-  padding: 0 0 0 var(--dsl-read-gutter);
+  padding: 0 0 0 var(--rll-read-gutter);
   border: none;
   background-color: transparent;
   color: var(--rlw-alias-label-tertiary);

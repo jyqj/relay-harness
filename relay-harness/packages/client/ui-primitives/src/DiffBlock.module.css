@@ -5,14 +5,14 @@
    because folding a source line destroys the indentation a diff is read by. */
 
 .block {
-  --dsl-diff-radius: 12px;
-  --dsl-diff-line-height: 22px;
+  --rll-diff-radius: 12px;
+  --rll-diff-line-height: 22px;
 
   position: relative;
   margin: 16px 0;
   color: var(--rlw-alias-label-primary);
   background: var(--rlw-alias-markdown-code-block);
-  border-radius: var(--dsl-diff-radius);
+  border-radius: var(--rll-diff-radius);
 }
 
 /* The copy control floats in the top-right corner over the body, so the card
@@ -42,7 +42,7 @@
 
 /* No wrapping, no word-break: a diff is read by its indentation. */
 .line {
-  min-height: var(--dsl-diff-line-height);
+  min-height: var(--rll-diff-line-height);
   white-space: pre;
 }
 

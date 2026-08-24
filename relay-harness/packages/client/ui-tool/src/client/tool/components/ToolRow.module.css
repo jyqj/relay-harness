@@ -282,16 +282,16 @@
 /* In-row code renders at the smaller code size (12/18) via each primitive's
    rebindable content-font seam; standalone markdown code blocks keep 13/22. */
 .codeBody {
-  --dsl-code-block-content-font: var(--rlw-font-markdown-code-block-small);
+  --rll-code-block-content-font: var(--rlw-font-markdown-code-block-small);
 }
 
 /* The terminal card scrolls its OUTPUT inside its own surface (same l1
    hairline as the IN/OUT card): the banner stays pinned and the scrollbar
    never rides over it. 224px = the 260px card cap minus the ~36px banner. */
 .terminalBody {
-  --dsl-terminal-font: var(--rlw-font-markdown-code-block-small);
-  --dsl-terminal-line-height: 18px;
-  --dsl-terminal-output-max-height: 224px;
+  --rll-terminal-font: var(--rlw-font-markdown-code-block-small);
+  --rll-terminal-line-height: 18px;
+  --rll-terminal-output-max-height: 224px;
   border: 1px solid var(--rlw-alias-border-l1);
 }
 
