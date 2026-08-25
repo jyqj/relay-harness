@@ -78,7 +78,7 @@ const selected = GATES.filter(g => (only.length === 0 || only.includes(g.name)) 
 
 // cmd.exe PATH resolution can pick a corepack-shimmed pnpm that refuses the
 // vendor pin; pin the shell to the desktop dependency's direct pnpm binary and
-// keep vendor packageManager aligned with it (both 11.8.0).
+// keep vendor packageManager aligned with it (both 11.22.0).
 const PNPM_DIR = path.join(ROOT, 'node_modules', '.bin')
 const gateEnv = extraPath => ({
   ...process.env,

@@ -26,11 +26,21 @@ Status: proposed
 
 即便在 patch 级别，仍有两项值得单独说明。`koffi` 3.1.1 → 3.1.6 是沙箱、文件系统与子进程包在 Windows 和 macOS 上依赖的原生 FFI 插件 —— Linux CI 大部分覆盖不到。`esbuild` 0.28.1 → 0.28.2 处于 1.0 之前，按生态惯例破坏性变更就落在 patch 位上；请阅读其 changelog，不要凭版本号形状判断。
 
+*修订 —— 第一批已在更名分支上落地。* 按请求方要求，第一批不再另开 PR，而是作为更名分支上的一个独立提交落地。下方验收标准想从 PR 边界拿到的东西 —— 一份审阅者可以当作纯更名来读的 lockfile —— 提交边界同样给得出：更名提交不移动任何第三方版本，随后那一个提交也不夹带别的改动。两份 changelog 都已读过，全部是缺陷修复。`koffi` 3.1.2 修掉了字符串长度计算中的缓冲区溢出，3.1.3 改为正确识别 libc，使 musl 与 Alpine ARM64 主机不再在加载时崩溃，3.1.6 修掉了在加载任何库之前调用 `register()` 的崩溃；`esbuild` 0.28.2 修掉了经由 TypeScript `import` 别名的 tree shaking，以及 CSS 压缩器误删本该保留的 `&`。
+
+十六项中落地了十五项。`@anthropic-ai/claude-agent-sdk` 0.3.220 → 0.3.240 依据本批自身的规则被剔除，因为 patch 位低估了它：该版本随附一整套 Claude Code 构建，而新构建拒绝已禁用的 `ExitPlanMode` 时用词不同，`packages/subagent/subagent-claude-code` 的真实产物套件正断言在这句话上。这是一份需要重新阅读的 fixture，而非机械提升，因此它属于第二批的模型 SDK 组，与 `@anthropic-ai/sdk` 同行。
+
 **第二批 —— minor，分三组。** 按影响半径切分，让失败能指向自身成因：
 
 - 把守 CI 的工具链（`oxlint`、`knip`、`playwright`、`publint`、`pnpm`、`lefthook`）。新版 linter 会带来新规则，要预留处理或显式关闭这些发现的成本；一次静默的 `--fix` 会把真正的问题一起埋掉。
 - 模型与沙箱 SDK（`@anthropic-ai/sdk`、`@openai/codex`、`@earendil-works/pi-ai`、`@modelcontextprotocol/sdk`、`e2b`）。这些包的真实行为只在带密钥的测试中显现；请运行那些用例，不要依赖无密钥套件。
 - 渲染与叶子库（`shiki`、`@shikijs/langs`、`katex`、`mermaid`、`lightningcss`、`fast-check`、`smol-toml`、`tsx`、`use-sync-external-store`）。这一组的预期结果就是快照变动；请审阅渲染后的 diff，而不是一律更新快照。
+
+*修订 —— 第二批已作为三个提交在更名分支上落地。* 理由与第一批相同：让一次提升可回滚的是组的边界，而不是 PR 的边界，三个提交给出三条边界。工具组移动了 `oxlint` 1.76.0 → 1.79.0、`playwright` 1.61.1 → 1.62.1、`pnpm` 11.8.0 → 11.22.0、`@yarnpkg/cli-dist` 4.17.1 → 4.18.0 与 `eslint-plugin-sonarjs` 4.1.0 → 4.2.0。模型组移动了 `@anthropic-ai/sdk` 0.93.0 → 0.120.0、`@anthropic-ai/claude-agent-sdk` 0.3.220 → 0.3.240、`@openai/codex` 0.147.0 → 0.149.0、`@modelcontextprotocol/sdk` 至 ^1.30.0（连同 `@modelcontextprotocol/server-everything` 2026.7.4 → 2026.8.18）以及 `e2b` 2.29.1 → 2.45.0。渲染组移动了 `shiki` 与 `@shikijs/langs` 4.3.1 → 4.4.3、`katex` 0.16.47 → 0.18.4、`mermaid` 11.16.0 → 11.17.0、`lightningcss` 1.32.0 → 1.33.0、`fast-check` 4.8.0 → 4.9.0、`smol-toml` 1.7.1 → 1.8.0、`tsx` 4.22.4 → 4.23.12、`use-sync-external-store` 1.2.0 → 1.6.0，以及四个 `@opentelemetry/*` 日志包 0.220.0 → 0.221.0。
+
+分组预判对了工作的形状，却未必对了方向。linter 确实改了规则，只是方向与预算的相反：`oxlint` 1.79 不再对转义控制字符报 `no-control-regex`，于是发现的是 `reportUnusedDisableDirectives` 之下的一条无用抑制，是删掉而不是新增。两处真正的契约位移都出自模型组 —— Claude Code 2.1.240 拒绝已禁用的 `ExitPlanMode` 时换了措辞，Codex 0.149 新增第十二个 `codexErrorInfo` 变体 `misalignmentPolicyViolation`，wire 现在直接命名它，而不再折叠为 `unknown`。渲染组给出了它应当给出的快照变动，且仅此而已：KaTeX 0.18 为其自身 HTML 分支内部那些过于通用的类名加了前缀（`base` → `katex-base` 及同类），我们的样式表与断言都不读这些名字，因此两份 math DOM 对照 fixture 恰好只按这一次改名位移。
+
+有两个原定包依据本批自身的规则被剔除，仍然悬而未决。`knip` 6.16.1 → 6.32.2 没有可以出发的绿色基线 —— `pnpm run knip` 在本分支头部已经是红的，因为 `apps/desktop` 进来时没有对应的 knip workspace 条目 —— 而 6.32 又几乎替换了整套发现集合，因此调和它是一次配置修复，不是一次提升。`@earendil-works/pi-ai` 0.82.1 → 0.84.2 破坏的是适配器断言的两项契约，而非一个版本字符串：携带 `maxTokens` 的请求不再以 `max_completion_tokens` 抵达 provider，而已经处于 abort 状态的调用方 signal 会让流以 `error` 而非 `aborted` 收尾 —— 那会把用户取消报成失败。两者各需自己的改动与自己的笔记。
 
 **第三批 —— major，每个包或每组耦合项单独一个 PR。** 这些是迁移而非升级，而且其中若干彼此耦合：
 
@@ -54,7 +64,7 @@ Status: proposed
 
 ## Acceptance criteria
 
-- 更名 PR 合入时，`pnpm-lock.yaml` 只体现 workspace 更名，不含任何第三方版本变更。唯一的非更名条目是 `node-pty` 的 `patch_hash`，它位移是因为补丁文本中带有一个被改名的环境变量；解析出的版本没有变化。
+- 更名提交中的 `pnpm-lock.yaml` 只体现 workspace 更名，不含任何第三方版本变更。唯一的非更名条目是 `node-pty` 的 `patch_hash`，它位移是因为补丁文本中带有一个被改名的环境变量；解析出的版本没有变化。移动第三方版本的是第一批自己的那个提交，而它不夹带别的改动。
 - 第一批作为一个提交落地，`doc-sync`、`lint`、`typecheck` 与完整测试套件全绿，且 `koffi` 与 `esbuild` 的 changelog 是读过的而非假定的。
 - 第二批作为三个提交落地，各自可独立回滚，新增的 lint 发现被逐一处理而非整体压制。
 - 第三批每次迁移一个 PR，凡改变可观察契约者各自附带 Agent Note；SDK 跨版本一项须重新录制并审阅 ACP 快照套件。

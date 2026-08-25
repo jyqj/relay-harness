@@ -1,9 +1,16 @@
 'use strict';
 
-const { test } = require('node:test');
+const { test: nodeTest } = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('path');
 const { pathToFileURL } = require('url');
+const { absenceReason } = require('../../vendor/vendor-manifest.js');
+
+// This suite reads rlhbot's built node half. vendor/plugins.json records when
+// that subtree is not in the tree, and vendor-plugins.test.js fails once it
+// returns, so skipping here cannot outlive the gap it names.
+const libAbsent = absenceReason('rlhbot', 'lib');
+const test = (name, fn) => nodeTest(name, libAbsent ? { skip: libAbsent } : {}, fn);
 
 const avatarUrl = pathToFileURL(
   path.join(__dirname, '..', '..', 'vendor', 'rlhbot', 'lib', 'avatar.js'),

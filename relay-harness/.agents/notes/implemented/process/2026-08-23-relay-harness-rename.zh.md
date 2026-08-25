@@ -24,6 +24,7 @@ Harness 一直以一个并不属于自己的名字发布。所有 npm 包位于 
 | CSS 自定义属性 | `--dsw-*`、`--ds-*` | `--rlw-*`、`--rl-*` |
 | 仓库 URL | `github.com/deepseek-ai/deepseek-harness` | `github.com/jyqj/relay-harness` |
 | 桌面应用 id | `ai.deepseek.harness.gui` | `com.relayharness.desktop` |
+| 移动端 bundle id | `ai.deepseek.harness.mobile` | `com.relayharness.mobile` |
 
 目录名与文件名沿用同一套 token：`.agents/skills/dsh-*` 改为 `rlh-*`，`dshbot` 改为 `rlhbot`，`install-dsh-plugin*` 改为 `install-rlh-plugin*`。
 
@@ -63,4 +64,6 @@ Harness 一直以一个并不属于自己的名字发布。所有 npm 包位于 
 
 codemod 在迁移后保留在树内。它是幂等的——任何规则的输出都不匹配任何规则的输入——因此重跑即可发现被重新引入的零星 `dsh`，而受保护片段清单以可执行形式记录了厂商与品牌的边界。
 
-第三方市场坐标仍是脆弱之处。它们读起来像品牌 token，且只在安装或拉取时才失败，离出错的那次编辑很远。受保护模式逐一列举了受影响的插件名，因此当登记表快照新增一个 `dsh-` 前缀的社区插件时，需要先把该名字加入清单，再重跑 codemod。
+第三方市场坐标仍是脆弱之处。它们读起来像品牌 token，且只在安装或拉取时才失败，离出错的那次编辑很远。受保护模式逐一列举了受影响的插件名，因此当登记表快照新增一个 `dsh-` 前缀的社区插件时，需要先把该名字加入清单，再重跑 codemod。[`apps/desktop/vendor/plugins.json`](../../../../apps/desktop/vendor/plugins.json) 中 vendored 插件的 `upstream` 坐标同理：`npm:dshmarket` 指代该 drop 的来源包，因此 codemod 保护整个 `"upstream": "npm:…"` 值，而不是其中某一个名字。
+
+按裸 token 保护这些名字，代价是另一个方向上的精度，有一处只能手工修正：`dsh-web-ui` 既是目录中以裸名列出的社区插件，也是 [GUI 分层与 RPC 协议](../architecture/2026-07-19-gui-layering-and-rpc-protocol.md)中一条被否决的替代方案给本仓库自有包起的名字。保护同时覆盖了两者，因此更名后该 Agent Note 仍留着一个 `dsh-` 名；现已改为 `rlh-web-ui`。一个同时指代社区插件与本仓库包的 token 无法用模式区分——引用了受保护名字的散文需要人工核对。

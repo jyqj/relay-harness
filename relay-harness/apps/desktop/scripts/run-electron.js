@@ -1,8 +1,17 @@
 const fs = require('fs');
 const path = require('path');
 const { spawn } = require('child_process');
+const { syncVendorInstalls } = require('./vendor-installs.js');
 
 const repoRoot = path.join(__dirname, '..');
+
+// The marketplace plugin mounts from vendor/, which needs its install present.
+// Without one the shell still starts and reports the plugin as unavailable.
+try {
+  syncVendorInstalls({ log: (message) => console.log(message) });
+} catch (error) {
+  console.warn(`未能安装内置插件依赖，市场插件将不可用：${error.message}`);
+}
 
 function candidates() {
   const list = [];

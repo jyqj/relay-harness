@@ -15,6 +15,8 @@ function quoteFontFamilyName(name: string): string {
 /**
  * Normalize a user-entered family (single name or comma-separated list) into a
  * safe CSS font-family list, or null when the input is effectively empty.
+ * @param input - a family name or comma-separated list, as typed.
+ * @returns a CSS `font-family` value, or null when nothing usable remains.
  */
 export function cssFontFamilies(input: string): string | null {
   const families = input
@@ -30,6 +32,14 @@ const MONOSPACE_PROBE_VARIANTS = ["normal 400", "normal 700", "italic 400", "ita
 const MONOSPACE_PROBE_GLYPHS = ["i", "M", "W", "0", "@", "#", ".", " "] as const;
 const MONOSPACE_ADVANCE_TOLERANCE = 0.01;
 
+/**
+ * Whether a set of measured glyph advances all agree, within a tolerance that
+ * absorbs subpixel rounding. Measurements that cannot mean anything — no
+ * glyphs, a zero or non-finite advance — answer true, so an environment that
+ * failed to measure never rejects a font.
+ * @param advances - measured advance widths, in pixels.
+ * @returns true when every advance matches the first.
+ */
 export function areFontAdvancesMonospace(advances: readonly number[]): boolean {
   const reference = advances[0];
   if (
@@ -50,6 +60,8 @@ export function areFontAdvancesMonospace(advances: readonly number[]): boolean {
  *
  * Unmeasurable environments answer true, so a missing canvas never blocks a
  * legitimate font.
+ * @param family - a family name or comma-separated list, as typed.
+ * @returns whether the family is safe to draw on a cell grid.
  */
 export function isMonospaceFamily(family: string): boolean {
   const families = cssFontFamilies(family);

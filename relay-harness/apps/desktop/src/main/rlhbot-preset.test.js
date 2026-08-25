@@ -178,12 +178,11 @@ test('ensureRlhbotPlugin fails closed when the room preset is missing', () => {
   }
 });
 
+// Entry points and versions are gated in vendor/vendor-plugins.test.js, which
+// reads them from package.json; this covers what the offline profile copy
+// reads and package.json does not name.
 test('repo vendors rlhbot for offline profile copy', () => {
   const root = path.join(__dirname, '..', '..', 'vendor', 'rlhbot');
-  const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
-  assert.equal(pkg.name, 'rlhbot');
-  assert.equal(fs.existsSync(path.join(root, 'client', 'client.js')), true);
-  assert.equal(fs.existsSync(path.join(root, 'lib', 'index.js')), true);
   assert.equal(fs.existsSync(path.join(root, 'cordis.patch.yml')), true);
   assert.equal(fs.existsSync(path.join(root, 'presets', 'rlhbot-room', 'agent.cordis.yml')), true);
 });

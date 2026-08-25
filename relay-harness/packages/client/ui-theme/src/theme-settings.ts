@@ -259,7 +259,11 @@ export function resolveThemeSettings(section: ThemeSettings | undefined): ThemeS
   }
 }
 
-/** Keep only bounded HTTPS catalog URLs, preserving first-seen order. */
+/**
+ * Keep only bounded HTTPS catalog URLs, preserving first-seen order.
+ * @param values - persisted or user-entered catalog URLs, of unknown shape.
+ * @returns the accepted URLs, deduplicated and capped.
+ */
 export function sanitizeWallpaperCatalogUrls(values: readonly unknown[] | undefined): string[] {
   const result: string[] = []
   for (const value of values ?? []) {

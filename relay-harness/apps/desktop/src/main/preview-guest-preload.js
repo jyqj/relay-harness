@@ -13,101 +13,28 @@ const {
 const { resolveAnnotationSubmission } = require('./preview-annotation-keyboard');
 const { computeLabelPosition } = require('./preview-pick-label');
 const { applyAnnotationTheme, captureElement } = require('./preview-pick-helpers');
+const {
+  CONTENT_LAYER_Z_INDEX,
+  OVERLAY_ATTRIBUTE,
+  OVERLAY_STYLES,
+  PRIMARY,
+  PRIMARY_FILL,
+  TOOL_ATTRIBUTE,
+  Z_INDEX_OVERLAY,
+  cursorStyles,
+} = require('./preview-guest-styles');
+const {
+  isUsableRect,
+  normalizeRect,
+  pathFromPoints,
+  rectFromDomRect,
+  strokeBounds,
+  unionRects,
+} = require('./preview-guest-geometry');
 
 globalThis.ipcRenderer = ipcRenderer;
 
-const OVERLAY_ATTRIBUTE = 'data-rlhd-annotation-ui';
-const TOOL_ATTRIBUTE = 'data-rlhd-annotation-tool';
-const Z_INDEX_OVERLAY = 2147483646;
-const PRIMARY = 'var(--rlhd-preview-primary)';
-const PRIMARY_FILL = 'color-mix(in srgb, var(--rlhd-preview-primary) 10%, transparent)';
 const MAX_MARQUEE_ELEMENTS = 20;
-const CONTENT_LAYER_Z_INDEX = 1;
-const CHROME_LAYER_Z_INDEX = 10;
-
-const OVERLAY_STYLES = `
-:host, [${OVERLAY_ATTRIBUTE}] { font-family: var(--rlhd-preview-font-sans, system-ui, sans-serif); color: var(--rlhd-preview-foreground); box-sizing: border-box; }
-*, *::before, *::after { box-sizing: border-box; }
-.ann-toolbar {
-  pointer-events: auto; position: fixed; top: 10px; left: 50%; transform: translateX(-50%);
-  display: flex; gap: 2px; border-radius: var(--rlhd-preview-radius, 8px);
-  border: 1px solid var(--rlhd-preview-border); padding: 4px;
-  background: color-mix(in srgb, var(--rlhd-preview-popover) 95%, transparent);
-  color: var(--rlhd-preview-popover-foreground); z-index: ${CHROME_LAYER_Z_INDEX};
-  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
-}
-.ann-editor {
-  pointer-events: auto; position: fixed; display: none; max-height: calc(100vh - 16px);
-  width: min(360px, calc(100vw - 16px)); flex-direction: column; overflow: hidden;
-  border-radius: calc(var(--rlhd-preview-radius, 8px) + 4px);
-  border: 1px solid var(--rlhd-preview-border);
-  background: color-mix(in srgb, var(--rlhd-preview-popover) 96%, transparent);
-  color: var(--rlhd-preview-popover-foreground); z-index: ${CHROME_LAYER_Z_INDEX};
-  box-shadow: 0 16px 40px rgba(0,0,0,0.18);
-}
-.ann-row { display: flex; align-items: flex-start; gap: 8px; padding: 8px; }
-.ann-btn {
-  display: inline-flex; height: 28px; align-items: center; justify-content: center;
-  border: 1px solid transparent; border-radius: var(--rlhd-preview-radius, 6px);
-  padding: 0 8px; cursor: pointer;
-  font: 500 12px var(--rlhd-preview-font-sans, system-ui, sans-serif);
-  color: var(--rlhd-preview-foreground); background: transparent;
-}
-.ann-btn:hover { background: var(--rlhd-preview-accent); }
-.ann-btn:disabled { pointer-events: none; opacity: 0.6; }
-.ann-btn[data-active="true"] {
-  background: color-mix(in srgb, var(--rlhd-preview-primary) 10%, transparent);
-  color: var(--rlhd-preview-primary);
-}
-.ann-btn-primary {
-  height: 32px; border-color: var(--rlhd-preview-primary);
-  background: var(--rlhd-preview-primary); color: var(--rlhd-preview-primary-foreground);
-}
-.ann-icon { height: 32px; width: 32px; flex-shrink: 0; background: var(--rlhd-preview-muted);
-  color: var(--rlhd-preview-muted-foreground); padding: 0; }
-.ann-comment {
-  min-height: 32px; max-height: 96px; min-width: 0; flex: 1; resize: none; overflow-y: hidden;
-  border: 0; border-bottom: 1px solid transparent; background: transparent; padding: 6px 0;
-  font: 14px/20px var(--rlhd-preview-font-sans, system-ui, sans-serif);
-  color: var(--rlhd-preview-foreground); outline: none;
-}
-.ann-comment:focus { border-bottom-color: var(--rlhd-preview-primary); }
-.ann-comment::placeholder { color: var(--rlhd-preview-muted-foreground); }
-.ann-drag {
-  display: none; height: 32px; width: 24px; flex-shrink: 0; cursor: grab; border: 0;
-  background: transparent; padding: 0; font: 700 18px/20px var(--rlhd-preview-font-sans, system-ui);
-  color: var(--rlhd-preview-muted-foreground);
-}
-.ann-styles {
-  display: none; max-height: min(176px, calc(100vh - 180px)); overflow: auto;
-  border-top: 1px solid var(--rlhd-preview-border);
-  background: color-mix(in srgb, var(--rlhd-preview-muted) 40%, transparent); padding: 0 12px;
-}
-.ann-section { display: grid; gap: 4px; border-top: 1px solid var(--rlhd-preview-border); padding: 8px 0; }
-.ann-field {
-  display: grid; min-height: 28px; grid-template-columns: 82px minmax(0,1fr); align-items: center;
-  gap: 8px; font: 500 12px var(--rlhd-preview-font-sans, system-ui); color: var(--rlhd-preview-muted-foreground);
-}
-.ann-control, .ann-field select, .ann-field input[type=number], .ann-field input[type=text], .ann-field input[type=range] {
-  height: 28px; min-width: 0; width: 100%; border-radius: var(--rlhd-preview-radius, 6px);
-  border: 1px solid var(--rlhd-preview-input); background: var(--rlhd-preview-background);
-  padding: 0 8px; font: 12px var(--rlhd-preview-font-mono, ui-monospace, monospace);
-  color: var(--rlhd-preview-foreground); outline: none;
-}
-.ann-unit { position: relative; min-width: 0; }
-.ann-unit-label {
-  pointer-events: none; position: absolute; top: 50%; right: 8px; transform: translateY(-50%);
-  font: 12px var(--rlhd-preview-font-mono, ui-monospace, monospace); color: var(--rlhd-preview-muted-foreground);
-}
-.ann-label {
-  position: fixed; pointer-events: none; white-space: nowrap; text-overflow: ellipsis;
-  overflow: hidden; max-width: 280px; border-radius: var(--rlhd-preview-radius, 6px);
-  background: var(--rlhd-preview-primary); color: var(--rlhd-preview-primary-foreground);
-  padding: 4px 8px; font: 600 12px var(--rlhd-preview-font-sans, system-ui);
-  z-index: ${CONTENT_LAYER_Z_INDEX}; box-shadow: 0 4px 12px rgba(0,0,0,0.16);
-}
-input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { appearance: none; margin: 0; }
-`;
 
 let activeSession = null;
 let idSequence = 0;
@@ -142,39 +69,8 @@ function nextId(prefix) {
   return `${prefix}_${idSequence.toString(36)}`;
 }
 
-function rectFromDomRect(rect) {
-  return { x: rect.left, y: rect.top, width: rect.width, height: rect.height };
-}
-
-function normalizeRect(startX, startY, endX, endY) {
-  return {
-    x: Math.min(startX, endX),
-    y: Math.min(startY, endY),
-    width: Math.abs(endX - startX),
-    height: Math.abs(endY - startY),
-  };
-}
-
-function isUsableRect(rect) {
-  return rect.width >= 3 && rect.height >= 3;
-}
-
-function unionRects(rects, padding = 20) {
-  if (rects.length === 0) return null;
-  const left = Math.min(...rects.map((rect) => rect.x));
-  const top = Math.min(...rects.map((rect) => rect.y));
-  const right = Math.max(...rects.map((rect) => rect.x + rect.width));
-  const bottom = Math.max(...rects.map((rect) => rect.y + rect.height));
-  const x = Math.max(0, left - padding);
-  const y = Math.max(0, top - padding);
-  const maxWidth = Math.max(1, window.innerWidth - x);
-  const maxHeight = Math.max(1, window.innerHeight - y);
-  return {
-    x,
-    y,
-    width: Math.min(maxWidth, right - left + padding * 2),
-    height: Math.min(maxHeight, bottom - top + padding * 2),
-  };
+function viewportSize() {
+  return { width: window.innerWidth, height: window.innerHeight };
 }
 
 function isAnnotationNode(element) {
@@ -305,31 +201,6 @@ function createUnitInput(unit, placeholder = '0') {
   return input;
 }
 
-function pathFromPoints(points) {
-  if (points.length === 0) return '';
-  if (points.length === 1) return `M ${points[0].x} ${points[0].y} l 0.01 0.01`;
-  let path = `M ${points[0].x} ${points[0].y}`;
-  for (let index = 1; index < points.length - 1; index += 1) {
-    const current = points[index];
-    const next = points[index + 1];
-    path += ` Q ${current.x} ${current.y} ${(current.x + next.x) / 2} ${(current.y + next.y) / 2}`;
-  }
-  const last = points[points.length - 1];
-  path += ` L ${last.x} ${last.y}`;
-  return path;
-}
-
-function strokeBounds(points, width) {
-  const xs = points.map((point) => point.x);
-  const ys = points.map((point) => point.y);
-  const padding = width + 3;
-  const left = Math.min(...xs) - padding;
-  const top = Math.min(...ys) - padding;
-  const right = Math.max(...xs) + padding;
-  const bottom = Math.max(...ys) + padding;
-  return { x: left, y: top, width: right - left, height: bottom - top };
-}
-
 function startAnnotation() {
   if (activeSession) activeSession.teardown(false);
   let finished = false;
@@ -347,7 +218,7 @@ function startAnnotation() {
   root.style.cssText = 'pointer-events:none;position:fixed;inset:0';
   const cursorStyle = document.createElement('style');
   cursorStyle.setAttribute(OVERLAY_ATTRIBUTE, '');
-  cursorStyle.textContent = `html[${TOOL_ATTRIBUTE}] body, html[${TOOL_ATTRIBUTE}] body * { cursor: crosshair !important; } [${OVERLAY_ATTRIBUTE}], [${OVERLAY_ATTRIBUTE}] * { cursor: default !important; }`;
+  cursorStyle.textContent = cursorStyles();
   document.documentElement.appendChild(cursorStyle);
   shadowRoot.appendChild(root);
 
@@ -761,7 +632,7 @@ function startAnnotation() {
     ...Array.from(selected.values(), (target) => rectFromDomRect(target.element.getBoundingClientRect())),
     ...regions.map((region) => region.rect),
     ...strokes.map((stroke) => stroke.bounds),
-  ], 0);
+  ], viewportSize(), 0);
 
   const positionCompactEditor = () => {
     const bounds = getAnnotationBounds();
@@ -1115,7 +986,7 @@ function startAnnotation() {
         ...elements.map((target) => target.rect),
         ...regions.map((region) => region.rect),
         ...strokes.map((stroke) => stroke.bounds),
-      ]);
+      ], viewportSize());
       ipcRenderer.send(ELEMENT_PICKED_CHANNEL, annotation, screenshotRect, submission);
     });
   };

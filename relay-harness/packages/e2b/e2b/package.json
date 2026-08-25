@@ -36,7 +36,7 @@
     "@relay-harness/cordis": "workspace:^"
   },
   "dependencies": {
-    "e2b": "2.29.1",
+    "e2b": "2.45.0",
     "@relay-harness/schemastery": "workspace:^"
   },
   "devDependencies": {

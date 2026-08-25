@@ -184,11 +184,18 @@ const codeToGhosttyKey = new Map<string, number>(
   ghosttyKeyboardCodes.map((code, index) => [code, index]),
 );
 
+/**
+ * Translate a DOM `KeyboardEvent.code` into Ghostty's key enum.
+ * @param code - the physical key, as the DOM names it.
+ * @returns the Ghostty key index, or 0 for a key Ghostty has no name for.
+ */
 export function ghosttyKeyForCode(code: string): number {
   return codeToGhosttyKey.get(code) ?? 0;
 }
 
+/** The part of the browser's `KeyboardLayoutMap` this module reads. */
 export interface GhosttyKeyboardLayoutMap {
+  /** The character a physical key produces under the active layout. */
   get(code: string): string | undefined;
 }
 
@@ -218,6 +225,12 @@ const shiftedToUnshiftedCharacter = new Map<string, string>([
 
 let keyboardLayoutMapPromise: Promise<GhosttyKeyboardLayoutMap | undefined> | undefined;
 
+/**
+ * The active keyboard layout, fetched once and shared by every later caller.
+ * Browsers without the Keyboard API, and a rejected fetch, both resolve to
+ * undefined so key handling falls back to its layout-free rules.
+ * @returns the layout map, or undefined when the browser will not supply one.
+ */
 export function loadGhosttyKeyboardLayoutMap(): Promise<GhosttyKeyboardLayoutMap | undefined> {
   if (keyboardLayoutMapPromise) return keyboardLayoutMapPromise;
   const browserNavigator = globalThis.navigator as
@@ -233,6 +246,15 @@ export function loadGhosttyKeyboardLayoutMap(): Promise<GhosttyKeyboardLayoutMap
   return promise;
 }
 
+/**
+ * The codepoint a key would produce without Shift, which the Kitty keyboard
+ * protocol reports alongside the shifted one. The layout map answers exactly
+ * when it is available; without it, only the mappings that hold on every
+ * layout are applied, and an unknowable case answers 0 rather than guessing.
+ * @param event - the key event's physical code, character, and shift state.
+ * @param layoutMap - the active layout, when the browser supplied one.
+ * @returns the unshifted codepoint, or 0 when it cannot be known.
+ */
 export function ghosttyUnshiftedCodepoint(
   event: Pick<KeyboardEvent, "code" | "key" | "shiftKey">,
   layoutMap?: GhosttyKeyboardLayoutMap,

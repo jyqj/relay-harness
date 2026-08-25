@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/proposed/process/2026-08-23-staged-dependency-upgrades.md
-2026-08-23-staged-dependency-upgrades.md: 5356b31966ab9783f4fa5753e29ef99236e769bc
-2026-08-23-staged-dependency-upgrades.zh.md: e643e931586ac19439cecd42d4cf7864e187c73b
+2026-08-23-staged-dependency-upgrades.md: 39d3987726abe81169255955c34eef212cfce86a
+2026-08-23-staged-dependency-upgrades.zh.md: 158baae21ed80a9b2cbc220d424c861e0d32b1a6

@@ -24,6 +24,7 @@ The product is **Relay Harness**, abbreviated **rlh**. The rename covers every b
 | CSS custom properties | `--dsw-*`, `--ds-*` | `--rlw-*`, `--rl-*` |
 | Repository URL | `github.com/deepseek-ai/deepseek-harness` | `github.com/jyqj/relay-harness` |
 | Desktop app id | `ai.deepseek.harness.gui` | `com.relayharness.desktop` |
+| Mobile bundle id | `ai.deepseek.harness.mobile` | `com.relayharness.mobile` |
 
 Directory and file names follow the same tokens: `.agents/skills/dsh-*` became `rlh-*`, `dshbot` became `rlhbot`, and `install-dsh-plugin*` became `install-rlh-plugin*`.
 
@@ -63,4 +64,6 @@ Generated artifacts had to be regenerated rather than rewritten, because their a
 
 The codemod stays in the tree after the migration. It is idempotent — no rule output matches any rule input — so a stray reintroduced `dsh` is caught by re-running it, and the protected-span list documents the vendor/brand boundary in executable form.
 
-Third-party marketplace coordinates remain the fragile part. They read as brand tokens and only fail at install or fetch time, far from the edit that broke them. The protected patterns enumerate the affected plugin names, so a registry snapshot that adds a new `dsh-`prefixed community plugin needs that name added before the codemod runs again.
+Third-party marketplace coordinates remain the fragile part. They read as brand tokens and only fail at install or fetch time, far from the edit that broke them. The protected patterns enumerate the affected plugin names, so a registry snapshot that adds a new `dsh-`prefixed community plugin needs that name added before the codemod runs again. The same applies to a vendored plugin's `upstream` coordinate in [`apps/desktop/vendor/plugins.json`](../../../../apps/desktop/vendor/plugins.json): `npm:dshmarket` names the package the drop came from, so the codemod protects the whole `"upstream": "npm:…"` value rather than the one name.
+
+Protecting those names by the bare token costs precision in the other direction, and one occurrence had to be fixed by hand: `dsh-web-ui` is a community plugin the catalog lists by bare name, and it was also the name a rejected alternative in [GUI layering and RPC protocol](../architecture/2026-07-19-gui-layering-and-rpc-protocol.md) gave one of this repository's own packages. The protection covered both, so the note kept a `dsh-` name after the rename; it now reads `rlh-web-ui`. A token that names a community plugin and a package here at once cannot be resolved by pattern — check prose that quotes a protected name by hand.

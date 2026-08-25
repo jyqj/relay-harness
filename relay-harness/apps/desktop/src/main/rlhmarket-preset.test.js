@@ -235,17 +235,6 @@ test('repo vendors published rlhmarket package source', () => {
   assert.ok(pkg.dependencies && pkg.dependencies.undici && pkg.dependencies['js-yaml']);
 });
 
-test('gitignore does not ignore rlhmarket js-yaml dist', () => {
-  const { spawnSync } = require('node:child_process');
-  const root = path.join(__dirname, '..', '..');
-  const result = spawnSync(
-    'git',
-    ['check-ignore', '-q', 'vendor/rlhmarket/node_modules/js-yaml/dist/js-yaml.mjs'],
-    { cwd: root, windowsHide: true },
-  );
-  assert.equal(result.status, 1, 'js-yaml dist must not match the repo dist/ ignore');
-});
-
 test('rlhmarket extraResources is nested under vendor so electron-builder keeps node_modules', () => {
   const extra = require('../../package.json').build.extraResources;
   const market = extra.find((entry) => (

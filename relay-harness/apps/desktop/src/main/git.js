@@ -55,111 +55,17 @@ const {
 const { fetchForStatus, resetFetchCooldowns } = require('./git-fetch');
 const { parseUnifiedDiff, gitDiff } = require('./git-diff');
 const { readPrTemplate, resolvePrBaseBranch, setGhDefaultBranchResolver } = require('./git-templates');
-
-/**
- * Git-for-Windows `core.protectNTFS` rejects these device names in any path
- * component, including `NUL.txt` and trailing dots/spaces.
- * @param {unknown} rel
- * @returns {boolean}
- */
-function isNtfsReservedGitPath(rel) {
-  const normalized = String(rel || '').replaceAll('\\', '/');
-  if (!normalized) return false;
-  return normalized.split('/').some((part) => {
-    const stem = part.replace(/[. ]+$/g, '').split('.')[0];
-    return /^(con|prn|aux|nul|com[1-9]|lpt[1-9])$/i.test(stem);
-  });
-}
-
-function emptyWorkingTree() {
-  return { files: [], insertions: 0, deletions: 0 };
-}
-
-function notARepoStatus() {
-  return {
-    isRepo: false,
-    refName: null,
-    hasWorkingTreeChanges: false,
-    workingTree: emptyWorkingTree(),
-    hasUpstream: false,
-    aheadCount: 0,
-    behindCount: 0,
-    aheadOfDefaultCount: 0,
-    aheadUnreliable: false,
-    pr: null,
-    isDefaultRef: false,
-    hasPrimaryRemote: false,
-  };
-}
-
-function parseBranchAb(value) {
-  const match = /^\+(\d+)\s+-(\d+)$/.exec(String(value || '').trim());
-  if (!match) return { ahead: 0, behind: 0 };
-  return { ahead: Number(match[1]), behind: Number(match[2]) };
-}
-
-function parsePorcelainV2Path(line) {
-  if (line.startsWith('? ') || line.startsWith('! ')) {
-    const simple = line.slice(2).trim();
-    return simple.length > 0 ? simple : null;
-  }
-  if (!(line.startsWith('1 ') || line.startsWith('2 ') || line.startsWith('u '))) {
-    return null;
-  }
-  const tabIndex = line.indexOf('\t');
-  if (tabIndex >= 0) {
-    const fromTab = line.slice(tabIndex + 1);
-    const [filePath] = fromTab.split('\t');
-    return filePath?.trim().length ? filePath.trim() : null;
-  }
-  const parts = line.trim().split(/\s+/g);
-  const filePath = parts.at(-1) ?? '';
-  return filePath.length > 0 ? filePath : null;
-}
-
-function isUnbornHeadStderr(stderr) {
-  const lower = String(stderr || '').toLowerCase();
-  return lower.includes('unknown revision') && lower.includes('path not in the working tree');
-}
-
-function parseNumstatEntries(stdout) {
-  const entries = [];
-  for (const line of String(stdout || '').split(/\r?\n/g)) {
-    if (line.trim().length === 0) continue;
-    const [addedRaw, deletedRaw, ...pathParts] = line.split('\t');
-    const rawPath = pathParts.length > 1
-      ? (pathParts.at(-1) ?? '').trim()
-      : pathParts.join('\t').trim();
-    if (rawPath.length === 0) continue;
-    const added = addedRaw === '-' ? 0 : Number.parseInt(addedRaw ?? '0', 10);
-    const deleted = deletedRaw === '-' ? 0 : Number.parseInt(deletedRaw ?? '0', 10);
-    const renameArrowIndex = rawPath.indexOf(' => ');
-    const normalizedPath = renameArrowIndex >= 0
-      ? rawPath.slice(renameArrowIndex + ' => '.length).trim()
-      : rawPath;
-    entries.push({
-      path: normalizedPath.length > 0 ? normalizedPath : rawPath,
-      insertions: Number.isFinite(added) ? added : 0,
-      deletions: Number.isFinite(deleted) ? deleted : 0,
-    });
-  }
-  return entries;
-}
-
-function mergeNumstatMaps(rows) {
-  const map = new Map();
-  for (const entry of rows) {
-    const existing = map.get(entry.path) ?? { insertions: 0, deletions: 0 };
-    existing.insertions += entry.insertions;
-    existing.deletions += entry.deletions;
-    map.set(entry.path, existing);
-  }
-  return Array.from(map.entries()).map(([filePath, stat]) => ({
-    path: filePath,
-    insertions: stat.insertions,
-    deletions: stat.deletions,
-  }));
-}
+const {
+  buildWorkingTree,
+  isNtfsReservedGitPath,
+  isUnbornHeadStderr,
+  mergeNumstatMaps,
+  notARepoStatus,
+  parseBranchAb,
+  parseNumstatEntries,
+  parsePorcelainV2Path,
+  parsePorcelainZ,
+} = require('./git-status-parse');
 
 async function readWorkingTreeNumstat(root) {
   const head = await runGit(root, ['diff', 'HEAD', '--numstat']);
@@ -173,27 +79,6 @@ async function readWorkingTreeNumstat(root) {
     ]);
   }
   return parseNumstatEntries(head.stdout);
-}
-
-function buildWorkingTree(numstatEntries, porcelainPaths) {
-  const fileStatMap = new Map();
-  let insertions = 0;
-  let deletions = 0;
-  for (const entry of numstatEntries) {
-    if (isNtfsReservedGitPath(entry.path)) continue;
-    fileStatMap.set(entry.path, { insertions: entry.insertions, deletions: entry.deletions });
-  }
-  const files = Array.from(fileStatMap.entries()).map(([filePath, stat]) => {
-    insertions += stat.insertions;
-    deletions += stat.deletions;
-    return { path: filePath, insertions: stat.insertions, deletions: stat.deletions };
-  });
-  for (const filePath of porcelainPaths) {
-    if (fileStatMap.has(filePath) || isNtfsReservedGitPath(filePath)) continue;
-    files.push({ path: filePath, insertions: 0, deletions: 0 });
-  }
-  files.sort((a, b) => a.path.localeCompare(b.path));
-  return { files, insertions, deletions };
 }
 
 async function gitStatus(cwd) {
@@ -883,31 +768,6 @@ async function openWorkspacePath(cwd, relativePath) {
   } catch (error) {
     return fail(error instanceof Error ? error.message : 'Unable to open file');
   }
-}
-
-/**
- * Parse `git status --porcelain=v1 -z`. Rename/copy origin fields are skipped.
- * @param {string} stdout
- * @returns {{ path: string, xy: string }[]}
- */
-function parsePorcelainZ(stdout) {
-  const entries = [];
-  const parts = String(stdout || '').split('\0');
-  let i = 0;
-  while (i < parts.length) {
-    const rec = parts[i];
-    i += 1;
-    if (!rec || rec.length < 3) continue;
-    const xy = rec.slice(0, 2);
-    let filePath = rec.slice(3);
-    if (xy.includes('R') || xy.includes('C')) {
-      const dest = parts[i] || filePath;
-      i += 1;
-      filePath = dest;
-    }
-    entries.push({ path: filePath, xy });
-  }
-  return entries;
 }
 
 function resolveGitPath(cwd, relativePath) {

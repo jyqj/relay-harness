@@ -38,7 +38,12 @@ function normalizeComputedColor(value: string | null | undefined, fallback: stri
   return value ?? fallback
 }
 
-/** The surface treats an omitted family or size as "use the built-in default". */
+/**
+ * The surface treats an omitted family or size as "use the built-in default".
+ * @param family - the configured family, possibly blank.
+ * @param size - the configured point size.
+ * @returns surface font options, with the family omitted when it is blank.
+ */
 export function terminalFontOptions(family: string, size: number): { family?: string; size: number } {
   const trimmed = family.trim()
   return trimmed.length > 0 ? { family: trimmed, size } : { size }
@@ -112,13 +117,24 @@ function resolvedFontSize(el: HTMLElement): number {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_TERMINAL_FONT_SIZE
 }
 
+/** The family used when no theme variable resolves to a usable one. */
 export const FALLBACK_TERMINAL_FONT_FAMILY = DEFAULT_TERMINAL_FONT_FAMILY
 
+/** The font a terminal pane resolves to from its theme variables. */
 export type XtermFont = {
+  /** CSS `font-family` value. */
   fontFamily: string
+  /** Point size in pixels. */
   fontSize: number
 }
 
+/**
+ * Resolve the terminal font from an element's cascade. The family is measured
+ * through a probe span so a `var()` chain resolves to a real family list, and
+ * anything still unresolved falls back to the built-in defaults.
+ * @param el - the pane host to read the cascade from.
+ * @returns the resolved family and size.
+ */
 export function readXtermFont(el: HTMLElement): XtermFont {
   return {
     fontFamily: resolvedFontFamily(el),

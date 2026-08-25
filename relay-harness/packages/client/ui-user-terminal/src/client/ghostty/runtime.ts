@@ -18,8 +18,16 @@ type TypeLayouts = Readonly<Record<string, TypeLayout>>;
 
 const textDecoder = new TextDecoder();
 
+/**
+ * The loaded libghostty-vt WebAssembly module, and the marshalling the rest of
+ * the terminal uses to reach it: allocation, struct field access against the
+ * layouts the module publishes, and the callback table that lets terminal
+ * output reach a JavaScript pty writer.
+ */
 export class GhosttyRuntime {
+  /** The module's linear memory, which every pointer here indexes. */
   readonly memory: WebAssembly.Memory;
+  /** Struct layouts the module publishes, keyed by type name. */
   readonly layouts: TypeLayouts;
   private readonly exports: WebAssembly.Exports;
   private readonly ptyWriters = new Map<number, (data: string) => void>();
@@ -40,6 +48,12 @@ export class GhosttyRuntime {
     this.layouts = JSON.parse(textDecoder.decode(bytes.subarray(jsonPointer, end))) as TypeLayouts;
   }
 
+  /**
+   * Fetch and instantiate the module, then install the pty callback
+   * trampoline so the runtime is usable the moment it resolves.
+   * @returns the loaded runtime.
+   * @throws when either WebAssembly asset cannot be fetched or instantiated.
+   */
   static async load(): Promise<GhosttyRuntime> {
     const response = await fetch(ghosttyWasmUrl);
     if (!response.ok) {
@@ -64,6 +78,13 @@ export class GhosttyRuntime {
     return runtime;
   }
 
+  /**
+   * Call one module export.
+   * @param name - the export's name.
+   * @param args - the call's arguments.
+   * @returns whatever the export returned.
+   * @throws when the module exports no such function.
+   */
   call(name: string, ...args: Array<number | bigint>): number {
     const fn = this.exports[name];
     if (typeof fn !== "function") {
@@ -72,12 +93,24 @@ export class GhosttyRuntime {
     return (fn as WasmFunction)(...args);
   }
 
+  /**
+   * The published layout of one struct type.
+   * @param name - the type's name.
+   * @returns its size, alignment, and fields.
+   * @throws when the module publishes no such type.
+   */
   layout(name: string): TypeLayout {
     const layout = this.layouts[name];
     if (!layout) throw new Error(`libghostty-vt type layout is unavailable: ${name}`);
     return layout;
   }
 
+  /**
+   * Allocate zeroed bytes in the module's memory.
+   * @param size - how many bytes.
+   * @returns a pointer the caller must pass to `free`.
+   * @throws when the allocation fails.
+   */
   alloc(size: number): number {
     const pointer = this.call("ghostty_wasm_alloc_u8_array", size);
     if (pointer === 0) throw new Error(`libghostty-vt failed to allocate ${size} bytes`);
@@ -85,10 +118,21 @@ export class GhosttyRuntime {
     return pointer;
   }
 
+  /**
+   * Release an allocation. A null pointer is ignored, so cleanup paths need no
+   * guard of their own.
+   * @param pointer - the allocation, or 0.
+   * @param size - the size it was allocated with.
+   */
   free(pointer: number, size: number): void {
     if (pointer !== 0) this.call("ghostty_wasm_free_u8_array", pointer, size);
   }
 
+  /**
+   * Allocate a slot to receive an opaque handle from a `*_new` call.
+   * @returns a pointer the caller must pass to `freeOpaque`.
+   * @throws when the allocation fails.
+   */
   allocOpaque(): number {
     const pointer = this.call("ghostty_wasm_alloc_opaque");
     if (pointer === 0) throw new Error("libghostty-vt failed to allocate an opaque pointer");
@@ -98,14 +142,32 @@ export class GhosttyRuntime {
     return pointer;
   }
 
+  /**
+   * Release an opaque-handle slot. A null pointer is ignored.
+   * @param pointer - the slot, or 0.
+   */
   freeOpaque(pointer: number): void {
     if (pointer !== 0) this.call("ghostty_wasm_free_opaque", pointer);
   }
 
+  /**
+   * Read the handle a `*_new` call wrote into a slot.
+   * @param slot - a slot from `allocOpaque`.
+   * @returns the handle, or 0 when nothing was written.
+   */
   readPointer(slot: number): number {
     return new DataView(this.memory.buffer).getUint32(slot, true);
   }
 
+  /**
+   * Route one terminal's replies — cursor reports, mode queries — to a
+   * JavaScript writer, through the module's indirect callback table.
+   * @param terminal - the terminal handle.
+   * @param writer - receives the bytes the terminal wants written to the pty.
+   * @param writer.data - the reply text.
+   * @returns a registration id to pass to `detachPtyWriter`.
+   * @throws when the trampoline was never installed.
+   */
   attachPtyWriter(terminal: number, writer: (data: string) => void): number {
     if (this.writePtyFunctionIndex === 0) {
       throw new Error("libghostty-vt PTY callback trampoline is unavailable");
@@ -117,20 +179,47 @@ export class GhosttyRuntime {
     return id;
   }
 
+  /**
+   * Stop routing a terminal's replies and drop the writer.
+   * @param terminal - the terminal handle.
+   * @param id - the id `attachPtyWriter` returned.
+   */
   detachPtyWriter(terminal: number, id: number): void {
     this.call("ghostty_terminal_set", terminal, 1, 0);
     this.call("ghostty_terminal_set", terminal, 0, 0);
     this.ptyWriters.delete(id);
   }
 
+  /**
+   * A `DataView` over module memory. Views are invalidated by any allocation
+   * that grows memory, so take one per use rather than caching it.
+   * @param pointer - where the view starts.
+   * @param size - how many bytes it covers; to the end of memory when omitted.
+   * @returns the view.
+   */
   view(pointer: number, size?: number): DataView {
     return new DataView(this.memory.buffer, pointer, size);
   }
 
+  /**
+   * A byte view over module memory, with the same lifetime caveat as `view`.
+   * @param pointer - where the view starts.
+   * @param size - how many bytes it covers.
+   * @returns the view.
+   */
   bytes(pointer: number, size: number): Uint8Array {
     return new Uint8Array(this.memory.buffer, pointer, size);
   }
 
+  /**
+   * Write one struct field, using the width and offset the module published
+   * rather than an offset hard-coded on this side.
+   * @param pointer - the struct's address.
+   * @param structName - the struct's type name.
+   * @param fieldName - the field to write.
+   * @param value - the value, narrowed to the field's width.
+   * @throws when the field is unknown or has a type this cannot write.
+   */
   setField(pointer: number, structName: string, fieldName: string, value: number): void {
     const field = this.layout(structName).fields[fieldName];
     if (!field) throw new Error(`libghostty-vt field is unavailable: ${structName}.${fieldName}`);
@@ -158,6 +247,14 @@ export class GhosttyRuntime {
     }
   }
 
+  /**
+   * Read one struct field, using the published layout.
+   * @param pointer - the struct's address.
+   * @param structName - the struct's type name.
+   * @param fieldName - the field to read.
+   * @returns the field's value as a number.
+   * @throws when the field is unknown or has a type this cannot read.
+   */
   readField(pointer: number, structName: string, fieldName: string): number {
     const field = this.layout(structName).fields[fieldName];
     if (!field) throw new Error(`libghostty-vt field is unavailable: ${structName}.${fieldName}`);
@@ -211,6 +308,11 @@ export class GhosttyRuntime {
 
 let runtimePromise: Promise<GhosttyRuntime> | null = null;
 
+/**
+ * The shared runtime, loaded once for the page. A failed load is not cached,
+ * so a terminal opened after a transient fetch failure retries.
+ * @returns the runtime, once it is ready.
+ */
 export function loadGhosttyRuntime(): Promise<GhosttyRuntime> {
   runtimePromise ??= GhosttyRuntime.load().catch((error) => {
     runtimePromise = null;

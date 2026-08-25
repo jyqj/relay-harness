@@ -1,0 +1,14 @@
+{
+  "rlhmarket": {
+    "upstream": "npm:dshmarket",
+    "version": "1.14.0",
+    "missing": {}
+  },
+  "rlhbot": {
+    "upstream": "none",
+    "version": "0.1.0",
+    "missing": {
+      "lib": "The drop predates the vendor lib ignore fix, so the node half was never committed. rlhbot is private:true with no published tarball and no source in this tree, so it cannot be rebuilt or refetched here; only the prebuilt client half survived. The desktop installer therefore ships rlhbot without an entry point, and the sidebar-bot and group-room suites cannot run."
+    }
+  }
+}

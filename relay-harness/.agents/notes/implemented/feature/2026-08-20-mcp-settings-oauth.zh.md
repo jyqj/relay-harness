@@ -30,5 +30,5 @@ Status: implemented
 
 ## Related
 
-[MCP 与 Skill 设置管理](2026-08-14-mcp-and-skill-settings.md)。
-[MCP Settings 轮询健康并重新挂载已放弃的子实例](../bug-fix/2026-08-20-mcp-settings-stale-health.md)。
+- [MCP 与 Skill 设置管理](2026-08-14-mcp-and-skill-settings.md)
+- [MCP Settings 轮询健康并重新挂载已放弃的子实例](../bug-fix/2026-08-20-mcp-settings-stale-health.md)

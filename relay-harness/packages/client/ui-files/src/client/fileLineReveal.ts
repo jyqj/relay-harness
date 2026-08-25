@@ -13,6 +13,14 @@ interface CenteredFileLineScrollInput {
   readonly renderedLine?: LineGeometry
 }
 
+/**
+ * The scroll offset that centers one file line in the viewport. A line the
+ * virtualizer has already rendered is measured directly; one it has not is
+ * placed from the estimate, so a reveal into an unrendered region still lands
+ * close enough to correct itself on the next frame.
+ * @param input - current scroll state, viewport box, and the line's geometry.
+ * @returns a scroll offset clamped to the scrollable range.
+ */
 export function resolveCenteredFileLineScrollTop(input: CenteredFileLineScrollInput): number {
   const lineTop =
     input.renderedLine === undefined

@@ -5,12 +5,19 @@
  */
 import { isMacPlatform } from "./platform.ts";
 
+/** The part of a `KeyboardEvent` shortcut matching reads. */
 export interface ShortcutEventLike {
+  /** Event type; anything but `keydown` matches nothing. */
   type?: string;
+  /** The character or named key. */
   key: string;
+  /** Whether Command (or Windows) is held. */
   metaKey: boolean;
+  /** Whether Control is held. */
   ctrlKey: boolean;
+  /** Whether Shift is held. */
   shiftKey: boolean;
+  /** Whether Alt (or Option) is held. */
   altKey: boolean;
 }
 
@@ -26,6 +33,13 @@ function normalizeEventKey(key: string): string {
   return normalized;
 }
 
+/**
+ * Whether a key event asks to clear the terminal — Control-L everywhere, and
+ * Command-K on Apple platforms.
+ * @param event - the key event.
+ * @param platform - platform token, defaulting to the browser's.
+ * @returns whether the terminal should clear.
+ */
 export function isTerminalClearShortcut(
   event: ShortcutEventLike,
   platform = navigator.platform,
@@ -50,6 +64,13 @@ export function isTerminalClearShortcut(
   );
 }
 
+/**
+ * The bytes an Apple-platform delete shortcut sends: Command-Backspace deletes
+ * to the start of the line. Other platforms leave the key to the shell.
+ * @param event - the key event.
+ * @param platform - platform token, defaulting to the browser's.
+ * @returns the bytes to write to the pty, or null when no shortcut matched.
+ */
 export function terminalDeleteShortcutData(
   event: ShortcutEventLike,
   platform = navigator.platform,
@@ -72,6 +93,15 @@ export function terminalDeleteShortcutData(
     : null;
 }
 
+/**
+ * The bytes a caret-movement shortcut sends. Option-arrow moves by word and
+ * Command-arrow moves to the line edge on Apple platforms; elsewhere both
+ * Control-arrow and Alt-arrow move by word, matching the two conventions
+ * Linux and Windows terminals split between.
+ * @param event - the key event.
+ * @param platform - platform token, defaulting to the browser's.
+ * @returns the bytes to write to the pty, or null when no shortcut matched.
+ */
 export function terminalNavigationShortcutData(
   event: ShortcutEventLike,
   platform = navigator.platform,

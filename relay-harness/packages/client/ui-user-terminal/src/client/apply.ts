@@ -51,7 +51,6 @@ function workflowFace(ctx: ClientContext): Pick<
       appendToDraft(ctx, sessionId, fragment)
     },
     writeClipboard: async (text) => {
-      // oxlint-disable-next-line typescript/no-unnecessary-condition -- jsdom leaves navigator.clipboard undefined
       const clipboard = globalThis.navigator.clipboard
       // oxlint-disable-next-line typescript/no-unnecessary-condition -- jsdom leaves navigator.clipboard undefined
       if (clipboard === undefined) return

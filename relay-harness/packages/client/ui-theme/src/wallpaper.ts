@@ -199,13 +199,29 @@ export async function encodeWallpaperFile(file: File): Promise<string | null> {
 
 /** Pixel rectangle passed to CanvasRenderingContext2D.drawImage. */
 export interface WallpaperCropRect {
+  /** Left edge in source pixels. */
   sx: number
+  /** Top edge in source pixels. */
   sy: number
+  /** Width in source pixels. */
   sw: number
+  /** Height in source pixels. */
   sh: number
 }
 
-/** Calculate a centered, zoomed cover crop for a source image. */
+/**
+ * Calculate a zoomed cover crop for a source image. The crop is the largest
+ * region of the requested aspect that fits the source, shrunk by the zoom and
+ * positioned by the pan; degenerate inputs are clamped rather than rejected,
+ * so a crop always exists.
+ * @param width - source image width in pixels.
+ * @param height - source image height in pixels.
+ * @param aspect - target width-to-height ratio.
+ * @param zoom - magnification, at least 1.
+ * @param panX - horizontal position within the pannable range, `0` to `1`.
+ * @param panY - vertical position within the pannable range, `0` to `1`.
+ * @returns the source rectangle to draw, in whole pixels.
+ */
 export function wallpaperCropRect(
   width: number,
   height: number,
@@ -232,7 +248,14 @@ export function wallpaperCropRect(
   }
 }
 
-/** Crop a data URL in a bounded browser canvas; decode or canvas failures fail closed. */
+/**
+ * Crop a data URL in a bounded browser canvas. Decode failures, a missing
+ * canvas, a slow image, and an oversized result all fail closed, so a caller
+ * never receives a wallpaper it cannot store.
+ * @param dataUrl - the source image as a data URL.
+ * @param rect - the source rectangle to keep.
+ * @returns the cropped JPEG data URL, or null when the crop could not be made.
+ */
 export function cropWallpaper(dataUrl: string, rect: WallpaperCropRect): Promise<string | null> {
   return new Promise((resolve) => {
     if (!isWallpaperDataUrl(dataUrl) || typeof Image === 'undefined' || typeof document === 'undefined') {

@@ -13,8 +13,9 @@
  * Never touched: `pnpm-lock.yaml` (regenerate with `pnpm install`), frozen
  * archived Agent Notes (`.agents/notes/archived/`), vendor LLM API references
  * (`DEEPSEEK_API_KEY`, `DEEPSEEK_BASE_URL`, `api.deepseek.com`, model names,
- * `llm-deepseek` suffix), and external ecosystem project URLs (dshget.com,
- * dshdesktop.com, dataelement/dsh-desktop).
+ * `llm-deepseek` suffix), and external ecosystem project identities (dshget.com,
+ * dshdesktop.com, dataelement/dsh-desktop, hairyf/deepseek-harness-desktop,
+ * Noob-stupid/dsh-plugin-hub).
  *
  * Usage: node --experimental-strip-types scripts/rebrand-dsh-to-rlh.ts [--dry-run]
  * Idempotent: outputs never match any rule input, so a second run is a no-op.
@@ -37,23 +38,42 @@ const PROTECTED: RegExp[] = [
   /[\w\-./]*archived\/[\w\-./]*/g,
   // This script's own filename names the migration, not the product.
   /rebrand-dsh-to-rlh(?:\.ts)?/g,
+  // Citations of the rename itself have to spell both vocabularies: the mapping
+  // arrow any document may quote, and the upstream attribution MIT requires.
+  /`dsh` (?:→|->) `rlh`/g,
+  /rebrand of DeepSeek Harness/g,
+  /DeepSeek Harness 更名而来/g,
+  // A vendored plugin's upstream coordinate names the package the drop came
+  // from, which lives on npm under its author's name and not ours.
+  /"upstream":\s*"npm:[\w.@/-]+"/g,
   // Third-party plugin registry: live HTTP endpoints and community plugin pages.
   /(?:https?:\/\/)?awesome-dsh-plugin\.com[^\s"'`),\]]*/g,
   /github\.com\/awesome-dsh-plugin\/awesome-dsh-plugin/g,
   /\bawesome-dsh-plugin\b/g,
   /(?:https?:\/\/)?(?:www\.)?dshmarket\.com/g,
   /(?:github\.com|github\/stars)\/dsh-market\/dsh-market(?:\.git)?/g,
+  // The upstream repository name as a link label. Only the label: the market's
+  // own route namespace, log tag, and state directory are bundled-plugin
+  // surface and rename with the client half that calls them.
+  /\[dsh-market\]\(/g,
   // Community plugin identities: npm names and GitHub install specs owned by others.
+  // The GitHub pattern runs to the end of the URL path so release tags such as
+  // `/releases/download/dsh-0.1.2/` stay on the owner's side of the boundary.
   /@dsh-external\/[\w.-]+/g,
   /github:[\w.-]+\/dsh-[\w./#:-]+/g,
-  /github\.com\/[\w.-]+\/dsh-[\w.-]+/g,
-  /\bdsh-(?:composer-expand|status-rotator|aionui-panel|spotlight|genui|skins|web-ui|wallpaper-engine|whale-desktop-launcher)\b/g,
+  /github\.com\/[\w.-]+\/dsh-[\w./#:-]+/g,
+  /\bdsh-(?:composer-expand|status-rotator|aionui-panel|spotlight|genui|skins|web-ui)\b/g,
+  /\bdsh-(?:wallpaper-engine|whale-desktop-launcher|plugin-hub)\b/g,
   // External ecosystem projects (not this repository's brand).
   /github\.com\/dataelement\/dsh-desktop/g,
   /github\.com\/bobby-sheng\/dshget-data/g,
+  /github\.com\/hairyf\/deepseek-harness-desktop/g,
+  /\bdeepseek-harness-desktop\b/g,
+  /\bDeepSeek Harness Desktop\b/g,
   /(?:www\.)?dshget\.com/g,
   /dshdesktop\.com/g,
   /\bdsh-desktop\b/g,
+  /\bDSH Desktop\b/g,
   /\bDSH Get\b/g,
   // Upstream-attribution statements: LICENSE and README name the predecessor
   // product on purpose; the retained copyright notice must keep its wording.
@@ -82,6 +102,7 @@ const rule = (find: RegExp, replace: string): Rule => ({ find, replace })
 const RULES: Rule[] = [
   // Repository and product URLs.
   rule(/github\.com\/deepseek-ai\/deepseek-harness/g, 'github.com/jyqj/relay-harness'),
+  rule(/githubusercontent\.com\/deepseek-ai\/deepseek-harness/g, 'githubusercontent.com/jyqj/relay-harness'),
   rule(/github\.com\/ChisaAlter\/Deepseek-Harness-Desktop/g, 'github.com/jyqj/relay-harness'),
   rule(/github\.com\/deepseek-harness\//g, 'github.com/relay-harness/'),
   rule(/ai\.deepseek\.harness\.gui/g, 'com.relayharness.desktop'),

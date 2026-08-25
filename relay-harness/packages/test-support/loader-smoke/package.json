@@ -32,21 +32,21 @@
   ],
   "license": "MIT",
   "dependencies": {
-    "execa": "^10.0.0",
-    "tsx": "^4.22.4"
+    "execa": "^10.0.1",
+    "tsx": "^4.23.12"
   },
   "peerDependencies": {
+    "@relay-harness/cordis": "workspace:^",
     "@relay-harness/rlh-agent": "workspace:^",
     "@relay-harness/rlh-invariants": "workspace:^",
     "@relay-harness/rlh-llm": "workspace:^",
-    "@relay-harness/rlh-session": "workspace:^",
-    "@relay-harness/cordis": "workspace:^"
+    "@relay-harness/rlh-session": "workspace:^"
   },
   "devDependencies": {
+    "@relay-harness/cordis": "workspace:^",
     "@relay-harness/rlh-agent": "workspace:^",
     "@relay-harness/rlh-invariants": "workspace:^",
     "@relay-harness/rlh-llm": "workspace:^",
-    "@relay-harness/rlh-session": "workspace:^",
-    "@relay-harness/cordis": "workspace:^"
+    "@relay-harness/rlh-session": "workspace:^"
   }
 }

@@ -15,7 +15,9 @@ import { gfm } from 'micromark-extension-gfm'
 import type { Nodes } from 'mdast'
 import { docsPages, type DocsLocale, type DocsPage } from '../website/docs.ts'
 
-const REPOSITORY_URL = 'https://github.com/jyqj/relay-harness'
+const REPOSITORY_SLUG = 'jyqj/relay-harness'
+const REPOSITORY_URL = `https://github.com/${REPOSITORY_SLUG}`
+const RAW_CONTENT_URL = `https://raw.githubusercontent.com/${REPOSITORY_SLUG}`
 const root = resolve(import.meta.dirname, '..')
 const generatedRoot = resolve(root, 'website/.generated')
 
@@ -219,7 +221,7 @@ function githubTarget(
   image: boolean,
 ): string {
   const path = repoPath(absPath, repoRoot)
-  if (image) return `https://raw.githubusercontent.com/deepseek-ai/relay-harness/${repositoryRef}/${path}${suffix}`
+  if (image) return `${RAW_CONTENT_URL}/${repositoryRef}/${path}${suffix}`
   const kind = lstatSync(absPath).isDirectory() ? 'tree' : 'blob'
   const lineSuffix = line === undefined ? suffix : `#L${line}`
   return `${REPOSITORY_URL}/${kind}/${repositoryRef}/${path}${lineSuffix}`

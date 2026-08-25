@@ -38,5 +38,5 @@ Host suites cover YAML CRUD, illegal `serverName`, duplicate ids, composition wr
 
 ## Related
 
-[MCP Settings polls health and remounts given-up children](../bug-fix/2026-08-20-mcp-settings-stale-health.md).
-[MCP Settings signs in HTTP servers](2026-08-20-mcp-settings-oauth.md).
+- [MCP Settings polls health and remounts given-up children](../bug-fix/2026-08-20-mcp-settings-stale-health.md)
+- [MCP Settings signs in HTTP servers](2026-08-20-mcp-settings-oauth.md)

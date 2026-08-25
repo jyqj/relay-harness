@@ -2,7 +2,7 @@
 
 English | [中文](README.zh.md)
 
-Relay Harness (`rlh`) is an open-source agent harness, rebranded from the MIT-licensed DeepSeek Harness (see [LICENSE](LICENSE) for the upstream copyright).
+Relay Harness (`rlh`) is an open-source agent harness.
 
 It uses an architecture where **everything is a plugin**, and is powered by [Cordis](https://github.com/cordiverse/cordis), whose design is described in [_A Programming Paradigm for Spatiotemporal Composability_](https://github.com/cordiverse/paper).
 
@@ -55,5 +55,7 @@ For agents, follow [AGENTS.md](AGENTS.md).
 ## License
 
 [MIT](LICENSE)
+
+Relay Harness is a rebrand of DeepSeek Harness, so [LICENSE](LICENSE) keeps the upstream copyright notice the MIT terms require.
 
 Third-party dependencies and their licenses are disclosed in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

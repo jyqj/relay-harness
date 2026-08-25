@@ -59,8 +59,8 @@ type QueryFactory = (params: {
 
 const queryMock = vi.hoisted(() => vi.fn<QueryFactory>())
 
-const CLAUDE_AGENT_SDK_VERSION = '0.3.220'
-const CLAUDE_CODE_VERSION = '2.1.220'
+const CLAUDE_AGENT_SDK_VERSION = '0.3.240'
+const CLAUDE_CODE_VERSION = '2.1.240'
 const CLAUDE_PLATFORM_PACKAGES = [
   '@anthropic-ai/claude-agent-sdk-darwin-arm64',
   '@anthropic-ai/claude-agent-sdk-darwin-x64',
@@ -356,7 +356,7 @@ describe('task admission and package contracts', () => {
     )
     expect(manifest.dependencies).toHaveProperty(
       '@modelcontextprotocol/sdk',
-      '^1.29.0',
+      '^1.30.0',
     )
     expect(manifest.dependencies).toHaveProperty('zod', '^4.4.3')
     expect(manifest.dependencies).not.toHaveProperty('@relay-harness/rlh-subagent-codex')
@@ -900,14 +900,14 @@ describe('query options and result mapping', () => {
         message: 'enter SECRET_TOKEN',
         requestedSchema: { secret: true },
       },
-      { signal: callbackSignal },
+      { signal: callbackSignal, requestId: 'request-2' },
     )).resolves.toEqual({ action: 'decline' })
     await expect(options.onUserDialog!(
       {
         dialogKind: 'refusal_fallback_prompt',
         payload: { path: '/private/secret.txt', token: 'SECRET_TOKEN' },
       },
-      { signal: callbackSignal },
+      { signal: callbackSignal, requestId: 'request-3' },
     )).resolves.toEqual({ behavior: 'cancelled' })
     expect(diagnostics).toEqual([
       'Claude Code unattended decision (mode: acceptEdits; request: tool permission; decision: denied): the provider does not request human approval',

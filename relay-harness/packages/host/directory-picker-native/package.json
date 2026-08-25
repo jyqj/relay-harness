@@ -39,15 +39,15 @@
   "dependencies": {
     "@relay-harness/rlh-host-directory-picker": "workspace:^",
     "@relay-harness/rlh-native-command": "workspace:^",
-    "koffi": "^3.1.0"
+    "koffi": "^3.1.6"
   },
   "peerDependencies": {
-    "@relay-harness/rlh-invariants": "workspace:^",
-    "@relay-harness/cordis": "workspace:^"
+    "@relay-harness/cordis": "workspace:^",
+    "@relay-harness/rlh-invariants": "workspace:^"
   },
   "devDependencies": {
-    "@relay-harness/rlh-invariants": "workspace:^",
     "@relay-harness/cordis": "workspace:^",
-    "tsx": "^4.19.2"
+    "@relay-harness/rlh-invariants": "workspace:^",
+    "tsx": "^4.23.12"
   }
 }

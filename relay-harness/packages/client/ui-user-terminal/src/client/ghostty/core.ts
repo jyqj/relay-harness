@@ -50,6 +50,12 @@ const RAW_CELL_DATA = {
   wide: 3,
 } as const;
 
+/**
+ * How a cell relates to the character drawn across it: a narrow character
+ * occupies one cell, while a wide one occupies a `wide` cell followed by a
+ * `spacerTail`. A `spacerHead` pads the end of a row too narrow to hold the
+ * wide character that would otherwise start there.
+ */
 export const GHOSTTY_CELL_WIDE = {
   narrow: 0,
   wide: 1,
@@ -57,71 +63,119 @@ export const GHOSTTY_CELL_WIDE = {
   spacerHead: 3,
 } as const;
 
+/** An 8-bit-per-channel RGB color. */
 export interface GhosttyColor {
+  /** Red channel, `0` to `255`. */
   readonly r: number;
+  /** Green channel, `0` to `255`. */
   readonly g: number;
+  /** Blue channel, `0` to `255`. */
   readonly b: number;
 }
 
+/** The colors a terminal draws with when the program picks none. */
 export interface GhosttyTheme {
+  /** Default text color. */
   readonly foreground: GhosttyColor;
+  /** Default background color. */
   readonly background: GhosttyColor;
+  /** Cursor color. */
   readonly cursor: GhosttyColor;
   /** CSS color the renderer overlays on selected cells; not sent to Ghostty. */
   readonly selectionBackground?: string;
 }
 
+/** One grid cell, with its text and every attribute the renderer draws. */
 export interface GhosttyCell {
+  /** The cell's character, empty on a spacer or a blank. */
   readonly text: string;
+  /** One of {@link GHOSTTY_CELL_WIDE}. */
   readonly wide: number;
+  /** Resolved text color, after the theme and any reverse-video. */
   readonly foreground: GhosttyColor;
+  /** Resolved background color. */
   readonly background: GhosttyColor;
+  /** Whether the text is bold. */
   readonly bold: boolean;
+  /** Whether the text is italic. */
   readonly italic: boolean;
+  /** Whether the text is hidden but still occupies the cell. */
   readonly invisible: boolean;
+  /** Whether a line is drawn through the text. */
   readonly strikethrough: boolean;
+  /** Whether a line is drawn above the text. */
   readonly overline: boolean;
+  /** Whether a line is drawn under the text. */
   readonly underline: boolean;
+  /** Whether the cell falls inside the current selection. */
   readonly selected: boolean;
 }
 
+/** One grid row. */
 export interface GhosttyRow {
+  /** The row's cells, left to right. */
   readonly cells: readonly GhosttyCell[];
+  /** The row's text, for selection and search. */
   readonly text: string;
+  /** Whether this row continues a soft wrap from the row above. */
   readonly isWrapContinuation: boolean;
   /** Whether this row soft-wraps onto the next row. */
   readonly wrapsToNext: boolean;
 }
 
+/** Everything the renderer needs to draw one frame of the viewport. */
 export interface GhosttySnapshot {
+  /** Grid width in cells. */
   readonly cols: number;
+  /** Grid height in cells. */
   readonly rows: number;
+  /** Default text color. */
   readonly foreground: GhosttyColor;
+  /** Default background color. */
   readonly background: GhosttyColor;
+  /** Cursor color. */
   readonly cursor: GhosttyColor;
+  /** Cursor column. */
   readonly cursorX: number;
+  /** Cursor row within the viewport. */
   readonly cursorY: number;
+  /** Whether the program is showing the cursor. */
   readonly cursorVisible: boolean;
+  /** Whether the program asked the cursor to blink. */
   readonly cursorBlinking: boolean;
+  /** Cursor shape, as Ghostty's cursor-style enum. */
   readonly cursorStyle: number;
+  /** Rows that changed since the last snapshot; the rest may be left drawn. */
   readonly dirtyRows: ReadonlySet<number>;
+  /** The viewport's rows, top to bottom. */
   readonly rowData: readonly GhosttyRow[];
 }
 
+/**
+ * A selection in both coordinate spaces: viewport coordinates for drawing,
+ * which shift as the scrollback moves, and screen coordinates for identity,
+ * which do not.
+ */
 export interface GhosttySelectionRange {
+  /** The selection relative to the visible viewport. */
   readonly viewport: {
     readonly start: { readonly x: number; readonly y: number };
     readonly end: { readonly x: number; readonly y: number };
   };
+  /** The selection relative to the whole screen, including scrollback. */
   readonly screen: {
     readonly start: { readonly x: number; readonly y: number };
     readonly end: { readonly x: number; readonly y: number };
   };
 }
 
+/** Where the viewport sits within the scrollback, in rows. */
 export interface GhosttyScrollbar {
+  /** Total rows, scrollback included. */
   readonly total: number;
+  /** Rows above the viewport. */
   readonly offset: number;
+  /** Rows the viewport shows. */
   readonly len: number;
 }
 
@@ -132,20 +186,39 @@ export interface GhosttyPointInput {
   readonly tag?: 1 | 2;
 }
 
+/**
+ * A mouse event in pixel coordinates, with the geometry Ghostty needs to
+ * resolve it to a cell itself — the encoding depends on subcell position, so
+ * the caller cannot round to a cell first.
+ */
 export interface GhosttyMouseInput {
+  /** What the mouse did. */
   readonly action: "press" | "release" | "motion";
+  /** Button index, or null for a motion with no button. */
   readonly button: number | null;
+  /** Held modifier keys, as Ghostty's modifier bitmask. */
   readonly mods: number;
+  /** Pointer x within the canvas, in pixels. */
   readonly x: number;
+  /** Pointer y within the canvas, in pixels. */
   readonly y: number;
+  /** Canvas width in pixels. */
   readonly screenWidth: number;
+  /** Canvas height in pixels. */
   readonly screenHeight: number;
+  /** Cell width in pixels. */
   readonly cellWidth: number;
+  /** Cell height in pixels. */
   readonly cellHeight: number;
+  /** Left inset in pixels. */
   readonly paddingLeft: number;
+  /** Right inset in pixels. */
   readonly paddingRight: number;
+  /** Top inset in pixels. */
   readonly paddingTop: number;
+  /** Bottom inset in pixels. */
   readonly paddingBottom: number;
+  /** Whether any button is down, which distinguishes a drag from a hover. */
   readonly anyButtonPressed: boolean;
 }
 
@@ -165,6 +238,12 @@ function sameColor(left: GhosttyColor, right: GhosttyColor): boolean {
   return left.r === right.r && left.g === right.g && left.b === right.b;
 }
 
+/**
+ * One terminal emulator: the Ghostty state machine plus the WebAssembly
+ * allocations it needs. Owns the parsed screen, the selection, and the key,
+ * paste, and mouse encoders, and hands the renderer a snapshot per frame.
+ * Every instance holds native memory and must be disposed.
+ */
 export class GhosttyTerminalCore {
   private readonly runtime: GhosttyRuntime;
   private terminalSlot = 0;
@@ -197,6 +276,19 @@ export class GhosttyTerminalCore {
     });
   }
 
+  /**
+   * Load the runtime if needed and build a terminal on it. A failure part-way
+   * through disposes what was allocated, so no caller inherits a half-built
+   * terminal.
+   * @param cols - grid width in cells.
+   * @param rows - grid height in cells.
+   * @param cellWidth - cell width in pixels.
+   * @param cellHeight - cell height in pixels.
+   * @param theme - default colors.
+   * @param onPtyData - receives bytes the terminal wants written to the pty.
+   * @returns the terminal, ready to write to.
+   * @throws when the runtime or any allocation fails.
+   */
   static async create(
     cols: number,
     rows: number,
@@ -290,6 +382,10 @@ export class GhosttyTerminalCore {
     this.resize(cols, rows, cellWidth, cellHeight);
   }
 
+  /**
+   * Feed terminal output through the parser.
+   * @param data - bytes from the pty, or a string to encode as UTF-8.
+   */
   write(data: string | Uint8Array): void {
     this.ensureActive();
     const bytes = typeof data === "string" ? encoder.encode(data) : data;
@@ -300,6 +396,13 @@ export class GhosttyTerminalCore {
     this.runtime.free(pointer, bytes.length);
   }
 
+  /**
+   * Hard-reset the terminal and replay a whole session's output into it, the
+   * path a reattach takes. The pty writer is detached across the replay so the
+   * replayed queries — cursor position, device attributes — do not send a
+   * burst of stale replies to a live shell.
+   * @param data - the full output to replay.
+   */
   resetAndWrite(data: string): void {
     this.ensureActive();
     this.runtime.call("ghostty_terminal_reset", this.terminal);
@@ -322,6 +425,15 @@ export class GhosttyTerminalCore {
     }
   }
 
+  /**
+   * Reflow the grid to a new size. Dimensions are clamped to what Ghostty
+   * accepts, so a collapsed or absurd layout cannot fail the resize.
+   * @param cols - grid width in cells.
+   * @param rows - grid height in cells.
+   * @param cellWidth - cell width in pixels.
+   * @param cellHeight - cell height in pixels.
+   * @throws when the reflow fails.
+   */
   resize(cols: number, rows: number, cellWidth: number, cellHeight: number): void {
     this.ensureActive();
     this.assertSuccess(
@@ -351,6 +463,10 @@ export class GhosttyTerminalCore {
     this.runtime.free(blink, 1);
   }
 
+  /**
+   * Replace the default colors. Colors a program set itself are unaffected.
+   * @param theme - the new defaults.
+   */
   setTheme(theme: GhosttyTheme): void {
     this.ensureActive();
     const color = this.runtime.alloc(3);
@@ -365,6 +481,10 @@ export class GhosttyTerminalCore {
     this.runtime.free(color, 3);
   }
 
+  /**
+   * Scroll the viewport within the scrollback.
+   * @param deltaRows - rows to move; negative scrolls toward older output.
+   */
   scroll(deltaRows: number): void {
     this.ensureActive();
     const layout = this.runtime.layout("GhosttyTerminalScrollViewport");
@@ -376,6 +496,7 @@ export class GhosttyTerminalCore {
     this.runtime.free(scroll, layout.size);
   }
 
+  /** Return the viewport to the live end of the scrollback. */
   scrollToBottom(): void {
     this.ensureActive();
     const layout = this.runtime.layout("GhosttyTerminalScrollViewport");
@@ -385,6 +506,10 @@ export class GhosttyTerminalCore {
     this.runtime.free(scroll, layout.size);
   }
 
+  /**
+   * Whether the viewport is at the live end, where new output appears.
+   * @returns false while the user is scrolled back.
+   */
   isViewportActive(): boolean {
     this.ensureActive();
     this.runtime.bytes(this.scratch, 1)[0] = 0;
@@ -394,6 +519,10 @@ export class GhosttyTerminalCore {
     );
   }
 
+  /**
+   * Where the viewport sits within the scrollback.
+   * @returns the scrollbar geometry, or null when the terminal will not report it.
+   */
   scrollbarState(): GhosttyScrollbar | null {
     this.ensureActive();
     const layout = this.runtime.layout("GhosttyTerminalScrollbar");
@@ -411,6 +540,11 @@ export class GhosttyTerminalCore {
     };
   }
 
+  /**
+   * Whether a program has asked to receive mouse events, in which case clicks
+   * belong to it rather than to selection.
+   * @returns true while any mouse-tracking mode is on.
+   */
   isMouseTracking(): boolean {
     this.ensureActive();
     this.runtime.bytes(this.scratch, 1)[0] = 0;
@@ -420,6 +554,11 @@ export class GhosttyTerminalCore {
     );
   }
 
+  /**
+   * Whether a program asked for motion events even with no button held
+   * (mode 1003), which means hover must be forwarded too.
+   * @returns true while any-event tracking is on.
+   */
   isMouseAnyEventTracking(): boolean {
     this.ensureActive();
     this.runtime.bytes(this.scratch, 1)[0] = 0;
@@ -429,6 +568,10 @@ export class GhosttyTerminalCore {
     );
   }
 
+  /**
+   * Whether the alternate screen is showing, as a full-screen program uses.
+   * @returns true on the alternate screen.
+   */
   isAlternateScreen(): boolean {
     this.ensureActive();
     this.runtime.bytes(this.scratch, 4).fill(0);
@@ -438,6 +581,11 @@ export class GhosttyTerminalCore {
     );
   }
 
+  /**
+   * Whether the program put the cursor keys in application mode, which changes
+   * the bytes the arrow keys send.
+   * @returns true while DECCKM is set.
+   */
   isApplicationCursorKeys(): boolean {
     this.ensureActive();
     this.runtime.bytes(this.scratch, 1)[0] = 0;
@@ -447,6 +595,14 @@ export class GhosttyTerminalCore {
     );
   }
 
+  /**
+   * The bytes a key event sends, under whatever keyboard protocol the program
+   * has negotiated. Ghostty owns the encoding, so Kitty progressive keys,
+   * application cursor mode, and plain legacy input all come out right.
+   * @param event - the DOM key event.
+   * @param action - whether the key went down or came up.
+   * @returns the bytes to write to the pty, empty when the key sends nothing.
+   */
   encodeKey(event: KeyboardEvent, action: "press" | "release" = "press"): string {
     this.ensureActive();
     this.runtime.call("ghostty_key_encoder_setopt_from_terminal", this.keyEncoder, this.terminal);
@@ -494,6 +650,12 @@ export class GhosttyTerminalCore {
     return encoded;
   }
 
+  /**
+   * The bytes a paste sends, wrapped in bracketed-paste markers when the
+   * program has asked for them.
+   * @param data - the pasted text.
+   * @returns the bytes to write to the pty.
+   */
   encodePaste(data: string): string {
     this.ensureActive();
     const input = encoder.encode(data);
@@ -537,6 +699,13 @@ export class GhosttyTerminalCore {
     return encoded;
   }
 
+  /**
+   * The bytes a mouse event sends, under whatever mouse protocol the program
+   * has enabled. Ghostty resolves the pixel position to a cell itself, since
+   * SGR-pixel mode reports subcell coordinates.
+   * @param input - the event and the geometry to resolve it against.
+   * @returns the bytes to write to the pty, empty when the event sends nothing.
+   */
   encodeMouse(input: GhosttyMouseInput): string {
     this.ensureActive();
     this.runtime.call(
@@ -602,6 +771,11 @@ export class GhosttyTerminalCore {
     return encoded;
   }
 
+  /**
+   * Select the span between two grid points, as a drag does.
+   * @param anchor - where the drag started.
+   * @param end - where it is now.
+   */
   setSelection(anchor: GhosttyPointInput, end: GhosttyPointInput): void {
     this.ensureActive();
     const selectionLayout = this.runtime.layout("GhosttySelection");
@@ -629,6 +803,7 @@ export class GhosttyTerminalCore {
     }
   }
 
+  /** Select the whole screen, scrollback included. */
   selectAll(): void {
     this.ensureActive();
     const layout = this.runtime.layout("GhosttySelection");
@@ -642,6 +817,12 @@ export class GhosttyTerminalCore {
     this.runtime.free(selection, layout.size);
   }
 
+  /**
+   * Select the word under a cell, as a double-click does.
+   * @param col - viewport column.
+   * @param row - viewport row.
+   * @returns the new selection, or null when the cell holds no word.
+   */
   selectWord(col: number, row: number): GhosttySelectionRange | null {
     return this.selectAt(
       "GhosttyTerminalSelectWordOptions",
@@ -651,6 +832,13 @@ export class GhosttyTerminalCore {
     );
   }
 
+  /**
+   * Select the logical line through a cell, soft-wrapped rows included, as a
+   * triple-click does.
+   * @param col - viewport column.
+   * @param row - viewport row.
+   * @returns the new selection, or null when the cell is on no line.
+   */
   selectLine(col: number, row: number): GhosttySelectionRange | null {
     return this.selectAt(
       "GhosttyTerminalSelectLineOptions",
@@ -660,6 +848,13 @@ export class GhosttyTerminalCore {
     );
   }
 
+  /**
+   * The OSC 8 hyperlink a cell carries, which a program set explicitly — not a
+   * URL detected in the text.
+   * @param col - viewport column.
+   * @param row - viewport row.
+   * @returns the target URI, or null when the cell carries no hyperlink.
+   */
   hyperlinkAt(col: number, row: number): string | null {
     this.ensureActive();
     const ref = this.gridRef(col, row);
@@ -687,11 +882,18 @@ export class GhosttyTerminalCore {
     return hyperlink;
   }
 
+  /** Drop the current selection. */
   clearSelection(): void {
     this.ensureActive();
     this.runtime.call("ghostty_terminal_set", this.terminal, 21, 0);
   }
 
+  /**
+   * The current viewport, as a frame to draw. Rows the terminal has not marked
+   * dirty are reused from the previous snapshot rather than re-read, so a
+   * steady screen costs one call and no per-cell work.
+   * @returns the frame, with the dirty rows named.
+   */
   snapshot(): GhosttySnapshot {
     this.ensureActive();
     this.assertSuccess(
@@ -765,6 +967,10 @@ export class GhosttyTerminalCore {
     };
   }
 
+  /**
+   * The selected text, with soft-wrapped rows rejoined.
+   * @returns the text, empty when nothing is selected.
+   */
   selectionText(): string {
     this.ensureActive();
     const options = this.runtime.alloc(SELECTION_FORMAT_OPTIONS_SIZE);
@@ -806,10 +1012,23 @@ export class GhosttyTerminalCore {
     return text;
   }
 
+  /**
+   * Convert a viewport cell to a screen cell, which stays fixed as the
+   * scrollback moves.
+   * @param col - viewport column.
+   * @param row - viewport row.
+   * @returns the screen point, or null when the cell is off the screen.
+   */
   viewportPointToScreen(col: number, row: number): { x: number; y: number } | null {
     return this.convertPoint(col, row, 1, 2);
   }
 
+  /**
+   * Convert a screen cell to a viewport cell.
+   * @param col - screen column.
+   * @param row - screen row.
+   * @returns the viewport point, or null when the cell is scrolled out of view.
+   */
   screenPointToViewport(col: number, row: number): { x: number; y: number } | null {
     return this.convertPoint(col, row, 2, 1);
   }
@@ -827,6 +1046,10 @@ export class GhosttyTerminalCore {
     return point;
   }
 
+  /**
+   * Free every WebAssembly allocation this terminal holds. Idempotent, and
+   * safe on a terminal whose construction failed part-way.
+   */
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
@@ -1202,6 +1425,13 @@ export class GhosttyTerminalCore {
   }
 }
 
+/**
+ * Whether two colors are the same, which the renderer uses to decide where a
+ * text run can continue.
+ * @param left - one color.
+ * @param right - the other.
+ * @returns true when every channel matches.
+ */
 export function ghosttyColorsEqual(left: GhosttyColor, right: GhosttyColor): boolean {
   return sameColor(left, right);
 }

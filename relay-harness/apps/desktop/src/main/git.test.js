@@ -9,6 +9,16 @@ const { COMMIT_TIMEOUT_MS, FETCH_TIMEOUT_MS, GH_TIMEOUT_MS, commitArgs, gitBranc
 const { parseRepositoryNameWithOwnerFromNormalized } = require('./git-pullrequest');
 const { setTextGenerator } = require('./git-generate.js');
 
+// Ambient git configuration reaches every git this suite spawns, directly and
+// through git.js. A host that rewrites remote URLs with url.*.insteadOf, signs
+// commits, or installs LFS filters would change what these fixtures observe, so
+// both config scopes point at an empty file and each fixture sets its own
+// identity locally.
+const hermeticGitConfig = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'rlh-git-config-')), 'config');
+fs.writeFileSync(hermeticGitConfig, '');
+process.env.GIT_CONFIG_GLOBAL = hermeticGitConfig;
+process.env.GIT_CONFIG_SYSTEM = hermeticGitConfig;
+
 function makeTempDir() {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'rlh-git-'));
   // Pin the workspace authority so cwd checks pass inside this test root.

@@ -40,7 +40,7 @@ its own rlh: it may be older than the one `npm` would give you (#139).
 - **Backup & restore** — export your profile's plugin list and configuration as readable JSON, import it on another machine, store it on WebDAV with daily auto-backup, or sync through a private GitHub Gist; restores **merge** (plugins installed after the backup are kept), validate before writing, and roll back on failure
 - **Updates** — per-plugin update checks (npm version or pinned commit vs HEAD), one-click update, or update everything at once; the market updates itself the same way
 - **Uninstall** — two-step confirm; plugins installed this session are removed live
-- **Hot disable / enable** — toggles write `- id: …` + `disabled: true|false` into the profile's `cordis.patch.yml` (the official patch layer, mechanism ported from [rlh-plugin-hub](https://github.com/Noob-stupid/dsh-plugin-hub)): RLH's HMR re-composes within ~1s, no restart, and the loader re-applies the choice on every boot; hand-edited patch rows show as badges, host-infrastructure plugins are protected from toggling, and a malformed patch file is never made worse
+- **Hot disable / enable** — toggles write `- id: …` + `disabled: true|false` into the profile's `cordis.patch.yml` (the official patch layer, mechanism ported from [dsh-plugin-hub](https://github.com/Noob-stupid/dsh-plugin-hub)): RLH's HMR re-composes within ~1s, no restart, and the loader re-applies the choice on every boot; hand-edited patch rows show as badges, host-infrastructure plugins are protected from toggling, and a malformed patch file is never made worse
 - **Restart when needed** — changes that cannot hot-load show a one-click restart beside the pending-change banner; the action is restricted to same-origin loopback requests
 - **Zero jargon** — if a component is missing (pnpm), the market detects it and offers a one-click automatic setup
 - **Log export** — one click produces a sanitized plain-text log for bug reports (home paths and credential shapes are masked; nothing is ever sent anywhere). The market's version sits next to the page heading, so a screenshot of a problem already carries it
@@ -82,13 +82,13 @@ Live from [awesome-dsh-plugin.com/plugins.json](https://awesome-dsh-plugin.com/p
 
 ## Friends
 
-### RLH Desktop (dataelement)
+### DSH Desktop (dataelement)
 
 [dsh-desktop](https://github.com/dataelement/dsh-desktop) — a desktop app for Relay Harness: run and manage a local Harness without installing Node.js yourself. Ships with this plugin market preset as the default. [dshdesktop.com](https://dshdesktop.com)
 
-### Relay Harness Desktop (hairyf)
+### DeepSeek Harness Desktop (hairyf)
 
-[relay-harness-desktop](https://github.com/hairyf/relay-harness-desktop) — a native desktop app for Relay Harness built with **Tauri** (Rust + Web): one-click local install and launch with no Node.js setup required. On first run it offers to install this plugin market as a recommended preset.
+[deepseek-harness-desktop](https://github.com/hairyf/deepseek-harness-desktop) — a native desktop app for Relay Harness built with **Tauri** (Rust + Web): one-click local install and launch with no Node.js setup required. On first run it offers to install this plugin market as a recommended preset.
 
 ### DSH Get
 

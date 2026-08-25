@@ -21,10 +21,10 @@ describe('createFileTreeDragMentionController', () => {
     const transfer = makeTransfer()
     controller.handleDragStart({
       dataTransfer: transfer,
-      composedPath: () => [{}, rowNode('docs/index.md'), {}],
+      composedPath: () => [{}, rowNode('docs/glossary.md'), {}],
     })
-    expect(transfer.getData(COMPOSER_MENTION_DRAG_TYPE)).toBe('[index.md](docs/index.md)')
-    expect(transfer.getData('text/plain')).toBe('[index.md](docs/index.md)')
+    expect(transfer.getData(COMPOSER_MENTION_DRAG_TYPE)).toBe('[glossary.md](docs/glossary.md)')
+    expect(transfer.getData('text/plain')).toBe('[glossary.md](docs/glossary.md)')
     expect(controller.isDragInProgress()).toBe(true)
   })
 
@@ -74,22 +74,22 @@ describe('createFileTreeDragMentionController', () => {
     const controller = createFileTreeDragMentionController({
       deselect: path => deselected.push(path),
     })
-    controller.handleSelectionChange(['docs/index.md', 'docs/api.md', 'src/app.ts'])
+    controller.handleSelectionChange(['docs/glossary.md', 'docs/api-gateway.md', 'src/app.ts'])
     const transfer = makeTransfer()
     controller.handleDragStart({
       dataTransfer: transfer,
-      composedPath: () => [rowNode('docs/api.md')],
+      composedPath: () => [rowNode('docs/api-gateway.md')],
     })
     expect(transfer.getData(COMPOSER_MENTION_DRAG_TYPE)).toBe(
-      '[index.md](docs/index.md) [api.md](docs/api.md) [app.ts](src/app.ts)',
+      '[glossary.md](docs/glossary.md) [api-gateway.md](docs/api-gateway.md) [app.ts](src/app.ts)',
     )
     controller.handleDragEnd()
-    expect(deselected).toEqual(['docs/index.md', 'docs/api.md', 'src/app.ts'])
+    expect(deselected).toEqual(['docs/glossary.md', 'docs/api-gateway.md', 'src/app.ts'])
   })
 
   it('drags only the row under the cursor when it is outside the selection', () => {
     const controller = createFileTreeDragMentionController({ deselect: () => {} })
-    controller.handleSelectionChange(['docs/index.md'])
+    controller.handleSelectionChange(['docs/glossary.md'])
     const transfer = makeTransfer()
     controller.handleDragStart({
       dataTransfer: transfer,

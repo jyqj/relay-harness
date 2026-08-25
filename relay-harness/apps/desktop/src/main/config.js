@@ -21,6 +21,7 @@ const DEFAULTS = {
   openDevTools: false,
   theme: 'relay',
   locale: 'zh',
+  simpleMode: false,
   githubToken: '',
   remoteEnabled: false,
   remotePort: 3180,
@@ -49,7 +50,7 @@ function normalizeRendererConfigPatch(patch) {
   }
   const next = {};
   for (const [key, value] of Object.entries(patch)) {
-    if (['closeToTray', 'openAtLogin', 'openDevTools', 'harnessAutoRestart'].includes(key)) {
+    if (['closeToTray', 'openAtLogin', 'openDevTools', 'harnessAutoRestart', 'simpleMode'].includes(key)) {
       if (typeof value !== 'boolean') {
         throw new TypeError(`${key} must be a boolean`);
       }
@@ -85,7 +86,7 @@ function normalizeRendererConfigPatch(patch) {
       continue;
     }
     if (key === 'githubToken') {
-      // oxlint-disable-next-line no-control-regex -- rejecting control characters is the point: they would forge HTTP header lines.
+      // Rejecting control characters is the point: they would forge HTTP header lines.
       if (typeof value !== 'string' || value.length > 512 || /[\r\n\0]/.test(value)) {
         throw new TypeError('githubToken must be a valid string');
       }
@@ -142,6 +143,15 @@ function normalizeHarnessRecovery(config) {
     ? baseDelayMs
     : DEFAULTS.harnessRestartBaseDelayMs;
   return next;
+}
+
+/**
+ * Coerce the shell-surface preferences a stored config may carry in any shape.
+ * @param {object} config The merged config.
+ * @returns {object} The config with `simpleMode` a real boolean.
+ */
+function normalizeShellSurface(config) {
+  return { ...config, simpleMode: config.simpleMode === true };
 }
 
 function normalizePluginRecovery(config) {
@@ -209,7 +219,9 @@ function loadConfig() {
     remoteRelayToken: typeof creds.remoteRelayToken === 'string' ? creds.remoteRelayToken : '',
     remoteDevices: Array.isArray(creds.remoteDevices) ? creds.remoteDevices : [],
   };
-  config = normalizeRemoteConfig(normalizePluginRecovery(normalizeHarnessRecovery(config)));
+  config = normalizeShellSurface(
+    normalizeRemoteConfig(normalizePluginRecovery(normalizeHarnessRecovery(config))),
+  );
   if (!config.workspace || isUnsafeWorkspace(config.workspace)) {
     config.workspace = defaultWorkspace();
   }
@@ -223,7 +235,9 @@ function loadConfig() {
 
 function saveConfig(next) {
   const current = loadConfig();
-  const merged = normalizeRemoteConfig(normalizePluginRecovery(normalizeHarnessRecovery({ ...current, ...next })));
+  const merged = normalizeShellSurface(
+    normalizeRemoteConfig(normalizePluginRecovery(normalizeHarnessRecovery({ ...current, ...next }))),
+  );
   if (merged.githubToken === '********') {
     merged.githubToken = current.githubToken;
   }
@@ -252,6 +266,7 @@ function publicConfig(config) {
     apiKey: config.apiKey ? '********' : '',
     githubToken: config.githubToken ? '********' : '',
     hasApiKey: Boolean(config.apiKey),
+    simpleMode: config.simpleMode === true,
     hasGithubToken: Boolean(config.githubToken),
     remoteEnabled: Boolean(config.remoteEnabled),
     remoteAvailable: REMOTE_FEATURE_ENABLED,
@@ -277,4 +292,5 @@ module.exports = {
   normalizeRendererConfigPatch,
   normalizeRelayOrigin,
   normalizeRemoteConfig,
+  normalizeShellSurface,
 };
