@@ -1,5 +1,7 @@
 # Production QA blockers — fix execution (2026-08-21)
 
+> **Frozen historical snapshot**: archived as written and no longer updated; brand, theme, and model names reflect the state at the time and are not current brand or policy.
+
 ## Changes shipped in tree
 
 1. **`vendor/relay-harness` `build:lib:client`** now runs `copy-ghostty-assets.mjs` after tsdown.

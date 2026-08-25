@@ -5,14 +5,14 @@
    or path destroys the alignment a reader scans by. */
 
 .block {
-  --dsl-search-radius: 12px;
-  --dsl-search-line-height: 22px;
+  --rll-search-radius: 12px;
+  --rll-search-line-height: 22px;
 
   position: relative;
   margin: 16px 0;
   color: var(--rlw-alias-label-primary);
   background: var(--rlw-alias-markdown-code-block);
-  border-radius: var(--dsl-search-radius);
+  border-radius: var(--rll-search-radius);
 }
 
 /* The banner: result summary on the left, the copy control holding its
@@ -23,8 +23,8 @@
   gap: 12px;
   padding: 9px 14px;
   background: var(--rlw-alias-markdown-code-block-banner);
-  border-top-left-radius: var(--dsl-search-radius);
-  border-top-right-radius: var(--dsl-search-radius);
+  border-top-left-radius: var(--rll-search-radius);
+  border-top-right-radius: var(--rll-search-radius);
 }
 
 .summary {
@@ -58,7 +58,7 @@
 /* No wrapping: a match line or a path keeps its content on one row and scrolls
    sideways instead of folding. */
 .line {
-  min-height: var(--dsl-search-line-height);
+  min-height: var(--rll-search-line-height);
   padding-left: 14px;
   white-space: pre;
 }
@@ -76,7 +76,7 @@
   align-items: baseline;
   gap: 8px;
   width: 100%;
-  min-height: var(--dsl-search-line-height);
+  min-height: var(--rll-search-line-height);
   padding: 0 14px;
   border: none;
   background-color: transparent;

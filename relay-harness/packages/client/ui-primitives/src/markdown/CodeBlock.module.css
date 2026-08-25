@@ -1,17 +1,18 @@
-/* Visual baseline: deepsuite `@deepseek/md` code-block.css. Highlight colors
-   stay on the existing shiki `--shiki-*` sheet (not Prism highlight.css). */
+/* Visual baseline: the rlh web code-block design language (docs/web-styling.md;
+   token sheets owned by ui-theme). Highlight colors stay on the existing shiki
+   `--shiki-*` sheet (not a Prism sheet). */
 
 .block {
-  --dsl-code-block-banner-background-color: var(--rlw-alias-markdown-code-block-banner);
-  --dsl-code-block-border-radius: 12px;
-  --dsl-code-block-banner-font: var(--rlw-font-xs-13);
-  --dsl-code-block-content-font: var(--rlw-font-markdown-code-block);
+  --rll-code-block-banner-background-color: var(--rlw-alias-markdown-code-block-banner);
+  --rll-code-block-border-radius: 12px;
+  --rll-code-block-banner-font: var(--rlw-font-xs-13);
+  --rll-code-block-content-font: var(--rlw-font-markdown-code-block);
 
   position: relative;
   margin: 16px 0;
   color: var(--rlw-alias-label-primary);
   background: var(--rlw-alias-markdown-code-block);
-  border-radius: var(--dsl-code-block-border-radius);
+  border-radius: var(--rll-code-block-border-radius);
 }
 
 .block:not(:last-child) {
@@ -23,20 +24,20 @@
   top: 0;
   z-index: 6;
   background-color: var(--rlw-alias-bg-base);
-  border-top-left-radius: var(--dsl-code-block-border-radius);
-  border-top-right-radius: var(--dsl-code-block-border-radius);
+  border-top-left-radius: var(--rll-code-block-border-radius);
+  border-top-right-radius: var(--rll-code-block-border-radius);
 }
 
 .banner {
-  background: var(--dsl-code-block-banner-background-color);
+  background: var(--rll-code-block-banner-background-color);
   padding: 9px 14px;
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 12px;
-  font: var(--dsl-code-block-banner-font);
-  border-top-left-radius: var(--dsl-code-block-border-radius);
-  border-top-right-radius: var(--dsl-code-block-border-radius);
+  font: var(--rll-code-block-banner-font);
+  border-top-left-radius: var(--rll-code-block-border-radius);
+  border-top-right-radius: var(--rll-code-block-border-radius);
 }
 
 .infostring {
@@ -67,7 +68,7 @@
 }
 
 .block :where(pre) {
-  font: var(--dsl-code-block-content-font);
+  font: var(--rll-code-block-content-font);
   padding: 16px;
   margin: 0 !important;
   overflow-x: auto;
@@ -76,8 +77,8 @@
   background: var(--rlw-alias-markdown-code-block);
   /* Bottom radii live on <pre>: overflow:hidden on .block would kill the
      sticky banner, and this opaque fill otherwise squares off the wrapper. */
-  border-bottom-left-radius: var(--dsl-code-block-border-radius);
-  border-bottom-right-radius: var(--dsl-code-block-border-radius);
+  border-bottom-left-radius: var(--rll-code-block-border-radius);
+  border-bottom-right-radius: var(--rll-code-block-border-radius);
 }
 
 /* Shiki inlines its theme background var; route it to the repo token. */

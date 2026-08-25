@@ -29,7 +29,7 @@ export const SIDEBAR_DEFAULT = 280
 /** Closed-sidebar rail: a 24px icon column between 16px horizontal paddings. */
 export const SIDEBAR_COLLAPSED = 56
 /** Viewport width below which the sidebar auto-collapses to the rail in
- * portrait (deepsuite LG breakpoint); a manual toggle below it re-expands
+ * portrait (the rlh web LG breakpoint); a manual toggle below it re-expands
  * over the squeezed center (stores.ts narrowExpanded). Landscape skips this
  * band. Phone overlay (`PHONE_MAX`, portrait only) is a stricter band
  * inside this range and takes the sidebar out of the grid entirely. */
