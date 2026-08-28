@@ -11,8 +11,9 @@
 5. [`agent/agent-runtime.md`](agent/agent-runtime.md) — Agent Loop、状态、恢复与本地验证
 6. [`agent/work-and-files.md`](agent/work-and-files.md) — 无项目 work 与文件上下文
 7. [`agent/memory.md`](agent/memory.md) — 长期记忆需求与待决策项
-8. [`scheduling/interface.md`](scheduling/interface.md) — 外部中转调度接口
-9. [`engineering/p0-scope.md`](engineering/p0-scope.md) — 开发起步顺序与验收
+8. [`agent/context-engine.md`](agent/context-engine.md) — 本地上下文引擎：多来源检索、Evidence 与打包
+9. [`scheduling/interface.md`](scheduling/interface.md) — 外部中转调度接口
+10. [`engineering/p0-scope.md`](engineering/p0-scope.md) — 开发起步顺序与验收
 
 ## 目录职责
 
@@ -42,6 +43,7 @@
 - [`prompt-enhancing-context-pipeline.md`](agent/prompt-enhancing-context-pipeline.md)
 - [`work-and-files.md`](agent/work-and-files.md)
 - [`memory.md`](agent/memory.md)
+- [`context-engine.md`](agent/context-engine.md)
 - [`routing-signals.md`](agent/routing-signals.md)
 - [`orchestration.md`](agent/orchestration.md)
 - [`verification-and-effects.md`](agent/verification-and-effects.md)
