@@ -11,7 +11,7 @@ body {
   --rlw-mask-blur: blur(2px);
 }
 
-body[data-ds-dark-theme] {
+body[data-rl-dark-theme] {
   --rlw-linear-gradient-think: linear-gradient(180deg, #151517 20.19%, rgba(21, 21, 23, 0) 100%);
   --rlw-linear-think-select: linear-gradient(180deg, #232325 20.19%, rgba(35, 35, 37, 0) 100%);
 }

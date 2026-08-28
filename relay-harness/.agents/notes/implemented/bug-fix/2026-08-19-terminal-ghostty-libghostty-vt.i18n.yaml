@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/bug-fix/2026-08-19-terminal-ghostty-libghostty-vt.md
-2026-08-19-terminal-ghostty-libghostty-vt.md: e1572e59b724064dca818ceecd6da21b20028c91
-2026-08-19-terminal-ghostty-libghostty-vt.zh.md: a05fb467a755517853bf2ec29a22c9524d862572
+2026-08-19-terminal-ghostty-libghostty-vt.md: 19a7dcc842253527e0dc758b7ff053076b9c2989
+2026-08-19-terminal-ghostty-libghostty-vt.zh.md: 4633510faaed6c7da0bba55b1c6848b5a69edd4e

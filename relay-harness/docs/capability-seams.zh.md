@@ -193,6 +193,9 @@ flowchart LR
   svc_spillStore["ctx.spillStore<br/>Spill storage seam"]
   pkg_spill_local["spill-local"]
   pkg_spill_policy["spill-policy"]
+  pkg_index["index"]
+  svc_codeContext["ctx.codeContext<br/>Code-index recall contributor"]
+  svc_codeIndex["ctx.codeIndex<br/>Local code-index retrieval seam"]
   pkg_directory_picker["directory-picker"]
   svc_directoryPicker["ctx.directoryPicker<br/>Workspace-directory picking seam"]
   pkg_directory_picker_native["directory-picker-native"]
@@ -227,6 +230,8 @@ flowchart LR
   svc_lsp["ctx.lsp<br/>Language-server navigation seam"]
   pkg_lsp_local["lsp-local"]
   pkg_tool_lsp["tool-lsp"]
+  pkg_context_engine["context-engine"]
+  svc_contextEngine["ctx.contextEngine<br/>Step-context contributor registry"]
   svc_apiProxy["ctx.apiProxy<br/>Host API dispatch"]
   pkg_cordis_host_runner["cordis-host-runner"]
   svc_dynamicCordisRunner["ctx.dynamicCordisRunner<br/>Dynamic Cordis package host runner"]
@@ -250,6 +255,7 @@ flowchart LR
   pkg_compaction --> svc_compaction
   pkg_compaction_basic --> svc_compaction
   pkg_compaction_tool_result_pruner --> svc_toolResultPruner
+  pkg_context_engine --> svc_contextEngine
   pkg_cordis_host_runner --> svc_cordisInspect
   pkg_cordis_host_runner --> svc_dynamicCordisRunner
   pkg_credentials --> svc_credentials
@@ -265,6 +271,8 @@ flowchart LR
   pkg_fs_local --> svc_fs
   pkg_fs_sandbox --> svc_fs
   pkg_goal --> svc_goals
+  pkg_index --> svc_codeContext
+  pkg_index --> svc_codeIndex
   pkg_invariants --> svc_invariants
   pkg_issue_orchestration --> svc_issueOrchestration
   pkg_issue_orchestrator --> svc_issueOrchestration
@@ -366,6 +374,7 @@ flowchart LR
   svc_clientModules --> pkg_hmr
   svc_codeRuntime --> pkg_tools
   svc_compaction --> pkg_compaction_basic
+  svc_contextEngine --> pkg_file_reference_local
   svc_cordisInspect --> pkg_tool_cordis
   svc_credentials --> pkg_apiproxy
   svc_credentials --> pkg_llm_deepseek
@@ -540,6 +549,8 @@ flowchart LR
 | `ctx.jobs` | `seam` | [`jobs`](../packages/jobs/jobs) | [`jobs-local`](../packages/jobs/jobs-local) | [`tool-bash`](../packages/shell/tool-bash), [`tool-terminal`](../packages/terminal/tool-terminal), [`tool-subagent`](../packages/subagent/tool-subagent), [`tool-jobs`](../packages/jobs/tool-jobs) | - | 生产方（后台 bash、PTY 发送和 subagent 委派）登记正在运行的工作；tool-jobs 是面向模型的控制器，用于读取、列出和终止这些工作；jobs-local 是进程本地注册表。 |
 | `ctx.web` | `seam` | [`web`](../packages/web/web) | [`web-search-exa`](../packages/web/web-search-exa), [`web-search-perplexity`](../packages/web/web-search-perplexity), [`web-search-deepseek`](../packages/web/web-search-deepseek), [`web-fetch-http`](../packages/web/web-fetch-http) | [`tool-web`](../packages/web/tool-web) | - | 搜索和抓取提供方注册到同一个 ctx.web seam；tool-web 负责稳定的面向模型名称。 |
 | `ctx.spillStore` | `seam` | [`spill`](../packages/spill/spill) | [`spill-local`](../packages/spill/spill-local) | [`spill-policy`](../packages/spill/spill-policy) | - | 后端保存过大的工具文本，并返回面向模型的定位信息和取回提示；spill-policy 是 tools/post-execute 消费方，负责决定何时 spill。 |
+| `ctx.codeContext` | `seam` | `index` | - | - | - | opt-in 的步级上下文 contributor：把本地代码索引检索注入为 recall 形式的 user 消息并附逐命中 evidence；检索词汇由 code-index seam 持有，本包只拥有注入。 |
+| `ctx.codeIndex` | `seam` | `index` | - | - | - | seam 持有检索词汇、仓库规模分档与 epoch 配对；基于 SQLite 的 provider 与 search/status/refresh 工具消费方在后续增量中交付。 |
 | `ctx.directoryPicker` | `seam` | `directory-picker` | `directory-picker-native`, `directory-picker-browse` | `apiproxy` | - | 带判别标记的交互能力：原生后端在 Host 显示设备上打开一个操作系统选择器，浏览后端为应用内浏览器提供列表与创建原语；双端后端通过其浏览器侧填充 ui-workspace 目录流程的 slot（不通过协议发布）。 |
 | `ctx.webServer` | `core` | `webserver` | - | `connection`, `modules`, `hmr` | - | 普通的 node:http 载体：具名路由注册表、索引转换 tap，以及静态 dist 回退；Web 传输插件注册自己的路由。 |
 | `ctx.clientModules` | `core` | `modules` | - | `hmr` | - | 通过增量 `rlh.client` 扫描组合 __RLH_BOOT__ 入口图，提供插件组合包，并通知重建／图变更订阅方。 |
@@ -550,6 +561,7 @@ flowchart LR
 | `ctx.issueRunner` | `seam` | [`issue-runner`](../packages/automation/issue-runner) | [`issue-runner-agent`](../packages/automation/issue-runner-agent) | [`issue-orchestrator`](../packages/automation/issue-orchestrator) | - | Provider 发布一个 holder-owned Run，包含捕获的 Tracker 工具、进展、取消和静止结算。 |
 | `ctx.issueOrchestration` | `seam` | [`issue-orchestration`](../packages/automation/issue-orchestration) | [`issue-orchestrator`](../packages/automation/issue-orchestrator) | [`api-remotes`](../packages/api/remotes), [`client-ui-issue-orchestration`](../packages/client/ui-issue-orchestration) | - | 一个持久单写者拥有 claim、运行 attempt、retry、block、reconciliation、capacity 和 Operator 命令。 |
 | `ctx.lsp` | `seam` | [`lsp`](../packages/lsp/lsp) | `lsp-local` | [`tool-lsp`](../packages/lsp/tool-lsp) | - | 提供方注册与选择，加上恰好四种操作的标准化查询执行；该 seam 不提供协议逃生口，后端必须转换为标准化请求和结果。 |
+| `ctx.contextEngine` | `core` | [`context-engine`](../packages/context/context-engine) | - | [`file-reference-local`](../packages/context/file-reference-local) | - | 将绑定 revision 的 contributor 消息排序并注入提示词组装之前的已领取步骤；contributor 负责检索、消息来源与证据生产，引擎负责排序与证据词汇。 |
 | `ctx.apiProxy` | `core` | `apiproxy` | - | `connection` | - | 与传输无关的 Host 网关接口：它分派浏览器 API 调用，每条打开的 Host 流自行订阅转发事件，而不是由广播方法向其推送。 |
 | `ctx.dynamicCordisRunner` | `core` | [`cordis-host-runner`](../packages/extensions/cordis-host-runner) | - | [`tool-cordis`](../packages/extensions/tool-cordis) | - | 拥有内存定义注册表、Host 半的 vm 沙箱和 request-run 往返流程；浏览器页面通过其 Remote 命名空间在线访问同一服务。 |
 | `ctx.cordisInspect` | `core` | [`cordis-host-runner`](../packages/extensions/cordis-host-runner) | - | [`tool-cordis`](../packages/extensions/tool-cordis) | - | 注册 Host inspect 提供方、镜像 Client 提供方 manifest，并通过动态 Cordis 传输路由 Client 查询。 |

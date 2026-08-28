@@ -138,7 +138,7 @@ export function TerminalPane({
       })
       themeObserver.observe(host.ownerDocument.body, {
         attributes: true,
-        attributeFilter: ['data-ds-dark-theme'],
+        attributeFilter: ['data-rl-dark-theme'],
       })
       const fitTimer = window.setTimeout(() => {
         const activeTerminal = termRef.current

@@ -30,7 +30,6 @@
     "node-pty": "1.2.0-beta.15"
   },
   "devDependencies": {
-    "@types/ws": "^8.18.1",
     "electron": "^43.4.0",
     "electron-builder": "^26.15.3",
     "pnpm": "11.22.0"

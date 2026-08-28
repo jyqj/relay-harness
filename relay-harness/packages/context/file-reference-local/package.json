@@ -40,19 +40,26 @@
     "@relay-harness/schemastery": "workspace:^"
   },
   "peerDependencies": {
+    "@relay-harness/cordis": "workspace:^",
     "@relay-harness/rlh-agent": "workspace:^",
+    "@relay-harness/rlh-context-engine": "workspace:^",
     "@relay-harness/rlh-file-reference": "workspace:^",
+    "@relay-harness/rlh-fs": "workspace:^",
     "@relay-harness/rlh-invariants": "workspace:^",
+    "@relay-harness/rlh-llm": "workspace:^",
     "@relay-harness/rlh-system-prompt": "workspace:^",
-    "@relay-harness/rlh-tools": "workspace:^",
-    "@relay-harness/cordis": "workspace:^"
+    "@relay-harness/rlh-tools": "workspace:^"
   },
   "devDependencies": {
+    "@relay-harness/cordis": "workspace:^",
     "@relay-harness/rlh-agent": "workspace:^",
+    "@relay-harness/rlh-context-engine": "workspace:^",
     "@relay-harness/rlh-file-reference": "workspace:^",
+    "@relay-harness/rlh-fs": "workspace:^",
+    "@relay-harness/rlh-fs-local": "workspace:^",
     "@relay-harness/rlh-invariants": "workspace:^",
+    "@relay-harness/rlh-llm": "workspace:^",
     "@relay-harness/rlh-system-prompt": "workspace:^",
-    "@relay-harness/rlh-tools": "workspace:^",
-    "@relay-harness/cordis": "workspace:^"
+    "@relay-harness/rlh-tools": "workspace:^"
   }
 }

@@ -2,14 +2,19 @@
   "minTokens": 60,
   "minLines": 6,
   "mode": "mild",
-  "format": ["typescript", "tsx"],
-  "pattern": "**/*.{ts,tsx}",
-  "ignore": ["**/tests/**", "**/tsdown.config.ts", "**/ui-user-terminal/src/client/ghostty/**"],
+  "threshold": 1,
+  "format": ["typescript", "tsx", "javascript"],
+  "pattern": "**/*.{ts,tsx,js,jsx}",
+  "ignore": [
+    "**/tests/**",
+    "**/tsdown.config.ts",
+    "**/ui-user-terminal/src/client/ghostty/**",
+    "apps/desktop/vendor/**"
+  ],
   "ignorePattern": [
     "(?s)/\\* jscpd:ignore-start \\*/.*?/\\* jscpd:ignore-end \\*/"
   ],
   "reporters": ["console"],
-  "exitCode": 1,
   "noColors": true,
   "noTips": true
 }

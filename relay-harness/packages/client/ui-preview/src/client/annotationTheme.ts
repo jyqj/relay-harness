@@ -53,7 +53,7 @@ function readVariable(styles: CSSStyleDeclaration, name: string, fallback: strin
 export function readPreviewAnnotationTheme(): PreviewAnnotationTheme {
   const root = document.documentElement
   const styles = getComputedStyle(root)
-  const dark = root.hasAttribute('data-ds-dark-theme')
+  const dark = root.hasAttribute('data-rl-dark-theme')
     || styles.colorScheme.includes('dark')
   return {
     colorScheme: dark ? 'dark' : 'light',

@@ -14,8 +14,8 @@
   --boot-fill: rgb(15, 17, 21);
 }
 
-html[data-ds-dark-theme],
-body[data-ds-dark-theme] {
+html[data-rl-dark-theme],
+body[data-rl-dark-theme] {
   --boot-bg: rgb(8, 8, 8);
   --boot-ink: rgb(249, 250, 251);
   --boot-muted: rgb(173, 178, 184);

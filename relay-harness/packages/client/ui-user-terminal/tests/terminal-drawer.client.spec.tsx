@@ -584,9 +584,9 @@ describe('TerminalDrawer', () => {
     document.documentElement.classList.add('dark')
     await waitFor(() =>{  expect(term.themeWrites.length).toBeGreaterThanOrEqual(3) })
     document.documentElement.classList.remove('dark')
-    document.body.setAttribute('data-ds-dark-theme', '')
+    document.body.setAttribute('data-rl-dark-theme', '')
     await waitFor(() =>{  expect(term.themeWrites.length).toBeGreaterThanOrEqual(4) })
-    document.body.removeAttribute('data-ds-dark-theme')
+    document.body.removeAttribute('data-rl-dark-theme')
   })
 
   it('writes Ghostty init failure copy onto the mount', async () => {

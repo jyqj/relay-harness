@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/process/2026-08-23-relay-harness-rename.md
-2026-08-23-relay-harness-rename.md: 53f84d87519c90afebe03441c802929402db8e2e
-2026-08-23-relay-harness-rename.zh.md: b2003016e8905342d61a43d3ab10939eec7e7c40
+2026-08-23-relay-harness-rename.md: ceaf47343dcdde8f80a5b680c682ca8c6c5bc5ce
+2026-08-23-relay-harness-rename.zh.md: 722da66995e52c1e35d613a9e426f1c327a5b4c0

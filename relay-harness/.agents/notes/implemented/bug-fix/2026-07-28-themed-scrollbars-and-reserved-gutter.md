@@ -14,7 +14,7 @@ The visible symptom that surfaced the gap was elsewhere. The workspace browser's
 
 `packages/client/ui-theme/src/styles/scrollbar.css` is the sole consumer of the four tokens and the third global sheet imported by ui-theme's dynamic client entry. It follows `design-platform.css` there because it reads that sheet's tokens; both compile into ui-theme's plugin-owned client bundle.
 
-The rules sit on `body`, not `html`. `design-platform.css` declares the `--rlw-alias-*` tokens on `body`, with the dark overrides on `body[data-ds-dark-theme]`, and custom properties inherit only downward; an `html` rule resolves them to the guaranteed-invalid value, at which point `scrollbar-color` computes to `auto` and no theming happens at all.
+The rules sit on `body`, not `html`. `design-platform.css` declares the `--rlw-alias-*` tokens on `body`, with the dark overrides on `body[data-rl-dark-theme]`, and custom properties inherit only downward; an `html` rule resolves them to the guaranteed-invalid value, at which point `scrollbar-color` computes to `auto` and no theming happens at all.
 
 `scrollbar-width` and `scrollbar-color` are declared on `body, body *` rather than once at the top. Inheritance would pass down the color already substituted at `body`, so a descendant rebinding the indirection could not change its own scrollbar; re-declaring makes each element substitute the variable as it sees it. `scrollbar-width` is not an inherited property in the first place, so it needs the per-element declaration regardless. The `::-webkit-scrollbar*` pseudo-elements are likewise not inherited and are matched unscoped.
 

@@ -1,0 +1,6 @@
+# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
+# side as of the last confirmed-consistent state. Both languages carry equal authority;
+# after editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write .agents/notes/implemented/simplification/2026-08-26-api-proxy-first-split.md
+2026-08-26-api-proxy-first-split.md: 5d13bc4f37e04d26307f544a699b6ff530c96757
+2026-08-26-api-proxy-first-split.zh.md: fb1cf00896fd8be8eca8abb677e92f63ae4662f0

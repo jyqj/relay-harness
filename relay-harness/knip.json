@@ -3,6 +3,9 @@
   "exclude": [
     "duplicates"
   ],
+  "ignore": [
+    "**/lib/**"
+  ],
   "ignoreBinaries": [
     "bwrap",
     "icacls",
@@ -11,7 +14,8 @@
     "sandbox-exec",
     "tar",
     "taskkill",
-    "where.exe"
+    "where.exe",
+    "expo"
   ],
   "ignoreWorkspaces": [
     "vendor/*",
@@ -26,7 +30,8 @@
       "entry": [
         "scripts/**/*.mjs",
         "scripts/**/*.cjs",
-        "scripts/types/client-build-environment/index.d.ts"
+        "scripts/types/client-build-environment/index.d.ts",
+        "scripts/rebrand-dsh-to-rlh.ts"
       ],
       "ignoreUnresolved": [
         "client-build-environment"
@@ -110,9 +115,6 @@
       "project": [
         "src/**/*.ts",
         "tests/**/*.ts"
-      ],
-      "ignoreDependencies": [
-        "zod"
       ]
     },
     "packages/host/directory-picker-native": {
@@ -506,16 +508,8 @@
         "tests/**/*.ts"
       ]
     },
-    "packages/context/file-reference": {
-      "ignoreDependencies": [
-        "zod"
-      ]
-    },
-    "packages/context/session-reference": {
-      "ignoreDependencies": [
-        "zod"
-      ]
-    },
+    "packages/context/file-reference": {},
+    "packages/context/session-reference": {},
     "packages/session/session-checkpoint-policy": {
       "entry": [
         "tests/**/*.spec.ts",
@@ -612,9 +606,6 @@
       "project": [
         "src/**/*.ts",
         "tests/**/*.ts"
-      ],
-      "ignoreDependencies": [
-        "zod"
       ]
     },
     "packages/examples/jsonrpc-demo": {
@@ -799,6 +790,80 @@
       "ignoreDependencies": [
         "@relay-harness/.+"
       ]
+    },
+    "apps/desktop": {
+      "entry": [
+        "src/main/preview-guest-preload.js",
+        "src/main/harness-chrome-inject.js",
+        "src/renderer/boot.js",
+        "src/renderer/boot-recovery.js",
+        "src/renderer/theme.js",
+        "src/renderer/window-controls.js",
+        "src/host/install-rlh-plugin.mjs",
+        "scripts/**/*.{js,mjs,cjs}"
+      ],
+      "project": [
+        "src/**/*.js",
+        "src/**/*.mjs",
+        "scripts/**/*.{js,mjs,cjs}"
+      ],
+      "ignoreDependencies": [
+        "pnpm"
+      ]
+    },
+    "apps/desktop/mobile": {
+      "entry": [
+        "App.js",
+        "web/app.js",
+        "babel.config.js"
+      ],
+      "project": [
+        "*.js",
+        "web/**/*.js"
+      ],
+      "ignoreDependencies": [
+        "@react-native-async-storage/async-storage",
+        "react",
+        "react-native-webview",
+        "expo-updates",
+        "expo-system-ui"
+      ]
+    },
+    "packages/bundle/issue-automation": {
+      "ignoreDependencies": [
+        "@relay-harness/rlh-client-ui-issue-orchestration"
+      ]
+    },
+    "packages/llm/llm-vision-fallback": {
+      "project": [
+        "src/**/*.ts"
+      ]
+    },
+    "packages/memory/memory": {
+      "project": [
+        "src/**/*.ts"
+      ]
+    },
+    "packages/client/ui-message-edit": {
+      "entry": [
+        "tests/**/*.spec.tsx"
+      ],
+      "project": [
+        "src/**/*.{ts,tsx}",
+        "tests/**/*.tsx"
+      ]
+    },
+    "packages/client/ui-issue-orchestration": {
+      "entry": [
+        "tests/**/*.spec.tsx"
+      ],
+      "project": [
+        "src/**/*.{ts,tsx}",
+        "tests/**/*.tsx"
+      ]
     }
+  },
+  "rules": {
+    "exports": "warn"
   }
 }

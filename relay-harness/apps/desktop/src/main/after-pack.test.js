@@ -92,13 +92,13 @@ test('collectFiles keeps shipped preset SKILL.md while stripping other markdown'
     'cli',
     'config',
     'agent-presets',
-    'cordis',
+    '@relay-harness/cordis',
     'skills',
     'editing-cordis-compositions',
     'SKILL.md',
   );
   const readme = path.join(source, 'apps', 'cli', 'README.md');
-  const preset = path.join(source, 'apps', 'cli', 'config', 'agent-presets', 'cordis', 'preset.yml');
+  const preset = path.join(source, 'apps', 'cli', 'config', 'agent-presets', '@relay-harness/cordis', 'preset.yml');
   fs.mkdirSync(path.dirname(skill), { recursive: true });
   fs.mkdirSync(path.dirname(readme), { recursive: true });
   fs.writeFileSync(skill, '# editing cordis compositions\n');
@@ -111,13 +111,13 @@ test('collectFiles keeps shipped preset SKILL.md while stripping other markdown'
   assert.deepEqual(
     destinations,
     [
-      path.join('apps', 'cli', 'config', 'agent-presets', 'cordis', 'preset.yml'),
+      path.join('apps', 'cli', 'config', 'agent-presets', '@relay-harness/cordis', 'preset.yml'),
       path.join(
         'apps',
         'cli',
         'config',
         'agent-presets',
-        'cordis',
+        '@relay-harness/cordis',
         'skills',
         'editing-cordis-compositions',
         'SKILL.md',
@@ -134,13 +134,13 @@ test('collectFiles keeps preset SKILL.md when rooted at the deploy config direct
   const skill = path.join(
     source,
     'agent-presets',
-    'cordis',
+    '@relay-harness/cordis',
     'skills',
     'cordis-plugin-development',
     'SKILL.md',
   );
   const readme = path.join(source, 'README.md');
-  const preset = path.join(source, 'agent-presets', 'cordis', 'preset.yml');
+  const preset = path.join(source, 'agent-presets', '@relay-harness/cordis', 'preset.yml');
   fs.mkdirSync(path.dirname(skill), { recursive: true });
   fs.writeFileSync(skill, '# cordis plugin development\n');
   fs.writeFileSync(readme, '# config docs\n');
@@ -152,8 +152,8 @@ test('collectFiles keeps preset SKILL.md when rooted at the deploy config direct
   assert.deepEqual(
     destinations,
     [
-      path.join('agent-presets', 'cordis', 'preset.yml'),
-      path.join('agent-presets', 'cordis', 'skills', 'cordis-plugin-development', 'SKILL.md'),
+      path.join('agent-presets', '@relay-harness/cordis', 'preset.yml'),
+      path.join('agent-presets', '@relay-harness/cordis', 'skills', 'cordis-plugin-development', 'SKILL.md'),
     ],
   );
 });

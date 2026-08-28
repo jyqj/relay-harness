@@ -101,6 +101,25 @@ describe('redactSecrets', () => {
     expect(redactSecrets({ type: 'object' } as never, { k: 'v' })).toEqual({ value: { k: 'v' }, secrets: [] })
     expect(redactSecrets({ type: 'array' } as never, ['v'])).toEqual({ value: ['v'], secrets: [] })
   })
+
+  it('passes a union with no declared secret through untouched', () => {
+    const Optional = z.object({ note: z.union([z.string(), z.number()]) })
+    const { value, secrets } = redactSecrets(Optional as z<never>, { note: 'plain' })
+    expect(value).toEqual({ note: 'plain' })
+    expect(secrets).toEqual([])
+  })
+
+  it('refuses to redact a value whose schema hides a secret in a union', () => {
+    const Leaky = z.object({ choice: z.union([z.string(), z.string().role('secret')]) })
+    expect(() => redactSecrets(Leaky as z<never>, { choice: 'maybe-secret' }))
+      .toThrow(/declares a secret inside a union node at choice/)
+  })
+
+  it('refuses to redact a value whose schema hides a secret in a transform', () => {
+    const Leaky = z.object({ parsed: z.transform(z.object({ key: z.string().role('secret') }), v => v) })
+    expect(() => redactSecrets(Leaky as z<never>, { parsed: { key: 'x' } }))
+      .toThrow(/declares a secret inside a transform node at parsed/)
+  })
 })
 
 describe('describe() layers and redaction', () => {

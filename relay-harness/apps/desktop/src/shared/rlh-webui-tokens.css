@@ -53,8 +53,8 @@
   --rlw-specific-sidebar-nav-item-hover: rgb(241, 243, 245);
 }
 
-html[data-ds-dark-theme],
-body[data-ds-dark-theme] {
+html[data-rl-dark-theme],
+body[data-rl-dark-theme] {
   color-scheme: dark;
   --rlw-alias-bg-base: rgb(21, 21, 23);
   --rlw-alias-bg-layer-1: rgb(35, 35, 36);

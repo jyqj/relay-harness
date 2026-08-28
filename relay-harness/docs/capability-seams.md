@@ -191,6 +191,9 @@ flowchart LR
   svc_spillStore["ctx.spillStore<br/>Spill storage seam"]
   pkg_spill_local["spill-local"]
   pkg_spill_policy["spill-policy"]
+  pkg_index["index"]
+  svc_codeContext["ctx.codeContext<br/>Code-index recall contributor"]
+  svc_codeIndex["ctx.codeIndex<br/>Local code-index retrieval seam"]
   pkg_directory_picker["directory-picker"]
   svc_directoryPicker["ctx.directoryPicker<br/>Workspace-directory picking seam"]
   pkg_directory_picker_native["directory-picker-native"]
@@ -225,6 +228,8 @@ flowchart LR
   svc_lsp["ctx.lsp<br/>Language-server navigation seam"]
   pkg_lsp_local["lsp-local"]
   pkg_tool_lsp["tool-lsp"]
+  pkg_context_engine["context-engine"]
+  svc_contextEngine["ctx.contextEngine<br/>Step-context contributor registry"]
   svc_apiProxy["ctx.apiProxy<br/>Host API dispatch"]
   pkg_cordis_host_runner["cordis-host-runner"]
   svc_dynamicCordisRunner["ctx.dynamicCordisRunner<br/>Dynamic Cordis package host runner"]
@@ -248,6 +253,7 @@ flowchart LR
   pkg_compaction --> svc_compaction
   pkg_compaction_basic --> svc_compaction
   pkg_compaction_tool_result_pruner --> svc_toolResultPruner
+  pkg_context_engine --> svc_contextEngine
   pkg_cordis_host_runner --> svc_cordisInspect
   pkg_cordis_host_runner --> svc_dynamicCordisRunner
   pkg_credentials --> svc_credentials
@@ -263,6 +269,8 @@ flowchart LR
   pkg_fs_local --> svc_fs
   pkg_fs_sandbox --> svc_fs
   pkg_goal --> svc_goals
+  pkg_index --> svc_codeContext
+  pkg_index --> svc_codeIndex
   pkg_invariants --> svc_invariants
   pkg_issue_orchestration --> svc_issueOrchestration
   pkg_issue_orchestrator --> svc_issueOrchestration
@@ -364,6 +372,7 @@ flowchart LR
   svc_clientModules --> pkg_hmr
   svc_codeRuntime --> pkg_tools
   svc_compaction --> pkg_compaction_basic
+  svc_contextEngine --> pkg_file_reference_local
   svc_cordisInspect --> pkg_tool_cordis
   svc_credentials --> pkg_apiproxy
   svc_credentials --> pkg_llm_deepseek
@@ -538,6 +547,8 @@ flowchart LR
 | `ctx.jobs` | `seam` | [`jobs`](../packages/jobs/jobs) | [`jobs-local`](../packages/jobs/jobs-local) | [`tool-bash`](../packages/shell/tool-bash), [`tool-terminal`](../packages/terminal/tool-terminal), [`tool-subagent`](../packages/subagent/tool-subagent), [`tool-jobs`](../packages/jobs/tool-jobs) | - | Producers (background bash, PTY sends, and subagent delegations) register running work; tool-jobs is the model-facing controller that reads, lists, and kills it; jobs-local is the process-local registry. |
 | `ctx.web` | `seam` | [`web`](../packages/web/web) | [`web-search-exa`](../packages/web/web-search-exa), [`web-search-perplexity`](../packages/web/web-search-perplexity), [`web-search-deepseek`](../packages/web/web-search-deepseek), [`web-fetch-http`](../packages/web/web-fetch-http) | [`tool-web`](../packages/web/tool-web) | - | Search and fetch providers register into one ctx.web seam; tool-web owns the stable model-facing names. |
 | `ctx.spillStore` | `seam` | [`spill`](../packages/spill/spill) | [`spill-local`](../packages/spill/spill-local) | [`spill-policy`](../packages/spill/spill-policy) | - | The backend saves oversized tool text and returns a model-facing locator plus retrieval hint; spill-policy is the tools/post-execute consumer that decides when to spill. |
+| `ctx.codeContext` | `seam` | `index` | - | - | - | Opt-in step-context contributor that injects ranked code-index recall as a recall-form user message with per-hit evidence; the code-index seam owns the vocabulary and this package owns only the injection. |
+| `ctx.codeIndex` | `seam` | `index` | - | - | - | The seam owns the retrieval vocabulary, repository-size tiers, and epoch pairing; the SQLite-backed provider and the search/status/refresh tool consumer land in subsequent increments. |
 | `ctx.directoryPicker` | `seam` | `directory-picker` | `directory-picker-native`, `directory-picker-browse` | `apiproxy` | - | Discriminated interaction capability: the native backend opens one OS chooser on the host display, the browse backend serves listing/creation primitives for the in-app browser; dual-face backends fill ui-workspace directory-flow slots from their browser halves (no wire advertisement). |
 | `ctx.webServer` | `core` | `webserver` | - | `connection`, `modules`, `hmr` | - | Plain node:http carrier: named-route registry, index transform taps, and the static dist fallback; web-transport plugins register their own routes. |
 | `ctx.clientModules` | `core` | `modules` | - | `hmr` | - | Composes the __RLH_BOOT__ entry graph from an incremental rlh.client scan, serves plugin bundles, and notifies rebuilt/graph-changed subscribers. |
@@ -548,6 +559,7 @@ flowchart LR
 | `ctx.issueRunner` | `seam` | [`issue-runner`](../packages/automation/issue-runner) | [`issue-runner-agent`](../packages/automation/issue-runner-agent) | [`issue-orchestrator`](../packages/automation/issue-orchestrator) | - | A provider publishes one holder-owned run with captured tracker tools, progress, cancellation, and quiescent settlement. |
 | `ctx.issueOrchestration` | `seam` | [`issue-orchestration`](../packages/automation/issue-orchestration) | [`issue-orchestrator`](../packages/automation/issue-orchestrator) | [`api-remotes`](../packages/api/remotes), [`client-ui-issue-orchestration`](../packages/client/ui-issue-orchestration) | - | One durable single writer owns claims, running attempts, retries, blocks, reconciliation, capacity, and operator commands. |
 | `ctx.lsp` | `seam` | [`lsp`](../packages/lsp/lsp) | `lsp-local` | [`tool-lsp`](../packages/lsp/tool-lsp) | - | Provider registration and selection plus normalized query execution over exactly four operations; the seam offers no protocol escape hatch, so a backend translates into the normalized request and result. |
+| `ctx.contextEngine` | `core` | [`context-engine`](../packages/context/context-engine) | - | [`file-reference-local`](../packages/context/file-reference-local) | - | Sequences revision-bound contributor messages into the claimed step ahead of prompt assembly; contributors own retrieval, message sources, and evidence production while the engine owns ordering and the evidence vocabulary. |
 | `ctx.apiProxy` | `core` | `apiproxy` | - | `connection` | - | The transport-agnostic host gateway face: it dispatches browser API calls, and each open host stream subscribes to the events it forwards rather than being pushed to through a broadcast verb. |
 | `ctx.dynamicCordisRunner` | `core` | [`cordis-host-runner`](../packages/extensions/cordis-host-runner) | - | [`tool-cordis`](../packages/extensions/tool-cordis) | - | Owns the in-memory definition registry, the vm sandbox for host halves, and the request-run round trip; browser pages reach the same service over the wire through its remote namespace. |
 | `ctx.cordisInspect` | `core` | [`cordis-host-runner`](../packages/extensions/cordis-host-runner) | - | [`tool-cordis`](../packages/extensions/tool-cordis) | - | Registers host inspect providers, mirrors the client provider manifest, and routes client queries through the dynamic Cordis transport. |

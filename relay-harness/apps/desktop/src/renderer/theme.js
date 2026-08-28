@@ -1,6 +1,6 @@
 function applyDarkAttribute(dark) {
-  document.documentElement.toggleAttribute('data-ds-dark-theme', dark);
-  document.body?.toggleAttribute('data-ds-dark-theme', dark);
+  document.documentElement.toggleAttribute('data-rl-dark-theme', dark);
+  document.body?.toggleAttribute('data-rl-dark-theme', dark);
 }
 
 function isBootTheme() {

@@ -49,17 +49,13 @@
   "peerDependencies": {
     "@relay-harness/rlh-client-locale": "workspace:^",
     "@relay-harness/rlh-client-runtime": "workspace:^",
-    "@relay-harness/rlh-client-ui-primitives": "workspace:^",
-    "@relay-harness/rlh-client-ui-slots": "workspace:^",
     "@relay-harness/rlh-invariants": "workspace:^",
     "@relay-harness/cordis": "workspace:^",
-    "react": "^18.2.0",
     "@relay-harness/rlh-client-ui-surfaces": "workspace:^"
   },
   "devDependencies": {
     "@relay-harness/rlh-client-locale": "workspace:^",
     "@relay-harness/rlh-client-runtime": "workspace:^",
-    "@relay-harness/rlh-client-test-runtime": "workspace:^",
     "@relay-harness/rlh-client-ui-primitives": "workspace:^",
     "@relay-harness/rlh-client-ui-slots": "workspace:^",
     "@relay-harness/rlh-invariants": "workspace:^",

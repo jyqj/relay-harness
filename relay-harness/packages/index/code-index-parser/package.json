@@ -1,0 +1,48 @@
+{
+  "name": "@relay-harness/rlh-code-index-parser",
+  "description": "Tree-sitter parsing layer for the Relay Harness code-index capability: web-tree-sitter grammar loading, symbol/call/import extraction, and symbol-aware chunking behind a per-file parse entry",
+  "version": "0.1.0-rc.8",
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jyqj/relay-harness.git",
+    "directory": "packages/index/code-index-parser"
+  },
+  "type": "module",
+  "main": "lib/index.js",
+  "types": "lib/types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./lib/types/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./invariant": {
+      "types": "./lib/types/invariant.d.ts",
+      "default": "./lib/invariant.js"
+    },
+    "./src/*": "./src/*",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib/index.js",
+    "lib/invariant.js",
+    "resources/grammars/**",
+    "lib/types/**/*.d.ts"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "web-tree-sitter": "^0.26.13"
+  },
+  "peerDependencies": {
+    "@relay-harness/cordis": "workspace:^",
+    "@relay-harness/rlh-code-index": "workspace:^",
+    "@relay-harness/rlh-invariants": "workspace:^"
+  },
+  "devDependencies": {
+    "@relay-harness/cordis": "workspace:^",
+    "@relay-harness/rlh-code-index": "workspace:^",
+    "@relay-harness/rlh-invariants": "workspace:^"
+  }
+}

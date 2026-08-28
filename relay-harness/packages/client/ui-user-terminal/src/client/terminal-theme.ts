@@ -51,14 +51,14 @@ export function terminalFontOptions(family: string, size: number): { family?: st
 
 /**
  * Copied from `terminalThemeFromApp`. Dark also accepts this desktop's
- * `data-ds-dark-theme` because the web client does not set `html.dark`.
+ * `data-rl-dark-theme` because the web client does not set `html.dark`.
  * @param mountElement - the pane host, or body when omitted.
  * @returns a Ghostty theme.
  */
 export function terminalThemeFromApp(mountElement?: HTMLElement | null): GhosttyTheme {
   const isDark =
     document.documentElement.classList.contains('dark') ||
-    document.body.hasAttribute('data-ds-dark-theme')
+    document.body.hasAttribute('data-rl-dark-theme')
   const fallbackBackground = isDark ? 'rgb(14, 18, 24)' : 'rgb(255, 255, 255)'
   const fallbackForeground = isDark ? 'rgb(237, 241, 247)' : 'rgb(28, 33, 41)'
   const drawerSurface =

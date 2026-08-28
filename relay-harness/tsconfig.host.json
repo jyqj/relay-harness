@@ -194,6 +194,7 @@
     { "path": "./packages/feedback/command-feedback" },
     { "path": "./packages/schedule/schedule" },
     { "path": "./packages/context/time-context" },
+    { "path": "./packages/context/context-engine" },
     { "path": "./packages/context/file-reference" },
     { "path": "./packages/context/file-reference-local" },
     { "path": "./packages/context/tmux-context" },
@@ -330,6 +331,14 @@
     { "path": "./packages/lsp/lsp" },
     { "path": "./packages/lsp/lsp-stdio" },
     { "path": "./packages/lsp/tool-lsp" },
+    { "path": "./packages/index/code-index" },
+    { "path": "./packages/index/code-index-search" },
+    { "path": "./packages/index/code-index-sqlite" },
+    { "path": "./packages/index/tool-code-index" },
+    { "path": "./packages/index/code-index-local" },
+    { "path": "./packages/context/code-context" },
+    { "path": "./packages/index/code-index-parser" },
+    { "path": "./packages/index/code-index-graph" },
     { "path": "./apps/cli" }
   ]
 }

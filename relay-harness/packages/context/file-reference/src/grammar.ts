@@ -53,3 +53,26 @@ export function formatFileMention(
   if (candidate.kind === 'directory') return `@"${path}`
   return `@"${path}"`
 }
+
+/** Mentions in prompt text: quoted `@"path"` first, then unquoted `@path`. */
+const MENTION_PATTERN = /(?:^|\s)@"([^"]+)"|(?:^|\s)@([^\s@"]+)/gu
+
+/**
+ * Extract every `@path` or `@"path"` mention from prompt text. An `@` inside
+ * another token, such as an email address, is not a mention; unquoted paths
+ * cannot carry quotes, so an opening quote without its closing partner is
+ * left unmatched. Duplicate paths collapse to their first occurrence.
+ * @param text - completed prompt text, not a single editor line.
+ * @returns the mentioned paths in first-occurrence order.
+ */
+export function parseFileMentions(text: string): string[] {
+  const mentions: string[] = []
+  const seen = new Set<string>()
+  for (const match of text.matchAll(MENTION_PATTERN)) {
+    const mention = match.slice(1).join('')
+    if (seen.has(mention)) continue
+    seen.add(mention)
+    mentions.push(mention)
+  }
+  return mentions
+}

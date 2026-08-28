@@ -27,7 +27,7 @@ const platformCss = read('design-platform.css')
 const scrollbarCss = read('scrollbar.css')
 
 /** Body attribute selecting the dark palette; ui-layout's ThemePresenter sets it. */
-const DARK_ATTRIBUTE = '[data-ds-dark-theme]'
+const DARK_ATTRIBUTE = '[data-rl-dark-theme]'
 /** Alias tokens under test: the prefix the elevation pairs share. */
 const TOKEN_PREFIX = '--rlw-alias-scrollbar-'
 /** Prefix of the rebindable indirection scrollbar.css owns. */

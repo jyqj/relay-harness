@@ -59,7 +59,7 @@ describe('terminalThemeFromApp', () => {
 
   it('uses the dark Ghostty cursor and selection overlay when the desktop dark attribute is set', () => {
     mockCanvasFromFillStyle()
-    document.body.setAttribute('data-ds-dark-theme', '')
+    document.body.setAttribute('data-rl-dark-theme', '')
     const host = drawerHost()
     host.style.backgroundColor = 'rgb(21, 21, 23)'
     host.style.color = 'rgb(249, 250, 251)'
@@ -68,7 +68,7 @@ describe('terminalThemeFromApp', () => {
     expect(theme.cursor).toEqual({ r: 180, g: 203, b: 255 })
     expect(theme.selectionBackground).toBe('rgba(180, 203, 255, 0.25)')
     host.remove()
-    document.body.removeAttribute('data-ds-dark-theme')
+    document.body.removeAttribute('data-rl-dark-theme')
     vi.restoreAllMocks()
   })
 

@@ -22,7 +22,7 @@ Settings 入口是 sidebar Foot 的 Settings 行，点击直接打开 1080×700 
 
 Theme 偏好三态：`light`、`dark`、`system`，默认 `system`（无持久化偏好或无效值时）。system 的解析属主题领域：ThemeRuntime 持有 `prefers-color-scheme` matchMedia 监听（环境感知，非 DOM 呈现），偏好为 system 且系统配色变化时重发快照；快照同时携带 `preference` 与解析后的 `active` 定义。
 
-Theme 服务不操作 DOM。`ui-layout` 初始读取 Theme getter，随后订阅 `theme/change`，由 Layout 持有的 presenter 按 `active` 更新 `body[data-ds-dark-theme]` 和主题 token；presenter 不感知 system，只消费已解析结果。
+Theme 服务不操作 DOM。`ui-layout` 初始读取 Theme getter，随后订阅 `theme/change`，由 Layout 持有的 presenter 按 `active` 更新 `body[data-rl-dark-theme]` 和主题 token；presenter 不感知 system，只消费已解析结果。
 
 ### 首期注册面
 

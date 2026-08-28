@@ -10,9 +10,9 @@ import { Remote, TypertRemoteService } from '@relay-harness/rlh-typert-protocol'
 
 import type { FileReferenceCandidate } from './types.ts'
 
-export { activeAtToken, formatFileMention } from './grammar.ts'
+export { activeAtToken, formatFileMention, parseFileMentions } from './grammar.ts'
 export type { ActiveAtToken } from './grammar.ts'
-export type { FileReferenceCandidate } from './types.ts'
+export type { FileReferenceCandidate, FileReferenceRecallFile, FileReferenceRecallSource } from './types.ts'
 
 /** Model guidance for path-only references selected by a user interface. */
 export const FILE_REFERENCE_PROMPT = 'Paths prefixed with @ are files explicitly referenced by the user. Use the read tool when their contents are needed; do not claim to have inspected a file before reading it.'

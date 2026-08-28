@@ -262,13 +262,13 @@ describe('web e2e: navigation & panes over a rich seeded session', () => {
     await expect.poll(() => details.count(), { timeout: 10_000 }).toBe(1)
     expect(await details.getByRole('tabpanel').evaluate(panel => getComputedStyle(panel).overflowX))
       .toBe('hidden')
-    await page.evaluate(() => { document.body.setAttribute('data-ds-dark-theme', '') })
+    await page.evaluate(() => { document.body.setAttribute('data-rl-dark-theme', '') })
     const darkSummarySurfaces = await details.getByRole('heading', { name: 'Payload' }).evaluate(heading => ({
       heading: getComputedStyle(heading).backgroundColor,
       panel: getComputedStyle(heading.closest('[aria-label="Event details"]')!).backgroundColor,
     }))
     expect(darkSummarySurfaces.heading).toBe(darkSummarySurfaces.panel)
-    await page.evaluate(() => { document.body.removeAttribute('data-ds-dark-theme') })
+    await page.evaluate(() => { document.body.removeAttribute('data-rl-dark-theme') })
     await page.getByRole('tab', { name: 'Result' }).click()
     await expect.poll(() => page.getByText('NAVIGATION_OK', { exact: false }).count(), { timeout: 10_000 }).toBeGreaterThanOrEqual(1)
     const assistantSpan = page.locator('[data-timeline-span="message"][data-assistant-timing="true"]').first()

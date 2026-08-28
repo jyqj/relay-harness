@@ -64,7 +64,7 @@ function bootThemeScript(payload: ThemeBootPayload): string {
   const dark = preference === 'dark' || systemDark
   document.documentElement.style.colorScheme = dark ? 'dark' : 'light'
   document.documentElement.style.fontSize = fontSizeInterface + 'px'
-  document.body.toggleAttribute('data-ds-dark-theme', dark)
+  document.body.toggleAttribute('data-rl-dark-theme', dark)
   const tokens = dark ? darkTokens : lightTokens
   for (const [name, value] of Object.entries(tokens)) {
     document.body.style.setProperty(name, value)

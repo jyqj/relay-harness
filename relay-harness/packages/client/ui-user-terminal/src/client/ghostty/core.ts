@@ -3,8 +3,8 @@ import {
   ghosttyKeyForCode,
   ghosttyUnshiftedCodepoint,
   loadGhosttyKeyboardLayoutMap,
-} from "./keyCodes";
-import { GhosttyRuntime, loadGhosttyRuntime } from "./runtime";
+} from './keyCodes.ts';
+import { GhosttyRuntime, loadGhosttyRuntime } from './runtime.ts';
 
 const GHOSTTY_SUCCESS = 0;
 const GHOSTTY_OUT_OF_SPACE = -3;

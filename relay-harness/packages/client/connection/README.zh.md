@@ -22,5 +22,7 @@ node 半侧在桥接或 upgrade 前守卫 `/api` 下的每个入口（`src/api-r
 
 ## 已知限制与暂缓事项
 
+- **`FixtureApiClient` 在等待同构继任者** —— 3.3 千行的测试 fixture 仍是 `AbstractApiClient` 的子类并覆盖协议虚方法（其代码 TODO 设定了删除条件：fixture 迁移到 `InProcessApiClient` over `toFetchHandler`）。同构管线现已存在并自带 wire 协议覆盖（`apiproxy/tests/client-handler.spec.ts`），但十二个以上的 web 快照与 e2e 文件仍构建在 `FixtureApiClient` 上，因此迁移是对 web 测试语料的一次专项移植，而非可删除的遗留。
+
 - **History 会恢复未附加的会话**：打开 history 可能创建宿主侧 agent，并增加首次打开的延迟；没有仅从持久化读取的路径。
 - **`/api` 桥把每个请求体整体缓冲在内存里**：`maxRequestBodyBytes`（默认 160 MiB，按默认 100 MiB 图片总量上限经 base64 膨胀加信封余量得出）因此同时是单请求的驻留内存上界；要降低它而不缩小图片限额，需要流式请求体路径。

@@ -507,12 +507,12 @@ describe('web e2e: sidebar session list scrollbar (reserved gutter / themed thum
     // The dark palette declares different scrollbar tokens; driving the body
     // attribute pins the cascade the way lifecycle-chrome does (the Settings
     // gesture that sets it is owned there).
-    await page.evaluate(() => { document.body.setAttribute('data-ds-dark-theme', '') })
+    await page.evaluate(() => { document.body.setAttribute('data-rl-dark-theme', '') })
     const dark = await measureList(page)
     expect(dark.token).not.toBe(light.token)
     expect(dark.hoverToken).not.toBe(dark.token)
     expect(dark.hoverToken).not.toBe(light.hoverToken)
-    await page.evaluate(() => { document.body.removeAttribute('data-ds-dark-theme') })
+    await page.evaluate(() => { document.body.removeAttribute('data-rl-dark-theme') })
     const restored = await measureList(page)
     expect(restored.token).toBe(light.token)
     expect(restored.hoverToken).toBe(light.hoverToken)
@@ -522,9 +522,9 @@ describe('web e2e: sidebar session list scrollbar (reserved gutter / themed thum
   it('matches the committed scrollbar geometry golden in both palettes', async () => {
     onTestFailed(() => saveFailureShot(page, 'web-e2e-sidebar-scrollbar-golden'))
     const light = await measurePalette(page)
-    await page.evaluate(() => { document.body.setAttribute('data-ds-dark-theme', '') })
+    await page.evaluate(() => { document.body.setAttribute('data-rl-dark-theme', '') })
     const dark = await measurePalette(page)
-    await page.evaluate(() => { document.body.removeAttribute('data-ds-dark-theme') })
+    await page.evaluate(() => { document.body.removeAttribute('data-rl-dark-theme') })
     await compareOrRefreshGolden(GEOMETRY_EXPECTED, renderGeometry(light, dark), MODE)
     expect(tripwire.pageErrors).toEqual([])
   }, 60_000)

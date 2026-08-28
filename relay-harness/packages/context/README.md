@@ -2,13 +2,15 @@
 
 English | [中文](README.zh.md)
 
-Product plugins that add model-visible request context without defining a tool. `agent-instructions` is included by the default `rlh-agent-spine-demo` bundle and can be disabled through bundle config; `time-context`, `tmux-context`, `session-reference`, `file-reference`, and `file-reference-local` are opt-in.
+Product plugins that add model-visible request context without defining a tool. `agent-instructions` is included by the default `rlh-agent-spine-demo` bundle and can be disabled through bundle config; `context-engine`, `time-context`, `tmux-context`, `session-reference`, `file-reference`, `file-reference-local`, and `code-context` are opt-in.
 
 | Package | Role | ctx key |
 |---|---|---|
+| [`context-engine/`](context-engine/README.md) | Step-context contributor registry and the evidence protocol seam | `ctx.contextEngine` |
 | [`session-reference/`](session-reference/README.md) | Bounded snapshots of other sessions | `ctx.sessionReferenceResolver` |
 | [`file-reference/`](file-reference/README.md) | File-reference discovery seam and `@file` grammar | `ctx.fileReferences` |
 | [`file-reference-local/`](file-reference-local/README.md) | Local-filesystem file-reference provider | — |
+| [`code-context/`](code-context/README.md) | Code-index recall contributor over `ctx.codeIndex` | `ctx.codeContext` |
 | [`time-context/`](time-context/README.md) | Current-time and elapsed-time context | — |
 | [`tmux-context/`](tmux-context/README.md) | tmux location context | — |
 | [`agent-instructions/`](agent-instructions/README.md) | Workspace-instruction context | — |

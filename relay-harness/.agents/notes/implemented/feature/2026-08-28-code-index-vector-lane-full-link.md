@@ -1,0 +1,28 @@
+# Agent Note: Code-index vector lane full link — embedding queue, memoized query vectors, and RRF-fused semantic recall
+
+Status: implemented
+
+English | [中文](2026-08-28-code-index-vector-lane-full-link.zh.md)
+
+## Problem
+
+The R4 slice shipped the vector tier's parts — the `chunks_vec` table, the `code_embed_jobs` queue, the quantization math, the embeddings client, and the drain worker — but nothing connected them to retrieval: no store read face for vectors, no lane consuming them, no enqueue trigger tying committed passes to the queue, and no cache-key story for answers that now depend on a query embedding. Without those links the tier was dead weight; wiring them carelessly had its own hazards, chiefly a graph result cache that would keep serving pre-vector answers after vectors land (the evidence clock moves, so a cache key blind to it pins stale results) and a sticky `status().degraded` that one transient embedder outage would set forever.
+
+## Decision
+
+Close the loop across four packages, keeping every seam untouched:
+
+- **Vector read face** (`code-index-search/src/port.ts`, implemented in `code-index-sqlite/src/reader.ts`). An optional `RetrievalPort.vector` facet — same precedent as the literal FTS mirror — exposes `vectorsByChunkIds(chunkIds, model)` (byte-identical int8 rows plus their scalars) and `vectorCoverage(model)`. Ports without the tier stay valid; deployments without embedding never wire the lane that would consume it.
+- **Vector lane** (`code-index-search/src/lanes.vector.ts`). The lane issues no candidate query: the engine's lane loop now accumulates `LaneContext.priorCandidates` (registration-ordered, deduplicated, capped at the new `search.vector_max_candidates` = 2000) and hands it to later lanes, where the vector lane re-scores the pool with `cosineQuantized` against `EngineSearchRequest.queryVector`, drops non-positive similarities, and reports at most `search.vector_top_k`. It registers last (lexical → grep → graph → literal → vector, still owned by the search package's `defaultRetrievalLanes`), disables itself without a facet or query vector, and a stored-dimension mismatch aborts the lane into `readErrors` instead of ranking noise.
+- **Provider wiring** (`code-index-local`). Config gains an optional `embedding` section (schemastery, credential-ref `apiKeyEnv` defaulting to `EMBEDDING_API_KEY`); omitting `baseURL` or `model` removes the whole tier — no lane, no drain, no vector status. After every committed refresh the provider enqueues the batch's chunk rows (`chunkRevisionsForFiles` joins chunk ids with their files' content hashes) and starts one folded drain, detached from the refresh caller. Searches embed the trimmed query through a 32-entry LRU keyed `model:dimensions:text-hash` and pass the vector into the engine request. A query-embedding failure degrades that answer only (appended `readError`, no fabricated vector contribution); sticky degradation narrows to whole-lane aborts (`<laneId> lane failed`), so a dead endpoint can no longer pin `status().degraded`. Drain/enqueue failures never fail the committed refresh; they surface through the runtime's internal `vectorStatus()` projection, leaving the seam report untouched.
+- **Cache correctness** (`code-index-graph/src/lane/engine.ts`). `graphCacheKey` already carried the full epoch pair — the load-bearing fact, since `writeChunkVectors` advances `evidenceEpoch` exactly once per job — and now also fingerprints the query vector via `fingerprintVector`, so byte-equal embeddings hit while different embeddings of the same query text miss. An end-to-end test pins the property that matters: after a drain advances the evidence clock, a repeat search recomputes (its answer carries the new epoch) instead of serving the cached pre-drain outcome.
+
+## Consequences
+
+What landed: enqueue → drain → `chunks_vec` → query embedding → lane rescoring verified end-to-end against a fake embeddings endpoint and a real `:memory:` store, with byte-identical zero-drift when the tier is unconfigured (vector lane registered but gated off changes nothing), honest degradation on unreachable/blank-credential embedders without sticky pollution, sticky pinning demonstrated through a genuine dimension-mismatch lane abort, and 100% per-file coverage across the four touched packages. The query-vector memo deliberately keys on the text hash rather than `fingerprintVector` (which requires the vector as input); `fingerprintVector` is the cache-key tool, the LRU key is the memo-lookup tool. Vector-lane batching beyond the drain's per-job pipeline (one evidence-epoch commit per job) was left alone: N-commits-N-advances is pinned by tests and README, and batching would trade that auditability for throughput no consumer has asked for yet.
+
+## Alternatives considered
+
+- **Always-on vector lane with availability probing** — rejected: a lane whose enablement depends on probing `chunks_vec` population turns every cold search into a hidden probe; capability-probed gating (facet present + request carries a query vector) keeps unconfigured deployments byte-identical by construction.
+- **Report query-embedding failures through `status().degraded`** — rejected: the sticky flag exists to record store-side conditions that outlive one operation; an unreachable embedder is transient, self-evident from the answer's `readErrors`, and would otherwise require a recovery signal nobody consumers can act on.
+- **Model identity on `EngineSearchRequest`** — rejected: the model is deployment state fixed when the provider constructs the lane (`createVectorLane({ model })`), not per-search input; putting it on the request would invite mixing vectors and rows from different models within one engine.

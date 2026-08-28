@@ -6,7 +6,7 @@ Status: implemented
 
 ## 问题
 
-Web 壳在浏览器侧插件树激活前呈现 `Loading plugins…`。ui-theme 的 token 样式随动态客户端 bundle 到达，因此不依赖框架的加载页使用私有的明暗回退配色。如果不提前写入 `color-scheme` 与 `body[data-ds-dark-theme]`，持久化偏好为深色时，该页面仍会先按浅色回退绘制，再在 ui-theme 的 ThemeRuntime 与 ui-layout 的 ThemePresenter 激活后切为深色。
+Web 壳在浏览器侧插件树激活前呈现 `Loading plugins…`。ui-theme 的 token 样式随动态客户端 bundle 到达，因此不依赖框架的加载页使用私有的明暗回退配色。如果不提前写入 `color-scheme` 与 `body[data-rl-dark-theme]`，持久化偏好为深色时，该页面仍会先按浅色回退绘制，再在 ui-theme 的 ThemeRuntime 与 ui-layout 的 ThemePresenter 激活后切为深色。
 
 `rlhClient.immediately` 只把 bundle 纳入第一阶段预取，不会让插件在 HTML 解析或壳首次渲染前执行。仅调整客户端插件的加载档位无法关闭这段时间窗口。
 
@@ -14,7 +14,7 @@ Web 壳在浏览器侧插件树激活前呈现 `Loading plugins…`。ui-theme �
 
 ui-theme 的主机侧通过 `ctx.webServer.tapIndex()` 转换每份 index HTML，在 `<body>` 起始标签后紧接一段同步内联脚本。该转换通过可选的 `httpServer` 注入注册，因此不含该服务的组合仍会激活 ui-theme，但不会安装转换。HTML 解析器执行该脚本时，body 已存在，而壳的模块脚本与不依赖框架的启动页尚未运行。
 
-settings provider 存在时，主机侧会注册 [`ui-theme.preference` settings 分节](2026-08-06-host-backed-web-preferences.md)。它为每份 index 响应把经过 schema 校验的内建偏好嵌入内联脚本；不存在 settings provider 或有效注册时则嵌入默认值 `system`。浏览器通过 `prefers-color-scheme` 解析 `system`，不支持 `matchMedia` 时回退为浅色。脚本只写 ThemePresenter 后续拥有的两项 DOM 状态：`document.documentElement.style.colorScheme` 与 `body[data-ds-dark-theme]`。
+settings provider 存在时，主机侧会注册 [`ui-theme.preference` settings 分节](2026-08-06-host-backed-web-preferences.md)。它为每份 index 响应把经过 schema 校验的内建偏好嵌入内联脚本；不存在 settings provider 或有效注册时则嵌入默认值 `system`。浏览器通过 `prefers-color-scheme` 解析 `system`，不支持 `matchMedia` 时回退为浅色。脚本只写 ThemePresenter 后续拥有的两项 DOM 状态：`document.documentElement.style.colorScheme` 与 `body[data-rl-dark-theme]`。
 
 引导逻辑只认识内建的 `light`、`dark`、`system` 语义，不注册监听器，也不解析第三方主题或 token 覆盖。浏览器侧插件树激活后，ThemeRuntime 仍是主题状态的权威来源，ThemePresenter 会把完整解析结果重新写入同一组 DOM 状态并负责后续更新与释放。
 

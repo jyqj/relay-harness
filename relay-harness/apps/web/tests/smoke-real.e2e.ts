@@ -632,12 +632,12 @@ describe.skipIf(!process.env.DEEPSEEK_API_KEY || notReady.length > 0)('web smoke
     // gesture is owned by settings-chrome.e2e.ts — drive the attribute
     // directly here.
     const dark = await page.evaluate(() => {
-      document.body.setAttribute('data-ds-dark-theme', '')
+      document.body.setAttribute('data-rl-dark-theme', '')
       return getComputedStyle(document.body).backgroundColor
     })
     await screen(page, '11-dark-mode')
     const light = await page.evaluate(() => {
-      document.body.removeAttribute('data-ds-dark-theme')
+      document.body.removeAttribute('data-rl-dark-theme')
       return getComputedStyle(document.body).backgroundColor
     })
     expect(dark).not.toBe(light)

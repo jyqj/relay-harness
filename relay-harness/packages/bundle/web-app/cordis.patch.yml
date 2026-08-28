@@ -84,6 +84,9 @@
     - id: session-reference
       name: '@relay-harness/rlh-session-reference'
 
+    - id: context-engine
+      name: '@relay-harness/rlh-context-engine'
+
     - id: file-reference-local
       name: '@relay-harness/rlh-file-reference-local'
 

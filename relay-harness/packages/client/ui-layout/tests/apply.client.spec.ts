@@ -77,23 +77,23 @@ describe('ui-layout client apply', () => {
     await fiber.await()
     // Initial getter application: jsdom has no matchMedia, system resolves light.
     expect(document.documentElement.style.colorScheme).toBe('light')
-    expect(document.body.hasAttribute('data-ds-dark-theme')).toBe(false)
+    expect(document.body.hasAttribute('data-rl-dark-theme')).toBe(false)
     const themeColorMeta = document.head.querySelector<HTMLMetaElement>('meta[name="theme-color"]')
     expect(themeColorMeta).not.toBeNull()
     const theme = ctx.get('theme') as ThemeRuntime
     theme.setTheme('dark')
     expect(document.documentElement.style.colorScheme).toBe('dark')
-    expect(document.body.hasAttribute('data-ds-dark-theme')).toBe(true)
+    expect(document.body.hasAttribute('data-rl-dark-theme')).toBe(true)
     expect(document.head.querySelector('meta[name="theme-color"]')).toBe(themeColorMeta)
     await fiber.dispose()
     expect(document.documentElement.style.colorScheme).toBe('')
-    expect(document.body.hasAttribute('data-ds-dark-theme')).toBe(false)
+    expect(document.body.hasAttribute('data-rl-dark-theme')).toBe(false)
     expect(themeColorMeta?.isConnected).toBe(false)
     // Listener is off: further theme changes no longer reach the document.
     theme.setTheme('light')
     theme.setTheme('dark')
     expect(document.documentElement.style.colorScheme).toBe('')
-    expect(document.body.hasAttribute('data-ds-dark-theme')).toBe(false)
+    expect(document.body.hasAttribute('data-rl-dark-theme')).toBe(false)
   })
 
   it('teardown unwinds the service, the root registration, and the child declarations', async () => {

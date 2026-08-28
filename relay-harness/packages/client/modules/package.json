@@ -45,7 +45,8 @@
     "@relay-harness/cordis-plugin-loader": "workspace:^",
     "@relay-harness/rlh-host-webserver": "workspace:^",
     "@relay-harness/rlh-invariants": "workspace:^",
-    "@relay-harness/cordis": "workspace:^"
+    "@relay-harness/cordis": "workspace:^",
+    "@relay-harness/rlh-app-boot": "workspace:^"
   },
   "files": [
     "lib/index.js",
@@ -57,9 +58,8 @@
     "@relay-harness/rlh-invariants": "workspace:^",
     "@relay-harness/cordis": "workspace:^",
     "@relay-harness/cordis-plugin-loader": "workspace:^",
-    "@relay-harness/rlh-host-webserver": "workspace:^"
-  },
-  "dependencies": {
+    "@relay-harness/rlh-host-webserver": "workspace:^",
     "@relay-harness/rlh-app-boot": "workspace:^"
-  }
+  },
+  "dependencies": {}
 }

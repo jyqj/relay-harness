@@ -20,6 +20,12 @@ import {
   WorkspaceFileSearch,
   type FileSearchConfig,
 } from './search.ts'
+import {
+  DEFAULT_MAX_FILE_BYTES,
+  DEFAULT_MAX_TOTAL_BYTES,
+  FileReferenceContentContributor,
+  type FileContentConfig,
+} from './content.ts'
 
 export {
   DEFAULT_FILE_SEARCH_EXCLUDED_DIRECTORIES,
@@ -27,6 +33,12 @@ export {
   DEFAULT_FILE_SEARCH_MAX_RESULTS,
   WorkspaceFileSearch,
 } from './search.ts'
+export {
+  DEFAULT_MAX_FILE_BYTES,
+  DEFAULT_MAX_TOTAL_BYTES,
+  FileReferenceContentContributor,
+} from './content.ts'
+export type { FileContentConfig } from './content.ts'
 export type { FileSearchConfig } from './search.ts'
 export { FILE_REFERENCE_PROMPT } from '@relay-harness/rlh-file-reference'
 export { activeAtToken, formatFileMention } from '@relay-harness/rlh-file-reference/grammar'
@@ -39,6 +51,8 @@ export interface Config {
   maxEntries?: number
   /** Directory basenames never traversed or offered. */
   excludedDirectories?: string[]
+  /** Presence enables the step-context contributor that injects mentioned files' contents. */
+  fileContent?: Partial<FileContentConfig>
 }
 
 /** Local-filesystem owner of the file-reference discovery service. */
@@ -48,6 +62,10 @@ export class LocalFileReferenceService extends FileReferenceService {
     maxResults: z.number().step(1).min(1).default(DEFAULT_FILE_SEARCH_MAX_RESULTS),
     maxEntries: z.number().step(1).min(1).default(DEFAULT_FILE_SEARCH_MAX_ENTRIES),
     excludedDirectories: z.array(z.string()).default([...DEFAULT_FILE_SEARCH_EXCLUDED_DIRECTORIES]),
+    fileContent: z.object({
+      maxFileBytes: z.natural().min(1).default(DEFAULT_MAX_FILE_BYTES),
+      maxTotalBytes: z.natural().min(1).default(DEFAULT_MAX_TOTAL_BYTES),
+    }),
   })
 
   private readonly config: FileSearchConfig
@@ -63,6 +81,15 @@ export class LocalFileReferenceService extends FileReferenceService {
       excludedDirectories: config.excludedDirectories ?? DEFAULT_FILE_SEARCH_EXCLUDED_DIRECTORIES,
     }
     validateConfig(this.config)
+    if (config.fileContent !== undefined) {
+      const fileContent: FileContentConfig = {
+        maxFileBytes: config.fileContent.maxFileBytes ?? DEFAULT_MAX_FILE_BYTES,
+        maxTotalBytes: config.fileContent.maxTotalBytes ?? DEFAULT_MAX_TOTAL_BYTES,
+      }
+      validateFileContentConfig(fileContent)
+      const contributor = new FileReferenceContentContributor(ctx, fileContent)
+      ctx.inject(['contextEngine'], scope => scope.contextEngine.registerContributor(contributor))
+    }
 
     const installPrompt = (agent: Agent): void => {
       if (this.promptFibers.has(agent)) return
@@ -134,6 +161,14 @@ function validateConfig(config: FileSearchConfig): void {
   }
   if (config.excludedDirectories.some(name => name.length === 0 || name.includes('/') || name.includes('\\'))) {
     throw new Error('file-reference-local: excludedDirectories entries must be non-empty directory basenames')
+  }
+}
+
+function validateFileContentConfig(config: FileContentConfig): void {
+  for (const [name, value] of Object.entries(config)) {
+    if (!Number.isSafeInteger(value) || value <= 0) {
+      throw new Error(`file-reference-local: fileContent.${name} must be a positive safe integer`)
+    }
   }
 }
 

@@ -87,7 +87,7 @@
       --rlw-specific-input-major: color-mix(in srgb, var(--rlw-static-neutral-bluish-00) 80%, transparent);
       --rlw-specific-selector: var(--rlw-static-neutral-bluish-60);
     }
-    html[data-ds-dark-theme] body {
+    html[data-rl-dark-theme] body {
       --rlw-alias-bg-base: var(--rlw-static-neutral-bluish-950);
       --rlw-alias-bg-layer-1: var(--rlw-static-neutral-bluish-875);
       --rlw-alias-bg-layer-2: var(--rlw-static-neutral-bluish-850);
@@ -861,7 +861,7 @@
         document.querySelectorAll(".settings .tile").forEach((t) => t.setAttribute("aria-pressed", "false"));
         tile.setAttribute("aria-pressed", "true");
         const dark = tile.dataset.scheme === "dark" || (tile.dataset.scheme === "system" && matchMedia("(prefers-color-scheme: dark)").matches);
-        document.documentElement.toggleAttribute("data-ds-dark-theme", dark);
+        document.documentElement.toggleAttribute("data-rl-dark-theme", dark);
         document.querySelectorAll(".cubes .cube").forEach((c) => c.classList.toggle("selected", c.dataset.scheme === (dark ? "dark" : "light")));
       });
     });
@@ -883,7 +883,7 @@
       cube.addEventListener("click", () => {
         document.querySelectorAll(".cubes [data-scheme]").forEach((c) => c.classList.remove("selected"));
         cube.classList.add("selected");
-        document.documentElement.toggleAttribute("data-ds-dark-theme", cube.dataset.scheme === "dark");
+        document.documentElement.toggleAttribute("data-rl-dark-theme", cube.dataset.scheme === "dark");
       });
     });
   </script>

@@ -20,6 +20,7 @@ This table connects model-visible tool names to the plugin package and service s
 | `@relay-harness/rlh-plan-mode` | `exit_plan_mode` | `ctx.tools`, `ctx.systemPrompt`, `ctx.userQuestions (execution time, opportunistic)` | `tool/call`, `plan/mode inactive on an approved review`, `tool/result` | - | exit_plan_mode stays in the model-facing schema while planning is inactive so transitions add no tool-catalog churn on top of the plan-policy change. Its execute path rejects calls outside plan mode; in plan mode it presents the plan over the user-questions seam (approve / keep planning with feedback), and approval logs plan mode inactive at the step boundary. |
 | `@relay-harness/rlh-tool-bash` | `bash` | `ctx.tools`, `ctx.shell`, `ctx.systemPrompt`, `ctx.shellEnv`, `ctx.jobs at call time for run_in_background` | `tool/call`, `tool/result` | - | The bash tool is the model-facing consumer of the bash executor seam. A `run_in_background` run registers with the generic `ctx.jobs` runtime and is collected/stopped through the `job_*` tools from `@relay-harness/rlh-tool-jobs`; the `enableRunInBackground` config (default true) removes the parameter entirely when disabled. |
 | `@relay-harness/rlh-tool-pwsh` | `pwsh` | `ctx.tools`, `ctx.shell`, `ctx.systemPrompt`, `ctx.shellEnv`, `ctx.jobs at call time for run_in_background` | `tool/call`, `tool/result` | - | The pwsh tool is the PowerShell-dialect consumer of the bash executor seam for Windows compositions (a PowerShell executor such as `@relay-harness/rlh-pwsh-local` backs `ctx.shell`); it mirrors the bash tool call-for-call minus sandbox controls — `run_in_background` runs register with the generic `ctx.jobs` runtime and are collected/stopped through the `job_*` tools, and the managed `RLH_*` environment comes from `@relay-harness/rlh-shell-env`. Each call runs in a fresh process (no persistent PTY session), with native `C:\...` paths and `$env:NAME` variables. |
+| `@relay-harness/rlh-tool-code-index` | `code_index_status`, `explore_code_graph`, `refresh_code_index`, `search_code_index` | `ctx.tools`, `ctx.systemPrompt`, `ctx.codeIndex at execution time (optional via ctx.get)` | `tool/call`, `tool/result` | - | The consumer resolves `ctx.codeIndex` opportunistically with ctx.get() so compositions without an index provider still load; a call without one fails as structured INDEX_TOOL_UNAVAILABLE. search_code_index and explore_code_graph byte-cap their serialized canonical value by the answer tier (repoSizeTierMaxOutputChars); status and refresh ship passthrough. |
 | `@relay-harness/rlh-tool-cordis` | `cordis_define`, `cordis_inspect_list`, `cordis_inspect_query`, `cordis_inspect_self`, `cordis_run`, `cordis_stop`, `cordis_undefine` | `ctx.tools`, `ctx.dynamicCordisRunner` | `tool/call`, `tool/result`, `process-local dynamic package lifecycle` | - | Not in any shipped tree (a deliberate opt-in — dynamic package code reaches the real runtime, see .agents/notes/implemented/feature/2026-07-08-self-referential-cordis-toolset.md). The toolset injects `ctx.dynamicCordisRunner` from `@relay-harness/rlh-cordis-host-runner`, which owns the definition registry and the vm sandbox; a composition missing it never activates the tools. A running package may register ADDITIONAL model-visible tools until it is stopped, undefined, or RLH restarts; a full changed request header logs those tool-set changes. |
 | `@relay-harness/rlh-tool-bash-persistent` | `bash` | `ctx.tools`, `ctx.terminals`, `an owning Agent at execution time` | `tool/call`, `PTY shell state`, `tool/result` | - | One owner-isolated persistent bash tool; deployment composition supplies the PTY backend and may override the model-facing environment description. |
 | `@relay-harness/rlh-tool-pwsh-persistent` | `pwsh` | `ctx.tools`, `ctx.terminals`, `an owning Agent at execution time` | `tool/call`, `PTY shell state`, `tool/result` | - | One owner-isolated persistent pwsh tool, the Windows counterpart of the persistent bash tool; deployment composition supplies a pwsh-dialect PTY backend and may override the model-facing environment description. |
@@ -263,6 +264,154 @@ Execute a PowerShell command (`pwsh -Command`) and return its stdout/stderr. Eac
 Source: [`packages/shell/tool-pwsh/src/index.ts`](../packages/shell/tool-pwsh/src/index.ts)
 
 The pwsh tool is the PowerShell-dialect consumer of the bash executor seam for Windows compositions (a PowerShell executor such as `@relay-harness/rlh-pwsh-local` backs `ctx.shell`); it mirrors the bash tool call-for-call minus sandbox controls — `run_in_background` runs register with the generic `ctx.jobs` runtime and are collected/stopped through the `job_*` tools, and the managed `RLH_*` environment comes from `@relay-harness/rlh-shell-env`. Each call runs in a fresh process (no persistent PTY session), with native `C:\...` paths and `$env:NAME` variables.
+
+<a id="relay-harnessrlh-tool-code-index"></a>
+
+## `@relay-harness/rlh-tool-code-index`
+
+### `code_index_status`
+
+Report local code-index health without side effects: indexed file count, repository-size tier, current epoch pair, last refresh summary, and degradation flag.
+
+```json
+{
+  "type": "object",
+  "properties": {}
+}
+```
+
+Source: [`packages/index/tool-code-index/src/index.ts`](../packages/index/tool-code-index/src/index.ts)
+
+### `explore_code_graph`
+
+Answer structured questions over the workspace code graph. op=relations walks the callers and/or callees of one symbol; op=impact sweeps what reverse reachability breaks for a symbol or file set, with the impacted tests attached; op=tests maps code files to the tests exercising them; op=cycles detects circular file-import cycles; op=dead_code lists symbols with no callers or references. Answers carry the matching view plus an explain block under the index epoch they were read at.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "op": {
+      "type": "string",
+      "description": "Which question to ask: relations (callers/callees of one symbol), impact (reverse reachability plus impacted tests), tests (files → covering tests), cycles (circular import components, largest first), or dead_code (symbols with no callers or external references).",
+      "enum": [
+        "relations",
+        "impact",
+        "tests",
+        "cycles",
+        "dead_code"
+      ]
+    },
+    "symbol": {
+      "type": "string",
+      "description": "Symbol name to resolve. Required for op=relations; optional seed for op=impact."
+    },
+    "file_path": {
+      "type": "string",
+      "description": "relations only: pin the symbol to this file when several declarations share the name."
+    },
+    "direction": {
+      "type": "string",
+      "description": "relations only: which side to walk. Defaults to both.",
+      "enum": [
+        "callers",
+        "callees",
+        "both"
+      ]
+    },
+    "depth": {
+      "type": "integer",
+      "description": "relations only: walk depth, 1 or 2. Defaults to 1."
+    },
+    "files": {
+      "type": "array",
+      "description": "Workspace-relative code files. Required for op=tests; optional seeds for op=impact.",
+      "items": {
+        "type": "string"
+      }
+    },
+    "include_tests": {
+      "type": "boolean",
+      "description": "impact only: attach the impacted tests (default true)."
+    },
+    "max": {
+      "type": "integer",
+      "description": "Cap on rendered nodes (relations/impact), returned test pairs (tests), cycle components (cycles), or reported symbols (dead_code). Positive integer, at most 10000."
+    }
+  },
+  "required": [
+    "op"
+  ]
+}
+```
+
+Source: [`packages/index/tool-code-index/src/index.ts`](../packages/index/tool-code-index/src/index.ts)
+
+### `refresh_code_index`
+
+Bring the local code index up to date with the current workspace (incrementally), or force a full rebuild. Concurrent passes fold into one commit; the epoch pair advances exactly once when it lands.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "force": {
+      "type": "boolean",
+      "description": "Rebuild from scratch instead of diffing (default false). Slower; use after schema-level doubt."
+    }
+  }
+}
+```
+
+Source: [`packages/index/tool-code-index/src/index.ts`](../packages/index/tool-code-index/src/index.ts)
+
+### `search_code_index`
+
+Rank indexed workspace chunks against an identifier or free-word query. Every hit explains its score with reason tokens and carries file/line bounds for a follow-up read. Results are deterministic for an unchanged index epoch.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "query": {
+      "type": "string",
+      "description": "Search text: identifier tokens, path fragments, and free words may be mixed."
+    },
+    "path_prefix": {
+      "type": "string",
+      "description": "Restrict candidates to file paths starting with this prefix."
+    },
+    "top_k": {
+      "type": "integer",
+      "description": "Requested hit count (at least 1), capped again by the engine per repository size. Omit it to let the engine pick by repository-size tier."
+    },
+    "paths": {
+      "type": "array",
+      "description": "Explicit scope: rank only these exact file paths.",
+      "items": {
+        "type": "string"
+      }
+    },
+    "recent_paths": {
+      "type": "array",
+      "description": "Files you recently worked with; they receive a preselect-score boost.",
+      "items": {
+        "type": "string"
+      }
+    },
+    "include_grep": {
+      "type": "boolean",
+      "description": "Include the exact-text grep lane in retrieval (default true). Providers may ignore the hint."
+    }
+  },
+  "required": [
+    "query"
+  ]
+}
+```
+
+Source: [`packages/index/tool-code-index/src/index.ts`](../packages/index/tool-code-index/src/index.ts)
+
+The consumer resolves `ctx.codeIndex` opportunistically with ctx.get() so compositions without an index provider still load; a call without one fails as structured INDEX_TOOL_UNAVAILABLE. search_code_index and explore_code_graph byte-cap their serialized canonical value by the answer tier (repoSizeTierMaxOutputChars); status and refresh ship passthrough.
 
 <a id="relay-harnessrlh-tool-cordis"></a>
 

@@ -45,7 +45,10 @@ import * as ToolPwsh from '@relay-harness/rlh-tool-pwsh'
 import * as ToolBashPersistent from '@relay-harness/rlh-tool-bash-persistent'
 import * as ToolPwshPersistent from '@relay-harness/rlh-tool-pwsh-persistent'
 import CordisHostRunner from '@relay-harness/rlh-cordis-host-runner'
+import { CodeIndex } from '@relay-harness/rlh-code-index'
+import type { GraphExploreRequest, GraphExploreResult, IndexStatusReport, RefreshOptions, RefreshSummary, SearchRequest, SearchResult } from '@relay-harness/rlh-code-index'
 import * as ToolCordis from '@relay-harness/rlh-tool-cordis'
+import * as ToolCodeIndex from '@relay-harness/rlh-tool-code-index'
 import * as ToolFs from '@relay-harness/rlh-tool-fs'
 import * as ToolFsSearch from '@relay-harness/rlh-tool-fs-search'
 import * as ToolStrReplaceEditor from '@relay-harness/rlh-tool-str-replace-editor'
@@ -91,6 +94,28 @@ class CatalogAttachmentStore extends AttachmentStore {
 
   override readImage(_ref: ImageAttachmentRef): Promise<StoredImageAttachment> {
     return Promise.reject(new Error('gen-tool-catalog: attachment reads are unreachable during schema harvest'))
+  }
+}
+
+/**
+ * Seam marker that mounts the code-index consumer under its shipped registration:
+ * schema harvest never executes a call, so every verb rejects with a loud probe error.
+ */
+class CatalogCodeIndex extends CodeIndex {
+  override async status(): Promise<IndexStatusReport> {
+    return Promise.reject(new Error('tool-catalog code-index stub cannot report status'))
+  }
+
+  override async refresh(_options?: RefreshOptions): Promise<RefreshSummary> {
+    return Promise.reject(new Error('tool-catalog code-index stub cannot refresh'))
+  }
+
+  override async search(_request: SearchRequest): Promise<SearchResult> {
+    return Promise.reject(new Error('tool-catalog code-index stub cannot search'))
+  }
+
+  override async exploreGraph(_request: GraphExploreRequest): Promise<GraphExploreResult> {
+    return Promise.reject(new Error('tool-catalog code-index stub cannot explore the graph'))
   }
 }
 
@@ -259,6 +284,19 @@ const TOOL_PACKAGES: ToolPackage[] = [
     },
     note:
       'The pwsh tool is the PowerShell-dialect consumer of the bash executor seam for Windows compositions (a PowerShell executor such as `@relay-harness/rlh-pwsh-local` backs `ctx.shell`); it mirrors the bash tool call-for-call minus sandbox controls — `run_in_background` runs register with the generic `ctx.jobs` runtime and are collected/stopped through the `job_*` tools, and the managed `RLH_*` environment comes from `@relay-harness/rlh-shell-env`. Each call runs in a fresh process (no persistent PTY session), with native `C:\\...` paths and `$env:NAME` variables.',
+  },
+  {
+    pkg: '@relay-harness/rlh-tool-code-index',
+    dir: 'tool-code-index',
+    source: 'packages/index/tool-code-index/src/index.ts',
+    requires: ['ctx.tools', 'ctx.systemPrompt', 'ctx.codeIndex at execution time (optional via ctx.get)'],
+    writes: ['tool/call', 'tool/result'],
+    async mount(ctx) {
+      await ctx.plugin(CatalogCodeIndex)
+      await ctx.plugin(ToolCodeIndex)
+    },
+    note:
+      'The consumer resolves `ctx.codeIndex` opportunistically with ctx.get() so compositions without an index provider still load; a call without one fails as structured INDEX_TOOL_UNAVAILABLE. search_code_index and explore_code_graph byte-cap their serialized canonical value by the answer tier (repoSizeTierMaxOutputChars); status and refresh ship passthrough.',
   },
   {
     pkg: '@relay-harness/rlh-tool-cordis',

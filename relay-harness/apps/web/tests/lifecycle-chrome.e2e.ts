@@ -239,7 +239,7 @@ describe('web e2e: lifecycle & chrome (workspace flow / reload / dark mode)', ()
   it.skipIf(MODE === 'record')('cascades the dark theme from the body attribute to painted surfaces', async () => {
     onTestFailed(() => saveFailureShot(page, 'web-e2e-lifecycle-dark'))
     // This scenario pins the ThemeRuntime's DOM contract directly (the
-    // body[data-ds-dark-theme] attribute -> stylesheet cascade); the REAL
+    // body[data-rl-dark-theme] attribute -> stylesheet cascade); the REAL
     // user gesture above it (Settings -> Appearance cubes) is owned by
     // settings-chrome.e2e.ts. Driving the attribute here keeps the cascade
     // pinned independently of the settings surface's own lifecycle.
@@ -253,7 +253,7 @@ describe('web e2e: lifecycle & chrome (workspace flow / reload / dark mode)', ()
         }
       })
     const light = await sample()
-    await page.evaluate(() => { document.body.setAttribute('data-ds-dark-theme', '') })
+    await page.evaluate(() => { document.body.setAttribute('data-rl-dark-theme', '') })
     const dark = await sample()
     // The alias token itself must flip — the cascade's root fact.
     expect(dark.token).not.toBe(light.token)
@@ -262,7 +262,7 @@ describe('web e2e: lifecycle & chrome (workspace flow / reload / dark mode)', ()
     expect(dark.sidebarBg !== light.sidebarBg || dark.bodyBg !== light.bodyBg).toBe(true)
     // Removing the attribute restores the light values exactly (the palettes
     // live in one stylesheet; activation is attribute-only by design).
-    await page.evaluate(() => { document.body.removeAttribute('data-ds-dark-theme') })
+    await page.evaluate(() => { document.body.removeAttribute('data-rl-dark-theme') })
     const restored = await sample()
     expect(restored).toEqual(light)
     expect(tripwire.pageErrors).toEqual([])

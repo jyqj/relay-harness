@@ -24,7 +24,7 @@
 
 1. **先复用，再绘制。** 按钮、输入、菜单、对话框、Tooltip、开关行，用 `ui-primitives`。不要再造一套圆角、高度、hover。
 2. **颜色只走 `--rlw-alias-*` / `--rlw-specific-*`。** 功能 CSS 禁止写 `#hex`、`rgb()`、独立 `--bg` / `--accent`。缺 token 先加主题表，再引用语义别名。
-3. **明暗只发生在主题表。** 功能 CSS 不得写 `[data-theme]`、`[data-ds-dark-theme]`、`prefers-color-scheme` 分支。
+3. **明暗只发生在主题表。** 功能 CSS 不得写 `[data-theme]`、`[data-rl-dark-theme]`、`prefers-color-scheme` 分支。
 4. **主色不是电光蓝。** 默认主按钮是近黑（浅色）/ 近白（深色）：`--rlw-alias-button-primary-fill`。品牌蓝是 `--rlw-static-relay-500`（`rgb(65, 118, 230)`）及其 alias（`--rlw-alias-button-info-fill`、`--rlw-alias-state-business-primary`），用于信息强调、用户气泡、选中态。禁止 `#2b5cff`、`#6ea8ff`、`#3964fe` 这类平行色板。
 5. **描边用透明度，不用实心灰。** 浅色 `rgba(0,0,0,.04/.10/.12)`，深色 `rgba(255,255,255,.06/.12/.16)`，对应 `--rlw-alias-border-l1`～`l3`。栏与栏之间是 1px 发丝线，不是投影卡片墙。
 6. **Hover / Active 用交互 token。** 浅色 `rgba(38, 49, 72, .06 / .10)`，深色 `rgba(255,255,255,.08 / .14)`：`--rlw-alias-interactive-bg-hover` / `active`。不要新造一层实心灰底。
@@ -67,7 +67,7 @@
 
 构图：四角 L 形瞄准轨画在视口上；中区垂直居中，依次是 Relay Harness 标志、品牌名 `Relay-Harness-Desktop`、状态与说明，失败时出现直角重试与下载日志键。顶栏左侧技术码 `RLH-DESKTOP`，右侧盖章随 `body[data-state]` 切换：启动中 / 就绪 / 停止中 / 异常，对应 BOOT / READY / HALT / ERROR。左下等宽日志铺在画布上，无边框、无底色，长行换行；字号行高 14/22。日志贴底向上堆，底与左侧让开角轨（`--boot-log-inset`），超出高度时裁掉上方旧行，最新行始终完整可见。运行时就绪后，官方客户端插件装载仍留在这张画布上（状态行写 `正在加载插件 n/m`），后台 BrowserView 装完再露出 Web UI，不再切到官方那张「正在加载插件」页。
 
-色与主题：[`boot-tokens.css`](../src/renderer/boot-tokens.css) 是唯一色表。浅色是纸面近黑，深色是 CRT 近白；`--boot-accent` 与正文同色，失败用 `--boot-alert`。`html[data-boot-theme]` 让 [`theme.js`](../src/renderer/theme.js) 只切 `theme.scheme` 的明暗半，不把用户主题的 `bg` / `accent` 写进启动页。[`boot.css`](../src/renderer/boot.css) 只引用 `--boot-*` 与官方字体、动效 token，不写 `[data-ds-dark-theme]` 分支，也不写颜色字面量。
+色与主题：[`boot-tokens.css`](../src/renderer/boot-tokens.css) 是唯一色表。浅色是纸面近黑，深色是 CRT 近白；`--boot-accent` 与正文同色，失败用 `--boot-alert`。`html[data-boot-theme]` 让 [`theme.js`](../src/renderer/theme.js) 只切 `theme.scheme` 的明暗半，不把用户主题的 `bg` / `accent` 写进启动页。[`boot.css`](../src/renderer/boot.css) 只引用 `--boot-*` 与官方字体、动效 token，不写 `[data-rl-dark-theme]` 分支，也不写颜色字面量。
 
 窗口控件仍走 [`window-controls.css`](../src/renderer/window-controls.css)。禁止 NERV / MAGI / SEELE / EVA 商标或官方标志。禁止把 `--boot-*` 用到设置页、关闭遮罩、标题栏或官方 Web UI。
 

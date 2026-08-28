@@ -22,6 +22,7 @@
 | `@relay-harness/rlh-plan-mode` | `exit_plan_mode` | `ctx.tools`、`ctx.systemPrompt`、`ctx.userQuestions (execution time, opportunistic)` | `tool/call`、`plan/mode inactive on an approved review`、`tool/result` | - | 规划未激活时，exit_plan_mode 仍保留在面向模型的 schema 中，这样状态转换不会在规划策略变更之外额外造成工具目录变动。其执行路径会拒绝规划模式之外的调用；在规划模式下，它通过用户交互 seam 提交计划（批准／根据反馈继续规划），批准后会在步骤边界记录规划模式已停用。 |
 | `@relay-harness/rlh-tool-bash` | `bash` | `ctx.tools`、`ctx.shell`、`ctx.systemPrompt`、`ctx.shellEnv`、`ctx.jobs at call time for run_in_background` | `tool/call`、`tool/result` | - | bash 工具是 bash 执行器 seam 面向模型的消费方。使用 `run_in_background` 的运行会注册到通用 `ctx.jobs` 运行时，并通过 `job_*` 工具（来自 `@relay-harness/rlh-tool-jobs`）收集／停止；禁用 `enableRunInBackground` 配置（默认为 true）后，该参数会被完全移除。 |
 | `@relay-harness/rlh-tool-pwsh` | `pwsh` | `ctx.tools`、`ctx.shell`、`ctx.systemPrompt`、`ctx.shellEnv`、`ctx.jobs at call time for run_in_background` | `tool/call`、`tool/result` | - | pwsh 工具是 Windows 组合中 bash 执行器 seam 的 PowerShell 方言消费方（由 `@relay-harness/rlh-pwsh-local` 等 PowerShell 执行器为 `ctx.shell` 提供后端）；除沙箱接口外，它逐项对应 bash 工具调用。使用 `run_in_background` 的运行会注册到通用 `ctx.jobs` 运行时，并通过 `job_*` 工具收集／停止；托管的 `RLH_*` 环境来自 `@relay-harness/rlh-shell-env`。每次调用都在新进程中运行，不使用持久 PTY 会话。路径采用原生 `C:\...` 形式，变量采用 `$env:NAME`。 |
+| `@relay-harness/rlh-tool-code-index` | `code_index_status`、`explore_code_graph`、`refresh_code_index`、`search_code_index` | `ctx.tools`、`ctx.systemPrompt`、`ctx.codeIndex at execution time (optional via ctx.get)` | `tool/call`、`tool/result` | - | 该消费方通过 ctx.get() 机会式解析 `ctx.codeIndex`，未安装索引 provider 的组合仍可正常加载；缺失 provider 时单个调用会以结构化错误 INDEX_TOOL_UNAVAILABLE 失败。search_code_index 与 explore_code_graph 按答案携带的仓库规模档位（repoSizeTierMaxOutputChars）对序列化后的规范值做字节封顶；status 与 refresh 天然有界走 passthrough。 |
 | `@relay-harness/rlh-tool-cordis` | `cordis_define`、`cordis_inspect_list`、`cordis_inspect_query`、`cordis_inspect_self`、`cordis_run`、`cordis_stop`、`cordis_undefine` | `ctx.tools`、`ctx.dynamicCordisRunner` | `tool/call`、`tool/result`、`process-local dynamic package lifecycle` | - | 不在任何随产品发布的树中，需要显式选择启用；动态 Package 代码可以访问真实运行时，见 .agents/notes/implemented/feature/2026-07-08-self-referential-cordis-toolset.md。该工具集注入 `@relay-harness/rlh-cordis-host-runner` 提供的 `ctx.dynamicCordisRunner`，后者拥有定义注册表和 vm 沙箱；组合缺少它时这些工具不会激活。运行中的 Package 在停止、undefine 或 RLH 重启前可以注册**额外的**模型可见工具；发生这类工具集变化时，系统会记录完整且有变动的请求头。 |
 | `@relay-harness/rlh-tool-bash-persistent` | `bash` | `ctx.tools`、`ctx.terminals`、`an owning Agent at execution time` | `tool/call`、`PTY shell state`、`tool/result` | - | 一个按所有者隔离的持久 bash 工具；部署组合提供 PTY 后端，并可覆盖面向模型的环境描述。 |
 | `@relay-harness/rlh-tool-pwsh-persistent` | `pwsh` | `ctx.tools`、`ctx.terminals`、`an owning Agent at execution time` | `tool/call`、`PTY shell state`、`tool/result` | - | 一个按所有者隔离的持久 pwsh 工具，持久 bash 工具的 Windows 对应物；部署组合提供 pwsh 方言的 PTY 后端，并可覆盖面向模型的环境描述。 |
@@ -265,6 +266,154 @@ bash 工具是 bash 执行器 seam 面向模型的消费方。使用 `run_in_bac
 来源：[`packages/shell/tool-pwsh/src/index.ts`](../packages/shell/tool-pwsh/src/index.ts)
 
 pwsh 工具是 Windows 组合中 bash 执行器 seam 的 PowerShell 方言消费方（由 `@relay-harness/rlh-pwsh-local` 等 PowerShell 执行器为 `ctx.shell` 提供后端）；除沙箱接口外，它逐项对应 bash 工具调用。使用 `run_in_background` 的运行会注册到通用 `ctx.jobs` 运行时，并通过 `job_*` 工具收集／停止；托管的 `RLH_*` 环境来自 `@relay-harness/rlh-shell-env`。每次调用都在新进程中运行，不使用持久 PTY 会话。路径采用原生 `C:\...` 形式，变量采用 `$env:NAME`。
+
+<a id="relay-harnessrlh-tool-code-index"></a>
+
+## `@relay-harness/rlh-tool-code-index`
+
+### `code_index_status`
+
+无副作用地报告本地代码索引健康状态：已索引文件数、仓库规模档位、当前 epoch 对、最近一次刷新摘要与降级标志。
+
+```json
+{
+  "type": "object",
+  "properties": {}
+}
+```
+
+来源：[`packages/index/tool-code-index/src/index.ts`](../packages/index/tool-code-index/src/index.ts)
+
+### `explore_code_graph`
+
+回答工作区代码图上的结构化问题。op=relations 沿某符号的 caller 和/或 callee 行走；op=impact 对符号或文件集做反向可达性扫描，并附上受影响的测试；op=tests 将代码文件映射到覆盖它们的测试；op=cycles 检测循环的文件导入环；op=dead_code 列出无调用方或引用的符号。答案携带对应的视图与读取时索引 epoch 下的 explain 块。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "op": {
+      "type": "string",
+      "description": "Which question to ask: relations (callers/callees of one symbol), impact (reverse reachability plus impacted tests), tests (files → covering tests), cycles (circular import components, largest first), or dead_code (symbols with no callers or external references).",
+      "enum": [
+        "relations",
+        "impact",
+        "tests",
+        "cycles",
+        "dead_code"
+      ]
+    },
+    "symbol": {
+      "type": "string",
+      "description": "Symbol name to resolve. Required for op=relations; optional seed for op=impact."
+    },
+    "file_path": {
+      "type": "string",
+      "description": "relations only: pin the symbol to this file when several declarations share the name."
+    },
+    "direction": {
+      "type": "string",
+      "description": "relations only: which side to walk. Defaults to both.",
+      "enum": [
+        "callers",
+        "callees",
+        "both"
+      ]
+    },
+    "depth": {
+      "type": "integer",
+      "description": "relations only: walk depth, 1 or 2. Defaults to 1."
+    },
+    "files": {
+      "type": "array",
+      "description": "Workspace-relative code files. Required for op=tests; optional seeds for op=impact.",
+      "items": {
+        "type": "string"
+      }
+    },
+    "include_tests": {
+      "type": "boolean",
+      "description": "impact only: attach the impacted tests (default true)."
+    },
+    "max": {
+      "type": "integer",
+      "description": "Cap on rendered nodes (relations/impact), returned test pairs (tests), cycle components (cycles), or reported symbols (dead_code). Positive integer, at most 10000."
+    }
+  },
+  "required": [
+    "op"
+  ]
+}
+```
+
+来源：[`packages/index/tool-code-index/src/index.ts`](../packages/index/tool-code-index/src/index.ts)
+
+### `refresh_code_index`
+
+将本地代码索引增量更新到当前工作区状态，或强制从头重建。并发调用在 seam 内折叠为一次提交；epoch 对只在提交落地时恰好前进一次。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "force": {
+      "type": "boolean",
+      "description": "Rebuild from scratch instead of diffing (default false). Slower; use after schema-level doubt."
+    }
+  }
+}
+```
+
+来源：[`packages/index/tool-code-index/src/index.ts`](../packages/index/tool-code-index/src/index.ts)
+
+### `search_code_index`
+
+用标识符或自由词查询对已索引的工作区切片做排序检索。每个 hit 都用 reason token 解释自己的得分，并携带可用于后续读取的文件／行边界。在索引 epoch 不变时结果确定。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "query": {
+      "type": "string",
+      "description": "Search text: identifier tokens, path fragments, and free words may be mixed."
+    },
+    "path_prefix": {
+      "type": "string",
+      "description": "Restrict candidates to file paths starting with this prefix."
+    },
+    "top_k": {
+      "type": "integer",
+      "description": "Requested hit count (at least 1), capped again by the engine per repository size. Omit it to let the engine pick by repository-size tier."
+    },
+    "paths": {
+      "type": "array",
+      "description": "Explicit scope: rank only these exact file paths.",
+      "items": {
+        "type": "string"
+      }
+    },
+    "recent_paths": {
+      "type": "array",
+      "description": "Files you recently worked with; they receive a preselect-score boost.",
+      "items": {
+        "type": "string"
+      }
+    },
+    "include_grep": {
+      "type": "boolean",
+      "description": "Include the exact-text grep lane in retrieval (default true). Providers may ignore the hint."
+    }
+  },
+  "required": [
+    "query"
+  ]
+}
+```
+
+来源：[`packages/index/tool-code-index/src/index.ts`](../packages/index/tool-code-index/src/index.ts)
+
+该消费方通过 ctx.get() 机会式解析 `ctx.codeIndex`，未安装索引 provider 的组合仍可正常加载；缺失 provider 时单个调用会以结构化错误 INDEX_TOOL_UNAVAILABLE 失败。search_code_index 与 explore_code_graph 按答案携带的仓库规模档位（repoSizeTierMaxOutputChars）对序列化后的规范值做字节封顶；status 与 refresh 天然有界走 passthrough。
 
 <a id="relay-harnessrlh-tool-cordis"></a>
 

@@ -18,7 +18,7 @@
   --shiki-token-link: #1971c2;
 }
 
-body[data-ds-dark-theme] {
+body[data-rl-dark-theme] {
   --shiki-token-constant: #4dabf7;
   --shiki-token-string: #69db7c;
   --shiki-token-comment: #adb5bd;

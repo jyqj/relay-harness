@@ -875,6 +875,8 @@ describe('session.search', () => {
     expect(failed.result.ok).toBe(false)
     if (failed.result.ok) throw new Error('unreachable')
     expect(failed.result.error.code).toBe('internal')
-    expect(failed.result.error.message).toContain('database unavailable')
+    // A provider-thrown error's text stays in the Host log; the wire carries
+    // only the static failure message.
+    expect(failed.result.error.message).toBe('session search failed')
   })
 })

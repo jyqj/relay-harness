@@ -53,16 +53,18 @@
   ],
   "license": "MIT",
   "peerDependencies": {
+    "@relay-harness/cordis": "workspace:^",
     "@relay-harness/rlh-agent": "workspace:^",
     "@relay-harness/rlh-invariants": "workspace:^",
-    "@relay-harness/rlh-typert-protocol": "workspace:^",
-    "@relay-harness/cordis": "workspace:^"
+    "@relay-harness/rlh-llm": "workspace:^",
+    "@relay-harness/rlh-typert-protocol": "workspace:^"
   },
   "devDependencies": {
+    "@relay-harness/cordis": "workspace:^",
     "@relay-harness/rlh-agent": "workspace:^",
     "@relay-harness/rlh-invariants": "workspace:^",
-    "@relay-harness/rlh-typert-protocol": "workspace:^",
-    "@relay-harness/cordis": "workspace:^"
+    "@relay-harness/rlh-llm": "workspace:^",
+    "@relay-harness/rlh-typert-protocol": "workspace:^"
   },
   "dependencies": {
     "zod": "^4.4.3"

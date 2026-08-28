@@ -1,0 +1,13 @@
+source: official tree-sitter grammar release artifacts (GitHub, tree-sitter org, WASM side-modules for web-tree-sitter)
+note: tree-sitter-wasms@0.1.13 ships legacy 'dylink' sections that web-tree-sitter >= 0.25 cannot load ('dylink.0' required); the official release artifacts are the canonical upstream builds.
+extracted: 2026-08-28
+
+tree-sitter-c.wasm https://github.com/tree-sitter/tree-sitter-c/releases/download/v0.24.2/tree-sitter-c.wasm 645157
+tree-sitter-cpp.wasm https://github.com/tree-sitter/tree-sitter-cpp/releases/download/v0.23.4/tree-sitter-cpp.wasm 3434931
+tree-sitter-go.wasm https://github.com/tree-sitter/tree-sitter-go/releases/download/v0.25.0/tree-sitter-go.wasm 217182
+tree-sitter-java.wasm https://github.com/tree-sitter/tree-sitter-java/releases/download/v0.23.5/tree-sitter-java.wasm 414641
+tree-sitter-javascript.wasm https://github.com/tree-sitter/tree-sitter-javascript/releases/download/v0.25.0/tree-sitter-javascript.wasm 411770
+tree-sitter-python.wasm https://github.com/tree-sitter/tree-sitter-python/releases/download/v0.25.0/tree-sitter-python.wasm 457883
+tree-sitter-rust.wasm https://github.com/tree-sitter/tree-sitter-rust/releases/download/v0.24.2/tree-sitter-rust.wasm 1118099
+tree-sitter-tsx.wasm https://github.com/tree-sitter/tree-sitter-typescript/releases/download/v0.23.2/tree-sitter-tsx.wasm 1445638
+tree-sitter-typescript.wasm https://github.com/tree-sitter/tree-sitter-typescript/releases/download/v0.23.2/tree-sitter-typescript.wasm 1413849

@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { buildThemeBootPayload, injectBootTheme } from '../src/boot-theme.ts'
 import { DEFAULT_WALLPAPER_SOURCES, type ThemePreference } from '../src/theme-settings.ts'
 
-const DARK_ATTRIBUTE = 'data-ds-dark-theme'
+const DARK_ATTRIBUTE = 'data-rl-dark-theme'
 
 function mockSystemDark(matches: boolean): void {
   vi.stubGlobal('matchMedia', vi.fn(() => ({ matches }) as MediaQueryList))

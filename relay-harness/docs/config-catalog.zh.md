@@ -468,6 +468,93 @@ export interface Config {
 
 来源：[`packages/client/hmr/src/index.ts:31`](../packages/client/hmr/src/index.ts)
 
+<a id="relay-harnessrlh-code-context"></a>
+
+## `@relay-harness/rlh-code-context`
+
+```ts config-catalog
+/** Code-index recall injection configuration. */
+export interface Config {
+  /** Maximum characters of rendered hit lines included in one recall message. */
+  maxChars?: number
+  /** Maximum hits injected per step. */
+  maxHits?: number
+  /** Minimum trimmed direct-user-text length that triggers a search. */
+  minQueryChars?: number
+}
+```
+
+Source: [`packages/context/code-context/src/index.ts:36`](../packages/context/code-context/src/index.ts)
+
+<a id="relay-harnessrlh-code-index-local"></a>
+
+## `@relay-harness/rlh-code-index-local`
+
+```ts config-catalog
+/** Local provider configuration. */
+export interface Config {
+  /** Workspace root to scan; defaults to the process working directory. */
+  workspaceRoot?: string
+  /**
+   * Dedicated SQLite file (or `:memory:`); defaults to
+   * `<rlhHome>/index/code-index-<workspace-hash>.sqlite3`.
+   */
+  databasePath?: string
+  /** SQLite journal mode. Defaults to `wal`. */
+  journalMode?: JournalMode
+  /** Extra `.gitignore`-syntax excludes stacked over hard excludes. */
+  exclude?: string[]
+  /** Byte ceiling before files record rows without chunks. Defaults to 512000. */
+  maxFileBytes?: number
+  /** Tool-result invalidation debounce in ms. Defaults to 500. */
+  debounceMs?: number
+  /** Opt-in recursive filesystem watcher. Defaults to false. */
+  watcherEnabled?: boolean
+  /**
+   * Global budget on files promoted per incremental pass by dirty
+   * propagation (export-surface change closure). Defaults to 200.
+   */
+  dirtyPropagationMaxFiles?: number
+  /**
+   * Embedding tier; omitting `baseURL` or `model` (or the whole section)
+   * removes the vector lane, the drain, and vector status reporting.
+   */
+  embedding?: EmbeddingConfig
+}
+
+/** Embedding tier configuration. Omitting `baseURL` or `model` removes the whole tier. */
+export interface EmbeddingConfig {
+  /** Credential-ref: environment variable naming the bearer key. Defaults to `EMBEDDING_API_KEY`. */
+  apiKeyEnv?: string
+  /** OpenAI-compatible embeddings endpoint base. */
+  baseURL?: string
+  /** Embedding model identity sent with every request. */
+  model?: string
+  /** Requested vector dimensionality; omit to lock onto the first reply. */
+  dimensions?: number
+  /** Texts packed into one wire request in the common case. Defaults to 32. */
+  batchSize?: number
+  /** Per-wire-request deadline in ms. Defaults to 30000. */
+  timeoutMs?: number
+  /** Hard per-request input cap. Defaults to 16. */
+  maxInputsPerRequest?: number
+  /** Scheduled prompt-token spend per drain. Defaults to 200000. */
+  maxPromptTokensPerDrain?: number
+  /** Jobs claimed per drain. Defaults to 256. */
+  maxJobsPerDrain?: number
+  /** Vector lane RRF weight (`0` mutes the lane). Defaults to 0.9. */
+  vectorWeight?: number
+  /** Vector lane candidate cap. Defaults to 12. */
+  vectorTopK?: number
+  /** Vector lane candidate-pool ceiling. Defaults to 2000. */
+  vectorMaxCandidates?: number
+}
+```
+
+Depends on: [`JournalMode`](../packages/index/code-index-sqlite/src/index.ts)
+
+Source: [`packages/index/code-index-local/src/index.ts:215`](../packages/index/code-index-local/src/index.ts)
+
 <a id="relay-harnessrlh-code-runtime-worker-thread"></a>
 
 ## `@relay-harness/rlh-code-runtime-worker-thread`
@@ -682,10 +769,20 @@ export interface Config {
   maxEntries?: number
   /** Directory basenames never traversed or offered. */
   excludedDirectories?: string[]
+  /** Presence enables the step-context contributor that injects mentioned files' contents. */
+  fileContent?: Partial<FileContentConfig>
+}
+
+/** Injected-content budget configuration (`fileContent` config section). */
+export interface FileContentConfig {
+  /** Maximum content bytes included from any one file. */
+  maxFileBytes: number
+  /** Maximum total content bytes included from all files of one step. */
+  maxTotalBytes: number
 }
 ```
 
-来源：[`packages/context/file-reference-local/src/index.ts:35`](../packages/context/file-reference-local/src/index.ts)
+来源：[`packages/context/file-reference-local/src/index.ts:47`](../packages/context/file-reference-local/src/index.ts)
 
 <a id="relay-harnessrlh-fs-local"></a>
 
@@ -854,7 +951,7 @@ export interface Config {
 }
 ```
 
-来源：[`packages/host/apiproxy/src/index.ts:41`](../packages/host/apiproxy/src/index.ts)
+来源：[`packages/host/apiproxy/src/index.ts:42`](../packages/host/apiproxy/src/index.ts)
 
 <a id="relay-harnessrlh-host-directory-picker-browse"></a>
 
@@ -2850,6 +2947,25 @@ export interface Config {
 
 来源：[`packages/shell/tool-bash-persistent/src/index.ts:432`](../packages/shell/tool-bash-persistent/src/index.ts)
 
+<a id="relay-harnessrlh-tool-code-index"></a>
+
+## `@relay-harness/rlh-tool-code-index`
+
+Requires: `tools` · `systemPrompt`
+
+```ts config-catalog
+/** Plugin configuration. */
+export interface Config {
+  /**
+   * Remove the model-facing `top_k` lever so the engine's repository-size-tier
+   * cap always decides hit count (default false keeps the model lever).
+   */
+  clampTopKToTier?: boolean
+}
+```
+
+Source: [`packages/index/tool-code-index/src/index.ts:79`](../packages/index/tool-code-index/src/index.ts)
+
 <a id="relay-harnessrlh-tool-fs"></a>
 
 ## `@relay-harness/rlh-tool-fs`
@@ -3642,6 +3758,7 @@ These load from a `cordis.yml` entry with no `config:` block; they declare no co
 - `@relay-harness/rlh-command-feedback` — requires `commands` ([`packages/feedback/command-feedback/src/index.ts`](../packages/feedback/command-feedback/src/index.ts))
 - `@relay-harness/rlh-command-goal` — requires `commands` · `goals` ([`packages/goal/command-goal/src/index.ts`](../packages/goal/command-goal/src/index.ts))
 - `@relay-harness/rlh-commands` ([`packages/interaction/commands/src/index.ts`](../packages/interaction/commands/src/index.ts))
+- `@relay-harness/rlh-context-engine` ([`packages/context/context-engine/src/index.ts`](../packages/context/context-engine/src/index.ts))
 - `@relay-harness/rlh-cordis-client-runner` ([`packages/extensions/cordis-client-runner/src/index.ts`](../packages/extensions/cordis-client-runner/src/index.ts))
 - `@relay-harness/rlh-fs-e2b` — requires `e2b` ([`packages/e2b/fs-e2b/src/index.ts`](../packages/e2b/fs-e2b/src/index.ts))
 - `@relay-harness/rlh-fs-observation-policy` ([`packages/fs/fs-observation-policy/src/index.ts`](../packages/fs/fs-observation-policy/src/index.ts))
@@ -3678,6 +3795,7 @@ These load from a `cordis.yml` entry with no `config:` block; they declare no co
 Abstract service classes — a deployment loads a concrete implementation package instead ([capability seams](../.agents/notes/implemented/architecture/2026-06-13-capability-seams.md)).
 
 - `@relay-harness/rlh-attachment` — abstract `AttachmentStore` ([`packages/attachment/attachment/src/index.ts`](../packages/attachment/attachment/src/index.ts))
+- `@relay-harness/rlh-code-index` — abstract `CodeIndex` ([`packages/index/code-index/src/index.ts`](../packages/index/code-index/src/index.ts))
 - `@relay-harness/rlh-code-runtime` — abstract `CodeRuntime` ([`packages/code-runtime/code-runtime/src/index.ts`](../packages/code-runtime/code-runtime/src/index.ts))
 - `@relay-harness/rlh-compaction` — abstract `CompactionEngine` ([`packages/compaction/compaction/src/index.ts`](../packages/compaction/compaction/src/index.ts))
 - `@relay-harness/rlh-credentials` — abstract `CredentialProvider` ([`packages/credentials/credentials/src/index.ts`](../packages/credentials/credentials/src/index.ts))
@@ -3715,6 +3833,10 @@ Imported as libraries by other packages; a `cordis.yml` cannot load them.
 - `@relay-harness/rlh-client-ui-slots` ([`packages/client/ui-slots/src/index.ts`](../packages/client/ui-slots/src/index.ts))
 - `@relay-harness/rlh-client-web` ([`packages/client/web/src/index.ts`](../packages/client/web/src/index.ts))
 - `@relay-harness/rlh-cmdline` ([`packages/boot/cmdline/src/index.ts`](../packages/boot/cmdline/src/index.ts))
+- `@relay-harness/rlh-code-index-graph` ([`packages/index/code-index-graph/src/index.ts`](../packages/index/code-index-graph/src/index.ts))
+- `@relay-harness/rlh-code-index-parser` ([`packages/index/code-index-parser/src/index.ts`](../packages/index/code-index-parser/src/index.ts))
+- `@relay-harness/rlh-code-index-search` ([`packages/index/code-index-search/src/index.ts`](../packages/index/code-index-search/src/index.ts))
+- `@relay-harness/rlh-code-index-sqlite` ([`packages/index/code-index-sqlite/src/index.ts`](../packages/index/code-index-sqlite/src/index.ts))
 - `@relay-harness/rlh-code-runtime-python` ([`packages/code-runtime/code-runtime-python/src/index.ts`](../packages/code-runtime/code-runtime-python/src/index.ts))
 - `@relay-harness/rlh-home-paths` ([`packages/util/home-paths/src/index.ts`](../packages/util/home-paths/src/index.ts))
 - `@relay-harness/rlh-hook-protocol` ([`packages/hooks/hook-protocol/src/index.ts`](../packages/hooks/hook-protocol/src/index.ts))

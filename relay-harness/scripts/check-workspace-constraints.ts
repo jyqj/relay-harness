@@ -165,6 +165,9 @@ const packageFileExtras: Readonly<Record<string, readonly string[]>> = {
   '@relay-harness/rlh-sandbox-windows-acl': ['lib/runner.js', 'lib/types-*.js'],
   // SQLite loads every statement from immutable package resources at runtime.
   '@relay-harness/rlh-session-persistence-sqlite': ['resources/sql/**/*.sql'],
+  // The parser layer vendors read-only grammar wasms whose provenance lives
+  // beside them in resources/grammars/VERSION.
+  '@relay-harness/rlh-code-index-parser': ['resources/grammars/**'],
   '@relay-harness/rlh-skill-badge': ['assets'],
   '@relay-harness/rlh-subprocess-local': ['scripts/ensure-spawn-helper.mjs'],
 }

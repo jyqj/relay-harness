@@ -27,6 +27,7 @@ npm scope 为 `@relay-harness/rlh-*`；Cordis `Service` 子类和函数插件通
 | [`code-runtime/`](code-runtime/README.md) | 代码执行能力系列：Service Definition + worker 线程提供方 + Code Mode Consumer |
 | [`sandbox/`](sandbox/README.md) | 进程限制 seam；bwrap/Landlock/Seatbelt 后端 |
 | [`fs/`](fs/README.md) | 文件系统能力系列：seam、本地实现、面向模型的文件工具、由 bash 支持的发现工具 |
+| [`index/`](index/README.md) | 本地代码索引能力系列：检索 seam + 基于 SQLite 的工作区索引器 + 面向模型的 search/status/refresh 工具 |
 | [`lsp/`](lsp/README.md) | LSP 能力系列：seam、通用 stdio 提供方和 `lsp` 工具 |
 | [`mcp/`](mcp/README.md) | Model Context Protocol 桥接：客户端工具注册与 servers 文件 |
 | [`skill/`](skill/README.md) | skill（技能）能力系列：提供方注册表、本地提供方和面向模型的目录／loader |

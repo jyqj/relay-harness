@@ -4,7 +4,7 @@ import {
   type GhosttyCell,
   type GhosttyColor,
   type GhosttySnapshot,
-} from "./core";
+} from './core.ts';
 
 /** The size of one terminal cell, in device-independent pixels. */
 export interface GhosttyCellMetrics {

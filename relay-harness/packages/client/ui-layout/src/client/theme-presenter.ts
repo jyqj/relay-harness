@@ -1,7 +1,7 @@
 /**
  * Global theme DOM applier: projects the resolved ThemeSnapshot onto the
  * document — `html { color-scheme }` for native UA chrome (scrollbars, form
- * controls), `body[data-ds-dark-theme]` for the token palette, the active
+ * controls), `body[data-rl-dark-theme]` for the token palette, the active
  * theme's alias-token overrides as inline CSS variables on body, and one
  * presenter-owned `meta[name="theme-color"]` for surrounding browser UI. Pure
  * DOM writes, no React involvement; the presenter only ever retracts what it
@@ -10,7 +10,7 @@
 import type { ThemeSnapshot } from '@relay-harness/rlh-client-ui-theme/client'
 
 /** Body attribute selecting the dark base palette in the token stylesheets. */
-export const DARK_ATTRIBUTE = 'data-ds-dark-theme'
+export const DARK_ATTRIBUTE = 'data-rl-dark-theme'
 
 /** Applies theme snapshots to the document; one instance per plugin fiber. */
 export class ThemePresenter {

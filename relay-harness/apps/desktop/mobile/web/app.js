@@ -166,7 +166,7 @@ function renderSettings(pane = state.settingsPane) {
       tile.setAttribute('aria-pressed', String(memorySettings.theme === theme));
       tile.addEventListener('click', () => {
         memorySettings.theme = theme;
-        document.documentElement.toggleAttribute('data-ds-dark-theme', theme === 'dark');
+        document.documentElement.toggleAttribute('data-rl-dark-theme', theme === 'dark');
         renderSettings(pane);
       });
       tiles.append(tile);

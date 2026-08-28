@@ -107,7 +107,7 @@ describe.skipIf(MODE === 'record')('web e2e: durable workflow run in Chat', () =
 
     const lightColor = await member.locator('[data-member-label]').evaluate(element => getComputedStyle(element).color)
     await page.setViewportSize({ width: 560, height: 800 })
-    await page.evaluate(() => { document.body.setAttribute('data-ds-dark-theme', '') })
+    await page.evaluate(() => { document.body.setAttribute('data-rl-dark-theme', '') })
     const darkNarrow = await page.locator('[data-workflow-run]').evaluate((element) => {
       const panel = element as HTMLElement
       panel.style.width = '356px'
@@ -150,7 +150,7 @@ describe.skipIf(MODE === 'record')('web e2e: durable workflow run in Chat', () =
     expect(darkNarrow.phaseTitleRight).toBeLessThanOrEqual(darkNarrow.phaseStatusLeft)
     await page.locator('[data-workflow-run]').evaluate((element) => {
       (element as HTMLElement).style.removeProperty('width')
-      document.body.removeAttribute('data-ds-dark-theme')
+      document.body.removeAttribute('data-rl-dark-theme')
     })
     await page.setViewportSize({ width: 1280, height: 800 })
 

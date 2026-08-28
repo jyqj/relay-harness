@@ -16,7 +16,8 @@ import { Context, Service } from '@relay-harness/cordis'
 import z from '@relay-harness/schemastery'
 import type {} from '@relay-harness/rlh-agent-default-model'
 import type { ApiProxy } from './api/index.ts'
-import { createApiProxy, DEFAULT_COLD_BLANK_PROBE_MAX_BYTES } from './api-proxy.ts'
+import { createApiProxy } from './api-proxy.ts'
+import { DEFAULT_COLD_BLANK_PROBE_MAX_BYTES } from './session-list.ts'
 import {
   DEFAULT_SESSION_LOG_COMPRESSION_LEVEL,
   type SessionLogCompressionLevel,

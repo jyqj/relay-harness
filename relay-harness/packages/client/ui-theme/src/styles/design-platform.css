@@ -77,7 +77,7 @@ body {
   --rlw-static-red-900: rgb(87, 12, 12);
 }
 
-body[data-ds-dark-theme] {
+body[data-rl-dark-theme] {
   --rlw-static-amber-100: rgb(254, 245, 231);
   --rlw-static-amber-400: rgb(247, 173, 49);
   --rlw-static-amber-500: rgb(245, 158, 11);
@@ -247,7 +247,7 @@ body {
   --rlw-specific-tip: var(--rlw-static-neutral-bluish-60);
 }
 
-body[data-ds-dark-theme] {
+body[data-rl-dark-theme] {
   --rlw-alias-bg-base: var(--rlw-static-neutral-bluish-950);
   --rlw-alias-bg-layer-1: var(--rlw-static-neutral-bluish-875);
   --rlw-alias-bg-layer-2: var(--rlw-static-neutral-bluish-850);

@@ -14,7 +14,7 @@
   background: var(--rlw-alias-bg-base, var(--rlh-boot-bg));
 }
 
-:global(body[data-ds-dark-theme]) .boot {
+:global(body[data-rl-dark-theme]) .boot {
   --rlh-boot-bg: #151517;
   --rlh-boot-label-primary: #f9fafb;
   --rlh-boot-label-secondary: #cfd3d6;

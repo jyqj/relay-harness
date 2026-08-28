@@ -7,7 +7,7 @@ const leftoverBrand = ['t', '3', 'code'].join('')
 
 describe('readPreviewAnnotationTheme', () => {
   it('maps --rlw-alias tokens onto theme fields and never emits leftover CSS names', () => {
-    document.documentElement.removeAttribute('data-ds-dark-theme')
+    document.documentElement.removeAttribute('data-rl-dark-theme')
     document.documentElement.style.setProperty('--rlw-alias-button-primary-fill', 'rgb(9, 9, 9)')
     document.documentElement.style.setProperty('--rlw-alias-bg-layer-1', 'rgb(255, 255, 255)')
     document.documentElement.style.setProperty('--rlw-alias-label-primary', 'rgb(15, 17, 21)')
@@ -27,15 +27,15 @@ describe('readPreviewAnnotationTheme', () => {
     expect(theme.background.length).toBeGreaterThan(0)
   })
 
-  it('reads dark colorScheme from data-ds-dark-theme', () => {
-    document.documentElement.setAttribute('data-ds-dark-theme', '')
+  it('reads dark colorScheme from data-rl-dark-theme', () => {
+    document.documentElement.setAttribute('data-rl-dark-theme', '')
     const theme = readPreviewAnnotationTheme()
     expect(theme.colorScheme).toBe('dark')
-    document.documentElement.removeAttribute('data-ds-dark-theme')
+    document.documentElement.removeAttribute('data-rl-dark-theme')
   })
 
   it('reads dark colorScheme from computed color-scheme when the dark attr is absent', () => {
-    document.documentElement.removeAttribute('data-ds-dark-theme')
+    document.documentElement.removeAttribute('data-rl-dark-theme')
     const real = window.getComputedStyle.bind(window)
     vi.spyOn(window, 'getComputedStyle').mockImplementation((element) => {
       const styles = real(element)

@@ -10,7 +10,7 @@ CodeBuddy 的斜杠菜单用 Ink 的 `bold` 加 `colors.info`（青色）标出�
 
 ## 决策
 
-`ui-user-terminal` 窗格复制 T3code 的 web Ghostty 适配（`libghostty-vt` WASM + Canvas 2D `GhosttyTerminalSurface`），不再调 xterm。复制的模块是 `core.ts`、`runtime.ts`、`renderer.ts`、`surface.ts` 和 `keyCodes.ts`，外加钉死的 wasm/字体产物。接线文件只替换 Vite `?url`（`assets.ts`，由 `/plugins/<id>/assets/` 提供）、`isMacPlatform`，以及 T3code 的 `isMonospaceFamily` 探测。`terminalThemeFromApp` 是 T3code 的 fg/bg/cursor/selection 覆盖（本桌面的暗色标记是 `data-ds-dark-theme`，外加 T3code 的 `html.dark`）。种子回放调用 `resetAndWrite`。`beforeKey` 复制 T3code 的导航／删除／清屏辅助；T3code 应用专属和弦（`ResolvedKeybindingsConfig`）省略，因为本壳没有那份配置。窗格不再挂 xterm 的 DA1 解析器；Ghostty 在内部应答设备属性，回放时断开 PTY writer。
+`ui-user-terminal` 窗格复制 T3code 的 web Ghostty 适配（`libghostty-vt` WASM + Canvas 2D `GhosttyTerminalSurface`），不再调 xterm。复制的模块是 `core.ts`、`runtime.ts`、`renderer.ts`、`surface.ts` 和 `keyCodes.ts`，外加钉死的 wasm/字体产物。接线文件只替换 Vite `?url`（`assets.ts`，由 `/plugins/<id>/assets/` 提供）、`isMacPlatform`，以及 T3code 的 `isMonospaceFamily` 探测。`terminalThemeFromApp` 是 T3code 的 fg/bg/cursor/selection 覆盖（本桌面的暗色标记是 `data-rl-dark-theme`，外加 T3code 的 `html.dark`）。种子回放调用 `resetAndWrite`。`beforeKey` 复制 T3code 的导航／删除／清屏辅助；T3code 应用专属和弦（`ResolvedKeybindingsConfig`）省略，因为本壳没有那份配置。窗格不再挂 xterm 的 DA1 解析器；Ghostty 在内部应答设备属性，回放时断开 PTY writer。
 
 ## 考虑过的方案
 

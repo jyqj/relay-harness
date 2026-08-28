@@ -67,6 +67,20 @@ interface VisionMessageRewriter {
   ): Promise<Message[]>
 }
 
+/**
+ * Structural face of the optional `contextEngine` service
+ * (`@relay-harness/rlh-context-engine`): prepares step context from the claimed
+ * messages before prompt assembly. Declared structurally so the loop takes no
+ * dependency on the plugin package.
+ */
+interface StepContextEngine {
+  prepareStep(input: {
+    readonly messages: readonly UserMessage[]
+    readonly signal: AbortSignal
+    readonly cwd: string
+  }): Promise<{ readonly messages: readonly UserMessage[] } | undefined>
+}
+
 /** Remove adapter-derived values before plugins propose the next request config. */
 function requestProposal(header: EpochHeader): LlmCallConfig {
   if (header.adapterDefaults === undefined) return header.config
@@ -243,6 +257,15 @@ export class ReactLoopAgent implements Agent {
     if (this.phase.kind !== 'running') throw new Error(`agent "${this.id}": pre-step outside running phase`)
     const signal = this.phase.abort.signal
     const claimed = this.inbox.claim(target, position.turn)
+    const contextEngine = this.loopCtx.get('contextEngine') as StepContextEngine | undefined
+    const stepContext = contextEngine === undefined
+      ? undefined
+      : await contextEngine.prepareStep({
+        messages: claimed,
+        signal,
+        cwd: this.session.header.cwd ?? process.cwd(),
+      })
+    signal.throwIfAborted()
     const toolSnapshot = this.loopCtx.tools[TOOL_RUNTIME_REQUESTS].capture(this)
     try {
       const assembly = await this.loopCtx.systemPrompt.assemble({
@@ -253,11 +276,15 @@ export class ReactLoopAgent implements Agent {
       signal.throwIfAborted()
       const sections = renderContextSections(assembly)
       const context = this.runtimeContext.project(joinContextSections(sections), sections)
+      const appended = [
+        ...(stepContext?.messages ?? []),
+        ...(context === undefined ? [] : [context]),
+      ]
       const decision = await this.dispatch.waterfall(
         'agent/pre-step', { messages: claimed, ...position, signal },
         (): Promise<PreStepDecision> => Promise.resolve<PreStepDecision>({
           kind: 'enter',
-          messages: context === undefined ? claimed : [...claimed, context],
+          messages: appended.length === 0 ? claimed : [...claimed, ...appended],
         }),
       )
       signal.throwIfAborted()

@@ -27,6 +27,7 @@ Every group ships as product with a stable API except five: `e2b/` is a POC, `ex
 | [`code-runtime/`](code-runtime/README.md) | Code-execution capability family: Service Definition + worker-thread provider + Code Mode Consumer |
 | [`sandbox/`](sandbox/README.md) | Process-confinement seam; bwrap/Landlock/Seatbelt backends |
 | [`fs/`](fs/README.md) | Filesystem capability family: seam, local impl, model-facing file tools, bash-backed discovery tools |
+| [`index/`](index/README.md) | Local code-index capability family: retrieval seam + SQLite-backed workspace indexer + model-facing search/status/refresh tools |
 | [`lsp/`](lsp/README.md) | LSP capability family: seam, generic stdio provider, and the `lsp` tool |
 | [`mcp/`](mcp/README.md) | Model Context Protocol bridges: client tool registration and the servers file |
 | [`skill/`](skill/README.md) | Skill capability family: the provider registry, local provider, and model-facing catalog/loader |

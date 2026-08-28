@@ -78,7 +78,7 @@ export interface ThemeDefinition {
   id: string
   /**
    * Which base palette this theme builds on. The presenter switches
-   * `body[data-ds-dark-theme]` from this field — never from the id.
+   * `body[data-rl-dark-theme]` from this field — never from the id.
    */
   colorScheme: 'light' | 'dark'
   /** Alias-layer overrides applied as inline CSS variables over the base palette. */

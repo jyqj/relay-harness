@@ -18,6 +18,12 @@ importers:
       '@agentclientprotocol/sdk':
         specifier: 0.25.1
         version: 0.25.1(zod@4.4.3)
+      '@relay-harness/rlh-code-index':
+        specifier: workspace:^
+        version: link:packages/index/code-index
+      '@relay-harness/rlh-tool-code-index':
+        specifier: workspace:^
+        version: link:packages/index/tool-code-index
       '@relay-harness/rlh-tool-session-query':
         specifier: workspace:^
         version: link:packages/session-query/tool-session-query
@@ -358,9 +364,6 @@ importers:
 
   apps/desktop:
     devDependencies:
-      '@types/ws':
-        specifier: ^8.18.1
-        version: 8.18.1
       electron:
         specifier: ^43.4.0
         version: 43.4.1(supports-color@9.4.0)
@@ -1004,30 +1007,18 @@ importers:
       '@relay-harness/rlh-issue-runner':
         specifier: workspace:^
         version: link:../issue-runner
-      '@relay-harness/rlh-issue-runner-agent':
-        specifier: workspace:^
-        version: link:../issue-runner-agent
       '@relay-harness/rlh-issue-workflow':
         specifier: workspace:^
         version: link:../issue-workflow
-      '@relay-harness/rlh-issue-workflow-file':
-        specifier: workspace:^
-        version: link:../issue-workflow-file
       '@relay-harness/rlh-issue-workspace':
         specifier: workspace:^
         version: link:../issue-workspace
-      '@relay-harness/rlh-issue-workspace-local':
-        specifier: workspace:^
-        version: link:../issue-workspace-local
       '@relay-harness/rlh-storage-domain':
         specifier: workspace:^
         version: link:../../storage/storage-domain
       '@relay-harness/rlh-tracker':
         specifier: workspace:^
         version: link:../../tracker/tracker
-      '@relay-harness/rlh-tracker-linear':
-        specifier: workspace:^
-        version: link:../../tracker/tracker-linear
       '@relay-harness/rlh-typert-protocol':
         specifier: workspace:^
         version: link:../../typert/protocol
@@ -1719,6 +1710,9 @@ importers:
       '@relay-harness/rlh-code-runtime-worker-thread':
         specifier: workspace:^
         version: link:../../code-runtime/code-runtime-worker-thread
+      '@relay-harness/rlh-context-engine':
+        specifier: workspace:^
+        version: link:../../context/context-engine
       '@relay-harness/rlh-cordis-client-runner':
         specifier: workspace:^
         version: link:../../extensions/cordis-client-runner
@@ -1920,10 +1914,6 @@ importers:
         version: 18.3.1
 
   packages/client/modules:
-    dependencies:
-      '@relay-harness/rlh-app-boot':
-        specifier: workspace:^
-        version: link:../../boot/app-boot
     devDependencies:
       '@relay-harness/cordis':
         specifier: workspace:^
@@ -1931,6 +1921,9 @@ importers:
       '@relay-harness/cordis-plugin-loader':
         specifier: workspace:^
         version: link:../../../vendor/loader
+      '@relay-harness/rlh-app-boot':
+        specifier: workspace:^
+        version: link:../../boot/app-boot
       '@relay-harness/rlh-host-webserver':
         specifier: workspace:^
         version: link:../../host/webserver
@@ -2061,9 +2054,6 @@ importers:
       '@relay-harness/rlh-client-runtime':
         specifier: workspace:^
         version: link:../runtime
-      '@relay-harness/rlh-client-test-runtime':
-        specifier: workspace:^
-        version: link:../../test-support/client-runtime
       '@relay-harness/rlh-client-ui-primitives':
         specifier: workspace:^
         version: link:../ui-primitives
@@ -2356,9 +2346,6 @@ importers:
       '@relay-harness/rlh-client-runtime':
         specifier: workspace:^
         version: link:../runtime
-      '@relay-harness/rlh-client-test-runtime':
-        specifier: workspace:^
-        version: link:../../test-support/client-runtime
       '@relay-harness/rlh-client-ui-primitives':
         specifier: workspace:^
         version: link:../ui-primitives
@@ -2463,9 +2450,6 @@ importers:
       '@relay-harness/rlh-client-runtime':
         specifier: workspace:^
         version: link:../runtime
-      '@relay-harness/rlh-client-test-runtime':
-        specifier: workspace:^
-        version: link:../../test-support/client-runtime
       '@relay-harness/rlh-client-ui-primitives':
         specifier: workspace:^
         version: link:../ui-primitives
@@ -2487,9 +2471,6 @@ importers:
 
   packages/client/ui-git:
     dependencies:
-      '@relay-harness/rlh-settings':
-        specifier: workspace:^
-        version: link:../../settings/settings
       '@relay-harness/schemastery':
         specifier: link:../../../vendor/schemastery
         version: link:../../../vendor/schemastery
@@ -2530,6 +2511,9 @@ importers:
       '@relay-harness/rlh-invariants':
         specifier: workspace:^
         version: link:../../runtime-diagnostics/invariants
+      '@relay-harness/rlh-settings':
+        specifier: workspace:^
+        version: link:../../settings/settings
       '@types/react':
         specifier: ~18.3.1
         version: 18.3.31
@@ -2964,9 +2948,6 @@ importers:
       '@relay-harness/rlh-client-runtime':
         specifier: workspace:^
         version: link:../runtime
-      '@relay-harness/rlh-client-test-runtime':
-        specifier: workspace:^
-        version: link:../../test-support/client-runtime
       '@relay-harness/rlh-client-ui-primitives':
         specifier: workspace:^
         version: link:../ui-primitives
@@ -3650,9 +3631,6 @@ importers:
       '@relay-harness/rlh-client-runtime':
         specifier: workspace:^
         version: link:../runtime
-      '@relay-harness/rlh-client-test-runtime':
-        specifier: workspace:^
-        version: link:../../test-support/client-runtime
       '@relay-harness/rlh-client-ui-layout':
         specifier: workspace:^
         version: link:../ui-layout
@@ -3726,9 +3704,6 @@ importers:
 
   packages/client/ui-titlebar:
     dependencies:
-      '@relay-harness/rlh-settings':
-        specifier: workspace:^
-        version: link:../../settings/settings
       '@relay-harness/schemastery':
         specifier: link:../../../vendor/schemastery
         version: link:../../../vendor/schemastery
@@ -3769,6 +3744,9 @@ importers:
       '@relay-harness/rlh-invariants':
         specifier: workspace:^
         version: link:../../runtime-diagnostics/invariants
+      '@relay-harness/rlh-settings':
+        specifier: workspace:^
+        version: link:../../settings/settings
       '@types/react':
         specifier: ~18.3.1
         version: 18.3.31
@@ -3947,9 +3925,6 @@ importers:
       '@relay-harness/rlh-client-runtime':
         specifier: workspace:^
         version: link:../runtime
-      '@relay-harness/rlh-client-test-runtime':
-        specifier: workspace:^
-        version: link:../../test-support/client-runtime
       '@relay-harness/rlh-client-ui-layout':
         specifier: workspace:^
         version: link:../ui-layout
@@ -4323,6 +4298,73 @@ importers:
         specifier: workspace:^
         version: link:../../core/tools
 
+  packages/context/code-context:
+    dependencies:
+      '@relay-harness/schemastery':
+        specifier: link:../../../vendor/schemastery
+        version: link:../../../vendor/schemastery
+    devDependencies:
+      '@relay-harness/cordis':
+        specifier: workspace:^
+        version: link:../../../vendor/cordis
+      '@relay-harness/cordis-plugin-include':
+        specifier: workspace:^
+        version: link:../../../vendor/include
+      '@relay-harness/cordis-plugin-loader':
+        specifier: workspace:^
+        version: link:../../../vendor/loader
+      '@relay-harness/rlh-agent':
+        specifier: workspace:^
+        version: link:../../core/agent
+      '@relay-harness/rlh-agent-loop':
+        specifier: workspace:^
+        version: link:../../core/agent-loop
+      '@relay-harness/rlh-code-index':
+        specifier: workspace:^
+        version: link:../../index/code-index
+      '@relay-harness/rlh-context-engine':
+        specifier: workspace:^
+        version: link:../context-engine
+      '@relay-harness/rlh-file-reference':
+        specifier: workspace:^
+        version: link:../file-reference
+      '@relay-harness/rlh-invariants':
+        specifier: workspace:^
+        version: link:../../runtime-diagnostics/invariants
+      '@relay-harness/rlh-llm':
+        specifier: workspace:^
+        version: link:../../llm/llm
+      '@relay-harness/rlh-memory-extractor-llm':
+        specifier: workspace:^
+        version: link:../../memory/memory-extractor-llm
+      '@relay-harness/rlh-session':
+        specifier: workspace:^
+        version: link:../../core/session
+      '@relay-harness/rlh-session-query':
+        specifier: workspace:^
+        version: link:../../session-query/session-query
+      '@relay-harness/rlh-system-prompt':
+        specifier: workspace:^
+        version: link:../../core/system-prompt
+      '@relay-harness/rlh-tools':
+        specifier: workspace:^
+        version: link:../../core/tools
+
+  packages/context/context-engine:
+    devDependencies:
+      '@relay-harness/cordis':
+        specifier: workspace:^
+        version: link:../../../vendor/cordis
+      '@relay-harness/rlh-brand':
+        specifier: workspace:^
+        version: link:../../util/brand
+      '@relay-harness/rlh-invariants':
+        specifier: workspace:^
+        version: link:../../runtime-diagnostics/invariants
+      '@relay-harness/rlh-llm':
+        specifier: workspace:^
+        version: link:../../llm/llm
+
   packages/context/file-reference:
     dependencies:
       zod:
@@ -4338,6 +4380,9 @@ importers:
       '@relay-harness/rlh-invariants':
         specifier: workspace:^
         version: link:../../runtime-diagnostics/invariants
+      '@relay-harness/rlh-llm':
+        specifier: workspace:^
+        version: link:../../llm/llm
       '@relay-harness/rlh-typert-protocol':
         specifier: workspace:^
         version: link:../../typert/protocol
@@ -4354,12 +4399,24 @@ importers:
       '@relay-harness/rlh-agent':
         specifier: workspace:^
         version: link:../../core/agent
+      '@relay-harness/rlh-context-engine':
+        specifier: workspace:^
+        version: link:../context-engine
       '@relay-harness/rlh-file-reference':
         specifier: workspace:^
         version: link:../file-reference
+      '@relay-harness/rlh-fs':
+        specifier: workspace:^
+        version: link:../../fs/fs
+      '@relay-harness/rlh-fs-local':
+        specifier: workspace:^
+        version: link:../../fs/fs-local
       '@relay-harness/rlh-invariants':
         specifier: workspace:^
         version: link:../../runtime-diagnostics/invariants
+      '@relay-harness/rlh-llm':
+        specifier: workspace:^
+        version: link:../../llm/llm
       '@relay-harness/rlh-system-prompt':
         specifier: workspace:^
         version: link:../../core/system-prompt
@@ -6274,6 +6331,171 @@ importers:
       '@relay-harness/rlh-invariants':
         specifier: workspace:^
         version: link:../../runtime-diagnostics/invariants
+
+  packages/index/code-index:
+    devDependencies:
+      '@relay-harness/cordis':
+        specifier: workspace:^
+        version: link:../../../vendor/cordis
+      '@relay-harness/rlh-invariants':
+        specifier: workspace:^
+        version: link:../../runtime-diagnostics/invariants
+      '@relay-harness/rlh-llm':
+        specifier: workspace:^
+        version: link:../../llm/llm
+
+  packages/index/code-index-graph:
+    devDependencies:
+      '@relay-harness/cordis':
+        specifier: workspace:^
+        version: link:../../../vendor/cordis
+      '@relay-harness/rlh-code-index':
+        specifier: workspace:^
+        version: link:../code-index
+      '@relay-harness/rlh-code-index-parser':
+        specifier: workspace:^
+        version: link:../code-index-parser
+      '@relay-harness/rlh-code-index-search':
+        specifier: workspace:^
+        version: link:../code-index-search
+      '@relay-harness/rlh-code-index-sqlite':
+        specifier: workspace:^
+        version: link:../code-index-sqlite
+      '@relay-harness/rlh-invariants':
+        specifier: workspace:^
+        version: link:../../runtime-diagnostics/invariants
+
+  packages/index/code-index-local:
+    dependencies:
+      '@relay-harness/schemastery':
+        specifier: link:../../../vendor/schemastery
+        version: link:../../../vendor/schemastery
+    devDependencies:
+      '@relay-harness/cordis':
+        specifier: workspace:^
+        version: link:../../../vendor/cordis
+      '@relay-harness/cordis-plugin-include':
+        specifier: workspace:^
+        version: link:../../../vendor/include
+      '@relay-harness/cordis-plugin-loader':
+        specifier: workspace:^
+        version: link:../../../vendor/loader
+      '@relay-harness/rlh-code-index':
+        specifier: workspace:^
+        version: link:../code-index
+      '@relay-harness/rlh-code-index-graph':
+        specifier: workspace:^
+        version: link:../code-index-graph
+      '@relay-harness/rlh-code-index-parser':
+        specifier: workspace:^
+        version: link:../code-index-parser
+      '@relay-harness/rlh-code-index-search':
+        specifier: workspace:^
+        version: link:../code-index-search
+      '@relay-harness/rlh-code-index-sqlite':
+        specifier: workspace:^
+        version: link:../code-index-sqlite
+      '@relay-harness/rlh-home-paths':
+        specifier: workspace:^
+        version: link:../../util/home-paths
+      '@relay-harness/rlh-invariants':
+        specifier: workspace:^
+        version: link:../../runtime-diagnostics/invariants
+      '@relay-harness/rlh-llm':
+        specifier: workspace:^
+        version: link:../../llm/llm
+      '@relay-harness/rlh-session':
+        specifier: workspace:^
+        version: link:../../core/session
+      '@relay-harness/rlh-system-prompt':
+        specifier: workspace:^
+        version: link:../../core/system-prompt
+      '@relay-harness/rlh-timeout':
+        specifier: workspace:^
+        version: link:../../util/timeout
+      '@relay-harness/rlh-tools':
+        specifier: workspace:^
+        version: link:../../core/tools
+
+  packages/index/code-index-parser:
+    dependencies:
+      web-tree-sitter:
+        specifier: ^0.26.13
+        version: 0.26.13
+    devDependencies:
+      '@relay-harness/cordis':
+        specifier: workspace:^
+        version: link:../../../vendor/cordis
+      '@relay-harness/rlh-code-index':
+        specifier: workspace:^
+        version: link:../code-index
+      '@relay-harness/rlh-invariants':
+        specifier: workspace:^
+        version: link:../../runtime-diagnostics/invariants
+
+  packages/index/code-index-search:
+    devDependencies:
+      '@relay-harness/cordis':
+        specifier: workspace:^
+        version: link:../../../vendor/cordis
+      '@relay-harness/rlh-code-index':
+        specifier: workspace:^
+        version: link:../code-index
+      '@relay-harness/rlh-invariants':
+        specifier: workspace:^
+        version: link:../../runtime-diagnostics/invariants
+      '@relay-harness/rlh-llm':
+        specifier: workspace:^
+        version: link:../../llm/llm
+
+  packages/index/code-index-sqlite:
+    devDependencies:
+      '@relay-harness/cordis':
+        specifier: workspace:^
+        version: link:../../../vendor/cordis
+      '@relay-harness/rlh-code-index':
+        specifier: workspace:^
+        version: link:../code-index
+      '@relay-harness/rlh-code-index-search':
+        specifier: workspace:^
+        version: link:../code-index-search
+      '@relay-harness/rlh-invariants':
+        specifier: workspace:^
+        version: link:../../runtime-diagnostics/invariants
+
+  packages/index/tool-code-index:
+    dependencies:
+      '@relay-harness/schemastery':
+        specifier: link:../../../vendor/schemastery
+        version: link:../../../vendor/schemastery
+    devDependencies:
+      '@relay-harness/cordis':
+        specifier: workspace:^
+        version: link:../../../vendor/cordis
+      '@relay-harness/cordis-plugin-loader':
+        specifier: workspace:^
+        version: link:../../../vendor/loader
+      '@relay-harness/rlh-agent':
+        specifier: workspace:^
+        version: link:../../core/agent
+      '@relay-harness/rlh-code-index':
+        specifier: workspace:^
+        version: link:../code-index
+      '@relay-harness/rlh-invariants':
+        specifier: workspace:^
+        version: link:../../runtime-diagnostics/invariants
+      '@relay-harness/rlh-llm':
+        specifier: workspace:^
+        version: link:../../llm/llm
+      '@relay-harness/rlh-session':
+        specifier: workspace:^
+        version: link:../../core/session
+      '@relay-harness/rlh-system-prompt':
+        specifier: workspace:^
+        version: link:../../core/system-prompt
+      '@relay-harness/rlh-tools':
+        specifier: workspace:^
+        version: link:../../core/tools
 
   packages/interaction/commands:
     dependencies:
@@ -10062,6 +10284,12 @@ importers:
       '@relay-harness/rlh-mcp-client':
         specifier: workspace:^
         version: link:../../packages/mcp/mcp-client
+      '@relay-harness/rlh-memory':
+        specifier: workspace:^
+        version: link:../../packages/memory/memory
+      '@relay-harness/rlh-memory-agent':
+        specifier: workspace:^
+        version: link:../../packages/memory/memory-agent
       '@relay-harness/rlh-output-retention':
         specifier: workspace:^
         version: link:../../packages/util/output-retention
@@ -10212,6 +10440,9 @@ importers:
       '@relay-harness/rlh-tool-jobs':
         specifier: workspace:^
         version: link:../../packages/jobs/tool-jobs
+      '@relay-harness/rlh-tool-memory':
+        specifier: workspace:^
+        version: link:../../packages/memory/tool-memory
       '@relay-harness/rlh-tool-ralph':
         specifier: workspace:^
         version: link:../../packages/workflow/tool-ralph
@@ -16715,6 +16946,9 @@ packages:
   web-streams-polyfill@3.3.3:
     resolution: {integrity: sha512-d2JWLCivmZYTSIoge9MsgFCZrt571BikcWGYkjC1khllbTeDlGqZ2D8vD8E/lJa8WGWbb7Plm8/XJYV7IJHZZw==}
     engines: {node: '>= 8'}
+
+  web-tree-sitter@0.26.13:
+    resolution: {integrity: sha512-5bUZ7vbQ1kcondet96wzP974+JfCZDeQ7bTpacICm2nnvHpa5cO0ByRsoMcAhUP+743vpkb4m0BFlVSm+Ye9VA==}
 
   webcrypto-core@1.9.2:
     resolution: {integrity: sha512-gsXecm82UQNlTBURJGuqOWy1Ww08S3kZUcr3aOJS02Pk0xLtkfeUAVC0u0xhgdonFme80edSJUIJyuvL/7250Q==}
@@ -23342,6 +23576,8 @@ snapshots:
   walk-up-path@4.0.0: {}
 
   web-streams-polyfill@3.3.3: {}
+
+  web-tree-sitter@0.26.13: {}
 
   webcrypto-core@1.9.2:
     dependencies:

@@ -495,6 +495,43 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     ],
   },
   {
+    key: 'codeContext',
+    summary: 'Owner of the code-index recall contributor (`ctx.codeContext`).',
+    description: 'Owner of the code-index recall contributor (`ctx.codeContext`). The service itself carries no query surface: it exists so a deployment can observe that recall injection is active and dispose it as one unit. Registration is strictly opt-in — a Loader entry without a `config` section constructs the service but registers no contributor.',
+    methods: [],
+  },
+  {
+    key: 'codeIndex',
+    summary: 'Service Definition for the local code-index capability (`ctx.codeIndex`).',
+    description: 'Service Definition for the local code-index capability (`ctx.codeIndex`).',
+    methods: [
+      {
+        signature: 'abstract status(): Promise<IndexStatusReport>',
+        description: 'Report index health without side effects.',
+        parameters: [],
+        returns: 'current file count, resolved tier, epoch pair, last refresh summary, and degraded flag.',
+      },
+      {
+        signature: 'abstract refresh(options?: RefreshOptions): Promise<RefreshSummary>',
+        description: 'Bring the derived index up to date with the workspace tree (or rebuild it). Concurrent calls fold into the single in-flight pass; refresh summaries are emitted only after that pass commits, never speculatively.',
+        parameters: [{ name: 'options', description: 'trigger reason, forced full rebuild, or explicit path subset.' }],
+        returns: 'what changed and the epoch pair after the final commit.',
+      },
+      {
+        signature: 'abstract search(request: SearchRequest, signal?: AbortSignal): Promise<SearchResult>',
+        description: 'Run deterministic hybrid retrieval over the indexed chunks.',
+        parameters: [{ name: 'request', description: 'query plus optional scope, recency, prefix filter, and requested size.' }, { name: 'signal', description: 'cancellation for the active step.' }],
+        returns: 'ranked hits with epoch pairing; `degraded=true` when a lane failed partially.',
+      },
+      {
+        signature: 'abstract exploreGraph(request: GraphExploreRequest, signal?: AbortSignal): Promise<GraphExploreResult>',
+        description: 'Answer one structured graph question over the derived call graph.',
+        parameters: [{ name: 'request', description: 'the `relations` / `impact` / `tests` / `cycles` / `dead_code` question with its per-op options.' }, { name: 'signal', description: 'cancellation for the active step.' }],
+        returns: 'nodes, edges, optional test pairs, cycle components, or dead-code candidates, plus the explain envelope under the epoch pair they were read at; every rendered edge\'s endpoints resolve inside the answer\'s `nodes`.',
+      },
+    ],
+  },
+  {
     key: 'codeRuntime',
     summary: 'Registers one `ctx.codeRuntime` implementation.',
     description: 'Registers one `ctx.codeRuntime` implementation. Program, budget, abort, and substrate failures resolve in CodeRunResult; only Service Definition contract misuse rejects. Implementations bridge structured-cloneable bindings, materialize each declared namespace rejection class, treat programs as hostile peers, isolate runs from one another, and terminate and await in-flight runs during disposal.',
@@ -572,6 +609,25 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         parameters: [{ name: 'start', description: 'first surface seq, inclusive.' }, { name: 'end', description: 'last surface seq, inclusive.' }, { name: 'agent', description: 'context whose session is mutated and whose routing options guide summarization.' }, { name: 'signal', description: 'optional cancellation; model-backed implementations must forward it.' }],
         returns: 'the appended event seqs, summary, replaced range, and token accounting.',
         throws: ['when compaction is active or the range is missing, reversed, or unbalanced.'],
+      },
+    ],
+  },
+  {
+    key: 'contextEngine',
+    summary: '`ctx.contextEngine`.',
+    description: '`ctx.contextEngine`. Owns the contributor registry and the step preparation call; retrieval planning, hydration, and packing enrich `prepareStep` inside implementations of this seam.',
+    methods: [
+      {
+        signature: 'registerContributor(contributor: StepContextContributor): () => void',
+        description: 'Register one step-context contributor.',
+        parameters: [{ name: 'contributor', description: 'the contributor with a unique non-empty id.' }],
+        returns: 'a disposer removing the registration.',
+      },
+      {
+        signature: 'prepareStep(input: StepContextInput): Promise<PreparedStepContext | undefined>',
+        description: 'Prepare the step context for one claimed step.',
+        parameters: [{ name: 'input', description: 'the claimed messages and abort signal.' }],
+        returns: 'the collected context, or `undefined` when no contributor produced any.',
       },
     ],
   },
@@ -3373,6 +3429,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface ContinuableSubagentDescriptorData extends SubagentDescriptorBase {\n    readonly mode: \'continuable\';\n    readonly label: string;\n    readonly agentProvider?: string;\n    readonly agentModel?: string;\n    readonly persona?: string;\n    readonly toolFilter?: ToolRestriction;\n}',
   },
   {
+    name: 'ContributedStepContext',
+    declaration: 'export interface ContributedStepContext {\n    readonly message: UserMessage;\n    readonly evidence?: readonly Evidence[];\n    readonly coverage?: CoverageRecord;\n}',
+  },
+  {
     name: 'CordisDynamicPackageId',
     declaration: 'export type CordisDynamicPackageId = Branded<\'CordisDynamicPackageId\'>;',
   },
@@ -3399,6 +3459,14 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'CordisInspectRequestId',
     declaration: 'export type CordisInspectRequestId = Branded<\'CordisInspectRequestId\'>;',
+  },
+  {
+    name: 'CoverageCompleteness',
+    declaration: 'export type CoverageCompleteness = \'exhaustive\' | \'bounded\' | \'best-effort\' | \'unknown\';',
+  },
+  {
+    name: 'CoverageRecord',
+    declaration: 'export interface CoverageRecord {\n    readonly searched: readonly string[];\n    readonly notSearched: readonly string[];\n    readonly rationale?: string;\n    readonly completeness: CoverageCompleteness;\n}',
   },
   {
     name: 'CreateAgentOptions',
@@ -3537,6 +3605,26 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface EpochHeader {\n    config: LlmCallConfig;\n    adapterDefaults?: LlmCallConfigAdapterDefaults;\n    system?: string;\n    tools?: ToolSchema[];\n}',
   },
   {
+    name: 'EpochPair',
+    declaration: 'export interface EpochPair {\n    readonly indexEpoch: number;\n    readonly evidenceEpoch: number;\n}',
+  },
+  {
+    name: 'Evidence',
+    declaration: 'export interface Evidence {\n    readonly evidenceId: EvidenceId;\n    readonly resource: ResourceRef;\n    readonly digest?: string;\n    readonly truncated: boolean;\n    readonly freshness: EvidenceFreshness;\n    readonly verification: EvidenceVerification;\n    readonly domain?: unknown;\n}',
+  },
+  {
+    name: 'EvidenceFreshness',
+    declaration: 'export type EvidenceFreshness = \'current\' | \'possibly-stale\' | \'stale\' | \'unknown\';',
+  },
+  {
+    name: 'EvidenceId',
+    declaration: 'export type EvidenceId = Branded<\'EvidenceId\'>;',
+  },
+  {
+    name: 'EvidenceVerification',
+    declaration: 'export type EvidenceVerification = \'verified\' | \'partially-verified\' | \'unverified\' | \'contradicted\' | \'unavailable\';',
+  },
+  {
     name: 'FailMemoryExtractionInput',
     declaration: 'export interface FailMemoryExtractionInput {\n    readonly jobId: MemoryExtractionJobId;\n    readonly workerId: string;\n    readonly error: string;\n    readonly retryAt: number;\n}',
   },
@@ -3649,6 +3737,50 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface GoalView extends GoalSnapshot {\n    readonly roundsStarted: number;\n    readonly createdAt: number;\n    readonly updatedAt: number;\n    readonly activation: GoalActivation;\n}',
   },
   {
+    name: 'GraphCycleComponentView',
+    declaration: 'export interface GraphCycleComponentView {\n    readonly id: string;\n    readonly size: number;\n    readonly severity: GraphCycleSeverity;\n    readonly memberIds: readonly string[];\n    readonly witnessEdges: readonly GraphCycleEdgeView[];\n}',
+  },
+  {
+    name: 'GraphCycleEdgeView',
+    declaration: 'export interface GraphCycleEdgeView {\n    readonly from: string;\n    readonly to: string;\n    readonly importString: string;\n}',
+  },
+  {
+    name: 'GraphCycleSeverity',
+    declaration: 'export type GraphCycleSeverity = \'low\' | \'medium\' | \'high\' | \'critical\';',
+  },
+  {
+    name: 'GraphDeadCodeView',
+    declaration: 'export interface GraphDeadCodeView {\n    readonly symbolName: string;\n    readonly symbolId: string;\n    readonly filePath: string;\n    readonly kind: string;\n    readonly reason: string;\n}',
+  },
+  {
+    name: 'GraphEdgeView',
+    declaration: 'export interface GraphEdgeView {\n    readonly edgeId: string;\n    readonly kind: \'CALLS\' | \'REFERENCES\' | \'TESTS\' | \'IMPORTS\';\n    readonly source: string;\n    readonly target: string;\n    readonly line?: number;\n    readonly callKind?: string;\n    readonly resolutionStrategy?: string;\n    readonly confidence: number;\n    readonly reason?: string;\n}',
+  },
+  {
+    name: 'GraphExplainView',
+    declaration: 'export interface GraphExplainView {\n    readonly declared: readonly string[];\n    readonly readErrors: readonly string[];\n    readonly droppedReadErrorCount: number;\n    readonly truncatedReason?: string;\n}',
+  },
+  {
+    name: 'GraphExploreRequest',
+    declaration: 'export type GraphExploreRequest = {\n    readonly op: \'relations\';\n    readonly symbol: string;\n    readonly filePath?: string;\n    readonly direction?: GraphRelationDirection;\n    readonly depth?: 1 | 2;\n    readonly max?: number;\n} | {\n    readonly op: \'impact\';\n    readonly symbol?: string;\n    readonly files?: readonly string[];\n    readonly includeTests?: boolean;\n    readonly max?: number;\n} | {\n    readonly op: \'tests\';\n    readonly files: readonly string[];\n    readonly max?: number;\n} | {\n    readonly op: \'cycles\';\n    readonly max?: number;\n} | {\n    readonly op: \'dead_code\';\n    readonly max?: number;\n};',
+  },
+  {
+    name: 'GraphExploreResult',
+    declaration: 'export interface GraphExploreResult {\n    readonly op: GraphExploreRequest[\'op\'];\n    readonly indexEpoch: EpochPair;\n    readonly nodes: readonly GraphNodeView[];\n    readonly edges: readonly GraphEdgeView[];\n    readonly tests?: readonly GraphTestPairView[];\n    readonly cycles?: readonly GraphCycleComponentView[];\n    readonly deadCode?: readonly GraphDeadCodeView[];\n    readonly explain: GraphExplainView;\n    readonly truncated: boolean;\n    readonly candidateCount: number;\n    readonly tier: RepoSizeTier;\n}',
+  },
+  {
+    name: 'GraphNodeView',
+    declaration: 'export interface GraphNodeView {\n    readonly nodeId: string;\n    readonly name: string;\n    readonly kind: string;\n    readonly filePath: string;\n    readonly startLine: number;\n    readonly role?: string;\n}',
+  },
+  {
+    name: 'GraphRelationDirection',
+    declaration: 'export type GraphRelationDirection = \'callers\' | \'callees\' | \'both\';',
+  },
+  {
+    name: 'GraphTestPairView',
+    declaration: 'export interface GraphTestPairView {\n    readonly testFilePath: string;\n    readonly codeFilePath: string;\n    readonly reason: string;\n    readonly confidence: number;\n}',
+  },
+  {
     name: 'ImageAttachmentLimits',
     declaration: 'export interface ImageAttachmentLimits {\n    maxImageBytes: number;\n    maxImagesPerMessage: number;\n    maxMessageImageBytes: number;\n    maxImagePixels: number;\n    maxImageDimension: number;\n    mediaTypes: readonly ImageMediaType[];\n}',
   },
@@ -3675,6 +3807,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'InboxTarget',
     declaration: 'export type InboxTarget = \'next-turn\' | \'next-step\';',
+  },
+  {
+    name: 'IndexStatusReport',
+    declaration: 'export interface IndexStatusReport {\n    readonly indexedFileCount: number;\n    readonly tier: RepoSizeTier;\n    readonly epochs: EpochPair;\n    readonly lastRefresh?: RefreshSummary;\n    readonly degraded: boolean;\n}',
   },
   {
     name: 'InvariantFailure',
@@ -4133,6 +4269,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface OneShotSubagentDescriptorData extends SubagentDescriptorBase {\n    readonly mode: \'one-shot\';\n    readonly label?: string;\n}',
   },
   {
+    name: 'ParserTier',
+    declaration: 'export type ParserTier = \'semantic\' | \'tree-sitter\' | \'heuristic\' | \'generic\';',
+  },
+  {
     name: 'PermissionSelect',
     declaration: 'export interface PermissionSelect {\n    options: PresetOption[];\n    currentValue: string;\n}',
   },
@@ -4151,6 +4291,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'PreparedReferencedMessage',
     declaration: 'export interface PreparedReferencedMessage {\n    content: ContentBlock[];\n    additionalContext?: UserMessage;\n}',
+  },
+  {
+    name: 'PreparedStepContext',
+    declaration: 'export interface PreparedStepContext {\n    readonly messages: readonly UserMessage[];\n    readonly evidence: readonly Evidence[];\n}',
   },
   {
     name: 'PrepareMemoryTurnInput',
@@ -4245,12 +4389,28 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface RedactedSecret {\n    path: string[];\n    set: boolean;\n}',
   },
   {
+    name: 'RefreshOptions',
+    declaration: 'export interface RefreshOptions {\n    readonly reason?: RefreshReason;\n    readonly forceRebuild?: boolean;\n    readonly paths?: readonly string[];\n}',
+  },
+  {
+    name: 'RefreshReason',
+    declaration: 'export type RefreshReason = \'manual\' | \'stale\' | \'lazy\';',
+  },
+  {
+    name: 'RefreshSummary',
+    declaration: 'export interface RefreshSummary {\n    readonly reason: RefreshReason;\n    readonly changedFiles: number;\n    readonly removedFiles: number;\n    readonly chunksWritten: number;\n    readonly durationMs: number;\n    readonly epochsAfter: EpochPair;\n}',
+  },
+  {
     name: 'RememberMemoryInput',
     declaration: 'export interface RememberMemoryInput {\n    readonly scope: MemoryScope;\n    readonly kind: MemoryKind;\n    readonly content: string;\n    readonly summary?: string;\n    readonly importance: number;\n    readonly confidence: number;\n    readonly trust: MemoryTrust;\n    readonly status: \'candidate\' | \'active\' | \'disputed\';\n    readonly validUntil?: number;\n    readonly evidence: readonly MemoryEvidence[];\n}',
   },
   {
     name: 'ReplayEnvelope',
     declaration: 'export interface ReplayEnvelope {\n    response: unknown;\n    blocks?: readonly unknown[];\n}',
+  },
+  {
+    name: 'RepoSizeTier',
+    declaration: 'export type RepoSizeTier = \'tiny\' | \'small\' | \'medium\' | \'large\';',
   },
   {
     name: 'RequestContext',
@@ -4295,6 +4455,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'ResolvedSubagentStartRequest',
     declaration: 'export interface ResolvedSubagentStartRequest extends SubagentStartRequest {\n    readonly descriptor: SubagentDescriptorData;\n}',
+  },
+  {
+    name: 'ResourceRef',
+    declaration: 'export interface ResourceRef {\n    readonly sourceId: SourceId;\n    readonly key: string;\n    readonly revision?: string;\n}',
   },
   {
     name: 'RestoredSessionOptions',
@@ -4393,6 +4557,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface SearchFileMatches {\n    path: string;\n    matches: SearchLineMatch[];\n}',
   },
   {
+    name: 'SearchHit',
+    declaration: 'export interface SearchHit {\n    readonly chunkId: string;\n    readonly filePath: string;\n    readonly startLine: number;\n    readonly endLine: number;\n    readonly breadcrumb?: string;\n    readonly symbolName?: string;\n    readonly score: number;\n    readonly graphScore?: number;\n    readonly rank: number;\n    readonly reasons: readonly string[];\n    readonly parserTier: ParserTier;\n    readonly parserConfidence: number;\n}',
+  },
+  {
     name: 'SearchLineMatch',
     declaration: 'export interface SearchLineMatch {\n    lineNumber: number;\n    line: string;\n}',
   },
@@ -4407,6 +4575,14 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'SearchPathsResultView',
     declaration: 'export interface SearchPathsResultView {\n    card: \'search\';\n    shape: \'paths\';\n    title?: string;\n    paths: string[];\n    truncated: boolean;\n    total: number;\n}',
+  },
+  {
+    name: 'SearchRequest',
+    declaration: 'export interface SearchRequest {\n    readonly query: string;\n    readonly paths?: readonly string[];\n    readonly recentPaths?: readonly string[];\n    readonly pathPrefix?: string;\n    readonly topK?: number;\n}',
+  },
+  {
+    name: 'SearchResult',
+    declaration: 'export interface SearchResult {\n    readonly query: string;\n    readonly tier: RepoSizeTier;\n    readonly hits: readonly SearchHit[];\n    readonly candidateCount: number;\n    readonly epochs: EpochPair;\n    readonly truncated: boolean;\n    readonly degraded: boolean;\n    readonly readErrors: readonly string[];\n}',
   },
   {
     name: 'SearchResultView',
@@ -4773,6 +4949,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface SkillViewOptions extends SkillLookupOptions {\n    readonly scope?: ScopeKey | undefined;\n}',
   },
   {
+    name: 'SourceId',
+    declaration: 'export type SourceId = Branded<\'SourceId\'>;',
+  },
+  {
     name: 'SpawnTeammateRequest',
     declaration: 'export interface SpawnTeammateRequest {\n    readonly name: string;\n    readonly description: string;\n    readonly prompt: ContentBlock[];\n    readonly context: \'fresh\' | \'fork\';\n    readonly provider: string;\n    readonly signal: AbortSignal;\n}',
   },
@@ -4795,6 +4975,14 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'SpillSource',
     declaration: 'export interface SpillSource {\n    toolName: string;\n    callId: CallId;\n    label: string;\n}',
+  },
+  {
+    name: 'StepContextContributor',
+    declaration: 'export interface StepContextContributor {\n    readonly id: string;\n    contribute(input: StepContextInput): Promise<ContributedStepContext | undefined>;\n}',
+  },
+  {
+    name: 'StepContextInput',
+    declaration: 'export interface StepContextInput {\n    readonly messages: readonly UserMessage[];\n    readonly signal: AbortSignal;\n    readonly cwd: string;\n}',
   },
   {
     name: 'StorageBackend',

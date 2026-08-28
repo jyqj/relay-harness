@@ -1,0 +1,104 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`createSearchEngine().search — flagship canonical output > locks the full deterministic answer as canonical JSON 1`] = `
+"{
+  "query": "getUserById",
+  "tier": "tiny",
+  "hits": [
+    {
+      "chunkId": "chunk:src/auth/users.ts:0",
+      "filePath": "src/auth/users.ts",
+      "startLine": 10,
+      "endLine": 14,
+      "breadcrumb": "auth/users",
+      "symbolName": "getUserById",
+      "score": 0.90684,
+      "reasons": [
+        "lexical@2",
+        "grep@1",
+        "symbol-exact",
+        "recent-file",
+        "recent",
+        "symbol:getUserById",
+        "preselect:recent:+3.50",
+        "preselect:token-search:+2.00"
+      ],
+      "parserTier": "generic",
+      "parserConfidence": 0,
+      "rank": 1
+    },
+    {
+      "chunkId": "chunk:src/auth/users.ts:1",
+      "filePath": "src/auth/users.ts",
+      "startLine": 15,
+      "endLine": 18,
+      "score": 0.361569,
+      "reasons": [
+        "lexical@1",
+        "recent-file",
+        "recent",
+        "symbol:getUserById",
+        "preselect:recent:+3.50",
+        "preselect:token-search:+2.00"
+      ],
+      "parserTier": "generic",
+      "parserConfidence": 0,
+      "rank": 2
+    },
+    {
+      "chunkId": "chunk:src/repo/user_repository.ts:0",
+      "filePath": "src/repo/user_repository.ts",
+      "startLine": 3,
+      "endLine": 7,
+      "breadcrumb": "repo",
+      "symbolName": "loadUser",
+      "score": 0.240755,
+      "reasons": [
+        "lexical@3",
+        "overlay-neighbor",
+        "dirty-buffer",
+        "preselect:dirty-buffer:+3.00"
+      ],
+      "parserTier": "generic",
+      "parserConfidence": 0,
+      "rank": 3
+    },
+    {
+      "chunkId": "chunk:README.md:0",
+      "filePath": "README.md",
+      "startLine": 1,
+      "endLine": 3,
+      "score": 0.10037,
+      "reasons": [
+        "lexical@4",
+        "doc-file"
+      ],
+      "parserTier": "generic",
+      "parserConfidence": 0,
+      "rank": 4
+    },
+    {
+      "chunkId": "chunk:design/adr/0002-user-models.md:0",
+      "filePath": "design/adr/0002-user-models.md",
+      "startLine": 1,
+      "endLine": 4,
+      "score": 0.1,
+      "reasons": [
+        "lexical@5",
+        "doc-file"
+      ],
+      "parserTier": "generic",
+      "parserConfidence": 0,
+      "rank": 5
+    }
+  ],
+  "candidateCount": 5,
+  "epochs": {
+    "indexEpoch": 0,
+    "evidenceEpoch": 0
+  },
+  "truncated": false,
+  "degraded": false,
+  "readErrors": []
+}"
+`;

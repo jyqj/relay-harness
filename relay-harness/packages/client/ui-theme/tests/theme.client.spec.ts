@@ -63,7 +63,7 @@ describe('ThemeRuntime', () => {
     expect(events).toHaveLength(1)
     expect(events[0]).toBe(theme.getTheme())
     // The service never touches presentation state.
-    expect(document.body.hasAttribute('data-ds-dark-theme')).toBe(false)
+    expect(document.body.hasAttribute('data-rl-dark-theme')).toBe(false)
     // Same-value set is a no-op (no extra event).
     theme.setTheme('dark')
     expect(events).toHaveLength(1)

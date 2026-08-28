@@ -67,6 +67,7 @@ A **step** is one model request plus the tools it calls. A **turn** is zero or m
 ```text
 turn/start
   claim next-step input plus one queued message
+  optional ctx.contextEngine prepareStep -> step-context messages
   assemble prompt sections + tool schemas
   -> agent/pre-step                   reject | enter(messages)
      reject, or a first enter rewritten empty -> close the turn with no step
@@ -85,7 +86,7 @@ turn/end
 
 Input reaches the driver through one inbox. Some messages wake it immediately; injected context waits in the inbox until another message does.
 
-`agent/pre-step` decides what the model sees. Listeners may rewrite the claimed messages or reject them outright; a rejected or empty first claim still closes a durable turn that spent no step, so the log records the attempt. Each step captures the scoped tool definitions and Code Mode backend before assembling the prompt, then binds execution to the final advertised names; registration changes during streaming affect the next step, not the current response. Other prompt sections and contexts remain ordinary per-assembly contributions.
+`agent/pre-step` decides what the model sees. Listeners may rewrite the claimed messages or reject them outright; a rejected or empty first claim still closes a durable turn that spent no step, so the log records the attempt. Each step captures the scoped tool definitions and Code Mode backend before assembling the prompt, then binds execution to the final advertised names; registration changes during streaming affect the next step, not the current response. Before tool capture and assembly, an optional `ctx.contextEngine` service (`@relay-harness/rlh-context-engine`) prepares step context from the claimed messages; the contributed messages append as claimed user messages before the runtime-context snapshot, and a step without contributions is identical to a deployment without the service. Other prompt sections and contexts remain ordinary per-assembly contributions.
 
 Details: the [sequence diagram](agent-lifecycle.md), the [tool pipeline](tool-execution-pipeline.md), and [cancellation and error recovery](subsystems/core.md#the-agent-handle).
 

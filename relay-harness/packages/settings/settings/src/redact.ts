@@ -20,6 +20,8 @@ interface SchemaNode {
   dict?: Record<string, SchemaNode>
   /** `dict`/`array` element schema. */
   inner?: SchemaNode
+  /** `union`/`intersect` member schemas. */
+  list?: SchemaNode[]
 }
 
 /** One schema-declared secret position inside a redacted value. */
@@ -45,6 +47,30 @@ export interface RedactedValue {
 /** Whether a value is a plain data object the walker may recurse into. */
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+/**
+ * Whether any schema node reachable from `node` through child relations
+ * (`dict`, `inner`, `list`) declares `role('secret')`. Used on containers the
+ * value walker does not traverse (unions, intersections, transforms): when a
+ * secret hides inside one, redaction cannot prove the value safe.
+ * @param node - subtree root to scan.
+ * @returns whether a secret declaration exists in the subtree.
+ */
+function declaresSecret(node: SchemaNode | undefined): boolean {
+  if (node === undefined) return false
+  if (node.meta?.role === 'secret') return true
+  if (node.dict !== undefined) {
+    for (const child of Object.values(node.dict)) {
+      if (declaresSecret(child)) return true
+    }
+  }
+  if (node.list !== undefined) {
+    for (const child of node.list) {
+      if (declaresSecret(child)) return true
+    }
+  }
+  return declaresSecret(node.inner)
 }
 
 function walk(node: SchemaNode | undefined, value: unknown, path: string[], secrets: RedactedSecret[]): unknown {
@@ -84,9 +110,12 @@ function walk(node: SchemaNode | undefined, value: unknown, path: string[], secr
       return value.map((entry, index) => walk(node.inner, entry, [...path, String(index)], secrets))
     }
     default:
-      // TODO(settings-wire-redaction): Fail closed instead — a secret reachable
-      // only through a union, intersection, or transform is returned verbatim
-      // here, with nothing recording that it was missed.
+      // A union, intersection, or transform is not traversed, so a secret
+      // declared inside one cannot be stripped. Refuse the whole redaction
+      // instead of emitting an unredacted value with an empty record.
+      if (declaresSecret(node)) {
+        throw new Error(`refusing to redact a value whose schema declares a secret inside a ${node.type} node at ${path.length > 0 ? path.join('.') : '<root>'}`)
+      }
       return value
   }
 }
@@ -94,13 +123,16 @@ function walk(node: SchemaNode | undefined, value: unknown, path: string[], secr
 /**
  * Remove every `role('secret')` field a schema declares from a value. The
  * walker follows `object`, `dict`, and `array` containers; a secret must be
- * declared directly on a field reachable through those containers (a secret
- * buried inside a union branch or transform is not reachable and must not be
- * modeled that way). The input is never mutated.
+ * declared directly on a field reachable through those containers. A secret
+ * declared inside a union, intersection, or transform cannot be stripped, so
+ * the call throws instead of returning an unredacted value. The input is
+ * never mutated.
  * @param schema - live schemastery schema describing the value.
  * @param value - the value to strip; `undefined` yields an empty record with
  *   object-property secret slots still enumerated.
  * @returns the stripped detached value and the ordered secret positions.
+ * @throws when the schema declares a secret reachable only through a union,
+ *   intersection, or transform.
  */
 export function redactSecrets(schema: z<never>, value: unknown): RedactedValue {
   const secrets: RedactedSecret[] = []

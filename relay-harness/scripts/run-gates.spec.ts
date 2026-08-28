@@ -68,6 +68,7 @@ describe('gate graph validation', () => {
     'ci-windows-complete',
     'ci-windows-observational',
     'node-compat',
+    'hygiene',
     'check-all',
     'doc-sync',
   ] as const)('constructs and executes preflight for a valid non-empty %s graph', async (mode) => {

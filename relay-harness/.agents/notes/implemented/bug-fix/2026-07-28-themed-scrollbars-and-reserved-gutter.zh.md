@@ -14,7 +14,7 @@ Status: implemented
 
 `packages/client/ui-theme/src/styles/scrollbar.css` 是这四个 token 的唯一消费方，也是 ui-theme 动态客户端 entry 导入的第三张全局样式表。它排在 `design-platform.css` 之后，因为它读取那张样式表的 token；两者都会编译进 ui-theme 持有的客户端 bundle。
 
-规则挂在 `body` 上，而非 `html`。`design-platform.css` 在 `body` 上声明 `--rlw-alias-*` token，暗色覆盖挂在 `body[data-ds-dark-theme]` 上，而自定义属性只向下继承；挂在 `html` 上的规则会把它们解析为 guaranteed-invalid 值，此时 `scrollbar-color` 计算为 `auto`，主题完全不起作用。
+规则挂在 `body` 上，而非 `html`。`design-platform.css` 在 `body` 上声明 `--rlw-alias-*` token，暗色覆盖挂在 `body[data-rl-dark-theme]` 上，而自定义属性只向下继承；挂在 `html` 上的规则会把它们解析为 guaranteed-invalid 值，此时 `scrollbar-color` 计算为 `auto`，主题完全不起作用。
 
 `scrollbar-width` 与 `scrollbar-color` 声明在 `body, body *` 上，而不是只在顶层声明一次。继承传下去的是已经在 `body` 处代入完成的颜色值，因此后代元素重新绑定这层间接变量也无法改变自己的滚动条；逐元素重新声明使每个元素按它自己看到的取值代入变量。`scrollbar-width` 本身就不是可继承属性，无论如何都需要逐元素声明。`::-webkit-scrollbar*` 伪元素同样不继承，因此以不加限定的选择器匹配。
 

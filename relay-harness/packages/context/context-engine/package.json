@@ -1,0 +1,46 @@
+{
+  "name": "@relay-harness/rlh-context-engine",
+  "description": "Local context engine seam (ctx.contextEngine) for the Relay Harness — step-context contributor registry, evidence protocol with revision-bound observations, retrieval coverage and negative-finding records, and knowledge-provider health/explain vocabulary",
+  "version": "0.1.0-rc.8",
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jyqj/relay-harness.git",
+    "directory": "packages/context/context-engine"
+  },
+  "type": "module",
+  "main": "lib/index.js",
+  "types": "lib/types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./lib/types/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./invariant": {
+      "types": "./lib/types/invariant.d.ts",
+      "default": "./lib/invariant.js"
+    },
+    "./src/*": "./src/*",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib/index.js",
+    "lib/invariant.js",
+    "lib/types/**/*.d.ts"
+  ],
+  "license": "MIT",
+  "peerDependencies": {
+    "@relay-harness/rlh-brand": "workspace:^",
+    "@relay-harness/rlh-invariants": "workspace:^",
+    "@relay-harness/rlh-llm": "workspace:^",
+    "@relay-harness/cordis": "workspace:^"
+  },
+  "devDependencies": {
+    "@relay-harness/rlh-brand": "workspace:^",
+    "@relay-harness/rlh-invariants": "workspace:^",
+    "@relay-harness/rlh-llm": "workspace:^",
+    "@relay-harness/cordis": "workspace:^"
+  }
+}

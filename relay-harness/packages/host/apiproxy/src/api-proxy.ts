@@ -4,7 +4,7 @@
  */
 
 import { randomUUID } from 'node:crypto'
-import { mkdir, stat } from 'node:fs/promises'
+import { mkdir } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { dirname } from 'node:path'
 import type { Context } from '@relay-harness/cordis'
@@ -12,36 +12,32 @@ import { rlhHomePath } from '@relay-harness/rlh-home-paths'
 import { installModelSelection } from '@relay-harness/rlh-agent'
 import type { Agent, ModelSelection, ModelSelectionRef, AgentOptions, AgentStatus } from '@relay-harness/rlh-agent'
 import type {} from '@relay-harness/rlh-agent-presets/types'
-import { AttachmentError, admitEncodedImages } from '@relay-harness/rlh-attachment'
-import type { ImageAttachmentRef } from '@relay-harness/rlh-attachment'
+import { AttachmentError } from '@relay-harness/rlh-attachment'
 import { contentHasImage, createUserMessage, freezeMessage, ReasoningEffortId } from '@relay-harness/rlh-llm'
 import { errorChain } from '@relay-harness/rlh-llm'
-import type { ContentBlock, MessageSource } from '@relay-harness/rlh-llm'
-import { isAppendSurfaceEvent, isJsonValue } from '@relay-harness/rlh-session'
-import type { JsonValue, Session, SessionEvent, SessionEventMap, SessionHeader, SessionId, SessionOrigin, UserMessage } from '@relay-harness/rlh-session'
-import type { SessionPersistence } from '@relay-harness/rlh-session-persistence'
+import type { MessageSource } from '@relay-harness/rlh-llm'
+import type { Session, SessionEvent, SessionEventMap, SessionHeader, SessionId, SessionOrigin, UserMessage } from '@relay-harness/rlh-session'
 import { SessionQueryError, type SessionSearchCursor } from '@relay-harness/rlh-session-query'
 import { SubagentError } from '@relay-harness/rlh-subagent'
 import type { SubagentListEntry as CatalogSubagentListEntry } from '@relay-harness/rlh-subagent'
 import { isUserInvocable } from '@relay-harness/rlh-skill'
-import type { Workspace, WorkspaceRecord } from '@relay-harness/rlh-workspace'
+import type { Workspace } from '@relay-harness/rlh-workspace'
 import {
-  workspaceDomainState, workspaceRecord, WorkspaceId as brandWorkspaceId,
+  workspaceDomainState, WorkspaceId as brandWorkspaceId,
   WorkspaceMoveInvalidError, WorkspaceOrderInvalidError, WorkspaceUnknownSessionError,
 } from '@relay-harness/rlh-workspace'
 // Type-only: brings the `ctx.tools` Context merge into this program (viewFor reads presenters).
 import {
-  InvalidPresetIdError, PresetExistsError, PresetMountError,
-  PresetNotWritableError, resolveSessionPreset, UnknownPresetError,
+  PresetMountError, PresetNotWritableError,
+  resolveSessionPreset, UnknownPresetError,
 } from '@relay-harness/rlh-agent-presets'
 import type { PresetBearingSession } from '@relay-harness/rlh-agent-presets'
 import type {} from '@relay-harness/rlh-tools'
 import type {
-  ApiProxy, ConfigurableProviderView, CredentialView, GoalRef, HistoryEntry, HostFrame,
-  ModelCatalogFailure, ModelProviderGroup,
-  ModelReasoning, MuxFrame, PromptContentPart, QuestionResponsePayload, SessionListMetadata, SessionProjectionsBlock, SessionSearchItem,
-  QueuedInboxItem, SessionSummary, SettingsNamespaceView, SubagentAddress, JobView, ToolEventView,
-  WorkspaceId, WorkspaceView,
+  ApiProxy, ConfigurableProviderView, CredentialView, GoalRef, HostFrame,
+  MuxFrame, QuestionResponsePayload, SessionListMetadata, SessionProjectionsBlock, SessionSearchItem,
+  QueuedInboxItem, SessionSummary, SettingsNamespaceView, SubagentAddress, JobView,
+  WorkspaceId,
 } from './api/index.ts'
 import {
   DEFAULT_SESSION_LOG_COMPRESSION_LEVEL,
@@ -85,7 +81,6 @@ import type { SettingsDescriptor, SettingsNamespace, SettingsPathOp } from '@rel
 import { credentialRef } from '@relay-harness/rlh-credentials'
 // Value edge: the rename impl narrows the title service's validation failure; the import also resolves `ctx.get('sessionTitle')`.
 import { SessionTitleInvalidError } from '@relay-harness/rlh-session-title'
-import type { CallId } from '@relay-harness/rlh-llm/brand'
 import type { ScopeKey } from '@relay-harness/rlh-scope'
 import type { ApprovalOutcome, ApprovalRequestId } from '@relay-harness/rlh-user-approval'
 // Side-effect type import: resolves the `approval/request` waterfall and
@@ -97,7 +92,7 @@ import { questionResponsePayloadSchema } from './api/questions.schema.ts'
 import type { ClientResponse, RpcError, RpcReceipt, RpcRequest, RpcResponse } from './api/rpc.ts'
 import { RpcId } from './api/rpc.ts'
 import type {
-  AskUserQuestionAnswer, AskUserQuestionItem, AskUserQuestionRequest,
+  AskUserQuestionAnswer, AskUserQuestionRequest,
 } from '@relay-harness/rlh-user-questions'
 import { UserQuestionError } from '@relay-harness/rlh-user-questions'
 import { DirectoryPickerError } from '@relay-harness/rlh-host-directory-picker'
@@ -111,91 +106,37 @@ import {
   inspectApiRemoteSession,
 } from '@relay-harness/rlh-api-remotes'
 import { canOpenNativePath, openNativePath, openNativeTextFile } from './native-path-opener.ts'
-
-/** Page size when history is called without maxMessages. */
-const DEFAULT_MAX_MESSAGES = 50
+import {
+  DEFAULT_COLD_BLANK_PROBE_MAX_BYTES, applySessionListMetadata, sessionBlank, sessionListFields,
+  summarize, summarizeCold,
+} from './session-list.ts'
+import { durablePromptContent, messagesHaveImage, referencedImage } from './prompt-content.ts'
+import {
+  AgentPresetConflict, SessionCwdConflict, WorkspaceNameConflictError,
+  changedWorkspaceView, presetError, workspaceNotFound, workspaceView,
+} from './workspace-views.ts'
+import { MESSAGE_TYPES, err, frame, isAborted, ok } from './rpc-envelope.ts'
+import { buildModelCatalog } from './model-catalog.ts'
+import { FrameQueue, assertJsonArgs, subscribeSession } from './frame-queue.ts'
+import {
+  PendingApproval, PendingQuestion, matchesQuestions, requestedFrame,
+} from './approval-questions.ts'
+import { ToolCallData, backscanArgs, historyPage, viewFor } from './history-views.ts'
 
 /** Provider work budget: at most 100 calls and 2,000 inspected hits. */
 const SESSION_SEARCH_PROVIDER_CALL_LIMIT = 100
 
+/**
+ * Gateway-side session-search guard failure safe to expose on the wire: the
+ * message is constructed here from counts and policies this handler measured,
+ * never from provider-thrown content.
+ */
+class SessionSearchGuardError extends Error {}
+
 /** Bound cold-log stat fan-out and settle each started batch before cancellation returns. */
 const COLD_SUMMARY_BATCH_SIZE = 16
-/** Default maximum artifact size eligible for one cold blankness read. */
-export const DEFAULT_COLD_BLANK_PROBE_MAX_BYTES = 1024
 
-/** Conversation message event types (the pagination counting unit). */
-const MESSAGE_TYPES = new Set(['user/message', 'assistant/message'])
 
-/** Validate one prompt as a batch before publishing any durable image object. */
-async function durablePromptContent(ctx: Context, content: readonly PromptContentPart[]): Promise<ContentBlock[]> {
-  if (content.every(part => part.type === 'text')) {
-    return content.map(part => ({ type: 'text', text: part.text }))
-  }
-  const refs = await admitEncodedImages(ctx.attachments, content.filter(part => part.type === 'image'))
-  let next = 0
-  return content.map(part => part.type === 'text'
-    ? { type: 'text', text: part.text }
-    // admitEncodedImages returns one reference per image part in order.
-    : { type: 'image', attachment: refs[next++] as ImageAttachmentRef })
-}
-
-/** Search durable content for an image reference, including nested tool results. */
-function imageBlockIn(content: unknown, match: (ref: ImageAttachmentRef) => boolean): ImageAttachmentRef | undefined {
-  if (!Array.isArray(content)) return undefined
-  for (const value of content) {
-    if (typeof value !== 'object' || value === null || Array.isArray(value)) continue
-    const block = value as { type?: unknown; attachment?: unknown; content?: unknown }
-    if (block.type === 'image' && typeof block.attachment === 'object' && block.attachment !== null) {
-      const ref = block.attachment as ImageAttachmentRef
-      if (match(ref)) return ref
-    }
-    if (block.type === 'tool-result') {
-      const nested = imageBlockIn(block.content, match)
-      if (nested !== undefined) return nested
-    }
-  }
-  return undefined
-}
-
-/** Search every durable event carrier that can own model-visible content. */
-function imageInEvent(event: SessionEvent, match: (ref: ImageAttachmentRef) => boolean): ImageAttachmentRef | undefined {
-  const data = event.data as {
-    content?: unknown
-    message?: { content?: unknown }
-    inserted?: Array<{ content?: unknown }>
-    chunk?: { type?: unknown; block?: unknown }
-  }
-  const direct = imageBlockIn(data.content, match)
-  if (direct !== undefined) return direct
-  if (data.message !== undefined) {
-    const wrapped = imageBlockIn(data.message.content, match)
-    if (wrapped !== undefined) return wrapped
-  }
-  if (data.inserted !== undefined) {
-    for (const message of data.inserted) {
-      const inserted = imageBlockIn(message.content, match)
-      if (inserted !== undefined) return inserted
-    }
-  }
-  if (event.type === 'assistant/chunk' && data.chunk?.type === 'block-end') {
-    return imageBlockIn([data.chunk.block], match)
-  }
-  return undefined
-}
-
-/** True when the current model-visible surface contains an image. */
-function messagesHaveImage(messages: readonly { content: readonly ContentBlock[] }[]): boolean {
-  return messages.some(message => contentHasImage(message.content))
-}
-
-/** Resolve the first reference matching one opaque id. */
-function referencedImage(events: readonly SessionEvent[], attachmentId: string): ImageAttachmentRef | undefined {
-  for (const event of events) {
-    const found = imageInEvent(event, ref => String(ref.attachmentId) === attachmentId)
-    if (found !== undefined) return found
-  }
-  return undefined
-}
 
 /** Strict browser-zone profile: UTC or an IANA Area/Location-style identifier. */
 const IANA_TIME_ZONE = /^[A-Za-z][A-Za-z0-9_+.-]*(?:\/[A-Za-z0-9_+.-]+)+$/
@@ -216,118 +157,10 @@ function canonicalClientTimeZone(value: string): string | undefined {
   }
 }
 
-/** Read live abort state across awaits without treating it as synchronously immutable. */
-function isAborted(signal: AbortSignal): boolean {
-  return signal.aborted
-}
 
-/**
- * Message-boundary pagination: count maxMessages append-origin messages
- * backwards from the window tail. Replacement copies never entered the
- * conversation a reader sees — they restate a shadowed range for the model
- * alone — so they consume no quota; the page stays one contiguous raw range,
- * which keeps a compaction's log-only `compaction/summary` record on the same page as its
- * replacement. The cut is the starting seq of the oldest message group (chunks
- * group via sourceEventSeqs — never cut mid-message). The tail page naturally
- * includes the in-progress partial.
- */
-function paginate(
-  events: readonly SessionEvent[],
-  beforeSeq: number | undefined,
-  maxMessages: number,
-): { events: SessionEvent[]; hasMore: boolean } {
-  const window = beforeSeq === undefined ? [...events] : events.filter(event => event.seq < beforeSeq)
-  let count = 0
-  let cut = 0
-  for (let i = window.length - 1; i >= 0; i--) {
-    const event = window[i] as SessionEvent
-    if (!MESSAGE_TYPES.has(event.type) || !isAppendSurfaceEvent(event)) continue
-    count++
-    const sources = (event as { sourceEventSeqs?: number[] }).sourceEventSeqs
-    let groupStart = event.seq
-    if (sources !== undefined) {
-      for (const source of sources) {
-        if (source < groupStart) groupStart = source
-      }
-    }
-    if (count >= maxMessages) {
-      cut = groupStart
-      break
-    }
-  }
-  const page = window.filter(event => event.seq >= cut)
-  return { events: page, hasMore: cut > 0 }
-}
 
-/** Wrap an ok result echoing the request's rpcId. */
-function ok<T>(request: RpcRequest<unknown>, value: T): RpcResponse<T> {
-  return { rpcId: request.rpcId, result: { ok: true, value } }
-}
 
-/**
- * Build the provider/model catalog over every registered route. Shared by the
- * session-scoped `session.models` and host-scoped `llm.models`. Catalog
- * membership stays advisory: an unlisted session selection remains valid for
- * provider dispatch, but is not injected back into the selector after its
- * owning catalog stops advertising it. Per-provider failures ride `failures`
- * without failing the sound groups; groups that advertise nothing are dropped.
- */
-async function buildModelCatalog(ctx: Context): Promise<{
-  groups: ModelProviderGroup[]
-  failures: ModelCatalogFailure[]
-}> {
-  const catalog = await Promise.all(ctx.llm.listProviders().map(async (provider) => {
-    try {
-      const models = await ctx.llm.listModels(provider.id)
-      const entries = await Promise.all(models.map(async (model) => {
-        const resolved = await ctx.llm.resolveModelInfo(provider.id, model.id)
-        const reasoning: ModelReasoning | undefined = resolved.reasoning === undefined
-          ? undefined
-          : {
-            efforts: resolved.reasoning.efforts.map(effort => ({
-              id: effort.id,
-              name: effort.name,
-              ...effort.description === undefined
-                ? {}
-                : { description: effort.description },
-            })),
-            ...resolved.reasoning.defaultEffort === undefined
-              ? {}
-              : { defaultEffort: resolved.reasoning.defaultEffort },
-          }
-        return {
-          id: model.id,
-          name: model.name,
-          ...model.description === undefined ? {} : { description: model.description },
-          ...model.inputModalities === undefined ? {} : { inputModalities: [...model.inputModalities] },
-          ...reasoning === undefined ? {} : { reasoning },
-        }
-      }))
-      const group: ModelProviderGroup = {
-        id: provider.id,
-        name: provider.name,
-        models: entries,
-      }
-      return { kind: 'group' as const, group }
-    } catch (error: unknown) {
-      const failure: ModelCatalogFailure = {
-        id: provider.id,
-        name: provider.name,
-        message: error instanceof Error ? error.message : String(error),
-      }
-      return { kind: 'failure' as const, failure }
-    }
-  }))
-  return {
-    groups: catalog.flatMap(item => item.kind === 'group' ? [item.group] : []).filter(group => group.models.length > 0),
-    failures: catalog.flatMap(item => item.kind === 'failure' ? [item.failure] : []),
-  }
-}
 
-/** Wrap an error result echoing the request's rpcId. */
-function err<T>(request: RpcRequest<unknown>, error: RpcError): RpcResponse<T> {
-  return { rpcId: request.rpcId, result: { ok: false, error } }
-}
 
 /**
  * The RPC refusal a preset failure becomes, or undefined when the failure is
@@ -358,76 +191,6 @@ function presetFailure(request: RpcRequest<unknown>, error: unknown): RpcRespons
   return undefined
 }
 
-/** Simple async queue: core callbacks push, the AsyncIterable pulls; abort/return cleans up. */
-class FrameQueue<F> {
-  private buffer: F[] = []
-  private waiter: (() => void) | undefined
-  private done = false
-
-  push(item: F): void {
-    if (this.done) return
-    this.buffer.push(item)
-    this.waiter?.()
-  }
-
-  end(): void {
-    this.done = true
-    this.waiter?.()
-  }
-
-  async *iterate(signal: AbortSignal, cleanup: () => void): AsyncGenerator<F> {
-    const onAbort = (): void => { this.end() }
-    signal.addEventListener('abort', onAbort, { once: true })
-    try {
-      while (true) {
-        while (this.buffer.length > 0) yield this.buffer.shift() as F
-        if (this.done || signal.aborted) return
-        await new Promise<void>((resolve) => { this.waiter = resolve })
-        this.waiter = undefined
-      }
-    } finally {
-      signal.removeEventListener('abort', onAbort)
-      cleanup()
-    }
-  }
-}
-
-/**
- * Server-side frame mint: pure pushes get a fresh rpcId per frame (answerable
- * frames — approval/question requested — mint their stable id in their
- * pending registries instead).
- */
-function frame<F>(payload: F): RpcRequest<F> {
-  return { rpcId: RpcId(randomUUID()), payload }
-}
-
-/**
- * Narrow one allowlisted host event's argument list to the JSON values the
- * wrapper frame carries. A rejected argument is an allowlist mistake (the
- * forwarded path applies no projection), not hostile input, so it throws rather
- * than degrading to a lossy frame. The throw surfaces where the forwarding
- * listener runs, so the emitter's own listener containment logs it and drops
- * that frame — loud in the Host log, not at load or at the emit. Exported for
- * the test that owns this decision: every currently allowlisted event has a
- * statically JSON-safe payload, so a type-legal `ctx.emit` cannot reach the
- * rejection branch.
- * @param event - forwarded host event name, named in the failure.
- * @param args - the emitter's argument list.
- * @returns the same arguments typed as JSON values.
- */
-export function assertJsonArgs(event: string, args: readonly unknown[]): JsonValue[] {
-  for (const [index, arg] of args.entries()) {
-    if (!isJsonValue(arg)) {
-      throw new Error(`forwarded host event "${event}" argument ${index} is not lossless JSON data`)
-    }
-  }
-  return args as JsonValue[]
-}
-
-/** Queue the subscription baseline frame. */
-function subscribeSession(queue: FrameQueue<RpcRequest<MuxFrame>>, session: Session): void {
-  queue.push(frame({ type: 'session/subscribed', sessionId: session.id, lastSeq: session.seq - 1 }))
-}
 
 /**
  * Project registry snapshots onto the wire view, dropping the three internal
@@ -445,134 +208,6 @@ function jobViews(snapshots: readonly JobSnapshot[]): JobView[] {
   }))
 }
 
-/**
- * Whether the session's conversation has started: no turn has run yet (a
- * turn is one model-loop execution). Standalone plugin events — command
- * lifecycle records, plan/mode, titles, goals — never open a turn, so
- * running `/plan` or `/goal` on a fresh session keeps it blank
- * (list-hidden, reusable).
- */
-function sessionBlank(session: Session): boolean {
-  return !session.events.some(event => event.type === 'turn/start')
-}
-
-/** Advance the Session-list hint projection by one committed event. */
-function applySessionListMetadata(state: SessionListMetadata, event: SessionEvent): SessionListMetadata {
-  const blank = state.blank && event.type !== 'turn/start'
-  const lastPromptAt = event.type === 'user/message' && event.data.source.kind === 'user'
-    ? event.time
-    : state.lastPromptAt
-  return blank === state.blank && lastPromptAt === state.lastPromptAt
-    ? state
-    : { blank, lastPromptAt }
-}
-
-/** Fold exact list metadata for an attached Session. */
-function sessionListMetadata(events: readonly SessionEvent[]): SessionListMetadata {
-  let state: SessionListMetadata = { blank: true, lastPromptAt: null }
-  for (const event of events) state = applySessionListMetadata(state, event)
-  return state
-}
-
-/** Sort by creation or latest human prompt, whichever is newer. */
-function sessionListUpdatedAt(header: SessionHeader, metadata: SessionListMetadata | undefined): number {
-  return Math.max(header.createdAt, metadata?.lastPromptAt ?? 0)
-}
-
-/** Shared Session-header projection for list baselines and creation frames. */
-function sessionListFields(header: SessionHeader, events: readonly SessionEvent[] = []): {
-  parentSessionId?: SessionId
-  seedLength?: number
-  origin?: SessionOrigin
-  cwd?: string
-  agentPreset?: string
-} {
-  // The preset comes from the log, not the header: a session that switched
-  // while blank ran its turns under the newer composition, and a picker
-  // showing the creation-time value would contradict what the model saw.
-  const agentPreset = resolveSessionPreset({ header, events })
-  return {
-    ...header.parentSession === undefined ? {} : { parentSessionId: header.parentSession },
-    ...header.seedLength === undefined ? {} : { seedLength: header.seedLength },
-    ...header.origin === undefined ? {} : { origin: header.origin },
-    ...header.cwd === undefined ? {} : { cwd: header.cwd },
-    ...agentPreset === undefined ? {} : { agentPreset },
-  }
-}
-
-/** SessionSummary projection for attached (in-memory) sessions. */
-function summarize(session: Session, running: boolean): SessionSummary {
-  const metadata = sessionListMetadata(session.events)
-  return {
-    sessionId: session.id,
-    updatedAt: sessionListUpdatedAt(session.header, metadata),
-    running,
-    blank: metadata.blank,
-    ...sessionListFields(session.header, session.events),
-  }
-}
-
-/**
- * Verify a possibly blank cold Session only when its physical artifact passes
- * the configured per-Session size check. A stale `blank: true`, an
- * absent cache row, a large or location-less artifact, and read failures all
- * resolve to visible (`false`); listing must never hide a conversation on a
- * cache hint or an unavailable optimization.
- */
-async function probeColdSessionMetadata(
-  ctx: Context,
-  persistence: SessionPersistence,
-  meta: SessionHeader,
-  maxBytes: number,
-  signal?: AbortSignal,
-): Promise<SessionListMetadata | undefined> {
-  if (maxBytes === 0) return undefined
-  signal?.throwIfAborted()
-  const location = persistence.locate(meta)
-  if (location === undefined) return undefined
-  signal?.throwIfAborted()
-  let size: number
-  try {
-    size = (await stat(location.path)).size
-  } catch {
-    signal?.throwIfAborted()
-    return undefined
-  }
-  if (size > maxBytes) return undefined
-  try {
-    const { events } = await persistence.readFrom(meta.id, 0, signal)
-    signal?.throwIfAborted()
-    return sessionListMetadata(events)
-  } catch (error) {
-    signal?.throwIfAborted()
-    ctx.logger.warn(`session.list: blank probe for "${meta.id}" failed (serving it as visible): ${String(error)}`)
-    return undefined
-  }
-}
-
-/** SessionSummary projection for a cold persisted Session. */
-async function summarizeCold(
-  ctx: Context,
-  persistence: SessionPersistence,
-  meta: SessionHeader,
-  metadata: SessionListMetadata | undefined,
-  blankProbeMaxBytes: number,
-  signal?: AbortSignal,
-): Promise<SessionSummary> {
-  const probed = metadata?.blank === false
-    ? undefined
-    : await probeColdSessionMetadata(ctx, persistence, meta, blankProbeMaxBytes, signal)
-  return {
-    sessionId: meta.id,
-    updatedAt: sessionListUpdatedAt(meta, probed ?? metadata),
-    running: false,
-    blank: metadata?.blank === false ? false : probed?.blank ?? false,
-    // Header-only: reading the log for a blank-window preset switch would
-    // defeat the same index read, and attaching the session replaces this row
-    // with `summarize()`, which resolves the switch from the events.
-    ...sessionListFields(meta),
-  }
-}
 
 /** Map a browse-primitive failure onto the wire error vocabulary (unknown throws stay internal). */
 function directoryError(error: unknown): RpcError {
@@ -619,155 +254,6 @@ export interface ApiProxyDefaults {
   canOpenPath?: () => boolean
 }
 
-/** The tool/call payload fields the presenter path reads. */
-interface ToolCallData { callId: string; name: string; arguments: string }
-/**
- * One outstanding approval question: the stable server-request id, the frame
- * material replayed to late mux subscribers, and the resolver that settles the
- * answerer's promise back into `ctx.approval`.
- */
-interface PendingApproval {
-  rpcId: RpcId
-  sessionId: SessionId
-  approvalId: ApprovalRequestId
-  toolName: string
-  callId?: CallId
-  reason?: string
-  resolve(outcome: ApprovalOutcome): void
-}
-
-/** Project a pending entry into its answerable mux frame (initial push and mux-open replay share it). */
-function requestedFrame(pending: PendingApproval): RpcRequest<MuxFrame> {
-  return {
-    rpcId: pending.rpcId,
-    payload: {
-      type: 'approval/requested',
-      sessionId: pending.sessionId,
-      approvalId: pending.approvalId,
-      toolName: pending.toolName,
-      ...pending.callId === undefined ? {} : { callId: pending.callId },
-      ...pending.reason === undefined ? {} : { reason: pending.reason },
-    },
-  }
-}
-
-/** One host-owned question wait, addressed by the stable server-request id. */
-interface PendingQuestion {
-  rpcId: RpcId
-  sessionId: SessionId
-  questions: AskUserQuestionItem[]
-  resolve: (answer: AskUserQuestionAnswer) => void
-  reject: (error: UserQuestionError) => void
-  signal?: AbortSignal
-  onAbort?: () => void
-}
-
-/** Validate one answer batch against the exact question request it resolves. */
-function matchesQuestions(payload: QuestionResponsePayload, pending: PendingQuestion): boolean {
-  if (payload.sessionId !== pending.sessionId) return false
-  const answers = payload.answer.answers
-  if (answers.length !== pending.questions.length) return false
-  return answers.every((answer, index) => {
-    const question = pending.questions[index] as AskUserQuestionItem
-    if (answer.id !== question.id) return false
-    if (new Set(answer.selected).size !== answer.selected.length) return false
-    const custom = answer.custom?.trim()
-    if (custom !== undefined && custom === '') return false
-    if (question.multiSelect !== true) {
-      if (custom !== undefined && answer.selected.length > 0) return false
-      if (answer.selected.length > 1) return false
-    }
-    const labels = new Set(question.options?.map(option => option.label) ?? [])
-    return answer.selected.every(label => labels.has(label))
-  })
-}
-
-/**
- * Compute the render intent for a tool/call or tool/result event through the
- * presenters registered at this moment; every other event type gets none. A
- * result's presenter needs its call's parsed args — `argsFor` supplies them
- * (live: the per-session call table; history: an in-page backscan), returning
- * undefined when the pairing is unavailable (e.g. the call fell off the page),
- * which soft-falls to no view. Presenter or JSON.parse throws also soft-fall:
- * the client's documented default (generic JSON card) covers every miss.
- */
-function viewFor(
-  ctx: Context,
-  event: SessionEvent,
-  argsFor: (callId: string) => unknown,
-  // Presenters live with the definitions, and definitions live in the scope
-  // chain: a preset registers its tools into its standing layer. A live agent
-  // is a scope whose chain passes through its preset; a cold read passes the
-  // preset's standing key directly — no agent, no resume. An undefined scope
-  // sees only the global layer, which is the pre-preset deployment shape.
-  scope?: ScopeKey,
-): ToolEventView | undefined {
-  try {
-    if (event.type === 'tool/call') {
-      const { name, arguments: raw } = event.data as ToolCallData
-      const view = ctx.tools.get(name, scope)?.presentCall?.(JSON.parse(raw))
-      return view === undefined ? undefined : { for: 'call', view }
-    }
-    if (event.type === 'tool/result') {
-      const { message, meta } = event.data
-      const [result] = message.content
-      const callId = message.source.callId
-      const call = argsFor(callId) as { name: string; args: unknown } | undefined
-      if (call === undefined) return undefined
-      const view = ctx.tools.get(call.name, scope)?.presentResult?.(call.args, {
-        content: result.content,
-        isError: result.isError === true,
-        ...meta === undefined ? {} : { meta },
-      })
-      return view === undefined ? undefined : { for: 'result', view }
-    }
-  } catch (error: unknown) {
-    // A throwing presenter (or unparseable arguments) must not break delivery;
-    // the event still ships, just without a view.
-    console.error(`api-proxy: presenter failed for ${event.type}, falling back to generic: ${String(error)}`)
-  }
-  return undefined
-}
-
-/**
- * Resolve a tool/result's call pairing by scanning a window of events backwards
- * for the matching tool/call. Used by the history path (the page is the
- * window — a cross-page pairing soft-falls to no view) and by live-path table
- * misses after a reconnect-eviction.
- */
-function backscanArgs(events: readonly SessionEvent[], callId: string): { name: string; args: unknown } | undefined {
-  for (let i = events.length - 1; i >= 0; i--) {
-    const event = events[i] as SessionEvent
-    if (event.type !== 'tool/call') continue
-    const data = event.data as ToolCallData
-    if (data.callId !== callId) continue
-    try {
-      return { name: data.name, args: JSON.parse(data.arguments) }
-    } catch {
-      // Unparseable stored arguments: same soft-fall as a live parse failure.
-      return undefined
-    }
-  }
-  return undefined
-}
-
-/** Render one detached history page through the same presenter path as ordinary history. */
-function historyPage(
-  ctx: Context,
-  events: readonly SessionEvent[],
-  beforeSeq: number | undefined,
-  maxMessages: number | undefined,
-  scope?: ScopeKey,
-): { events: HistoryEntry[]; hasMore: boolean } {
-  const page = paginate(events, beforeSeq, maxMessages ?? DEFAULT_MAX_MESSAGES)
-  return {
-    events: page.events.map((event) => {
-      const view = viewFor(ctx, event, callId => backscanArgs(page.events, callId), scope)
-      return { event, ...view === undefined ? {} : { view } }
-    }),
-    hasMore: page.hasMore,
-  }
-}
 
 /**
  * The projection baseline for one history tail page: the registry's
@@ -957,95 +443,6 @@ function noRoster(agentPreset: string): RpcError {
   }
 }
 
-/** Map one authoring/roster failure onto its wire code. */
-function presetError(agentPreset: string, error: unknown): RpcError {
-  if (error instanceof UnknownPresetError) {
-    return {
-      code: 'agent-preset-not-found',
-      message: error.message,
-      details: { agentPreset: error.presetId, available: [...error.available] },
-    }
-  }
-  if (error instanceof PresetNotWritableError) {
-    return { code: 'agent-preset-read-only', message: error.message, details: { agentPreset, reason: error.message } }
-  }
-  if (error instanceof InvalidPresetIdError || error instanceof PresetExistsError) {
-    return { code: 'agent-preset-invalid', message: error.message, details: { agentPreset, reason: error.message } }
-  }
-  return { code: 'internal', message: `agent preset "${agentPreset}": ${String(error)}`, details: {} }
-}
-
-class AgentPresetConflict extends Error {
-  constructor(
-    readonly sessionId: SessionId,
-    readonly requestedPreset: string,
-    readonly existingPreset: string | undefined,
-  ) {
-    super(
-      existingPreset === undefined
-        ? `session "${sessionId}" records no agent preset, so it cannot be adopted under one; `
-        + 'a deployment composing no roster records none on any session — '
-        : `session "${sessionId}" already runs agent preset ${JSON.stringify(existingPreset)}; `
-      + `requested ${JSON.stringify(requestedPreset)}. A session's preset is fixed at creation.`,
-    )
-  }
-}
-
-/** Requested identity already belongs to a session with another project cwd. */
-class SessionCwdConflict extends Error {
-  constructor(
-    readonly sessionId: SessionId,
-    readonly requestedCwd: string,
-    readonly existingCwd: string | undefined,
-  ) {
-    super(
-      `session "${sessionId}" already exists with cwd ${JSON.stringify(existingCwd)}; `
-      + `requested ${JSON.stringify(requestedCwd)}`,
-    )
-  }
-}
-
-/** An explicit Host naming operation would duplicate another Workspace title. */
-class WorkspaceNameConflictError extends Error {
-  constructor(readonly workspaceName: string) {
-    super(`workspace name '${workspaceName}' is already in use`)
-    this.name = 'WorkspaceNameConflictError'
-  }
-}
-
-/** Shared workspace-not-found error response of the workspace.* mutation rows. */
-function workspaceNotFound<T>(request: RpcRequest<unknown>, workspaceId: string): RpcResponse<T> {
-  return err(request, {
-    code: 'workspace-not-found',
-    message: `workspace "${workspaceId}" not found`,
-    details: { workspaceId },
-  })
-}
-
-/** Wire projection of one workspace entity (the workspace.* value row). */
-function workspaceView(workspace: Workspace): WorkspaceView {
-  return {
-    workspaceId: workspace.id,
-    path: workspace.path,
-    title: workspace.title,
-    sessionIds: [...workspace.sessionIds],
-    createdAt: workspace.createdAt,
-    updatedAt: workspace.updatedAt,
-  }
-}
-
-/** Wire projection of the durable record carried by `domain/changed`. */
-function changedWorkspaceView(workspaceId: string, value: unknown): WorkspaceView {
-  const record: WorkspaceRecord = workspaceRecord.parse(value)
-  return {
-    workspaceId: workspaceId as WorkspaceId,
-    path: record.path,
-    title: record.title,
-    sessionIds: [...record.sessionIds],
-    createdAt: record.createdAt,
-    updatedAt: record.updatedAt,
-  }
-}
 
 /**
  * Implement ApiProxy over a composed host context.
@@ -2011,7 +1408,7 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
           while (authorized.length <= SESSION_SEARCH_RESULT_LIMIT) {
             if (isAborted(signal)) return cancelled()
             if (providerCallCount >= SESSION_SEARCH_PROVIDER_CALL_LIMIT) {
-              throw new Error(
+              throw new SessionSearchGuardError(
                 `session search provider exceeded the ${SESSION_SEARCH_PROVIDER_CALL_LIMIT}-call work budget`,
               )
             }
@@ -2056,7 +1453,7 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
             if (isAborted(signal)) return cancelled()
             const providerItemCount = page.items.length
             if (providerItemCount > requestedPageLimit) {
-              throw new Error(
+              throw new SessionSearchGuardError(
                 `session search provider returned ${providerItemCount} items; maximum is ${requestedPageLimit}`,
               )
             }
@@ -2087,7 +1484,7 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
             const nextCursor = page.nextCursor
             if (nextCursor !== undefined) {
               if (seenCursors.has(nextCursor)) {
-                throw new Error('session search provider repeated a continuation cursor')
+                throw new SessionSearchGuardError('session search provider repeated a continuation cursor')
               }
               seenCursors.add(nextCursor)
             }
@@ -2103,11 +1500,21 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
             isAborted(signal)
             || (error instanceof SessionQueryError && error.code === 'SESSION_QUERY_ABORTED')
           ) return cancelled()
-          // XXX: Redact provider details before exposing this gateway beyond
-          // its current single-user local deployment.
+          // Guard failures this handler constructed and typed SessionQueryError
+          // messages are safe wire content. Any other error is provider-thrown
+          // and can carry upstream endpoints, query text, or credential
+          // fragments; keep those in the Host log, not the wire.
+          if (error instanceof SessionSearchGuardError || error instanceof SessionQueryError) {
+            return err(request, {
+              code: 'internal',
+              message: `session search failed: ${error.message}`,
+              details: {},
+            })
+          }
+          ctx.logger.warn(`session.search: provider search failed: ${String(error)}`)
           return err(request, {
             code: 'internal',
-            message: `session search failed: ${String(error)}`,
+            message: 'session search failed',
             details: {},
           })
         }

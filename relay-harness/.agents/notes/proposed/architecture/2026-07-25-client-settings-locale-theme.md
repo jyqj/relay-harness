@@ -22,7 +22,7 @@ Each feature row's apply layer subscribes to its own change event (locale to `lo
 
 The theme preference has three states — `light`, `dark`, `system` — defaulting to `system` (when no persisted preference exists or the value is bad). Resolving system belongs to the theme domain: ThemeRuntime holds the `prefers-color-scheme` matchMedia listener (environment sensing, not DOM presentation) and re-emits the snapshot when the preference is system and the system color scheme changes; the snapshot carries both `preference` and the resolved `active` definition.
 
-The theme service never touches the DOM. `ui-layout` reads the Theme getter initially and then subscribes to `theme/change`; the presenter owned by Layout updates `body[data-ds-dark-theme]` and the theme tokens according to `active`. The presenter has no notion of system — it consumes only resolved results.
+The theme service never touches the DOM. `ui-layout` reads the Theme getter initially and then subscribes to `theme/change`; the presenter owned by Layout updates `body[data-rl-dark-theme]` and the theme tokens according to `active`. The presenter has no notion of system — it consumes only resolved results.
 
 ### First-phase registration surfaces
 

@@ -67,7 +67,7 @@
       --rlw-specific-sidebar-nav-item-hover: var(--rlw-static-neutral-bluish-75);
       --rlw-specific-input-major: color-mix(in srgb, var(--rlw-static-neutral-bluish-00) 80%, transparent);
     }
-    html[data-ds-dark-theme] body {
+    html[data-rl-dark-theme] body {
       --rlw-alias-bg-base: var(--rlw-static-neutral-bluish-950);
       --rlw-alias-bg-layer-1: var(--rlw-static-neutral-bluish-875);
       --rlw-alias-bg-layer-2: var(--rlw-static-neutral-bluish-850);
@@ -813,8 +813,8 @@
       cube.addEventListener("click", () => {
         document.querySelectorAll("[data-scheme]").forEach((c) => c.classList.remove("selected"));
         cube.classList.add("selected");
-        if (cube.dataset.scheme === "dark") document.documentElement.setAttribute("data-ds-dark-theme", "");
-        else document.documentElement.removeAttribute("data-ds-dark-theme");
+        if (cube.dataset.scheme === "dark") document.documentElement.setAttribute("data-rl-dark-theme", "");
+        else document.documentElement.removeAttribute("data-rl-dark-theme");
       });
     });
     renderGrid("bing");

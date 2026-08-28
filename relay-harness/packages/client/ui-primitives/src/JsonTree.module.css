@@ -17,7 +17,7 @@
   overscroll-behavior-y: auto;
 }
 
-:global(body[data-ds-dark-theme]) .root {
+:global(body[data-rl-dark-theme]) .root {
   --json-tree-property: #5db0d7;
   --json-tree-string: #f28b82;
   --json-tree-number: #99c8ff;

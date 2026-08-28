@@ -4,14 +4,14 @@ import {
   type GhosttyScrollbar,
   type GhosttySnapshot,
   type GhosttyTheme,
-} from "./core";
+} from './core.ts';
 import {
   measureGhosttyCell,
   renderGhosttySnapshot,
   terminalGridSize,
   type GhosttyCellRange,
   type GhosttyCellMetrics,
-} from "./renderer";
+} from './renderer.ts';
 import { isMonospaceFamily } from "./appearanceFonts.ts";
 import { symbolsFontUrl } from "./assets.ts";
 import { isMacPlatform } from "./platform.ts";

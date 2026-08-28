@@ -1,0 +1,67 @@
+{
+  "name": "@relay-harness/rlh-code-index-local",
+  "description": "Local filesystem Service Provider for the Relay Harness code-index capability: workspace scan, incremental diff, generic chunking, SQLite storage, and hybrid retrieval behind ctx.codeIndex",
+  "version": "0.1.0-rc.8",
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jyqj/relay-harness.git",
+    "directory": "packages/index/code-index-local"
+  },
+  "type": "module",
+  "main": "lib/index.js",
+  "types": "lib/types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./lib/types/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./invariant": {
+      "types": "./lib/types/invariant.d.ts",
+      "default": "./lib/invariant.js"
+    },
+    "./src/*": "./src/*",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib/index.js",
+    "lib/invariant.js",
+    "lib/types/**/*.d.ts"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "@relay-harness/schemastery": "workspace:^"
+  },
+  "peerDependencies": {
+    "@relay-harness/cordis": "workspace:^",
+    "@relay-harness/rlh-code-index": "workspace:^",
+    "@relay-harness/rlh-code-index-graph": "workspace:^",
+    "@relay-harness/rlh-code-index-parser": "workspace:^",
+    "@relay-harness/rlh-code-index-search": "workspace:^",
+    "@relay-harness/rlh-code-index-sqlite": "workspace:^",
+    "@relay-harness/rlh-home-paths": "workspace:^",
+    "@relay-harness/rlh-invariants": "workspace:^",
+    "@relay-harness/rlh-llm": "workspace:^",
+    "@relay-harness/rlh-session": "workspace:^",
+    "@relay-harness/rlh-timeout": "workspace:^"
+  },
+  "devDependencies": {
+    "@relay-harness/cordis": "workspace:^",
+    "@relay-harness/cordis-plugin-include": "workspace:^",
+    "@relay-harness/cordis-plugin-loader": "workspace:^",
+    "@relay-harness/rlh-code-index": "workspace:^",
+    "@relay-harness/rlh-code-index-graph": "workspace:^",
+    "@relay-harness/rlh-code-index-parser": "workspace:^",
+    "@relay-harness/rlh-code-index-search": "workspace:^",
+    "@relay-harness/rlh-code-index-sqlite": "workspace:^",
+    "@relay-harness/rlh-home-paths": "workspace:^",
+    "@relay-harness/rlh-invariants": "workspace:^",
+    "@relay-harness/rlh-llm": "workspace:^",
+    "@relay-harness/rlh-session": "workspace:^",
+    "@relay-harness/rlh-system-prompt": "workspace:^",
+    "@relay-harness/rlh-timeout": "workspace:^",
+    "@relay-harness/rlh-tools": "workspace:^"
+  }
+}
