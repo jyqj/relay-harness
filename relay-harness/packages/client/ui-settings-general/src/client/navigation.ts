@@ -29,7 +29,9 @@ export class SettingsNavigationService extends Service {
     super(ctx, 'settingsNavigation')
   }
 
-  /** Open Settings on a registered section id. */
+  /** Open Settings on a registered section id.
+   * @param section - registered Settings section identity.
+   */
   open(section: string): void {
     const before = this.store.getSnapshot()
     this.store.set({ section, revision: before.revision + 1 })

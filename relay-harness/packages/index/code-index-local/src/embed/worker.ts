@@ -3,10 +3,9 @@
  *
  * One drain call walks the embedding queue to a stop condition. Each claimed
  * job runs the full pipeline — chunk text read, provider request, int8
- * quantization, `chunks_vec` commit inside its own evidence-epoch
- * transaction, completion settlement with the recorded usage — so every
- * commit moves `evidence_epoch` exactly once and a drained job leaves one
- * vector row plus one usage record. Failures settle through the queue's
+ * quantization, one batch `chunks_vec` commit, then per-job usage settlement.
+ * Every successful vector batch advances `embedding_epoch` once and leaves
+ * runtime `evidence_epoch` untouched. Failures settle through the queue's
  * attempt budget; deterministic misconfigurations refuse to burn it and stop
  * the drain loudly instead.
  *
@@ -64,6 +63,8 @@ export type DrainStopReason =
 
 /** Result of one completed {@link drainEmbedJobs} call. */
 export interface DrainEmbedJobsResult {
+  readonly batchesClaimed: number
+  readonly batchesWritten: number
   /** Jobs claimed over the drain's lifetime. */
   readonly jobsClaimed: number
   /** Jobs settled `completed` with a vector row committed. */
@@ -82,6 +83,8 @@ export interface DrainEmbedJobsResult {
 
 /** Mutable counters folded into the drain result. */
 interface DrainCounters {
+  batchesClaimed: number
+  batchesWritten: number
   jobsClaimed: number
   jobsCompleted: number
   jobsFailed: number
@@ -103,6 +106,10 @@ export interface DrainEmbedJobsOptions {
   readonly quantize?: (vector: Float32Array) => QuantizedVectorInt8
   /** Worker identity stamped onto every lease; unique per live worker. */
   readonly owner: string
+  /** Complete generation id claimed and stamped onto vector rows. */
+  readonly generationId?: string
+  /** Jobs embedded and committed together; defaults to one for direct callers. */
+  readonly batchSize?: number
   /** Upper bound on jobs claimed this drain. */
   readonly maxJobs: number
   /** Upper bound on scheduled prompt-token spend this drain. */
@@ -121,9 +128,9 @@ export interface DrainEmbedJobsOptions {
  * Drain the embedding queue until a budget, the queue, or the caller's signal
  * stops it.
  *
- * Per job: claim (one attempt burned) → read the chunk text
- * (`embedChunkInputs`) → embed → quantize → commit the vector row in one
- * evidence-epoch transaction → complete with the job's recorded usage. The
+ * Per batch: claim leases → batch-read chunk text → embed → quantize → commit
+ * all vector rows in one embedding-epoch transaction → settle each job with
+ * its allocated usage. The
  * token budget is checked before each claim, so the drain never starts a job
  * it could not pay for; the final job may overshoot the cap by its own spend,
  * which no pre-claim check can predict. Abort semantics follow the reference
@@ -145,7 +152,11 @@ export async function drainEmbedJobs(options: DrainEmbedJobsOptions): Promise<Dr
   const now = options.now ?? Date.now
   const leaseMs = options.leaseMs ?? DEFAULT_EMBED_DRAIN_LEASE_MS
   const retryDelayMs = options.retryDelayMs ?? DEFAULT_EMBED_DRAIN_RETRY_MS
+  const batchSize = options.batchSize ?? 1
+  if (!Number.isSafeInteger(batchSize) || batchSize < 1) throw new Error('embed drain batchSize must be a positive safe integer')
   const counters: DrainCounters = {
+    batchesClaimed: 0,
+    batchesWritten: 0,
     jobsClaimed: 0,
     jobsCompleted: 0,
     jobsFailed: 0,
@@ -160,41 +171,60 @@ export async function drainEmbedJobs(options: DrainEmbedJobsOptions): Promise<Dr
       aborted = true
       break
     }
-    const [job] = claimEmbedJobs(options.db, {
+    const jobs = claimEmbedJobs(options.db, {
       owner: options.owner,
       leaseMs,
-      limit: 1,
-      model: options.client.model,
+      limit: Math.min(batchSize, options.maxJobs - counters.jobsClaimed),
+      ...(options.generationId === undefined
+        ? { model: options.client.model }
+        : { generationId: options.generationId }),
       now: now(),
     })
-    if (job === undefined) break
-    counters.jobsClaimed += 1
+    if (jobs.length === 0) break
+    counters.batchesClaimed += 1
+    counters.jobsClaimed += jobs.length
 
-    const input = embedChunkInputs(options.db, [job.chunkId]).get(job.chunkId)
-    if (input === undefined) {
+    const inputByChunk = embedChunkInputs(options.db, jobs.map(job => job.chunkId))
+    const ready = jobs.flatMap((job) => {
+      const input = inputByChunk.get(job.chunkId)
+      if (input !== undefined) return [{ job, input }]
       settleFailure(options, counters, job.id, 'the chunk row disappeared before embedding', retryDelayMs, now)
-      continue
-    }
+      return []
+    })
+    if (ready.length === 0) continue
     try {
-      const { vectors, promptTokens } = await options.client.embed([input.text], options.signal)
-      // One input in, one vector out is the client's contract; the guard
-      // turns a contract breach into a routable queue failure.
-      const [vector] = vectors
-      if (vector === undefined) {
-        throw new EmbedError('the embedding endpoint returned no vector for the job input', EMBED_RESPONSE_INVALID)
+      const { vectors, promptTokens } = await options.client.embed(ready.map(item => item.input.text), options.signal)
+      if (vectors.length !== ready.length) {
+        throw new EmbedError(
+          ready.length === 1 && vectors.length === 0
+            ? 'the embedding endpoint returned no vector for the job input'
+            : `the embedding endpoint returned ${vectors.length} vectors for ${ready.length} job inputs`,
+          EMBED_RESPONSE_INVALID,
+        )
+      }
+      if (!Number.isSafeInteger(promptTokens) || promptTokens < 0) {
+        throw new EmbedError('the embedding endpoint returned invalid prompt-token usage', EMBED_RESPONSE_INVALID)
       }
       counters.promptTokens += promptTokens
-      const quantized = quantize(vector)
-      writeChunkVectors(options.db, [{
-        chunkId: job.chunkId,
-        chunkRowid: input.chunkRowid,
-        model: options.client.model,
-        dim: vector.length,
-        scale: quantized.scale,
-        q: new Uint8Array(quantized.q.buffer),
-        norm: quantized.norm,
-      }])
-      settleCompletion(options, counters, job.id, promptTokens, now)
+      writeChunkVectors(options.db, ready.map((item, index) => {
+        const vector = vectors[index] as Float32Array
+        const quantized = quantize(vector)
+        return {
+          chunkId: item.job.chunkId,
+          chunkRowid: item.input.chunkRowid,
+          generationId: item.job.generationId,
+          model: options.client.model,
+          dim: vector.length,
+          scale: quantized.scale,
+          q: new Uint8Array(quantized.q.buffer),
+          norm: quantized.norm,
+        }
+      }))
+      counters.batchesWritten += 1
+      const usage = allocatePromptTokens(promptTokens, ready.map(item => item.input.text))
+      for (let index = 0; index < ready.length; index++) {
+        settleCompletion(options, counters, (ready[index] as typeof ready[number]).job.id, usage[index] ?? 0, now)
+      }
     } catch (error: unknown) {
       if (options.signal?.aborted || (error instanceof EmbedError && error.code === EMBED_ABORTED)) {
         aborted = true
@@ -202,21 +232,33 @@ export async function drainEmbedJobs(options: DrainEmbedJobsOptions): Promise<Dr
       }
       if (error instanceof EmbedError
         && (error.code === EMBED_DIMENSION_MISMATCH || error.code === EMBED_INVALID_CREDENTIAL)) {
-        settleFailure(options, counters, job.id, error.message, retryDelayMs, now, error.promptTokensUsed)
+        const partialUsage = error.promptTokensUsed === undefined
+          ? undefined
+          : allocatePromptTokens(error.promptTokensUsed, ready.map(item => item.input.text))
+        for (let index = 0; index < ready.length; index++) {
+          const item = ready[index] as typeof ready[number]
+          settleFailure(options, counters, item.job.id, error.message, retryDelayMs, now, partialUsage?.[index])
+        }
         throw error
       }
       // A per-batch deadline (EMBED_TIMEOUT) is a deterministic per-attempt
       // failure, not an abort: settle the job through the attempt budget and
       // move on to the next one instead of stopping the whole drain.
-      settleFailure(
-        options,
-        counters,
-        job.id,
-        error instanceof Error ? error.message : String(error),
-        retryDelayMs,
-        now,
-        error instanceof EmbedError ? error.promptTokensUsed : undefined,
-      )
+      const partialUsage = error instanceof EmbedError && error.promptTokensUsed !== undefined
+        ? allocatePromptTokens(error.promptTokensUsed, ready.map(item => item.input.text))
+        : undefined
+      for (let index = 0; index < ready.length; index++) {
+        const item = ready[index] as typeof ready[number]
+        settleFailure(
+          options,
+          counters,
+          item.job.id,
+          error instanceof Error ? error.message : String(error),
+          retryDelayMs,
+          now,
+          partialUsage?.[index],
+        )
+      }
     }
   }
 
@@ -228,6 +270,20 @@ export async function drainEmbedJobs(options: DrainEmbedJobsOptions): Promise<Dr
         ? 'token-budget'
         : 'queue-empty'
   return { ...counters, stoppedBecause } satisfies DrainEmbedJobsResult
+}
+
+/** Deterministically distribute aggregate provider usage without losing a token. */
+function allocatePromptTokens(total: number, texts: readonly string[]): number[] {
+  if (texts.length === 0) return []
+  const weights = texts.map(text => Math.max(1, Math.ceil(text.length / 4)))
+  const weightTotal = weights.reduce((sum, weight) => sum + weight, 0)
+  const allocated = weights.map(weight => Math.floor(total * weight / weightTotal))
+  let remainder = total - allocated.reduce((sum, value) => sum + value, 0)
+  for (let index = 0; remainder > 0; index = (index + 1) % allocated.length) {
+    allocated[index] = (allocated[index] ?? 0) + 1
+    remainder--
+  }
+  return allocated
 }
 
 /** Settle one job as completed, counting refused settlements without failing. */

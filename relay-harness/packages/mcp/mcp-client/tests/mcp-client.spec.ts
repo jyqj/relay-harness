@@ -307,6 +307,15 @@ describe('syncTools', () => {
     expect(ctx.tools.get('mcp__srv__page2')).toBeDefined()
   })
 
+  it('rejects a repeated tools cursor without replacing the last-good generation', async () => {
+    const stable = createMockClient([{ name: 'stable', inputSchema: { type: 'object' } }])
+    const previous = await syncTools(stable as never, ctx, defaultOpts, new Map())
+    const looping = createMockClient([])
+    looping.listTools.mockResolvedValue({ tools: [], nextCursor: 'same' })
+    await expect(syncTools(looping as never, ctx, defaultOpts, previous)).rejects.toThrow(/repeated cursor/u)
+    expect(ctx.tools.get('mcp__srv__stable')).toBeDefined()
+  })
+
   it('owns output validation independently of the SDK per-page cache', async () => {
     const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair()
     serverTransport.onmessage = (message) => {

@@ -18,20 +18,26 @@ import type { CodeContextRecallSource } from '../src/types.ts'
 const recallSource: CodeContextRecallSource = {
   kind: 'code-index',
   form: 'recall',
-  version: 1,
+  version: 2,
   cwd: '/workspace',
   query: 'where is spoolQuantaMarker defined',
   hits: [
     {
       chunkId: 'chunk:src/engine.ts:1',
       filePath: 'src/engine.ts',
+      language: 'typescript',
+      contentHash: 'file-hash-v1',
       startLine: 1,
       endLine: 3,
       score: 42,
+      scoreTrace: [{ label: 'rrf:lexical', value: 42 }],
+      parserTier: 'tree-sitter',
+      parserConfidence: 0.9,
       truncated: false,
     },
   ],
   epochs: { indexEpoch: 7, evidenceEpoch: 0 },
+  hydrationEpochs: { indexEpoch: 7, evidenceEpoch: 0 },
 }
 
 /** Exhaustive narrowing over the merge-extensible source map. */

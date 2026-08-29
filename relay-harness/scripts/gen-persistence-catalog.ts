@@ -52,6 +52,8 @@ const LINK_MAP: Record<string, string> = {
   SessionTitleModelProvenance: 'session-title.md',
   SessionTitleProviderId: 'session-title.md',
   SessionTitleSource: 'session-title.md',
+  PromptEnhancementLlmRequestEventData: 'prompt-enhancement.md',
+  PromptEnhancementModelProvenance: 'prompt-enhancement.md',
   TeamId: 'agent-team.md',
   TeamMemberSnapshot: 'agent-team.md',
   TeamMessageId: 'agent-team.md',

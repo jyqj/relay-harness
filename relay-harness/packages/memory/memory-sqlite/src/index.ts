@@ -22,8 +22,14 @@ import type {
   ClaimMemoryExtractionInput,
   EnqueueMemoryExtractionInput,
   FailMemoryExtractionInput,
+  FindMemoryConflictsInput,
   ForgetMemoryInput,
+  ListMemoryInput,
+  ListMemoryOutcomesInput,
+  MemoryConflictCandidate,
   MemoryEntry,
+  MemoryListPage,
+  MemoryOutcome,
   MemoryEvidence,
   MemoryExtractionJob,
   MemoryExtractionJobId as MemoryExtractionJobIdType,
@@ -31,11 +37,14 @@ import type {
   MemoryKind,
   MemoryScope,
   MemorySearchHit,
+  MemorySignal,
+  MemorySignalKind,
   MemoryStatus,
   MemoryTrust,
   MemoryTurnHandle as MemoryTurnHandleType,
   PrepareMemoryTurnInput,
   PreparedMemoryTurn,
+  ReconcileMemoryOutcomesInput,
   RememberMemoryInput,
   ReviseMemoryInput,
   SearchMemoryInput,
@@ -58,6 +67,11 @@ export {
 const MEMORY_KINDS = ['preference', 'fact', 'constraint', 'decision', 'procedure', 'lesson'] as const
 const MEMORY_STATUSES = ['candidate', 'active', 'disputed', 'superseded', 'tombstoned'] as const
 const MEMORY_TRUST = ['user-stated', 'action-verified', 'agent-proposed', 'external'] as const
+const MEMORY_OUTCOME_KINDS = [
+  'turn-completed', 'turn-failed', 'assistant-positive', 'assistant-negative',
+  'work-completed', 'work-blocked',
+] as const
+const MEMORY_OUTCOME_IMPACTS = ['positive', 'negative', 'neutral'] as const
 const MAX_SEARCH_LIMIT = 50
 const DEFAULT_MAX_CONTENT_CHARS = 8_000
 const DEFAULT_MAX_SUMMARY_CHARS = 500
@@ -93,6 +107,20 @@ interface SearchRow {
   memory_id: string
   entry_json: string
   rank: number
+}
+
+interface SignalRow {
+  id: string
+  memory_id: string
+  signal: MemorySignalKind
+  session_id: string | null
+  turn: number | null
+  created_at: number
+  metadata_json: string
+}
+
+interface OutcomeRow {
+  outcome_json: string
 }
 
 interface TurnRow {
@@ -338,16 +366,16 @@ export class SqliteLongTermMemory extends LongTermMemory {
       usefulAccessCount: 0,
     }
     if (superseded === undefined) {
-      this.writeEntry(entry)
+      this.writeEntries([entry])
       return Promise.resolve(snapshotEntry(entry))
     }
-    this.writeEntry(entry, {
+    this.writeEntries([entry, {
       ...superseded,
       revision: superseded.revision + 1,
       status: 'superseded',
       supersededBy: entry.id,
       updatedAt: now,
-    })
+    }])
     return Promise.resolve(snapshotEntry(entry))
   }
 
@@ -355,7 +383,9 @@ export class SqliteLongTermMemory extends LongTermMemory {
     signal?.throwIfAborted()
     assertScope(input.scope)
     validateEvidence(input.evidence)
+    validateGovernance(input.governance, input.evidence)
     const current = this.requireEntry(input.scope, input.id)
+    assertExpectedRevision(input.expectedRevision, current)
     if (current.status === 'tombstoned') throw new Error(`memory ${input.id} is tombstoned`)
     const content = input.content?.trim() ?? current.content
     const trust = input.trust ?? current.trust
@@ -374,7 +404,10 @@ export class SqliteLongTermMemory extends LongTermMemory {
       evidence: snapshotEvidence([...current.evidence, ...input.evidence]),
     }
     validateEntry(next, this.config)
-    this.writeEntry(next)
+    this.writeEntries([next], input.governance === undefined ? undefined : {
+      memoryId: next.id,
+      signal: input.governance,
+    })
     return Promise.resolve(snapshotEntry(next))
   }
 
@@ -383,7 +416,9 @@ export class SqliteLongTermMemory extends LongTermMemory {
     assertScope(input.scope)
     requireText('reason', input.reason)
     validateEvidence(input.evidence)
+    validateGovernance(input.governance, input.evidence)
     const current = this.requireEntry(input.scope, input.id)
+    assertExpectedRevision(input.expectedRevision, current)
     if (current.status === 'tombstoned') return Promise.resolve(current)
     const next: MemoryEntry = {
       ...current,
@@ -393,7 +428,10 @@ export class SqliteLongTermMemory extends LongTermMemory {
       updatedAt: Date.now(),
       evidence: snapshotEvidence([...current.evidence, ...input.evidence]),
     }
-    this.writeEntry(next)
+    this.writeEntries([next], input.governance === undefined ? undefined : {
+      memoryId: next.id,
+      signal: input.governance,
+    })
     return Promise.resolve(snapshotEntry(next))
   }
 
@@ -405,6 +443,183 @@ export class SqliteLongTermMemory extends LongTermMemory {
       WHERE memory_id = ? AND workspace_id = ? AND user_id = ? AND agent_id = ?
     `).get(id, scope.workspaceId, scope.userId, scope.agentId) as { entry_json: string } | undefined
     return Promise.resolve(row === undefined ? undefined : parseEntry(row.entry_json))
+  }
+
+  override list(input: ListMemoryInput, signal?: AbortSignal): Promise<MemoryListPage> {
+    signal?.throwIfAborted()
+    assertScope(input.scope)
+    assertPositiveSafeInteger('limit', input.limit)
+    if (input.limit > this.config.maxSearchLimit) {
+      throw new Error(`memory list limit must not exceed ${this.config.maxSearchLimit}`)
+    }
+    const offset = input.offset ?? 0
+    if (!Number.isSafeInteger(offset) || offset < 0) {
+      throw new Error('memory list offset must be a non-negative safe integer')
+    }
+    assertKinds(input.kinds)
+    assertStatuses(input.statuses)
+    const where = ['workspace_id = ?', 'user_id = ?', 'agent_id = ?']
+    const params: Array<string | number> = [
+      input.scope.workspaceId,
+      input.scope.userId,
+      input.scope.agentId,
+    ]
+    addListFilter(where, params, 'kind', input.kinds)
+    addListFilter(where, params, 'status', input.statuses)
+    if (input.includeExpired === false) {
+      where.push('(valid_until IS NULL OR valid_until > ?)')
+      params.push(Date.now())
+    }
+    const predicate = where.join(' AND ')
+    const totalRow = this.requireDb().prepare(
+      `SELECT COUNT(*) AS total FROM memory_entries WHERE ${predicate}`,
+    ).get(...params) as { total: number }
+    const rows = this.requireDb().prepare(`
+      SELECT entry_json FROM memory_entries
+      WHERE ${predicate}
+      ORDER BY updated_at DESC, memory_id ASC
+      LIMIT ? OFFSET ?
+    `).all(...params, input.limit, offset) as unknown as { entry_json: string }[]
+    const entries = rows.map(row => parseEntry(row.entry_json))
+    return Promise.resolve({
+      entries,
+      total: totalRow.total,
+      offset,
+      hasMore: offset + entries.length < totalRow.total,
+    })
+  }
+
+  override findConflicts(
+    input: FindMemoryConflictsInput,
+    signal?: AbortSignal,
+  ): Promise<readonly MemoryConflictCandidate[]> {
+    signal?.throwIfAborted()
+    assertScope(input.scope)
+    assertPositiveSafeInteger('limit', input.limit)
+    if (input.limit > this.config.maxSearchLimit) {
+      throw new Error(`memory conflict limit must not exceed ${this.config.maxSearchLimit}`)
+    }
+    const target = this.requireEntry(input.scope, input.id)
+    const rows = this.requireDb().prepare(`
+      SELECT entry_json FROM memory_entries
+      WHERE workspace_id = ? AND user_id = ? AND agent_id = ? AND memory_id != ?
+        AND status IN ('candidate', 'active', 'disputed', 'superseded')
+      ORDER BY updated_at DESC, memory_id ASC
+    `).all(
+      input.scope.workspaceId,
+      input.scope.userId,
+      input.scope.agentId,
+      input.id,
+    ) as unknown as { entry_json: string }[]
+    const targetContent = normalizedMemoryText(target.content)
+    const targetSummary = target.summary === undefined ? undefined : normalizedMemoryText(target.summary)
+    const conflicts: MemoryConflictCandidate[] = []
+    for (const row of rows) {
+      const candidate = parseEntry(row.entry_json)
+      if (candidate.kind !== target.kind) continue
+      const exact = normalizedMemoryText(candidate.content) === targetContent
+      const summaryCollision = !exact
+        && targetSummary !== undefined
+        && candidate.summary !== undefined
+        && normalizedMemoryText(candidate.summary) === targetSummary
+      if (!exact && !summaryCollision) continue
+      conflicts.push({
+        entry: candidate,
+        relation: exact ? 'exact-duplicate' : 'normalized-summary-collision',
+        score: exact ? 1 : 0.75,
+        reasons: exact
+          ? ['same kind and NFKC/case/whitespace-normalized content']
+          : ['same kind and NFKC/case/whitespace-normalized summary'],
+        detectorId: 'memory-sqlite-normalized-v1',
+      })
+      if (conflicts.length >= input.limit) break
+    }
+    return Promise.resolve(conflicts)
+  }
+
+  override listSignals(
+    scope: MemoryScope,
+    id: MemoryIdType,
+    signal?: AbortSignal,
+  ): Promise<readonly MemorySignal[]> {
+    signal?.throwIfAborted()
+    assertScope(scope)
+    this.requireEntry(scope, id)
+    const rows = this.requireDb().prepare(`
+      SELECT id, memory_id, signal, session_id, turn, created_at, metadata_json
+      FROM memory_signals
+      WHERE memory_id = ?
+      ORDER BY created_at ASC, id ASC
+    `).all(id) as unknown as SignalRow[]
+    return Promise.resolve(rows.map(parseSignal))
+  }
+
+  override reconcileOutcomes(input: ReconcileMemoryOutcomesInput, signal?: AbortSignal): Promise<void> {
+    signal?.throwIfAborted()
+    assertScope(input.scope)
+    validateOutcomes(input)
+    const db = this.requireDb()
+    db.exec('BEGIN IMMEDIATE')
+    try {
+      db.prepare(`
+        DELETE FROM memory_outcomes
+        WHERE workspace_id = ? AND user_id = ? AND agent_id = ? AND session_id = ?
+      `).run(input.scope.workspaceId, input.scope.userId, input.scope.agentId, input.sessionId)
+      const insert = db.prepare(`
+        INSERT INTO memory_outcomes (
+          id, memory_id, workspace_id, user_id, agent_id, session_id, turn,
+          kind, impact, observed_at, outcome_json
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `)
+      for (const outcome of input.outcomes) {
+        this.requireEntry(input.scope, outcome.memoryId)
+        insert.run(
+          outcome.id,
+          outcome.memoryId,
+          input.scope.workspaceId,
+          input.scope.userId,
+          input.scope.agentId,
+          input.sessionId,
+          outcome.turn,
+          outcome.kind,
+          outcome.impact,
+          outcome.observedAt,
+          JSON.stringify(outcome),
+        )
+      }
+      this.refreshOwner(db)
+      db.exec('COMMIT')
+    } catch (error: unknown) {
+      db.exec('ROLLBACK')
+      throw error
+    }
+    return Promise.resolve()
+  }
+
+  override listOutcomes(
+    input: ListMemoryOutcomesInput,
+    signal?: AbortSignal,
+  ): Promise<readonly MemoryOutcome[]> {
+    signal?.throwIfAborted()
+    assertScope(input.scope)
+    assertPositiveSafeInteger('limit', input.limit)
+    if (input.limit > this.config.maxSearchLimit) {
+      throw new Error(`memory outcome limit must not exceed ${this.config.maxSearchLimit}`)
+    }
+    this.requireEntry(input.scope, input.id)
+    const rows = this.requireDb().prepare(`
+      SELECT outcome_json FROM memory_outcomes
+      WHERE memory_id = ? AND workspace_id = ? AND user_id = ? AND agent_id = ?
+      ORDER BY observed_at DESC, id ASC
+      LIMIT ?
+    `).all(
+      input.id,
+      input.scope.workspaceId,
+      input.scope.userId,
+      input.scope.agentId,
+      input.limit,
+    ) as unknown as OutcomeRow[]
+    return Promise.resolve(rows.map(row => parseOutcome(row.outcome_json)))
   }
 
   override search(input: SearchMemoryInput, signal?: AbortSignal): Promise<readonly MemorySearchHit[]> {
@@ -462,16 +677,21 @@ export class SqliteLongTermMemory extends LongTermMemory {
       .map(([id, fused]): MemorySearchHit => {
         const entry = entries.get(id) as MemoryEntry
         const relevance = max === 0 ? 0 : fused / max
+        const outcomeAdjustment = this.outcomeAdjustment(entry.id)
         return {
           entry,
-          score: Math.min(1, relevance * 0.8 + entry.importance / 4 * 0.15 + trustWeight(entry.trust) * 0.05),
+          score: Math.max(0, Math.min(
+            1,
+            relevance * 0.8 + entry.importance / 4 * 0.15
+              + trustWeight(entry.trust) * 0.05 + outcomeAdjustment,
+          )),
           matchedBy: matchedBy.get(id) ?? [],
         }
       })
       .filter(hit => statuses.includes(hit.entry.status))
       .sort((a, b) => b.score - a.score || b.entry.updatedAt - a.entry.updatedAt || a.entry.id.localeCompare(b.entry.id))
       .slice(0, input.limit)
-    this.countUsefulAccesses(hits)
+    if (input.recordAccess !== false) this.countUsefulAccesses(hits)
     return hits
   }
 
@@ -497,6 +717,20 @@ export class SqliteLongTermMemory extends LongTermMemory {
         // The connection itself failed; SQLite owns that diagnosis.
       }
     }
+  }
+
+  private outcomeAdjustment(id: MemoryIdType): number {
+    const row = this.requireDb().prepare(`
+      SELECT
+        SUM(CASE WHEN impact = 'positive' THEN 1 ELSE 0 END) AS positive,
+        SUM(CASE WHEN impact = 'negative' THEN 1 ELSE 0 END) AS negative
+      FROM memory_outcomes WHERE memory_id = ? AND impact != 'neutral'
+    `).get(id) as { positive: number | null; negative: number | null }
+    const positive = row.positive ?? 0
+    const negative = row.negative ?? 0
+    const total = positive + negative
+    if (total === 0) return 0
+    return Math.max(-0.1, Math.min(0.1, ((positive - negative) / Math.max(4, total)) * 0.1))
   }
 
   private queryChannel(table: 'memory_fts_unicode' | 'memory_fts_trigram', query: string, input: SearchMemoryInput): SearchRow[] {
@@ -536,7 +770,10 @@ export class SqliteLongTermMemory extends LongTermMemory {
     return parseEntry(row.entry_json)
   }
 
-  private writeEntry(...entries: MemoryEntry[]): void {
+  private writeEntries(
+    entries: readonly MemoryEntry[],
+    governance?: { readonly memoryId: MemoryIdType; readonly signal: NonNullable<ReviseMemoryInput['governance']> },
+  ): void {
     for (const entry of entries) validateEntry(entry, this.config)
     const db = this.requireDb()
     db.exec('BEGIN IMMEDIATE')
@@ -607,6 +844,15 @@ export class SqliteLongTermMemory extends LongTermMemory {
           }
         }
       }
+      if (governance !== undefined) {
+        this.insertSignal(
+          governance.memoryId,
+          governance.signal.kind,
+          governance.signal.sessionId,
+          undefined,
+          governance.signal.eventSeqs,
+        )
+      }
       this.refreshOwner(db)
       db.exec('COMMIT')
     } catch (error: unknown) {
@@ -625,10 +871,32 @@ export class SqliteLongTermMemory extends LongTermMemory {
     sessionId?: string,
     turn?: number,
   ): void {
+    this.insertSignal(id, signal, sessionId, turn, [])
+  }
+
+  private insertSignal(
+    id: MemoryIdType,
+    signal: MemorySignalKind,
+    sessionId: string | undefined,
+    turn: number | undefined,
+    eventSeqs: readonly number[],
+  ): void {
+    const signalId = eventSeqs.length === 0
+      ? randomUUID()
+      : createHash('sha256').update(JSON.stringify({ id, signal, sessionId, eventSeqs })).digest('hex')
     this.requireDb().prepare(`
-      INSERT INTO memory_signals (id, memory_id, signal, session_id, turn, created_at)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `).run(randomUUID(), id, signal, sessionId ?? null, turn ?? null, Date.now())
+      INSERT OR IGNORE INTO memory_signals (
+        id, memory_id, signal, session_id, turn, created_at, metadata_json
+      ) VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      signalId,
+      id,
+      signal,
+      sessionId ?? null,
+      turn ?? null,
+      Date.now(),
+      JSON.stringify({ eventSeqs }),
+    )
   }
 
   private enqueueExtraction(input: EnqueueMemoryExtractionInput): Promise<MemoryExtractionJob> {
@@ -896,6 +1164,61 @@ function validateEvidence(evidence: readonly MemoryEvidence[]): void {
   }
 }
 
+function validateGovernance(
+  governance: ReviseMemoryInput['governance'] | undefined,
+  evidence: readonly MemoryEvidence[],
+): void {
+  if (governance === undefined) return
+  if (governance.eventSeqs.length === 0 || new Set(governance.eventSeqs).size !== governance.eventSeqs.length) {
+    throw new Error('memory governance signal eventSeqs must be non-empty and unique')
+  }
+  if (governance.eventSeqs.some(seq => !Number.isSafeInteger(seq) || seq < 0)) {
+    throw new Error('memory governance signal seqs must be non-negative safe integers')
+  }
+  const supported = evidence.some(item => item.sessionId === governance.sessionId
+    && governance.eventSeqs.every(seq => item.eventSeqs.includes(seq))
+    && item.verification === 'user-statement')
+  if (!supported) throw new Error('memory governance signal requires matching user-statement evidence')
+}
+
+function assertExpectedRevision(expected: number | undefined, current: MemoryEntry): void {
+  if (expected === undefined) return
+  assertPositiveSafeInteger('expectedRevision', expected)
+  if (current.revision !== expected) {
+    throw new Error(`memory ${current.id} revision conflict: expected ${expected}, current ${current.revision}`)
+  }
+}
+
+function validateOutcomes(input: ReconcileMemoryOutcomesInput): void {
+  const ids = new Set<string>()
+  for (const outcome of input.outcomes) {
+    if (ids.has(outcome.id)) throw new Error(`memory outcome id ${outcome.id} repeats in one reconciliation`)
+    ids.add(outcome.id)
+    requireText('outcome id', outcome.id)
+    if (outcome.sessionId !== input.sessionId) throw new Error('memory outcome session differs from reconciliation session')
+    if (!(MEMORY_OUTCOME_KINDS as readonly string[]).includes(outcome.kind)) {
+      throw new Error(`invalid memory outcome kind ${outcome.kind}`)
+    }
+    if (!(MEMORY_OUTCOME_IMPACTS as readonly string[]).includes(outcome.impact)) {
+      throw new Error(`invalid memory outcome impact ${outcome.impact}`)
+    }
+    if (outcome.scope.workspaceId !== input.scope.workspaceId
+      || outcome.scope.userId !== input.scope.userId
+      || outcome.scope.agentId !== input.scope.agentId) {
+      throw new Error('memory outcome scope differs from reconciliation scope')
+    }
+    assertPositiveSafeInteger('outcome turn', outcome.turn)
+    if (!Number.isSafeInteger(outcome.observedAt) || outcome.observedAt < 0) {
+      throw new Error('memory outcome observedAt must be a non-negative safe integer')
+    }
+    if (outcome.sourceEventSeqs.length === 0
+      || new Set(outcome.sourceEventSeqs).size !== outcome.sourceEventSeqs.length
+      || outcome.sourceEventSeqs.some(seq => !Number.isSafeInteger(seq) || seq < 0)) {
+      throw new Error('memory outcome sourceEventSeqs must be non-empty unique non-negative integers')
+    }
+  }
+}
+
 function validateTrustEvidence(trust: MemoryTrust, evidence: readonly MemoryEvidence[]): void {
   const required = {
     'user-stated': 'user-statement',
@@ -960,6 +1283,36 @@ function snapshotEntry(entry: MemoryEntry): MemoryEntry {
 
 function parseEntry(value: string): MemoryEntry {
   return JSON.parse(value) as MemoryEntry
+}
+
+function parseSignal(row: SignalRow): MemorySignal {
+  let eventSeqs: readonly number[] = []
+  try {
+    const metadata = JSON.parse(row.metadata_json) as { eventSeqs?: unknown }
+    if (Array.isArray(metadata.eventSeqs)
+      && metadata.eventSeqs.every(seq => Number.isSafeInteger(seq) && Number(seq) >= 0)) {
+      eventSeqs = metadata.eventSeqs as number[]
+    }
+  } catch {
+    // Version-3 legacy rows used the default `{}` metadata. Keep them visible with no event seqs.
+  }
+  return {
+    id: row.id,
+    memoryId: MemoryId(row.memory_id),
+    kind: row.signal,
+    ...row.session_id === null ? {} : { sessionId: row.session_id as NonNullable<MemorySignal['sessionId']> },
+    ...row.turn === null ? {} : { turn: row.turn },
+    eventSeqs,
+    createdAt: row.created_at,
+  }
+}
+
+function parseOutcome(value: string): MemoryOutcome {
+  return JSON.parse(value) as MemoryOutcome
+}
+
+function normalizedMemoryText(value: string): string {
+  return value.normalize('NFKC').trim().replace(/\s+/gu, ' ').toLowerCase()
 }
 
 function validateExtractionInput(input: EnqueueMemoryExtractionInput): void {

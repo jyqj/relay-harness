@@ -42,6 +42,7 @@ describe.skipIf(!requiredArtifacts)('Goal Remote built LIB chain', () => {
       registryHost: 'packages/typert/registry/lib/index.js',
       remotesClient: 'packages/api/remotes/lib/client.js',
       session: 'packages/core/session/lib/index.js',
+      zod: 'packages/typert/registry/node_modules/zod/index.js',
     }).map(([key, path]) => [key, artifactUrl(path)]))
     const script = `
       import { createServer } from 'node:http'
@@ -56,6 +57,7 @@ describe.skipIf(!requiredArtifacts)('Goal Remote built LIB chain', () => {
       const { TYPERT } = await import(urls.goalTypert)
       const { default: TypertRegistry } = await import(urls.registryHost)
       const { Session, SessionId } = await import(urls.session)
+      const zod = await import(urls.zod)
 
       const routes = []
       const host = new Context()
@@ -119,13 +121,28 @@ describe.skipIf(!requiredArtifacts)('Goal Remote built LIB chain', () => {
       await import(urls.apiGatewayClient)
       await import(urls.remotesClient)
 
+      // Mirror the real shell's static platform-module table for the externals
+      // these built bundles request. The lookup stays fail-closed: adding a
+      // dependency to a bundle without adding a platform contract still fails
+      // this E2E instead of falling through to Node resolution.
+      const clientExternals = new Map([
+        ['@relay-harness/cordis', cordis],
+        ['zod', zod],
+      ])
+      const requireClientExternal = specifier => {
+        if (clientExternals.has(specifier)) return clientExternals.get(specifier)
+        throw new Error('unexpected Client external ' + specifier)
+      }
+      let unexpectedExternalRejected = false
+      try {
+        requireClientExternal('@relay-harness/not-a-platform-module')
+      } catch {
+        unexpectedExternalRejected = true
+      }
       const instantiate = id => {
         const handoff = handoffs.get(id)
         if (handoff === undefined) throw new Error('missing Client bundle handoff ' + id)
-        return handoff.factory(specifier => {
-          if (specifier === '@relay-harness/cordis') return cordis
-          throw new Error('unexpected Client external ' + specifier)
-        })
+        return handoff.factory(requireClientExternal)
       }
       const client = new Context()
       for (const id of [
@@ -158,6 +175,7 @@ describe.skipIf(!requiredArtifacts)('Goal Remote built LIB chain', () => {
       const agentContext = client.extend({ builtAgentId: scopedAgent.id })
       const scopedResult = await agentContext.remote.goals.create({ objective: 'scoped goal', maxGoalRounds: 3 })
       const result = {
+        unexpectedExternalRejected,
         invalidRejected,
         rootResult: rootResult.value,
         rootEdit: rootEdit.value,
@@ -180,6 +198,7 @@ describe.skipIf(!requiredArtifacts)('Goal Remote built LIB chain', () => {
     const result = await runPlainNode(script)
     expect(result.exitCode, `stderr:\n${result.stderr}`).toBe(0)
     const output = JSON.parse(result.stdout.trim().split('\n').at(-1) ?? '{}') as {
+      unexpectedExternalRejected: boolean
       invalidRejected: boolean
       rootResult: { ref: { id: string; revision: number } }
       rootEdit: { objective: string; revision: number }
@@ -190,6 +209,7 @@ describe.skipIf(!requiredArtifacts)('Goal Remote built LIB chain', () => {
       scopedEvents: number
     }
     expect(output).toMatchObject({
+      unexpectedExternalRejected: true,
       invalidRejected: true,
       rootResult: { ref: { revision: 1 } },
       rootEdit: { objective: 'edited root goal', revision: 2 },

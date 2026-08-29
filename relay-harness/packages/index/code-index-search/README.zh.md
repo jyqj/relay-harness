@@ -15,7 +15,7 @@
 
 ## Pipeline
 
-`createSearchEngine({ port })` 返回同步的 `search(request)`，各阶段顺序固定：plan 构建阶段执行 preselect 折叠（`defaultPreselectLayers`：working-set/recent/pinned/overlay rank decay、FTS summary、逐 token 符号/路径匹配、带门控的 fallback），并按分档归一化 query、其 `path:`/`lang:`/`kind:`/`name:` DSL 过滤器（`parseDslLite`：`lang:` 经存储语言别名解析为 SQL 强制的 scope，未知名不过滤任何内容——与参考实现的 `Language::from_name` 一致；`kind:`/`name:` 在 finalize 阶段作用于候选的符号列）以及 top-K；启用的 lane（`createLexicalLane`、`createGrepLane`、组合装配时提供的 graph lane，以及末位的 `createLiteralLane`）按注册顺序串行执行；融合总分窗口截断到 rerank 窗口后经 port 批量取详情，套用可追踪的加法表（`overlap·0.35`、doc/prefix/working-set/recent/pinned/overlay 加成、`min(stage-a·0.04, 0.25)`），最后在分档输出字符预算内确定性收尾（DSL kind/name 保留阶段，随后分数降序、chunkId 升序破平）。
+`createSearchEngine({ port })` 返回同步的 `search(request)`，各阶段顺序固定。plan 构建把 primary text 与最多四条最新且不重复的 `conversationQueries` 组合，折叠 working-set/recent/pinned/overlay 等 preselect 层，并规范化 DSL 与分档 top-K；各 lane 按注册顺序串行运行。融合候选经 port 批量读取携带文件内容哈希、语言及真实 parser tier/confidence 的详情，rerank 产出完整顺序的加法 `scoreTrace`，finalize 再在分档输出预算内执行 DSL 保留和 score-desc/chunkId-asc 排序。chunk 源码只在 port 内参与打分，不进入 `SearchHit`；源码交付归 seam 的独立 hydration 操作所有。
 
 数值常量与公式逐字移植自参考实现的 `rrf.rs` / `preselect.rs` / `lanes.rs` / `plan.rs` / `fts.rs`；合并后的默认表见 `src/config.ts`。新增 lane 或 preselect 层通过 `defineRetrievalLane` / `definePreselectLayer` 注册——装配时校验 id 唯一且至少一条 lane 可用，绝不把问题留到搜索中途。可恢复的读取失败降级进入 `readErrors`（同时 `degraded=true`）而不是中止搜索，调用方可据此把部分结果排除出缓存，与 seam 契约一致。
 
@@ -25,12 +25,12 @@ Indirectly, through the search results that `ctx.codeIndex.search()` hands to co
 
 #### KV Cache effect
 
-不直接改变请求前缀；每个 hit 都自带 `reasons` token，Consumer 无需在对话内重新解释排序结果。
+不直接改变请求前缀；每个 hit 都携带 `reasons` 与数值 `scoreTrace`，Consumer 无需重建引擎状态即可解释排序。
 
 ## Known Limitations and Deferred Work
 
-- **graph 检索组件为组合式而非内建** —— graph lane 与 graph-neighbor 层由 `@relay-harness/rlh-code-index-graph` 提供，经 `defaultRetrievalLanes(graphLane)` / `defaultPreselectLayersForEngine(graphNeighborLayer)` 加入；以默认装配构建的引擎与引入 graph 前的行为逐字节一致，local provider 尚未切换到组合默认装配。
+- **graph 检索仍由组合拥有**——普通 engine 保持无 graph；local provider 显式组合 `@relay-harness/rlh-code-index-graph` 的 graph lane 与 graph-neighbor 层。
 - **`symbol-exact` rerank 加成默认开启**（`FeatureGates.symbolExactEnabled`）：候选详情行携带所在符号名，加成作用于真实数据；不索引符号名的 adapter 可显式关闭该门。
 - **`kind:`/`name:` 过滤器只作用于 chunk 级符号列** —— 没有存储 `symbol_kind` 的候选永远过不了 `kind:` 过滤；`name:` 只保留所在符号名包含该值的候选。
-- **literal lane 需要存储侧的字面量镜像** —— `RetrievalPort` 缺少 `literalFtsCandidates` 的 adapter 保持 lane 禁用；SQLite provider 的 v3 schema 提供该镜像。
-- **没有向量 lane** —— embedding 召回随 P3 语义证据阶段连同 `evidenceEpoch` 的写入方一起加入。
+- **literal lane 需要存储侧的字面量镜像** —— `RetrievalPort` 缺少 `literalFtsCandidates` 的 adapter 保持 lane 禁用；SQLite provider 的 v8 schema 提供该镜像。
+- **当前 vector recall 是有界精确扫描**——vector adapter 在 `vectorMaxCandidates` 内独立返回 generation-scoped 语义候选，再与前序 lane 候选的余弦重排合并并进入正常 RRF/reason/score trace。扫描触及上限时，lane 会把部分语义覆盖写入 `readErrors`，并把完整答案标记为 `degraded=true`，Consumer 不会将其缓存或当作穷尽召回注入。未来 ANN 通过 `VectorReadFacet.recallCandidates` 替换。

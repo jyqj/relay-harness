@@ -8,12 +8,22 @@ import { PROTOCOL_VERSION } from '@agentclientprotocol/sdk'
 import { runScenario, snapshotSpillRoot, type AgentUnderTest, type InputStep } from '../src/harness.ts'
 import { launchAcpTestAgent } from '../src/launcher.ts'
 
-const fsControl = vi.hoisted(() => ({ cleanupFailure: undefined as Error | undefined }))
+const fsControl = vi.hoisted(() => ({
+  cleanupFailure: undefined as Error | undefined,
+  sessionReadDelayMs: 0,
+}))
 
 vi.mock('node:fs/promises', async (importOriginal) => {
   const actual = await importOriginal<typeof import('node:fs/promises')>()
   return {
     ...actual,
+    async readFile(...args: Parameters<typeof actual.readFile>): Promise<Awaited<ReturnType<typeof actual.readFile>>> {
+      const path = args[0]
+      if (typeof path === 'string' && path.includes('acp-snap-sessions-') && fsControl.sessionReadDelayMs > 0) {
+        await new Promise(resolve => setTimeout(resolve, fsControl.sessionReadDelayMs))
+      }
+      return actual.readFile(...args)
+    },
     async rm(...args: Parameters<typeof actual.rm>): Promise<void> {
       if (String(args[0]).includes('acp-snap-cwd-') && fsControl.cleanupFailure !== undefined) {
         const failure = fsControl.cleanupFailure
@@ -876,16 +886,21 @@ describe('runScenario', () => {
       { agent: AGENT, mode: 'replay', fixtureFile: closed.fixtureFile },
     )
     expect(result.sessionLogs[1]?.parentSession).toBe(result.sessionId)
-    await expect(runScenario(
-      {
-        steps: [
-          ...boot,
-          { op: 'promptAndCancel', text: 'hang' },
-          { op: 'waitForSubagentTurnEnd', minimumTurn: 2, timeoutMs: 20 },
-        ],
-      },
-      { agent: AGENT, mode: 'replay', fixtureFile: closed.fixtureFile },
-    )).rejects.toThrow(/subagent child #1 did not persist closed turn 2 within 20ms/)
+    fsControl.sessionReadDelayMs = 50
+    try {
+      await expect(runScenario(
+        {
+          steps: [
+            ...boot,
+            { op: 'promptAndCancel', text: 'hang' },
+            { op: 'waitForSubagentTurnEnd', minimumTurn: 2, timeoutMs: 20 },
+          ],
+        },
+        { agent: AGENT, mode: 'replay', fixtureFile: closed.fixtureFile },
+      )).rejects.toThrow(/subagent child #1 did not persist closed turn 2 within 20ms/)
+    } finally {
+      fsControl.sessionReadDelayMs = 0
+    }
 
     const seedOnly = await scenario({
       prompt: 'hang-until-cancel',
@@ -990,16 +1005,21 @@ describe('runScenario', () => {
         ],
       }],
     })
-    await expect(runScenario(
-      {
-        steps: [
-          ...boot,
-          { op: 'promptAndCancel', text: 'hang' },
-          { op: 'waitForEventAfterTurnEnd', type: 'user/message', timeoutMs: 20 },
-        ],
-      },
-      { agent: AGENT, mode: 'replay', fixtureFile: early.fixtureFile },
-    )).rejects.toThrow(/did not persist user\/message after turn\/end within 20ms/)
+    fsControl.sessionReadDelayMs = 50
+    try {
+      await expect(runScenario(
+        {
+          steps: [
+            ...boot,
+            { op: 'promptAndCancel', text: 'hang' },
+            { op: 'waitForEventAfterTurnEnd', type: 'user/message', timeoutMs: 20 },
+          ],
+        },
+        { agent: AGENT, mode: 'replay', fixtureFile: early.fixtureFile },
+      )).rejects.toThrow(/did not persist user\/message after turn\/end within 20ms/)
+    } finally {
+      fsControl.sessionReadDelayMs = 0
+    }
   })
 
   it('promptExpectError swallows a model-error response as the expected outcome', { timeout: 20_000 }, async () => {

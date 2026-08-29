@@ -1,0 +1,18 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": { "rootDir": "src", "outDir": "lib/types" },
+  "include": ["src"],
+  "references": [
+    { "path": "../../../vendor/cordis" },
+    { "path": "../../core/agent" },
+    { "path": "../code-context" },
+    { "path": "../../index/code-index" },
+    { "path": "../context-engine" },
+    { "path": "../file-reference-local" },
+    { "path": "../../fs/fs-local" },
+    { "path": "../../llm/llm" },
+    { "path": "../prompt-enhancement" },
+    { "path": "../../core/session" },
+    { "path": "../../runtime-diagnostics/invariants" }
+  ]
+}

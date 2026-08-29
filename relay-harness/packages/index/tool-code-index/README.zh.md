@@ -6,6 +6,8 @@
 
 Function 插件形态（`name` / `inject` / `Config` / `apply`，无 default export）。注入 `tools` 与 `systemPrompt`；seam 刻意不进 `inject` —— 每次 execute 通过 `ctx.get('codeIndex')` 解析，因此未安装索引 provider 的组合可以正常加载，单个调用会以结构化错误 `INDEX_TOOL_UNAVAILABLE` 失败。
 
+每次执行都会先以 `exec.agent.session.header.cwd` 绑定 Provider。没有 Agent Session Workspace 的调用 fail closed；刷新 busy guard 按规范 Workspace 分区，因此两个 Workspace 可以并发刷新而不会互相抑制。
+
 ```ts ignore-check
 // The provider supplies ctx.codeIndex; this Consumer rides on top of it.
 await ctx.plugin(LocalCodeIndexProvider)                    // the provider package for your backend

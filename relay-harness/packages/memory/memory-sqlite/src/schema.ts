@@ -10,7 +10,7 @@ import { dirname, resolve } from 'node:path'
 /** SQLite application id for canonical RLH memory stores (`RLHM`). */
 export const MEMORY_SQLITE_APPLICATION_ID = 0x4453484D
 /** Canonical schema version. Unlike derived indexes, unknown versions fail closed. */
-export const MEMORY_SQLITE_SCHEMA_VERSION = 3
+export const MEMORY_SQLITE_SCHEMA_VERSION = 4
 
 /** Supported SQLite journal modes. */
 export type JournalMode = 'wal' | 'delete' | 'truncate' | 'persist'
@@ -161,6 +161,33 @@ function ensureSchema(db: DatabaseSync): void {
       metadata_json TEXT NOT NULL DEFAULT '{}',
       FOREIGN KEY (memory_id) REFERENCES memory_entries(memory_id) ON DELETE RESTRICT
     ) STRICT
+  `)
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS memory_outcomes (
+      id            TEXT PRIMARY KEY,
+      memory_id     TEXT NOT NULL,
+      workspace_id  TEXT NOT NULL,
+      user_id       TEXT NOT NULL,
+      agent_id      TEXT NOT NULL,
+      session_id    TEXT NOT NULL,
+      turn          INTEGER NOT NULL,
+      kind          TEXT NOT NULL CHECK (kind IN (
+        'turn-completed', 'turn-failed', 'assistant-positive', 'assistant-negative',
+        'work-completed', 'work-blocked'
+      )),
+      impact        TEXT NOT NULL CHECK (impact IN ('positive', 'negative', 'neutral')),
+      observed_at   INTEGER NOT NULL,
+      outcome_json  TEXT NOT NULL,
+      FOREIGN KEY (memory_id) REFERENCES memory_entries(memory_id) ON DELETE RESTRICT
+    ) STRICT
+  `)
+  db.exec(`
+    CREATE INDEX IF NOT EXISTS memory_outcomes_memory
+    ON memory_outcomes(memory_id, observed_at DESC)
+  `)
+  db.exec(`
+    CREATE INDEX IF NOT EXISTS memory_outcomes_session
+    ON memory_outcomes(workspace_id, user_id, agent_id, session_id)
   `)
   db.exec(`
     CREATE TABLE IF NOT EXISTS memory_extraction_jobs (

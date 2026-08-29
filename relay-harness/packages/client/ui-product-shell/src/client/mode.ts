@@ -39,6 +39,7 @@ declare module '@relay-harness/cordis' {
 
 /** Reads and writes the generated productMode Remote, folding successful writes locally. */
 export class ProductShellService extends Service {
+  /** Observable persisted/effective product mode. */
   readonly store: SnapshotStore<ProductModeView> = createSnapshotStore({
     mode: 'simple',
     status: 'loading',
@@ -75,7 +76,9 @@ export class ProductShellService extends Service {
     }
   }
 
-  /** Persist a mode choice and fold the Host answer into the shared source. */
+  /** Persist a mode choice and fold the Host answer into the shared source.
+   * @param mode - explicit Simple or Developer mode.
+   */
   async set(mode: ProductMode): Promise<void> {
     const generation = ++this.generation
     const before = this.store.getSnapshot()

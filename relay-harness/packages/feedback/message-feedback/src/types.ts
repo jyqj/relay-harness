@@ -31,6 +31,14 @@ export interface MessageFeedbackItem {
   readonly updatedAt: number
 }
 
+/** Host-local notification after one material feedback sidecar change. */
+export interface MessageFeedbackChanged {
+  readonly sessionId: SessionId
+  readonly messageId: MessageId
+  /** Current rating, or absent after deletion. */
+  readonly rating?: MessageFeedbackRating
+}
+
 /** Read all message feedback belonging to one persisted Session lifecycle. */
 export interface MessageFeedbackListRequest {
   /** Persisted Session whose sidecar should be read. */

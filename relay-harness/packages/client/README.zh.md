@@ -20,6 +20,7 @@ rlh web GUI 的浏览器侧：shell 启动、浏览器与宿主通信、共享 U
 | [`ui-attachment/`](ui-attachment/README.md) | 注册输入框与消息图片的附件呈现。 |
 | [`ui-layout/`](ui-layout/README.md) | 排列应用的主要区域。 |
 | [`ui-sidebar/`](ui-sidebar/README.md) | 展示工作区与会话导航。 |
+| [`ui-product-shell/`](ui-product-shell/README.md) | 组合 Chat、Work、Library 导航与持久 Simple/Developer mode。 |
 | [`ui-brand-official/`](ui-brand-official/README.md) | 使用官方名称和标记填充通用浏览器品牌 slot。 |
 | [`ui-workspace/`](ui-workspace/README.md) | 提供工作区选择与创建界面。 |
 | [`ui-conversation/`](ui-conversation/README.md) | 展示当前对话及其输入界面。 |
@@ -36,6 +37,7 @@ rlh web GUI 的浏览器侧：shell 启动、浏览器与宿主通信、共享 U
 | [`ui-model-selection/`](ui-model-selection/README.md) | 在对话界面中提供模型选择。 |
 | [`ui-permission/`](ui-permission-presets/README.md) | 配置默认权限并切换当前会话的访问模式。 |
 | [`ui-plan/`](ui-plan/README.md) | 展示生效中的 plan mode 状态及其退出控件。 |
+| [`ui-prompt-enhancement/`](ui-prompt-enhancement/README.md) | 通过 Host Remote 增强未提交草稿，但不发送。 |
 | [`ui-settings-plugins/`](ui-settings-plugins/README.md) | 拥有“插件”设置分区、它的标签页扩展点，以及可配置的宿主平面插件卡片。 |
 | [`ui-user-questions/`](ui-user-questions/README.md) | 展示 agent 请求的交互式问题。 |
 | [`ui-agent-preset/`](ui-agent-preset/README.md) | 选择会话的 agent 预设，并编写预设组合。 |

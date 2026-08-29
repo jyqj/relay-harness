@@ -31,14 +31,8 @@ export interface LaneRankedHit {
   readonly score: number
 }
 
-/** Request extension consumed by the engine beyond the seam vocabulary. */
+/** Request extension consumed only inside the engine beyond the public seam vocabulary. */
 export interface EngineSearchRequest extends SearchRequest {
-  /** Files in the caller's active working set; boosts their preselect and rerank score. */
-  readonly boostFilePaths?: readonly string[]
-  /** Caller-pinned context files; boosts their preselect and rerank score. */
-  readonly pinnedFilePaths?: readonly string[]
-  /** Overlay / dirty-buffer neighbor files; boosts their preselect and rerank score. */
-  readonly overlayFilePaths?: readonly string[]
   /**
    * Whether the grep lane executes for this request. Defaults to `true`;
    * callers narrow retrieval (for example, path-only lookups) by passing `false`.
@@ -46,7 +40,7 @@ export interface EngineSearchRequest extends SearchRequest {
   readonly includeGrep?: boolean
   /**
    * Embedding of the query text, produced by the caller's embedding tier.
-   * Engine-internal (the seam `SearchRequest` stays untouched): only callers
+   * Engine-internal: only callers
    * that run an embedding tier supply it, and the vector lane skips itself
    * when absent.
    */

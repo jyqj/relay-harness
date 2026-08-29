@@ -32,6 +32,30 @@ describe('rlh-base bundle', () => {
     )
     expect(rows.length).toBeGreaterThan(50)
     expect(rows.some(row => row.id === 'agent-loop')).toBe(true)
+    expect(rows.filter(row => row.id === 'context-engine')).toHaveLength(1)
+    expect(rows.filter(row => row.id === 'mcp-catalog')).toHaveLength(1)
+    expect(rows.find(row => row.id === 'session-history-context')?.config).toEqual({
+      maxExchanges: 12,
+      maxChars: 24000,
+      maxTokens: 6000,
+    })
+    const sandboxMode = rows.find(row => row.id === 'sandbox-policy')?.config?.['mode'] as { __jsExpr: string }
+    const approvalPolicy = rows.find(row => row.id === 'approval')?.config?.['policy'] as { __jsExpr: string }
+    expect(evaluate({ process: { env: {} } }, sandboxMode.__jsExpr)).toBe('workspace-write')
+    expect(evaluate({ process: { env: {} } }, approvalPolicy.__jsExpr)).toBe('ask')
+    expect(evaluate({ process: { env: { RLH_PERMISSION_MODE: 'danger-full-access' } } }, sandboxMode.__jsExpr))
+      .toBe('danger-full-access')
+    expect(evaluate({ process: { env: { RLH_PERMISSION_MODE: 'danger-full-access' } } }, approvalPolicy.__jsExpr))
+      .toBe('never')
+    expect(rows.find(row => row.id === 'permission')?.config?.['presets']).toMatchObject({
+      'workspace-write': { name: 'Standard', approval: 'ask' },
+      'danger-full-access': { name: 'Developer Mode', approval: 'never' },
+    })
+    expect(rows.find(row => row.id === 'memory-agent')?.config).toMatchObject({
+      agentPresets: ['standard'],
+      candidateLimit: 10,
+      maxContextChars: 3200,
+    })
     expect(rows.find(row => row.id === 'session-telemetry-otel')?.config?.['mode']).toEqual({
       __jsExpr: "process.env.RLH_TELEMETRY_MODE || 'DISABLED'",
     })

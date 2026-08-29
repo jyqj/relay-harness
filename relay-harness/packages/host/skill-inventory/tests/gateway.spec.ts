@@ -1,8 +1,9 @@
-import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Context } from '@relay-harness/cordis'
+import { strToU8, zipSync } from 'fflate'
 import { bindScopeParent, createScope, scopeOf } from '@relay-harness/rlh-scope'
 import SkillRegistry, { type SkillDefinition, type SkillSummary } from '@relay-harness/rlh-skill'
 import { remoteMethods, TypertLookupFailure } from '@relay-harness/rlh-typert-protocol'
@@ -11,6 +12,7 @@ import SkillInventoryGateway, { parseSkillMarkdown } from '../src/index.ts'
 const contexts: Context[] = []
 
 afterEach(async () => {
+  vi.unstubAllGlobals()
   await Promise.all(contexts.splice(0).map(ctx => ctx.fiber.dispose()))
 })
 
@@ -43,7 +45,7 @@ describe('SkillInventoryGateway', () => {
     await ctx.plugin(SkillInventoryGateway)
     const gateway = ctx.get('skillInventory') as SkillInventoryGateway
     expect(remoteMethods(gateway).map(item => item.method).sort()).toEqual([
-      'create', 'delete', 'get', 'list', 'setInvocation', 'update',
+      'create', 'delete', 'get', 'importSkill', 'list', 'setInvocation', 'update',
     ])
   })
 
@@ -83,6 +85,93 @@ describe('SkillInventoryGateway', () => {
     expect(written).toContain('disable-model-invocation: true')
     expect(written).toContain('user-invocable: false')
     expect(written).toContain('Do it')
+    if (previous === undefined) delete process.env.RLH_HOME
+    else process.env.RLH_HOME = previous
+  })
+
+  it('imports a local skill bundle with explicit unsigned trust, source, version, and permissions', async () => {
+    const home = await mkdtemp(join(tmpdir(), 'rlh-skill-import-home-'))
+    const source = await mkdtemp(join(tmpdir(), 'rlh-skill-import-source-'))
+    await writeFile(join(source, 'SKILL.md'), '---\nname: imported-skill\ndescription: Imported\n---\n\nImported body\n', 'utf8')
+    const previous = process.env.RLH_HOME
+    process.env.RLH_HOME = home
+    const ctx = new Context()
+    contexts.push(ctx)
+    provideAgents(ctx)
+    const invalidate = vi.fn()
+    ctx.provide('skills', { list: async () => [], get: async () => undefined, invalidate } as never)
+    await ctx.plugin(SkillInventoryGateway)
+    const gateway = ctx.get('skillInventory') as SkillInventoryGateway
+    const detail = await gateway.importSkill({
+      kind: 'local', location: source, root: 'user-rlh', version: 'v1',
+      permissions: ['filesystem:read'],
+    }, new AbortController().signal)
+    expect(detail).toMatchObject({
+      name: 'imported-skill', version: 'v1', permissions: ['filesystem:read'],
+      trust: 'unsigned-local', health: 'healthy',
+      installSource: `local:${source}`,
+    })
+    const parsed = parseSkillMarkdown(await readFile(join(home, 'skills', 'imported-skill', 'SKILL.md'), 'utf8'))
+    expect(parsed.data.metadata).toMatchObject({
+      'rlh-install-source': `local:${source}`,
+      'rlh-install-version': 'v1',
+      'rlh-permissions': ['filesystem:read'],
+      'rlh-trust': 'unsigned-local',
+    })
+    expect(invalidate).toHaveBeenCalledOnce()
+    if (previous === undefined) delete process.env.RLH_HOME
+    else process.env.RLH_HOME = previous
+  })
+
+  it('rejects symlinked import payloads, unsafe ZIP paths, and invalid permission declarations', async () => {
+    const home = await mkdtemp(join(tmpdir(), 'rlh-skill-secure-home-'))
+    const source = await mkdtemp(join(tmpdir(), 'rlh-skill-secure-source-'))
+    const external = await mkdtemp(join(tmpdir(), 'rlh-skill-secure-external-'))
+    await mkdir(join(source, 'secure-skill'))
+    await writeFile(join(source, 'secure-skill', 'SKILL.md'), '---\nname: secure-skill\ndescription: Secure\n---\n\nBody\n')
+    await writeFile(join(external, 'secret.txt'), 'secret')
+    await symlink(join(external, 'secret.txt'), join(source, 'secure-skill', 'linked.txt'))
+    const zip = join(source, 'unsafe.zip')
+    await writeFile(zip, zipSync({
+      '../escape.txt': strToU8('escape'),
+      'safe/SKILL.md': strToU8('---\nname: safe\ndescription: Safe\n---\n\nBody\n'),
+    }))
+    const previous = process.env.RLH_HOME; process.env.RLH_HOME = home
+    const ctx = new Context(); contexts.push(ctx); provideAgents(ctx)
+    ctx.provide('skills', { list: async () => [], get: async () => undefined, invalidate: () => {} } as never)
+    await ctx.plugin(SkillInventoryGateway)
+    const gateway = ctx.get('skillInventory') as SkillInventoryGateway
+    await expect(gateway.importSkill({
+      kind: 'local', location: source, skillPath: 'secure-skill', root: 'user-rlh', permissions: [],
+    }, new AbortController().signal)).rejects.toThrow(/symbolic links/u)
+    await expect(gateway.importSkill({
+      kind: 'zip', location: zip, root: 'user-rlh', permissions: [],
+    }, new AbortController().signal)).rejects.toThrow(/unsafe ZIP path/u)
+    await expect(gateway.importSkill({
+      kind: 'local', location: source, skillPath: 'secure-skill', root: 'user-rlh', permissions: ['../../escape'],
+    }, new AbortController().signal)).rejects.toThrow(/invalid declared permission/u)
+    if (previous === undefined) delete process.env.RLH_HOME
+    else process.env.RLH_HOME = previous
+  })
+
+  it('fetches an explicit GitHub ref and records the same unsigned version', async () => {
+    const home = await mkdtemp(join(tmpdir(), 'rlh-skill-github-home-'))
+    const bytes = zipSync({
+      'repo-v1/github-skill/SKILL.md': strToU8('---\nname: github-skill\ndescription: GitHub\n---\n\nBody\n'),
+    })
+    const fetchMock = vi.fn(async (_input: string | URL | Request) => new Response(bytes, { status: 200 }))
+    vi.stubGlobal('fetch', fetchMock)
+    const previous = process.env.RLH_HOME; process.env.RLH_HOME = home
+    const ctx = new Context(); contexts.push(ctx); provideAgents(ctx)
+    ctx.provide('skills', { list: async () => [], get: async () => undefined, invalidate: () => {} } as never)
+    await ctx.plugin(SkillInventoryGateway)
+    const detail = await (ctx.get('skillInventory') as SkillInventoryGateway).importSkill({
+      kind: 'github', location: 'https://github.com/example/repo', version: 'v1.2.3',
+      root: 'user-rlh', skillPath: 'repo-v1/github-skill', permissions: ['filesystem:read'],
+    }, new AbortController().signal)
+    expect(fetchMock.mock.calls[0]?.[0]).toBe('https://codeload.github.com/example/repo/zip/v1.2.3')
+    expect(detail).toMatchObject({ version: 'v1.2.3', trust: 'unsigned-local' })
+    vi.unstubAllGlobals()
     if (previous === undefined) delete process.env.RLH_HOME
     else process.env.RLH_HOME = previous
   })
@@ -230,7 +319,8 @@ describe('SkillInventoryGateway', () => {
     await mkdir(join(cwd, '.git'))
     const ctx = new Context()
     contexts.push(ctx)
-    provideAgents(ctx)
+    const sessionId = 'project-session'
+    provideAgents(ctx, new Map([[sessionId, { id: sessionId, session: { header: { cwd } } }]]))
     ctx.provide('skills', {
       list: async () => [],
       get: async () => undefined,
@@ -254,6 +344,7 @@ describe('SkillInventoryGateway', () => {
       modelInvocable: true,
       userInvocable: true,
       cwd,
+      sessionId,
     })
     expect(await readFile(join(cwd, '.rlh', 'skills', 'proj-skill', 'SKILL.md'), 'utf8')).toContain('name: proj-skill')
   })
@@ -265,7 +356,8 @@ describe('SkillInventoryGateway', () => {
     await mkdir(cwd, { recursive: true })
     const ctx = new Context()
     contexts.push(ctx)
-    provideAgents(ctx)
+    const sessionId = 'nested-project-session'
+    provideAgents(ctx, new Map([[sessionId, { id: sessionId, session: { header: { cwd } } }]]))
     ctx.provide('skills', {
       list: async () => [],
       get: async () => undefined,
@@ -281,6 +373,7 @@ describe('SkillInventoryGateway', () => {
       modelInvocable: true,
       userInvocable: true,
       cwd,
+      sessionId,
     })
     expect(await readFile(
       join(project, '.rlh', 'skills', 'nested-project-skill', 'SKILL.md'),
@@ -376,6 +469,40 @@ describe('SkillInventoryGateway', () => {
       message: `session "${sessionId}" not found (not attached)`,
       details: { sessionId },
     })
+  })
+
+  it('rejects a Client cwd that differs from the attached Session workspace', async () => {
+    const ctx = new Context(); contexts.push(ctx)
+    const sessionId = 'scope-session'
+    provideAgents(ctx, new Map([[sessionId, { id: sessionId, session: { header: { cwd: '/workspace/a' } } }]]))
+    ctx.provide('skills', { list: async () => [], get: async () => undefined, invalidate: () => {} } as never)
+    await ctx.plugin(SkillInventoryGateway)
+    await expect((ctx.get('skillInventory') as SkillInventoryGateway).list({
+      sessionId, cwd: '/workspace/b',
+    })).rejects.toThrow(/lookup policy rejected/u)
+  })
+
+  it('rejects a writable-looking provider path outside its owned source root', async () => {
+    const home = await mkdtemp(join(tmpdir(), 'rlh-skill-owned-home-'))
+    const outside = await mkdtemp(join(tmpdir(), 'rlh-skill-owned-outside-'))
+    await mkdir(join(home, 'skills'), { recursive: true })
+    const outsideFile = join(outside, 'SKILL.md')
+    await writeFile(outsideFile, '---\nname: forged-skill\ndescription: Forged\n---\n\nBody\n')
+    const previous = process.env.RLH_HOME; process.env.RLH_HOME = home
+    const ctx = new Context(); contexts.push(ctx); provideAgents(ctx)
+    ctx.provide('skills', {
+      list: async () => [summary({ name: 'forged-skill', source: 'user-rlh' })],
+      get: async () => ({
+        name: 'forged-skill', description: 'Forged', invocation: { modelInvocable: true, userInvocable: true },
+        source: 'user-rlh', provider: 'forged', path: outsideFile, content: 'Body',
+      }), invalidate: () => {},
+    } as never)
+    await ctx.plugin(SkillInventoryGateway)
+    await expect((ctx.get('skillInventory') as SkillInventoryGateway).delete({ name: 'forged-skill' }))
+      .rejects.toThrow(/escapes its owned/u)
+    expect(await readFile(outsideFile, 'utf8')).toContain('forged-skill')
+    if (previous === undefined) delete process.env.RLH_HOME
+    else process.env.RLH_HOME = previous
   })
 
   it('refuses to mutate a bundled skill', async () => {

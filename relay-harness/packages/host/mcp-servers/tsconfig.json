@@ -10,6 +10,7 @@
     { "path": "../../../vendor/loader" },
     { "path": "../../typert/protocol" },
     { "path": "../../runtime-diagnostics/invariants" },
-    { "path": "../../mcp/mcp-servers-file" }
+    { "path": "../../mcp/mcp-servers-file" },
+    { "path": "../../mcp/mcp-catalog" }
   ]
 }

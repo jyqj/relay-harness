@@ -2,9 +2,11 @@
 
 [English](README.md) | 中文
 
-`ctx.longTermMemory` 的 Agent 轮次 Consumer。在顶层轮次的第一个 step，它只提取直接用户文本，准备一个绑定 Scope 的召回观察，在完整消息字符上限内装入候选，并追加一条具有独立来源的 `user/message`。Provider 失败采用 fail-open，已接受的直接提示保持不变。
+基于 `ctx.longTermMemory` 的 Context Engine Provider。在符合条件的顶层 Agent 轮次第一个 step，它只提取直接用户文本，准备一个绑定 Scope 的召回观察，在完整消息字符上限内装入候选，并贡献一条具有独立来源、带 revision-bound Evidence（digest 覆盖完整注入 item payload）与有界 coverage 的消息。AgentLoop 持久记录被接纳消息及其 `context/prepared` 来源链。Provider 失败采用 fail-open，直接提示保持不变。
 
-Consumer 会保留 prepared handle，直到持久的最终 `turn/end`。completed 和 max-token 轮次提交真正进入召回消息的精确 id；其他结束状态执行 abort。卸载会等待活跃 Provider 调用结束，并终止所有剩余待结算轮次。默认排除 delegated subagent。
+Provider 会保留 prepared handle，直到持久的最终 `turn/end`。completed 和 max-token 轮次只提交依据 `context/prepared` 确认其原始提议消息精确通过接纳的 id；其他结束状态执行 abort。卸载会等待活跃 Provider 调用结束，并终止所有剩余待结算轮次。若 preparation 在取得 pending ownership 前失败，也会 abort，因此 fail-open 渲染不会泄漏 Provider handle。默认排除 delegated subagent。
+
+对于 `purpose: prompt_enhancement`，同一 Contributor 会在精确 Scope 内搜索 active、未过期记忆，并生成相同的消息／Evidence／coverage 形态，但设置 `recordAccess: false`：未发送草稿不会创建 prepared turn、访问 signal、Session event 或结算状态。
 
 ## 配置
 
@@ -16,6 +18,7 @@ Consumer 会保留 prepared handle，直到持久的最终 `turn/end`。complete
 | `candidateLimit` | `10` | 装入前的 Provider 候选数。 |
 | `maxContextChars` | `3200` | 包含安全框架的完整召回消息上限，以 Unicode code point 计。 |
 | `includeSubagents` | `false` | delegated 会话是否接收召回。 |
+| `agentPresets` | 全部 | 可选的持久 preset allowlist；发行的 Host 配置只选择 `standard`。 |
 
 ## 模型体验
 
@@ -37,4 +40,4 @@ Consumer 会保留 prepared handle，直到持久的最终 `turn/end`。complete
 
 - **召回 Consumer 不拥有提取策略** — `memory-agent` 只负责召回与结算；独立且显式开启的 `memory-extractor-llm` Consumer 创建自动版本。
 - **字符预算而非 tokenizer 预算** — 完整上限跨 Provider 确定，但不是精确模型 token 数。
-- **尚无 cited-use 信号** — commit 记录进入模型的候选，不判断最终答案是否实际使用每一条。
+- **没有 cited-use signal**——Memory Center 会展示模型准入和后续 outcome，但 commit 仍不能证明 Assistant 在语义上依赖了每一个准入 item。

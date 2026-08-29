@@ -57,6 +57,8 @@ interface Config {
 
 统一的 `send()` 原语按（`target` × `wakeup`）路由内容与来源；`followup`/`steer`/`inject` 是它的固定预设别名。`followup()` 追加到 `next-turn` FIFO 并唤醒驱动器，`steer()` 追加到 `next-step` inbox 并唤醒驱动器，`inject()` 则追加到同一个 `next-step` inbox，但不唤醒驱动器。在轮次边界，驱动器会先打开持久轮次，再原子领取待处理的 next-step 输入和一条排队提示词；在步骤之间则只领取 next-step 输入。领取操作通过仅执行删除的 splice 移除整批消息，并为每条消息各发出一次 `agent/inbox/claimed { message, turn }`。随后 `agent/pre-step` 返回拒绝结果，或返回将进入拟议步骤的完整消息。拒绝后，已领取批次保持已删除，并关闭不含步骤的轮次；领取后插入的输入仍等待后续处理，而空闲注入会一直等待，直到 follow-up 或 steering 唤醒驱动器。
 
+可选 ContextEngine 返回带归属的上下文时，获准步骤会让该准备结果穿过 `agent/pre-step`。AgentLoop 先追加每一条经准入的消息，再在 request header 物化与分派之前记录一条仅存在于日志的 `context/prepared` 事件。每个 contribution 只链接到内容未被改写的精确 `user/message` seq；拟议消息被移除或改写时，其证据与覆盖仍保留，但链接列表为空。因此会话 replay 仍从普通消息 surface 重建模型输入，而客户端可以检查持久来源，不会把 trace 数据当成第二份 transcript。
+
 每次 inbox 变更都会在修改实时投影之前，先发布一条规范化的 `agent/inbox/spliced` 事件。因此，插入、编辑、移除、领取与取消都通过同一组标准 splice 坐标回放。普通删除携带 `outcome: 'canceled'` 并发出 `agent/inbox/discarded { message }`；领取使用不带 outcome 的纯删除，随后由循环发出 `agent/inbox/claimed`。每次插入都会发出 `agent/inbox/inserted { message }`。`MessageId` 在两个待处理列表之间保持唯一，持久事件的同步观察方可以从 splice 前投影重建被移除的值。
 
 ### 循环生命周期（`agent.ts`）

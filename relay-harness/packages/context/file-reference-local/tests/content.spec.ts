@@ -54,9 +54,11 @@ async function harness(fileContent: Config['fileContent'] = {}): Promise<{ ctx: 
 
 function step(ctx: Context, cwd: string, messages: UserMessage[]) {
   return ctx.get('contextEngine')!.prepareStep({
+    purpose: 'agent_step',
     messages,
     signal: new AbortController().signal,
     cwd,
+    caller: { sessionId: SessionId('content-agent'), agentId: 'content-agent', workspaceId: cwd, turn: 1, step: 1 },
   })
 }
 
@@ -247,9 +249,11 @@ describe('FileReferenceContentContributor', () => {
     const controller = new AbortController()
     controller.abort()
     await expect(ctx.get('contextEngine')!.prepareStep({
+      purpose: 'agent_step',
       messages: [userMessage('@blob.bin')],
       signal: controller.signal,
       cwd: root,
+      caller: { sessionId: SessionId('content-agent'), agentId: 'content-agent', workspaceId: root, turn: 1, step: 1 },
     })).rejects.toThrow()
   })
 
@@ -259,9 +263,11 @@ describe('FileReferenceContentContributor', () => {
     await ctx.plugin(ContextEngine)
     const root = await workspace()
     await expect(ctx.get('contextEngine')!.prepareStep({
+      purpose: 'agent_step',
       messages: [userMessage('@a.txt')],
       signal: new AbortController().signal,
       cwd: root,
+      caller: { sessionId: SessionId('content-agent'), agentId: 'content-agent', workspaceId: root, turn: 1, step: 1 },
     })).rejects.toThrow('file-reference-local: file-content injection requires a filesystem service')
   })
 })

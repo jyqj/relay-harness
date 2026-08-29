@@ -10,11 +10,11 @@ Status: implemented
 
 ## Decision
 
-以 `@relay-harness/rlh-code-index` 开设 `packages/index/` 组：`ctx.codeIndex.status()` / `.refresh()` / `.search()`。契约要点：
+以 `@relay-harness/rlh-code-index` 开设 `packages/index/` 组：`ctx.codeIndex.status()` / `.refresh()` / `.search()` / `.hydrateChunks()` / `.exploreGraph()`。契约要点：
 
 - `EpochPair`（`indexEpoch` 每个已提交内容写事务恰好前进一次；`evidenceEpoch` 预留给语义证据摄入）进入第一版接口；消费方缓存必须同时键控两者。
 - `RepoSizeTier` 常量只存在于 `src/tiers.ts`，从参考实现逐字移植（分档边界 500/5000/25000；top-K 5/10/15/20；输出字符 18000/24000/32000/38000）。
-- 检索结果是确定性的（分数降序、chunk id 升序破平）、自我解释的（`reasons` token），并携带 `degraded` 标志——非空 `readErrors` 标记结果不可缓存。
+- 检索结果是确定性的（分数降序、chunk id 升序破平）、通过 `reasons` 与加法 `scoreTrace` 自我解释、按文件内容哈希标记 revision，并携带 `degraded` 标志——非空 `readErrors` 标记结果不可缓存。完整源码正文只经[已验证源文件的 hydration 操作](2026-08-29-code-index-candidate-hydration.md)交付。
 
 Seam Config 刻意推迟到 provider 包——没有当前消费者的配置项违反无未用表面规则（knip 实际上强制了这一点），explore/graph/token 预算的分档表随其消费阶段落地时再加入。
 

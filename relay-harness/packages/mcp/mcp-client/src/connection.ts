@@ -16,12 +16,17 @@
  */
 
 import { Client } from '@modelcontextprotocol/sdk/client/index.js'
-import { ToolListChangedNotificationSchema } from '@modelcontextprotocol/sdk/types.js'
+import {
+  PromptListChangedNotificationSchema,
+  ResourceListChangedNotificationSchema,
+  ToolListChangedNotificationSchema,
+} from '@modelcontextprotocol/sdk/types.js'
 import type { Context } from '@relay-harness/cordis'
 import { MAX_TIMER_DELAY_MS } from '@relay-harness/rlh-timeout'
 import { createTransport } from './transport.ts'
 import { reportMcpClientStatus, type McpConnectionHealth } from './status.ts'
 import { syncTools } from './tools.ts'
+import { syncCatalog } from './catalog.ts'
 import type { ToolBridgeOptions, ToolDisposers } from './tools.ts'
 import type { Config } from './index.ts'
 
@@ -49,6 +54,52 @@ export const RECONNECT_DEFAULTS: Required<ReconnectConfig> = Object.freeze({
 // Keep one additional second for the process-close event that proves the old
 // generation is gone; timing out fails closed instead of overlapping children.
 const GENERATION_CLOSE_TIMEOUT_MS = 5_000
+const SECRET_KEY = /(?:token|secret|password|authorization|credential|api[_-]?key|auth)$/iu
+const MAX_ERROR_CHARS = 2_000
+
+/** Redact configured credentials from transport/SDK diagnostics before logs or Remote health.
+ * @param error - transport, SDK, or synchronization failure.
+ * @param config - exact server config whose credential values must be removed.
+ * @returns bounded credential-redacted diagnostic text.
+ */
+export function safeMcpErrorText(error: unknown, config: Config): string {
+  let text = error instanceof Error ? `${error.name}: ${error.message}` : String(error)
+  const secrets: string[] = []
+  const values = config.transport === 'stdio' ? config.env : config.headers
+  for (const [key, value] of Object.entries(values)) {
+    if (SECRET_KEY.test(key) && value !== '') secrets.push(value)
+  }
+  if (config.transport === 'streamable-http') {
+    try {
+      const url = new URL(config.url)
+      if (url.username !== '') secrets.push(decodeURIComponent(url.username))
+      if (url.password !== '') secrets.push(decodeURIComponent(url.password))
+      for (const [key, value] of url.searchParams) if (SECRET_KEY.test(key) && value !== '') secrets.push(value)
+    } catch {
+      // Config validation owns malformed URLs; diagnostics still receive bounded text.
+    }
+  }
+  for (const secret of [...new Set(secrets)].sort((a, b) => b.length - a.length)) {
+    text = text.replaceAll(secret, '********')
+  }
+  return Array.from(text).slice(0, MAX_ERROR_CHARS).join('')
+}
+
+function withAttemptTimeout<T>(work: Promise<T>, timeoutMs: number, label: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error(`${label}: connect/discovery timed out after ${timeoutMs}ms`))
+    }, timeoutMs)
+    timer.unref()
+    void work.then(
+      (value) => { clearTimeout(timer); resolve(value) },
+      (error: unknown) => {
+        clearTimeout(timer)
+        reject(error instanceof Error ? error : new Error(String(error)))
+      },
+    )
+  })
+}
 
 /** Fully resolved reconnect policy captured at plugin load. */
 export type ResolvedReconnectPolicy = Readonly<Required<ReconnectConfig>>
@@ -124,15 +175,21 @@ export interface ConnectionHandle {
 export function startConnection(ctx: Context, config: Config, policy: ResolvedReconnectPolicy): ConnectionHandle {
   const label = `mcp-client(${config.serverName})`
   const root = ctx.root
+  const catalog = ctx.get('mcpCatalog')
   /** Text of the error that ended the most recent attempt; carried into the reported status. */
   let lastErrorText: string | undefined
   /** Live tool registrations owned by this server; only {@link enqueueSync} and dispose swap it. */
   let disposers: ToolDisposers = new Map()
+  let catalogDispose: (() => void) | undefined
   const report = (health: McpConnectionHealth, lastError?: string): void => {
     reportMcpClientStatus(root, config.serverName, {
       health,
       ...lastError === undefined ? {} : { lastError },
       ...health === 'connected' && disposers.size > 0 ? { tools: [...disposers.keys()] } : {},
+      ...health === 'connected' && catalog?.listResources().some(item => item.serverName === config.serverName)
+        ? { resources: catalog.listResources().filter(item => item.serverName === config.serverName).map(item => item.uri) } : {},
+      ...health === 'connected' && catalog?.listPrompts().some(item => item.serverName === config.serverName)
+        ? { prompts: catalog.listPrompts().filter(item => item.serverName === config.serverName).map(item => item.name) } : {},
     })
   }
   report('connecting')
@@ -174,9 +231,29 @@ export function startConnection(ctx: Context, config: Config, policy: ResolvedRe
   function enqueueSync(generation: Client, syncOpts: ToolBridgeOptions = opts): Promise<void> {
     const run = syncChain.then(async () => {
       if (!isCurrent(generation)) return
-      disposers = await syncTools(generation, ctx, syncOpts, disposers)
+      disposers = await syncTools(generation, ctx, {
+        ...syncOpts,
+        generationActive: () => isCurrent(generation),
+      }, disposers)
     })
     // The chain tail must survive a failed sync; the enqueuing caller owns reporting.
+    syncChain = run.catch(() => {})
+    return run
+  }
+
+  function enqueueCatalogSync(generation: Client): Promise<void> {
+    if (catalog === undefined) return Promise.resolve()
+    const run = syncChain.then(async () => {
+      if (!isCurrent(generation)) return
+      const next = await syncCatalog(generation, catalog, config.serverName, () => isCurrent(generation))
+      if (!isCurrent(generation)) {
+        next()
+        return
+      }
+      const previous = catalogDispose
+      catalogDispose = next
+      previous?.()
+    })
     syncChain = run.catch(() => {})
     return run
   }
@@ -222,6 +299,8 @@ export function startConnection(ctx: Context, config: Config, policy: ResolvedRe
       syncChain = syncChain.then(() => {
         for (const dispose of disposers.values()) dispose()
         disposers = new Map()
+        catalogDispose?.()
+        catalogDispose = undefined
       })
       const message = `giving up after ${policy.maxAttempts} consecutive failed reconnect attempts — tools unregistered; reload the plugin or restart the Host to reconnect`
       ctx.logger.error(`${label}: ${message}`)
@@ -282,24 +361,38 @@ export function startConnection(ctx: Context, config: Config, policy: ResolvedRe
         } catch (error) {
           // Fetch-phase failure: the previous generation is still registered
           // and `disposers` still owns it — keep serving the last good list.
-          if (!disposed) ctx.logger.error(`${label}: tool re-sync failed: ${String(error)}`)
+          if (!disposed) ctx.logger.error(`${label}: tool re-sync failed: ${safeMcpErrorText(error, config)}`)
         }
       },
     )
+    generation.setNotificationHandler(ResourceListChangedNotificationSchema, async () => {
+      if (!isCurrent(generation)) return
+      try { await enqueueCatalogSync(generation); if (isCurrent(generation)) report('connected') }
+      catch (error) { if (!disposed) ctx.logger.error(`${label}: resource re-sync failed: ${safeMcpErrorText(error, config)}`) }
+    })
+    generation.setNotificationHandler(PromptListChangedNotificationSchema, async () => {
+      if (!isCurrent(generation)) return
+      try { await enqueueCatalogSync(generation); if (isCurrent(generation)) report('connected') }
+      catch (error) { if (!disposed) ctx.logger.error(`${label}: prompt re-sync failed: ${safeMcpErrorText(error, config)}`) }
+    })
     try {
-      await generation.connect(createTransport(config))
+      await withAttemptTimeout((async () => {
+        await generation.connect(createTransport(config))
+        if (hasClosed()) return
+        await enqueueSync(generation, startup ? startupOpts : opts)
+        await enqueueCatalogSync(generation)
+      })(), config.startupTimeoutMs ?? 60_000, label)
       if (hasClosed()) {
         attemptSettled = true
         generationDown(generation)
         return
       }
-      await enqueueSync(generation, startup ? startupOpts : opts)
     } catch (error) {
       if (firstAttemptError === undefined) firstAttemptError = error
-      lastErrorText = String(error)
+      lastErrorText = safeMcpErrorText(error, config)
       // Disposal clears current ownership before it closes the generation, so
       // only a live supervisor reports an attempt failure.
-      if (isCurrent(generation)) ctx.logger.warn(`${label}: connection attempt failed: ${String(error)}`)
+      if (isCurrent(generation)) ctx.logger.warn(`${label}: connection attempt failed: ${lastErrorText}`)
       try { await generation.close() } catch { /* transport already gone */ }
       const quiesced = hasClosed() || await waitForClose(closed.promise)
       attemptSettled = true
@@ -370,6 +463,8 @@ export function startConnection(ctx: Context, config: Config, policy: ResolvedRe
       await syncChain
       for (const dispose of disposers.values()) dispose()
       disposers = new Map()
+      catalogDispose?.()
+      catalogDispose = undefined
     },
   }
 }

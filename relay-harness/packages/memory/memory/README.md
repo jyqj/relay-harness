@@ -2,9 +2,9 @@
 
 English | [中文](README.zh.md)
 
-Service Definitions for `ctx.longTermMemory` and `ctx.memoryExtractionQueue`. They define exact user/workspace/agent scope, append-only logical revisions, durable SessionEvent evidence, governed status and trust, ranked search, prepare/commit/abort host-turn settlement, and restart-safe automatic-extraction jobs. Providers implement storage, retrieval, and queue ownership; Agent, extraction, and tool Consumers keep their own prompt and authorization policy.
+Service Definitions for `ctx.longTermMemory` and `ctx.memoryExtractionQueue`. They define exact user/workspace/agent scope, append-only logical revisions, durable SessionEvent evidence, governed status and trust, ranked search, side-effect-free paged governance listing, deterministic conflict review, canonical signals, idempotent outcome reconciliation, prepare/commit/abort host-turn settlement, and restart-safe automatic-extraction jobs. Providers implement storage, retrieval, and queue ownership; Agent, extraction, and tool Consumers keep their own prompt and authorization policy.
 
-`MemoryEntry` is the current materialized view. A provider must retain prior revisions even when `revise()` or `forget()` changes that view. `active` entries require `user-stated` or `action-verified` trust; candidate, disputed, superseded, and tombstoned states remain explicit rather than silently overwriting history.
+`MemoryEntry` is the current materialized view. A provider must retain prior revisions even when `revise()` or `forget()` changes that view; both requests may carry `expectedRevision` for provider-atomic compare-and-set governance. `active` entries require `user-stated` or `action-verified` trust; candidate, disputed, superseded, and tombstoned states remain explicit rather than silently overwriting history.
 
 ## Model Experience
 

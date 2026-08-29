@@ -43,7 +43,7 @@ describe('evidence epoch', () => {
   it('advances the evidence clock exactly once per transaction, freezing the index clock', async () => {
     const db = await openCodeIndexDatabase(':memory:')
     const before = readEpochs(db)
-    expect(before).toEqual({ indexEpoch: 0, evidenceEpoch: 0 })
+    expect(before).toEqual({ indexEpoch: 0, evidenceEpoch: 0, embeddingEpoch: 0 })
 
     const result = bumpEvidenceEpochOnceInTx(db, () => {
       db.prepare("INSERT INTO metadata (key, value) VALUES ('evidence-scratch', '1')").run()
@@ -51,7 +51,7 @@ describe('evidence epoch', () => {
     })
     expect(result).toBe('vector')
     const after = readEpochs(db)
-    expect(after).toEqual({ indexEpoch: 0, evidenceEpoch: 1 })
+    expect(after).toEqual({ indexEpoch: 0, evidenceEpoch: 1, embeddingEpoch: 0 })
     assertExactAdvance(before, after, 'evidence')
     db.close()
   })
@@ -62,12 +62,12 @@ describe('evidence epoch', () => {
       db.prepare("INSERT INTO metadata (key, value) VALUES ('scratch', '1')").run()
       throw new Error('mid-unit failure')
     })).toThrow('mid-unit failure')
-    expect(readEpochs(db)).toEqual({ indexEpoch: 0, evidenceEpoch: 0 })
+    expect(readEpochs(db)).toEqual({ indexEpoch: 0, evidenceEpoch: 0, embeddingEpoch: 0 })
     expect((db.prepare("SELECT COUNT(*) AS n FROM metadata WHERE key = 'scratch'").get() as { n: number }).n).toBe(0)
     db.close()
   })
 
-  it('counts N committed vector batches as exactly N evidence advances', async () => {
+  it('counts N committed vector batches as exactly N embedding advances', async () => {
     const db = await openCodeIndexDatabase(':memory:')
     insertChunks(db, 'src/a.ts', ['chunk:src/a.ts:0', 'chunk:src/a.ts:1', 'chunk:src/a.ts:2'])
 
@@ -75,12 +75,12 @@ describe('evidence epoch', () => {
       const before = readEpochs(db)
       writeChunkVectors(db, [vectorRow(`chunk:src/a.ts:${batch}`, batch)])
       const after = readEpochs(db)
-      // One transaction per batch: +1 evidence, index frozen — audited per commit.
-      expect(after.evidenceEpoch).toBe(before.evidenceEpoch + 1)
+      expect(after.embeddingEpoch).toBe((before.embeddingEpoch ?? 0) + 1)
+      expect(after.evidenceEpoch).toBe(before.evidenceEpoch)
       expect(after.indexEpoch).toBe(before.indexEpoch)
-      assertExactAdvance(before, after, 'evidence')
+      assertExactAdvance(before, after, 'embedding')
     }
-    expect(readEpochs(db)).toEqual({ indexEpoch: 0, evidenceEpoch: 3 })
+    expect(readEpochs(db)).toEqual({ indexEpoch: 0, evidenceEpoch: 0, embeddingEpoch: 3 })
     db.close()
   })
 
@@ -91,10 +91,10 @@ describe('evidence epoch', () => {
     bumpIndexEpochOnceInTx(db, () => {
       db.prepare("INSERT INTO metadata (key, value) VALUES ('index-scratch', '1')").run()
     })
-    expect(readEpochs(db)).toEqual({ indexEpoch: 1, evidenceEpoch: 0 })
+    expect(readEpochs(db)).toEqual({ indexEpoch: 1, evidenceEpoch: 0, embeddingEpoch: 0 })
 
     writeChunkVectors(db, [vectorRow('chunk:src/a.ts:0', 1)])
-    expect(readEpochs(db)).toEqual({ indexEpoch: 1, evidenceEpoch: 1 })
+    expect(readEpochs(db)).toEqual({ indexEpoch: 1, evidenceEpoch: 0, embeddingEpoch: 1 })
     db.close()
   })
 
@@ -103,7 +103,7 @@ describe('evidence epoch', () => {
     // No chunk rows exist: the foreign key fires and the whole batch — bump
     // included — rolls back.
     expect(() => writeChunkVectors(db, [vectorRow('chunk:none:0', 1)])).toThrow(/FOREIGN KEY/)
-    expect(readEpochs(db)).toEqual({ indexEpoch: 0, evidenceEpoch: 0 })
+    expect(readEpochs(db)).toEqual({ indexEpoch: 0, evidenceEpoch: 0, embeddingEpoch: 0 })
     db.close()
   })
 })

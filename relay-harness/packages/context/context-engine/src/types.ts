@@ -10,6 +10,7 @@
 
 import type { SourceId, EvidenceId } from './brand.ts'
 import type { UserMessage } from '@relay-harness/rlh-llm'
+import type { JsonValue, SessionId, SessionOrigin } from '@relay-harness/rlh-session/types'
 
 /**
  * One addressable resource inside a registered source. `key` and `revision` are opaque to the
@@ -63,8 +64,8 @@ export interface Evidence {
   readonly freshness: EvidenceFreshness
   /** Verification outcome; `unverified` is an explicit state, not a default. */
   readonly verification: EvidenceVerification
-  /** Provider-owned domain payload; the engine never interprets it. */
-  readonly domain?: unknown
+  /** Provider-owned, durable JSON payload; the engine never interprets it. */
+  readonly domain?: JsonValue
 }
 
 /**
@@ -141,24 +142,57 @@ export interface ProviderExplain {
   readonly readErrors: readonly string[]
 }
 
+/** Why context is being prepared; contributors use it to select purpose-specific retrieval and packing. */
+export type ContextPurpose = 'agent_step' | 'prompt_enhancement'
+
 /**
- * One step's input to every contributor: the claimed user messages and the step's abort signal.
- * The engine adds nothing else; working sets and explicit references arrive inside the messages
- * themselves (file mentions, session references), so request construction stays deterministic.
+ * Durable identity of the caller whose context is being prepared.  Contributors must not retain
+ * live Agent objects: this detached value is enough to address provider-local scope, correlate a
+ * prepared observation with its host turn, and apply preset/subagent policy consistently to Agent
+ * steps and auxiliary requests.
+ */
+export interface StepContextCaller {
+  /** Durable Session identity shared by the live Agent and its event log. */
+  readonly sessionId: SessionId
+  /** Live Agent identity. Today it equals `sessionId`, but remains explicit at the seam. */
+  readonly agentId: string
+  /** Stable workspace partition selected by the caller (`cwd`, or `global` when absent). */
+  readonly workspaceId: string
+  /** Owning host turn for Agent-step preparation; absent for unsent auxiliary drafts. */
+  readonly turn?: number
+  /** Owning host step for Agent-step preparation; absent for unsent auxiliary drafts. */
+  readonly step?: number
+  /** Durable composition identity after any blank-session preset switch. */
+  readonly agentPreset?: string
+  /** Durable coarse origin used by contributors with subagent policy. */
+  readonly origin?: SessionOrigin
+}
+
+/**
+ * One preparation input to every contributor: purpose, user messages, abort signal, cwd, and a
+ * detached durable caller identity. Working sets and explicit references arrive inside the
+ * messages themselves (file mentions, session references), so request construction stays
+ * deterministic without giving providers a live Agent object.
  */
 export interface StepContextInput {
+  /** The caller's purpose; contributors may decline purposes they do not support. */
+  readonly purpose: ContextPurpose
   /** The user messages claimed for this step, in claim order. */
   readonly messages: readonly UserMessage[]
   /** Aborted when the step is cancelled; contributors must pass it through to their reads. */
   readonly signal: AbortSignal
   /** The step's working directory, from the session header; resolves relative message references. */
   readonly cwd: string
+  /** Detached durable caller identity and policy metadata. */
+  readonly caller: StepContextCaller
 }
 
 /**
  * One contributor's result for a step. `message` is model-visible and the contributor owns its
- * source attribution; `evidence` and `coverage` record what the message rests on. Returning
- * `undefined` contributes nothing.
+ * source attribution; `evidence` and `coverage` record what the message rests on. ContextEngine
+ * detaches, lossless-JSON validates, and freezes the complete result before publication; evidence
+ * ids must be non-empty and unique across the complete preparation. Returning `undefined`
+ * contributes nothing.
  */
 export interface ContributedStepContext {
   /** The model-visible context message; appended after the claimed messages. */
@@ -171,29 +205,91 @@ export interface ContributedStepContext {
 
 /**
  * One registered step-context contributor. Contributors run in registration order, once per
- * prepared step, and see the same claimed messages.
+ * prepared request, and see the same purpose and messages.
  */
 export interface StepContextContributor {
   /** Stable contributor identity; unique within the registry. */
   readonly id: string
   /**
    * Contribute context for one step.
-   * @param input - the claimed messages and abort signal for the step.
+   * @param input - the purpose, messages, abort signal, and cwd for the preparation.
    * @returns the contributed context, or `undefined` when this step needs none.
    */
   contribute(input: StepContextInput): Promise<ContributedStepContext | undefined>
 }
 
 /**
- * A prepared step context: the collected model-visible messages and the evidence behind them.
+ * One attributed contribution in a prepared step. Attribution stays attached to its message,
+ * evidence, and coverage so AgentLoop can record which retrieval produced each model-visible
+ * message even after the ordinary pre-step waterfall admits, removes, or rewrites messages.
+ */
+export interface PreparedContextContribution {
+  /** Stable id of the contributor that produced this result. */
+  readonly contributorId: string
+  /** The contributor's proposed model-visible message. */
+  readonly message: UserMessage
+  /** Evidence records backing this contribution, in provider order. */
+  readonly evidence: readonly Evidence[]
+  /** What this contributor inspected; absent means coverage was not reported. */
+  readonly coverage?: CoverageRecord
+}
+
+/**
+ * A prepared context request: attributed model-visible messages and the evidence behind them.
  * `undefined` from {@link ContextEngineService.prepareStep} means no contributor produced
  * context this step.
  */
 export interface PreparedStepContext {
+  /** Attributed results in contributor registration order. */
+  readonly contributions: readonly PreparedContextContribution[]
   /** Contributor messages in contributor registration order. */
   readonly messages: readonly UserMessage[]
   /** All evidence records from every contributing contributor, concatenated. */
   readonly evidence: readonly Evidence[]
+  /** All reported coverage records in contributor registration order. */
+  readonly coverage: readonly CoverageRecord[]
+}
+
+/**
+ * Durable trace of one contribution prepared for an accepted step. `messageEventSeqs` identifies
+ * only exact messages that survived `agent/pre-step` and entered the model-visible session
+ * surface; an empty list records that the proposal was removed or rewritten before admission.
+ */
+export interface ContextPreparedContributionTrace {
+  /** Stable id of the contributor that produced the proposal. */
+  readonly contributorId: string
+  /** Stable identity of the proposed message. */
+  readonly messageId: UserMessage['id']
+  /** Exact `user/message` event seqs carrying this unmodified proposal. */
+  readonly messageEventSeqs: readonly number[]
+  /** Evidence records backing the proposal, in provider order. */
+  readonly evidence: readonly Evidence[]
+  /** What the contributor inspected; absent means coverage was not reported. */
+  readonly coverage?: CoverageRecord
+}
+
+/**
+ * One durable context-preparation fact, appended by AgentLoop after the accepted step's messages
+ * and before its model request. Messages remain reconstructable from `user/message`; this record
+ * carries attribution, evidence, coverage, and admission links without becoming a second transcript.
+ */
+export interface ContextPreparedEventData {
+  /** Owning turn. */
+  readonly turn: number
+  /** Owning step. */
+  readonly step: number
+  /** Prepared contributions in registry order. */
+  readonly contributions: readonly ContextPreparedContributionTrace[]
+}
+
+declare module '@relay-harness/rlh-session/types' {
+  interface SessionEventMap {
+    /**
+     * Log-only context-preparation trace for one accepted step. AgentLoop appends it after the
+     * referenced `user/message` events and before dispatching the model request.
+     */
+    'context/prepared': ContextPreparedEventData
+  }
 }
 
 /**
@@ -208,8 +304,8 @@ export interface ContextEngineService {
    */
   registerContributor(contributor: StepContextContributor): () => void
   /**
-   * Prepare the step context for one claimed step.
-   * @param input - the claimed messages and abort signal.
+   * Prepare context for one purpose-tagged request.
+   * @param input - purpose, messages, abort signal, working directory, and durable caller identity.
    * @returns the collected context, or `undefined` when no contributor produced any.
    */
   prepareStep(input: StepContextInput): Promise<PreparedStepContext | undefined>

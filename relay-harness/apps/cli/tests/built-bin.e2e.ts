@@ -13,6 +13,10 @@ const repoRoot = fileURLToPath(new URL('../../../', import.meta.url))
 const cliVersion = (JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as { version: string }).version
 const rlhBin = join(repoRoot, 'apps/cli/lib/bin.js')
 const invalidProvider = fileURLToPath(new URL('./fixtures/invalid-provider.cordis.yml', import.meta.url))
+// node:sqlite is still labeled experimental on supported Node 22/24. Built-bin
+// assertions keep stderr exact for application diagnostics while silencing
+// only that warning class at the Node process boundary (never all warnings).
+const builtBinNodeArgs = ['--disable-warning=ExperimentalWarning', rlhBin] as const
 
 async function runBuiltBin(
   args: readonly string[] = [],
@@ -23,7 +27,7 @@ async function runBuiltBin(
     Object.entries({ ...process.env, ...env })
       .filter((entry): entry is [string, string] => entry[1] !== undefined),
   )
-  const result = await execa(process.execPath, [rlhBin, ...args], {
+  const result = await execa(process.execPath, [...builtBinNodeArgs, ...args], {
     input: '',
     timeout: 25_000,
     killSignal: 'SIGKILL',
@@ -731,7 +735,9 @@ describe.skipIf(!existsSync(rlhBin))('rlh BUILT bin (node lib/bin.js, no tsx)', 
       expect(code).toBe(0)
       expect(stderr).toBe('')
       expect(stdout).toContain("name: '@relay-harness/rlh-headless'")
-      expect(stdout).not.toMatch(/name: '@relay-harness\/rlh-host-/)
+      expect(stdout.match(/name: '@relay-harness\/rlh-host-[^']+'/gu)).toEqual([
+        "name: '@relay-harness/rlh-host-product-mode'",
+      ])
       expect(stdout).not.toContain("name: '@relay-harness/rlh-web-app'")
       expect(stdout).not.toMatch(/name: '@relay-harness\/rlh-client-/)
     }, 30_000)

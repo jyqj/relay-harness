@@ -24,9 +24,14 @@ import { realpathSync, statSync } from 'node:fs'
 import { Context, Service } from '@relay-harness/cordis'
 import z from '@relay-harness/schemastery'
 import CodeIndex from '@relay-harness/rlh-code-index'
+import { bindCodeIndexWorkspace } from '@relay-harness/rlh-code-index'
 import type {
+  CodeIndexWorkspace,
   GraphExploreRequest,
   GraphExploreResult,
+  CodeIndexManagementStatus,
+  HydrateChunksRequest,
+  HydrateChunksResult,
   IndexStatusReport,
   RefreshOptions,
   RefreshSummary,
@@ -49,9 +54,10 @@ export {
   composeParsedUpsert,
   loadIndexedSnapshot,
   runRefreshPass,
+  DEFAULT_PARSE_CONCURRENCY,
 } from './indexer.ts'
 export type { RefreshPassInputs, RefreshPassIo, RefreshPassOutcome } from './indexer.ts'
-export { DEFAULT_HARD_EXCLUDES, DEFAULT_INCLUDE_PATTERNS, collectWorkspaceEntries, walkWorkspace } from './scanner.ts'
+export { DEFAULT_HARD_EXCLUDES, DEFAULT_INCLUDE_PATTERNS, DEFAULT_SCAN_IO_CONCURRENCY, collectWorkspaceEntries, walkWorkspace } from './scanner.ts'
 export type { ScanEntry, WorkspaceScan } from './scanner.ts'
 export { exclusionFilterFromPatterns, inclusionMatcherFromPatterns, parseGitignoreRules, loadWorkspaceGitIgnore } from './gitignore.ts'
 export type { PathExclusionFilter } from './gitignore.ts'
@@ -88,7 +94,9 @@ export {
   DEFAULT_MAX_DEAD_CODE,
 } from './dead-code.ts'
 export { planSnapshotDiff, confirmChangedByHash } from './diff.ts'
+export { DEFAULT_HASH_CONCURRENCY } from './diff.ts'
 export type { IndexedSnapshotRow, SnapshotPlan } from './diff.ts'
+export { mapConcurrentOrdered } from './parallel.ts'
 export {
   CHUNK_LINE_BUDGET,
   GENERIC_PARSER_CONFIDENCE,
@@ -99,6 +107,14 @@ export {
   prepareFileDocument,
 } from './chunker.ts'
 export type { PreparedChunk, PreparedFileDocument } from './chunker.ts'
+export { assertRetrievalThresholds, evaluateRetrieval, percentile95 } from './eval.ts'
+export type {
+  RetrievalEvalCase,
+  RetrievalEvalCaseResult,
+  RetrievalEvalReport,
+  RetrievalEvalThresholds,
+  RetrievalThresholdReport,
+} from './eval.ts'
 export { DEFAULT_STALE_DEBOUNCE_MS, StaleInvalidator, toolResultStaleHandler } from './invalidate.ts'
 export { WATCHER_EVENT_DEBOUNCE_MS, TreeWatcher } from './watcher.ts'
 export type { TreeWatcherState } from './watcher.ts'
@@ -124,10 +140,10 @@ export type {
 } from './embed/index.ts'
 
 /** Debounce default collapsing tool-result bursts into one stale pass. */
-const DEFAULT_DEBOUNCE_MS = DEFAULT_STALE_DEBOUNCE_MS
+export const DEFAULT_DEBOUNCE_MS = DEFAULT_STALE_DEBOUNCE_MS
 
 /** Default byte ceiling before a file records its row without chunks. */
-const DEFAULT_MAX_FILE_BYTES = 512_000
+export const DEFAULT_MAX_FILE_BYTES = 512_000
 
 /** Default global dirty-propagation promotion budget per incremental pass. */
 export const DEFAULT_DIRTY_PROPAGATION_MAX_FILES = 200
@@ -414,13 +430,15 @@ export class CodeIndexLocal extends CodeIndex {
     // triggering caller is gone; suites pin the fold itself at runtime level,
     // while the timer-dispatched closure escapes per-function coverage slots.
     /* v8 ignore next */
-    this.invalidator = new StaleInvalidator(this.resolved.debounceMs, () => {
-      this.runtime.refresh({ reason: 'stale' }).catch((error: unknown) => {
+    this.invalidator = new StaleInvalidator(this.resolved.debounceMs, (paths) => {
+      this.runtime.refresh({ reason: 'stale', ...(paths === undefined ? {} : { paths }) }).catch((error: unknown) => {
         ctx.logger.warn(`code-index-local: stale refresh failed: ${String(error)}`)
       })
     })
-    this.watcher = new TreeWatcher(this.resolved.workspaceRoot, () => {
-      this.invalidator.schedule()
+    this.watcher = new TreeWatcher(this.resolved.workspaceRoot, (paths) => {
+      // Ignore-rule edits can affect arbitrary descendants, so they widen to
+      // the authoritative full-tree diff instead of pretending to be local.
+      this.invalidator.schedule(paths?.some(path => path.split('/').at(-1) === '.gitignore') === true ? undefined : paths)
     })
     const scheduleOnToolResult = toolResultStaleHandler(this.invalidator)
     ctx.on('session/event', (_session, event) => {
@@ -440,9 +458,36 @@ export class CodeIndexLocal extends CodeIndex {
     this.runtime.setWatcherDegraded(state === 'degraded')
   }
 
+  /**
+   * Bind the explicit single-workspace adapter, rejecting a Session whose
+   * canonical cwd does not equal this provider's configured root. This keeps
+   * headless deployments useful without letting a mismatched caller receive
+   * another checkout's results.
+   * @param workspaceRoot - caller-selected absolute workspace root.
+   * @returns this provider behind a root-verified immutable face.
+   */
+  override forWorkspace(workspaceRoot: string): Promise<CodeIndexWorkspace> {
+    const canonical = resolveWorkspaceRoot(workspaceRoot)
+    if (canonical !== this.resolved.workspaceRoot) {
+      throw new Error(
+        `code-index-local: requested workspace ${canonical} does not match configured root ${this.resolved.workspaceRoot}`,
+      )
+    }
+    return Promise.resolve(bindCodeIndexWorkspace(canonical, this))
+  }
+
   override async status(): Promise<IndexStatusReport> {
     await this.runtime.ensureOpen()
     return this.runtime.status()
+  }
+
+  override async managementStatus(): Promise<CodeIndexManagementStatus> {
+    await this.runtime.ensureOpen()
+    return this.runtime.managementStatus()
+  }
+
+  override reconcile(): Promise<CodeIndexManagementStatus> {
+    return this.runtime.reconcile()
   }
 
   override refresh(options?: RefreshOptions): Promise<RefreshSummary> {
@@ -451,6 +496,10 @@ export class CodeIndexLocal extends CodeIndex {
 
   override async search(request: SearchRequest, signal?: AbortSignal): Promise<SearchResult> {
     return this.runtime.search(request, signal)
+  }
+
+  override hydrateChunks(request: HydrateChunksRequest, signal?: AbortSignal): Promise<HydrateChunksResult> {
+    return this.runtime.hydrateChunks(request, signal)
   }
 
   override async exploreGraph(request: GraphExploreRequest, signal?: AbortSignal): Promise<GraphExploreResult> {

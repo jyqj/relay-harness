@@ -10,11 +10,11 @@ The local code-index capability needs a Service Definition before any provider e
 
 ## Decision
 
-Open the `packages/index/` group with `@relay-harness/rlh-code-index`: `ctx.codeIndex.status()` / `.refresh()` / `.search()`. Key contract points:
+Open the `packages/index/` group with `@relay-harness/rlh-code-index`: `ctx.codeIndex.status()` / `.refresh()` / `.search()` / `.hydrateChunks()` / `.exploreGraph()`. Key contract points:
 
 - `EpochPair` (`indexEpoch` advanced exactly once per committed content write; `evidenceEpoch` reserved for semantic-evidence ingestion) is part of the first interface; consumers key caches on both.
 - `RepoSizeTier` constants live only in `src/tiers.ts`, ported verbatim from the reference implementation (tier bounds 500/5000/25000; top-K 5/10/15/20; output chars 18000/24000/32000/38000).
-- Search results are deterministic (score desc, chunk id asc tie-break), self-explaining (`reasons` tokens), and carry a `degraded` flag whose non-empty `readErrors` mark results as unfit for caching.
+- Search results are deterministic (score desc, chunk id asc tie-break), self-explaining (`reasons` plus additive `scoreTrace`), revisioned per file content hash, and carry a `degraded` flag whose non-empty `readErrors` mark results as unfit for caching. Full source bodies stay behind the [source-verified hydration operation](2026-08-29-code-index-candidate-hydration.md).
 
 Seam Config is deliberately deferred to the provider package — knobs without a current consumer violate the no-unused-surface rule (knip enforces this in practice), and tier tables for explore/graph/token budgets join when their consuming phases land.
 

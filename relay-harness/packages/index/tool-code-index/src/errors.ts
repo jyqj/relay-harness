@@ -9,8 +9,9 @@
  */
 
 import type { Context } from '@relay-harness/cordis'
-import type { CodeIndex } from '@relay-harness/rlh-code-index'
+import type { CodeIndex, CodeIndexWorkspace } from '@relay-harness/rlh-code-index'
 import { HarnessError } from '@relay-harness/rlh-llm'
+import type { ToolExecution } from '@relay-harness/rlh-tools'
 
 /** No `ctx.codeIndex` service is loaded in the deployment: the provider plugin is missing. */
 export const INDEX_TOOL_UNAVAILABLE = 'INDEX_TOOL_UNAVAILABLE'
@@ -67,6 +68,38 @@ export function requireCodeIndex(ctx: Context, toolName: string): CodeIndex {
     )
   }
   return codeIndex
+}
+
+/** Resolve the calling Agent's durable Session cwd into a workspace-bound index face.
+ * @param ctx - execution context carrying the optional Code Index provider.
+ * @param toolName - model-facing tool identity used in diagnostics.
+ * @param exec - exact Tool execution and owning Agent Session.
+ * @returns workspace-bound Code Index face.
+ */
+export async function requireWorkspaceCodeIndex(
+  ctx: Context,
+  toolName: string,
+  exec: Readonly<ToolExecution>,
+): Promise<CodeIndexWorkspace> {
+  const cwd = exec.agent?.session.header.cwd
+  if (cwd === undefined) {
+    throw new CodeIndexToolError(
+      `${toolName} requires an Agent Session with a workspace cwd`,
+      INDEX_TOOL_FAILED,
+    )
+  }
+  const provider = requireCodeIndex(ctx, toolName)
+  if (typeof provider.forWorkspace === 'function') return provider.forWorkspace(cwd)
+  return {
+    workspaceRoot: cwd,
+    status: () => provider.status(),
+    managementStatus: () => provider.managementStatus(),
+    reconcile: () => provider.reconcile(),
+    refresh: options => provider.refresh(options),
+    search: (request, signal) => provider.search(request, signal),
+    hydrateChunks: (request, signal) => provider.hydrateChunks(request, signal),
+    exploreGraph: (request, signal) => provider.exploreGraph(request, signal),
+  }
 }
 
 /**

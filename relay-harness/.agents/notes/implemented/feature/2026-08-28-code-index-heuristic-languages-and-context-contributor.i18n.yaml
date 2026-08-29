@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-08-28-code-index-heuristic-languages-and-context-contributor.md
-2026-08-28-code-index-heuristic-languages-and-context-contributor.md: 039d8dc95465096817c79dbeff8b74a84e3f7bf0
-2026-08-28-code-index-heuristic-languages-and-context-contributor.zh.md: 2714d4d471ba10c1b1fcba4cfb58f7ef78edac86
+2026-08-28-code-index-heuristic-languages-and-context-contributor.md: 9ba8ab8e7b113f5b6d6258c014faa20dc43b6eec
+2026-08-28-code-index-heuristic-languages-and-context-contributor.zh.md: 01a169fa20b222b09a2bcdc14e025dc06ec582cc

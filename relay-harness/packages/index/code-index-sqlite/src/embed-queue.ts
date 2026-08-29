@@ -26,6 +26,8 @@ const MAX_LAST_ERROR_CODE_POINTS = 2_000
 export interface EmbedJobInput {
   /** Chunk to embed; an existing `chunks` row id (`chunk:<file>:<index>`). */
   readonly chunkId: string
+  /** Complete embedding generation id; omitted only by legacy direct-store callers. */
+  readonly generationId?: string
   /** Embedding model identity the job targets. */
   readonly model: string
   /** Hash of the chunk text revision (`@relay-harness/rlh-code-index-local/hash`). */
@@ -53,6 +55,8 @@ export interface EmbedJob {
   readonly id: string
   /** Chunk the job embeds. */
   readonly chunkId: string
+  /** Complete embedding-pipeline generation identity. */
+  readonly generationId: string
   /** Embedding model identity. */
   readonly model: string
   /** Hash of the chunk text revision the job targets. */
@@ -95,19 +99,21 @@ export function enqueueEmbedJobs(
   try {
     const insert = db.prepare(`
       INSERT OR IGNORE INTO code_embed_jobs (
-        id, dedupe_key, chunk_id, model, content_hash, payload_json,
+        id, dedupe_key, chunk_id, generation_id, model, content_hash, payload_json,
         status, max_attempts, available_at, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?)
     `)
     let enqueued = 0
     for (const item of items) {
       // The unit separator cannot appear in a model name, chunk id, or hex
       // hash, so the joined identity is unambiguous; only equality reads it.
-      const dedupeKey = [item.model, item.chunkId, item.contentHash].join('\u001f')
+      const generationId = item.generationId ?? ensureLegacyGeneration(db, item.model)
+      const dedupeKey = [generationId, item.chunkId, item.contentHash].join('\u001f')
       const inserted = insert.run(
         `code-embed-${dedupeKey}`,
         dedupeKey,
         item.chunkId,
+        generationId,
         item.model,
         item.contentHash,
         item.payloadJson ?? '{}',
@@ -147,6 +153,8 @@ export interface ClaimEmbedJobsOptions {
   readonly limit?: number
   /** Restrict claims to one model's jobs; omit to claim any model. */
   readonly model?: string
+  /** Restrict claims to one complete generation; preferred over the legacy model filter. */
+  readonly generationId?: string
   /** Epoch-ms claim instant; defaults to wall-clock now. */
   readonly now?: number
 }
@@ -182,17 +190,21 @@ export function claimEmbedJobs(db: DatabaseSync, options: ClaimEmbedJobsOptions)
       WHERE status = 'running' AND lease_until IS NOT NULL AND lease_until <= ?
         AND attempts >= max_attempts
     `).run(now, now)
-    const modelClause = options.model === undefined ? '' : 'AND model = ?'
-    const modelBinds = options.model === undefined ? [] : [options.model]
+    const identityClause = options.generationId !== undefined
+      ? 'AND generation_id = ?'
+      : options.model === undefined ? '' : 'AND model = ?'
+    const identityBinds = options.generationId !== undefined
+      ? [options.generationId]
+      : options.model === undefined ? [] : [options.model]
     const candidates = db.prepare(`
       SELECT id FROM code_embed_jobs
       WHERE attempts < max_attempts AND (
         (status = 'pending' AND available_at <= ?)
         OR (status = 'running' AND lease_until IS NOT NULL AND lease_until <= ?)
-      ) ${modelClause}
+      ) ${identityClause}
       ORDER BY available_at ASC, created_at ASC, id ASC
       LIMIT ?
-    `).all(now, now, ...modelBinds, limit) as Array<{ id: string }>
+    `).all(now, now, ...identityBinds, limit) as Array<{ id: string }>
     const claim = db.prepare(`
       UPDATE code_embed_jobs
       SET status = 'running', attempts = attempts + 1, lease_owner = ?, lease_until = ?, updated_at = ?
@@ -232,7 +244,7 @@ export interface EmbedJobUsage {
 /**
  * Settle a claimed job as `completed`, recording its usage and clearing the
  * lease. The vector itself is NOT stored here — a completed job's result is
- * its `chunks_vec` row, written inside its own evidence-epoch transaction by
+ * its `chunks_vec` row, written inside its generation's embedding-epoch transaction by
  * the drain; `result_json` stays NULL by contract.
  * @param db - admitted handle.
  * @param input - job id, owning worker, usage, clock.
@@ -330,15 +342,51 @@ export function failEmbedJob(db: DatabaseSync, input: FailEmbedJobInput): EmbedJ
  * The number is the cost-governance gauge — backlog depth against the
  * drain's job/token budget — not a monthly accounting total.
  * @param db - admitted handle.
- * @param model - embedding model identity to count.
+ * @param generationOrModel - complete generation id, with model retained for legacy direct callers.
  * @returns the pending job count.
  */
-export function pendingEmbedCount(db: DatabaseSync, model: string): number {
+export function pendingEmbedCount(db: DatabaseSync, generationOrModel: string): number {
   // COUNT(*) always answers exactly one row.
   const row = db.prepare(
-    "SELECT COUNT(*) AS n FROM code_embed_jobs WHERE status = 'pending' AND model = ?",
-  ).get(model) as { n: number }
+    "SELECT COUNT(*) AS n FROM code_embed_jobs WHERE status = 'pending' AND (generation_id = ? OR model = ?)",
+  ).get(generationOrModel, generationOrModel) as { n: number }
   return row.n
+}
+
+/**
+ * Give current-content terminal failures one bounded reconciliation retry.
+ * Each job can be reset at most once across process restarts; unchanged bad
+ * credentials therefore cannot create an infinite retry loop.
+ * @param db - admitted store handle.
+ * @param generationId - generation whose current failed jobs may reset.
+ * @param now - epoch-ms availability/update time.
+ * @returns number of jobs reset to pending.
+ */
+export function resetFailedEmbedJobsForGeneration(
+  db: DatabaseSync,
+  generationId: string,
+  now = Date.now(),
+): number {
+  db.exec('BEGIN IMMEDIATE')
+  try {
+    const changed = db.prepare(`
+      UPDATE code_embed_jobs
+      SET status = 'pending', attempts = 0, reconcile_resets = reconcile_resets + 1,
+          available_at = ?, lease_owner = NULL, lease_until = NULL,
+          last_error = NULL, updated_at = ?
+      WHERE generation_id = ? AND status = 'failed' AND reconcile_resets < 1
+        AND EXISTS (
+          SELECT 1 FROM chunks c JOIN files f ON f.file_path = c.file_path
+          WHERE c.chunk_id = code_embed_jobs.chunk_id
+            AND f.content_hash = code_embed_jobs.content_hash
+        )
+    `).run(now, now, generationId).changes
+    db.exec('COMMIT')
+    return Number(changed)
+  } catch (error: unknown) {
+    db.exec('ROLLBACK')
+    throw error
+  }
 }
 
 /** One chunk's drain inputs read back from the `chunks` table. */
@@ -416,9 +464,33 @@ export function chunkRevisionsForFiles(db: DatabaseSync, files: readonly string[
   return rows
 }
 
+/**
+ * Find every current chunk not materialized for one generation. This is the
+ * coverage reconciler's authoritative set difference, independent of file
+ * mtimes and previous job history.
+ * @param db - admitted handle.
+ * @param generationId - generation whose vector coverage is reconciled.
+ * @returns missing chunk identities and their current file content hashes.
+ */
+export function chunkRevisionsMissingGeneration(
+  db: DatabaseSync,
+  generationId: string,
+): readonly ChunkRevisionRow[] {
+  return db.prepare(`
+    SELECT c.chunk_id AS chunkId, f.content_hash AS contentHash
+    FROM chunks c
+    JOIN files f ON f.file_path = c.file_path
+    LEFT JOIN chunks_vec v
+      ON v.chunk_id = c.chunk_id AND v.generation_id = ?
+    WHERE v.chunk_id IS NULL
+    ORDER BY c.chunk_id ASC
+  `).all(generationId) as unknown as ChunkRevisionRow[]
+}
+
 interface JobRow {
   id: string
   chunk_id: string
+  generation_id: string
   model: string
   content_hash: string
   attempts: number
@@ -441,6 +513,7 @@ function parseEmbedJobRow(row: JobRow): EmbedJob {
   return {
     id: row.id,
     chunkId: row.chunk_id,
+    generationId: row.generation_id,
     model: row.model,
     contentHash: row.content_hash,
     attempts: row.attempts,
@@ -448,6 +521,19 @@ function parseEmbedJobRow(row: JobRow): EmbedJob {
     leaseUntil: row.lease_until === null ? -1 : row.lease_until,
     createdAt: row.created_at,
   }
+}
+
+function ensureLegacyGeneration(db: DatabaseSync, model: string): string {
+  const generationId = `legacy-model:${model}`
+  db.prepare(`
+    INSERT OR IGNORE INTO embedding_generations (
+      generation_id, provider_id, endpoint_identity, model,
+      configured_dimensions, dimension_mode, normalization_version,
+      quantizer_version, chunker_version, created_at
+    ) VALUES (?, 'legacy-direct-store', 'legacy:', ?, NULL, 'provider-default',
+      'legacy', 'legacy', 'legacy', ?)
+  `).run(generationId, model, new Date().toISOString())
+  return generationId
 }
 
 /** Refuse anything but a positive safe integer (shared queue validation). */

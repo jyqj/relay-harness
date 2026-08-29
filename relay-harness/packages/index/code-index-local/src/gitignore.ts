@@ -2,13 +2,15 @@
  * Minimal `.gitignore`-style pattern evaluation for the local scanner.
  *
  * The scanner stacks three exclusion layers (built-in hard excludes, the
- * parsed root `.gitignore`, and explicit config excludes) plus one inclusion
+ * parsed `.gitignore` files, and explicit config excludes) plus one inclusion
  * layer (workspace include globs), and every layer evaluates paths through
  * this module's matcher. Supported syntax stays deliberately small — comment
  * and blank lines, `!` negation (last match wins), a trailing `/` marking a
  * directory-only rule, anchoring at the root for patterns containing `/`
  * elsewhere, `**` globstar segments, and per-segment `*` / `?` wildcards.
- * Nested `.gitignore` files are not consulted.
+ * The scanner composes one filter per discovered `.gitignore`, rebasing each
+ * document to its owning directory and applying the deepest matching rule
+ * last, as Git does.
  *
  * @module @relay-harness/rlh-code-index-local/gitignore
  */
@@ -38,6 +40,8 @@ export interface PathExclusionFilter {
    *   exclusion of everything below a matched directory.
    */
   excludes(relPath: string, isDirectory?: boolean): boolean
+  /** Return this document's winning rule, or `undefined` when none matched. */
+  decision?(relPath: string, isDirectory?: boolean): boolean | undefined
 }
 
 /** Path predicate accepting files that any include pattern matches. */
@@ -135,8 +139,13 @@ function candidatesOf(relPath: string, isDirectory: boolean, directoryOnlyRule: 
  * Evaluate rules over a path set. Later rules override earlier ones; the
  * final verdict excludes unless the winning hit was a negation.
  */
-function evaluate(rules: readonly GitignoreRule[], compiled: readonly RegExp[], relPath: string, isDirectory: boolean): boolean {
-  let excluded = false
+function evaluateDecision(
+  rules: readonly GitignoreRule[],
+  compiled: readonly RegExp[],
+  relPath: string,
+  isDirectory: boolean,
+): boolean | undefined {
+  let excluded: boolean | undefined
   for (let index = 0; index < rules.length; index++) {
     const rule = rules[index] as GitignoreRule
     const regexp = compiled[index]
@@ -149,7 +158,12 @@ function evaluate(rules: readonly GitignoreRule[], compiled: readonly RegExp[], 
 
 function compileFilter(rules: readonly GitignoreRule[]): PathExclusionFilter {
   const compiled = rules.map(ruleToRegExp)
-  return { excludes: (relPath, isDirectory = false) => evaluate(rules, compiled, relPath, isDirectory) }
+  const decision = (relPath: string, isDirectory = false): boolean | undefined =>
+    evaluateDecision(rules, compiled, relPath, isDirectory)
+  return {
+    decision,
+    excludes: (relPath, isDirectory = false) => decision(relPath, isDirectory) === true,
+  }
 }
 
 /**
@@ -179,10 +193,10 @@ export function inclusionMatcherFromPatterns(patterns: readonly string[]): PathI
 }
 
 /**
- * Load the workspace root's `.gitignore` as an exclusion filter.
- * @param root - absolute workspace root whose direct `.gitignore` applies.
- * @returns the filter, or `undefined` when no `.gitignore` exists; nested
- *   ignore files are intentionally unread by contract.
+ * Load one directory's `.gitignore` as an exclusion filter. The scanner owns
+ * rebasing it to that directory and ordering it relative to ancestor files.
+ * @param root - absolute directory whose direct `.gitignore` applies.
+ * @returns the filter, or `undefined` when no `.gitignore` exists.
  */
 export async function loadWorkspaceGitIgnore(root: string): Promise<PathExclusionFilter | undefined> {
   try {

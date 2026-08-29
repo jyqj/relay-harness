@@ -88,8 +88,8 @@ test('renderer config patch only accepts safe typed fields', () => {
   }
 });
 
-test('simple mode is off by default and survives a round trip', () => {
-  assert.equal(DEFAULTS.simpleMode, false);
+test('simple mode is on for fresh installs and an explicit choice survives a round trip', () => {
+  assert.equal(DEFAULTS.simpleMode, true);
   assert.deepEqual(normalizeRendererConfigPatch({ simpleMode: true }), { simpleMode: true });
   assert.equal(normalizeShellSurface({}).simpleMode, false);
   assert.equal(normalizeShellSurface({ simpleMode: 'yes' }).simpleMode, false);

@@ -512,6 +512,18 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         returns: 'current file count, resolved tier, epoch pair, last refresh summary, and degraded flag.',
       },
       {
+        signature: 'async managementStatus(): Promise<import(\'./types.ts\').CodeIndexManagementStatus>',
+        description: 'Operator-oriented health projection; providers may enrich the basic status.',
+        parameters: [],
+        returns: 'bounded file/chunk/generation/build health for management clients.',
+      },
+      {
+        signature: 'async reconcile(): Promise<import(\'./types.ts\').CodeIndexManagementStatus>',
+        description: 'Reconcile provider-derived work without requiring a destructive rebuild.',
+        parameters: [],
+        returns: 'settled management status after reconciliation.',
+      },
+      {
         signature: 'abstract refresh(options?: RefreshOptions): Promise<RefreshSummary>',
         description: 'Bring the derived index up to date with the workspace tree (or rebuild it). Concurrent calls fold into the single in-flight pass; refresh summaries are emitted only after that pass commits, never speculatively.',
         parameters: [{ name: 'options', description: 'trigger reason, forced full rebuild, or explicit path subset.' }],
@@ -524,10 +536,22 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         returns: 'ranked hits with epoch pairing; `degraded=true` when a lane failed partially.',
       },
       {
+        signature: 'abstract hydrateChunks(request: HydrateChunksRequest, signal?: AbortSignal): Promise<HydrateChunksResult>',
+        description: 'Resolve full indexed source bodies for an ordered batch of chunk identities. Providers revalidate each backing source against its indexed content hash; stale or unavailable identities are returned only in `rejected`.',
+        parameters: [{ name: 'request', description: 'ordered chunk identities to hydrate.' }, { name: 'signal', description: 'cancellation checked before and after the synchronous store read.' }],
+        returns: 'resolved bodies, explicit misses, and the generation observed by the read.',
+      },
+      {
         signature: 'abstract exploreGraph(request: GraphExploreRequest, signal?: AbortSignal): Promise<GraphExploreResult>',
         description: 'Answer one structured graph question over the derived call graph.',
         parameters: [{ name: 'request', description: 'the `relations` / `impact` / `tests` / `cycles` / `dead_code` question with its per-op options.' }, { name: 'signal', description: 'cancellation for the active step.' }],
         returns: 'nodes, edges, optional test pairs, cycle components, or dead-code candidates, plus the explain envelope under the epoch pair they were read at; every rendered edge\'s endpoints resolve inside the answer\'s `nodes`.',
+      },
+      {
+        signature: 'forWorkspace(workspaceRoot: string): Promise<CodeIndexWorkspace>',
+        description: 'Bind this capability to one caller-owned workspace root. Multi-workspace providers override this method and route every operation to an isolated derived store. The default adapter preserves existing single-workspace providers and test doubles; production filesystem providers should override it to verify that `workspaceRoot` is their configured root.',
+        parameters: [{ name: 'workspaceRoot', description: 'absolute workspace root selected by the caller\'s durable Session.' }],
+        returns: 'a workspace-bound operation face which cannot be retargeted after construction.',
       },
     ],
   },
@@ -625,8 +649,8 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
       },
       {
         signature: 'prepareStep(input: StepContextInput): Promise<PreparedStepContext | undefined>',
-        description: 'Prepare the step context for one claimed step.',
-        parameters: [{ name: 'input', description: 'the claimed messages and abort signal.' }],
+        description: 'Prepare context for one purpose-tagged request.',
+        parameters: [{ name: 'input', description: 'purpose, messages, abort signal, working directory, and durable caller identity.' }],
         returns: 'the collected context, or `undefined` when no contributor produced any.',
       },
     ],
@@ -1161,9 +1185,39 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         returns: 'current entry, or undefined when absent from this scope.',
       },
       {
+        signature: 'abstract list(input: ListMemoryInput, signal?: AbortSignal): Promise<MemoryListPage>',
+        description: 'List the provider\'s current materialized entries for one exact scope. Unlike recall search, this governance read can include expired, superseded, and tombstoned entries and never changes retrieval-use accounting.',
+        parameters: [{ name: 'input', description: 'exact scope, filters, and deterministic page window.' }, { name: 'signal', description: 'cancellation for the read.' }],
+        returns: 'one newest-first page and the matching total.',
+      },
+      {
+        signature: 'abstract findConflicts( input: FindMemoryConflictsInput, signal?: AbortSignal, ): Promise<readonly MemoryConflictCandidate[]>',
+        description: 'Find deterministic normalized-key conflicts in one exact scope.',
+        parameters: [{ name: 'input', description: 'target identity and result cap.' }, { name: 'signal', description: 'cancellation for the read.' }],
+        returns: 'duplicate or summary-collision candidates.',
+      },
+      {
+        signature: 'abstract listSignals(scope: MemoryScope, id: MemoryId, signal?: AbortSignal): Promise<readonly MemorySignal[]>',
+        description: 'Read canonical retrieval and user-governance signals.',
+        parameters: [{ name: 'scope', description: 'exact recall partition.' }, { name: 'id', description: 'logical memory identity.' }, { name: 'signal', description: 'cancellation for the read.' }],
+        returns: 'chronological signal history.',
+      },
+      {
+        signature: 'abstract reconcileOutcomes(input: ReconcileMemoryOutcomesInput, signal?: AbortSignal): Promise<void>',
+        description: 'Atomically replace one Session\'s reconciler-owned outcome observations.',
+        parameters: [{ name: 'input', description: 'exact scope, Session, and complete derived outcome set.' }, { name: 'signal', description: 'cancellation before the write begins.' }],
+        returns: 'after the canonical outcome view is durable.',
+      },
+      {
+        signature: 'abstract listOutcomes(input: ListMemoryOutcomesInput, signal?: AbortSignal): Promise<readonly MemoryOutcome[]>',
+        description: 'Read recent outcome observations for one memory.',
+        parameters: [{ name: 'input', description: 'exact scope, identity, and result cap.' }, { name: 'signal', description: 'cancellation for the read.' }],
+        returns: 'newest-first outcome observations.',
+      },
+      {
         signature: 'abstract search(input: SearchMemoryInput, signal?: AbortSignal): Promise<readonly MemorySearchHit[]>',
         description: 'Search current entries inside an exact scope.',
-        parameters: [{ name: 'input', description: 'normalized query, filters, and result cap.' }, { name: 'signal', description: 'cancellation for the read.' }],
+        parameters: [{ name: 'input', description: 'normalized query, filters, result cap, and optional access-accounting policy.' }, { name: 'signal', description: 'cancellation for the read.' }],
         returns: 'ranked current entries with retrieval-channel evidence.',
       },
     ],
@@ -1184,6 +1238,49 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         description: 'Select a provider by the file\'s extension and run one query. Selection is per-query and order-independent; no match throws `LspError` `LSP_UNAVAILABLE`.',
         parameters: [{ name: 'request', description: 'the normalized query.' }, { name: 'signal', description: 'optional cancellation forwarded to the selected provider.' }],
         returns: 'the normalized, closed-union result.',
+      },
+    ],
+  },
+  {
+    key: 'mcpCatalog',
+    summary: 'Protocol-native registry for connected MCP Resource and Prompt generations.',
+    description: 'Protocol-native registry for connected MCP Resource and Prompt generations.',
+    methods: [
+      {
+        signature: 'publish(generation: McpServerCatalogGeneration): () => void',
+        description: 'Publish one complete connected-server generation atomically.',
+        parameters: [{ name: 'generation', description: 'complete connected server generation.' }],
+        returns: 'exact rollback disposer.',
+      },
+      {
+        signature: 'listResources(): McpResourceDescriptor[]',
+        description: 'List concrete resources across connected servers.',
+        parameters: [],
+        returns: 'all currently catalogued concrete resources.',
+      },
+      {
+        signature: 'listResourceTemplates(): McpResourceTemplateDescriptor[]',
+        description: 'List resource templates across connected servers.',
+        parameters: [],
+        returns: 'all currently catalogued resource templates.',
+      },
+      {
+        signature: 'listPrompts(): McpPromptDescriptor[]',
+        description: 'List prompts across connected servers.',
+        parameters: [],
+        returns: 'all currently catalogued prompts.',
+      },
+      {
+        signature: 'async readResource(serverName: string, uri: string, signal?: AbortSignal): Promise<McpResourceRead>',
+        description: 'Read one concrete Resource through its owning live generation.',
+        parameters: [{ name: 'serverName', description: 'owning server.' }, { name: 'uri', description: 'concrete URI.' }, { name: 'signal', description: 'caller cancellation.' }],
+        returns: 'rich Resource content.',
+      },
+      {
+        signature: 'async getPrompt( serverName: string, name: string, args: Readonly<Record<string, string>>, signal?: AbortSignal, ): Promise<McpPromptResult>',
+        description: 'Resolve one Prompt after validating required arguments.',
+        parameters: [{ name: 'serverName', description: 'owning server.' }, { name: 'name', description: 'prompt name.' }, { name: 'args', description: 'string arguments.' }, { name: 'signal', description: 'caller cancellation.' }],
+        returns: 'resolved rich Prompt.',
       },
     ],
   },
@@ -1272,6 +1369,19 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     ],
   },
   {
+    key: 'memoryConflictDetector',
+    summary: 'Optional semantic detector composed by deployments that can justify richer conflict candidates.',
+    description: 'Optional semantic detector composed by deployments that can justify richer conflict candidates.',
+    methods: [
+      {
+        signature: 'abstract detect( input: DetectMemoryConflictsInput, signal?: AbortSignal, ): Promise<readonly MemoryConflictCandidate[]>',
+        description: 'Detect provider-attributed semantic conflicts without mutating canonical memory.',
+        parameters: [{ name: 'input', description: 'target plus bounded same-Scope candidates.' }, { name: 'signal', description: 'cancellation for optional provider work.' }],
+        returns: 'attributed conflict candidates only.',
+      },
+    ],
+  },
+  {
     key: 'memoryExtractionQueue',
     summary: 'Provider-neutral durable queue used by turn capture and extractor workers.',
     description: 'Provider-neutral durable queue used by turn capture and extractor workers.',
@@ -1305,6 +1415,31 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         description: 'Read one job for diagnostics and tests.',
         parameters: [{ name: 'id', description: 'durable job identity.' }],
         returns: 'current job, or undefined when absent.',
+      },
+    ],
+  },
+  {
+    key: 'memoryOutcomeReconciler',
+    summary: 'Host service maintaining idempotent Memory outcome observations from durable Session facts.',
+    description: 'Host service maintaining idempotent Memory outcome observations from durable Session facts.',
+    methods: [
+      {
+        signature: 'ensureReconciled(refresh: boolean = false): Promise<void>',
+        description: 'Reconcile the complete live-preferred persisted corpus once per process unless explicitly refreshed.',
+        parameters: [{ name: 'refresh', description: 'force a new full observation after the initial pass.' }],
+        returns: 'after every readable Session has settled independently.',
+      },
+      {
+        signature: 'async reconcileAll(): Promise<void>',
+        description: 'Reconcile all logical Sessions through Session Query without resuming an Agent.',
+        parameters: [],
+        returns: 'after the bounded worker pool settles all Sessions.',
+      },
+      {
+        signature: 'reconcileSession(sessionId: SessionId): Promise<void>',
+        description: 'Reconcile one logical Session through the live-preferred non-activating Session Query read.',
+        parameters: [{ name: 'sessionId', description: 'logical Session identity.' }],
+        returns: 'after its complete derived outcome set replaces the previous set.',
       },
     ],
   },
@@ -1391,6 +1526,50 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     ],
   },
   {
+    key: 'productMode',
+    summary: 'Host Remote and settings-backed single owner of product-mode state.',
+    description: 'Host Remote and settings-backed single owner of product-mode state.',
+    methods: [
+      {
+        signature: '@Remote(\'get\') get(): ProductModeSnapshot',
+        description: 'Read the current resolved product mode.',
+        parameters: [],
+        returns: 'current resolved product mode.',
+      },
+      {
+        signature: '@Remote(\'set\') async set(request: ProductModeSetRequest): Promise<ProductModeSnapshot>',
+        description: 'Persist one explicit product mode.',
+        parameters: [{ name: 'request', description: 'next explicit mode.' }],
+        returns: 'the resolved mode after durable settings persistence.',
+      },
+    ],
+  },
+  {
+    key: 'promptEnhancement',
+    summary: 'Host Prompt Enhancement runtime and generated Remote namespace owner.',
+    description: 'Host Prompt Enhancement runtime and generated Remote namespace owner.',
+    methods: [
+      {
+        signature: 'registerProvider(provider: PromptEnhancementProvider): () => Promise<void>',
+        description: 'Register the sole enhancement implementation. Its disposer aborts and drains every attempt that captured this registration before releasing it.',
+        parameters: [{ name: 'provider', description: 'stable identity and side-effect-free enhancement function.' }],
+        returns: 'awaitable effect disposer.',
+      },
+      {
+        signature: 'registerContextProvider(provider: PromptEnhancementContextProvider): () => Promise<void>',
+        description: 'Register the sole adapter from the shared Context Engine. The service does not collect history, files, memory, or Evidence itself.',
+        parameters: [{ name: 'provider', description: 'Context Engine adapter or explicit draft-only provider.' }],
+        returns: 'awaitable effect disposer.',
+      },
+      {
+        signature: '@Remote(\'enhance\') async enhance( agent: Agent, draft: string, signal: AbortSignal, ): Promise<PromptEnhancementOutcome>',
+        description: 'Prepare shared context and produce one proposal. Provider errors and every cancellation return a preserved outcome containing the exact original draft; this operation never submits or mutates Agent state.',
+        parameters: [{ name: 'agent', description: 'target Agent whose scoped context and route are used.' }, { name: 'draft', description: 'exact unsent draft.' }, { name: 'signal', description: 'caller cancellation.' }],
+        returns: 'structured proposal or a failure-preserving outcome.',
+      },
+    ],
+  },
+  {
     key: 'sandbox',
     summary: 'Abstract process-sandbox service.',
     description: 'Abstract process-sandbox service. confine must return enforcing argv or fail closed at wrap or runner-execution time; silent unconfined passthrough is forbidden. Functional probes arbitrate multi-runner chains and may be skipped for a sole candidate, whose own refusal remains the fail-closed end.',
@@ -1429,6 +1608,18 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         description: 'Read the session override without applying the deployment default.',
         parameters: [{ name: 'session', description: 'session whose log supplies the override.' }],
         returns: 'the last logged mode, or `undefined` without one.',
+      },
+    ],
+  },
+  {
+    key: 'sessionHistoryContext',
+    summary: 'Host service that owns the contributor registration and resolved policy.',
+    description: 'Host service that owns the contributor registration and resolved policy.',
+    methods: [
+      {
+        signature: 'readonly config: SessionHistoryContextConfig',
+        description: 'Immutable resolved contributor policy.',
+        parameters: [],
       },
     ],
   },
@@ -2921,6 +3112,14 @@ export const EVENT_API: readonly EventApiEntry[] = [
     parameters: [{ name: 'options', description: 'the full request. A LOOP-built request carries the process-local {@link markAgentLoopRequest} identity and arrives deep-frozen (mutation throws): its content is a pure function of the session log (the reconstructability Agent Note), so listeners read it, never rewrite it. Hand-built calls do not carry that marker; their messages already obey the immutable creation contract.' }],
   },
   {
+    name: 'message-feedback/changed',
+    mode: 'emit',
+    signature: '\'message-feedback/changed\'(change: MessageFeedbackChanged): void',
+    summary: 'Material feedback sidecar change; Host reconcilers may refresh derived outcome views.',
+    description: 'Material feedback sidecar change; Host reconcilers may refresh derived outcome views.',
+    parameters: [{ name: 'change', description: 'committed current rating or deletion identity.' }],
+  },
+  {
     name: 'session-telemetry/record',
     mode: 'waterfall',
     signature: '\'session-telemetry/record\'(record: SessionTelemetryRecord, next: () => SessionTelemetryRecord): SessionTelemetryRecord',
@@ -3277,12 +3476,20 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export type Branded<B extends string> = string & {\n    readonly [BRAND]: B;\n};',
   },
   {
+    name: 'BuildExplain',
+    declaration: 'export interface BuildExplain {\n    readonly scope: \'full\' | \'scoped\';\n    readonly requestedPaths: number;\n    readonly pass: \'ran\' | \'skipped\';\n    readonly degraded: boolean;\n    readonly degradationReasons: string[];\n    readonly dirty: {\n        readonly status: string;\n        readonly marked: number;\n        readonly roundsRun: number;\n        readonly partial: boolean;\n        readonly budgetExceeded: boolean;\n    } | null;\n    readonly embedding: {\n        readonly generationId: string;\n        readonly missingChunks: number;\n        readonly jobsEnqueued: number;\n        readonly jobsDeduplicated: number;\n        readonly jobsReset: number;\n        readonly batchesClaimed: number;\n        readonly batchesWritten: number;\n        readonly jobsCompleted: number;\n        readonly jobsFailed: number;\n    } | null;\n}',
+  },
+  {
     name: 'CancelOptions',
     declaration: 'export interface CancelOptions {\n    keepInbox?: boolean | undefined;\n}',
   },
   {
     name: 'ChildFiberPhase',
     declaration: 'export type ChildFiberPhase = \'pending\' | \'loading\' | \'active\' | \'failed\' | \'unloading\' | null;',
+  },
+  {
+    name: 'ChunkHydrationRejection',
+    declaration: 'export interface ChunkHydrationRejection {\n    readonly chunkId: string;\n    readonly state: \'stale\' | \'unavailable\';\n    readonly reason: \'not-indexed\' | \'source-path-invalid\' | \'source-unavailable\' | \'source-revision-changed\';\n}',
   },
   {
     name: 'ClaimMemoryExtractionInput',
@@ -3307,6 +3514,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'CodeDispatchLog',
     declaration: 'export interface CodeDispatchLog {\n    readonly exec: ToolExecution;\n    readonly agent?: Agent;\n    readonly subCallId: CallId;\n    readonly name: string;\n    readonly isError: boolean;\n    readonly content: ContentBlock[];\n}',
+  },
+  {
+    name: 'CodeIndexWorkspace',
+    declaration: 'export interface CodeIndexWorkspace {\n    readonly workspaceRoot: string;\n    status(): Promise<IndexStatusReport>;\n    managementStatus(): Promise<import(\'./types.ts\').CodeIndexManagementStatus>;\n    reconcile(): Promise<import(\'./types.ts\').CodeIndexManagementStatus>;\n    refresh(options?: RefreshOptions): Promise<RefreshSummary>;\n    search(request: SearchRequest, signal?: AbortSignal): Promise<SearchResult>;\n    hydrateChunks(request: HydrateChunksRequest, signal?: AbortSignal): Promise<HydrateChunksResult>;\n    exploreGraph(request: GraphExploreRequest, signal?: AbortSignal): Promise<GraphExploreResult>;\n}',
   },
   {
     name: 'CodeJsonValue',
@@ -3399,6 +3610,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'ContextFormed',
     declaration: 'export type ContextFormed = {\n    readonly form?: never;\n} | {\n    readonly form: \'instructions\';\n} | {\n    readonly form: \'catalog\';\n} | {\n    readonly form: \'snapshot\';\n    readonly sections: readonly ContextSnapshotSection[];\n} | {\n    readonly form: \'notice\';\n    readonly summary: string;\n} | {\n    readonly form: \'relay\';\n} | {\n    readonly form: \'recall\';\n};',
+  },
+  {
+    name: 'ContextPurpose',
+    declaration: 'export type ContextPurpose = \'agent_step\' | \'prompt_enhancement\';',
   },
   {
     name: 'ContextSnapshotSection',
@@ -3495,6 +3710,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'CredentialRef',
     declaration: 'export type CredentialRef = Branded<\'CredentialRef\'>;',
+  },
+  {
+    name: 'DetectMemoryConflictsInput',
+    declaration: 'export interface DetectMemoryConflictsInput {\n    readonly target: MemoryEntry;\n    readonly candidates: readonly MemoryEntry[];\n    readonly limit: number;\n}',
   },
   {
     name: 'DiffCallView',
@@ -3606,11 +3825,11 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'EpochPair',
-    declaration: 'export interface EpochPair {\n    readonly indexEpoch: number;\n    readonly evidenceEpoch: number;\n}',
+    declaration: 'export interface EpochPair {\n    readonly indexEpoch: number;\n    readonly evidenceEpoch: number;\n    readonly embeddingEpoch?: number;\n}',
   },
   {
     name: 'Evidence',
-    declaration: 'export interface Evidence {\n    readonly evidenceId: EvidenceId;\n    readonly resource: ResourceRef;\n    readonly digest?: string;\n    readonly truncated: boolean;\n    readonly freshness: EvidenceFreshness;\n    readonly verification: EvidenceVerification;\n    readonly domain?: unknown;\n}',
+    declaration: 'export interface Evidence {\n    readonly evidenceId: EvidenceId;\n    readonly resource: ResourceRef;\n    readonly digest?: string;\n    readonly truncated: boolean;\n    readonly freshness: EvidenceFreshness;\n    readonly verification: EvidenceVerification;\n    readonly domain?: JsonValue;\n}',
   },
   {
     name: 'EvidenceFreshness',
@@ -3641,6 +3860,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface FileReferenceCandidate {\n    path: string;\n    kind: \'file\' | \'directory\';\n}',
   },
   {
+    name: 'FindMemoryConflictsInput',
+    declaration: 'export interface FindMemoryConflictsInput {\n    readonly scope: MemoryScope;\n    readonly id: MemoryId;\n    readonly limit: number;\n}',
+  },
+  {
     name: 'FinishReason',
     declaration: 'export type FinishReason = FinishReasonMap[keyof FinishReasonMap];',
   },
@@ -3650,7 +3873,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'ForgetMemoryInput',
-    declaration: 'export interface ForgetMemoryInput {\n    readonly scope: MemoryScope;\n    readonly id: MemoryId;\n    readonly reason: string;\n    readonly evidence: readonly MemoryEvidence[];\n}',
+    declaration: 'export interface ForgetMemoryInput {\n    readonly scope: MemoryScope;\n    readonly id: MemoryId;\n    readonly expectedRevision?: number;\n    readonly reason: string;\n    readonly evidence: readonly MemoryEvidence[];\n    readonly governance?: MemoryGovernanceSignalInput;\n}',
   },
   {
     name: 'FsDirEntry',
@@ -3698,7 +3921,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'GenerateOptions',
-    declaration: 'export interface GenerateOptions {\n    provider: string;\n    model: string;\n    reasoningEffort?: ReasoningEffortId;\n    messages: Message[];\n    system?: string;\n    tools?: ToolSchema[];\n    temperature?: number;\n    maxTokens?: number;\n    stop?: string[];\n    signal?: AbortSignal;\n    sessionId?: Branded<\'SessionId\'>;\n    purpose?: \'compaction\' | \'session-title\' | \'vision-describe\' | \'memory-extraction\';\n}',
+    declaration: 'export interface GenerateOptions {\n    provider: string;\n    model: string;\n    reasoningEffort?: ReasoningEffortId;\n    messages: Message[];\n    system?: string;\n    tools?: ToolSchema[];\n    temperature?: number;\n    maxTokens?: number;\n    stop?: string[];\n    signal?: AbortSignal;\n    sessionId?: Branded<\'SessionId\'>;\n    purpose?: \'compaction\' | \'session-title\' | \'vision-describe\' | \'memory-extraction\' | \'prompt-enhancement\';\n}',
   },
   {
     name: 'GenericCallView',
@@ -3779,6 +4002,18 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'GraphTestPairView',
     declaration: 'export interface GraphTestPairView {\n    readonly testFilePath: string;\n    readonly codeFilePath: string;\n    readonly reason: string;\n    readonly confidence: number;\n}',
+  },
+  {
+    name: 'HydrateChunksRequest',
+    declaration: 'export interface HydrateChunksRequest {\n    readonly chunkIds: readonly string[];\n}',
+  },
+  {
+    name: 'HydrateChunksResult',
+    declaration: 'export interface HydrateChunksResult {\n    readonly chunks: readonly HydratedChunk[];\n    readonly rejected: readonly ChunkHydrationRejection[];\n    readonly epochs: EpochPair;\n}',
+  },
+  {
+    name: 'HydratedChunk',
+    declaration: 'export interface HydratedChunk {\n    readonly chunkId: string;\n    readonly filePath: string;\n    readonly language: string;\n    readonly contentHash: string;\n    readonly startLine: number;\n    readonly endLine: number;\n    readonly text: string;\n    readonly parserTier: ParserTier;\n    readonly parserConfidence: number;\n    readonly verification: \'source-verified\';\n}',
   },
   {
     name: 'ImageAttachmentLimits',
@@ -3965,6 +4200,14 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface KvUnitDescriptor {\n    readonly name: string;\n    readonly version: number;\n    readonly tables: readonly string[];\n    readonly hasGlobal: boolean;\n}',
   },
   {
+    name: 'ListMemoryInput',
+    declaration: 'export interface ListMemoryInput {\n    readonly scope: MemoryScope;\n    readonly limit: number;\n    readonly offset?: number;\n    readonly kinds?: readonly MemoryKind[];\n    readonly statuses?: readonly MemoryStatus[];\n    readonly includeExpired?: boolean;\n}',
+  },
+  {
+    name: 'ListMemoryOutcomesInput',
+    declaration: 'export interface ListMemoryOutcomesInput {\n    readonly scope: MemoryScope;\n    readonly id: MemoryId;\n    readonly limit: number;\n}',
+  },
+  {
     name: 'LlmAdapter',
     declaration: 'export abstract class LlmAdapter {\n    providerInfo(provider: string): LlmProviderInfo;\n    providerRetryPolicy(_provider: string): ResolvedRetryPolicy | undefined;\n    listModels(_provider: string): Promise<readonly LlmModelInfo[]>;\n    resolveModel(provider: string, model: string, _signal?: AbortSignal): Promise<LlmResolvedModelInfo>;\n    abstract stream(options: GenerateOptions): AsyncIterable<StreamChunk>;\n}',
   },
@@ -4070,7 +4313,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'McpClientStatus',
-    declaration: 'export interface McpClientStatus {\n    readonly health: McpConnectionHealth;\n    readonly lastError?: string;\n    readonly tools?: readonly string[];\n}',
+    declaration: 'export interface McpClientStatus {\n    readonly health: McpConnectionHealth;\n    readonly lastError?: string;\n    readonly tools?: readonly string[];\n    readonly resources?: readonly string[];\n    readonly prompts?: readonly string[];\n}',
   },
   {
     name: 'McpConnectionHealth',
@@ -4089,12 +4332,16 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface McpReconnectRecord {\n    readonly enabled?: boolean;\n    readonly initialDelayMs?: number;\n    readonly maxDelayMs?: number;\n    readonly maxAttempts?: number;\n}',
   },
   {
+    name: 'McpServerCatalogGeneration',
+    declaration: 'export interface McpServerCatalogGeneration {\n    readonly serverName: string;\n    readonly resources: readonly Omit<McpResourceDescriptor, \'serverName\'>[];\n    readonly resourceTemplates: readonly Omit<McpResourceTemplateDescriptor, \'serverName\'>[];\n    readonly prompts: readonly Omit<McpPromptDescriptor, \'serverName\'>[];\n    readonly readResource: (uri: string, signal?: AbortSignal) => Promise<McpResourceRead>;\n    readonly getPrompt: (name: string, args: Readonly<Record<string, string>>, signal?: AbortSignal) => Promise<McpPromptResult>;\n}',
+  },
+  {
     name: 'McpServerRecord',
     declaration: 'export type McpServerRecord = McpStdioServerRecord | McpHttpServerRecord;',
   },
   {
     name: 'McpServerRecordBase',
-    declaration: 'export interface McpServerRecordBase {\n    readonly id: string;\n    readonly enabled: boolean;\n    readonly serverName: string;\n    readonly toolCallTimeoutMs?: number;\n    readonly failOnStartupError?: boolean;\n    readonly reconnect?: McpReconnectRecord;\n}',
+    declaration: 'export interface McpServerRecordBase {\n    readonly id: string;\n    readonly enabled: boolean;\n    readonly serverName: string;\n    readonly toolCallTimeoutMs?: number;\n    readonly startupTimeoutMs?: number;\n    readonly failOnStartupError?: boolean;\n    readonly reconnect?: McpReconnectRecord;\n}',
   },
   {
     name: 'McpServerUpsert',
@@ -4103,6 +4350,14 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'McpStdioServerRecord',
     declaration: 'export interface McpStdioServerRecord extends McpServerRecordBase {\n    readonly transport: \'stdio\';\n    readonly command: string;\n    readonly args?: readonly string[];\n    readonly env?: Readonly<Record<string, string>>;\n    readonly cwd?: string;\n}',
+  },
+  {
+    name: 'MemoryConflictCandidate',
+    declaration: 'export interface MemoryConflictCandidate {\n    readonly entry: MemoryEntry;\n    readonly relation: MemoryConflictRelation;\n    readonly score: number;\n    readonly reasons: readonly string[];\n    readonly detectorId: string;\n}',
+  },
+  {
+    name: 'MemoryConflictRelation',
+    declaration: 'export type MemoryConflictRelation = \'exact-duplicate\' | \'normalized-summary-collision\' | \'semantic-conflict\';',
   },
   {
     name: 'MemoryEntry',
@@ -4133,8 +4388,28 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface MemoryExtractionSource {\n    readonly kind: \'user\' | \'tool-result\';\n    readonly text: string;\n    readonly evidence: MemoryEvidence;\n    readonly toolName?: string;\n}',
   },
   {
+    name: 'MemoryGovernanceSignalInput',
+    declaration: 'export interface MemoryGovernanceSignalInput {\n    readonly kind: \'user_confirmed\' | \'user_rejected\';\n    readonly sessionId: SessionId;\n    readonly eventSeqs: readonly number[];\n}',
+  },
+  {
     name: 'MemoryKind',
     declaration: 'export type MemoryKind = \'preference\' | \'fact\' | \'constraint\' | \'decision\' | \'procedure\' | \'lesson\';',
+  },
+  {
+    name: 'MemoryListPage',
+    declaration: 'export interface MemoryListPage {\n    readonly entries: readonly MemoryEntry[];\n    readonly total: number;\n    readonly offset: number;\n    readonly hasMore: boolean;\n}',
+  },
+  {
+    name: 'MemoryOutcome',
+    declaration: 'export interface MemoryOutcome {\n    readonly id: string;\n    readonly memoryId: MemoryId;\n    readonly scope: MemoryScope;\n    readonly sessionId: SessionId;\n    readonly turn: number;\n    readonly kind: MemoryOutcomeKind;\n    readonly impact: MemoryOutcomeImpact;\n    readonly sourceEventSeqs: readonly number[];\n    readonly sourceRef?: string;\n    readonly assistantMessageId?: MessageId;\n    readonly observedAt: number;\n}',
+  },
+  {
+    name: 'MemoryOutcomeImpact',
+    declaration: 'export type MemoryOutcomeImpact = \'positive\' | \'negative\' | \'neutral\';',
+  },
+  {
+    name: 'MemoryOutcomeKind',
+    declaration: 'export type MemoryOutcomeKind = \'turn-completed\' | \'turn-failed\' | \'assistant-positive\' | \'assistant-negative\' | \'work-completed\' | \'work-blocked\';',
   },
   {
     name: 'MemoryScope',
@@ -4143,6 +4418,14 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'MemorySearchHit',
     declaration: 'export interface MemorySearchHit {\n    readonly entry: MemoryEntry;\n    readonly score: number;\n    readonly matchedBy: readonly string[];\n}',
+  },
+  {
+    name: 'MemorySignal',
+    declaration: 'export interface MemorySignal {\n    readonly id: string;\n    readonly memoryId: MemoryId;\n    readonly kind: MemorySignalKind;\n    readonly sessionId?: SessionId;\n    readonly turn?: number;\n    readonly eventSeqs: readonly number[];\n    readonly createdAt: number;\n}',
+  },
+  {
+    name: 'MemorySignalKind',
+    declaration: 'export type MemorySignalKind = \'candidate_hit\' | \'injected\' | \'user_confirmed\' | \'user_rejected\';',
   },
   {
     name: 'MemoryStatus',
@@ -4159,6 +4442,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'Message',
     declaration: 'export interface Message {\n    readonly id: MessageId;\n    readonly role: \'system\' | \'user\' | \'assistant\';\n    readonly content: ContentBlock[];\n    readonly source: MessageSource;\n}',
+  },
+  {
+    name: 'MessageFeedbackChanged',
+    declaration: 'export interface MessageFeedbackChanged {\n    readonly sessionId: SessionId;\n    readonly messageId: MessageId;\n    readonly rating?: MessageFeedbackRating;\n}',
   },
   {
     name: 'MessageFeedbackDeleteRequest',
@@ -4281,6 +4568,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export type PostToolDecision = {\n    kind: \'accept\';\n    content?: ContentBlock[];\n    value?: never;\n    additionalContexts?: UserMessage[];\n} | {\n    kind: \'accept\';\n    value: JsonValue;\n    content?: never;\n    additionalContexts?: UserMessage[];\n} | {\n    kind: \'block\';\n    feedback: ContentBlock[];\n    additionalContexts?: UserMessage[];\n};',
   },
   {
+    name: 'PreparedContextContribution',
+    declaration: 'export interface PreparedContextContribution {\n    readonly contributorId: string;\n    readonly message: UserMessage;\n    readonly evidence: readonly Evidence[];\n    readonly coverage?: CoverageRecord;\n}',
+  },
+  {
     name: 'PreparedLlmCall',
     declaration: 'export interface PreparedLlmCall {\n    readonly config: LlmCallConfig;\n    readonly retryPolicy: ResolvedRetryPolicy;\n    readonly context?: LlmModelContext;\n    readonly adapterDefaults: LlmCallConfigAdapterDefaults;\n    stream(options: GenerateOptions): AsyncIterable<StreamChunk>;\n}',
   },
@@ -4289,12 +4580,16 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface PreparedMemoryTurn {\n    readonly handle: MemoryTurnHandle;\n    readonly scope: MemoryScope;\n    readonly sessionId: SessionId;\n    readonly turn: number;\n    readonly query: string;\n    readonly candidates: readonly MemorySearchHit[];\n}',
   },
   {
+    name: 'PreparedPromptEnhancementContext',
+    declaration: 'export interface PreparedPromptEnhancementContext {\n    readonly messages: readonly UserMessage[];\n    readonly trace?: JsonValue;\n}',
+  },
+  {
     name: 'PreparedReferencedMessage',
     declaration: 'export interface PreparedReferencedMessage {\n    content: ContentBlock[];\n    additionalContext?: UserMessage;\n}',
   },
   {
     name: 'PreparedStepContext',
-    declaration: 'export interface PreparedStepContext {\n    readonly messages: readonly UserMessage[];\n    readonly evidence: readonly Evidence[];\n}',
+    declaration: 'export interface PreparedStepContext {\n    readonly contributions: readonly PreparedContextContribution[];\n    readonly messages: readonly UserMessage[];\n    readonly evidence: readonly Evidence[];\n    readonly coverage: readonly CoverageRecord[];\n}',
   },
   {
     name: 'PrepareMemoryTurnInput',
@@ -4325,6 +4620,18 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export type PreToolDecision = {\n    kind: \'allow\';\n} | {\n    kind: \'deny\';\n    reason: string;\n} | {\n    kind: \'ask\';\n    reason?: string;\n};',
   },
   {
+    name: 'ProductMode',
+    declaration: 'export type ProductMode = \'simple\' | \'developer\';',
+  },
+  {
+    name: 'ProductModeSetRequest',
+    declaration: 'export interface ProductModeSetRequest {\n    readonly mode: ProductMode;\n}',
+  },
+  {
+    name: 'ProductModeSnapshot',
+    declaration: 'export interface ProductModeSnapshot {\n    readonly mode: ProductMode;\n}',
+  },
+  {
     name: 'ProjectionChangeListener',
     declaration: 'export type ProjectionChangeListener = (session: Session, key: Extract<keyof SessionProjectionMap, string>, value: unknown, seq: number) => void;',
   },
@@ -4351,6 +4658,42 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'PromptContext',
     declaration: 'export interface PromptContext {\n    readonly name: string;\n    readonly order: number;\n    readonly text: string | ((context: AssembleContext) => string);\n}',
+  },
+  {
+    name: 'PromptEnhancementContextProvider',
+    declaration: 'export interface PromptEnhancementContextProvider {\n    readonly id: string;\n    readonly prepare: (request: PromptEnhancementContextRequest) => Promise<PreparedPromptEnhancementContext>;\n}',
+  },
+  {
+    name: 'PromptEnhancementContextRequest',
+    declaration: 'export interface PromptEnhancementContextRequest {\n    readonly purpose: typeof PROMPT_ENHANCEMENT_CONTEXT_PURPOSE;\n    readonly agent: Agent;\n    readonly draft: string;\n    readonly signal: AbortSignal;\n}',
+  },
+  {
+    name: 'PromptEnhancementFailure',
+    declaration: 'export interface PromptEnhancementFailure {\n    readonly code: string;\n    readonly message: string;\n}',
+  },
+  {
+    name: 'PromptEnhancementModelProvenance',
+    declaration: 'export interface PromptEnhancementModelProvenance {\n    readonly provider: string;\n    readonly model: string;\n}',
+  },
+  {
+    name: 'PromptEnhancementOutcome',
+    declaration: 'export type PromptEnhancementOutcome = {\n    readonly kind: \'enhanced\';\n    readonly result: PromptEnhancementResult;\n} | {\n    readonly kind: \'preserved\';\n    readonly reason: \'cancelled\' | \'failed\';\n    readonly originalDraft: string;\n    readonly failure?: PromptEnhancementFailure;\n};',
+  },
+  {
+    name: 'PromptEnhancementProvider',
+    declaration: 'export interface PromptEnhancementProvider {\n    readonly id: string;\n    readonly enhance: (request: PromptEnhancementProviderRequest) => Promise<PromptEnhancementProviderResult>;\n}',
+  },
+  {
+    name: 'PromptEnhancementProviderRequest',
+    declaration: 'export interface PromptEnhancementProviderRequest {\n    readonly agent: Agent;\n    readonly draft: string;\n    readonly context: PreparedPromptEnhancementContext;\n    readonly signal: AbortSignal;\n}',
+  },
+  {
+    name: 'PromptEnhancementProviderResult',
+    declaration: 'export interface PromptEnhancementProviderResult {\n    readonly enhancedDraft: string;\n    readonly assumptions: readonly string[];\n    readonly openQuestions: readonly string[];\n    readonly model: PromptEnhancementModelProvenance;\n}',
+  },
+  {
+    name: 'PromptEnhancementResult',
+    declaration: 'export interface PromptEnhancementResult {\n    readonly originalDraft: string;\n    readonly enhancedDraft: string;\n    readonly assumptions: readonly string[];\n    readonly openQuestions: readonly string[];\n    readonly model: PromptEnhancementModelProvenance;\n    readonly contextTrace?: JsonValue;\n}',
   },
   {
     name: 'PromptSection',
@@ -4385,6 +4728,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export type ReasoningEffortId = Branded<\'ReasoningEffortId\'>;',
   },
   {
+    name: 'ReconcileMemoryOutcomesInput',
+    declaration: 'export interface ReconcileMemoryOutcomesInput {\n    readonly scope: MemoryScope;\n    readonly sessionId: SessionId;\n    readonly outcomes: readonly MemoryOutcome[];\n}',
+  },
+  {
     name: 'RedactedSecret',
     declaration: 'export interface RedactedSecret {\n    path: string[];\n    set: boolean;\n}',
   },
@@ -4398,7 +4745,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'RefreshSummary',
-    declaration: 'export interface RefreshSummary {\n    readonly reason: RefreshReason;\n    readonly changedFiles: number;\n    readonly removedFiles: number;\n    readonly chunksWritten: number;\n    readonly durationMs: number;\n    readonly epochsAfter: EpochPair;\n}',
+    declaration: 'export interface RefreshSummary {\n    readonly reason: RefreshReason;\n    readonly changedFiles: number;\n    readonly removedFiles: number;\n    readonly chunksWritten: number;\n    readonly durationMs: number;\n    readonly epochsAfter: EpochPair;\n    readonly explain?: BuildExplain;\n}',
   },
   {
     name: 'RememberMemoryInput',
@@ -4470,7 +4817,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'ReviseMemoryInput',
-    declaration: 'export interface ReviseMemoryInput {\n    readonly scope: MemoryScope;\n    readonly id: MemoryId;\n    readonly content?: string;\n    readonly summary?: string | null;\n    readonly importance?: number;\n    readonly confidence?: number;\n    readonly trust?: MemoryTrust;\n    readonly status?: Exclude<MemoryStatus, \'tombstoned\'>;\n    readonly validUntil?: number | null;\n    readonly evidence: readonly MemoryEvidence[];\n}',
+    declaration: 'export interface ReviseMemoryInput {\n    readonly scope: MemoryScope;\n    readonly id: MemoryId;\n    readonly expectedRevision?: number;\n    readonly content?: string;\n    readonly summary?: string | null;\n    readonly importance?: number;\n    readonly confidence?: number;\n    readonly trust?: MemoryTrust;\n    readonly status?: Exclude<MemoryStatus, \'tombstoned\'>;\n    readonly validUntil?: number | null;\n    readonly evidence: readonly MemoryEvidence[];\n    readonly governance?: MemoryGovernanceSignalInput;\n}',
   },
   {
     name: 'RlhEnvironment',
@@ -4558,7 +4905,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'SearchHit',
-    declaration: 'export interface SearchHit {\n    readonly chunkId: string;\n    readonly filePath: string;\n    readonly startLine: number;\n    readonly endLine: number;\n    readonly breadcrumb?: string;\n    readonly symbolName?: string;\n    readonly score: number;\n    readonly graphScore?: number;\n    readonly rank: number;\n    readonly reasons: readonly string[];\n    readonly parserTier: ParserTier;\n    readonly parserConfidence: number;\n}',
+    declaration: 'export interface SearchHit {\n    readonly chunkId: string;\n    readonly filePath: string;\n    readonly language: string;\n    readonly contentHash: string;\n    readonly startLine: number;\n    readonly endLine: number;\n    readonly breadcrumb?: string;\n    readonly symbolName?: string;\n    readonly score: number;\n    readonly graphScore?: number;\n    readonly rank: number;\n    readonly reasons: readonly string[];\n    readonly scoreTrace: readonly SearchScoreComponent[];\n    readonly parserTier: ParserTier;\n    readonly parserConfidence: number;\n}',
   },
   {
     name: 'SearchLineMatch',
@@ -4570,7 +4917,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'SearchMemoryInput',
-    declaration: 'export interface SearchMemoryInput {\n    readonly scope: MemoryScope;\n    readonly query: string;\n    readonly limit: number;\n    readonly kinds?: readonly MemoryKind[];\n    readonly statuses?: readonly MemoryStatus[];\n}',
+    declaration: 'export interface SearchMemoryInput {\n    readonly scope: MemoryScope;\n    readonly query: string;\n    readonly limit: number;\n    readonly kinds?: readonly MemoryKind[];\n    readonly statuses?: readonly MemoryStatus[];\n    readonly recordAccess?: boolean;\n}',
   },
   {
     name: 'SearchPathsResultView',
@@ -4578,7 +4925,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'SearchRequest',
-    declaration: 'export interface SearchRequest {\n    readonly query: string;\n    readonly paths?: readonly string[];\n    readonly recentPaths?: readonly string[];\n    readonly pathPrefix?: string;\n    readonly topK?: number;\n}',
+    declaration: 'export interface SearchRequest {\n    readonly query: string;\n    readonly paths?: readonly string[];\n    readonly recentPaths?: readonly string[];\n    readonly boostFilePaths?: readonly string[];\n    readonly conversationQueries?: readonly string[];\n    readonly pinnedFilePaths?: readonly string[];\n    readonly overlayFilePaths?: readonly string[];\n    readonly pathPrefix?: string;\n    readonly topK?: number;\n}',
   },
   {
     name: 'SearchResult',
@@ -4587,6 +4934,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'SearchResultView',
     declaration: 'export type SearchResultView = SearchMatchesResultView | SearchPathsResultView;',
+  },
+  {
+    name: 'SearchScoreComponent',
+    declaration: 'export interface SearchScoreComponent {\n    readonly label: string;\n    readonly value: number;\n}',
   },
   {
     name: 'SendTeamMessageRequest',
@@ -4675,6 +5026,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'SessionHeader',
     declaration: 'export interface SessionHeader {\n    readonly version: number;\n    readonly id: SessionId;\n    readonly createdAt: number;\n    readonly cwd?: string;\n    readonly parentSession?: SessionId;\n    readonly seedLength?: number;\n    readonly origin?: SessionOrigin;\n    readonly delegationDepth?: number;\n    readonly agentPreset?: string;\n}',
+  },
+  {
+    name: 'SessionHistoryContextConfig',
+    declaration: 'export interface SessionHistoryContextConfig {\n    readonly maxExchanges: number;\n    readonly maxChars: number;\n    readonly maxTokens: number;\n}',
   },
   {
     name: 'SessionId',
@@ -4977,12 +5332,16 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface SpillSource {\n    toolName: string;\n    callId: CallId;\n    label: string;\n}',
   },
   {
+    name: 'StepContextCaller',
+    declaration: 'export interface StepContextCaller {\n    readonly sessionId: SessionId;\n    readonly agentId: string;\n    readonly workspaceId: string;\n    readonly turn?: number;\n    readonly step?: number;\n    readonly agentPreset?: string;\n    readonly origin?: SessionOrigin;\n}',
+  },
+  {
     name: 'StepContextContributor',
     declaration: 'export interface StepContextContributor {\n    readonly id: string;\n    contribute(input: StepContextInput): Promise<ContributedStepContext | undefined>;\n}',
   },
   {
     name: 'StepContextInput',
-    declaration: 'export interface StepContextInput {\n    readonly messages: readonly UserMessage[];\n    readonly signal: AbortSignal;\n    readonly cwd: string;\n}',
+    declaration: 'export interface StepContextInput {\n    readonly purpose: ContextPurpose;\n    readonly messages: readonly UserMessage[];\n    readonly signal: AbortSignal;\n    readonly cwd: string;\n    readonly caller: StepContextCaller;\n}',
   },
   {
     name: 'StorageBackend',

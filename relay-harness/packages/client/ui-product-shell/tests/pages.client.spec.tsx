@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
-import { LibraryPage } from '../src/client/LibraryPage.tsx'
-import { WorkPage } from '../src/client/WorkPage.tsx'
+import type {} from '../src/client/index.ts'
+import { LibraryPage, type LibraryPageProps } from '../src/client/LibraryPage.tsx'
+import { WorkPage, type WorkPageProps } from '../src/client/WorkPage.tsx'
 import type { WorkSummary } from '../src/client/work-projection.ts'
 
 afterEach(cleanup)
@@ -13,15 +14,16 @@ describe('product navigation pages', () => {
   it('Library uses Files and Settings selection callbacks rather than local placeholders', () => {
     const openFiles = vi.fn()
     const openSettings = vi.fn()
-    render(<LibraryPage
-      wide
-      expandSidebar={vi.fn()}
-      useSessions={((select: (value: unknown) => unknown) => select({ current: 's1' })) as never}
-      useWorkspaces={unused}
-      openFiles={openFiles}
-      openSettings={openSettings}
-      t={t}
-    />)
+    const page = {
+      wide: true,
+      expandSidebar: vi.fn(),
+      useSessions: ((select: (value: unknown) => unknown) => select({ current: 's1' })) as never,
+      useWorkspaces: unused,
+      openFiles,
+      openSettings,
+      t,
+    } as unknown as LibraryPageProps
+    render(<LibraryPage {...page} />)
     fireEvent.click(screen.getByRole('button', { name: 'library.files' }))
     fireEvent.click(screen.getByRole('button', { name: 'library.memory' }))
     fireEvent.click(screen.getByRole('button', { name: 'library.index' }))
@@ -43,16 +45,17 @@ describe('product navigation pages', () => {
       completion: 'running',
       cwd: '/work',
     }
-    render(<WorkPage
-      wide
-      expandSidebar={vi.fn()}
-      useSessions={unused}
-      useWorkspaces={unused}
-      useWork={select => select(summary)}
-      openDeliverable={openDeliverable}
-      openFiles={vi.fn()}
-      t={t}
-    />)
+    const page = {
+      wide: true,
+      expandSidebar: vi.fn(),
+      useSessions: unused,
+      useWorkspaces: unused,
+      useWork: (select: (value: WorkSummary) => unknown) => select(summary),
+      openDeliverable,
+      openFiles: vi.fn(),
+      t,
+    } as unknown as WorkPageProps
+    render(<WorkPage {...page} />)
     expect(screen.getByText('Ship')).toBeTruthy()
     expect(screen.getByText('work.completion.running')).toBeTruthy()
     expect(screen.getByText('1/2')).toBeTruthy()

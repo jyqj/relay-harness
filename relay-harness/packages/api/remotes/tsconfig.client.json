@@ -28,6 +28,12 @@
       "path": "../../context/file-reference"
     },
     {
+      "path": "../../context/context-engine"
+    },
+    {
+      "path": "../../context/prompt-enhancement"
+    },
+    {
       "path": "../../context/session-reference"
     },
     {
@@ -52,7 +58,13 @@
       "path": "../../host/mcp-servers"
     },
     {
+      "path": "../../host/product-mode"
+    },
+    {
       "path": "../../host/skill-inventory/tsconfig.types.json"
+    },
+    {
+      "path": "../../host/memory-center/tsconfig.types.json"
     },
     {
       "path": "../../interaction/commands"

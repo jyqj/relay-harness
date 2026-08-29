@@ -14,6 +14,7 @@
 
 export {
   CODE_INDEX_METADATA_EVIDENCE_EPOCH,
+  CODE_INDEX_METADATA_EMBEDDING_EPOCH,
   CODE_INDEX_METADATA_EXPORT_FINGERPRINT_PREFIX,
   CODE_INDEX_METADATA_INDEX_EPOCH,
   CODE_INDEX_SQLITE_APPLICATION_ID,
@@ -25,7 +26,9 @@ export { decodeChunkText, encodeChunkText, isChunkTextCompressionCandidate, CHUN
 export type { ChunkTextEncoding, EncodedChunkText } from './codec.ts'
 export { openCodeIndexDatabase } from './open.ts'
 export type { JournalMode } from './open.ts'
-export { readEpochs, bumpIndexEpochOnceInTx, bumpEvidenceEpochOnceInTx, assertExactAdvance } from './epoch.ts'
+export { ensureEmbeddingGeneration } from './embedding-generation.ts'
+export type { EmbeddingGenerationRow } from './embedding-generation.ts'
+export { readEpochs, bumpIndexEpochOnceInTx, bumpEvidenceEpochOnceInTx, bumpEmbeddingEpochOnceInTx, assertExactAdvance } from './epoch.ts'
 export type { EpochChannel } from './epoch.ts'
 export { readVectorCoverage } from './reader.ts'
 export { writeFilesDelta, writeResolvedEdges, writeChunkVectors } from './writer.ts'
@@ -52,11 +55,13 @@ export {
   DEFAULT_EMBED_JOB_MAX_ATTEMPTS,
   claimEmbedJobs,
   chunkRevisionsForFiles,
+  chunkRevisionsMissingGeneration,
   completeEmbedJob,
   embedChunkInputs,
   enqueueEmbedJobs,
   failEmbedJob,
   pendingEmbedCount,
+  resetFailedEmbedJobsForGeneration,
 } from './embed-queue.ts'
 export type {
   ClaimEmbedJobsOptions,

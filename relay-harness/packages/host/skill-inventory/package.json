@@ -49,22 +49,25 @@
   ],
   "license": "MIT",
   "dependencies": {
+    "fflate": "^0.8.3",
     "yaml": "^2.9.0",
     "zod": "^4.4.3"
   },
   "peerDependencies": {
+    "@relay-harness/cordis": "workspace:^",
+    "@relay-harness/rlh-atomic-write": "workspace:^",
     "@relay-harness/rlh-home-paths": "workspace:^",
     "@relay-harness/rlh-invariants": "workspace:^",
     "@relay-harness/rlh-skill": "workspace:^",
-    "@relay-harness/rlh-typert-protocol": "workspace:^",
-    "@relay-harness/cordis": "workspace:^"
+    "@relay-harness/rlh-typert-protocol": "workspace:^"
   },
   "devDependencies": {
+    "@relay-harness/cordis": "workspace:^",
+    "@relay-harness/rlh-atomic-write": "workspace:^",
     "@relay-harness/rlh-home-paths": "workspace:^",
     "@relay-harness/rlh-invariants": "workspace:^",
     "@relay-harness/rlh-scope": "workspace:^",
     "@relay-harness/rlh-skill": "workspace:^",
-    "@relay-harness/rlh-typert-protocol": "workspace:^",
-    "@relay-harness/cordis": "workspace:^"
+    "@relay-harness/rlh-typert-protocol": "workspace:^"
   }
 }

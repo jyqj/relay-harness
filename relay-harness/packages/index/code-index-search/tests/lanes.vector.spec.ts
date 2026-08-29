@@ -179,6 +179,23 @@ describe('runVectorLane', () => {
       .addChunk({ chunkId: 'c:auth', filePath: 'src/auth.ts', startLine: 1, endLine: 2, text: 'auth handler' })
     expect(runVectorLane(buildContext(bare, { queryVector, priorCandidates: ['c:auth'] }), 'fake-embed')).toEqual([])
   })
+
+  it('reports bounded independent recall as partial instead of silently claiming full coverage', () => {
+    const index = vectorIndex(queryVector)
+    index.vector = {
+      ...(index.vector as NonNullable<typeof index.vector>),
+      recallCandidates: () => ({
+        hits: [{ chunkId: 'c:auth', score: 1 }],
+        scanned: 1,
+        truncated: true,
+      }),
+    }
+    const errors: string[] = []
+    const context = buildContext(index, { queryVector })
+    const observed: LaneContext = { ...context, readErrors: { push: (error) => { errors.push(error) } } }
+    expect(runVectorLane(observed, 'fake-embed')).toEqual([{ chunkId: 'c:auth', score: 1 }])
+    expect(errors).toEqual(['vector recall scan truncated after 1 rows; semantic candidate coverage is partial'])
+  })
 })
 
 describe('vector lane through the engine', () => {

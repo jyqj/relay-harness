@@ -9,6 +9,7 @@ import {
   enqueueEmbedJobs,
   failEmbedJob,
   pendingEmbedCount,
+  resetFailedEmbedJobsForGeneration,
 } from '../src/embed-queue.ts'
 import { decodeChunkText } from '../src/codec.ts'
 import { openCodeIndexDatabase } from '../src/open.ts'
@@ -227,6 +228,30 @@ describe('completeEmbedJob / failEmbedJob', () => {
     failEmbedJob(db, { id: second!.id, owner: 'w2', error: 'provider 500 again', retryAt: 9_000, now: 6_100 })
     expect((db.prepare('SELECT status FROM code_embed_jobs').get() as { status: string }).status).toBe('failed')
     expect(claimEmbedJobs(db, { owner: 'w3', leaseMs: 1_000, now: 9_000 })).toEqual([])
+    db.close()
+  })
+
+  it('resets a current-content terminal failure once and never loops indefinitely', async () => {
+    const db = await openCodeIndexDatabase(':memory:')
+    insertChunk(db, 'src/a.ts', 'chunk:src/a.ts:0')
+    enqueue(db, 'chunk:src/a.ts:0', 'embed-test', 'hash')
+    for (const [index, owner] of ['w1', 'w2'].entries()) {
+      const [job] = claimEmbedJobs(db, { owner, leaseMs: 1_000, now: 5_000 + index * 2_000 })
+      failEmbedJob(db, { id: job!.id, owner, error: 'bad credential', retryAt: 6_000 + index * 2_000, now: 5_100 + index * 2_000 })
+    }
+    expect(resetFailedEmbedJobsForGeneration(db, 'legacy-model:embed-test', 10_000)).toBe(1)
+    expect((db.prepare('SELECT status, attempts, reconcile_resets FROM code_embed_jobs').get() as {
+      status: string
+      attempts: number
+      reconcile_resets: number
+    })).toEqual({ status: 'pending', attempts: 0, reconcile_resets: 1 })
+
+    for (const [index, owner] of ['w3', 'w4'].entries()) {
+      const [job] = claimEmbedJobs(db, { owner, leaseMs: 1_000, now: 11_000 + index * 2_000 })
+      failEmbedJob(db, { id: job!.id, owner, error: 'still bad', retryAt: 12_000 + index * 2_000, now: 11_100 + index * 2_000 })
+    }
+    expect(resetFailedEmbedJobsForGeneration(db, 'legacy-model:embed-test', 20_000)).toBe(0)
+    expect((db.prepare('SELECT status FROM code_embed_jobs').get() as { status: string }).status).toBe('failed')
     db.close()
   })
 

@@ -2,9 +2,11 @@
 
 English | [中文](README.zh.md)
 
-Agent-turn Consumer for `ctx.longTermMemory`. On the first step of a top-level turn, it extracts only direct user text, prepares one scope-bound recall observation, packs candidates under the complete message character cap, and appends a separately sourced `user/message`. Provider failures fail open and leave the accepted direct prompt unchanged.
+Context Engine provider over `ctx.longTermMemory`. For the first step of a qualifying top-level Agent turn, it extracts only direct user text, prepares one scope-bound recall observation, packs candidates under the complete message character cap, and contributes a separately sourced message with revision-bound Evidence whose digest covers the complete injected item payload and bounded coverage. AgentLoop logs the admitted message and `context/prepared` provenance. Provider failures fail open and leave the direct prompt unchanged.
 
-The Consumer retains the prepared handle until the durable final `turn/end`. Completed and max-token turns commit the exact ids that entered the recall message; other endings abort. Unload drains active provider calls and aborts every remaining prepared turn. Delegated subagents are excluded by default.
+The provider retains the prepared handle until durable final `turn/end`. Completed and max-token turns commit only ids whose exact proposed message survived admission according to `context/prepared`; other endings abort. Unload drains active provider calls and aborts every remaining prepared turn. A preparation that fails before pending ownership is also aborted, so fail-open rendering cannot leak provider handles. Delegated subagents are excluded by default.
+
+For `purpose: prompt_enhancement`, the same contributor searches active, non-expired memories in the exact Scope and emits the same message/Evidence/coverage shape, but sets `recordAccess: false`: an unsent draft creates no prepared turn, access signal, Session event, or settlement state.
 
 ## Configuration
 
@@ -16,6 +18,7 @@ The Consumer retains the prepared handle until the durable final `turn/end`. Com
 | `candidateLimit` | `10` | Provider candidates before packing. |
 | `maxContextChars` | `3200` | Complete recall message cap in Unicode code points, including safety framing. |
 | `includeSubagents` | `false` | Whether delegated sessions receive recall. |
+| `agentPresets` | all | Optional durable preset allowlist; the shipped host config selects `standard`. |
 
 ## Model Experience
 
@@ -37,4 +40,4 @@ Recall is an append-only user-role suffix, so it preserves earlier reusable hist
 
 - **No extraction policy in the recall Consumer** — `memory-agent` only recalls and settles; the independent, explicitly enabled `memory-extractor-llm` Consumer creates automatic revisions.
 - **Character rather than tokenizer budget** — the complete bound is deterministic across providers, but it is not an exact model-token count.
-- **No cited-use signal** — commit records candidates admitted to the model, not whether the final answer semantically used each one.
+- **No cited-use signal** — the Memory Center shows model admission and downstream outcomes, but commit still cannot prove that the Assistant semantically relied on each admitted item.

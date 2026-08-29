@@ -4,6 +4,7 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const { spawnSync } = require('node:child_process');
 const fs = require('node:fs');
+const os = require('node:os');
 const path = require('node:path');
 
 const {
@@ -12,6 +13,7 @@ const {
   lockedProductionInstall,
   manifest,
   missingSubtrees,
+  vendoredPluginDirectories,
   vendorDir,
 } = require('./vendor-manifest.js');
 
@@ -43,12 +45,18 @@ test('no vendored install is committed', { skip: trackedVendorPaths() ? false : 
     'vendored node_modules are installed from a lockfile, not committed — see vendor/README.md');
 });
 
-test('the vendor manifest names every vendored plugin directory', () => {
-  const directories = fs.readdirSync(vendorDir, { withFileTypes: true })
-    .filter(entry => entry.isDirectory())
-    .map(entry => entry.name)
-    .sort();
-  assert.deepEqual(directories, Object.keys(manifest).sort());
+test('the vendor manifest names every vendored plugin package directory', () => {
+  assert.deepEqual(vendoredPluginDirectories(), Object.keys(manifest).sort());
+});
+
+test('ignored build-only residue is not mistaken for a vendored plugin package', (t) => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'rlh-vendor-roots-'));
+  t.after(() => { fs.rmSync(root, { recursive: true, force: true }); });
+  fs.mkdirSync(path.join(root, 'current'));
+  fs.writeFileSync(path.join(root, 'current', 'package.json'), '{"name":"current"}\n');
+  fs.mkdirSync(path.join(root, 'legacy', 'lib'), { recursive: true });
+  fs.writeFileSync(path.join(root, 'legacy', 'lib', 'index.js'), 'module.exports = {}\n');
+  assert.deepEqual(vendoredPluginDirectories(root), ['current']);
 });
 
 for (const [name, record] of Object.entries(manifest)) {

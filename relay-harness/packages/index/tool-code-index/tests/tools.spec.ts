@@ -13,6 +13,8 @@ import { CodeIndex, CODE_INDEX_NOT_INDEXED } from '@relay-harness/rlh-code-index
 import type {
   GraphExploreRequest,
   GraphExploreResult,
+  HydrateChunksRequest,
+  HydrateChunksResult,
   IndexStatusReport,
   RefreshOptions,
   RefreshSummary,
@@ -64,6 +66,8 @@ function fixtureSearch(): SearchResult {
       {
         chunkId: 'chunk:src/a.ts:3',
         filePath: 'src/a.ts',
+        language: 'typescript',
+        contentHash: 'hash-a',
         startLine: 10,
         endLine: 24,
         breadcrumb: 'module parseLedger',
@@ -71,17 +75,21 @@ function fixtureSearch(): SearchResult {
         score: 7.25,
         rank: 1,
         reasons: ['exact identifier', 'recent file'],
+        scoreTrace: [{ label: 'rrf:lexical', value: 7.25 }],
         parserTier: 'tree-sitter',
         parserConfidence: 0.9,
       },
       {
         chunkId: 'chunk:src/b.ts:0',
         filePath: 'src/b.ts',
+        language: 'typescript',
+        contentHash: 'hash-b',
         startLine: 40,
         endLine: 48,
         score: 2.5,
         rank: 2,
         reasons: ['lexical'],
+        scoreTrace: [{ label: 'rrf:lexical', value: 2.5 }],
         parserTier: 'heuristic',
         parserConfidence: 0.4,
       },
@@ -240,6 +248,14 @@ class RecordingIndex extends CodeIndex {
     return this.searchImpl(request)
   }
 
+  override async hydrateChunks(request: HydrateChunksRequest): Promise<HydrateChunksResult> {
+    return {
+      chunks: [],
+      rejected: request.chunkIds.map(chunkId => ({ chunkId, state: 'unavailable', reason: 'not-indexed' })),
+      epochs: { indexEpoch: this.indexEpoch, evidenceEpoch: 0 },
+    }
+  }
+
   override async exploreGraph(request: GraphExploreRequest): Promise<GraphExploreResult> {
     this.graphRequests.push(request)
     return this.exploreImpl(request)
@@ -281,6 +297,7 @@ async function call(ctx: Context, name: string, args: Record<string, unknown> = 
     callId: CallId(`call-${++callCounter}`),
     name,
     arguments: args,
+    agent: { session: { header: { cwd: process.cwd() } } } as never,
   })
   const content = result.content.filter(block => block.type === 'text').map(block => block.type === 'text' ? block.text : '').join('')
   const frozen = settled.at(-1)
@@ -727,6 +744,7 @@ describe('refresh_code_index execution', () => {
       callId: CallId('busy-first'),
       name: 'refresh_code_index',
       arguments: {},
+      agent: { session: { header: { cwd: process.cwd() } } } as never,
     })
     // Wait until the first pass actually entered execute (busy counter set).
     for (let spins = 0; index.refreshes.length === 0 && spins < 500; spins += 1) {

@@ -1,0 +1,12 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "lib/types",
+    "tsBuildInfoFile": "lib/tsconfig.types.tsbuildinfo"
+  },
+  "include": ["src/types.ts"],
+  "references": [
+    { "path": "../../memory/memory" }
+  ]
+}

@@ -21,6 +21,9 @@
       "path": "../../llm/llm"
     },
     {
+      "path": "../../context/context-engine"
+    },
+    {
       "path": "../../core/session"
     },
     {

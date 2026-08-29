@@ -1,6 +1,6 @@
 {
   "name": "@relay-harness/rlh-memory-agent",
-  "description": "Agent-turn recall and settlement Consumer for Relay Harness long-term memory",
+  "description": "Long-term-memory Context Engine provider with Agent-turn settlement and side-effect-free Prompt Enhancement retrieval",
   "version": "0.1.0-rc.8",
   "publishConfig": { "access": "public" },
   "repository": {
@@ -21,6 +21,7 @@
   "license": "MIT",
   "peerDependencies": {
     "@relay-harness/rlh-agent": "workspace:^",
+    "@relay-harness/rlh-context-engine": "workspace:^",
     "@relay-harness/rlh-invariants": "workspace:^",
     "@relay-harness/rlh-llm": "workspace:^",
     "@relay-harness/rlh-memory": "workspace:^",
@@ -30,6 +31,7 @@
   "dependencies": { "@relay-harness/schemastery": "workspace:^" },
   "devDependencies": {
     "@relay-harness/rlh-agent": "workspace:^",
+    "@relay-harness/rlh-context-engine": "workspace:^",
     "@relay-harness/rlh-invariants": "workspace:^",
     "@relay-harness/rlh-llm": "workspace:^",
     "@relay-harness/rlh-memory": "workspace:^",

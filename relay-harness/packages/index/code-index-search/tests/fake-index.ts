@@ -50,6 +50,9 @@ export interface FixtureChunk {
 
 interface FixtureFile {
   readonly summary: string
+  readonly contentHash: string
+  readonly parserTier: 'tree-sitter'
+  readonly parserConfidence: number
 }
 
 /** One stored call edge without its direction-dependent seed binding. */
@@ -314,7 +317,12 @@ export class InMemoryIndex implements RetrievalPort {
   }
 
   addFile(filePath: string, summary: string): this {
-    this.files.set(filePath, { summary })
+    this.files.set(filePath, {
+      summary,
+      contentHash: `fixture:${filePath}`,
+      parserTier: 'tree-sitter',
+      parserConfidence: 0.9,
+    })
     return this
   }
 
@@ -519,12 +527,15 @@ export class InMemoryIndex implements RetrievalPort {
         chunkId: chunk.chunkId,
         filePath: chunk.filePath,
         languageName: this.languageOf(chunk.filePath),
+        contentHash: this.files.get(chunk.filePath)!.contentHash,
         startLine: chunk.startLine,
         endLine: chunk.endLine,
         breadcrumb: chunk.breadcrumb ?? '',
         symbolName: chunk.symbolName ?? null,
         symbolKind: chunk.symbolKind ?? null,
         text: chunk.text,
+        parserTier: this.files.get(chunk.filePath)!.parserTier,
+        parserConfidence: this.files.get(chunk.filePath)!.parserConfidence,
       })
     }
     return rows

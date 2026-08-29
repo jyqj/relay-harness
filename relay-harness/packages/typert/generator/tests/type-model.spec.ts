@@ -1157,15 +1157,14 @@ describe('WorkspaceTypertGenerator', { timeout: 60_000 }, () => {
     )
   })
 
-  it('rejects absent Typert exports and package file entries', () => {
+  it('skips ordinary surfaces without opt-in and rejects malformed opt-in or package files', () => {
     const noSubpathRoot = copyFixture('typert-missing-artifact-export-')
     const noSubpathManifest = join(noSubpathRoot, 'packages/client', 'package.json')
     const noSubpath = JSON.parse(readFileSync(noSubpathManifest, 'utf8')) as Record<string, unknown>
     noSubpath.exports = './lib/index.js'
     writeFileSync(noSubpathManifest, `${JSON.stringify(noSubpath, null, 2)}\n`)
-    expect(() => new WorkspaceTypertGenerator(noSubpathRoot).generate()).toThrow(
-      '@fixture/client must export ./client/typert as',
-    )
+    expect(new WorkspaceTypertGenerator(noSubpathRoot).generate()
+      .some(artifact => artifact.package === '@fixture/client')).toBe(false)
 
     const invalidSubpathRoot = copyFixture('typert-invalid-artifact-export-')
     const invalidSubpathManifest = join(invalidSubpathRoot, 'packages/client', 'package.json')
@@ -1186,6 +1185,23 @@ describe('WorkspaceTypertGenerator', { timeout: 60_000 }, () => {
     expect(() => new WorkspaceTypertGenerator(noFilesRoot).generate()).toThrow(
       '@fixture/client package files must include lib/typert.client.js',
     )
+  })
+
+  it('requires Host reflection and Remote exports for a real Remote artifact', () => {
+    const source = resolve(import.meta.dirname, 'fixtures/remote-model')
+    const root = mkdtempSync(join(import.meta.dirname, '.typert-remote-publication-'))
+    temporaryRoots.push(root)
+    cpSync(source, root, { recursive: true })
+    const manifestPath = join(root, 'packages/remote/package.json')
+    const manifest = JSON.parse(readFileSync(manifestPath, 'utf8')) as {
+      exports: Record<string, unknown>
+    }
+    delete manifest.exports['./typert']
+    delete manifest.exports['./remote']
+    writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`)
+
+    expect(() => new WorkspaceTypertGenerator(root).generate(['@fixture/remote'], ['host']))
+      .toThrow('@fixture/remote must export ./typert as')
   })
 })
 

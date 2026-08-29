@@ -103,7 +103,7 @@ export async function openCodeIndexDatabase(path: string, journalMode: JournalMo
     // Apply mutating pragmas only after refusing foreign files.
     // journalMode is a validated closed union, not caller-controlled SQL.
     db.exec('PRAGMA foreign_keys = ON')
-    // Writers take BEGIN IMMEDIATE claims and the drain commits per job; a
+    // Writers take BEGIN IMMEDIATE claims and the drain commits per vector batch; a
     // bounded 5 s wait lets a concurrent writer's transaction clear instead of
     // surfacing SQLITE_BUSY to a search or refresh mid-pass (the reference
     // store sets the same timeout).

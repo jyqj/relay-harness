@@ -1,0 +1,16 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": { "rootDir": "src", "outDir": "lib/types" },
+  "include": ["src"],
+  "references": [
+    { "path": "../../../vendor/cordis" },
+    { "path": "../../context/context-engine" },
+    { "path": "../../goal/goal" },
+    { "path": "../../llm/llm" },
+    { "path": "../memory" },
+    { "path": "../../feedback/message-feedback" },
+    { "path": "../../core/session" },
+    { "path": "../../session-query/session-query" },
+    { "path": "../../runtime-diagnostics/invariants" }
+  ]
+}

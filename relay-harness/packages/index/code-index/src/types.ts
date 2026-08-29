@@ -4,12 +4,14 @@
  * @module @relay-harness/rlh-code-index/types
  */
 
-/** Immutable snapshot of the index's two monotonic clocks, keyed by consumers for caching. */
+/** Immutable snapshot of the index's monotonic clocks, keyed by consumers for caching. */
 export interface EpochPair {
   /** Advances exactly once per committed content-bearing write transaction. */
   readonly indexEpoch: number
   /** Reserved until semantic-evidence ingestion lands; implementations must not advance it. */
   readonly evidenceEpoch: number
+  /** Advances once per committed embedding-vector batch. Optional for provider compatibility. */
+  readonly embeddingEpoch?: number
 }
 
 /** Extraction tier that produced a chunk's symbol metadata (increasing confidence). */
@@ -26,10 +28,26 @@ export interface SearchRequest {
   readonly paths?: readonly string[]
   /** Files the model recently worked with; boosts their preselect score. */
   readonly recentPaths?: readonly string[]
+  /** Files in the caller's active working set; boosts preselection and reranking. */
+  readonly boostFilePaths?: readonly string[]
+  /** Prior queries, oldest to newest; the latest four bias lexical retrieval. */
+  readonly conversationQueries?: readonly string[]
+  /** Caller-pinned context files; boosts preselection and reranking. */
+  readonly pinnedFilePaths?: readonly string[]
+  /** Dirty-buffer or overlay-neighbor files; boosts preselection and reranking. */
+  readonly overlayFilePaths?: readonly string[]
   /** Restrict candidates to file paths starting with this prefix. */
   readonly pathPrefix?: string
   /** Requested hit count; the engine caps it by the repository-size tier. */
   readonly topK?: number
+}
+
+/** One additive component of a hit's final score, in accumulation order. */
+export interface SearchScoreComponent {
+  /** Stable component label (`rrf:lexical`, `overlap`, `boost:stage-a`, …). */
+  readonly label: string
+  /** Additive contribution; summing components left-to-right reproduces the hit score. */
+  readonly value: number
 }
 
 /** One ranked chunk-level retrieval result. */
@@ -38,6 +56,10 @@ export interface SearchHit {
   readonly chunkId: string
   /** Workspace-relative file path backing this hit. */
   readonly filePath: string
+  /** Stored language name for this chunk's file. */
+  readonly language: string
+  /** Content hash of the indexed file revision that produced this chunk. */
+  readonly contentHash: string
   /** Inclusive start line of the indexed span (1-based). */
   readonly startLine: number
   /** Inclusive end line of the indexed span (1-based). */
@@ -54,10 +76,62 @@ export interface SearchHit {
   readonly rank: number
   /** Deterministic reason tokens explaining every additive score component. */
   readonly reasons: readonly string[]
+  /** Complete additive score bill in accumulation order. */
+  readonly scoreTrace: readonly SearchScoreComponent[]
   /** Parser tier that extracted this chunk's metadata. */
   readonly parserTier: ParserTier
   /** Confidence reported alongside {@link SearchHit.parserTier}. */
   readonly parserConfidence: number
+}
+
+/** Request for one ordered batch of full indexed chunk bodies. */
+export interface HydrateChunksRequest {
+  /** Chunk identities to resolve; duplicates are returned once at their first position. */
+  readonly chunkIds: readonly string[]
+}
+
+/** One full chunk body read from the derived index with its owning source revision. */
+export interface HydratedChunk {
+  /** Stable chunk identity. */
+  readonly chunkId: string
+  /** Workspace-relative file path backing the chunk. */
+  readonly filePath: string
+  /** Stored language name for the file. */
+  readonly language: string
+  /** Content hash of the indexed file revision that produced this chunk. */
+  readonly contentHash: string
+  /** Inclusive start line of the indexed span (1-based). */
+  readonly startLine: number
+  /** Inclusive end line of the indexed span (1-based). */
+  readonly endLine: number
+  /** Full decoded source text stored for this chunk. */
+  readonly text: string
+  /** Extraction tier that produced this chunk's metadata. */
+  readonly parserTier: ParserTier
+  /** Confidence reported alongside {@link HydratedChunk.parserTier}. */
+  readonly parserConfidence: number
+  /** The backing file was re-hashed and matched {@link HydratedChunk.contentHash}. */
+  readonly verification: 'source-verified'
+}
+
+/** One requested chunk rejected before hydration could establish current-source identity. */
+export interface ChunkHydrationRejection {
+  /** Requested stable chunk identity. */
+  readonly chunkId: string
+  /** `stale` means the current file hash drifted; `unavailable` covers every failed read. */
+  readonly state: 'stale' | 'unavailable'
+  /** Stable provider-neutral reason token; never an underlying filesystem error string. */
+  readonly reason: 'not-indexed' | 'source-path-invalid' | 'source-unavailable' | 'source-revision-changed'
+}
+
+/** Complete batch-hydration answer under one observed provider generation. */
+export interface HydrateChunksResult {
+  /** Resolved chunks in first-occurrence request order. */
+  readonly chunks: readonly HydratedChunk[]
+  /** Requested identities rejected as stale or unavailable, in first-occurrence order. */
+  readonly rejected: readonly ChunkHydrationRejection[]
+  /** Epoch pair observed after the synchronous store read. */
+  readonly epochs: EpochPair
 }
 
 /** Complete retrieval answer, including epoch pairing and degradation state. */
@@ -89,8 +163,35 @@ export interface RefreshOptions {
   readonly reason?: RefreshReason
   /** Drop the derived schema and rebuild from scratch instead of diffing. */
   readonly forceRebuild?: boolean
-  /** Restrict this pass to explicit paths; omitted means the full tree. */
+  /** Restrict this pass to workspace-relative files/directory prefixes; omitted means the full tree. */
   readonly paths?: readonly string[]
+}
+
+/** Build-side explanation for the most recent refresh lifecycle. */
+export interface BuildExplain {
+  readonly scope: 'full' | 'scoped'
+  readonly requestedPaths: number
+  readonly pass: 'ran' | 'skipped'
+  readonly degraded: boolean
+  readonly degradationReasons: string[]
+  readonly dirty: {
+    readonly status: string
+    readonly marked: number
+    readonly roundsRun: number
+    readonly partial: boolean
+    readonly budgetExceeded: boolean
+  } | null
+  readonly embedding: {
+    readonly generationId: string
+    readonly missingChunks: number
+    readonly jobsEnqueued: number
+    readonly jobsDeduplicated: number
+    readonly jobsReset: number
+    readonly batchesClaimed: number
+    readonly batchesWritten: number
+    readonly jobsCompleted: number
+    readonly jobsFailed: number
+  } | null
 }
 
 /** Outcome of one completed refresh pass. */
@@ -107,6 +208,8 @@ export interface RefreshSummary {
   readonly durationMs: number
   /** Epoch pair observed after the final commit. */
   readonly epochsAfter: EpochPair
+  /** Why the pass ran/skipped and what derived work/degradation it produced. */
+  readonly explain?: BuildExplain
 }
 
 /**
@@ -335,4 +438,26 @@ export interface IndexStatusReport {
   readonly lastRefresh?: RefreshSummary
   /** True when a lane or reader failed during the last operation and results were partial. */
   readonly degraded: boolean
+}
+
+/** One durable embedding generation projected for management UI. */
+export interface CodeIndexGenerationStatus {
+  readonly generationId: string
+  readonly providerId: string
+  readonly endpointIdentity: string
+  readonly model: string
+  readonly dimensionMode: string
+  readonly configuredDimensions: number | null
+  readonly vectorizedChunks: number
+  readonly pendingJobs: number
+  readonly runningJobs: number
+  readonly failedJobs: number
+  readonly lastError?: string
+}
+
+/** Bounded operator projection for the Code Index Center. */
+export interface CodeIndexManagementStatus extends IndexStatusReport {
+  readonly chunkCount: number
+  readonly generations: readonly CodeIndexGenerationStatus[]
+  readonly lastError?: string
 }

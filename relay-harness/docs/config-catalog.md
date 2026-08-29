@@ -551,7 +551,27 @@ export interface EmbeddingConfig {
 
 Depends on: [`JournalMode`](../packages/index/code-index-sqlite/src/index.ts)
 
-Source: [`packages/index/code-index-local/src/index.ts:216`](../packages/index/code-index-local/src/index.ts)
+Source: [`packages/index/code-index-local/src/index.ts:232`](../packages/index/code-index-local/src/index.ts)
+
+<a id="relay-harnessrlh-code-index-workspace-router"></a>
+
+## `@relay-harness/rlh-code-index-workspace-router`
+
+```ts config-catalog
+/** Router configuration shared by every per-workspace local runtime. */
+export interface Config extends Omit<SingleWorkspaceConfig, 'workspaceRoot' | 'databasePath'> {
+  /** Directory containing workspace-hash SQLite files; omitted uses the normal RLH home. */
+  readonly databaseDirectory?: string
+  /** Maximum quiescent/open workspace runtimes retained in-process. Defaults to 4. */
+  readonly maxOpenWorkspaces?: number
+  /** Close an unused runtime after this many milliseconds. Defaults to 300000. */
+  readonly idleEvictMs?: number
+}
+```
+
+Depends on: [`SingleWorkspaceConfig`](#relay-harnessrlh-code-index-local)
+
+Source: [`packages/index/code-index-workspace-router/src/index.ts:63`](../packages/index/code-index-workspace-router/src/index.ts)
 
 <a id="relay-harnessrlh-code-runtime-worker-thread"></a>
 
@@ -980,6 +1000,26 @@ export interface Config {
 ```
 
 Source: [`packages/host/frontend-static/src/index.ts:28`](../packages/host/frontend-static/src/index.ts)
+
+<a id="relay-harnessrlh-host-memory-center"></a>
+
+## `@relay-harness/rlh-host-memory-center`
+
+Requires: `longTermMemory` · `sessions`
+
+```ts config-catalog
+/** Memory Center scope defaults. */
+export interface Config {
+  /** Stable user partition shared with the Memory Context contributor. Defaults to `local`. */
+  readonly userId?: string
+  /** Stable Agent partition shared with the Memory Context contributor. Defaults to `relay-harness`. */
+  readonly agentId?: string
+  /** Concurrent non-activating Session Query reads for why-used aggregation. Defaults to 4. */
+  readonly usageConcurrency?: number
+}
+```
+
+Source: [`packages/host/memory-center/src/index.ts:57`](../packages/host/memory-center/src/index.ts)
 
 <a id="relay-harnessrlh-host-webserver"></a>
 
@@ -1572,6 +1612,28 @@ export interface LspLocalServerConfig {
 
 Source: [`packages/lsp/lsp-stdio/src/index.ts:82`](../packages/lsp/lsp-stdio/src/index.ts)
 
+<a id="relay-harnessrlh-mcp-catalog"></a>
+
+## `@relay-harness/rlh-mcp-catalog`
+
+```ts config-catalog
+/** Resource admission budgets for the Context contributor. */
+export interface Config {
+  /** Maximum explicitly mentioned concrete Resources hydrated per request. */
+  readonly maxResources?: number
+  /** Maximum Unicode code points across rendered Resource content. */
+  readonly maxChars?: number
+  /** Maximum UTF-8/base64 bytes accepted from one Resource read. */
+  readonly maxReadBytes?: number
+  /** Maximum serialized bytes accepted from one resolved Prompt. */
+  readonly maxPromptBytes?: number
+  /** Maximum Unicode code points in one explicit Prompt argument. */
+  readonly maxPromptArgumentChars?: number
+}
+```
+
+Source: [`packages/mcp/mcp-catalog/src/index.ts:18`](../packages/mcp/mcp-catalog/src/index.ts)
+
 <a id="relay-harnessrlh-mcp-client"></a>
 
 ## `@relay-harness/rlh-mcp-client`
@@ -1602,6 +1664,8 @@ export interface StdioConfig {
   cwd: string
   /** Per-tool-call timeout in milliseconds. */
   toolCallTimeoutMs: number
+  /** Whole connect + paginated discovery deadline in milliseconds. */
+  startupTimeoutMs?: number
   /** Fail plugin activation when the initial connection or tool synchronization fails. */
   failOnStartupError: boolean
   /** Automatic reconnect policy after a lost connection; omission uses the defaults. */
@@ -1624,6 +1688,8 @@ export interface StreamableHttpConfig {
   headers: Record<string, string>
   /** Per-tool-call timeout in milliseconds. */
   toolCallTimeoutMs: number
+  /** Whole connect + paginated discovery deadline in milliseconds. */
+  startupTimeoutMs?: number
   /** Fail plugin activation when the initial connection or tool synchronization fails. */
   failOnStartupError: boolean
   /** Automatic reconnect policy after a lost connection; omission uses the defaults. */
@@ -1643,7 +1709,7 @@ export interface ReconnectConfig {
 }
 ```
 
-Source: [`packages/mcp/mcp-client/src/index.ts:100`](../packages/mcp/mcp-client/src/index.ts)
+Source: [`packages/mcp/mcp-client/src/index.ts:123`](../packages/mcp/mcp-client/src/index.ts)
 
 <a id="relay-harnessrlh-mcp-servers-file"></a>
 
@@ -1672,16 +1738,16 @@ Source: [`packages/mcp/mcp-servers-file/src/index.ts:12`](../packages/mcp/mcp-se
 
 ## `@relay-harness/rlh-memory-agent`
 
-Requires: `longTermMemory`
+Requires: `longTermMemory` · `contextEngine`
 
 ```ts config-catalog
-/** Agent recall Consumer configuration. */
+/** Memory Context Provider configuration. */
 export interface Config {
   /** Stable user identity inside each workspace. Defaults to `local`. */
   userId?: string
   /** Stable Agent identity shared across recallable sessions. Defaults to `relay-harness`. */
   agentId?: string
-  /** Explicit workspace identity; omission uses the session cwd, then `global`. */
+  /** Explicit workspace identity; omission uses caller workspace identity. */
   workspaceId?: string
   /** Provider candidate cap before model-context packing. Defaults to 10. */
   candidateLimit?: number
@@ -1689,10 +1755,12 @@ export interface Config {
   maxContextChars?: number
   /** Whether delegated subagents receive and settle memory. Defaults to false. */
   includeSubagents?: boolean
+  /** Durable Agent preset ids allowed to recall. Omission allows every preset. */
+  agentPresets?: string[]
 }
 ```
 
-Source: [`packages/memory/memory-agent/src/index.ts:53`](../packages/memory/memory-agent/src/index.ts)
+Source: [`packages/memory/memory-agent/src/index.ts:61`](../packages/memory/memory-agent/src/index.ts)
 
 <a id="relay-harnessrlh-memory-extractor-llm"></a>
 
@@ -1748,6 +1816,26 @@ export interface Config {
 
 Source: [`packages/memory/memory-extractor-llm/src/index.ts:43`](../packages/memory/memory-extractor-llm/src/index.ts)
 
+<a id="relay-harnessrlh-memory-outcome-reconciler"></a>
+
+## `@relay-harness/rlh-memory-outcome-reconciler`
+
+Requires: `longTermMemory` · `sessionQuery` · `messageFeedback`
+
+```ts config-catalog
+/** Reconciler scope and bounded persisted-read policy. */
+export interface Config {
+  /** Stable user partition shared with Memory recall. Defaults to `local`. */
+  readonly userId?: string
+  /** Stable Agent partition shared with Memory recall. Defaults to `relay-harness`. */
+  readonly agentId?: string
+  /** Concurrent persisted Session reads during a complete reconciliation. Defaults to 4. */
+  readonly concurrency?: number
+}
+```
+
+Source: [`packages/memory/memory-outcome-reconciler/src/index.ts:27`](../packages/memory/memory-outcome-reconciler/src/index.ts)
+
 <a id="relay-harnessrlh-memory-sqlite"></a>
 
 ## `@relay-harness/rlh-memory-sqlite`
@@ -1773,7 +1861,7 @@ export interface Config {
 export type JournalMode = 'wal' | 'delete' | 'truncate' | 'persist'
 ```
 
-Source: [`packages/memory/memory-sqlite/src/index.ts:68`](../packages/memory/memory-sqlite/src/index.ts)
+Source: [`packages/memory/memory-sqlite/src/index.ts:82`](../packages/memory/memory-sqlite/src/index.ts)
 
 <a id="relay-harnessrlh-message-feedback"></a>
 
@@ -1789,7 +1877,7 @@ export interface Config {
 }
 ```
 
-Source: [`packages/feedback/message-feedback/src/index.ts:49`](../packages/feedback/message-feedback/src/index.ts)
+Source: [`packages/feedback/message-feedback/src/index.ts:61`](../packages/feedback/message-feedback/src/index.ts)
 
 <a id="relay-harnessrlh-permission-presets"></a>
 
@@ -1869,6 +1957,54 @@ export interface PlanModeConfig {
 ```
 
 Source: [`packages/plan/plan-mode/src/index.ts:71`](../packages/plan/plan-mode/src/index.ts)
+
+<a id="relay-harnessrlh-prompt-enhancement"></a>
+
+## `@relay-harness/rlh-prompt-enhancement`
+
+```ts config-catalog
+/** Service-owned Remote admission and result bounds. */
+export interface Config {
+  /** Maximum UTF-8 bytes accepted for one unsent draft before context retrieval. */
+  readonly maxDraftBytes?: number
+  /** Maximum UTF-8 bytes accepted from one detached provider result. */
+  readonly maxResultBytes?: number
+}
+```
+
+Source: [`packages/context/prompt-enhancement/src/index.ts:45`](../packages/context/prompt-enhancement/src/index.ts)
+
+<a id="relay-harnessrlh-prompt-enhancement-llm"></a>
+
+## `@relay-harness/rlh-prompt-enhancement-llm`
+
+Requires: `promptEnhancement` · `llm`
+
+```ts config-catalog
+/** Model route, budget, and structured-output policy. */
+export interface Config {
+  /** Optional explicit provider route; must be paired with `model`. */
+  readonly provider?: string
+  /** Optional explicit model id; must be paired with `provider`. */
+  readonly model?: string
+  /** Maximum UTF-8 bytes across the exact system and message list. */
+  readonly maxInputBytes?: number
+  /** Auxiliary generation output-token cap. */
+  readonly maxOutputTokens?: number
+  /** Maximum cumulative UTF-8 bytes admitted from the raw output stream. */
+  readonly maxOutputBytes?: number
+  /** End-to-end auxiliary request deadline in milliseconds. */
+  readonly timeoutMs?: number
+  /** Largest accepted enhanced draft in Unicode code points. */
+  readonly maxDraftChars?: number
+  /** Largest accepted assumptions or questions array. */
+  readonly maxListItems?: number
+  /** Largest accepted assumption or question in Unicode code points. */
+  readonly maxItemChars?: number
+}
+```
+
+Source: [`packages/context/prompt-enhancement-llm/src/index.ts:65`](../packages/context/prompt-enhancement-llm/src/index.ts)
 
 <a id="relay-harnessrlh-pwsh-local"></a>
 
@@ -2063,6 +2199,24 @@ export interface JsonRpcConfig {
 Depends on: `Readable` (`node:stream`) · `Writable` (`node:stream`)
 
 Source: [`packages/sdk/server/src/index.ts:25`](../packages/sdk/server/src/index.ts)
+
+<a id="relay-harnessrlh-session-history-context"></a>
+
+## `@relay-harness/rlh-session-history-context`
+
+```ts config-catalog
+/** Loader configuration for the purpose-specific contributor. */
+export interface Config {
+  /** Most-recent logical exchanges or approved checkpoints admitted. */
+  readonly maxExchanges?: number
+  /** Complete rendered-message budget in Unicode code points. */
+  readonly maxChars?: number
+  /** Complete rendered-message budget under `ctx.tokenMeter`. */
+  readonly maxTokens?: number
+}
+```
+
+Source: [`packages/context/session-history-context/src/index.ts:43`](../packages/context/session-history-context/src/index.ts)
 
 <a id="relay-harnessrlh-session-persistence-jsonl"></a>
 
@@ -3709,7 +3863,9 @@ These load from a `cordis.yml` entry with no `config:` block; they declare no co
 - `@relay-harness/rlh-client-ui-agents-panel` ([`packages/client/ui-agents-panel/src/index.ts`](../packages/client/ui-agents-panel/src/index.ts))
 - `@relay-harness/rlh-client-ui-attachment` ([`packages/client/ui-attachment/src/index.ts`](../packages/client/ui-attachment/src/index.ts))
 - `@relay-harness/rlh-client-ui-brand-official` ([`packages/client/ui-brand-official/src/index.ts`](../packages/client/ui-brand-official/src/index.ts))
+- `@relay-harness/rlh-client-ui-code-index-center` ([`packages/client/ui-code-index-center/src/index.ts`](../packages/client/ui-code-index-center/src/index.ts))
 - `@relay-harness/rlh-client-ui-commands` ([`packages/client/ui-commands/src/index.ts`](../packages/client/ui-commands/src/index.ts))
+- `@relay-harness/rlh-client-ui-context-inspector` ([`packages/client/ui-context-inspector/src/index.ts`](../packages/client/ui-context-inspector/src/index.ts))
 - `@relay-harness/rlh-client-ui-conversation` ([`packages/client/ui-conversation/src/index.ts`](../packages/client/ui-conversation/src/index.ts))
 - `@relay-harness/rlh-client-ui-cordis` ([`packages/extensions/ui-cordis/src/index.ts`](../packages/extensions/ui-cordis/src/index.ts))
 - `@relay-harness/rlh-client-ui-deliverables` — requires `systemPrompt` ([`packages/client/ui-deliverables/src/index.ts`](../packages/client/ui-deliverables/src/index.ts))
@@ -3723,12 +3879,15 @@ These load from a `cordis.yml` entry with no `config:` block; they declare no co
 - `@relay-harness/rlh-client-ui-issue-orchestration` ([`packages/client/ui-issue-orchestration/src/index.ts`](../packages/client/ui-issue-orchestration/src/index.ts))
 - `@relay-harness/rlh-client-ui-jobs` ([`packages/client/ui-jobs/src/index.ts`](../packages/client/ui-jobs/src/index.ts))
 - `@relay-harness/rlh-client-ui-layout` ([`packages/client/ui-layout/src/index.ts`](../packages/client/ui-layout/src/index.ts))
+- `@relay-harness/rlh-client-ui-memory-center` ([`packages/client/ui-memory-center/src/index.ts`](../packages/client/ui-memory-center/src/index.ts))
 - `@relay-harness/rlh-client-ui-message-edit` ([`packages/client/ui-message-edit/src/index.ts`](../packages/client/ui-message-edit/src/index.ts))
 - `@relay-harness/rlh-client-ui-message-feedback` ([`packages/client/ui-message-feedback/src/index.ts`](../packages/client/ui-message-feedback/src/index.ts))
 - `@relay-harness/rlh-client-ui-model-selection` ([`packages/client/ui-model-selection/src/index.ts`](../packages/client/ui-model-selection/src/index.ts))
 - `@relay-harness/rlh-client-ui-permission-presets` ([`packages/client/ui-permission-presets/src/index.ts`](../packages/client/ui-permission-presets/src/index.ts))
 - `@relay-harness/rlh-client-ui-plan` ([`packages/client/ui-plan/src/index.ts`](../packages/client/ui-plan/src/index.ts))
 - `@relay-harness/rlh-client-ui-preview` ([`packages/client/ui-preview/src/index.ts`](../packages/client/ui-preview/src/index.ts))
+- `@relay-harness/rlh-client-ui-product-shell` ([`packages/client/ui-product-shell/src/index.ts`](../packages/client/ui-product-shell/src/index.ts))
+- `@relay-harness/rlh-client-ui-prompt-enhancement` ([`packages/client/ui-prompt-enhancement/src/index.ts`](../packages/client/ui-prompt-enhancement/src/index.ts))
 - `@relay-harness/rlh-client-ui-reference` ([`packages/client/ui-reference/src/index.ts`](../packages/client/ui-reference/src/index.ts))
 - `@relay-harness/rlh-client-ui-renderer` ([`packages/client/ui-renderer/src/index.ts`](../packages/client/ui-renderer/src/index.ts))
 - `@relay-harness/rlh-client-ui-session-tree` ([`packages/client/ui-session-tree/src/index.ts`](../packages/client/ui-session-tree/src/index.ts))
@@ -3757,19 +3916,24 @@ These load from a `cordis.yml` entry with no `config:` block; they declare no co
 - `@relay-harness/rlh-command-goal` — requires `commands` · `goals` ([`packages/goal/command-goal/src/index.ts`](../packages/goal/command-goal/src/index.ts))
 - `@relay-harness/rlh-commands` ([`packages/interaction/commands/src/index.ts`](../packages/interaction/commands/src/index.ts))
 - `@relay-harness/rlh-context-engine` ([`packages/context/context-engine/src/index.ts`](../packages/context/context-engine/src/index.ts))
+- `@relay-harness/rlh-context-inspector` — requires `sessionProjections` ([`packages/context/context-inspector/src/index.ts`](../packages/context/context-inspector/src/index.ts))
 - `@relay-harness/rlh-cordis-client-runner` ([`packages/extensions/cordis-client-runner/src/index.ts`](../packages/extensions/cordis-client-runner/src/index.ts))
 - `@relay-harness/rlh-fs-e2b` — requires `e2b` ([`packages/e2b/fs-e2b/src/index.ts`](../packages/e2b/fs-e2b/src/index.ts))
 - `@relay-harness/rlh-fs-observation-policy` ([`packages/fs/fs-observation-policy/src/index.ts`](../packages/fs/fs-observation-policy/src/index.ts))
 - `@relay-harness/rlh-goal-round-driver` — requires `agents` · `goals` · `sessions` ([`packages/goal/goal-round-driver/src/index.ts`](../packages/goal/goal-round-driver/src/index.ts))
+- `@relay-harness/rlh-host-code-index-center` — requires `codeIndex` · `sessions` ([`packages/host/code-index-center/src/index.ts`](../packages/host/code-index-center/src/index.ts))
 - `@relay-harness/rlh-host-directory-picker-auto` — requires `webServer` · `loader` ([`packages/host/directory-picker-auto/src/index.ts`](../packages/host/directory-picker-auto/src/index.ts))
 - `@relay-harness/rlh-host-directory-picker-native` ([`packages/host/directory-picker-native/src/index.ts`](../packages/host/directory-picker-native/src/index.ts))
 - `@relay-harness/rlh-host-mcp-servers` — requires `mcpServersFile` · `loader` ([`packages/host/mcp-servers/src/index.ts`](../packages/host/mcp-servers/src/index.ts))
 - `@relay-harness/rlh-host-plugin-inventory` — requires `loader` ([`packages/host/plugin-inventory/src/index.ts`](../packages/host/plugin-inventory/src/index.ts))
+- `@relay-harness/rlh-host-product-mode` — requires `settings` ([`packages/host/product-mode/src/index.ts`](../packages/host/product-mode/src/index.ts))
 - `@relay-harness/rlh-host-skill-inventory` — requires `agents` · `skills` ([`packages/host/skill-inventory/src/index.ts`](../packages/host/skill-inventory/src/index.ts))
 - `@relay-harness/rlh-issue-automation` ([`packages/bundle/issue-automation/src/index.ts`](../packages/bundle/issue-automation/src/index.ts))
 - `@relay-harness/rlh-issue-orchestrator` — requires `trackers` · `issueWorkflow` · `issueWorkspace` · `issueRunner` · `storageDomain` ([`packages/automation/issue-orchestrator/src/index.ts`](../packages/automation/issue-orchestrator/src/index.ts))
 - `@relay-harness/rlh-llm` ([`packages/llm/llm/src/index.ts`](../packages/llm/llm/src/index.ts))
 - `@relay-harness/rlh-lsp` ([`packages/lsp/lsp/src/index.ts`](../packages/lsp/lsp/src/index.ts))
+- `@relay-harness/rlh-prompt-enhancement-context-engine` — requires `promptEnhancement` · `contextEngine` ([`packages/context/prompt-enhancement-context-engine/src/index.ts`](../packages/context/prompt-enhancement-context-engine/src/index.ts))
+- `@relay-harness/rlh-prompt-enhancement-context-none` — requires `promptEnhancement` ([`packages/context/prompt-enhancement-context-none/src/index.ts`](../packages/context/prompt-enhancement-context-none/src/index.ts))
 - `@relay-harness/rlh-schedule` — requires `agents` · `sessions` · `tools` · `sessionPersistence` ([`packages/schedule/schedule/src/index.ts`](../packages/schedule/schedule/src/index.ts))
 - `@relay-harness/rlh-session` ([`packages/core/session/src/index.ts`](../packages/core/session/src/index.ts))
 - `@relay-harness/rlh-session-checkpoint-policy` — requires `llm` · `sessionPersistence` · `sessions` · `tools` ([`packages/session/session-checkpoint-policy/src/index.ts`](../packages/session/session-checkpoint-policy/src/index.ts))

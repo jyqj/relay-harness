@@ -21,7 +21,7 @@ describe('epoch clocks', () => {
   it('advances the index epoch exactly once per committed write transaction', async () => {
     const db = await openCodeIndexDatabase(':memory:')
     const before = readEpochs(db)
-    expect(before).toEqual({ indexEpoch: 0, evidenceEpoch: 0 })
+    expect(before).toEqual({ indexEpoch: 0, evidenceEpoch: 0, embeddingEpoch: 0 })
 
     const result = bumpIndexEpochOnceInTx(db, () => {
       for (const path of ['src/a.ts', 'src/b.ts', 'src/c.ts']) {
@@ -35,7 +35,7 @@ describe('epoch clocks', () => {
     expect(result).toBe(42)
 
     const after = readEpochs(db)
-    expect(after).toEqual({ indexEpoch: 1, evidenceEpoch: 0 })
+    expect(after).toEqual({ indexEpoch: 1, evidenceEpoch: 0, embeddingEpoch: 0 })
     assertExactAdvance(before, after, 'index')
     db.close()
   })
@@ -46,7 +46,7 @@ describe('epoch clocks', () => {
       db.prepare("INSERT INTO metadata (key, value) VALUES ('scratch', '1')").run()
       throw new Error('mid-unit failure')
     })).toThrow('mid-unit failure')
-    expect(readEpochs(db)).toEqual({ indexEpoch: 0, evidenceEpoch: 0 })
+    expect(readEpochs(db)).toEqual({ indexEpoch: 0, evidenceEpoch: 0, embeddingEpoch: 0 })
     expect((db.prepare("SELECT COUNT(*) AS n FROM metadata WHERE key = 'scratch'").get() as { n: number }).n).toBe(0)
     db.close()
   })
@@ -62,22 +62,22 @@ describe('epoch clocks', () => {
       { removals: [], upserts: [fileUpsert('src/a.ts', ['export const a = 1'])] },
       { now: clock() },
     )
-    expect(readEpochs(first)).toEqual({ indexEpoch: 1, evidenceEpoch: 0 })
+    expect(readEpochs(first)).toEqual({ indexEpoch: 1, evidenceEpoch: 0, embeddingEpoch: 0 })
     first.close()
 
     // Reopening preserves committed epochs; the next commit continues them.
     const reopened = await openCodeIndexDatabase(path)
     writeFilesDelta(reopened, { removals: ['src/a.ts'], upserts: [] }, { now: clock() })
-    expect(readEpochs(reopened)).toEqual({ indexEpoch: 2, evidenceEpoch: 0 })
+    expect(readEpochs(reopened)).toEqual({ indexEpoch: 2, evidenceEpoch: 0, embeddingEpoch: 0 })
     reopened.close()
 
     // An unregistered table under our id forces the in-place rebuild.
     const drifted = await openCodeIndexDatabase(path)
-    expect(readEpochs(drifted)).toEqual({ indexEpoch: 2, evidenceEpoch: 0 })
+    expect(readEpochs(drifted)).toEqual({ indexEpoch: 2, evidenceEpoch: 0, embeddingEpoch: 0 })
     drifted.exec('CREATE TABLE rogue_unused (x TEXT)')
     drifted.close()
     const afterRebuild = await openCodeIndexDatabase(path)
-    expect(readEpochs(afterRebuild)).toEqual({ indexEpoch: 0, evidenceEpoch: 0 })
+    expect(readEpochs(afterRebuild)).toEqual({ indexEpoch: 0, evidenceEpoch: 0, embeddingEpoch: 0 })
     expect((afterRebuild.prepare('SELECT COUNT(*) AS n FROM files').get() as { n: number }).n).toBe(0)
     afterRebuild.close()
   })
@@ -100,47 +100,47 @@ describe('epoch clocks', () => {
 
   it('audits exact single-advance per channel and rejects every other shape', async () => {
     expect(() => { assertExactAdvance(
-      { indexEpoch: 4, evidenceEpoch: 9 },
-      { indexEpoch: 5, evidenceEpoch: 9 },
+      { indexEpoch: 4, evidenceEpoch: 9, embeddingEpoch: 0 },
+      { indexEpoch: 5, evidenceEpoch: 9, embeddingEpoch: 0 },
       'index',
     ) }).not.toThrow()
     expect(() => { assertExactAdvance(
-      { indexEpoch: 4, evidenceEpoch: 9 },
-      { indexEpoch: 4, evidenceEpoch: 10 },
+      { indexEpoch: 4, evidenceEpoch: 9, embeddingEpoch: 0 },
+      { indexEpoch: 4, evidenceEpoch: 10, embeddingEpoch: 0 },
       'evidence',
     ) }).not.toThrow()
 
     // Declared channel advanced by zero or more than one.
     expect(() => { assertExactAdvance(
-      { indexEpoch: 4, evidenceEpoch: 9 },
-      { indexEpoch: 4, evidenceEpoch: 9 },
+      { indexEpoch: 4, evidenceEpoch: 9, embeddingEpoch: 0 },
+      { indexEpoch: 4, evidenceEpoch: 9, embeddingEpoch: 0 },
       'index',
     ) }).toThrow(CodeIndexError)
     expect(() => { assertExactAdvance(
-      { indexEpoch: 4, evidenceEpoch: 9 },
-      { indexEpoch: 6, evidenceEpoch: 9 },
+      { indexEpoch: 4, evidenceEpoch: 9, embeddingEpoch: 0 },
+      { indexEpoch: 6, evidenceEpoch: 9, embeddingEpoch: 0 },
       'index',
     ) }).toThrow(/exactly once/)
     expect(() => { assertExactAdvance(
-      { indexEpoch: 4, evidenceEpoch: 9 },
-      { indexEpoch: 5, evidenceEpoch: 8 },
+      { indexEpoch: 4, evidenceEpoch: 9, embeddingEpoch: 0 },
+      { indexEpoch: 5, evidenceEpoch: 8, embeddingEpoch: 0 },
       'evidence',
     ) }).toThrow(CodeIndexError)
 
     // The frozen sibling moved.
     expect(() => { assertExactAdvance(
-      { indexEpoch: 4, evidenceEpoch: 9 },
-      { indexEpoch: 5, evidenceEpoch: 12 },
+      { indexEpoch: 4, evidenceEpoch: 9, embeddingEpoch: 0 },
+      { indexEpoch: 5, evidenceEpoch: 12, embeddingEpoch: 0 },
       'index',
     ) }).toThrow(/frozen evidenceEpoch counter/)
     expect(() => { assertExactAdvance(
-      { indexEpoch: 7, evidenceEpoch: 9 },
-      { indexEpoch: 8, evidenceEpoch: 10 },
+      { indexEpoch: 7, evidenceEpoch: 9, embeddingEpoch: 0 },
+      { indexEpoch: 8, evidenceEpoch: 10, embeddingEpoch: 0 },
       'evidence',
     ) }).toThrow(/frozen indexEpoch counter/)
     expect(() => { assertExactAdvance(
-      { indexEpoch: 7, evidenceEpoch: 9 },
-      { indexEpoch: 7, evidenceEpoch: 10 },
+      { indexEpoch: 7, evidenceEpoch: 9, embeddingEpoch: 0 },
+      { indexEpoch: 7, evidenceEpoch: 10, embeddingEpoch: 0 },
       'evidence',
     ) }).not.toThrow()
   })

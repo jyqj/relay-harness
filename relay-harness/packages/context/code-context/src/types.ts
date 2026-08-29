@@ -27,12 +27,22 @@ export interface CodeContextRecallHit {
   chunkId: string
   /** Workspace-relative file path backing this hit. */
   filePath: string
+  /** Stored language name used when the indexed chunk was parsed. */
+  language: string
+  /** Revalidated current-source revision. */
+  contentHash: string
   /** Inclusive start line of the indexed span (1-based). */
   startLine: number
   /** Inclusive end line of the indexed span (1-based). */
   endLine: number
   /** Final fused score after rerank. */
   score: number
+  /** Complete additive ranking bill copied from the search answer. */
+  scoreTrace: Array<{ label: string; value: number }>
+  /** Parser tier attached by the current hydration read. */
+  parserTier: 'semantic' | 'tree-sitter' | 'heuristic' | 'generic'
+  /** Parser confidence attached by the current hydration read. */
+  parserConfidence: number
   /** Whether the rendered hit line stopped short of the full span. */
   truncated: boolean
 }
@@ -42,15 +52,17 @@ export interface CodeContextRecallSource {
   kind: 'code-index'
   /** Ranked index hits read for the current step (`recall` context form). */
   form: 'recall'
-  version: 1
+  version: 2
   /** The step working directory the search ran against. */
   cwd: string
   /** The search query assembled from the claimed direct user text. */
   query: string
   /** One record per injected hit, in ranked order; omitted hits stayed outside the budgets. */
   hits: CodeContextRecallHit[]
-  /** Epoch pair observed at search time; the evidence revision binds to `indexEpoch`. */
+  /** Epoch pair observed at search time; per-hit evidence binds to `contentHash`. */
   epochs: CodeIndexEpochs
+  /** Epoch pair observed after hydration and source revalidation. */
+  hydrationEpochs: CodeIndexEpochs
 }
 
 declare module '@relay-harness/rlh-llm' {

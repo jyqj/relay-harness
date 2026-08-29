@@ -339,12 +339,15 @@ export class FixturePort implements RetrievalPort {
         chunkId: chunk.chunkId,
         filePath: chunk.filePath,
         languageName: 'typescript',
+        contentHash: `hash:${chunk.filePath}`,
         startLine: chunk.startLine,
         endLine: chunk.endLine,
         breadcrumb: '',
         symbolName: null,
         symbolKind: null,
         text: chunk.text,
+        parserTier: 'tree-sitter',
+        parserConfidence: 0.9,
       })
     }
     return rows

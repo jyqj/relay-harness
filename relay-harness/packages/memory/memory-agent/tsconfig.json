@@ -9,6 +9,7 @@
     { "path": "../../llm/llm" },
     { "path": "../../core/session" },
     { "path": "../../core/agent" },
+    { "path": "../../context/context-engine" },
     { "path": "../memory" },
     { "path": "../../runtime-diagnostics/invariants" }
   ]

@@ -1,0 +1,19 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": { "rootDir": "src", "outDir": "lib/types" },
+  "include": ["src"],
+  "references": [
+    { "path": "../../../vendor/cordis" },
+    { "path": "../../../vendor/include" },
+    { "path": "../../../vendor/loader" },
+    { "path": "../../../vendor/schemastery" },
+    { "path": "../../core/agent" },
+    { "path": "../../llm/llm" },
+    { "path": "../context-engine" },
+    { "path": "../prompt-enhancement" },
+    { "path": "../prompt-enhancement-context-engine" },
+    { "path": "../../core/session" },
+    { "path": "../../util/timeout" },
+    { "path": "../../runtime-diagnostics/invariants" }
+  ]
+}

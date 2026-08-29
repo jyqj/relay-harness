@@ -22,11 +22,13 @@ Each write cites a Session id and non-empty earlier event seqs. User-stated evid
 
 The model tools enforce exact evidence excerpts before requesting active state, and the provider repeats trust/evidence and secret checks so another Consumer cannot bypass the decision.
 
-## Recall lifecycle
+## Context Provider and recall lifecycle
 
-The Agent Consumer prepares candidates during the first `agent/pre-step`, after downstream listeners accept the direct message. It serializes retained entries as untrusted JSON in a separately sourced `user/message`, so the Session log reconstructs the exact model request. The complete message is character-bounded. Provider failure fails open without modifying the direct prompt.
+The host-owned `memory-agent` registers one Context Engine contributor. `StepContextInput.caller` carries detached durable session, turn/step, workspace, origin, and effective preset identity; the shipped policy admits `standard` top-level sessions. On the first Agent step, the contributor prepares candidates from direct user text, serializes retained entries as untrusted JSON, and returns a separately sourced message together with revision-bound Memory Evidence and bounded coverage. AgentLoop records the admitted message and the exact Evidence/proposal admission relationship in `context/prepared`. Provider failure fails open without modifying the direct prompt.
 
-The prepared handle remains open until final `turn/end`. Completed and max-token turns commit the exact ids that entered the model request; error, abort, interruption, missing Assistant output, replacement, or unload aborts it. The SQLite provider stores the settlement idempotently and records candidate-hit and injected signals.
+The prepared handle remains open until final `turn/end`. Completed and max-token turns commit only ids whose exact proposal survived `agent/pre-step` according to the durable trace; a removed or rewritten proposal commits no injected ids. Error, abort, interruption, missing Assistant output, replacement, unload, or failure between provider prepare and pending ownership aborts the handle. Evidence digest covers the complete injected item payload. The SQLite provider stores settlement idempotently and records candidate-hit and injected signals.
+
+For Prompt Enhancement the same contributor performs an active, unexpired, exact-Scope search under the same character budget and provenance format. It passes `recordAccess: false` and never calls prepare/commit/abort, so previewing an unsent draft mutates neither memory counters/turn state nor the target Session log.
 
 Recall-form user messages remain in the raw session log but contribute no Session Query semantic document. This prevents recalled memory or referenced-session snapshots from becoming fresh episodic evidence and recursively amplifying themselves.
 
@@ -40,7 +42,13 @@ The auxiliary call uses `purpose: 'memory-extraction'`, a fixed JSON-only instru
 
 ## SQLite retrieval
 
-The local provider maintains Unicode and trigram FTS5 indexes over current non-tombstoned entries. It fuses channel ranks, then applies bounded importance and trust weights. Queries and every metadata filter are SQL parameters; caller Scope is mandatory. The canonical database rejects unrelated files and unknown schema versions instead of resetting them. Schema version 2 adds deterministic content hashes and extraction jobs; version 3 adds the single-owner heartbeat table. Earlier stores migrate in place.
+The local provider maintains Unicode and trigram FTS5 indexes over current non-tombstoned entries. It fuses channel ranks, then applies bounded importance and trust weights. Queries and every metadata filter are SQL parameters; caller Scope is mandatory. `SearchMemoryInput.recordAccess` defaults true, while a false auxiliary preview is read-only. The canonical database rejects unrelated files and unknown schema versions instead of resetting them. Schema version 2 adds deterministic content hashes and extraction jobs; version 3 adds the single-owner heartbeat table. Earlier stores migrate in place.
+
+## Memory Center and remaining gaps
+
+The shipped Web composition now mounts a governed Memory Center. Every paged list/search/read is authorized by an attached Host Session whose cwd must match the Client workspace scope; recall accounting remains unchanged. Candidate/disputed approve or reject, user-evidenced revision, and tombstone deletion carry the displayed revision. The Client cache and Settings UI expose every canonical status, source excerpts, `validUntil` freshness, explicit supersession links, and cross-session why-used occurrences with current/historical revision state. Governance writes append `memory/governance-requested`, require Session durability, and recheck revision before the provider write; the browser cannot invent an active user-stated memory or overwrite newer governance.
+
+Memory Center now scans the complete same-workspace Session Query corpus without activating Agents and labels failed reads as partial coverage. Its generation-keyed Client cache rejects stale in-flight fills, and multi-page substring search restarts when concurrent revisions reorder page boundaries. Canonical signals expose retrieval, injection, user confirmation, and user rejection. Candidate review runs deterministic normalized content/summary collision detection before consulting an optional attributed semantic detector. SQLite version 4 stores idempotent per-Session outcomes; explicit Assistant ratings and durable Work completion produce bounded ranking impact, while ordinary recall, turn completion/failure, and blocked Work remain neutral. Feedback unavailability preserves the last durable outcomes, and failed full reconciliation is retryable. No physical retention policy was added: expiry stays visible and tombstones preserve history.
 
 <!-- BEGIN GENERATED cordis-surface (gen-cordis-catalog.ts) — do not edit between markers -->
 
@@ -113,15 +121,76 @@ abstract forget(input: ForgetMemoryInput, signal?: AbortSignal): Promise<MemoryE
 abstract read(scope: MemoryScope, id: MemoryId, signal?: AbortSignal): Promise<MemoryEntry | undefined>
 
 /**
+ * List the provider's current materialized entries for one exact scope.
+ * Unlike recall search, this governance read can include expired, superseded, and tombstoned
+ * entries and never changes retrieval-use accounting.
+ * @param input - exact scope, filters, and deterministic page window.
+ * @param signal - cancellation for the read.
+ * @returns one newest-first page and the matching total.
+ */
+abstract list(input: ListMemoryInput, signal?: AbortSignal): Promise<MemoryListPage>
+
+/**
+ * Find deterministic normalized-key conflicts in one exact scope.
+ * @param input - target identity and result cap.
+ * @param signal - cancellation for the read.
+ * @returns duplicate or summary-collision candidates.
+ */
+abstract findConflicts( input: FindMemoryConflictsInput, signal?: AbortSignal, ): Promise<readonly MemoryConflictCandidate[]>
+
+/**
+ * Read canonical retrieval and user-governance signals.
+ * @param scope - exact recall partition.
+ * @param id - logical memory identity.
+ * @param signal - cancellation for the read.
+ * @returns chronological signal history.
+ */
+abstract listSignals(scope: MemoryScope, id: MemoryId, signal?: AbortSignal): Promise<readonly MemorySignal[]>
+
+/**
+ * Atomically replace one Session's reconciler-owned outcome observations.
+ * @param input - exact scope, Session, and complete derived outcome set.
+ * @param signal - cancellation before the write begins.
+ * @returns after the canonical outcome view is durable.
+ */
+abstract reconcileOutcomes(input: ReconcileMemoryOutcomesInput, signal?: AbortSignal): Promise<void>
+
+/**
+ * Read recent outcome observations for one memory.
+ * @param input - exact scope, identity, and result cap.
+ * @param signal - cancellation for the read.
+ * @returns newest-first outcome observations.
+ */
+abstract listOutcomes(input: ListMemoryOutcomesInput, signal?: AbortSignal): Promise<readonly MemoryOutcome[]>
+
+/**
  * Search current entries inside an exact scope.
- * @param input - normalized query, filters, and result cap.
+ * @param input - normalized query, filters, result cap, and optional access-accounting policy.
  * @param signal - cancellation for the read.
  * @returns ranked current entries with retrieval-channel evidence.
  */
 abstract search(input: SearchMemoryInput, signal?: AbortSignal): Promise<readonly MemorySearchHit[]>
 ```
 
-Source: [`packages/memory/memory/src/index.ts:63`](../../packages/memory/memory/src/index.ts)
+Source: [`packages/memory/memory/src/index.ts:91`](../../packages/memory/memory/src/index.ts)
+
+<a id="ctxmemoryconflictdetector--memoryconflictdetector-abstract-seam"></a>
+
+### `ctx.memoryConflictDetector` — `MemoryConflictDetector` (abstract seam)
+
+Optional semantic detector composed by deployments that can justify richer conflict candidates.
+
+```ts cordis-catalog
+/**
+ * Detect provider-attributed semantic conflicts without mutating canonical memory.
+ * @param input - target plus bounded same-Scope candidates.
+ * @param signal - cancellation for optional provider work.
+ * @returns attributed conflict candidates only.
+ */
+abstract detect( input: DetectMemoryConflictsInput, signal?: AbortSignal, ): Promise<readonly MemoryConflictCandidate[]>
+```
+
+Source: [`packages/memory/memory/src/index.ts:73`](../../packages/memory/memory/src/index.ts)
 
 <a id="ctxmemoryextractionqueue--memoryextractionqueue-abstract-seam"></a>
 
@@ -167,4 +236,36 @@ abstract read(id: MemoryExtractionJobId): Promise<MemoryExtractionJob | undefine
 ```
 
 Source: [`packages/memory/memory/src/extraction.ts:20`](../../packages/memory/memory/src/extraction.ts)
+
+<a id="ctxmemoryoutcomereconciler--memoryoutcomereconciler"></a>
+
+### `ctx.memoryOutcomeReconciler` — `MemoryOutcomeReconciler`
+
+Host service maintaining idempotent Memory outcome observations from durable Session facts.
+
+```ts cordis-catalog
+/**
+ * Reconcile the complete live-preferred persisted corpus once per process unless explicitly refreshed.
+ * @param refresh - force a new full observation after the initial pass.
+ * @returns after every readable Session has settled independently.
+ */
+ensureReconciled(refresh: boolean = false): Promise<void>
+
+/**
+ * Reconcile all logical Sessions through Session Query without resuming an Agent.
+ * @returns after the bounded worker pool settles all Sessions.
+ */
+async reconcileAll(): Promise<void>
+
+/**
+ * Reconcile one logical Session through the live-preferred non-activating Session Query read.
+ * @param sessionId - logical Session identity.
+ * @returns after its complete derived outcome set replaces the previous set.
+ */
+reconcileSession(sessionId: SessionId): Promise<void>
+```
+
+Types: [SessionId](core.md)
+
+Source: [`packages/memory/memory-outcome-reconciler/src/index.ts:58`](../../packages/memory/memory-outcome-reconciler/src/index.ts)
 <!-- END GENERATED cordis-surface -->

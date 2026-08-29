@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { Context } from '@relay-harness/cordis'
 import AgentRegistry from '@relay-harness/rlh-agent'
 import AgentLoop from '@relay-harness/rlh-agent-loop'
+import ContextEngine from '@relay-harness/rlh-context-engine'
 import LlmRuntime, {
   LlmAdapter,
   createUserMessage,
@@ -313,6 +314,7 @@ describe('durable LLM memory extractor', () => {
     await recallCtx.plugin(SystemPrompt)
     await recallCtx.plugin(ToolRuntime)
     await recallCtx.plugin(AgentRegistry)
+    await recallCtx.plugin(ContextEngine)
     await recallCtx.plugin(AgentLoop, { agents: [] })
     await recallCtx.plugin(SqliteLongTermMemory, { path })
     await recallCtx.plugin(MemoryAgent)

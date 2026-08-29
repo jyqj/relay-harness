@@ -262,5 +262,26 @@ Storage-domain sidecar service. It inspects persisted Session history and never 
 @Remote('delete') delete(request: MessageFeedbackDeleteRequest): Promise<MessageFeedbackDeleteResult>
 ```
 
-Source: [`packages/feedback/message-feedback/src/index.ts:150`](../../packages/feedback/message-feedback/src/index.ts)
+Source: [`packages/feedback/message-feedback/src/index.ts:162`](../../packages/feedback/message-feedback/src/index.ts)
+
+<a id="message-feedback-events"></a>
+
+### `message-feedback/*` events
+
+<a id="message-feedbackchanged--emit"></a>
+
+#### `message-feedback/changed` — emit
+
+Material feedback sidecar change; Host reconcilers may refresh derived outcome views.
+
+```ts cordis-catalog
+/**
+ * Material feedback sidecar change; Host reconcilers may refresh derived outcome views.
+ * @param change - committed current rating or deletion identity.
+ * @mode emit
+ */
+'message-feedback/changed'(change: MessageFeedbackChanged): void
+```
+
+Source: [`packages/feedback/message-feedback/src/index.ts:45`](../../packages/feedback/message-feedback/src/index.ts)
 <!-- END GENERATED cordis-surface -->

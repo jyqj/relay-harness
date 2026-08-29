@@ -33,7 +33,7 @@ Each stored row carries the inspected Session header identity `{createdAt, cwd}`
 
 After initial validation, `put` establishes a durability barrier before writing the sidecar. A matching live Session commits through the canonical `ctx.sessions.flush` checkpoint, then both live and cold paths are physically read from sequence zero through `SessionPersistence.readFrom`. The resulting observation's header identity and target are validated again. A missing flush participant, changed identity, vanished target, or physical-read failure prevents the sidecar commit, so durable feedback never precedes the durable target message.
 
-Message feedback is not Session-log content or a Session projection. It emits no `feedback/record` event, does not enter model history, and does not trigger `FEEDBACK_ONLY` telemetry release.
+Message feedback is not Session-log content or a Session projection. It emits no `feedback/record` event, does not enter model history, and does not trigger `FEEDBACK_ONLY` telemetry release. After a material put/delete it emits Host-local `message-feedback/changed`; `memory-outcome-reconciler` uses that notification to refresh retractable outcome observations without exposing rating notes to the model.
 
 ## Service and Host Remote contract
 

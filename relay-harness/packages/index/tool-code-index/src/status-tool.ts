@@ -11,13 +11,14 @@ import type { Context } from '@relay-harness/cordis'
 import type { RefreshSummary } from '@relay-harness/rlh-code-index'
 import { defineTool } from '@relay-harness/rlh-tools'
 import type { GenericCallView, ToolResult, ToolResultView } from '@relay-harness/rlh-tools'
-import { normalizeCodeIndexFailure, requireCodeIndex } from './errors.ts'
+import { normalizeCodeIndexFailure, requireWorkspaceCodeIndex } from './errors.ts'
+import { BUILD_EXPLAIN_SCHEMA } from './build-explain-schema.ts'
 
 /** Loose projection input: every label the seam types as a union is taken at its string width. */
 export interface StatusReportView {
   indexedFileCount: number
   tier: string
-  epochs: { indexEpoch: number; evidenceEpoch: number }
+  epochs: { indexEpoch: number; evidenceEpoch: number; embeddingEpoch?: number }
   degraded: boolean
   lastRefresh?: Omit<RefreshSummary, 'reason'> & { reason: string }
 }
@@ -34,6 +35,7 @@ export function renderStatusOutput(report: StatusReportView): string {
     `tier: ${report.tier}`,
     `indexEpoch: ${report.epochs.indexEpoch}`,
     `evidenceEpoch: ${report.epochs.evidenceEpoch}`,
+    ...(report.epochs.embeddingEpoch === undefined ? [] : [`embeddingEpoch: ${report.epochs.embeddingEpoch}`]),
     `degraded: ${report.degraded}`,
   ]
   if (report.lastRefresh === undefined) {
@@ -45,6 +47,9 @@ export function renderStatusOutput(report: StatusReportView): string {
       + `chunksWritten=${last.chunksWritten} durationMs=${last.durationMs} epochsAfter(index=${last.epochsAfter.indexEpoch}, `
       + `evidence=${last.epochsAfter.evidenceEpoch})`,
     )
+    if (last.explain !== undefined) {
+      lines.push(`buildExplain: scope=${last.explain.scope} pass=${last.explain.pass} degraded=${String(last.explain.degraded)}`)
+    }
   }
   return lines.join('\n')
 }
@@ -96,6 +101,7 @@ export function applyStatusTool(ctx: Context): void {
             properties: {
               indexEpoch: { type: 'integer', required: true },
               evidenceEpoch: { type: 'integer', required: true },
+              embeddingEpoch: { type: 'integer' },
             },
           },
           lastRefresh: {
@@ -114,8 +120,10 @@ export function applyStatusTool(ctx: Context): void {
                 properties: {
                   indexEpoch: { type: 'integer', required: true },
                   evidenceEpoch: { type: 'integer', required: true },
+                  embeddingEpoch: { type: 'integer' },
                 },
               },
+              explain: BUILD_EXPLAIN_SCHEMA,
             },
           },
           degraded: { type: 'boolean', required: true },
@@ -123,10 +131,10 @@ export function applyStatusTool(ctx: Context): void {
       },
       render: (_args, value) => [{ type: 'text', text: renderStatusOutput(value) }],
     },
-    async execute() {
+    async execute(_args, exec) {
       try {
         // Passthrough at the exit: the fixed-shape report is naturally small.
-        return await requireCodeIndex(ctx, 'code_index_status').status()
+        return await (await requireWorkspaceCodeIndex(ctx, 'code_index_status', exec)).status()
       } catch (error) {
         throw normalizeCodeIndexFailure('code_index_status', error)
       }

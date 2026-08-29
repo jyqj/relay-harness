@@ -1,12 +1,11 @@
 /**
- * Vector lane: quantized-cosine ranking of the candidates earlier lanes found.
+ * Vector lane: independent semantic recall plus prior-candidate reranking.
  *
- * The lane issues no candidate query of its own. It re-scores the engine's
- * accumulated `LaneContext.priorCandidates` pool against the caller's query
- * embedding (`EngineSearchRequest.queryVector`) through
+ * The lane asks the vector adapter for nearest candidates and also re-scores
+ * the accumulated `LaneContext.priorCandidates` pool against the query
  * `cosineQuantized` over the store's `chunks_vec` rows (see
  * `@relay-harness/rlh-code-index-search/vector-math`), so semantic neighbors
- * that no lexical/grep/graph term caught can still enter fusion. It requires
+ * so semantic neighbors that no lexical/grep/graph term caught enter fusion. It requires
  * a port with the optional vector facet and a request carrying a query
  * vector, and disables itself otherwise — deployments without an embedding
  * tier keep their pre-vector behavior unchanged.
@@ -27,7 +26,9 @@ export interface VectorLaneOptions {
    * the embedder that produced the query vector: vectors of other models
    * coexist in the store and comparing across them would be meaningless.
    */
-  readonly model: string
+  readonly generationId?: string
+  /** Legacy direct-engine selector; providers should pass `generationId`. */
+  readonly model?: string
 }
 
 /**
@@ -50,16 +51,28 @@ export function runVectorLane(context: LaneContext, model: string): LaneRankedHi
   const vectorPort = context.port.vector
   // `isEnabled` gates both; the re-check keeps `run` total for direct callers.
   if (queryVector === undefined || vectorPort === undefined) return []
+  const limit = context.plan.limits().vector
+  const recalled = vectorPort.recallCandidates?.({
+    generationId: model,
+    queryVector,
+    scope: context.plan.chunkScope(),
+    topK: limit,
+    maxScan: Math.max(limit, context.config.vectorMaxCandidates),
+  })
+  if (recalled?.truncated === true) {
+    context.readErrors.push(
+      `vector recall scan truncated after ${recalled.scanned} rows; semantic candidate coverage is partial`,
+    )
+  }
+  const scores = new Map((recalled?.hits ?? []).map(hit => [hit.chunkId, hit.score]))
   const pool = context.priorCandidates ?? []
-  if (pool.length === 0) return []
-  const scored: LaneRankedHit[] = []
   for (const row of vectorPort.vectorsByChunkIds(pool, model)) {
     const similarity = cosineQuantized(queryVector, row.q, row.scale, row.norm)
     if (similarity <= 0) continue
-    scored.push({ chunkId: row.chunkId, score: similarity })
+    scores.set(row.chunkId, Math.max(scores.get(row.chunkId) ?? 0, similarity))
   }
+  const scored: LaneRankedHit[] = [...scores].map(([chunkId, score]) => ({ chunkId, score }))
   scored.sort((a, b) => b.score - a.score || compareStrings(a.chunkId, b.chunkId))
-  const limit = context.plan.limits().vector
   return rankScored(scored.slice(0, limit).map(hit => hit.chunkId))
 }
 
@@ -70,13 +83,16 @@ export function runVectorLane(context: LaneContext, model: string): LaneRankedHi
  * @param options - the `chunks_vec` model identity to read.
  * @returns the frozen vector lane definition, annotating hits under the `vector` slot.
  */
-export const createVectorLane = (options: VectorLaneOptions): RetrievalLane =>
-  defineRetrievalLane({
+export const createVectorLane = (options: VectorLaneOptions): RetrievalLane => {
+  const identity = options.generationId ?? options.model
+  if (identity === undefined || identity.length === 0) throw new Error('vector lane requires a generation identity')
+  return defineRetrievalLane({
     laneId: LANE_VECTOR_ID,
     weight: config => config.vectorWeight,
     isEnabled: context =>
       context.port.vector !== undefined && context.plan.request.queryVector !== undefined,
     annotatesHits: () => true,
     scoreSlot: () => 'vector',
-    run: context => runVectorLane(context, options.model),
+    run: context => runVectorLane(context, identity),
   })
+}

@@ -44,11 +44,16 @@ export class CurrentWorkProjection implements HostObservable<WorkSummary> {
 
   getSnapshot(): WorkSummary { return this.snapshot }
 
+  /** Subscribe to current Work projection changes.
+   * @param listener - callback invoked after each new snapshot.
+   * @returns disposer for this subscription.
+   */
   subscribe(listener: () => void): () => void {
     this.listeners.add(listener)
     return () => { this.listeners.delete(listener) }
   }
 
+  /** Release current-session and list subscriptions. */
   dispose(): void {
     this.offList()
     this.offSession?.()

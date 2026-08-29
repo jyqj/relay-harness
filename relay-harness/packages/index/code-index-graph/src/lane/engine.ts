@@ -153,6 +153,8 @@ function graphCacheKey(input: SearchWithGraphContextInput, ranking: RankingConfi
       boostFilePaths: sortedCopy(request.boostFilePaths),
       pinnedFilePaths: sortedCopy(request.pinnedFilePaths),
       overlayFilePaths: sortedCopy(request.overlayFilePaths),
+      // Conversation order is semantic: newest-first selection depends on it.
+      conversationQueries: request.conversationQueries,
       includeGrep: request.includeGrep,
       queryVectorFingerprint: request.queryVector === undefined ? null : fingerprintVector(request.queryVector),
     },
@@ -228,7 +230,11 @@ export function searchWithGraphContext(input: SearchWithGraphContextInput): Grap
     return {
       ...hit,
       graphScore,
-      ...(boost === 0 ? {} : { score: hit.score + boost, reasons: [...hit.reasons, GRAPH_RERANK_REASON] }),
+      ...(boost === 0 ? {} : {
+        score: hit.score + boost,
+        scoreTrace: [...hit.scoreTrace, { label: GRAPH_RERANK_REASON, value: boost }],
+        reasons: [...hit.reasons, GRAPH_RERANK_REASON],
+      }),
     }
   })
 

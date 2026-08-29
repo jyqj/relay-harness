@@ -19,9 +19,15 @@
     - button "技能":
       - img
       - text: 技能
+    - button "记忆":
+      - img
+      - text: 记忆
     - button "MCP":
       - img
       - text: MCP
+    - button "代码索引":
+      - img
+      - text: 代码索引
     - button "Agent 预设":
       - img
       - text: Agent 预设
@@ -37,8 +43,8 @@
     - text: 标准模式
     - img
   - text: 权限 选择新会话的默认权限模式
-  - button "Full access":
-    - text: Full access
+  - button "Standard":
+    - text: Standard
     - img
   - text: 语言
   - button "中文":
@@ -48,3 +54,6 @@
   - button "排队发送":
     - text: 排队发送
     - img
+  - text: 开发者模式
+  - paragraph: 显示模型、Agent preset、插件、轨迹与原始工具诊断入口。
+  - switch "开发者模式" [checked]

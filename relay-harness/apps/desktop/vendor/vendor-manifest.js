@@ -15,6 +15,21 @@ const vendorDir = __dirname;
 const manifest = JSON.parse(fs.readFileSync(path.join(vendorDir, 'plugins.json'), 'utf8'));
 
 /**
+ * Package roots currently present below a vendor directory. A directory that
+ * contains only ignored build residue (for example, a pre-rebrand `lib/`)
+ * is not an installable or packageable plugin and must not widen the manifest.
+ *
+ * @param {string} [root=vendorDir] Vendor directory to inspect.
+ * @returns {string[]} Sorted plugin package directory names.
+ */
+function vendoredPluginDirectories(root = vendorDir) {
+  return fs.readdirSync(root, { withFileTypes: true })
+    .filter(entry => entry.isDirectory() && fs.existsSync(path.join(root, entry.name, 'package.json')))
+    .map(entry => entry.name)
+    .sort();
+}
+
+/**
  * The subtrees of one vendored plugin that the manifest records as absent.
  *
  * @param {string} name Vendored plugin directory name.
@@ -87,5 +102,6 @@ module.exports = {
   lockedProductionInstall,
   manifest,
   missingSubtrees,
+  vendoredPluginDirectories,
   vendorDir,
 };

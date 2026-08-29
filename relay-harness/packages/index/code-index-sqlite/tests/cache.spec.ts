@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { ChunkTextCache, chunkCacheKey, chunkTextCacheCapacityForTier } from '../src/cache.ts'
 import type { RepoSizeTier } from '@relay-harness/rlh-code-index'
 
-const EPOCHS = { indexEpoch: 7, evidenceEpoch: 2 }
+const EPOCHS = { indexEpoch: 7, evidenceEpoch: 2, embeddingEpoch: 0 }
 
 /** Test seam: re-declares the protected store hook public so it can be spied on. */
 class ObservableCache extends ChunkTextCache {
@@ -50,14 +50,14 @@ describe('ChunkTextCache', () => {
   it('invalidates every entry when the epoch counter advances because keys embed it', () => {
     const cache = new ChunkTextCache(4)
     const oldKey = chunkCacheKey(1, 42)
-    cache.setIfFresh(oldKey, 'stale text', { indexEpoch: 1, evidenceEpoch: 0 })
+    cache.setIfFresh(oldKey, 'stale text', { indexEpoch: 1, evidenceEpoch: 0, embeddingEpoch: 0 })
     expect(cache.get(oldKey)).toBe('stale text')
 
     // One commit later, both the key space and the lookups move forward.
     const newKey = chunkCacheKey(2, 42)
     expect(newKey).not.toBe(oldKey)
     expect(cache.get(newKey)).toBeUndefined()
-    expect(cache.setIfFresh(newKey, 'fresh text', { indexEpoch: 2, evidenceEpoch: 0 })).toBe(true)
+    expect(cache.setIfFresh(newKey, 'fresh text', { indexEpoch: 2, evidenceEpoch: 0, embeddingEpoch: 0 })).toBe(true)
     expect(cache.get(newKey)).toBe('fresh text')
     expect(cache.get(oldKey)).toBe('stale text')
   })
@@ -78,7 +78,7 @@ describe('ChunkTextCache', () => {
   it('counts hits and misses cumulatively across superseded keys', () => {
     const cache = new ChunkTextCache(4)
     expect(cache.get('absent')).toBeUndefined()
-    cache.setIfFresh(chunkCacheKey(3, 5), 'body', { indexEpoch: 3, evidenceEpoch: 0 })
+    cache.setIfFresh(chunkCacheKey(3, 5), 'body', { indexEpoch: 3, evidenceEpoch: 0, embeddingEpoch: 0 })
     void cache.get(chunkCacheKey(3, 5))
     expect(cache.get(chunkCacheKey(9, 5))).toBeUndefined() // post-bump lookup misses
     const stats = cache.stats()

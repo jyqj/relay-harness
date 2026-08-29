@@ -20,12 +20,15 @@ function hit(chunkId: string, filePath: string, startLine: number, endLine: numb
   return {
     chunkId,
     filePath,
+    language: 'typescript',
+    contentHash: `hash:${filePath}`,
     startLine,
     endLine,
     ...(symbolName === undefined ? {} : { symbolName }),
     score: 1,
     rank: 1,
     reasons: [],
+    scoreTrace: [{ label: 'rrf', value: 1 }],
     parserTier: 'generic',
     parserConfidence: 0,
   }

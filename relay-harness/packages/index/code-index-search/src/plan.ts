@@ -2,7 +2,7 @@
  * Search planning — normalizes caller requests into a compact execution plan.
  *
  * Ported from the reference implementation (`crates/cc-search/src/plan.rs`),
- * reduced to the harness seam vocabulary: no conversation-query augmentation.
+ * including its bounded conversation-query augmentation.
  * The DSL parses the reference's four filter keys (`dsl.rs::parse_search_dsl`):
  * `path:` fills the path prefix, `lang:` becomes the stored-language scope the
  * store enforces in SQL, `kind:` / `name:` act at finalization against the
@@ -15,7 +15,11 @@
  * @module @relay-harness/rlh-code-index-search/plan
  */
 
-import { repoSizeTierSearchTopK, type RepoSizeTier } from '@relay-harness/rlh-code-index'
+import {
+  repoSizeTierSearchTopK,
+  type RepoSizeTier,
+  type SearchScoreComponent,
+} from '@relay-harness/rlh-code-index'
 import type { ChunkScope, RetrievalPort } from './port.ts'
 import { preselect } from './preselect.layers.ts'
 import { compareStrings, expandQueryText, tokenizeCodeish } from './text.ts'
@@ -87,6 +91,7 @@ export interface FinalizableResult {
   readonly symbolName?: string | null | undefined
   readonly symbolKind?: string | null | undefined
   readonly reasons?: readonly string[] | undefined
+  readonly scoreTrace?: readonly SearchScoreComponent[] | undefined
 }
 
 /** Known filter keys, in the reference `dsl.rs::FILTER_KEYS` order. */
@@ -250,6 +255,8 @@ export class SearchPlan implements SearchPlanView {
   readonly request: EngineSearchRequest
   /** Camel/snake-expanded query feeding the lexical lane. */
   readonly expandedQuery: string
+  /** Primary query plus the newest distinct conversational queries. */
+  readonly augmentedQuery: string
   /** Case-folded code tokens of the trimmed query, for overlap scoring. */
   readonly queryTokensValue: readonly string[]
   /** Resolved lane caps and post-fusion window (each at least the tier top-K). */
@@ -263,6 +270,7 @@ export class SearchPlan implements SearchPlanView {
 
   private constructor(
     request: EngineSearchRequest,
+    augmentedQuery: string,
     expandedQuery: string,
     queryTokens: readonly string[],
     limits: LaneLimits,
@@ -271,6 +279,7 @@ export class SearchPlan implements SearchPlanView {
     ranking: RankingConfig,
   ) {
     this.request = request
+    this.augmentedQuery = augmentedQuery
     this.expandedQuery = expandedQuery
     this.queryTokensValue = queryTokens
     this.limitsValue = limits
@@ -312,7 +321,7 @@ export class SearchPlan implements SearchPlanView {
 
     const baseTopK = normalizeTopK(normalizedRequest.topK, input.tier)
 
-    const queryText = normalizedRequest.query.trim()
+    const queryText = augmentedQueryText(normalizedRequest)
     const expandedQuery = expandQueryText(queryText)
     const preselectResult = preselect({
       port: input.port,
@@ -353,6 +362,7 @@ export class SearchPlan implements SearchPlanView {
 
     return new SearchPlan(
       normalizedRequest,
+      queryText,
       expandedQuery,
       tokenizeCodeish(queryText),
       limits,
@@ -438,6 +448,9 @@ export class SearchPlan implements SearchPlanView {
         .map(item => ({
           ...item,
           score: item.score + this.ranking.dslNameBonus,
+          ...(item.scoreTrace === undefined ? {} : {
+            scoreTrace: [...item.scoreTrace, { label: 'boost:dsl-name', value: this.ranking.dslNameBonus }],
+          }),
           reasons: [...(item.reasons ?? []), `dsl-name:${nameFilter}`],
         }))
     }
@@ -447,6 +460,25 @@ export class SearchPlan implements SearchPlanView {
       )
       .slice(0, limit ?? this.limits().topK)
   }
+}
+
+/**
+ * Assemble retrieval text from the primary query and at most four newest
+ * prior queries. Conversation order is semantic: inputs arrive oldest to
+ * newest and are consumed in reverse order, matching the reference plan.
+ * @param request - normalized request whose primary DSL text is already resolved.
+ * @returns newline-joined distinct non-empty queries.
+ */
+export function augmentedQueryText(request: EngineSearchRequest): string {
+  const parts: string[] = []
+  const primary = request.query.trim()
+  if (primary.length > 0) parts.push(primary)
+  const prior = request.conversationQueries ?? []
+  for (const query of [...prior].reverse().slice(0, 4)) {
+    const value = query.trim()
+    if (value.length > 0 && !parts.includes(value)) parts.push(value)
+  }
+  return parts.join('\n')
 }
 
 /** Per-lane 1-based rank lookups uniformly keyed by lane id, plus annotating order. */

@@ -1,7 +1,7 @@
 /** Public long-term-memory value types shared by providers and consumers. */
 
 import type { Branded } from '@relay-harness/rlh-brand'
-import type { CallId } from '@relay-harness/rlh-llm/brand'
+import type { CallId, MessageId } from '@relay-harness/rlh-llm/brand'
 import type { SessionId } from '@relay-harness/rlh-session/types'
 
 /** Stable identity of one logical memory across append-only revisions. */
@@ -90,7 +90,10 @@ export interface MemoryEntry {
   readonly evidence: readonly MemoryEvidence[]
   /** Committed injections into a model request; see `usefulAccessCount` for retrieval hits. */
   readonly accessCount: number
-  /** Hits returned by search or recall; providers increment it fail-open on the read path. */
+  /**
+   * Legacy retrieval-hit counter retained for storage compatibility. It does not mean useful and
+   * never affects ranking; explicit positive/negative {@link MemoryOutcome} observations do.
+   */
   readonly usefulAccessCount: number
 }
 
@@ -151,6 +154,8 @@ export interface RememberMemoryInput {
 export interface ReviseMemoryInput {
   readonly scope: MemoryScope
   readonly id: MemoryId
+  /** Optional compare-and-set guard; canonical providers reject a different current revision. */
+  readonly expectedRevision?: number
   readonly content?: string
   readonly summary?: string | null
   readonly importance?: number
@@ -159,6 +164,8 @@ export interface ReviseMemoryInput {
   readonly status?: Exclude<MemoryStatus, 'tombstoned'>
   readonly validUntil?: number | null
   readonly evidence: readonly MemoryEvidence[]
+  /** Optional user-review signal committed atomically with this revision. */
+  readonly governance?: MemoryGovernanceSignalInput
 }
 
 /** Search request inside one exact scope. */
@@ -168,14 +175,140 @@ export interface SearchMemoryInput {
   readonly limit: number
   readonly kinds?: readonly MemoryKind[]
   readonly statuses?: readonly MemoryStatus[]
+  /**
+   * Whether the provider records retrieval-use accounting. Defaults to true. Auxiliary, unsent
+   * context previews set false so merely enhancing a draft cannot mutate durable memory state.
+   */
+  readonly recordAccess?: boolean
+}
+
+/** Deterministic current-view listing inside one exact scope. */
+export interface ListMemoryInput {
+  readonly scope: MemoryScope
+  /** Page size. Providers enforce their configured maximum. */
+  readonly limit: number
+  /** Zero-based stable page offset. Defaults to zero. */
+  readonly offset?: number
+  readonly kinds?: readonly MemoryKind[]
+  readonly statuses?: readonly MemoryStatus[]
+  /** Include entries whose `validUntil` has passed. Defaults to true for governance surfaces. */
+  readonly includeExpired?: boolean
+}
+
+/** One stable page from the provider's materialized current-entry view. */
+export interface MemoryListPage {
+  readonly entries: readonly MemoryEntry[]
+  readonly total: number
+  readonly offset: number
+  readonly hasMore: boolean
 }
 
 /** Append a tombstone for one existing memory. */
 export interface ForgetMemoryInput {
   readonly scope: MemoryScope
   readonly id: MemoryId
+  /** Optional compare-and-set guard; canonical providers reject a different current revision. */
+  readonly expectedRevision?: number
   readonly reason: string
   readonly evidence: readonly MemoryEvidence[]
+  /** Optional user-review signal committed atomically with this tombstone. */
+  readonly governance?: MemoryGovernanceSignalInput
+}
+
+/** Canonical retrieval/governance signal kinds retained by the provider. */
+export type MemorySignalKind =
+  | 'candidate_hit'
+  | 'injected'
+  | 'user_confirmed'
+  | 'user_rejected'
+
+/** User review signal requested by an authorized governance Consumer. */
+export interface MemoryGovernanceSignalInput {
+  readonly kind: 'user_confirmed' | 'user_rejected'
+  readonly sessionId: SessionId
+  readonly eventSeqs: readonly number[]
+}
+
+/** One current signal row projected from the canonical provider. */
+export interface MemorySignal {
+  readonly id: string
+  readonly memoryId: MemoryId
+  readonly kind: MemorySignalKind
+  readonly sessionId?: SessionId
+  readonly turn?: number
+  readonly eventSeqs: readonly number[]
+  readonly createdAt: number
+}
+
+/** Deterministic or provider-enriched relationship found during review. */
+export type MemoryConflictRelation =
+  | 'exact-duplicate'
+  | 'normalized-summary-collision'
+  | 'semantic-conflict'
+
+/** One inspectable conflict candidate; `semantic-conflict` is provider-attributed, never inferred as fact. */
+export interface MemoryConflictCandidate {
+  readonly entry: MemoryEntry
+  readonly relation: MemoryConflictRelation
+  readonly score: number
+  readonly reasons: readonly string[]
+  readonly detectorId: string
+}
+
+/** Exact-scope deterministic conflict lookup. */
+export interface FindMemoryConflictsInput {
+  readonly scope: MemoryScope
+  readonly id: MemoryId
+  readonly limit: number
+}
+
+/** Optional richer detector input after canonical deterministic candidates are known. */
+export interface DetectMemoryConflictsInput {
+  readonly target: MemoryEntry
+  readonly candidates: readonly MemoryEntry[]
+  readonly limit: number
+}
+
+/** Outcome impact used by ranking. Neutral observations remain inspectable but never boost recall. */
+export type MemoryOutcomeImpact = 'positive' | 'negative' | 'neutral'
+
+/** Durable sources the session outcome reconciler can prove without causal invention. */
+export type MemoryOutcomeKind =
+  | 'turn-completed'
+  | 'turn-failed'
+  | 'assistant-positive'
+  | 'assistant-negative'
+  | 'work-completed'
+  | 'work-blocked'
+
+/** One idempotent, session-derived outcome observation for an admitted memory. */
+export interface MemoryOutcome {
+  readonly id: string
+  readonly memoryId: MemoryId
+  readonly scope: MemoryScope
+  readonly sessionId: SessionId
+  readonly turn: number
+  readonly kind: MemoryOutcomeKind
+  readonly impact: MemoryOutcomeImpact
+  readonly sourceEventSeqs: readonly number[]
+  /** Optional durable sidecar/version reference when the source is not a Session event. */
+  readonly sourceRef?: string
+  readonly assistantMessageId?: MessageId
+  readonly observedAt: number
+}
+
+/** Replace one reconciler-owned Session outcome set atomically. */
+export interface ReconcileMemoryOutcomesInput {
+  readonly scope: MemoryScope
+  readonly sessionId: SessionId
+  readonly outcomes: readonly MemoryOutcome[]
+}
+
+/** Scoped outcome history read. */
+export interface ListMemoryOutcomesInput {
+  readonly scope: MemoryScope
+  readonly id: MemoryId
+  readonly limit: number
 }
 
 /** Auxiliary LLM route captured for a restart-safe extraction job. */

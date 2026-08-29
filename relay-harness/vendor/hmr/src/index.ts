@@ -139,23 +139,82 @@ class Hmr extends Service {
     if (this.configs.has(watchFilename)) throw new Error(`config path already registered: ${filename}`)
 
     const { root, depth } = target
+    const fileFingerprint = (stats: Awaited<ReturnType<typeof stat>>): string =>
+      `${stats.dev}:${stats.ino}:${stats.size}:${stats.mtimeMs}:${stats.ctimeMs}`
+    const currentFingerprint = async (): Promise<string> => {
+      try {
+        const stats = await stat(watchFilename)
+        return stats.isFile() ? fileFingerprint(stats) : 'not-a-file'
+      } catch (error) {
+        const code = (error as NodeJS.ErrnoException).code
+        return code === 'ENOENT' ? 'missing' : `unavailable:${code ?? 'unknown'}`
+      }
+    }
+    // Missing is the baseline, not a change. An existing file deliberately
+    // leaves this undefined so Chokidar's initial `add` applies it once.
+    let lastScheduledFingerprint: string | undefined = await currentFingerprint()
+    const targetMissingAtRegistration = lastScheduledFingerprint === 'missing'
+    if (!targetMissingAtRegistration) lastScheduledFingerprint = undefined
     const watcher = watch(root, {
       ...this.config,
       cwd: undefined,
       depth,
       ignored: undefined,
       ignoreInitial: false,
+      // Native recursive attachment has a creation race when the target's
+      // parent does not exist yet: mkdir(parent) + immediate write(file) can
+      // land before the watcher attaches inside the new directory. Exact
+      // config watches are few and correctness-sensitive, so only this
+      // missing-parent case polls the existing ancestor deterministically.
+      usePolling: depth > 0 ? true : this.config.usePolling,
     })
     const registration = { watcher }
     this.configs.set(watchFilename, registration)
-    const onChange = (path: string) => {
+    let creationProbe: NodeJS.Timeout | undefined
+    let observationTail: Promise<void> = Promise.resolve()
+    const observe = (kind: 'add' | 'change' | 'unlink' | 'probe' | 'dispose'): void => {
+      observationTail = observationTail.then(async () => {
+        const fingerprint = await currentFingerprint()
+        // Add/unlink/probe may be duplicate discovery of the same exact
+        // revision. A native `change` stays forceful for filesystems whose
+        // timestamp/size granularity cannot distinguish a same-size rewrite.
+        if (kind !== 'change' && fingerprint === lastScheduledFingerprint) return
+        lastScheduledFingerprint = fingerprint
+        this.refreshConfig(registration, filename, refresh)
+      }).catch((error: unknown) => { this.ctx.logger.warn(error) })
+    }
+    const onChange = (kind: 'add' | 'change' | 'unlink', path: string) => {
       const observed = resolve(path)
       if (observed !== filename && observed !== watchFilename) return
-      this.refreshConfig(registration, filename, refresh)
+      if (creationProbe !== undefined) {
+        clearInterval(creationProbe)
+        creationProbe = undefined
+      }
+      observe(kind)
     }
-    watcher.on('add', onChange)
-    watcher.on('change', onChange)
-    watcher.on('unlink', onChange)
+    watcher.on('add', path => { onChange('add', path) })
+    watcher.on('change', path => { onChange('change', path) })
+    watcher.on('unlink', path => { onChange('unlink', path) })
+
+    // `ready` below proves only that Chokidar scanned the watch root. It does
+    // not make an absent exact target observable synchronously: under load an
+    // immediate create can precede native add delivery, whether its parent was
+    // already present or also had to be created. Keep one exact-path existence
+    // probe until first creation; native watching owns later revisions.
+    if (targetMissingAtRegistration) {
+      const interval = Math.max(10, this.config.interval ?? 100)
+      creationProbe = setInterval(() => {
+        void stat(watchFilename).then((stats) => {
+          if (!stats.isFile() || creationProbe === undefined) return
+          clearInterval(creationProbe)
+          creationProbe = undefined
+          observe('probe')
+        }, (error: unknown) => {
+          if ((error as NodeJS.ErrnoException).code !== 'ENOENT') this.ctx.logger.warn(error)
+        })
+      }, interval)
+      creationProbe.unref()
+    }
 
     const ready = Promise.withResolvers<void>()
     let readyState: 'pending' | 'resolved' | 'rejected' = 'pending'
@@ -176,11 +235,21 @@ class Hmr extends Service {
       await ready.promise
       return this.ctx.effect(() => async () => {
         if (this.configs.get(watchFilename) === registration) this.configs.delete(watchFilename)
+        clearInterval(creationProbe)
+        creationProbe = undefined
         await watcher.close()
+        // Closing stops NEW events. Then drain every event already admitted,
+        // and compare the exact final revision once: a native change queued
+        // behind a busy refresh cannot be silently discarded by teardown.
+        await observationTail
+        observe('dispose')
+        await observationTail
         await this.configRefreshes.get(registration)?.running
       }, 'hmr.registerConfig()')
     } catch (error) {
       this.configs.delete(watchFilename)
+      clearInterval(creationProbe)
+      creationProbe = undefined
       await watcher.close()
       throw error
     }

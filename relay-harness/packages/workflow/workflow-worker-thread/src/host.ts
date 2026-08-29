@@ -161,7 +161,10 @@ export class WorkerRun implements WorkflowRun {
       this.workerGone = true
       this.onWorkerDeath(`workflow worker exited before the run settled (exit code ${code})`, true)
     })
-    this.armStallTimer()
+    // Startup scheduling is not protocol silence. The watchdog arms on the
+    // first accepted worker message (`Ready`) through onMessage(), so a busy
+    // host cannot terminate a thread before it had any opportunity to report
+    // progress. Every later accepted message still re-arms the same deadline.
     if (signal?.aborted) {
       this.cancel('workflow start signal already aborted')
     } else if (signal !== undefined) {

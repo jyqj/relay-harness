@@ -1,0 +1,13 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": { "rootDir": "src", "outDir": "lib/types" },
+  "include": ["src"],
+  "references": [
+    { "path": "../../../vendor/cosmokit" },
+    { "path": "../../../vendor/cordis" },
+    { "path": "../../core/session" },
+    { "path": "../code-index" },
+    { "path": "../code-index-local" },
+    { "path": "../../runtime-diagnostics/invariants" }
+  ]
+}

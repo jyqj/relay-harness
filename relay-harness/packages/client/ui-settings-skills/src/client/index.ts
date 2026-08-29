@@ -40,6 +40,7 @@ export function apply(ctx: ClientContext): void {
     create: async (input) => {
       unwrap(await ctx.remote.skillInventory.create(input), 'skillInventory.create')
     },
+    importSkill: async input => unwrap(await ctx.remote.skillInventory.importSkill(input), 'skillInventory.importSkill'),
     update: async (input) => { unwrap(await ctx.remote.skillInventory.update(input), 'skillInventory.update') },
     remove: async (name, scope) => { unwrap(await ctx.remote.skillInventory.delete({ name, ...scope }), 'skillInventory.delete') },
     setInvocation: async (name, modelInvocable, userInvocable, scope) => {

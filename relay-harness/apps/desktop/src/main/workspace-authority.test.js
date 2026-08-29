@@ -72,6 +72,22 @@ function makeDirLink(target, link) {
   fs.symlinkSync(target, link, type);
 }
 
+/** Remove only a directory symlink/junction, never an unexpected real directory. */
+function removeDirLink(link) {
+  let info;
+  try {
+    info = fs.lstatSync(link);
+  } catch (error) {
+    if (error.code === 'ENOENT') return;
+    throw error;
+  }
+  assert.equal(info.isSymbolicLink(), true, `cleanup path is not a directory link: ${link}`);
+  // Node 24 reports EISDIR for rmSync(link, { force: true }) on a directory
+  // link. Recursive rm removes the reparse point itself and does not traverse
+  // to the target; the lstat guard above prevents deleting a real directory.
+  fs.rmSync(link, { recursive: true, force: true });
+}
+
 test('resolveInside refuses a directory link that escapes the workspace', (t) => {
   const root = makeRoot();
   const outside = makeRoot();
@@ -154,7 +170,7 @@ test('resolveAuthorizedCwd accepts a workspace configured through a directory li
       fs.realpathSync(path.join(root, 'sub')),
     );
   } finally {
-    fs.rmSync(link, { force: true });
+    removeDirLink(link);
     fs.rmSync(root, { recursive: true, force: true });
   }
 });

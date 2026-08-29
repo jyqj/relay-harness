@@ -230,6 +230,22 @@ flowchart LR
   pkg_tool_lsp["tool-lsp"]
   pkg_context_engine["context-engine"]
   svc_contextEngine["ctx.contextEngine<br/>Step-context contributor registry"]
+  pkg_mcp_catalog["mcp-catalog"]
+  pkg_session_history_context["session-history-context"]
+  pkg_prompt_enhancement_context_engine["prompt-enhancement-context-engine"]
+  svc_memoryConflictDetector["ctx.memoryConflictDetector<br/>Optional semantic Memory conflict detector"]
+  pkg_host_memory_center["host-memory-center"]
+  pkg_memory_outcome_reconciler["memory-outcome-reconciler"]
+  svc_memoryOutcomeReconciler["ctx.memoryOutcomeReconciler<br/>Durable Memory outcome reconciliation"]
+  svc_sessionHistoryContext["ctx.sessionHistoryContext<br/>Purpose-specific Session history context"]
+  pkg_prompt_enhancement["prompt-enhancement"]
+  svc_promptEnhancement["ctx.promptEnhancement<br/>Prompt Enhancement seam"]
+  pkg_prompt_enhancement_llm["prompt-enhancement-llm"]
+  pkg_ui_prompt_enhancement["ui-prompt-enhancement"]
+  svc_mcpCatalog["ctx.mcpCatalog<br/>MCP Resources and Prompts catalog"]
+  pkg_product_mode["product-mode"]
+  svc_productMode["ctx.productMode<br/>Shared Simple and Developer product mode"]
+  pkg_ui_product_shell["ui-product-shell"]
   svc_apiProxy["ctx.apiProxy<br/>Host API dispatch"]
   pkg_cordis_host_runner["cordis-host-runner"]
   svc_dynamicCordisRunner["ctx.dynamicCordisRunner<br/>Dynamic Cordis package host runner"]
@@ -289,20 +305,29 @@ flowchart LR
   pkg_llm_vision_fallback --> svc_visionFallback
   pkg_lsp --> svc_lsp
   pkg_lsp_local --> svc_lsp
+  pkg_mcp_catalog --> svc_mcpCatalog
+  pkg_mcp_client --> svc_mcpCatalog
   pkg_mcp_servers_file --> svc_mcpServersFile
   pkg_memory --> svc_longTermMemory
+  pkg_memory --> svc_memoryConflictDetector
   pkg_memory --> svc_memoryExtractionQueue
+  pkg_memory_outcome_reconciler --> svc_memoryOutcomeReconciler
   pkg_memory_sqlite --> svc_longTermMemory
   pkg_memory_sqlite --> svc_memoryExtractionQueue
   pkg_message_feedback --> svc_messageFeedback
   pkg_modules --> svc_clientModules
   pkg_permission_presets --> svc_permissionPresets
   pkg_plan_mode --> svc_planMode
+  pkg_product_mode --> svc_productMode
+  pkg_prompt_enhancement --> svc_promptEnhancement
+  pkg_prompt_enhancement_context_engine --> svc_promptEnhancement
+  pkg_prompt_enhancement_llm --> svc_promptEnhancement
   pkg_pwsh_local --> svc_shell
   pkg_sandbox --> svc_sandbox
   pkg_sandbox_local --> svc_sandbox
   pkg_sandbox_policy --> svc_sandboxPolicy
   pkg_session --> svc_sessions
+  pkg_session_history_context --> svc_sessionHistoryContext
   pkg_session_persistence --> svc_sessionPersistence
   pkg_session_persistence_jsonl --> svc_sessionPersistence
   pkg_session_persistence_sqlite --> svc_sessionPersistence
@@ -373,6 +398,9 @@ flowchart LR
   svc_codeRuntime --> pkg_tools
   svc_compaction --> pkg_compaction_basic
   svc_contextEngine --> pkg_file_reference_local
+  svc_contextEngine --> pkg_mcp_catalog
+  svc_contextEngine --> pkg_prompt_enhancement_context_engine
+  svc_contextEngine --> pkg_session_history_context
   svc_cordisInspect --> pkg_tool_cordis
   svc_credentials --> pkg_apiproxy
   svc_credentials --> pkg_llm_deepseek
@@ -402,14 +430,21 @@ flowchart LR
   svc_longTermMemory --> pkg_memory_extractor_llm
   svc_longTermMemory --> pkg_tool_memory
   svc_lsp --> pkg_tool_lsp
+  svc_mcpCatalog --> pkg_context_engine
+  svc_mcpCatalog --> pkg_host_mcp_servers
   svc_mcpServersFile --> pkg_host_mcp_servers
   svc_mcpServersFile --> pkg_mcp_client
+  svc_memoryConflictDetector --> pkg_host_memory_center
   svc_memoryExtractionQueue --> pkg_memory_extractor_llm
+  svc_memoryOutcomeReconciler --> pkg_host_memory_center
+  svc_productMode --> pkg_ui_product_shell
+  svc_promptEnhancement --> pkg_ui_prompt_enhancement
   svc_sandbox --> pkg_bash_sandbox
   svc_sandbox --> pkg_terminal_bash
   svc_sandboxPolicy --> pkg_bash_sandbox
   svc_sandboxPolicy --> pkg_fs_sandbox
   svc_sandboxPolicy --> pkg_terminal_bash
+  svc_sessionHistoryContext --> pkg_prompt_enhancement_context_engine
   svc_sessionPersistence --> pkg_agent_loop
   svc_sessionPersistence --> pkg_hooks_claude_code
   svc_sessionPersistence --> pkg_hooks_codex
@@ -559,7 +594,13 @@ flowchart LR
 | `ctx.issueRunner` | `seam` | [`issue-runner`](../packages/automation/issue-runner) | [`issue-runner-agent`](../packages/automation/issue-runner-agent) | [`issue-orchestrator`](../packages/automation/issue-orchestrator) | - | A provider publishes one holder-owned run with captured tracker tools, progress, cancellation, and quiescent settlement. |
 | `ctx.issueOrchestration` | `seam` | [`issue-orchestration`](../packages/automation/issue-orchestration) | [`issue-orchestrator`](../packages/automation/issue-orchestrator) | [`api-remotes`](../packages/api/remotes), [`client-ui-issue-orchestration`](../packages/client/ui-issue-orchestration) | - | One durable single writer owns claims, running attempts, retries, blocks, reconciliation, capacity, and operator commands. |
 | `ctx.lsp` | `seam` | [`lsp`](../packages/lsp/lsp) | `lsp-local` | [`tool-lsp`](../packages/lsp/tool-lsp) | - | Provider registration and selection plus normalized query execution over exactly four operations; the seam offers no protocol escape hatch, so a backend translates into the normalized request and result. |
-| `ctx.contextEngine` | `core` | [`context-engine`](../packages/context/context-engine) | - | [`file-reference-local`](../packages/context/file-reference-local) | - | Sequences revision-bound contributor messages into the claimed step ahead of prompt assembly; contributors own retrieval, message sources, and evidence production while the engine owns ordering and the evidence vocabulary. |
+| `ctx.contextEngine` | `core` | [`context-engine`](../packages/context/context-engine) | - | [`file-reference-local`](../packages/context/file-reference-local), [`mcp-catalog`](../packages/mcp/mcp-catalog), [`session-history-context`](../packages/context/session-history-context), [`prompt-enhancement-context-engine`](../packages/context/prompt-enhancement-context-engine) | - | Sequences revision-bound contributor messages into the claimed step ahead of prompt assembly; contributors own retrieval, message sources, and evidence production while the engine owns ordering and the evidence vocabulary. |
+| `ctx.memoryConflictDetector` | `seam` | [`memory`](../packages/memory/memory) | - | [`host-memory-center`](../packages/host/memory-center) | - | Memory Center always runs canonical normalized-key detection first; an optional attributed provider may add semantic conflict candidates without mutating memory. |
+| `ctx.memoryOutcomeReconciler` | `core` | [`memory-outcome-reconciler`](../packages/memory/memory-outcome-reconciler) | - | [`host-memory-center`](../packages/host/memory-center) | - | Scans live-preferred persisted Session history without activating Agents and replaces idempotent outcome observations used by bounded recall ranking. |
+| `ctx.sessionHistoryContext` | `core` | [`session-history-context`](../packages/context/session-history-context) | - | [`prompt-enhancement-context-engine`](../packages/context/prompt-enhancement-context-engine) | - | Projects completed direct-user/model exchanges and approved compaction checkpoints from the caller Session into Prompt Enhancement through the shared Context Engine; ordinary agent steps are deliberately declined. |
+| `ctx.promptEnhancement` | `seam` | [`prompt-enhancement`](../packages/context/prompt-enhancement) | [`prompt-enhancement-context-engine`](../packages/context/prompt-enhancement-context-engine), [`prompt-enhancement-llm`](../packages/context/prompt-enhancement-llm) | `ui-prompt-enhancement` | - | Prepares the unsent draft through the shared Context Engine, dispatches one no-tools auxiliary model request, and returns a structured proposal while browser acceptance and undo remain explicit user actions. |
+| `ctx.mcpCatalog` | `seam` | [`mcp-catalog`](../packages/mcp/mcp-catalog) | [`mcp-client`](../packages/mcp/mcp-client) | [`host-mcp-servers`](../packages/host/mcp-servers), [`context-engine`](../packages/context/context-engine) | - | Keeps MCP Resources and Prompts protocol-native: explicit Resource URIs hydrate through Context Engine evidence while Prompts use a dedicated catalog/invocation seam. |
+| `ctx.productMode` | `core` | `product-mode` | - | `ui-product-shell` | - | Persists the presentation mode once on the Host so browser and Desktop clients share the same Simple-default shell while Developer Mode remains explicit. |
 | `ctx.apiProxy` | `core` | `apiproxy` | - | `connection` | - | The transport-agnostic host gateway face: it dispatches browser API calls, and each open host stream subscribes to the events it forwards rather than being pushed to through a broadcast verb. |
 | `ctx.dynamicCordisRunner` | `core` | [`cordis-host-runner`](../packages/extensions/cordis-host-runner) | - | [`tool-cordis`](../packages/extensions/tool-cordis) | - | Owns the in-memory definition registry, the vm sandbox for host halves, and the request-run round trip; browser pages reach the same service over the wire through its remote namespace. |
 | `ctx.cordisInspect` | `core` | [`cordis-host-runner`](../packages/extensions/cordis-host-runner) | - | [`tool-cordis`](../packages/extensions/tool-cordis) | - | Registers host inspect providers, mirrors the client provider manifest, and routes client queries through the dynamic Cordis transport. |

@@ -13,6 +13,10 @@
  */
 
 import type { ScanEntry } from './scanner.ts'
+import { mapConcurrentOrdered } from './parallel.ts'
+
+/** Default simultaneous content-hash reads. */
+export const DEFAULT_HASH_CONCURRENCY = 8
 
 /** The slice of one `files` row the diff consults. */
 export interface IndexedSnapshotRow {
@@ -66,17 +70,20 @@ export function planSnapshotDiff(
  * @param prev - previous generation rows supplying the reference hashes.
  * @param suspiciousPaths - candidate paths from {@link planSnapshotDiff}.
  * @param resolveCurrentHash - per-path content hash reader.
+ * @param concurrency - bounded simultaneous hash reads.
  * @returns truly changed paths plus those confirmed untouched by hash.
  */
 export async function confirmChangedByHash(
   prev: ReadonlyMap<string, IndexedSnapshotRow>,
   suspiciousPaths: readonly string[],
   resolveCurrentHash: (relPath: string) => Promise<string | null>,
+  concurrency = DEFAULT_HASH_CONCURRENCY,
 ): Promise<{ changedPaths: string[]; hashUnchangedCount: number }> {
   const changedPaths: string[] = []
   let hashUnchangedCount = 0
-  for (const path of suspiciousPaths) {
-    const currentHash = await resolveCurrentHash(path)
+  const hashes = await mapConcurrentOrdered(suspiciousPaths, concurrency, resolveCurrentHash)
+  for (const [index, path] of suspiciousPaths.entries()) {
+    const currentHash = hashes[index] ?? null
     const row = prev.get(path)
     if (currentHash !== null && row?.contentHash === currentHash) {
       hashUnchangedCount++

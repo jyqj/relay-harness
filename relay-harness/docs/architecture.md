@@ -73,6 +73,7 @@ turn/start
      reject, or a first enter rewritten empty -> close the turn with no step
      step/start
      append entered messages as user/message
+     append context/prepared trace when context was prepared
      derive model history from the log
      agent/request -> llm/stream -> assistant/chunk* -> assistant/message
      tool/call* -> tools/pre-execute -> tools/execute -> tools/post-execute -> tool/result*
@@ -86,7 +87,7 @@ turn/end
 
 Input reaches the driver through one inbox. Some messages wake it immediately; injected context waits in the inbox until another message does.
 
-`agent/pre-step` decides what the model sees. Listeners may rewrite the claimed messages or reject them outright; a rejected or empty first claim still closes a durable turn that spent no step, so the log records the attempt. Each step captures the scoped tool definitions and Code Mode backend before assembling the prompt, then binds execution to the final advertised names; registration changes during streaming affect the next step, not the current response. Before tool capture and assembly, an optional `ctx.contextEngine` service (`@relay-harness/rlh-context-engine`) prepares step context from the claimed messages; the contributed messages append as claimed user messages before the runtime-context snapshot, and a step without contributions is identical to a deployment without the service. Other prompt sections and contexts remain ordinary per-assembly contributions.
+`agent/pre-step` decides what the model sees. Listeners may rewrite the claimed messages or reject them outright; a rejected or empty first claim still closes a durable turn that spent no step, so the log records the attempt. Each step captures the scoped tool definitions and Code Mode backend before assembling the prompt, then binds execution to the final advertised names; registration changes during streaming affect the next step, not the current response. Before tool capture and assembly, an optional `ctx.contextEngine` service (`@relay-harness/rlh-context-engine`) prepares attributed step context from the claimed messages. Contributed messages append as claimed user messages before the runtime-context snapshot. After `agent/pre-step` admits the step, AgentLoop appends their ordinary `user/message` events and then a log-only `context/prepared` trace that binds each contributor's evidence and coverage to the exact unmodified message event seqs that survived admission; the request remains reconstructable only from surface messages, not from duplicate trace text. A step without contributions is identical to a deployment without the service. Other prompt sections and contexts remain ordinary per-assembly contributions.
 
 Details: the [sequence diagram](agent-lifecycle.md), the [tool pipeline](tool-execution-pipeline.md), and [cancellation and error recovery](subsystems/core.md#the-agent-handle).
 

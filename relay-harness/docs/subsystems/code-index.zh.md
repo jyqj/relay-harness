@@ -11,7 +11,8 @@
 | 包 | 角色 | 接线 |
 |---|---|---|
 | [`rlh-code-index`](../../packages/index/code-index) | Service Definition：抽象 `CodeIndex`、词汇类型、仓库规模分档 | 声明 `ctx.codeIndex` |
-| [`rlh-code-index-local`](../../packages/index/code-index-local) | Service Provider：工作区扫描、增量 diff、切片、存储/检索组装 | 填充 `ctx.codeIndex` |
+| [`rlh-code-index-local`](../../packages/index/code-index-local) | 显式单 Workspace Provider：扫描、diff、切片和存储/检索 | 在 headless 组合中填充 `ctx.codeIndex` |
+| [`rlh-code-index-workspace-router`](../../packages/index/code-index-workspace-router) | 多 Workspace Provider：规范路由、逐 Workspace runtime/database 和 LRU/idle 生命周期 | 在 Web/Desktop 中填充 `ctx.codeIndex` |
 | [`rlh-code-index-sqlite`](../../packages/index/code-index-sqlite) | 存储仓库：SQLite schema、携带 epoch 递增的写入、检索 port 适配器 | 库，无服务 |
 | [`rlh-code-index-parser`](../../packages/index/code-index-parser) | AST 解析：基于 web-tree-sitter 的 walker，把文件文本转成 symbol/import/调用边/字面量记录 | 库，无服务 |
 | [`rlh-code-index-search`](../../packages/index/code-index-search) | 检索领域引擎：preselect 层、lexical/grep lane、RRF 融合、rerank | 库，无服务 |
@@ -26,7 +27,7 @@ Consumer 通过 `ctx.get('codeIndex')` 而非注入解析 seam，因此没有 pr
 
 ## Epoch
 
-每个结果都在一个 `EpochPair` 之下读取。`indexEpoch` 在每个承载内容变更的写事务提交时恰好前进一次——provider 把一次计数器递增折叠进每个内容事务，作为其 COMMIT 前最后一条语句；违反已声明 epoch 规则的已审计提交以 `CODE_INDEX_SCHEMA_VERSION_UNSUPPORTED` 失败。`evidenceEpoch` 预留给语义证据摄入。seam 之上的所有缓存键必须同时包含两个值——epoch 过期的缓存条目即使字节完全相同也是过期。账本行以 `'0'` 播种并在重开后存活；缺失或不可解析的行大声失败而不是重新归零，重建存储绝不让任一时钟倒退。
+每个结果都在一个 `EpochPair` 下读取。`indexEpoch` 随索引内容事务提交推进，`embeddingEpoch` 随向量批次提交推进，`evidenceEpoch` 为未来运行时证据摄入保留。已审计提交必须恰好推进声明通道并冻结另外两个。seam 之上的缓存键包含所观察到的时钟快照；三个账本行以 `'0'` 播种、跨重启保留，缺失或不可解析时大声失败。
 
 ## 仓库规模分档
 
@@ -43,7 +44,7 @@ snippet 预算在所有分档都是 `floor(output / 3)`，把 snippet 嵌入更�
 
 ## 服务（`ctx.codeIndex`）
 
-`status()` 无副作用地报告已索引文件数、解析出的分档、epoch 对、最近刷新摘要与 degraded 标志。`refresh(options?)` 把并发调用折叠为唯一在途 pass，只在该 pass 提交之后发布其 `RefreshSummary`。`search(request, signal?)` 返回带读取时 epoch 对的排序 hit，并用 `degraded` 标志加非空 `readErrors` 标记部分失败——消费者必须把此类结果视为不可缓存。`exploreGraph(request, signal?)` 在读取时 epoch 对之下回答五类图问题 `relations` / `impact` / `tests` / `cycles` / `dead_code`（见 [explore_code_graph 工具](#the-explore_code_graph-tool)）；每条边的两端都可解析到答案的 `nodes` 内。
+`status()` 无副作用地报告已索引文件数、解析出的分档、epoch 对、最近刷新摘要与 degraded 标志。`refresh(options?)` 把并发调用折叠为唯一在途 pass，只在该 pass 提交之后发布其 `RefreshSummary`。`search(request, signal?)` 返回携带内容 revision、parser 来源和加法 score trace 的排序候选；`degraded` 标志加非空 `readErrors` 表示结果不可缓存。`hydrateChunks(request, signal?)` 独立解析完整索引正文，重新哈希每个不同的当前源文件，并只以显式 rejection 返回过期、缺失或不可读的 identity，从而不让源码字节进入 search cache。`exploreGraph(request, signal?)` 在读取时 epoch 对之下回答五类图问题 `relations` / `impact` / `tests` / `cycles` / `dead_code`（见 [explore_code_graph 工具](#the-explore_code_graph-tool)）；每条边的两端都可解析到答案的 `nodes` 内。
 
 ```ts type-equiv
 /** Model-shaped retrieval request against the local code index. */
@@ -54,10 +55,38 @@ interface SearchRequest {
   readonly paths?: readonly string[]
   /** Files the model recently worked with; boosts their preselect score. */
   readonly recentPaths?: readonly string[]
+  /** Files in the caller's active working set; boosts preselection and reranking. */
+  readonly boostFilePaths?: readonly string[]
+  /** Prior queries, oldest to newest; the latest four bias lexical retrieval. */
+  readonly conversationQueries?: readonly string[]
+  /** Caller-pinned context files; boosts preselection and reranking. */
+  readonly pinnedFilePaths?: readonly string[]
+  /** Dirty-buffer or overlay-neighbor files; boosts preselection and reranking. */
+  readonly overlayFilePaths?: readonly string[]
   /** Restrict candidates to file paths starting with this prefix. */
   readonly pathPrefix?: string
   /** Requested hit count; the engine caps it by the repository-size tier. */
   readonly topK?: number
+}
+```
+
+```ts type-equiv
+/** Request for one ordered batch of full indexed chunk bodies. */
+interface HydrateChunksRequest {
+  /** Chunk identities to resolve; duplicates are returned once at their first position. */
+  readonly chunkIds: readonly string[]
+}
+```
+
+```ts type-equiv
+/** Complete batch-hydration answer under one observed provider generation. */
+interface HydrateChunksResult {
+  /** Resolved chunks in first-occurrence request order. */
+  readonly chunks: readonly HydratedChunk[]
+  /** Requested identities rejected as stale or unavailable, in first-occurrence order. */
+  readonly rejected: readonly ChunkHydrationRejection[]
+  /** Epoch pair observed after the synchronous store read. */
+  readonly epochs: EpochPair
 }
 ```
 
@@ -144,7 +173,7 @@ schema（[rlh-code-index-sqlite](../../packages/index/code-index-sqlite) 的 `sr
 
 [rlh-code-index-local](../../packages/index/code-index-local) 为单个工作区组装扫描、diff、切片与存储：
 
-- **排除是三层独立叠加**——15 条内建硬排除、根目录 `.gitignore` 解析结果、显式配置 `exclude` 模式——在某个目录付出一次 stat 或一次下降之前剪枝；文件候选资格由固定的 27 条 include glob 表决定。symlink 永不扩展遍历。
+- **排除由静态层与分层规则组合**——15 条内建硬排除和显式配置 `exclude` 模式保持静态；每次 pass 发现根目录及嵌套 `.gitignore`，匹配规则按根到叶生效，因此更深层的否定规则可覆盖祖先规则。被排除目录在下降前剪枝，文件候选资格仍由固定的 27 条 include glob 表决定，symlink 永不扩展遍历。
 - **Diff** 以 mtime+size 为快路径，对可疑候选重读一次做哈希确认，抑制 touch 误报与 mtime 抖动。
 - **切片**把接受的文件切成至多 80 行的行窗（`generic` parser 档，置信度 0.5）；不可解码载荷按二进制跳过，超过 `maxFileBytes`（默认 512000）的文件只记录行、不产出 chunk，首窗文本支撑 `files.summary` / `content_excerpt`。
 - **存储路径**默认 `<rlhHome>/index/code-index-<hash>.sqlite3`，其中 `<hash>` 是工作区真实路径 SHA-256 的前十二个十六进制字符；`$RLH_HOME` 或显式 `databasePath` 覆盖它。其余旋钮：`workspaceRoot`（进程 cwd）、`journalMode`（`wal`）、`debounceMs`（500）、`watcherEnabled`（`false`）。配置错误在加载时大声失败。
@@ -183,13 +212,13 @@ literal lane（权重 `search.literal_weight`，默认 0.9）对 `literal_fts` �
 
 ### The vector recall tier
 
-Schema v4 新增两张表（v5 把 `chunks_vec` 的键改为 `(chunk_id, model)` 复合对，同一 chunk 不同模型的向量得以共存）。`chunks_vec` 为每个 `(chunk_id, model)` 存一条 int8 量化嵌入：`q` 存量化分量的字节视图（每维一字节；标量绝不经过 BLOB），旁列 `scale`、量化前捕获的原始浮点 `norm`、`dim` 与反规范化的 `chunk_rowid`，受 `format = 'int8'` CHECK 与 chunk 级联删除约束。`code_embed_jobs` 把 chunk 索引与嵌入生成解耦：按 `(chunk_id, model, content_hash)` 幂等入队（另有派生的 `dedupe_key` UNIQUE），job 随其 chunk 行级联删除，`result_json` 按契约恒为 NULL——已完成 job 的结果就是它的 `chunks_vec` 行——只有 `usage_json` 记录 provider 的 `prompt_tokens` 花费。
+Schema v8 以 `embedding_generations` 持久化完整 generation 身份，字段覆盖 provider、无凭据 endpoint、model、维度模式、归一化、量化器与 chunker。`chunks_vec` 为每个 `(chunk_id, generation_id)` 存一条 int8 量化嵌入；`code_embed_jobs` 按 `(chunk_id, generation_id, content_hash)` 幂等入队。不同 endpoint 即使模型同名也不会混用向量，job 和 vector 都随 chunk 或 generation 级联删除。当前内容的终态失败只获得一次持久化 `reconcile_resets` 重置，既修复暂态失败也避免无限重试。
 
 量化是逐向量对称 int8：最大绝对分量映射到 127，保持 `[-127, 127]` 的对称范围。排序从不物化反量化向量——`cosineQuantized` 直接在 int8 字节上算 `cosine = (scale · Σ query[i]·q[i]) / (|query| · norm)`，其精度来自"精确小整数 × 浮点 query 分量"的累加；结果可能因量化误差略超 1，需要严格单位区间的调用方自行钳制。
 
-嵌入队列的 drain 按认领 → 嵌入 → 量化 → 提交 → 结算推进。认领由租约守卫（`lease_owner` / `lease_until`，默认 60 s）：过期租约被回收，租约在最后一次尝试时过期则终止为 `failed`，完成结算带未过期租约守卫。每个 job 在自己的 evidence-epoch 事务内提交——N 个被 drain 的 job 恰好让 `evidenceEpoch` 前进 N 次而 `indexEpoch` 保持冻结——因此账本的 evidence 时钟正是向量层的修订计数器。客户端（[rlh-code-index-local](../../packages/index/code-index-local) 的 `src/embed/client.ts`）是 OpenAI 兼容的 fetch 适配器：每条 wire 请求至多 `min(batchSize, maxInputsPerRequest)`（默认 16）条文本，各自配 caller-signal-plus-deadline（默认 30 s），超过 4 MiB 的响应在解析前拒收，记录条数/顺序/维度逐一校验，所有失败映射到六个稳定码——`EMBED_RESPONSE_INVALID`、`EMBED_PROVIDER_ERROR`、`EMBED_INVALID_CREDENTIAL`、`EMBED_DIMENSION_MISMATCH`、`EMBED_ABORTED`（调用方取消）、`EMBED_TIMEOUT`（截止时间已到）。调用方中止会停止 drain 且不结算在途任务；超时则按尝试预算结算（部分花费写入 `usage_json`），drain 继续下一个任务。
+嵌入队列按批量认领 → 批量读取 → 嵌入 → 量化 → 单次向量提交 → 逐 job 结算推进。每个成功向量批次恰好让 `embeddingEpoch` 前进一次，而 `indexEpoch` 与预留的运行时 `evidenceEpoch` 冻结；provider 聚合 usage 会确定性分摊且总数不变。租约、重试、截止时间和确定性失败仍沿原有尝试预算语义。 Client 实现在 [rlh-code-index-local](../../packages/index/code-index-local) 中。
 
-每次刷新提交后，provider 把该批次 chunk 行入队并调度一次折叠 drain（与刷新调用方分离、单飞、受 `maxJobsPerDrain` 256 与 `maxPromptTokensPerDrain` 200000 约束）；drain 失败只进入运行时内部的 `vectorStatus()` 投影，绝不经 seam 上浮。vector lane（权重 `search.vector_weight`，默认 0.9）注册在最后——lexical → grep → graph → literal → vector——用 `cosineQuantized` 对前序 lane 的候选池（上限 `search.vector_max_candidates` = 2000）重打分，最多报告 `max(search.vector_top_k, 分档基础 top-K)` 条；没有嵌入配置或 query 向量时自行禁用，存储维度不匹配则把该 lane 中止进 `readErrors` 而不是产出排序噪声。降级保持三层：watcher 丢失与整 lane 中止会钉住粘性的 `status().degraded`，直到一次干净操作证明恢复；query embedder 不可达等逐读失败只降级那一个答案。query 嵌入经 32 条 LRU 记忆化（键 `model:dimensions:text-hash`），epoch 对为键的 graph 结果缓存额外对 query 向量取指纹，因此推进 evidence 时钟的 drain 会让向量前时代的答案失效而不是继续供应。
+provider 打开时及每次刷新提交后，generation coverage reconciler 都会计算当前 chunk 中缺少该 generation 向量的差集并入队，随后调度一次折叠 drain。因此后来启用 Embedding 或切换 endpoint/model/dimensions 会回填未变化 chunk。vector lane 只读取当前 generation；query embedding 与图结果缓存把查询向量和完整时钟快照入键，Embedding 批次会失效向量前答案而不会推进运行时证据。
 
 ### cycles and dead_code explores
 
@@ -201,11 +230,11 @@ Schema v4 新增两张表（v5 把 `chunks_vec` 的键改为 `(chunk_id, model)`
 
 ### The code-context recall contributor
 
-[rlh-code-context](../../packages/context/code-context) 属于 `context` 组，不在索引接线之内，是 seam 的第一个上下文侧消费者：一个可选启用的 step-context contributor，把每个 step 的 direct user 文本拼成一个 query——同文本的多处 `@file` 提及作为显式 `paths` 范围随行——执行一次排序检索。健康答案贡献一条不可信的 `## Code-index recall` 消息（fenced 块内的 hit 行，预算按排名顺序施加：`maxChars` 65536、`maxHits` 8、`minQueryChars` 8），外加每条注入 hit 一条 `revision` 为答案 `indexEpoch` 的证据记录，并填充预留的 `coverage` 字段（由 contributor 记录；读取它的引擎侧表面是 context-engine 的后续工作）；无命中的 step 得到一条简短的有界否定消息而不是沉默，degraded 或失败的检索除结构化警告外不贡献任何内容。反递归是结构性的：query 只读 direct user 消息，注入的 recall 文本绝不会成为下一次 query 的输入，`form: 'recall'` 的源记录也不进入 session-query 语料抽取。没有 config section 的 Loader 条目只构造 `ctx.codeContext`、不注册 contributor，且该包不进任何 bundle。
+[rlh-code-context](../../packages/context/code-context) 属于 `context` 组，不在索引接线之内，是 seam 的第一个上下文侧消费者：一个可选启用的 step-context contributor，把每个 step 的 direct user 文本拼成一个 query——同文本的多处 `@file` 提及作为显式 `paths` 范围随行——执行一次排序检索，再批量 hydrate 被选中的候选。健康答案贡献一条不可信的 `## Code-index recall` 消息，其中包含已对当前源文件验证的 fenced snippet（entry 预算按排名顺序施加：`maxChars` 65536、`maxHits` 8、`minQueryChars` 8），外加每条被接纳 snippet 一条证据记录；其 `revision` 是源文件内容哈希，digest 覆盖实际注入的源码。过期或不可用的 hydration 会被省略并写入警告与 coverage；无命中的 step 得到一条简短的有界否定消息，degraded search 或 hydration 全失败则除结构化警告外不贡献任何内容。反递归是结构性的：query 只读 direct user 消息，注入的 recall 文本绝不会成为下一次 query 的输入，`form: 'recall'` 的源记录也不进入 session-query 语料抽取。没有 config section 的 Loader 条目只构造 `ctx.codeContext`、不注册 contributor，且该包不进任何 bundle。
 
 ## 失效与刷新
 
-三个触发入口折叠进同一唯一在途 pass：显式 `refresh()` 调用、工具结果失效器（去抖的 stale pass，默认 500 ms）、以及可选的递归 watcher，它把原生事件风暴折叠进同一 pass。每次查询还会惰性保证介质足够新鲜（`reason: 'lazy'`），而不是抛出 `CODE_INDEX_NOT_INDEXED`。watcher 只是延迟优化——正确性来自遍历本身——因此无法绑定时 provider 降级为 touch 驱动失效并经 `status().degraded` 报告；watcher 事件也可能滞后 pass 至多一个去抖窗口。摘要与 epoch 只在 pass 提交之后发布。
+三个触发入口折叠进同一唯一在途 pass：显式 `refresh()` 调用、工具结果失效器（去抖的全量 stale pass，默认 500 ms）、以及可选的递归 watcher；watcher 保留并合并原生事件路径进入 `RefreshOptions.paths`，`.gitignore` 事件则扩宽为全量 pass。每次查询还会惰性保证介质足够新鲜（`reason: 'lazy'`），而不是抛出 `CODE_INDEX_NOT_INDEXED`。watcher 只是延迟优化——正确性来自遍历本身——因此无法绑定时 provider 降级为 touch 驱动失效并经 `status().degraded` 报告；watcher 事件也可能滞后 pass 至多一个去抖窗口。摘要与 epoch 只在 pass 提交之后发布。 `BuildExplain` 记录全量/定域、执行/跳过、dirty closure/预算状态、降级原因、generation 回填、失败 job 重置，以及异步完成的 Embedding 批次/job 计数。无 delta 的 pass 跳过写事务且不推进 `indexEpoch`。
 
 ## 工具面
 
@@ -219,6 +248,11 @@ Schema v4 新增两张表（v5 把 `chunks_vec` 的键改为 `(chunk_id, model)`
 
 hit 每条渲染为一行 `path:start-end score reasons`，位于分档标注的表头之下；`readErrors` 非空时出现 `[degraded]` 说明；恰在引擎截断排名时出现候选计数页脚。explore 答案同样渲染：分档标注的 op 表头、每 node 一行 `role kind name @ file:start`、每边一行 enrich 模板 `caller: X → Y (f:line)`、每测试对一行 `test: spec → code (reason)`，以及仅在截断发生时出现的 explain 摘要尾标。结果在未变化的 epoch 对之下确定，经 `reasons` token 自我解释，并受双重约束——引擎 top-K 使命中数保持很小，出口上限约束完整答案。四个工具在 KV-cache 层面都是追加型：工具结果跟随可复用请求前缀，绝不使既有条目失效。
 
+
+### 检索评测门禁
+
+`evaluateRetrieval` 经公开 seam 执行判断。检入的 TypeScript、Python、Go fixture 仓库，加上当前 package 与定域增量样本，形成 Recall@5、MRR、增量 p95 的可执行阈值。更广的外部仓库相关性 corpus 可沿同一格式扩展。
+
 ## 已知限制
 
 - **图探索止于深度 2**——`relations` 接受 `depth` 1–2；更深遍历等有消费者需求再做。
@@ -227,17 +261,21 @@ hit 每条渲染为一行 `path:start-end score reasons`，位于分档标注的
 - **字面量索引只有 JS/TS 分类**——九类分类器决定哪些字面量值得落记录，Python 与 Rust 不产出字面量行，分类器的 config-key `key_path` 也仍未进入存储记录面。
 - **环分析只有文件粒度**——参考实现的 package/community 投影（及其 `critical` 严重度档）留在那里；分量按规模降序，严重度止于 `high`。
 - **嵌入成本治理只有 drain 粒度**——预算是 `maxJobsPerDrain` / `maxPromptTokensPerDrain` 加逐 job 的 `usage_json`；没有跨运行或墙钟时间的花费上限，需要者必须在 provider 之上自行持有。
-- **证据 revision 是 epoch 而非内容哈希**——code-context 证据记录钉住 `revision: String(indexEpoch)`；该 revision 的语义是"在此 epoch 读取"，不同 epoch 的两条记录即使文本相同也是不同证据。
 - **待处理嵌入 job 等待 drain 触发**——队列是持久的，但 drain 只在折叠进一次已提交刷新时启动；进程在 drain 前退出，job 就保持 pending 直到下一次刷新 pass。
 - **code-index 层不在 Python 发行版内**——没有已发行的 agent preset 挂载 `rlh-tool-code-index*` 插件，`python/sdk-runtime/package.json` 也无对应依赖，因此 `verify-runtime-closure` 正确地不要求它；要在部署根发行该层，preset 行与完整的七包运行时依赖链必须同时补上。
 - **存储为同步**——`DatabaseSync` 在每条语句期间阻塞 JavaScript 线程；不匹配的存储就地重建，不提示地丢弃已确认状态。`'zstd'` 编码把压缩帧存成 base64 TEXT，因此对刚好越过阈值、压缩收益有限的 payload，存储形态可能反而大于明文。
-- **索引广度是固定的**——include 表恰为 27 条 glob，硬排除表恰为 15 条模式，且只读取工作区根的 `.gitignore`；嵌套 ignore 文件不生效。
+- **索引广度与并发都有界**——include/hard-exclude 表保持固定，嵌套 `.gitignore` 生效；stat/hash/read-parse 阶段使用确定性的 16/8/4 并发。不安全 watcher 事件仍扩宽为全树。
 - **watcher 不是正确性来源**——它只优化延迟，按设计静默降级为 touch 驱动失效，其事件可能滞后 pass 至多一个去抖窗口。
-- **一个库只服务一个工作区**——工作区哈希文件名避免多 checkout 互相覆盖，但属于过渡期的 storage-root 推导，可配置 storage-root 布局落地时应预期一次迁移；两个部署把同一显式 `databasePath` 指向不同工作区会交错世代。
+- **一个 local runtime/store 按构造只服务一个 Workspace**——Web 将 Session cwd 交给 Workspace router，绝不在规范根目录之间共享 runtime 或数据库。显式单 Workspace adapter 会拒绝不匹配的根目录；只有操作方绕开 router 并刻意复用同一 `databasePath` 才能破坏此边界。
 - **刷新忙守卫是进程内的**——部署应只挂载一个工具 Consumer。
 - **`RefreshSummary` 只携带聚合计数**，这是设计选择，为的是每个出口都有界。
 - **compaction checkpoint 可能把 recall 衍生文本重新索引进语料**——checkpoint 以带 plugin source 的 `user/message` 落入日志，session-query 语料抽取（只跳过 `form: 'recall'` 消息）会像索引 assistant 回复一样索引其摘要，而摘要可能复述 recall 衍生文本。ADR 0006 第 6 条反递归边界止于系统注入上下文；模型创作的 checkpoint 摘要位于 assistant 回复一侧。
 - **`dead_code` 不使用 `files.is_test_file` 列**——测试文件排除只按名称前缀（`test_*` / `Test*`）进行，工具接受的 `max` 上限为 10000，扫描上限为 `min(40 × max, 5000)` 行；两处细节均逐字照抄参考实现。
+
+
+### Code Index Center 产品界面
+
+`managementStatus()` 投影文件/chunk 数、epoch、BuildExplain、Embedding generation、coverage、积压、失败 job 与有界错误。Typed Host Remote 暴露 refresh、reconcile、确认门控 rebuild 和紧凑 search debug（500 查询字符、20 路径、top-K 20；不 hydration）。Web Settings 渲染这些事实并要求输入 `REBUILD`；Host 独立校验 token。默认 Web composition 包含 workspace router 和 code-context contributor，Desktop 复用同一 Web UI。每个 Remote 请求携带 `sessionId`；Host 解析已附着 Session 的 cwd 并绑定对应独立索引。Client cache 按 Session 分区并跟随 Session 切换。
 
 <!-- BEGIN GENERATED cordis-surface (gen-cordis-catalog.ts) — do not edit between markers -->
 
@@ -269,6 +307,18 @@ Service Definition for the local code-index capability (`ctx.codeIndex`).
 abstract status(): Promise<IndexStatusReport>
 
 /**
+ * Operator-oriented health projection; providers may enrich the basic status.
+ * @returns bounded file/chunk/generation/build health for management clients.
+ */
+async managementStatus(): Promise<import('./types.ts').CodeIndexManagementStatus>
+
+/**
+ * Reconcile provider-derived work without requiring a destructive rebuild.
+ * @returns settled management status after reconciliation.
+ */
+async reconcile(): Promise<import('./types.ts').CodeIndexManagementStatus>
+
+/**
  * Bring the derived index up to date with the workspace tree (or rebuild it).
  * Concurrent calls fold into the single in-flight pass; refresh summaries are emitted only
  * after that pass commits, never speculatively.
@@ -286,6 +336,16 @@ abstract refresh(options?: RefreshOptions): Promise<RefreshSummary>
 abstract search(request: SearchRequest, signal?: AbortSignal): Promise<SearchResult>
 
 /**
+ * Resolve full indexed source bodies for an ordered batch of chunk identities.
+ * Providers revalidate each backing source against its indexed content hash;
+ * stale or unavailable identities are returned only in `rejected`.
+ * @param request - ordered chunk identities to hydrate.
+ * @param signal - cancellation checked before and after the synchronous store read.
+ * @returns resolved bodies, explicit misses, and the generation observed by the read.
+ */
+abstract hydrateChunks(request: HydrateChunksRequest, signal?: AbortSignal): Promise<HydrateChunksResult>
+
+/**
  * Answer one structured graph question over the derived call graph.
  * @param request - the `relations` / `impact` / `tests` / `cycles` / `dead_code` question
  *   with its per-op options.
@@ -295,7 +355,18 @@ abstract search(request: SearchRequest, signal?: AbortSignal): Promise<SearchRes
  *   edge's endpoints resolve inside the answer's `nodes`.
  */
 abstract exploreGraph(request: GraphExploreRequest, signal?: AbortSignal): Promise<GraphExploreResult>
+
+/**
+ * Bind this capability to one caller-owned workspace root. Multi-workspace
+ * providers override this method and route every operation to an isolated
+ * derived store. The default adapter preserves existing single-workspace
+ * providers and test doubles; production filesystem providers should
+ * override it to verify that `workspaceRoot` is their configured root.
+ * @param workspaceRoot - absolute workspace root selected by the caller's durable Session.
+ * @returns a workspace-bound operation face which cannot be retargeted after construction.
+ */
+forWorkspace(workspaceRoot: string): Promise<CodeIndexWorkspace>
 ```
 
-Source: [`packages/index/code-index/src/index.ts:47`](../../packages/index/code-index/src/index.ts)
+Source: [`packages/index/code-index/src/index.ts:49`](../../packages/index/code-index/src/index.ts)
 <!-- END GENERATED cordis-surface -->

@@ -19,6 +19,7 @@
 
 import { overlapScore } from './fusion.ts'
 import type { LaneRanks } from './plan.ts'
+import type { SearchScoreComponent } from '@relay-harness/rlh-code-index'
 import type { FusedScore, FeatureGates, PreselectResult, RankingConfig } from './types.ts'
 
 /** Ordered additive components of a rerank score; summing in order reproduces the total bit-for-bit. */
@@ -44,6 +45,14 @@ export class ScoreTrace {
       sum += component.value
     }
     return sum
+  }
+
+  /**
+   * Return a defensive ordered copy for the public hit explanation.
+   * @returns every additive component in accumulation order.
+   */
+  entries(): readonly SearchScoreComponent[] {
+    return this.components.map(component => ({ ...component }))
   }
 }
 
@@ -71,6 +80,8 @@ export interface RerankInput {
 /** One candidate's rerank outcome before result-level finalization. */
 export interface RerankOutcome {
   readonly rerankScore: number
+  /** Complete additive bill whose left-to-right total equals {@link RerankOutcome.rerankScore}. */
+  readonly scoreTrace: readonly SearchScoreComponent[]
   /** Deterministic reason tokens explaining every additive score component (deduplicated, first occurrence kept). */
   readonly reasons: readonly string[]
 }
@@ -166,7 +177,7 @@ export function rerankCandidate(input: RerankInput): RerankOutcome {
     }
   }
 
-  return { rerankScore: trace.total(), reasons: dedupeReasons(reasons) }
+  return { rerankScore: trace.total(), scoreTrace: trace.entries(), reasons: dedupeReasons(reasons) }
 }
 
 /**

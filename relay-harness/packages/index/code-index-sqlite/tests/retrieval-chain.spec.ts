@@ -49,7 +49,7 @@ describe('retrieval port against the search engine', () => {
     expect(result.readErrors).toEqual([])
     expect(result.tier).toBe('tiny')
     expect(result.candidateCount).toBeGreaterThan(0)
-    expect(epochsAfterWrite).toEqual({ indexEpoch: 1, evidenceEpoch: 0 })
+    expect(epochsAfterWrite).toEqual({ indexEpoch: 1, evidenceEpoch: 0, embeddingEpoch: 0 })
     expect(result.epochs).toEqual(epochsAfterWrite)
     expect(result.hits.length).toBeGreaterThan(0)
     const topHit = result.hits[0]

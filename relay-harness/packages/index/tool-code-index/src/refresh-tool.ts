@@ -14,7 +14,8 @@ import type { Context } from '@relay-harness/cordis'
 import type { RefreshSummary } from '@relay-harness/rlh-code-index'
 import { defineTool } from '@relay-harness/rlh-tools'
 import type { GenericCallView, ToolResult, ToolResultView } from '@relay-harness/rlh-tools'
-import { CodeIndexToolError, INDEX_TOOL_REFRESH_IN_PROGRESS, normalizeCodeIndexFailure, requireCodeIndex } from './errors.ts'
+import { CodeIndexToolError, INDEX_TOOL_REFRESH_IN_PROGRESS, normalizeCodeIndexFailure, requireWorkspaceCodeIndex } from './errors.ts'
+import { BUILD_EXPLAIN_SCHEMA } from './build-explain-schema.ts'
 
 /** Validated `refresh_code_index` arguments. */
 export interface RefreshCodeIndexArgs {
@@ -26,7 +27,7 @@ export interface RefreshCodeIndexArgs {
  * folds duplicates; the guard turns "another identical summary later" into a
  * structured busy answer now. Mutated only inside execute's try/finally pair.
  */
-let inFlightRefreshes = 0
+const inFlightRefreshes = new Set<string>()
 
 /**
  * Render one completed refresh summary as deterministic `key: value` lines.
@@ -35,6 +36,7 @@ let inFlightRefreshes = 0
  * @returns the model-facing text.
  */
 export function renderRefreshOutput(summary: Omit<RefreshSummary, 'reason'> & { reason: string }): string {
+  const explain = summary.explain
   return [
     'refresh complete',
     `reason: ${summary.reason}`,
@@ -43,6 +45,12 @@ export function renderRefreshOutput(summary: Omit<RefreshSummary, 'reason'> & { 
     `chunksWritten: ${summary.chunksWritten}`,
     `durationMs: ${summary.durationMs}`,
     `indexEpoch now: ${summary.epochsAfter.indexEpoch}`,
+    ...(explain === undefined ? [] : [
+      `build: scope=${explain.scope} pass=${explain.pass} degraded=${String(explain.degraded)}`,
+      `dirty: ${explain.dirty?.status ?? 'not-run'} marked=${explain.dirty?.marked ?? 0}`,
+      `embedding: missing=${explain.embedding?.missingChunks ?? 0} enqueued=${explain.embedding?.jobsEnqueued ?? 0} `
+        + `batches=${explain.embedding?.batchesWritten ?? 0}`,
+    ]),
   ].join('\n')
 }
 
@@ -108,31 +116,34 @@ export function applyRefreshTool(ctx: Context): void {
             properties: {
               indexEpoch: { type: 'integer', required: true },
               evidenceEpoch: { type: 'integer', required: true },
+              embeddingEpoch: { type: 'integer' },
             },
           },
+          explain: BUILD_EXPLAIN_SCHEMA,
         },
       },
       /* jscpd:ignore-end */
       render: (_args, value) => [{ type: 'text', text: renderRefreshOutput(value) }],
     },
-    async execute(args) {
-      if (inFlightRefreshes > 0) {
+    async execute(args, exec) {
+      const workspace = await requireWorkspaceCodeIndex(ctx, 'refresh_code_index', exec)
+      if (inFlightRefreshes.has(workspace.workspaceRoot)) {
         throw new CodeIndexToolError(
           'a code-index refresh is already in progress; retry once it completes',
           INDEX_TOOL_REFRESH_IN_PROGRESS,
         )
       }
       try {
-        inFlightRefreshes += 1
+        inFlightRefreshes.add(workspace.workspaceRoot)
         // Passthrough at the exit: the fixed-shape summary is naturally small.
-        return await requireCodeIndex(ctx, 'refresh_code_index').refresh({
+        return await workspace.refresh({
           reason: 'manual',
           forceRebuild: args.force === true,
         })
       } catch (error) {
         throw normalizeCodeIndexFailure('refresh_code_index', error)
       } finally {
-        inFlightRefreshes -= 1
+        inFlightRefreshes.delete(workspace.workspaceRoot)
       }
     },
     presentCall: presentRefreshCall,

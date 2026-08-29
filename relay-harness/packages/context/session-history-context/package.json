@@ -1,0 +1,45 @@
+{
+  "name": "@relay-harness/rlh-session-history-context",
+  "description": "Purpose-specific Context Engine contributor for bounded durable conversation history",
+  "version": "0.1.0-rc.8",
+  "publishConfig": { "access": "public" },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jyqj/relay-harness.git",
+    "directory": "packages/context/session-history-context"
+  },
+  "type": "module",
+  "main": "lib/index.js",
+  "types": "lib/types/index.d.ts",
+  "exports": {
+    ".": { "types": "./lib/types/index.d.ts", "default": "./lib/index.js" },
+    "./invariant": { "types": "./lib/types/invariant.d.ts", "default": "./lib/invariant.js" },
+    "./src/*": "./src/*",
+    "./package.json": "./package.json"
+  },
+  "files": ["lib/index.js", "lib/invariant.js", "lib/types/**/*.d.ts"],
+  "license": "MIT",
+  "dependencies": {
+    "@relay-harness/schemastery": "workspace:^"
+  },
+  "peerDependencies": {
+    "@relay-harness/cordis": "workspace:^",
+    "@relay-harness/rlh-compaction": "workspace:^",
+    "@relay-harness/rlh-context-engine": "workspace:^",
+    "@relay-harness/rlh-invariants": "workspace:^",
+    "@relay-harness/rlh-llm": "workspace:^",
+    "@relay-harness/rlh-session": "workspace:^",
+    "@relay-harness/rlh-token-meter": "workspace:^"
+  },
+  "devDependencies": {
+    "@relay-harness/cordis": "workspace:^",
+    "@relay-harness/cordis-plugin-include": "workspace:^",
+    "@relay-harness/cordis-plugin-loader": "workspace:^",
+    "@relay-harness/rlh-compaction": "workspace:^",
+    "@relay-harness/rlh-context-engine": "workspace:^",
+    "@relay-harness/rlh-invariants": "workspace:^",
+    "@relay-harness/rlh-llm": "workspace:^",
+    "@relay-harness/rlh-session": "workspace:^",
+    "@relay-harness/rlh-token-meter": "workspace:^"
+  }
+}

@@ -20,6 +20,7 @@ export interface McpServerRecordBase {
   /** Public tool-name namespace (`mcp__<serverName>__…`). */
   readonly serverName: string
   readonly toolCallTimeoutMs?: number
+  readonly startupTimeoutMs?: number
   readonly failOnStartupError?: boolean
   readonly reconnect?: McpReconnectRecord
 }

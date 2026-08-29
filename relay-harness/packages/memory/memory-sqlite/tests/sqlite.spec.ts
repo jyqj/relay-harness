@@ -46,6 +46,94 @@ const toolEvidence: MemoryEvidence = {
 }
 
 describe('SQLite long-term memory', () => {
+  it('lists current materialized governance rows without retrieval accounting', async () => {
+    const ctx = await harness()
+    const active = await ctx.longTermMemory.remember({
+      scope,
+      kind: 'preference',
+      content: 'List me without counting recall.',
+      importance: 2,
+      confidence: 1,
+      trust: 'user-stated',
+      status: 'active',
+      evidence: [userEvidence],
+    })
+    await ctx.longTermMemory.forget({ scope, id: active.id, reason: 'governance test', evidence: [userEvidence] })
+    const page = await ctx.longTermMemory.list({ scope, statuses: ['tombstoned'], limit: 1 })
+    expect(page).toMatchObject({ total: 1, offset: 0, hasMore: false })
+    expect(page.entries[0]).toMatchObject({ status: 'tombstoned', usefulAccessCount: 0, accessCount: 0 })
+    await ctx.fiber.dispose()
+  })
+
+  it('records governance signals atomically and finds normalized-summary review conflicts', async () => {
+    const ctx = await harness()
+    const first = await ctx.longTermMemory.remember({
+      scope, kind: 'fact', content: 'The package manager is pnpm 11.', summary: 'Package manager',
+      importance: 2, confidence: 0.8, trust: 'agent-proposed', status: 'candidate',
+      evidence: [{ ...userEvidence, verification: 'agent-proposal' }],
+    })
+    const second = await ctx.longTermMemory.remember({
+      scope, kind: 'fact', content: 'The package manager is npm.', summary: '  PACKAGE   MANAGER  ',
+      importance: 2, confidence: 0.6, trust: 'agent-proposed', status: 'candidate',
+      evidence: [{ ...userEvidence, verification: 'agent-proposal' }],
+    })
+    const conflicts = await ctx.longTermMemory.findConflicts({ scope, id: second.id, limit: 10 })
+    expect(conflicts).toHaveLength(1)
+    expect(conflicts[0]?.entry.id).toBe(first.id)
+    expect(conflicts[0]?.relation).toBe('normalized-summary-collision')
+    expect(conflicts[0]?.detectorId).toBe('memory-sqlite-normalized-v1')
+    await ctx.longTermMemory.revise({
+      scope,
+      id: second.id,
+      status: 'active',
+      trust: 'user-stated',
+      evidence: [userEvidence],
+      governance: { kind: 'user_confirmed', sessionId: userEvidence.sessionId, eventSeqs: userEvidence.eventSeqs },
+    })
+    expect(await ctx.longTermMemory.listSignals(scope, second.id)).toEqual([
+      expect.objectContaining({
+        memoryId: second.id,
+        kind: 'user_confirmed',
+        sessionId: userEvidence.sessionId,
+        eventSeqs: userEvidence.eventSeqs,
+      }),
+    ])
+    await ctx.fiber.dispose()
+  })
+
+  it('reconciles idempotent outcomes and ranks only positive/negative impact', async () => {
+    const ctx = await harness()
+    const positive = await ctx.longTermMemory.remember({
+      scope, kind: 'lesson', content: 'Run the focused validation command.',
+      importance: 2, confidence: 0.8, trust: 'user-stated', status: 'active', evidence: [userEvidence],
+    })
+    const neutral = await ctx.longTermMemory.remember({
+      scope, kind: 'lesson', content: 'Run the validation command before delivery.',
+      importance: 2, confidence: 0.8, trust: 'user-stated', status: 'active', evidence: [userEvidence],
+    })
+    const base = {
+      scope,
+      sessionId: SessionId('outcome-session'),
+      turn: 1,
+      sourceEventSeqs: [4, 8],
+      observedAt: 100,
+    } as const
+    await ctx.longTermMemory.reconcileOutcomes({
+      scope,
+      sessionId: base.sessionId,
+      outcomes: [
+        { ...base, id: 'neutral', memoryId: neutral.id, kind: 'turn-completed', impact: 'neutral' },
+        { ...base, id: 'positive', memoryId: positive.id, kind: 'assistant-positive', impact: 'positive' },
+      ],
+    })
+    expect(await ctx.longTermMemory.listOutcomes({ scope, id: positive.id, limit: 10 }))
+      .toEqual([expect.objectContaining({ id: 'positive', impact: 'positive' })])
+    const ranked = await ctx.longTermMemory.search({ scope, query: 'validation command', limit: 10, recordAccess: false })
+    expect(ranked[0]?.entry.id).toBe(positive.id)
+    expect((await ctx.longTermMemory.listOutcomes({ scope, id: neutral.id, limit: 10 }))[0]?.impact).toBe('neutral')
+    await ctx.fiber.dispose()
+  })
+
   it('persists active revisions, searches both lexical indexes, and tombstones without deleting evidence', async () => {
     const path = await databasePath()
     const ctx = await harness(path)
@@ -77,10 +165,14 @@ describe('SQLite long-term memory', () => {
     })
     expect(revised.revision).toBe(2)
     expect(revised.evidence).toHaveLength(2)
+    expect(() => ctx.longTermMemory.revise({
+      scope, id: created.id, expectedRevision: 1, content: 'stale overwrite', evidence: [toolEvidence],
+    })).toThrow(/revision conflict/u)
 
     const forgotten = await ctx.longTermMemory.forget({
       scope,
       id: created.id,
+      expectedRevision: revised.revision,
       reason: 'user requested deletion',
       evidence: [userEvidence],
     })
@@ -389,7 +481,9 @@ describe('SQLite long-term memory', () => {
     expect(await ctx.longTermMemory.read(scope, entry.id)).toMatchObject({ revision: 1 })
     await ctx.fiber.dispose()
     const migrated = new DatabaseSync(path)
-    expect(migrated.prepare('PRAGMA user_version').get()).toEqual({ user_version: 3 })
+    expect(migrated.prepare('PRAGMA user_version').get()).toEqual({ user_version: 4 })
+    expect(migrated.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'memory_outcomes'").get())
+      .toEqual({ name: 'memory_outcomes' })
     migrated.close()
   })
 

@@ -5,6 +5,7 @@
 
 import type { Context, FiberState } from '@relay-harness/cordis'
 import type {} from '@relay-harness/cordis-plugin-loader'
+import type {} from '@relay-harness/rlh-mcp-catalog'
 import { TypertRemoteService, Remote } from '@relay-harness/rlh-typert-protocol'
 import type {} from 'zod'
 import type { McpServerRecord } from '@relay-harness/rlh-mcp-servers-file'
@@ -15,6 +16,11 @@ import type {
   McpServerIdRequest,
   McpServerSnapshot,
   McpServerUpsertRequest,
+  McpCatalogSnapshot,
+  McpPromptGetRequest,
+  McpPromptResult,
+  McpResourceRead,
+  McpResourceReadRequest,
 } from './types.ts'
 
 export type * from './types.ts'
@@ -89,6 +95,53 @@ export class McpServersGateway extends TypertRemoteService {
       })
     }
     return { servers: [...managed, ...composition] }
+  }
+
+  /**
+   * List protocol-native Resources, Resource Templates, and Prompts.
+   * @returns the current connected catalog snapshot.
+   */
+  @Remote('catalog')
+  catalog(): McpCatalogSnapshot {
+    const catalog = this.requireCatalog()
+    return {
+      resources: catalog.listResources(),
+      resourceTemplates: catalog.listResourceTemplates(),
+      prompts: catalog.listPrompts(),
+    }
+  }
+
+  /**
+   * Read one catalogued MCP Resource without converting it to a tool.
+   * @param request - server and concrete Resource URI.
+   * @param signal - caller cancellation.
+   * @returns rich text/blob Resource contents.
+   */
+  @Remote('readResource')
+  readResource(request: McpResourceReadRequest, signal: AbortSignal): Promise<McpResourceRead> {
+    return this.requireCatalog().readResource(request.serverName, request.uri, signal)
+  }
+
+  /**
+   * Resolve one catalogued MCP Prompt through the explicit prompt seam.
+   * @param request - server, prompt name, and string arguments.
+   * @param signal - caller cancellation.
+   * @returns protocol-native rich Prompt messages.
+   */
+  @Remote('getPrompt')
+  async getPrompt(request: McpPromptGetRequest, signal: AbortSignal): Promise<McpPromptResult> {
+    return await this.requireCatalog().getPrompt(
+      request.serverName,
+      request.name,
+      request.arguments,
+      signal,
+    )
+  }
+
+  private requireCatalog() {
+    const catalog = this.ctx.get('mcpCatalog')
+    if (catalog === undefined) throw new Error('mcpServers: MCP Resources/Prompts catalog is not composed')
+    return catalog
   }
 
   /**
@@ -174,6 +227,7 @@ function compositionSpec(id: string, config: unknown): McpServerRecord | undefin
       ...Array.isArray(raw.args) ? { args: raw.args.filter((item): item is string => typeof item === 'string') } : {},
       ...isStringMap(raw.env) ? { env: raw.env } : {},
       ...typeof raw.cwd === 'string' ? { cwd: raw.cwd } : {},
+      ...typeof raw.startupTimeoutMs === 'number' ? { startupTimeoutMs: raw.startupTimeoutMs } : {},
     }
   }
   if (typeof raw.url !== 'string') return undefined
@@ -184,6 +238,7 @@ function compositionSpec(id: string, config: unknown): McpServerRecord | undefin
     serverName,
     url: raw.url,
     ...isStringMap(raw.headers) ? { headers: raw.headers } : {},
+    ...typeof raw.startupTimeoutMs === 'number' ? { startupTimeoutMs: raw.startupTimeoutMs } : {},
   }
 }
 

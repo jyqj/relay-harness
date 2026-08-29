@@ -58,6 +58,22 @@ describe('TreeWatcher', () => {
     }
   })
 
+  it('retains and deduplicates native path names across a debounce window', async () => {
+    vi.useFakeTimers()
+    try {
+      const onChange = vi.fn()
+      const watcher = new TreeWatcher('/unused-root', onChange)
+      watcher.schedule('src/b.ts')
+      watcher.schedule('src/a.ts')
+      watcher.schedule('src/b.ts')
+      await vi.advanceTimersByTimeAsync(WATCHER_EVENT_DEBOUNCE_MS)
+      expect(onChange).toHaveBeenCalledWith(['src/a.ts', 'src/b.ts'])
+      watcher.dispose()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('dispose clears a pending debounce timer outright', async () => {
     vi.useFakeTimers()
     try {

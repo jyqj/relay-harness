@@ -393,6 +393,22 @@ Types: [ContentBlock](subsystems/core.md) · [TokenUsage](subsystems/llm-streami
 
 Source: [`packages/compaction/compaction/src/types.ts:33`](../packages/compaction/compaction/src/types.ts)
 
+### `context/*`
+
+<a id="contextprepared--log-only"></a>
+
+#### `context/prepared` — log-only
+
+```ts persistence-catalog
+/**
+ * Log-only context-preparation trace for one accepted step. AgentLoop appends it after the
+ * referenced `user/message` events and before dispatching the model request.
+ */
+'context/prepared': ContextPreparedEventData
+```
+
+Source: [`packages/context/context-engine/src/types.ts:291`](../packages/context/context-engine/src/types.ts)
+
 ### `feedback/*`
 
 <a id="feedbackrecord--log-only"></a>
@@ -498,6 +514,19 @@ Source: [`packages/llm/llm-retry/src/types.ts:9`](../packages/llm/llm-retry/src/
 
 Source: [`packages/llm/llm-retry/src/types.ts:11`](../packages/llm/llm-retry/src/types.ts)
 
+### `memory/*`
+
+<a id="memorygovernance-requested--log-only"></a>
+
+#### `memory/governance-requested` — log-only
+
+```ts persistence-catalog
+/** User governance intent captured before a successful append-only memory revision. */
+'memory/governance-requested': MemoryGovernanceRequestedEventData
+```
+
+Source: [`packages/host/memory-center/src/index.ts:52`](../packages/host/memory-center/src/index.ts)
+
 ### `permission/*`
 
 <a id="permissionpreset--log-only"></a>
@@ -532,6 +561,21 @@ Source: [`packages/interaction/permission-presets/src/index.ts:50`](../packages/
 ```
 
 Source: [`packages/plan/plan-mode/src/index.ts:54`](../packages/plan/plan-mode/src/index.ts)
+
+### `prompt-enhancement/*`
+
+<a id="prompt-enhancementllm-request--log-only"></a>
+
+#### `prompt-enhancement/llm-request` — log-only
+
+```ts persistence-catalog
+/** Log-only pre-dispatch record of one Prompt Enhancement model request. */
+'prompt-enhancement/llm-request': PromptEnhancementLlmRequestEventData
+```
+
+Types: [PromptEnhancementLlmRequestEventData](subsystems/prompt-enhancement.md)
+
+Source: [`packages/context/prompt-enhancement-llm/src/index.ts:57`](../packages/context/prompt-enhancement-llm/src/index.ts)
 
 ### `request/*`
 

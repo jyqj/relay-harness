@@ -49,6 +49,7 @@ export type { VectorLaneOptions } from './lanes.vector.ts'
 export {
   LaneRanks,
   SearchPlan,
+  augmentedQueryText,
   compareStrings,
   defaultPreselectLimit,
   laneStatsOf,
@@ -84,6 +85,9 @@ export type {
   SymbolSeedHit,
   SymbolTokenHit,
   VectorCoverage,
+  VectorRecallHit,
+  VectorRecallRequest,
+  VectorRecallResult,
   VectorReadFacet,
   VectorRow,
 } from './port.ts'

@@ -1,3 +1,4 @@
+/** Simplified-Chinese product-shell dictionary. */
 export const zh = {
   'nav.chat': '对话',
   'nav.work': '工作',
@@ -31,7 +32,9 @@ export const zh = {
   'mode.description': '显示模型、Agent preset、插件、轨迹与原始工具诊断入口。',
   'mode.error': '保存失败：{message}',
 } satisfies Record<string, string>
+/** Closed product-shell locale-key vocabulary. */
 export type ProductShellKey = keyof typeof zh
+/** English product-shell dictionary. */
 export const en = {
   'nav.chat': 'Chat',
   'nav.work': 'Work',
@@ -65,3 +68,7 @@ export const en = {
   'mode.description': 'Show model, Agent preset, plugin, trajectory, and raw tool diagnostics.',
   'mode.error': 'Save failed: {message}',
 } satisfies Record<ProductShellKey, string>
+
+declare module '@relay-harness/rlh-client-ui-slots' {
+  interface LocaleNamespaceMap { productShell: ProductShellKey }
+}

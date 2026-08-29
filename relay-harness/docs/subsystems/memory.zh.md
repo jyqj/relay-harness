@@ -22,11 +22,13 @@ Kind 区分偏好、事实、约束、决策、流程和教训。项目与用户
 
 模型工具要求精确证据引文后才会请求 active 状态；Provider 会重复执行 trust／evidence 与 secret 检查，因此其他 Consumer 不能绕过该决策。
 
-## 召回生命周期
+## Context Provider 与召回生命周期
 
-Agent Consumer 在第一个 `agent/pre-step` 准备候选，此时下游监听器已经接受直接消息。它把保留条目序列化为不受信任 JSON，并放入一条具有独立来源的 `user/message`，因此 Session 日志能重建精确模型请求。完整消息受字符上限约束。Provider 失败采用 fail-open，不修改直接提示。
+Host-owned `memory-agent` 会注册一个 Context Engine Contributor。`StepContextInput.caller` 携带分离的持久 session、turn／step、workspace、origin 与有效 preset identity；发行策略只接纳 `standard` 顶层会话。在首个 Agent step，Contributor 从直接用户文本准备候选，把保留条目序列化为不受信任 JSON，并返回具有独立来源的消息、绑定 revision 的 Memory Evidence 与有界 coverage。AgentLoop 会在 `context/prepared` 中记录被接纳消息以及 Evidence／提议接纳关系。Provider 失败采用 fail-open，不修改直接提示。
 
-Prepared handle 保持打开，直到最终 `turn/end`。Completed 与 max-token 轮次提交实际进入模型请求的精确 id；error、abort、interruption、缺少 Assistant 输出、替换或卸载都会执行 abort。SQLite Provider 幂等保存结算，并记录 candidate-hit 和 injected 信号。
+Prepared handle 保持打开，直到最终 `turn/end`。Completed 与 max-token 轮次只提交依据持久 trace 证明其原始提议精确通过 `agent/pre-step` 的 id；提议被移除或改写时不提交 injected id。error、abort、interruption、缺少 Assistant 输出、替换、卸载，或 Provider prepare 与 pending ownership 之间的失败都会执行 abort。Evidence digest 覆盖完整注入 item payload。SQLite Provider 幂等保存结算，并记录 candidate-hit 和 injected 信号。
+
+对于 Prompt Enhancement，同一 Contributor 会在相同字符预算与来源格式下执行 active、未过期、精确 Scope 的搜索。它传入 `recordAccess: false` 且绝不调用 prepare／commit／abort，因此预览未发送草稿不会改变记忆计数／turn 状态，也不会改动目标 Session 日志。
 
 Recall-form 用户消息保留在原始 Session 日志中，但不会生成 Session Query 语义文档。这会阻止已召回记忆或被引用 Session 快照变成新的 episodic 证据并递归放大自身。
 
@@ -40,7 +42,13 @@ Recall-form 用户消息保留在原始 Session 日志中，但不会生成 Sess
 
 ## SQLite 检索
 
-本地 Provider 为当前非 tombstoned 条目维护 Unicode 与 trigram FTS5 索引。它融合各渠道排名，再应用有界 importance 和 trust 权重。查询和每个元数据筛选器都是 SQL 参数；调用者 Scope 为必填。规范数据库会拒绝无关文件和未知 schema 版本，而不是重置它们。schema version 2 增加确定性 content hash 与提取 job；version 3 增加单 owner 心跳表。更早的 store 会原地迁移。
+本地 Provider 为当前非 tombstoned 条目维护 Unicode 与 trigram FTS5 索引。它融合各渠道排名，再应用有界 importance 和 trust 权重。查询和每个元数据筛选器都是 SQL 参数；调用者 Scope 为必填。`SearchMemoryInput.recordAccess` 默认为 true，而设为 false 的辅助预览保持只读。规范数据库会拒绝无关文件和未知 schema 版本，而不是重置它们。schema version 2 增加确定性 content hash 与提取 job；version 3 增加单 owner 心跳表。更早的 store 会原地迁移。
+
+## Memory Center 与剩余缺口
+
+发行的 Web composition 现在会挂载受治理 Memory Center。每次分页 list/search/read 都由已连接 Host Session 授权，其 cwd 必须匹配 Client workspace Scope；recall accounting 保持不变。candidate/disputed approve 或 reject、带用户 Evidence 的 revision 和 tombstone deletion 都携带页面展示的 revision。Client cache 与 Settings UI 会展示所有 canonical status、来源 excerpt、`validUntil` freshness、显式 supersession 链，以及带 current/historical revision 状态的跨 Session why-used occurrence。治理写入会追加 `memory/governance-requested`，要求 Session durability，并在 Provider 写入前重新检查 revision；浏览器无法虚构 active user-stated memory，也不能覆盖更新的治理。
+
+Memory Center 现在扫描同工作区完整 Session Query corpus 且不激活 Agent，并把读取失败明确标为 partial coverage。按 generation 分区的 Client cache 会拒绝过期在途填充；并发 revision 重排分页边界时，多页 substring search 会重新开始。Canonical signal 会暴露 retrieval、injection、用户确认与用户拒绝。Candidate review 会先执行确定性 normalized content/summary collision detection，再查询 optional attributed semantic detector。SQLite version 4 保存幂等 per-Session outcome；显式 Assistant rating 与 durable Work completion 产生有界 ranking impact，而普通 recall、turn completion/failure 与 blocked Work 保持 neutral。Feedback 不可用时保留上一份 durable outcome，全量 reconcile 失败后可重试。没有新增物理 retention policy：expiry 保持可见，tombstone 保留历史。
 
 <!-- BEGIN GENERATED cordis-surface (gen-cordis-catalog.ts) — do not edit between markers -->
 
@@ -113,15 +121,76 @@ abstract forget(input: ForgetMemoryInput, signal?: AbortSignal): Promise<MemoryE
 abstract read(scope: MemoryScope, id: MemoryId, signal?: AbortSignal): Promise<MemoryEntry | undefined>
 
 /**
+ * List the provider's current materialized entries for one exact scope.
+ * Unlike recall search, this governance read can include expired, superseded, and tombstoned
+ * entries and never changes retrieval-use accounting.
+ * @param input - exact scope, filters, and deterministic page window.
+ * @param signal - cancellation for the read.
+ * @returns one newest-first page and the matching total.
+ */
+abstract list(input: ListMemoryInput, signal?: AbortSignal): Promise<MemoryListPage>
+
+/**
+ * Find deterministic normalized-key conflicts in one exact scope.
+ * @param input - target identity and result cap.
+ * @param signal - cancellation for the read.
+ * @returns duplicate or summary-collision candidates.
+ */
+abstract findConflicts( input: FindMemoryConflictsInput, signal?: AbortSignal, ): Promise<readonly MemoryConflictCandidate[]>
+
+/**
+ * Read canonical retrieval and user-governance signals.
+ * @param scope - exact recall partition.
+ * @param id - logical memory identity.
+ * @param signal - cancellation for the read.
+ * @returns chronological signal history.
+ */
+abstract listSignals(scope: MemoryScope, id: MemoryId, signal?: AbortSignal): Promise<readonly MemorySignal[]>
+
+/**
+ * Atomically replace one Session's reconciler-owned outcome observations.
+ * @param input - exact scope, Session, and complete derived outcome set.
+ * @param signal - cancellation before the write begins.
+ * @returns after the canonical outcome view is durable.
+ */
+abstract reconcileOutcomes(input: ReconcileMemoryOutcomesInput, signal?: AbortSignal): Promise<void>
+
+/**
+ * Read recent outcome observations for one memory.
+ * @param input - exact scope, identity, and result cap.
+ * @param signal - cancellation for the read.
+ * @returns newest-first outcome observations.
+ */
+abstract listOutcomes(input: ListMemoryOutcomesInput, signal?: AbortSignal): Promise<readonly MemoryOutcome[]>
+
+/**
  * Search current entries inside an exact scope.
- * @param input - normalized query, filters, and result cap.
+ * @param input - normalized query, filters, result cap, and optional access-accounting policy.
  * @param signal - cancellation for the read.
  * @returns ranked current entries with retrieval-channel evidence.
  */
 abstract search(input: SearchMemoryInput, signal?: AbortSignal): Promise<readonly MemorySearchHit[]>
 ```
 
-Source: [`packages/memory/memory/src/index.ts:63`](../../packages/memory/memory/src/index.ts)
+Source: [`packages/memory/memory/src/index.ts:91`](../../packages/memory/memory/src/index.ts)
+
+<a id="ctxmemoryconflictdetector--memoryconflictdetector-abstract-seam"></a>
+
+### `ctx.memoryConflictDetector` — `MemoryConflictDetector` (abstract seam)
+
+Optional semantic detector composed by deployments that can justify richer conflict candidates.
+
+```ts cordis-catalog
+/**
+ * Detect provider-attributed semantic conflicts without mutating canonical memory.
+ * @param input - target plus bounded same-Scope candidates.
+ * @param signal - cancellation for optional provider work.
+ * @returns attributed conflict candidates only.
+ */
+abstract detect( input: DetectMemoryConflictsInput, signal?: AbortSignal, ): Promise<readonly MemoryConflictCandidate[]>
+```
+
+Source: [`packages/memory/memory/src/index.ts:73`](../../packages/memory/memory/src/index.ts)
 
 <a id="ctxmemoryextractionqueue--memoryextractionqueue-abstract-seam"></a>
 
@@ -167,4 +236,36 @@ abstract read(id: MemoryExtractionJobId): Promise<MemoryExtractionJob | undefine
 ```
 
 Source: [`packages/memory/memory/src/extraction.ts:20`](../../packages/memory/memory/src/extraction.ts)
+
+<a id="ctxmemoryoutcomereconciler--memoryoutcomereconciler"></a>
+
+### `ctx.memoryOutcomeReconciler` — `MemoryOutcomeReconciler`
+
+Host service maintaining idempotent Memory outcome observations from durable Session facts.
+
+```ts cordis-catalog
+/**
+ * Reconcile the complete live-preferred persisted corpus once per process unless explicitly refreshed.
+ * @param refresh - force a new full observation after the initial pass.
+ * @returns after every readable Session has settled independently.
+ */
+ensureReconciled(refresh: boolean = false): Promise<void>
+
+/**
+ * Reconcile all logical Sessions through Session Query without resuming an Agent.
+ * @returns after the bounded worker pool settles all Sessions.
+ */
+async reconcileAll(): Promise<void>
+
+/**
+ * Reconcile one logical Session through the live-preferred non-activating Session Query read.
+ * @param sessionId - logical Session identity.
+ * @returns after its complete derived outcome set replaces the previous set.
+ */
+reconcileSession(sessionId: SessionId): Promise<void>
+```
+
+Types: [SessionId](core.md)
+
+Source: [`packages/memory/memory-outcome-reconciler/src/index.ts:58`](../../packages/memory/memory-outcome-reconciler/src/index.ts)
 <!-- END GENERATED cordis-surface -->

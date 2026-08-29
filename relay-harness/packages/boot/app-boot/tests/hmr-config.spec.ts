@@ -127,6 +127,28 @@ describe('HMR exact config paths', () => {
     }
   })
 
+  it('observes an immediate write below multiple missing parents with native watching requested', { timeout: 20_000 }, async () => {
+    const root = mkdtempSync(join(tmpdir(), 'rlh-hmr-config-deep-'))
+    const dir = join(root, 'later', 'deeper')
+    const filename = join(dir, 'plugins.yml')
+    const ctx = await bootHmr(root, [], false)
+    const observed: string[] = []
+    try {
+      await ctx.hmr.registerConfig(filename, () => {
+        observed.push(readFileSync(filename, 'utf8'))
+      })
+      // One synchronous filesystem turn intentionally gives a native watcher
+      // no attach gap between parent discovery and the exact file creation.
+      mkdirSync(dir, { recursive: true })
+      writeFileSync(filename, 'deep-created')
+      await eventually(() => observed.includes('deep-created'), 'HMR lost creation below multiple new parents')
+      await new Promise(resolve => setTimeout(resolve, 300))
+      expect(observed.filter(value => value === 'deep-created')).toHaveLength(1)
+    } finally {
+      await ctx.fiber.dispose()
+    }
+  })
+
   it('serializes refreshes and waits for them during disposal', { timeout: 20_000 }, async () => {
     const dir = mkdtempSync(join(tmpdir(), 'rlh-hmr-config-'))
     const filename = join(dir, 'plugins.yml')
@@ -150,9 +172,9 @@ describe('HMR exact config paths', () => {
       })
       await started.promise
       writeFileSync(filename, 'two')
-      // Chokidar coalesces atomic writes for 100 ms by default. Wait beyond
-      // that window so this edit is queued before registration disposal.
-      await new Promise(resolve => setTimeout(resolve, 250))
+      // Dispose immediately, before a native watcher is required to deliver
+      // the change. Registration disposal owns one exact final-revision probe
+      // and must queue this already-committed revision behind the active one.
 
       let disposed = false
       const disposal = dispose().then(() => { disposed = true })

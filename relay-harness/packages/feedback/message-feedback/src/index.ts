@@ -18,6 +18,7 @@ import type {
   MessageFeedbackDeleteRequest,
   MessageFeedbackDeleteResult,
   MessageFeedbackDeleteValue,
+  MessageFeedbackChanged,
   MessageFeedbackFailure,
   MessageFeedbackItem,
   MessageFeedbackListRequest,
@@ -33,6 +34,17 @@ import type {
   MessageFeedbackVersion,
   MessageFeedbackVersionConflict,
 } from './types.ts'
+
+declare module '@relay-harness/cordis' {
+  interface Events {
+    /**
+     * Material feedback sidecar change; Host reconcilers may refresh derived outcome views.
+     * @param change - committed current rating or deletion identity.
+     * @mode emit
+     */
+    'message-feedback/changed'(change: MessageFeedbackChanged): void
+  }
+}
 
 export type * from './types.ts'
 export {
@@ -258,6 +270,11 @@ export class MessageFeedbackService extends TypertRemoteService {
         request.sessionId,
         rowSnapshot(identityOf(durable.meta), nextItems),
       )
+      this.ctx.emit('message-feedback/changed', {
+        sessionId: request.sessionId,
+        messageId: request.messageId,
+        rating: item.rating,
+      })
       return success(snapshotItem(item))
     })
   }
@@ -290,6 +307,10 @@ export class MessageFeedbackService extends TypertRemoteService {
         request.sessionId,
         rowSnapshot(identityOf(known.value.meta), items.filter(item => item !== existing)),
       )
+      this.ctx.emit('message-feedback/changed', {
+        sessionId: request.sessionId,
+        messageId: request.messageId,
+      })
       return success<MessageFeedbackDeleteValue>(Object.freeze({ absent: true }))
     })
   }

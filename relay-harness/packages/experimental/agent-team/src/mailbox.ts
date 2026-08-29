@@ -24,7 +24,8 @@ import type {
 export class TeamMailbox {
   private readonly dispatchTails = new Map<SessionId, Promise<void>>()
   private readonly activeDispatches = new Map<SessionId, TeamMessageSnapshot>()
-  private readonly inFlightMessages = new Set<TeamMessageId>()
+  /** One shared immediate-delivery observation per durable message id. */
+  private readonly inFlightMessages = new Map<TeamMessageId, Promise<boolean>>()
   private readonly inFlightDispatches = new Set<Promise<unknown>>()
 
   /**
@@ -154,8 +155,11 @@ export class TeamMailbox {
   /** Attempt one queued message exactly once in this process at a time. */
   private tryDispatch(root: Agent, message: TeamMessageSnapshot, signal: AbortSignal): Promise<boolean> {
     if (this.lifecycle.disposed) return Promise.resolve(false)
-    if (this.inFlightMessages.has(message.id)) return Promise.resolve(false)
-    this.inFlightMessages.add(message.id)
+    const active = this.inFlightMessages.get(message.id)
+    // Recovery and a new sender can observe the same durable queue edge. The
+    // receipt describes that message's immediate delivery, not which caller
+    // won process-local admission, so every observer shares the same result.
+    if (active !== undefined) return active
     const operation = this.trackDispatch(
       this.tryDispatchAdmitted(
         root,
@@ -163,8 +167,9 @@ export class TeamMailbox {
         AbortSignal.any([signal, this.lifecycle.signal]),
       ),
     )
+    this.inFlightMessages.set(message.id, operation)
     const forget = (): void => {
-      this.inFlightMessages.delete(message.id)
+      if (this.inFlightMessages.get(message.id) === operation) this.inFlightMessages.delete(message.id)
     }
     void operation.then(forget, forget)
     return operation

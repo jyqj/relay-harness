@@ -27,6 +27,7 @@ import {
 } from '@relay-harness/rlh-llm'
 import type { Scope } from '@relay-harness/rlh-scope'
 import { createScope } from '@relay-harness/rlh-scope'
+import type { PreparedStepContext } from '@relay-harness/rlh-context-engine'
 import type { EpochHeader, RequestContext, Session, SessionId, TurnEndReason, UserMessage } from '@relay-harness/rlh-session'
 import { assertToolTranscriptValid, canonicalHeader, headerEquals } from '@relay-harness/rlh-session'
 import { joinContextSections, renderContextSections, renderPrompt } from '@relay-harness/rlh-system-prompt'
@@ -34,6 +35,7 @@ import type { PromptAssembly } from '@relay-harness/rlh-system-prompt'
 import { TOOL_REQUEST_SNAPSHOT, TOOL_RUNTIME_REQUESTS, type ToolRequestSnapshot } from '@relay-harness/rlh-tools'
 import type { Context } from '@relay-harness/cordis'
 import { RuntimeContextProjection } from './runtime-context.ts'
+import { materializeContextPrepared } from './context-trace.ts'
 import { executeToolCalls } from './tool-calls.ts'
 
 type Phase =
@@ -50,7 +52,13 @@ type StepEndReason = Extract<TurnEndReason, { kind: 'completed' | 'max-tokens' }
 
 type PreparedStep =
   | { kind: 'reject' }
-  | { kind: 'enter'; messages: UserMessage[]; assembly: PromptAssembly; toolSnapshot: ToolRequestSnapshot }
+  | {
+    kind: 'enter'
+    messages: UserMessage[]
+    assembly: PromptAssembly
+    toolSnapshot: ToolRequestSnapshot
+    context?: PreparedStepContext
+  }
 
 /**
  * Structural face of the optional `visionFallback` service
@@ -75,10 +83,31 @@ interface VisionMessageRewriter {
  */
 interface StepContextEngine {
   prepareStep(input: {
+    readonly purpose: 'agent_step'
     readonly messages: readonly UserMessage[]
     readonly signal: AbortSignal
     readonly cwd: string
-  }): Promise<{ readonly messages: readonly UserMessage[] } | undefined>
+    readonly caller: {
+      readonly sessionId: SessionId
+      readonly agentId: string
+      readonly workspaceId: string
+      readonly turn: number
+      readonly step: number
+      readonly agentPreset?: string
+      readonly origin?: Session['header']['origin']
+    }
+  }): Promise<PreparedStepContext | undefined>
+}
+
+/** Resolve the durable preset actually running this log, including blank-session switches. */
+function currentAgentPreset(session: Session): string | undefined {
+  for (let index = session.events.length - 1; index >= 0; index -= 1) {
+    const event = session.events[index] as { type: string; data?: { agentPreset?: unknown } } | undefined
+    if (event?.type === 'agent-preset/selected' && typeof event.data?.agentPreset === 'string') {
+      return event.data.agentPreset
+    }
+  }
+  return session.header.agentPreset
 }
 
 /** Remove adapter-derived values before plugins propose the next request config. */
@@ -258,12 +287,24 @@ export class ReactLoopAgent implements Agent {
     const signal = this.phase.abort.signal
     const claimed = this.inbox.claim(target, position.turn)
     const contextEngine = this.loopCtx.get('contextEngine') as StepContextEngine | undefined
+    const cwd = this.session.header.cwd ?? process.cwd()
+    const agentPreset = currentAgentPreset(this.session)
     const stepContext = contextEngine === undefined
       ? undefined
       : await contextEngine.prepareStep({
+        purpose: 'agent_step',
         messages: claimed,
         signal,
-        cwd: this.session.header.cwd ?? process.cwd(),
+        cwd,
+        caller: {
+          sessionId: this.session.id,
+          agentId: this.id,
+          workspaceId: this.session.header.cwd ?? 'global',
+          turn: position.turn,
+          step: position.step,
+          ...agentPreset === undefined ? {} : { agentPreset },
+          ...this.session.header.origin === undefined ? {} : { origin: this.session.header.origin },
+        },
       })
     signal.throwIfAborted()
     const toolSnapshot = this.loopCtx.tools[TOOL_RUNTIME_REQUESTS].capture(this)
@@ -292,7 +333,12 @@ export class ReactLoopAgent implements Agent {
         toolSnapshot.release()
         return decision
       }
-      return { ...decision, assembly, toolSnapshot }
+      return {
+        ...decision,
+        assembly,
+        toolSnapshot,
+        ...stepContext === undefined ? {} : { context: stepContext },
+      }
     } catch (error: unknown) {
       toolSnapshot.release()
       throw error
@@ -339,8 +385,13 @@ export class ReactLoopAgent implements Agent {
           this.session.append('step/start', { turn, step })
           stepStarted = true
           phase.step = step
-          for (const message of decision.messages) {
-            this.session.append('user/message', message, { surfaceOp: 'append' })
+          const enteredMessages = decision.messages.map(message =>
+            this.session.append('user/message', message, { surfaceOp: 'append' }))
+          if (decision.context !== undefined) {
+            this.session.append(
+              'context/prepared',
+              materializeContextPrepared(decision.context, enteredMessages, { turn, step }),
+            )
           }
           // max-tokens is sticky: once any step hits the ceiling, later steps
           // that complete normally must not downgrade the turn outcome.

@@ -17,6 +17,11 @@ export interface SkillInventoryEntry {
   readonly writable: boolean
   readonly modelInvocable: boolean
   readonly userInvocable: boolean
+  readonly version?: string
+  readonly installSource?: string
+  readonly permissions: readonly string[]
+  readonly trust: 'bundled' | 'unsigned-local' | 'runtime'
+  readonly health: 'healthy' | 'last-good' | 'invalid'
 }
 
 /** Catalog snapshot. */
@@ -47,6 +52,11 @@ export interface SkillInventoryDetail {
   readonly modelInvocable: boolean
   readonly userInvocable: boolean
   readonly content: string
+  readonly version?: string
+  readonly installSource?: string
+  readonly permissions: readonly string[]
+  readonly trust: 'bundled' | 'unsigned-local' | 'runtime'
+  readonly health: 'healthy' | 'last-good' | 'invalid'
 }
 
 /** Create a user or project skill bundle. */
@@ -80,4 +90,15 @@ export interface SkillInventoryInvocationRequest extends SkillInventoryScope {
   readonly name: string
   readonly modelInvocable: boolean
   readonly userInvocable: boolean
+}
+
+/** Governed local, ZIP, or GitHub skill import request. */
+export interface SkillInventoryImportRequest extends SkillInventoryScope {
+  readonly kind: 'local' | 'zip' | 'github'
+  readonly location: string
+  readonly root: SkillCreateRoot
+  readonly skillPath?: string
+  readonly version?: string
+  readonly permissions: readonly string[]
+  readonly replace?: boolean
 }

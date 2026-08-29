@@ -19,6 +19,8 @@ import { CodeIndex } from '@relay-harness/rlh-code-index'
 import type {
   GraphExploreRequest,
   GraphExploreResult,
+  HydrateChunksRequest,
+  HydrateChunksResult,
   IndexStatusReport,
   RefreshOptions,
   RefreshSummary,
@@ -63,11 +65,14 @@ class CompositionCodeIndex extends CodeIndex {
       hits: [{
         chunkId: 'chunk:src/ledger.ts:1',
         filePath: 'src/ledger.ts',
+        language: 'typescript',
+        contentHash: 'hash-ledger',
         startLine: 3,
         endLine: 30,
         score: 6.5,
         rank: 1,
         reasons: ['exact identifier'],
+        scoreTrace: [{ label: 'rrf:lexical', value: 6.5 }],
         parserTier: 'tree-sitter',
         parserConfidence: 0.8,
       }],
@@ -76,6 +81,14 @@ class CompositionCodeIndex extends CodeIndex {
       truncated: false,
       degraded: false,
       readErrors: [],
+    }
+  }
+
+  override async hydrateChunks(request: HydrateChunksRequest): Promise<HydrateChunksResult> {
+    return {
+      chunks: [],
+      rejected: request.chunkIds.map(chunkId => ({ chunkId, state: 'unavailable', reason: 'not-indexed' })),
+      epochs: { indexEpoch: this.indexEpoch, evidenceEpoch: 0 },
     }
   }
 
@@ -167,6 +180,7 @@ describe('real Loader composition', () => {
       callId: CallId('loader-search'),
       name: 'search_code_index',
       arguments: { query: 'ledger parser' },
+      agent: { session: { header: { cwd: process.cwd() } } } as never,
     })
     expect(searchOutcome.isError).toBe(false)
     expect(JSON.stringify(searchOutcome.content)).toContain('src/ledger.ts:3-30')
@@ -177,6 +191,7 @@ describe('real Loader composition', () => {
       callId: CallId('loader-explore'),
       name: 'explore_code_graph',
       arguments: { op: 'tests', files: ['src/ledger.ts'] },
+      agent: { session: { header: { cwd: process.cwd() } } } as never,
     })
     expect(exploreOutcome.isError).toBe(false)
     expect(JSON.stringify(exploreOutcome.content)).toContain('tests explore (small tier)')
@@ -187,6 +202,7 @@ describe('real Loader composition', () => {
       callId: CallId('loader-refresh'),
       name: 'refresh_code_index',
       arguments: {},
+      agent: { session: { header: { cwd: process.cwd() } } } as never,
     })
     expect(refreshed.isError).toBe(false)
     expect(JSON.stringify(refreshed.content)).toContain('indexEpoch now: 8')
@@ -196,6 +212,7 @@ describe('real Loader composition', () => {
       callId: CallId('loader-status'),
       name: 'code_index_status',
       arguments: {},
+      agent: { session: { header: { cwd: process.cwd() } } } as never,
     })
     expect(status.isError).toBe(false)
     expect(JSON.stringify(status.content)).toContain('indexEpoch: 8')

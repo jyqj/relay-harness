@@ -33,7 +33,7 @@
 
 初步校验后，`put` 在写入伴随记录前建立 durability barrier。身份匹配的 live Session 先通过权威 `ctx.sessions.flush` checkpoint 提交，随后 live 与 cold 路径都会通过 `SessionPersistence.readFrom` 从序列零做物理复读。之后再次校验所得观测的 header 身份与目标。缺少 flush 参与方、身份变化、目标消失或物理读取失败都会阻止伴随记录提交，因此持久反馈绝不会先于其持久目标消息。
 
-message feedback 不是 Session 日志内容或 Session 投影。它不发出 `feedback/record` 事件，不进入模型历史，也不触发 `FEEDBACK_ONLY` 遥测释放。
+message feedback 不是 Session 日志内容或 Session 投影。它不发出 `feedback/record` 事件，不进入模型历史，也不触发 `FEEDBACK_ONLY` 遥测释放。实质 put/delete 后会发出 Host-local `message-feedback/changed`；`memory-outcome-reconciler` 使用该通知刷新可撤回 outcome observation，但不向模型暴露 rating note。
 
 ## 服务与 Host Remote 契约
 

@@ -24,6 +24,7 @@
 | [session-title.md](session-title.md) | 持久标题快照、被引用的来源消息 seq 与异步提供方约定 |
 | [session-reference.md](session-reference.md) | 结构化跨会话引用：`SessionReferenceInput`/`Candidate`、prepared 消息上下文、稳定错误分类 |
 | [context-engine.md](context-engine.md) | 本地上下文引擎 seam：步骤上下文 contributor、绑定 revision 的证据协议、检索覆盖与 Provider 可观测性 |
+| [prompt-enhancement.md](prompt-enhancement.md) | Prompt Enhancement seam、持久 Session History Context provider、共享 Context Engine 适配器、无工具辅助请求、结构化结果与浏览器草稿生命周期 |
 | [system-prompt.md](system-prompt.md) | 逐次组装的上下文、工具提供方结果、提示词段落与协作式组装 |
 | [tools.md](tools.md) | `ToolDefinition` 完整字段、schema DSL、`ToolExecution`/`ToolResult`、工具展示 UI 类型，以及受保护的执行流水线 |
 | [user-questions.md](user-questions.md) | UI 支持的人工问答 seam：`AskUserQuestionRequest`、answer/options 词汇、提供方 API、错误分类体系 |

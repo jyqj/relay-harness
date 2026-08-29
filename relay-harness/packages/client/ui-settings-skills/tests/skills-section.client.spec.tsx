@@ -21,6 +21,9 @@ const writableSkill = {
   writable: true,
   modelInvocable: true,
   userInvocable: true,
+  permissions: [],
+  trust: 'unsigned-local',
+  health: 'healthy',
 } as const
 
 const readOnlySkill = {
@@ -33,6 +36,9 @@ const readOnlySkill = {
   writable: false,
   modelInvocable: true,
   userInvocable: false,
+  permissions: [],
+  trust: 'bundled',
+  health: 'healthy',
 } as const
 
 function detail(skill: SkillInventoryEntry = writableSkill): SkillInventoryDetail {
@@ -46,6 +52,9 @@ function detail(skill: SkillInventoryEntry = writableSkill): SkillInventoryDetai
     modelInvocable: skill.modelInvocable,
     userInvocable: skill.userInvocable,
     content: '# Instructions\n\nFollow every step carefully.',
+    permissions: skill.permissions,
+    trust: skill.trust,
+    health: skill.health,
   }
 }
 
@@ -77,6 +86,7 @@ function props(partial: SkillsOverrides = {}): SkillsSectionProps {
     list: async () => ({ skills: [] }),
     get: async () => detail(),
     create: async () => {},
+    importSkill: async () => detail(),
     update: async () => {},
     remove: async () => {},
     setInvocation: async () => {},
@@ -139,7 +149,7 @@ describe('SkillsSection', () => {
 
     const readOnlyRow = screen.getByText(readOnlySkill.name).closest('li')
     expect(readOnlyRow).not.toBeNull()
-    expect(within(readOnlyRow!).getByText(en.sourceBundled)).toBeTruthy()
+    expect(within(readOnlyRow!).getAllByText(en.sourceBundled)).toHaveLength(2)
     expect(within(readOnlyRow!).getByRole<HTMLInputElement>('switch', { name: `Model invocation for ${readOnlySkill.name}` }).disabled).toBe(true)
     expect(within(readOnlyRow!).queryByRole('button', { name: `Delete ${readOnlySkill.name}` })).toBeNull()
   })

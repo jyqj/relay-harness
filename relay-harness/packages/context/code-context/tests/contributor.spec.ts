@@ -5,17 +5,31 @@ import type { Fiber } from '@relay-harness/cordis'
 import ContextEngine, { EvidenceId, SourceId } from '@relay-harness/rlh-context-engine'
 import { createUserMessage } from '@relay-harness/rlh-llm'
 import type { UserMessage } from '@relay-harness/rlh-llm'
+import { SessionId } from '@relay-harness/rlh-session'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { CodeContextContributor } from '../src/contributor.ts'
 import CodeContext from '../src/index.ts'
 import type { Config } from '../src/index.ts'
-import { resetStub, scripted, searchHit, searchResult, searchRequests, StubCodeIndex } from './stub-code-index.ts'
+import {
+  hydrateRequests,
+  resetStub,
+  scripted,
+  searchHit,
+  searchResult,
+  searchRequests,
+  StubCodeIndex,
+  workspaceRequests,
+} from './stub-code-index.ts'
+import type { HydrateChunksResult, SearchHit } from '@relay-harness/rlh-code-index'
 
 const CWD = '/workspace'
 const QUERY = 'where is the spool marker defined'
 
 function step(ctx: Context, cwd: string, messages: UserMessage[], signal = new AbortController().signal) {
-  return ctx.get('contextEngine')!.prepareStep({ messages, signal, cwd })
+  return ctx.get('contextEngine')!.prepareStep({
+    purpose: 'agent_step', messages, signal, cwd,
+    caller: { sessionId: SessionId('code-test'), agentId: 'code-test', workspaceId: cwd, turn: 1, step: 1 },
+  })
 }
 
 function userMessage(text: string): UserMessage {
@@ -24,6 +38,35 @@ function userMessage(text: string): UserMessage {
 
 function promptText(message: UserMessage): string {
   return message.content.map(block => (block.type === 'text' ? block.text : '')).join('')
+}
+
+const DEFAULT_SNIPPET = 'export const spoolMarker = true'
+
+function entryFor(hit: SearchHit, text: string = DEFAULT_SNIPPET): string {
+  return `### ${JSON.stringify(hit.filePath)}:${hit.startLine}-${hit.endLine}`
+    + ` revision=${hit.contentHash} score=${hit.score}`
+    + ` parser=${hit.parserTier}:${hit.parserConfidence}`
+    + ` reasons=${JSON.stringify(hit.reasons)}`
+    + `\n\`\`\`\n${text}\n\`\`\``
+}
+
+function hydrationFor(hits: readonly SearchHit[], texts: readonly string[]): HydrateChunksResult {
+  return {
+    chunks: hits.map((hit, index) => ({
+      chunkId: hit.chunkId,
+      filePath: hit.filePath,
+      language: hit.language,
+      contentHash: hit.contentHash,
+      startLine: hit.startLine,
+      endLine: hit.endLine,
+      text: texts[index] ?? '',
+      parserTier: hit.parserTier,
+      parserConfidence: hit.parserConfidence,
+      verification: 'source-verified',
+    })),
+    rejected: [],
+    epochs: { indexEpoch: 7, evidenceEpoch: 0 },
+  }
 }
 
 /** Harness with the stub provider, the engine, and an explicitly enabled plugin. */
@@ -55,7 +98,10 @@ function contribute(
   messages: UserMessage[],
   signal = new AbortController().signal,
 ) {
-  return harness.contributor.contribute({ messages, signal, cwd: CWD })
+  return harness.contributor.contribute({
+    purpose: 'agent_step', messages, signal, cwd: CWD,
+    caller: { sessionId: SessionId('code-test'), agentId: 'code-test', workspaceId: CWD, turn: 1, step: 1 },
+  })
 }
 
 beforeEach(() => {
@@ -87,80 +133,86 @@ describe('CodeContextContributor', () => {
       searchHit({ rank: 2, chunkId: 'chunk:src/other.ts:1', filePath: 'src/other.ts', score: 17 }),
     ])
     const contributed = await contribute(unit, [userMessage(QUERY)])
+    expect(workspaceRequests).toEqual([CWD])
     expect(contributed!.message.source).toEqual({
       kind: 'code-index',
       form: 'recall',
-      version: 1,
+      version: 2,
       cwd: CWD,
       query: QUERY,
       hits: [
         {
           chunkId: 'chunk:src/file.ts:1',
           filePath: 'src/file.ts',
+          language: 'typescript',
+          contentHash: 'file-hash-v1',
           startLine: 1,
           endLine: 3,
           score: 42,
+          scoreTrace: [{ label: 'rrf:lexical', value: 42 }],
+          parserTier: 'tree-sitter',
+          parserConfidence: 0.9,
           truncated: false,
         },
         {
           chunkId: 'chunk:src/other.ts:1',
           filePath: 'src/other.ts',
+          language: 'typescript',
+          contentHash: 'file-hash-v1',
           startLine: 1,
           endLine: 3,
           score: 17,
+          scoreTrace: [{ label: 'rrf:lexical', value: 42 }],
+          parserTier: 'tree-sitter',
+          parserConfidence: 0.9,
           truncated: false,
         },
       ],
       epochs: { indexEpoch: 7, evidenceEpoch: 0 },
+      hydrationEpochs: { indexEpoch: 7, evidenceEpoch: 0 },
     })
     const text = promptText(contributed!.message)
     expect(text).toContain('## Code-index recall')
-    expect(text).toContain('untrusted search output')
-    expect(text).toContain('<code-index-recall>\nsrc/file.ts:1-3 42 lexical:fts\nsrc/other.ts:1-3 17 lexical:fts\n</code-index-recall>')
-    const firstLine = 'src/file.ts:1-3 42 lexical:fts'
-    expect(contributed!.evidence).toEqual([
-      {
-        evidenceId: EvidenceId('code-index:chunk:src/file.ts:1'),
-        resource: { sourceId: SourceId('code-index'), key: 'chunk:src/file.ts:1', revision: '7' },
-        digest: createHash('sha256').update(firstLine).digest('hex'),
-        truncated: false,
-        freshness: 'current',
-        verification: 'unverified',
-        domain: {
-          filePath: 'src/file.ts',
-          startLine: 1,
-          endLine: 3,
-          score: 42,
-          reasons: ['lexical:fts'],
-          parserTier: 'tree-sitter',
-          epochs: { indexEpoch: 7, evidenceEpoch: 0 },
-        },
+    expect(text).toContain('untrusted data')
+    expect(text).toContain(entryFor(searchHit({ rank: 1 })))
+    expect(text).toContain(entryFor(searchHit({
+      rank: 2,
+      chunkId: 'chunk:src/other.ts:1',
+      filePath: 'src/other.ts',
+      score: 17,
+    })))
+    expect(contributed!.evidence).toHaveLength(2)
+    expect(contributed!.evidence?.[0]).toMatchObject({
+      evidenceId: EvidenceId('code-index:chunk:src/file.ts:1'),
+      resource: { sourceId: SourceId('code-index'), key: 'chunk:src/file.ts:1', revision: 'file-hash-v1' },
+      digest: createHash('sha256').update(DEFAULT_SNIPPET).digest('hex'),
+      truncated: false,
+      freshness: 'current',
+      verification: 'verified',
+      domain: {
+        filePath: 'src/file.ts',
+        contentHash: 'file-hash-v1',
+        parserTier: 'tree-sitter',
+        parserConfidence: 0.9,
+        searchEpochs: { indexEpoch: 7, evidenceEpoch: 0 },
+        hydrationEpochs: { indexEpoch: 7, evidenceEpoch: 0 },
       },
-      {
-        evidenceId: EvidenceId('code-index:chunk:src/other.ts:1'),
-        resource: { sourceId: SourceId('code-index'), key: 'chunk:src/other.ts:1', revision: '7' },
-        digest: createHash('sha256').update('src/other.ts:1-3 17 lexical:fts').digest('hex'),
-        truncated: false,
-        freshness: 'current',
-        verification: 'unverified',
-        domain: {
-          filePath: 'src/other.ts',
-          startLine: 1,
-          endLine: 3,
-          score: 17,
-          reasons: ['lexical:fts'],
-          parserTier: 'tree-sitter',
-          epochs: { indexEpoch: 7, evidenceEpoch: 0 },
-        },
-      },
-    ])
+    })
+    expect(contributed!.evidence?.[1]).toMatchObject({
+      resource: { key: 'chunk:src/other.ts:1', revision: 'file-hash-v1' },
+      digest: createHash('sha256').update(DEFAULT_SNIPPET).digest('hex'),
+      verification: 'verified',
+    })
     expect(contributed!.coverage).toMatchObject({
       searched: [QUERY],
       notSearched: [],
       completeness: 'bounded',
     })
-    expect(contributed!.coverage?.rationale).toContain('bounded by the configured')
+    expect(contributed!.coverage?.rationale).toContain('source-revalidated')
     expect(searchRequests).toEqual([{ query: QUERY }])
+    expect(hydrateRequests).toEqual([{
+      chunkIds: ['chunk:src/file.ts:1', 'chunk:src/other.ts:1'],
+    }])
   })
 
   it('narrows the search to the distinct @file mentions of the same text', async () => {
@@ -175,75 +227,76 @@ describe('CodeContextContributor', () => {
     ])
   })
 
-  it('renders hit lines without a reasons suffix when the answer carries none', async () => {
+  it('renders source text and an empty reasons list when the answer carries none', async () => {
     const unit = await contributorHarness()
-    scripted.search = searchResult([searchHit({ rank: 1, reasons: [] })])
+    const hit = searchHit({ rank: 1, reasons: [] })
+    scripted.search = searchResult([hit])
     const contributed = await contribute(unit, [userMessage(QUERY)])
-    expect(promptText(contributed!.message)).toContain('<code-index-recall>\nsrc/file.ts:1-3 42\n</code-index-recall>')
+    expect(promptText(contributed!.message)).toContain(entryFor(hit))
   })
 
-  it('truncates the first line at a tiny budget and drops the rest', async () => {
-    const unit = await contributorHarness({ maxChars: 10 })
-    scripted.search = searchResult([
-      searchHit({ rank: 1 }),
-      searchHit({ rank: 2, chunkId: 'chunk:src/other.ts:1', filePath: 'src/other.ts', score: 17 }),
-    ])
+  it('clips source text after reserving a complete header and fence', async () => {
+    const hit = searchHit({ rank: 1 })
+    const fixedChars = Array.from(entryFor(hit, '')).length
+    const unit = await contributorHarness({ maxChars: fixedChars + 10 })
+    scripted.search = searchResult([hit])
     const contributed = await contribute(unit, [userMessage(QUERY)])
     expect(contributed!.message.source).toMatchObject({ hits: [{ truncated: true }] })
     const text = promptText(contributed!.message)
-    expect(text).toContain('<code-index-recall>\nsrc/file.t\n')
-    expect(text).toContain('(showing 1 of 2 ranked candidates')
+    expect(text).toContain(entryFor(hit, DEFAULT_SNIPPET.slice(0, 10)))
+    expect(text).toContain('(showing 1 of 1 ranked candidates')
     expect(contributed!.evidence).toEqual([
       expect.objectContaining({
         evidenceId: EvidenceId('code-index:chunk:src/file.ts:1'),
-        digest: createHash('sha256').update('src/file.t').digest('hex'),
+        digest: createHash('sha256').update(DEFAULT_SNIPPET.slice(0, 10)).digest('hex'),
         truncated: true,
       }),
     ])
   })
 
-  it('keeps a whole line exactly fitting the budget and drops the rest', async () => {
-    const unit = await contributorHarness({ maxChars: 'src/file.ts:1-3 42 lexical:fts'.length })
-    scripted.search = searchResult([
-      searchHit({ rank: 1 }),
-      searchHit({ rank: 2, chunkId: 'chunk:src/other.ts:1', filePath: 'src/other.ts', score: 17 }),
-    ])
+  it('keeps a whole source entry exactly fitting the budget and drops the rest', async () => {
+    const first = searchHit({ rank: 1 })
+    const second = searchHit({ rank: 2, chunkId: 'chunk:src/other.ts:1', filePath: 'src/other.ts', score: 17 })
+    const unit = await contributorHarness({ maxChars: Array.from(entryFor(first)).length })
+    scripted.search = searchResult([first, second])
     const contributed = await contribute(unit, [userMessage(QUERY)])
     const text = promptText(contributed!.message)
-    expect(text).toContain('src/file.ts:1-3 42 lexical:fts\n')
+    expect(text).toContain(entryFor(first))
     expect(text).toContain('(showing 1 of 2 ranked candidates')
     expect(contributed!.evidence).toHaveLength(1)
     expect(contributed!.evidence?.[0]).toMatchObject({ truncated: false })
   })
 
-  it('clips multibyte lines on code-point boundaries without replacement characters', async () => {
-    const unit = await contributorHarness({ maxChars: 'src/'.length + 1 })
-    scripted.search = searchResult([searchHit({ rank: 1, filePath: 'src/路由.ts' })])
+  it('clips multibyte source on code-point boundaries without replacement characters', async () => {
+    const hit = searchHit({ rank: 1, filePath: 'src/路由.ts' })
+    const source = '路由😀尾'
+    const unit = await contributorHarness({ maxChars: Array.from(entryFor(hit, '')).length + 3 })
+    scripted.search = searchResult([hit])
+    scripted.hydrate = hydrationFor([hit], [source])
     const contributed = await contribute(unit, [userMessage(QUERY)])
     const text = promptText(contributed!.message)
-    expect(text).toContain('<code-index-recall>\nsrc/路\n')
+    expect(text).toContain(entryFor(hit, '路由😀'))
     expect(text).toContain('(showing 1 of 1 ranked candidates')
     expect(text).not.toContain('�')
     expect(contributed!.evidence?.[0]).toMatchObject({
       truncated: true,
-      digest: createHash('sha256').update('src/路').digest('hex'),
+      digest: createHash('sha256').update('路由😀').digest('hex'),
     })
   })
 
-  it('spends the remaining budget in code points, so an astral character costs one', async () => {
-    // '𝄞.ts:1-3 42 lexical:fts' is 23 code points but 24 UTF-16 units; two
-    // such lines fit a 46 code-point budget exactly, with nothing truncated.
-    const line1 = '𝄞.ts:1-3 42 lexical:fts'
-    expect(Array.from(line1).length).toBe(23)
-    expect(line1.length).toBe(24)
-    const unit = await contributorHarness({ maxChars: 46 })
-    scripted.search = searchResult([
-      searchHit({ rank: 1, chunkId: 'chunk:𝄞.ts:1', filePath: '𝄞.ts' }),
-      searchHit({ rank: 2, chunkId: 'chunk:src/b.ts:1', filePath: 'b.ts', score: 17 }),
-    ])
+  it('spends the remaining source budget in code points, so an astral character costs one', async () => {
+    const first = searchHit({ rank: 1, chunkId: 'chunk:a.ts:1', filePath: 'a.ts' })
+    const second = searchHit({ rank: 2, chunkId: 'chunk:b.ts:1', filePath: 'b.ts', score: 17 })
+    const source = '𝄞'
+    expect(Array.from(source).length).toBe(1)
+    expect(source.length).toBe(2)
+    const budget = Array.from(entryFor(first, source)).length + 1 + Array.from(entryFor(second, source)).length
+    const unit = await contributorHarness({ maxChars: budget })
+    scripted.search = searchResult([first, second])
+    scripted.hydrate = hydrationFor([first, second], [source, source])
     const contributed = await contribute(unit, [userMessage(QUERY)])
     const text = promptText(contributed!.message)
-    expect(text).toContain(`<code-index-recall>\n${line1}\nb.ts:1-3 17 lexical:fts\n`)
+    expect(text).toContain(`${entryFor(first, source)}\n${entryFor(second, source)}`)
     expect(contributed!.evidence).toHaveLength(2)
     expect(contributed!.evidence?.every(record => !record.truncated)).toBe(true)
     expect(text).not.toContain('(showing ')
@@ -260,6 +313,41 @@ describe('CodeContextContributor', () => {
     expect(contributed!.evidence).toHaveLength(2)
     expect(contributed!.message.source).toMatchObject({ hits: [{}, {}] })
     expect(promptText(contributed!.message)).toContain('(showing 2 of 3 ranked candidates')
+  })
+
+  it('omits stale hydration, records coverage, and never labels it verified', async () => {
+    const unit = await contributorHarness()
+    const stale = searchHit({ rank: 1 })
+    const current = searchHit({ rank: 2, chunkId: 'chunk:src/current.ts:1', filePath: 'src/current.ts' })
+    scripted.search = searchResult([stale, current])
+    scripted.hydrate = {
+      ...hydrationFor([current], [DEFAULT_SNIPPET]),
+      rejected: [{ chunkId: stale.chunkId, state: 'stale', reason: 'source-revision-changed' }],
+    }
+    const warn = vi.spyOn(unit.ctx.logger, 'warn')
+    const contributed = await contribute(unit, [userMessage(QUERY)])
+    expect(promptText(contributed!.message)).not.toContain('"src/file.ts"')
+    expect(promptText(contributed!.message)).toContain('"src/current.ts"')
+    expect(contributed!.evidence).toHaveLength(1)
+    expect(contributed!.coverage?.notSearched).toEqual([stale.chunkId])
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining('stale or unavailable'),
+      expect.objectContaining({ chunkIds: [stale.chunkId] }),
+    )
+    warn.mockRestore()
+  })
+
+  it('contains a hydration failure and contributes no search-directory fallback', async () => {
+    const unit = await contributorHarness()
+    scripted.search = searchResult([searchHit()])
+    scripted.hydrate = new Error('source unavailable')
+    const warn = vi.spyOn(unit.ctx.logger, 'warn')
+    await expect(contribute(unit, [userMessage(QUERY)])).resolves.toBeUndefined()
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining('hydration failed'),
+      expect.objectContaining({ reason: 'source unavailable' }),
+    )
+    warn.mockRestore()
   })
 
   it('drops a degraded answer with a structured warning instead of a fake no-hits message', async () => {

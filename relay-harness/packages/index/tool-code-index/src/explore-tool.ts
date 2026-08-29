@@ -14,10 +14,10 @@ import type { Context } from '@relay-harness/cordis'
 import { repoSizeTierMaxOutputChars } from '@relay-harness/rlh-code-index'
 import type { GraphExploreRequest, GraphExploreResult } from '@relay-harness/rlh-code-index'
 import { defineTool } from '@relay-harness/rlh-tools'
-import type { GenericCallView, ToolResult, ToolResultView } from '@relay-harness/rlh-tools'
+import type { GenericCallView, ToolExecution, ToolResult, ToolResultView } from '@relay-harness/rlh-tools'
 import { applyExitPolicy } from './envelope.ts'
 import type { OutputTruncationEnvelope } from './envelope.ts'
-import { normalizeCodeIndexFailure, requireCodeIndex } from './errors.ts'
+import { normalizeCodeIndexFailure, requireWorkspaceCodeIndex } from './errors.ts'
 import { isTruncationEnvelope } from './search-tool.ts'
 
 /** The five graph questions `explore_code_graph` can ask. */
@@ -108,7 +108,7 @@ export interface GraphToolExplainView {
  */
 export interface GraphToolResult {
   op: string
-  indexEpoch: { indexEpoch: number; evidenceEpoch: number }
+  indexEpoch: { indexEpoch: number; evidenceEpoch: number; embeddingEpoch?: number }
   nodes: GraphToolNodeView[]
   edges: GraphToolEdgeView[]
   tests?: GraphToolTestPairView[]
@@ -391,11 +391,12 @@ export function presentExploreResult(args: ExploreCodeGraphArgs, result: ToolRes
 async function runExploreQuery(
   ctx: Context,
   args: ExploreCodeGraphArgs,
-  signal: AbortSignal,
+  exec: Readonly<ToolExecution>,
 ): Promise<ExploreToolOutput> {
   const input = parseExploreArgs(args)
   try {
-    const result = await requireCodeIndex(ctx, 'explore_code_graph').exploreGraph(toExploreRequest(input), signal)
+    const workspace = await requireWorkspaceCodeIndex(ctx, 'explore_code_graph', exec)
+    const result = await workspace.exploreGraph(toExploreRequest(input), exec.signal)
     // Exit-side byte cap: the tier is read AFTER execution, from the answer
     // itself, mirroring the search tool's cached-tier semantics.
     return applyExitPolicy(toPlainGraphResult(result), 'byte-cap', repoSizeTierMaxOutputChars(result.tier))
@@ -475,6 +476,7 @@ export function applyExploreTool(ctx: Context): void {
                 properties: {
                   indexEpoch: { type: 'integer', required: true },
                   evidenceEpoch: { type: 'integer', required: true },
+                  embeddingEpoch: { type: 'integer' },
                 },
               },
               nodes: {
@@ -596,7 +598,7 @@ export function applyExploreTool(ctx: Context): void {
       render: (_args, value) => [{ type: 'text', text: renderExploreOutput(value) }],
     },
     async execute(args, exec) {
-      return runExploreQuery(ctx, args, exec.signal)
+      return runExploreQuery(ctx, args, exec)
     },
     presentCall: presentExploreCall,
     presentResult: presentExploreResult,

@@ -29,10 +29,12 @@ const FIX_DOCS = (name: string): string => ['docs', name].join('/')
 
 const roots: string[] = []
 let context: Context | undefined
+let toolWorkspaceRoot: string | undefined
 
 afterEach(async () => {
   await context?.fiber.dispose()
   context = undefined
+  toolWorkspaceRoot = undefined
   for (const root of roots.splice(0)) await rm(root, { recursive: true, force: true })
 })
 
@@ -81,6 +83,7 @@ async function buildFixtureTree(): Promise<string> {
 }
 
 async function loadComposition(workspaceRoot: string): Promise<void> {
+  toolWorkspaceRoot = workspaceRoot
   const configPath = join(workspaceRoot, 'cordis.yml')
   await writeFile(configPath, [
     '- id: system-prompt',
@@ -142,6 +145,10 @@ async function executeTool(name: string, args: Record<string, unknown> = {}): Pr
       name,
       arguments: args,
       signal: new AbortController().signal,
+      // Model-visible Code Index tools deliberately refuse an unscoped Host
+      // call. This composition probe supplies the same durable Agent Session
+      // cwd that AgentLoop supplies in production.
+      agent: { session: { header: { cwd: toolWorkspaceRoot } } } as never,
     })
     return {
       text: (result?.content ?? []).flatMap(block => block.type === 'text' ? [block.text] : []).join(''),

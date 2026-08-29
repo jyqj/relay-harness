@@ -10,11 +10,11 @@ Status: implemented
 
 ## Decision
 
-AgentLoop 在 `preStep()` 中增加一个可选 seam：在 `this.inbox.claim(...)` 之后、工具快照捕获与 `systemPrompt.assemble` 之前，循环读取 `this.loopCtx.get('contextEngine')`，存在时 await `prepareStep({ messages: claimed, signal, cwd })`。贡献的消息追加进步骤的 user 消息、置于 runtime-context 快照之前，流经普通的 `agent/pre-step` 瀑布，并落为持久 `user/message` 事件——model-visible ⟺ logged 因此成立，无需新的 session 事件类型。无贡献的步骤、未部署该服务的部署，与之前逐字节一致。
+AgentLoop 在 `preStep()` 中拥有一个可选 seam：在 `this.inbox.claim(...)` 之后、工具快照捕获与 `systemPrompt.assemble` 之前，循环读取 `this.loopCtx.get('contextEngine')`，存在时 await `prepareStep({ purpose: 'agent_step', messages: claimed, signal, cwd })`。Prompt Enhancement 以 `prompt_enhancement` 使用同一个 purpose 必填入口，使 contributor 无需解析自然语言即可获得调用方意图。贡献的消息追加进步骤的 user 消息、置于 runtime-context 快照之前，流经普通的 `agent/pre-step` 瀑布，并落为持久 `user/message` 事件，因此 model-visible ⟺ logged 成立。获准的准备结果还会成为[持久上下文准备 trace 决策](2026-08-29-durable-context-preparation-trace.md)描述的纯日志 `context/prepared` 事实。无贡献的步骤、未部署该服务的部署，与不含该 seam 的部署逐字节一致。
 
-循环通过声明在 `VisionMessageRewriter` 旁的结构化接口（`StepContextEngine`）消费引擎，不依赖插件包——与 `visionFallback` 相同的可选服务模式。
+循环通过与 `visionFallback` 相同的可选服务模式发现引擎；其结构化服务面使用 ContextEngine 包的纯类型依赖，使返回的归属、证据、覆盖与持久事件词汇不会漂移。
 
-seam 本体是 `@relay-harness/rlh-context-engine`（`ctx.contextEngine`，Service Definition）：contributor 注册表（`registerContributor`，唯一 id、disposer、全有或全无校验）与 `prepareStep`——按注册顺序串行运行 contributor，使打包消息顺序跨重启确定。其 `src/types.ts` 拥有从审计过的参考设计迁移来的协议词汇：`ResourceRef`/`Evidence`（绑定 revision 的观察，`unverified` 是显式状态）、`CoverageRecord`/`NegativeFinding`（零命中读作"此处未找到"，绝不是"不存在"）、以及供后续阶段知识 Provider 适配器使用的 `ProviderHealthState`/`ProviderGeneration`/`ProviderExplain`（双时钟代际、稳定 token 截断原因）。
+seam 本体是 `@relay-harness/rlh-context-engine`（`ctx.contextEngine`，Service Definition）：contributor 注册表（`registerContributor`，唯一 id、disposer、全有或全无校验）与 `prepareStep`——按注册顺序串行运行 contributor，使打包消息顺序跨重启确定。每个结果都在消息、证据和可选覆盖外保留 contributor 身份，同时继续向直接 consumer 提供聚合数组。其 `src/types.ts` 拥有从审计过的参考设计迁移来的协议词汇：`ResourceRef`/`Evidence`（绑定 revision 的观察，`unverified` 是显式状态）、`CoverageRecord`/`NegativeFinding`（零命中读作"此处未找到"，绝不是"不存在"）、以及供后续阶段知识 Provider 适配器使用的 `ProviderHealthState`/`ProviderGeneration`/`ProviderExplain`（双时钟代际、稳定 token 截断原因）。
 
 ## Alternatives considered
 

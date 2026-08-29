@@ -50,7 +50,7 @@ For each `agent()` call:
 
 Provider starts are tracked separately from published children. If cancellation, worker death, or normal workflow settlement closes admission while a start is pending, the shared signal aborts it. A provider that nevertheless fulfills after closure is disposed by the host and never announced to the worker.
 
-The optional `stallTimeoutMs` watchdog starts with the worker and re-arms after each accepted host/worker protocol message in either direction. Silence beyond the configured interval claims an `error` result, aborts and disposes children, pairs stranded lifecycle events, closes later message admission, and terminates the worker. A long-running child therefore needs a deployment interval larger than its longest expected event silence. The default `0` disables this policy.
+The optional `stallTimeoutMs` watchdog arms on the worker's first accepted protocol message (`Ready`) and re-arms after each later accepted host/worker protocol message in either direction. Host scheduling before `Ready` is startup latency, not protocol silence. Silence beyond the configured interval claims an `error` result, aborts and disposes children, pairs stranded lifecycle events, closes later message admission, and terminates the worker. A long-running child therefore needs a deployment interval larger than its longest expected event silence. The default `0` disables this policy.
 
 ## Value boundary
 

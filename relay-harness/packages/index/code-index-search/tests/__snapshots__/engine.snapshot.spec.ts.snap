@@ -8,11 +8,39 @@ exports[`createSearchEngine().search — flagship canonical output > locks the f
     {
       "chunkId": "chunk:src/auth/users.ts:0",
       "filePath": "src/auth/users.ts",
+      "language": "typescript",
+      "contentHash": "fixture:src/auth/users.ts",
       "startLine": 10,
       "endLine": 14,
       "breadcrumb": "auth/users",
       "symbolName": "getUserById",
       "score": 0.90684,
+      "scoreTrace": [
+        {
+          "label": "rrf:lexical",
+          "value": 0.021154
+        },
+        {
+          "label": "rrf:grep",
+          "value": 0.015686
+        },
+        {
+          "label": "overlap",
+          "value": 0.35
+        },
+        {
+          "label": "boost:symbol-exact",
+          "value": 0.18
+        },
+        {
+          "label": "boost:recent-file",
+          "value": 0.12
+        },
+        {
+          "label": "boost:stage-a",
+          "value": 0.22
+        }
+      ],
       "reasons": [
         "lexical@2",
         "grep@1",
@@ -23,16 +51,36 @@ exports[`createSearchEngine().search — flagship canonical output > locks the f
         "preselect:recent:+3.50",
         "preselect:token-search:+2.00"
       ],
-      "parserTier": "generic",
-      "parserConfidence": 0,
+      "parserTier": "tree-sitter",
+      "parserConfidence": 0.9,
       "rank": 1
     },
     {
       "chunkId": "chunk:src/auth/users.ts:1",
       "filePath": "src/auth/users.ts",
+      "language": "typescript",
+      "contentHash": "fixture:src/auth/users.ts",
       "startLine": 15,
       "endLine": 18,
       "score": 0.361569,
+      "scoreTrace": [
+        {
+          "label": "rrf:lexical",
+          "value": 0.021569
+        },
+        {
+          "label": "overlap",
+          "value": 0
+        },
+        {
+          "label": "boost:recent-file",
+          "value": 0.12
+        },
+        {
+          "label": "boost:stage-a",
+          "value": 0.22
+        }
+      ],
       "reasons": [
         "lexical@1",
         "recent-file",
@@ -41,54 +89,106 @@ exports[`createSearchEngine().search — flagship canonical output > locks the f
         "preselect:recent:+3.50",
         "preselect:token-search:+2.00"
       ],
-      "parserTier": "generic",
-      "parserConfidence": 0,
+      "parserTier": "tree-sitter",
+      "parserConfidence": 0.9,
       "rank": 2
     },
     {
       "chunkId": "chunk:src/repo/user_repository.ts:0",
       "filePath": "src/repo/user_repository.ts",
+      "language": "typescript",
+      "contentHash": "fixture:src/repo/user_repository.ts",
       "startLine": 3,
       "endLine": 7,
       "breadcrumb": "repo",
       "symbolName": "loadUser",
       "score": 0.240755,
+      "scoreTrace": [
+        {
+          "label": "rrf:lexical",
+          "value": 0.020755
+        },
+        {
+          "label": "overlap",
+          "value": 0
+        },
+        {
+          "label": "boost:overlay-neighbor",
+          "value": 0.1
+        },
+        {
+          "label": "boost:stage-a",
+          "value": 0.12
+        }
+      ],
       "reasons": [
         "lexical@3",
         "overlay-neighbor",
         "dirty-buffer",
         "preselect:dirty-buffer:+3.00"
       ],
-      "parserTier": "generic",
-      "parserConfidence": 0,
+      "parserTier": "tree-sitter",
+      "parserConfidence": 0.9,
       "rank": 3
     },
     {
       "chunkId": "chunk:README.md:0",
       "filePath": "README.md",
+      "language": "typescript",
+      "contentHash": "fixture:README.md",
       "startLine": 1,
       "endLine": 3,
       "score": 0.10037,
+      "scoreTrace": [
+        {
+          "label": "rrf:lexical",
+          "value": 0.02037
+        },
+        {
+          "label": "overlap",
+          "value": 0
+        },
+        {
+          "label": "boost:doc-file",
+          "value": 0.08
+        }
+      ],
       "reasons": [
         "lexical@4",
         "doc-file"
       ],
-      "parserTier": "generic",
-      "parserConfidence": 0,
+      "parserTier": "tree-sitter",
+      "parserConfidence": 0.9,
       "rank": 4
     },
     {
       "chunkId": "chunk:design/adr/0002-user-models.md:0",
       "filePath": "design/adr/0002-user-models.md",
+      "language": "typescript",
+      "contentHash": "fixture:design/adr/0002-user-models.md",
       "startLine": 1,
       "endLine": 4,
       "score": 0.1,
+      "scoreTrace": [
+        {
+          "label": "rrf:lexical",
+          "value": 0.02
+        },
+        {
+          "label": "overlap",
+          "value": 0
+        },
+        {
+          "label": "boost:doc-file",
+          "value": 0.08
+        }
+      ],
       "reasons": [
         "lexical@5",
         "doc-file"
       ],
-      "parserTier": "generic",
-      "parserConfidence": 0,
+      "parserTier": "tree-sitter",
+      "parserConfidence": 0.9,
       "rank": 5
     }
   ],

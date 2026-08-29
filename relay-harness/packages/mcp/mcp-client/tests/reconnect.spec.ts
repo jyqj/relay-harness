@@ -59,7 +59,7 @@ vi.mock('@modelcontextprotocol/sdk/client/streamableHttp.js', () => ({
 // vi.mock is hoisted above static imports, so the modules under test see the
 // mocked SDK even through a static import.
 import { apply } from '@relay-harness/rlh-mcp-client/src/index.ts'
-import { RECONNECT_DEFAULTS, resolveReconnectPolicy, startConnection } from '@relay-harness/rlh-mcp-client/src/connection.ts'
+import { RECONNECT_DEFAULTS, resolveReconnectPolicy, safeMcpErrorText, startConnection } from '@relay-harness/rlh-mcp-client/src/connection.ts'
 import { mcpClientStatus } from '@relay-harness/rlh-mcp-client/src/status.ts'
 
 // ---- Helpers ----
@@ -136,6 +136,16 @@ describe('reconnect supervisor', () => {
     mockListTools.mockResolvedValue(listing('remote'))
     mockCallTool.mockResolvedValue({ content: [{ type: 'text', text: 'ok' }] })
     ctx = await mountRegistry()
+  })
+
+  it('bounds a hung connect/discovery attempt and closes its generation', async () => {
+    mockConnect.mockImplementation(() => new Promise(() => {}))
+    const handle = startConnection(ctx, { ...stdioConfig({ enabled: false }), startupTimeoutMs: 5 }, resolveReconnectPolicy({ enabled: false }, 'reconnect'))
+    const outcome = await handle.ready
+    expect(outcome.error).toBeInstanceOf(Error)
+    expect(String(outcome.error)).toContain('timed out after 5ms')
+    expect(mockClose).toHaveBeenCalledOnce()
+    await handle.dispose()
   })
 
   it('reconnects after a transport close, re-syncs tools through the new generation, and serves calls', async () => {
@@ -561,6 +571,17 @@ describe('connection status reporting', () => {
 })
 
 describe('resolveReconnectPolicy', () => {
+  it('redacts configured credentials and bounds connection diagnostics', () => {
+    const config = {
+      transport: 'streamable-http', serverName: 'srv', url: 'https://example.test/mcp?token=query-secret',
+      headers: { Authorization: 'Bearer header-secret' }, toolCallTimeoutMs: 1, failOnStartupError: false,
+    } satisfies Config
+    const text = safeMcpErrorText(new Error(`failed query-secret Bearer header-secret ${'x'.repeat(3000)}`), config)
+    expect(text).not.toContain('query-secret')
+    expect(text).not.toContain('header-secret')
+    expect(text).toContain('********')
+    expect(Array.from(text).length).toBeLessThanOrEqual(2_000)
+  })
   const path = 'mcp-client(srv): reconnect'
 
   it('resolves omission to the defaults, frozen', () => {

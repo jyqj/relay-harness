@@ -10,6 +10,7 @@
     { "path": "../../typert/protocol" },
     { "path": "../../runtime-diagnostics/invariants" },
     { "path": "../../util/home-paths" },
+    { "path": "../../util/atomic-write" },
     { "path": "../../skill/skill" }
   ]
 }

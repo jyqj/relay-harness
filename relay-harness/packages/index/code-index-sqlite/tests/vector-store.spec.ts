@@ -53,7 +53,7 @@ function storedComponents(
   return row === undefined ? undefined : [...Int8Array.from(row.q)]
 }
 
-describe('chunks_vec (composite (chunk_id, model) key)', () => {
+describe('chunks_vec (composite (chunk_id, generation_id) key)', () => {
   const cleanup: Array<() => Promise<void>> = []
   afterEach(async () => {
     while (cleanup.length > 0) await cleanup.pop()?.()
@@ -62,6 +62,7 @@ describe('chunks_vec (composite (chunk_id, model) key)', () => {
   it('creates the vector tier inside DERIVED_USER_TABLES with its model index', async () => {
     const db = await openCodeIndexDatabase(':memory:')
     expect(DERIVED_USER_TABLES.has('chunks_vec')).toBe(true)
+    expect(DERIVED_USER_TABLES.has('embedding_generations')).toBe(true)
     expect(DERIVED_USER_TABLES.has('code_embed_jobs')).toBe(true)
     const indexes = (db.prepare(
       "SELECT name FROM sqlite_master WHERE type = 'index' AND name NOT GLOB 'sqlite_*'",
@@ -94,7 +95,7 @@ describe('chunks_vec (composite (chunk_id, model) key)', () => {
     db.close()
   })
 
-  it('replaces a re-embedded (chunk_id, model) pair instead of duplicating it', async () => {
+  it('replaces a re-embedded (chunk_id, generation_id) pair instead of duplicating it', async () => {
     const db = await openCodeIndexDatabase(':memory:')
     insertChunk(db, 'src/a.ts', 'chunk:src/a.ts:0')
     writeChunkVectors(db, [vectorRow('chunk:src/a.ts:0', [1, 2, 3])])
@@ -142,27 +143,30 @@ describe('chunks_vec (composite (chunk_id, model) key)', () => {
   it('enforces STRICT typing, the format CHECK, and the chunks foreign key', async () => {
     const db = await openCodeIndexDatabase(':memory:')
     insertChunk(db, 'src/a.ts', 'chunk:src/a.ts:0')
+    writeChunkVectors(db, [vectorRow('chunk:src/a.ts:0', [1, 2, 3])])
+    db.prepare('DELETE FROM chunks_vec').run()
+    const generationId = 'legacy-model:embed-test'
     // A bound JS number carries the REAL storage class and a STRICT BLOB
     // column rejects it outright — the vector column never sees a scalar.
     expect(() => db.prepare(`
-      INSERT INTO chunks_vec (chunk_id, chunk_rowid, model, dim, scale, q, norm)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `).run('chunk:src/a.ts:0', 1, 'm', 3, 0.5, 42, 3)).toThrow('cannot store REAL value in BLOB column')
+      INSERT INTO chunks_vec (chunk_id, chunk_rowid, generation_id, model, dim, scale, q, norm)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `).run('chunk:src/a.ts:0', 1, generationId, 'm', 3, 0.5, 42, 3)).toThrow('cannot store REAL value in BLOB column')
     // An SQL integer literal is typed by syntax (INTEGER), rejected the same way.
     expect(() => db.prepare(`
-      INSERT INTO chunks_vec (chunk_id, chunk_rowid, model, dim, scale, q, norm)
-      VALUES ('chunk:src/a.ts:0', 1, 'm', 3, 0.5, 42, 3)
-    `).run()).toThrow('cannot store INT value in BLOB column')
+      INSERT INTO chunks_vec (chunk_id, chunk_rowid, generation_id, model, dim, scale, q, norm)
+      VALUES ('chunk:src/a.ts:0', 1, ?, 'm', 3, 0.5, 42, 3)
+    `).run(generationId)).toThrow('cannot store INT value in BLOB column')
     // Text in the BLOB column is rejected at the SQL layer too.
     expect(() => db.prepare(`
-      INSERT INTO chunks_vec (chunk_id, chunk_rowid, model, dim, scale, q, norm)
-      VALUES ('chunk:src/a.ts:0', 1, 'm', 3, 0.5, 'nope', 3)
-    `).run()).toThrow('cannot store TEXT value in BLOB column')
+      INSERT INTO chunks_vec (chunk_id, chunk_rowid, generation_id, model, dim, scale, q, norm)
+      VALUES ('chunk:src/a.ts:0', 1, ?, 'm', 3, 0.5, 'nope', 3)
+    `).run(generationId)).toThrow('cannot store TEXT value in BLOB column')
     // format is a closed CHECK union.
     expect(() => db.prepare(`
-      INSERT INTO chunks_vec (chunk_id, chunk_rowid, model, dim, format, scale, q, norm)
-      VALUES ('chunk:src/a.ts:0', 1, 'm', 3, 'f32', 0.5, x'000000', 3)
-    `).run()).toThrow(/CHECK/)
+      INSERT INTO chunks_vec (chunk_id, chunk_rowid, generation_id, model, dim, format, scale, q, norm)
+      VALUES ('chunk:src/a.ts:0', 1, ?, 'm', 3, 'f32', 0.5, x'000000', 3)
+    `).run(generationId)).toThrow(/CHECK/)
     // Unknown chunk id fails loud through the foreign key.
     expect(() => writeChunkVectors(db, [vectorRow('chunk:missing:0', [1])])).toThrow(/FOREIGN KEY/)
     db.close()
@@ -193,6 +197,7 @@ describe('chunks_vec (composite (chunk_id, model) key)', () => {
     const v3 = new DatabaseSync(path)
     v3.exec('DROP TABLE chunks_vec')
     v3.exec('DROP TABLE code_embed_jobs')
+    v3.exec('DROP TABLE embedding_generations')
     v3.exec('DROP INDEX IF EXISTS idx_chunks_vec_model')
     v3.exec('DROP INDEX IF EXISTS code_embed_jobs_claim')
     v3.exec('PRAGMA user_version = 3')
@@ -207,11 +212,11 @@ describe('chunks_vec (composite (chunk_id, model) key)', () => {
     }
     // Rebuild is a derived reset: old rows and epochs are gone.
     expect((reopened.prepare('SELECT COUNT(*) AS n FROM chunks').get() as { n: number }).n).toBe(0)
-    expect(readEpochs(reopened)).toEqual({ indexEpoch: 0, evidenceEpoch: 0 })
+    expect(readEpochs(reopened)).toEqual({ indexEpoch: 0, evidenceEpoch: 0, embeddingEpoch: 0 })
     reopened.close()
   })
 
-  it('rebuilds a simulated v4 store in place up to v5, replacing the single-column chunks_vec key', async () => {
+  it('rebuilds a simulated v4 store in place up to v8, replacing the single-column chunks_vec key', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'rlh-code-index-vec-'))
     cleanup.push(() => rm(dir, { recursive: true, force: true }))
     const path = join(dir, 'index.sqlite')
@@ -245,7 +250,25 @@ describe('chunks_vec (composite (chunk_id, model) key)', () => {
     const ddl = (reopened.prepare(
       "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'chunks_vec'",
     ).get() as { sql: string }).sql
-    expect(ddl).toContain('PRIMARY KEY (chunk_id, model)')
+    expect(ddl).toContain('PRIMARY KEY (chunk_id, generation_id)')
+    reopened.close()
+  })
+
+  it('rebuilds a v6 model-keyed medium rather than migrating derived vectors in place', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'rlh-code-index-v6-'))
+    cleanup.push(() => rm(dir, { recursive: true, force: true }))
+    const path = join(dir, 'index.sqlite')
+    const first = await openCodeIndexDatabase(path)
+    insertChunk(first, 'src/old.ts', 'chunk:src/old.ts:0')
+    writeChunkVectors(first, [vectorRow('chunk:src/old.ts:0', [1, 2, 3])])
+    first.exec('PRAGMA user_version = 6')
+    first.close()
+
+    const reopened = await openCodeIndexDatabase(path)
+    expect(reopened.prepare('PRAGMA user_version').get()).toEqual({ user_version: CODE_INDEX_SQLITE_SCHEMA_VERSION })
+    expect((reopened.prepare('SELECT COUNT(*) AS n FROM chunks').get() as { n: number }).n).toBe(0)
+    expect((reopened.prepare('SELECT COUNT(*) AS n FROM embedding_generations').get() as { n: number }).n).toBe(0)
+    expect(readEpochs(reopened)).toEqual({ indexEpoch: 0, evidenceEpoch: 0, embeddingEpoch: 0 })
     reopened.close()
   })
 })

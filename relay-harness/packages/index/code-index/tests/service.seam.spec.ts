@@ -11,6 +11,8 @@ import { CodeIndex } from '../src/index.ts'
 import type {
   GraphExploreRequest,
   GraphExploreResult,
+  HydrateChunksRequest,
+  HydrateChunksResult,
   IndexStatusReport,
   RefreshOptions,
   RefreshSummary,
@@ -55,6 +57,14 @@ class StubIndex extends CodeIndex {
     }
   }
 
+  async hydrateChunks(request: HydrateChunksRequest): Promise<HydrateChunksResult> {
+    return {
+      chunks: [],
+      rejected: request.chunkIds.map(chunkId => ({ chunkId, state: 'unavailable', reason: 'not-indexed' })),
+      epochs: status.epochs,
+    }
+  }
+
   async exploreGraph(request: GraphExploreRequest): Promise<GraphExploreResult> {
     return {
       op: request.op,
@@ -79,6 +89,8 @@ describe('code-index seam', () => {
     const result = await ctx.codeIndex.search({ query: 'login' })
     expect(result.query).toBe('login')
     expect(result.hits).toEqual([])
+    const hydrated = await ctx.codeIndex.hydrateChunks({ chunkIds: ['chunk:missing'] })
+    expect(hydrated.rejected).toEqual([{ chunkId: 'chunk:missing', state: 'unavailable', reason: 'not-indexed' }])
     const graph = await ctx.codeIndex.exploreGraph({ op: 'relations', symbol: 'login' })
     expect(graph.op).toBe('relations')
     expect(graph.indexEpoch).toBe(status.epochs)

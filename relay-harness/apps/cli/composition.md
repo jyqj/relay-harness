@@ -16,6 +16,12 @@ flowchart LR
   cfg --> plugin_rlh_base_llm
   plugin_rlh_base_session["session<br/>@relay-harness/rlh-session"]
   cfg --> plugin_rlh_base_session
+  plugin_rlh_base_context_engine["context-engine<br/>@relay-harness/rlh-context-engine"]
+  cfg --> plugin_rlh_base_context_engine
+  plugin_rlh_base_mcp_catalog["mcp-catalog<br/>@relay-harness/rlh-mcp-catalog"]
+  cfg --> plugin_rlh_base_mcp_catalog
+  plugin_rlh_base_session_history_context["session-history-context<br/>@relay-harness/rlh-session-history-context"]
+  cfg --> plugin_rlh_base_session_history_context
   plugin_rlh_base_typert["typert<br/>@relay-harness/rlh-typert-registry"]
   cfg --> plugin_rlh_base_typert
   plugin_rlh_base_typert_loader["typert-loader<br/>@relay-harness/rlh-typert-loader"]
@@ -40,6 +46,8 @@ flowchart LR
   cfg --> plugin_rlh_base_llm_vision_fallback
   plugin_rlh_base_settings["settings<br/>@relay-harness/rlh-settings-file"]
   cfg --> plugin_rlh_base_settings
+  plugin_rlh_base_product_mode["product-mode<br/>@relay-harness/rlh-host-product-mode"]
+  cfg --> plugin_rlh_base_product_mode
   plugin_rlh_base_credentials["credentials<br/>@relay-harness/rlh-credentials-local"]
   cfg --> plugin_rlh_base_credentials
   plugin_rlh_base_llm_pi_ai["llm-pi-ai<br/>@relay-harness/rlh-llm-pi-ai"]
@@ -52,6 +60,8 @@ flowchart LR
   cfg --> plugin_rlh_base_session_query_sqlite
   plugin_rlh_base_memory_sqlite["memory-sqlite<br/>@relay-harness/rlh-memory-sqlite"]
   cfg --> plugin_rlh_base_memory_sqlite
+  plugin_rlh_base_memory_agent["memory-agent<br/>@relay-harness/rlh-memory-agent"]
+  cfg --> plugin_rlh_base_memory_agent
   plugin_rlh_base_memory_extractor_llm["memory-extractor-llm<br/>@relay-harness/rlh-memory-extractor-llm"]
   cfg --> plugin_rlh_base_memory_extractor_llm
   plugin_rlh_base_session_projection["session-projection<br/>@relay-harness/rlh-session-projection"]
@@ -70,7 +80,7 @@ flowchart LR
   cfg --> plugin_rlh_base_pwsh_sandbox
   plugin_rlh_base_approval["approval<br/>@relay-harness/rlh-user-approval"]
   cfg --> plugin_rlh_base_approval
-  plugin_rlh_base_permission["permission<br/>@relay-harness/rlh-permission-presets"]
+  plugin_rlh_base_permission["permission<br/>Developer Mode"]
   cfg --> plugin_rlh_base_permission
   plugin_rlh_base_shell_env["shell-env<br/>@relay-harness/rlh-shell-env"]
   cfg --> plugin_rlh_base_shell_env
@@ -184,6 +194,9 @@ flowchart LR
 | `hmr` | `@relay-harness/cordis-plugin-hmr` |
 | `llm` | `@relay-harness/rlh-llm` |
 | `session` | `@relay-harness/rlh-session` |
+| `context-engine` | `@relay-harness/rlh-context-engine` |
+| `mcp-catalog` | `@relay-harness/rlh-mcp-catalog` |
+| `session-history-context` | `@relay-harness/rlh-session-history-context` |
 | `typert` | `@relay-harness/rlh-typert-registry` |
 | `typert-loader` | `@relay-harness/rlh-typert-loader` |
 | `typert-gateway` | `@relay-harness/rlh-api-gateway` |
@@ -196,12 +209,14 @@ flowchart LR
 | `llm-retry` | `@relay-harness/rlh-llm-retry` |
 | `llm-vision-fallback` | `@relay-harness/rlh-llm-vision-fallback` |
 | `settings` | `@relay-harness/rlh-settings-file` |
+| `product-mode` | `@relay-harness/rlh-host-product-mode` |
 | `credentials` | `@relay-harness/rlh-credentials-local` |
 | `llm-pi-ai` | `@relay-harness/rlh-llm-pi-ai` |
 | `session-persistence-jsonl` | `@relay-harness/rlh-session-persistence-jsonl` |
 | `attachment-local` | `@relay-harness/rlh-attachment-local` |
 | `session-query-sqlite` | `@relay-harness/rlh-session-query-sqlite` |
 | `memory-sqlite` | `@relay-harness/rlh-memory-sqlite` |
+| `memory-agent` | `@relay-harness/rlh-memory-agent` |
 | `memory-extractor-llm` | `@relay-harness/rlh-memory-extractor-llm` |
 | `session-projection` | `@relay-harness/rlh-session-projection` |
 | `session-telemetry-otel` | `@relay-harness/rlh-session-telemetry-otel` |
@@ -211,7 +226,7 @@ flowchart LR
 | `bash-sandbox` | `@relay-harness/rlh-bash-sandbox` |
 | `pwsh-sandbox` | `@relay-harness/rlh-pwsh-sandbox` |
 | `approval` | `@relay-harness/rlh-user-approval` |
-| `permission` | `@relay-harness/rlh-permission-presets` |
+| `permission` | `Developer Mode` |
 | `shell-env` | `@relay-harness/rlh-shell-env` |
 | `tool-bash` | `@relay-harness/rlh-tool-bash` |
 | `tool-pwsh` | `@relay-harness/rlh-tool-pwsh` |

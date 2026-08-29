@@ -50,7 +50,10 @@ import type {
   SymbolTokenHit,
   VectorCoverage,
   VectorRow,
+  VectorRecallRequest,
+  VectorRecallResult,
 } from '@relay-harness/rlh-code-index-search'
+import { compareStrings, cosineQuantized } from '@relay-harness/rlh-code-index-search'
 import { readEpochs } from './epoch.ts'
 import { ChunkTextCache, chunkCacheKey, chunkTextCacheCapacityForTier } from './cache.ts'
 import { CODE_INDEX_METADATA_EXPORT_FINGERPRINT_PREFIX } from './ddl.ts'
@@ -331,6 +334,8 @@ export function createRetrievalPort(
       const placeholders = batch.map(() => '?').join(', ')
       const rows = db.prepare(
         'SELECT chunks.chunk_id AS chunkId, chunks.file_path AS filePath, files.language AS languageName, '
+        + 'files.content_hash AS contentHash, files.parser_tier AS parserTier, '
+        + 'files.parser_confidence AS parserConfidence, '
         + 'chunks.start_line AS startLine, chunks.end_line AS endLine, chunks.breadcrumb AS breadcrumb, '
         + 'chunks.symbol_name AS symbolName, chunks.symbol_kind AS symbolKind, '
         + 'chunks.text AS text, chunks.text_encoding AS textEncoding, chunks.rowid AS rowid '
@@ -342,12 +347,15 @@ export function createRetrievalPort(
           chunkId: row.chunkId as string,
           filePath: row.filePath as string,
           languageName: row.languageName as string,
+          contentHash: row.contentHash as string,
           startLine: row.startLine as number,
           endLine: row.endLine as number,
           breadcrumb: row.breadcrumb as string,
           symbolName: row.symbolName as string | null,
           symbolKind: row.symbolKind as string | null,
           text: decodeText(row.rowid as number, row.textEncoding as string, row.text as string),
+          parserTier: row.parserTier as ParserTier,
+          parserConfidence: row.parserConfidence as number,
         })
       }
     }
@@ -357,16 +365,15 @@ export function createRetrievalPort(
   // The vector tier answers the search package's vector lane: int8 BLOBs read
   // back byte-identical (`node:sqlite` surfaces plain Uint8Array), so
   // `cosineQuantized` scores them without a dequantized copy. Rows are keyed
-  // `(chunk_id, model)` — vectors of different embedding models coexist for
-  // the same chunk, and every read here filters to exactly one model.
-  function vectorsByChunkIds(chunkIds: readonly string[], model: string): readonly VectorRow[] {
+  // `(chunk_id, generation_id)`; every read filters to one complete generation.
+  function vectorsByChunkIds(chunkIds: readonly string[], generationOrModel: string): readonly VectorRow[] {
     const rows: VectorRow[] = []
     for (const batch of inBatches(sortedUnique(chunkIds))) {
       const found = db.prepare(
         'SELECT chunk_id AS chunkId, chunk_rowid AS rowid, q, scale, norm, dim '
-        + `FROM chunks_vec WHERE model = ? AND chunk_id IN (${placeholders(batch.length)}) `
+        + `FROM chunks_vec WHERE (generation_id = ? OR model = ?) AND chunk_id IN (${placeholders(batch.length)}) `
         + 'ORDER BY chunk_id ASC',
-      ).all(model, ...batch) as Array<{
+      ).all(generationOrModel, generationOrModel, ...batch) as Array<{
         chunkId: string
         rowid: number
         q: Uint8Array
@@ -379,6 +386,31 @@ export function createRetrievalPort(
       }
     }
     return rows
+  }
+
+  /** Bounded exact cosine scan implementing the future-ANN adapter seam. */
+  function recallCandidates(request: VectorRecallRequest): VectorRecallResult {
+    const filter = scopeFilter(request.scope, 'c.file_path')
+    const sql = appendScope(
+      'SELECT c.chunk_id AS chunkId, v.q, v.scale, v.norm, v.dim '
+      + 'FROM chunks_vec v JOIN chunks c ON c.chunk_id = v.chunk_id '
+      + 'JOIN files ON files.file_path = c.file_path '
+      + 'WHERE v.generation_id = ?',
+      filter,
+    ) + ' ORDER BY c.chunk_id ASC LIMIT ?'
+    const rows = db.prepare(sql).all(
+      request.generationId,
+      ...filter.params,
+      request.maxScan + 1,
+    ) as Array<{ chunkId: string; q: Uint8Array; scale: number; norm: number; dim: number }>
+    const truncated = rows.length > request.maxScan
+    const scannedRows = truncated ? rows.slice(0, request.maxScan) : rows
+    const hits = scannedRows.flatMap((row) => {
+      const score = cosineQuantized(request.queryVector, row.q, row.scale, row.norm)
+      return score > 0 ? [{ chunkId: row.chunkId, score }] : []
+    })
+    hits.sort((left, right) => right.score - left.score || compareStrings(left.chunkId, right.chunkId))
+    return { hits: hits.slice(0, request.topK), scanned: scannedRows.length, truncated }
   }
 
   /**
@@ -426,6 +458,7 @@ export function createRetrievalPort(
     vector: {
       vectorsByChunkIds,
       vectorCoverage: model => readVectorCoverage(db, model),
+      recallCandidates,
     },
     graph: createGraphReadFacet(db),
   }
@@ -437,15 +470,15 @@ export function createRetrievalPort(
  * port so providers can project the numbers into status surfaces without
  * borrowing the retrieval port's graph face.
  * @param db - admitted handle already carrying the schema.
- * @param model - embedding model identity to count.
+ * @param generationOrModel - complete generation id, with model retained for legacy direct callers.
  * @returns the coverage pair.
  */
-export function readVectorCoverage(db: DatabaseSync, model: string): VectorCoverage {
+export function readVectorCoverage(db: DatabaseSync, generationOrModel: string): VectorCoverage {
   // The scalar subqueries always answer exactly one row.
   const row = db.prepare(
     'SELECT (SELECT COUNT(*) FROM chunks) AS totalChunks, '
-    + '(SELECT COUNT(*) FROM chunks_vec WHERE model = ?) AS vectorizedChunks',
-  ).get(model) as { totalChunks: number; vectorizedChunks: number }
+    + '(SELECT COUNT(*) FROM chunks_vec WHERE generation_id = ? OR model = ?) AS vectorizedChunks',
+  ).get(generationOrModel, generationOrModel) as { totalChunks: number; vectorizedChunks: number }
   return { vectorizedChunks: row.vectorizedChunks, totalChunks: row.totalChunks }
 }
 

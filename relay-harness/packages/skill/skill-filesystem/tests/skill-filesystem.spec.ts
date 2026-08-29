@@ -406,7 +406,7 @@ describe('FileSystemSkillProvider', () => {
     expect((await ctx.skills.list()).map(skill => skill.name)).toEqual(['good-skill'])
   })
 
-  it('discovers symlinked skill directories and flat files', async () => {
+  it('rejects skill symlinks that escape their declared root', async () => {
     const home = await tempDir('skill-symlink-home')
     const external = await tempDir('skill-symlink-external')
     await writeSkill(external, 'linked-dir', 'Linked directory')
@@ -419,7 +419,7 @@ describe('FileSystemSkillProvider', () => {
 
     const ctx = await setupLocal(home)
 
-    expect((await ctx.skills.list()).map(skill => skill.name)).toEqual(['linked-dir', 'linked-flat'])
+    expect((await ctx.skills.list()).map(skill => skill.name)).toEqual([])
   })
 
   it('uses the filesystem service for discovery, reads, and project-root lookup', async () => {
@@ -503,7 +503,10 @@ describe('FileSystemSkillProvider', () => {
       { kind: 'present', version: FsVersion('failed-read') },
       { name: 'edit' },
     )
-    expect(await ctx.skills.snapshot()).toEqual({ skills: [], complete: false })
+    expect(await ctx.skills.snapshot()).toMatchObject({
+      skills: [{ name: 'stable-skill' }],
+      complete: false,
+    })
 
     fs.failListDirPaths.clear()
     expect(await ctx.skills.snapshot()).toMatchObject({
@@ -776,7 +779,7 @@ describe('FileSystemSkillProvider', () => {
     disposeProvider()
   })
 
-  it('refreshes frontmatter through a followed skill symlink', { timeout: 10000 }, async () => {
+  it('does not admit or watch an external skill symlink even when link following is enabled', { timeout: 10000 }, async () => {
     const home = await tempDir('skill-watch-symlink-home')
     const external = await tempDir('skill-watch-symlink-external')
     const root = join(home, '.rlh/skills')
@@ -794,13 +797,10 @@ describe('FileSystemSkillProvider', () => {
       watchPollIntervalMs: 10,
     })
     try {
-      expect((await ctx.skills.list())[0]?.description).toBe('First linked description')
+      expect(await ctx.skills.list()).toEqual([])
       await writeSkill(external, 'linked-skill', 'Second linked description')
-      const refreshed = await waitFor(
-        async () => await ctx.skills.list(),
-        skills => skills[0]?.description === 'Second linked description',
-      )
-      expect(refreshed[0]?.name).toBe('linked-skill')
+      await new Promise(resolve => setTimeout(resolve, 50))
+      expect(await ctx.skills.list()).toEqual([])
     } finally {
       await fiber.dispose()
     }

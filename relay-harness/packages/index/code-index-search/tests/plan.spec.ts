@@ -3,6 +3,7 @@ import { DEFAULT_RANKING_CONFIG, DEFAULT_SEARCH_CONFIG } from '../src/config.ts'
 import {
   LaneRanks,
   SearchPlan,
+  augmentedQueryText,
   compareStrings,
   defaultPreselectLimit,
   laneStatsOf,
@@ -145,6 +146,25 @@ describe('SearchPlan.build normalization', () => {
     expect(onlyFilter.grepQuery()).toBe('path:only')
     expect(onlyFilter.request.pathPrefix).toBe('only')
     expect(onlyFilter.lexicalQuery()).toBe('path:only')
+  })
+
+  it('biases lexical/preselect/overlap with the newest four distinct conversation queries', () => {
+    const request = {
+      query: ' primary ',
+      conversationQueries: ['oldest-cut', ' fourth ', 'primary', '', 'third', 'second', ' newest '],
+    }
+    expect(augmentedQueryText(request)).toBe('primary\nnewest\nsecond\nthird')
+    const plan = SearchPlan.build({
+      port: indexForTopK(),
+      request,
+      searchConfig: DEFAULT_SEARCH_CONFIG,
+      ranking: DEFAULT_RANKING_CONFIG,
+      tier: 'tiny',
+    })
+    expect(plan.augmentedQuery).toBe('primary\nnewest\nsecond\nthird')
+    expect(plan.lexicalQuery()).toContain('newest')
+    expect(plan.queryTokens()).toEqual(['primary', 'newest', 'second', 'third'])
+    expect(plan.grepQuery()).toBe('primary')
   })
 
   it('finalizeResults sorts score desc with chunkId-asc ties and cuts to explicit limits', () => {

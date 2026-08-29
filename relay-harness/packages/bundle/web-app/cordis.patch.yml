@@ -68,6 +68,13 @@
       config:
         maxNoteBytes: 8192
 
+    - id: memory-outcome-reconciler
+      name: '@relay-harness/rlh-memory-outcome-reconciler'
+      config:
+        userId: !!js process.env.USER || process.env.USERNAME || 'local'
+        agentId: relay-harness
+        concurrency: 4
+
     # Browser Session export: `/export` command plus the shared download dialog.
     - id: session-log-download
       name: '@relay-harness/rlh-session-log-export'
@@ -84,16 +91,60 @@
     - id: session-reference
       name: '@relay-harness/rlh-session-reference'
 
-    - id: context-engine
-      name: '@relay-harness/rlh-context-engine'
+    # Prompt Enhancement reuses the same Context Engine contributors as Agent
+    # steps through a purpose-specific adapter; it owns no parallel composer.
+    - id: prompt-enhancement
+      name: '@relay-harness/rlh-prompt-enhancement'
+      config:
+        maxDraftBytes: 65536
+        maxResultBytes: 1048576
+
+    - id: prompt-enhancement-context
+      name: '@relay-harness/rlh-prompt-enhancement-context-engine'
+
+    - id: prompt-enhancement-llm
+      name: '@relay-harness/rlh-prompt-enhancement-llm'
+      config:
+        maxInputBytes: 524288
+        maxOutputTokens: 2048
+        maxOutputBytes: 524288
+        timeoutMs: 60000
+        maxDraftChars: 32000
+        maxListItems: 20
+        maxItemChars: 2000
 
     - id: file-reference-local
       name: '@relay-harness/rlh-file-reference-local'
+      config:
+        # Enables actual @file hydration for Agent steps and Prompt Enhancement.
+        # Keep the shared file contribution below the enhancer's complete-request
+        # cap so one valid explicit reference cannot make the default path fail.
+        fileContent:
+          maxFileBytes: 65536
+          maxTotalBytes: 65536
 
     # Whole-log turn/step counts for the chat stats strip (the sessionStats
     # projection key); the projection registry itself is a base-layer row.
     - id: session-stats
       name: '@relay-harness/rlh-session-stats'
+
+    # Bounded whole-log projection of durable context/prepared facts for the
+    # browser Context Inspector.
+    - id: context-inspector
+      name: '@relay-harness/rlh-context-inspector'
+
+    # Default local code knowledge provider and its model-visible Context
+    # contributor. The provider remains derived/rebuildable and watcher loss
+    # degrades to authoritative refresh diffs.
+    - id: code-index-workspace-router
+      name: '@relay-harness/rlh-code-index-workspace-router'
+      config:
+        watcherEnabled: true
+        maxOpenWorkspaces: 4
+        idleEvictMs: 300000
+
+    - id: code-context
+      name: '@relay-harness/rlh-code-context'
 
     # Phone remote shares this Host and cannot see a native OS chooser on the
     # desktop display. Pin the browse pair so every client gets the in-app
@@ -111,6 +162,16 @@
 
     - id: skill-inventory
       name: '@relay-harness/rlh-host-skill-inventory'
+
+    - id: memory-center
+      name: '@relay-harness/rlh-host-memory-center'
+      config:
+        userId: !!js process.env.USER || process.env.USERNAME || 'local'
+        agentId: relay-harness
+        usageConcurrency: 4
+
+    - id: code-index-center
+      name: '@relay-harness/rlh-host-code-index-center'
 
     # The API gateway: the transport-agnostic dispatch face every client shape
     # shares. The base layer's agent-default-model service owns the default model.
@@ -206,6 +267,10 @@
     - id: ui-sidebar
       name: '@relay-harness/rlh-client-ui-sidebar'
 
+    # Shared Simple/Developer state plus Chat / Work / Library product navigation.
+    - id: ui-product-shell
+      name: '@relay-harness/rlh-client-ui-product-shell'
+
     - id: ui-session-tree
       name: '@relay-harness/rlh-client-ui-session-tree'
 
@@ -256,8 +321,17 @@
     - id: ui-settings-skills
       name: '@relay-harness/rlh-client-ui-settings-skills'
 
+    - id: ui-memory-center
+      name: '@relay-harness/rlh-client-ui-memory-center'
+
+    - id: ui-code-index-center
+      name: '@relay-harness/rlh-client-ui-code-index-center'
+
     - id: ui-conversation
       name: '@relay-harness/rlh-client-ui-conversation'
+
+    - id: ui-context-inspector
+      name: '@relay-harness/rlh-client-ui-context-inspector'
 
     # Latest-user-message inline edit: pencil enters the bubble editor; confirm forks.
     - id: ui-message-edit
@@ -344,6 +418,11 @@
     # Plan control: the composer plan seat over the plan projection + /plan channel.
     - id: ui-plan
       name: '@relay-harness/rlh-client-ui-plan'
+
+    # Prompt Enhancement in the composer tool row. Its proposal dialog requires
+    # Accept before replacing an unchanged draft; the input machine owns undo.
+    - id: ui-prompt-enhancement
+      name: '@relay-harness/rlh-client-ui-prompt-enhancement'
 
     - id: ui-user-questions
       name: '@relay-harness/rlh-client-ui-user-questions'

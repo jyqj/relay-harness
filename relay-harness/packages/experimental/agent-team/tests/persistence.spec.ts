@@ -191,6 +191,40 @@ for (const backend of backends) {
       await first.dispose()
 
       const second = await stack(backend, storageRoot, [textResponse('cold resumed answer')])
+      // Hold the root recovery pass after roster reconciliation, then let it
+      // claim the message between the durable queue flush and sendMessage's
+      // own dispatch attempt. Both callers must observe the SAME dispatch;
+      // returning queued merely because recovery won this race is a false
+      // immediate-delivery receipt.
+      const queuedCommitted = Promise.withResolvers<undefined>()
+      const dispatchEntered = Promise.withResolvers<undefined>()
+      const releaseDispatch = Promise.withResolvers<undefined>()
+      const internals = second.ctx.agentTeams as unknown as {
+        journal: {
+          appendAndFlush(root: Agent, type: string, data: unknown): Promise<void>
+        }
+        mailbox: {
+          recoverFor(agent: Agent, signal: AbortSignal): Promise<void>
+        }
+      }
+      const appendAndFlush = internals.journal.appendAndFlush.bind(internals.journal)
+      internals.journal.appendAndFlush = async (root, type, data) => {
+        await appendAndFlush(root, type, data)
+        if (type !== 'team/message/queued') return
+        queuedCommitted.resolve(undefined)
+        await dispatchEntered.promise
+      }
+      const recoverFor = internals.mailbox.recoverFor.bind(internals.mailbox)
+      internals.mailbox.recoverFor = async (agent, signal) => {
+        if (agent.id === activeRootId) await queuedCommitted.promise
+        await recoverFor(agent, signal)
+      }
+      const followup = second.ctx.subagents.followup.bind(second.ctx.subagents)
+      vi.spyOn(second.ctx.subagents, 'followup').mockImplementation(async (...args) => {
+        dispatchEntered.resolve(undefined)
+        await releaseDispatch.promise
+        return await followup(...args)
+      })
       const activeHandle = await second.ctx.agents.resume({
         resumeSessionId: activeRootId,
         agentOptions: { provider: 'mock', model: 'mock' },
@@ -206,12 +240,22 @@ for (const backend of backends) {
         expect(failedMember?.error).toContain('child Session recovery failed')
       }, { timeout: 5_000 })
 
-      const receipt = await second.ctx.agentTeams.sendMessage(activeHandle.agent, {
+      let receiptSettled = false
+      const sending = second.ctx.agentTeams.sendMessage(activeHandle.agent, {
         target: 'recoverable',
         content: [{ type: 'text', text: 'resume after reconciliation' }],
         delivery: 'wakeup',
         signal: SIGNAL,
       })
+      void sending.then(() => { receiptSettled = true })
+      await dispatchEntered.promise
+      await new Promise<void>((resolve) => { setImmediate(resolve) })
+      try {
+        expect(receiptSettled).toBe(false)
+      } finally {
+        releaseDispatch.resolve(undefined)
+      }
+      const receipt = await sending
       expect(receipt.status).toBe('accepted')
       await vi.waitFor(() => { expect(second.ctx.agents.get(childId)).toBeUndefined() }, { timeout: 5_000 })
       await vi.waitFor(() => { expect(durable(activeHandle.agent).pendingMessages).toEqual([]) })

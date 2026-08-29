@@ -4,6 +4,12 @@ English | [中文](extensions.zh.md)
 
 The extensions subsystem lets an agent define versioned Cordis packages, run their host and browser halves, and query approved runtime metadata before writing code. Package lifecycle and sandbox behavior belong to the [`packages/extensions`](../../packages/extensions/README.md) package group.
 
+## MCP and Skill extension boundaries
+
+MCP Tools, Resources/Templates, and Prompts retain separate protocol-native surfaces. Cursor pagination rejects loops; list-change/reconnect synchronization retains last-good generations but rechecks live generation ownership before registry swaps or reads. `startupTimeoutMs` bounds connect plus discovery. Resource Context requires a direct-user URI mention, contains per-resource failures, records honest coverage, and frames all external content as untrusted. Prompt invocation is explicit through the catalog/Host Remote, preserves bounded rich blocks and annotations, and never silently becomes a Skill. HTTP credentials must use masked headers rather than URL credentials or secret query keys; connection diagnostics redact configured secrets.
+
+Skill imports remain unsigned local installations. Project cwd is authorized by an attached live Session, writable paths are canonically confined to their declared user/project roots, and ordinary edits replace files atomically. Local/ZIP/GitHub staging rejects traversal, special files, escaping symlinks, archive/file-count/expanded-size excess, and revalidates the copied tree before replacement. A GitHub version selects the fetched ref. Permission labels are bounded declarations for inspection, not runtime authority grants. Web and Desktop use the same Web Settings composition.
+
 <!-- BEGIN GENERATED cordis-surface (gen-cordis-catalog.ts) — do not edit between markers -->
 
 <a id="cordis-surface"></a>
@@ -255,6 +261,60 @@ inspectPackage( agent: Agent, pluginId: CordisDynamicPluginId, packageId: Cordis
 Types: [Agent](core.md)
 
 Source: [`packages/extensions/cordis-host-runner/src/index.ts:124`](../../packages/extensions/cordis-host-runner/src/index.ts)
+
+<a id="ctxmcpcatalog--mcpcatalog"></a>
+
+### `ctx.mcpCatalog` — `McpCatalog`
+
+Protocol-native registry for connected MCP Resource and Prompt generations.
+
+```ts cordis-catalog
+/**
+ * Publish one complete connected-server generation atomically.
+ * @param generation - complete connected server generation.
+ * @returns exact rollback disposer.
+ */
+publish(generation: McpServerCatalogGeneration): () => void
+
+/**
+ * List concrete resources across connected servers.
+ * @returns all currently catalogued concrete resources.
+ */
+listResources(): McpResourceDescriptor[]
+
+/**
+ * List resource templates across connected servers.
+ * @returns all currently catalogued resource templates.
+ */
+listResourceTemplates(): McpResourceTemplateDescriptor[]
+
+/**
+ * List prompts across connected servers.
+ * @returns all currently catalogued prompts.
+ */
+listPrompts(): McpPromptDescriptor[]
+
+/**
+ * Read one concrete Resource through its owning live generation.
+ * @param serverName - owning server.
+ * @param uri - concrete URI.
+ * @param signal - caller cancellation.
+ * @returns rich Resource content.
+ */
+async readResource(serverName: string, uri: string, signal?: AbortSignal): Promise<McpResourceRead>
+
+/**
+ * Resolve one Prompt after validating required arguments.
+ * @param serverName - owning server.
+ * @param name - prompt name.
+ * @param args - string arguments.
+ * @param signal - caller cancellation.
+ * @returns resolved rich Prompt.
+ */
+async getPrompt( serverName: string, name: string, args: Readonly<Record<string, string>>, signal?: AbortSignal, ): Promise<McpPromptResult>
+```
+
+Source: [`packages/mcp/mcp-catalog/src/index.ts:39`](../../packages/mcp/mcp-catalog/src/index.ts)
 
 <a id="ctxmcpserversfile--mcpserversfile"></a>
 

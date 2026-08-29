@@ -3,7 +3,7 @@
  *
  * Covers the full R5 data path — refresh enqueues the committed batch, the
  * drain converges into `chunks_vec`, searches embed their query and feed the
- * vector lane, the graph result cache respects evidence-epoch movement, and
+ * vector lane, the graph result cache respects embedding-epoch movement, and
  * every failure mode degrades honestly instead of fabricating vector
  * contributions or pinning sticky status.
  */
@@ -74,6 +74,32 @@ function hasVectorReason(answer: { hits: ReadonlyArray<{ reasons: readonly strin
 }
 
 describe('configured embedding tier end to end', () => {
+  it('backfills unchanged chunks when embedding is enabled after indexing', async () => {
+    const dbDir = await mkdtemp(join(tmpdir(), 'rlh-vec-enable-db-'))
+    trackedDirs.push(dbDir)
+    const databasePath = join(dbDir, 'derived.sqlite3')
+    const root = await strideWorkspace()
+    const withoutEmbedding = runtimeFor(root, undefined, databasePath)
+    await withoutEmbedding.refresh({ reason: 'manual' })
+    await withoutEmbedding.dispose()
+
+    const server = await startFakeEmbedServer({ dim: 16 })
+    servers.push(server)
+    const enabled = runtimeFor(root, embeddingFor({
+      baseURL: server.url,
+      model: 'fake-embed',
+      dimensions: 16,
+      timeoutMs: 2_000,
+    }), databasePath)
+    await enabled.ensureOpen()
+    await enabled.embedDrainIdle()
+    expect(enabled.vectorStatus()).toMatchObject({ pendingJobs: 0 })
+    expect(enabled.vectorStatus()?.vectorizedChunks).toBeGreaterThan(0)
+    expect(enabled.status().epochs.embeddingEpoch).toBeGreaterThan(0)
+    expect(enabled.status().epochs.evidenceEpoch).toBe(0)
+    await enabled.dispose()
+  })
+
   it('converges refresh → enqueue → drain into chunks_vec and ranks with the vector lane', async () => {
     const server = await startFakeEmbedServer({ dim: 16 })
     servers.push(server)
@@ -94,7 +120,18 @@ describe('configured embedding tier end to end', () => {
     expect(vectors).toMatchObject({ model: 'fake-embed', pendingJobs: 0 })
     expect(vectors?.vectorizedChunks).toBeGreaterThan(0)
     expect(vectors?.totalChunks).toBeGreaterThanOrEqual(vectors?.vectorizedChunks ?? 0)
-    expect(runtime.status().epochs.evidenceEpoch).toBeGreaterThanOrEqual(1)
+    const management = runtime.managementStatus()
+    expect(management.chunkCount).toBe(vectors?.totalChunks)
+    expect(management.generations[0]).toMatchObject({ model: 'fake-embed', vectorizedChunks: vectors?.vectorizedChunks })
+    expect(runtime.status().epochs.embeddingEpoch).toBeGreaterThanOrEqual(1)
+    expect(runtime.status().epochs.evidenceEpoch).toBe(0)
+    const embeddingExplain = runtime.status().lastRefresh?.explain?.embedding
+    expect(typeof embeddingExplain?.missingChunks).toBe('number')
+    expect(typeof embeddingExplain?.jobsEnqueued).toBe('number')
+    expect(typeof embeddingExplain?.batchesClaimed).toBe('number')
+    expect(typeof embeddingExplain?.batchesWritten).toBe('number')
+    expect(typeof embeddingExplain?.jobsCompleted).toBe('number')
+    expect(embeddingExplain?.jobsFailed).toBe(0)
 
     // The query text equals a chunk's text, so its embedding is that chunk's
     // own direction: the vector lane must rank it and annotate the hit.
@@ -127,20 +164,20 @@ describe('configured embedding tier end to end', () => {
     const cached = await runtime.search({ query: STRIDE_LINE.trim() })
     // The graph result cache is live: the repeat call returns the same outcome.
     expect(cached).toBe(first)
-    const evidenceBefore = first.epochs.evidenceEpoch
+    const embeddingBefore = first.epochs.embeddingEpoch ?? 0
 
     // A content revision re-enqueues its chunks; draining them advances the
     // evidence clock. The cached entry (keyed on the epoch pair) must miss.
     await writeFile(join(root, 'src/other.ts'), 'export const unrelatedConstant = 707\n')
     await runtime.refresh({ reason: 'manual' })
     await runtime.embedDrainIdle()
-    const evidenceAfter = runtime.status().epochs.evidenceEpoch
-    expect(evidenceAfter).toBeGreaterThan(evidenceBefore)
+    const embeddingAfter = runtime.status().epochs.embeddingEpoch ?? 0
+    expect(embeddingAfter).toBeGreaterThan(embeddingBefore)
 
     const recomputed = await runtime.search({ query: STRIDE_LINE.trim() })
     expect(recomputed).not.toBe(first)
     // A stale cache hit would still carry the pre-drain epoch pair.
-    expect(recomputed.epochs.evidenceEpoch).toBe(evidenceAfter)
+    expect(recomputed.epochs.embeddingEpoch).toBe(embeddingAfter)
     await runtime.dispose()
   })
 })
@@ -218,12 +255,15 @@ describe('runtime-unavailable embedding degrades honestly', () => {
     expect(vectors?.pendingJobs).toBeGreaterThan(0)
     expect(vectors?.vectorizedChunks).toBe(0)
     expect(runtime.status().degraded).toBe(false)
+    const explain = runtime.status().lastRefresh?.explain
+    expect(explain?.degraded).toBe(true)
+    expect(explain?.degradationReasons).toContain('embedding-jobs-failed')
     await runtime.dispose()
   })
 })
 
-describe('lane-failure degradation is sticky', () => {
-  it('pins status when a stored dimension contradicts the query embedder', async () => {
+describe('generation isolation and lane-failure degradation', () => {
+  it('backfills a distinct endpoint/dimension generation instead of mixing same-model vectors', async () => {
     const dbDir = await mkdtemp(join(tmpdir(), 'rlh-vec-db-'))
     trackedDirs.push(dbDir)
     const databasePath = join(dbDir, 'derived.sqlite3')
@@ -241,9 +281,8 @@ describe('lane-failure degradation is sticky', () => {
     await runtimeA.embedDrainIdle()
     await runtimeA.dispose()
 
-    // Generation B embeds queries at 8 dimensions under the same model name:
-    // every stored row now contradicts the query vector, so the vector lane
-    // aborts — a persistent condition, hence sticky status.
+    // Generation B shares the model string but changes endpoint and dimensions.
+    // Its coverage reconciler must backfill instead of reading generation A.
     const queryServer = await startFakeEmbedServer({ dim: 8 })
     servers.push(queryServer)
     const runtimeB = runtimeFor(
@@ -251,12 +290,17 @@ describe('lane-failure degradation is sticky', () => {
       embeddingFor({ baseURL: queryServer.url, model: 'fake-embed', dimensions: 8, timeoutMs: 2_000 }),
       databasePath,
     )
+    await runtimeB.embedDrainIdle()
     const answer = await runtimeB.search({ query: STRIDE_LINE.trim() })
-    expect(answer.degraded).toBe(true)
-    expect(answer.readErrors.some(isLaneFailureReadError)).toBe(true)
-    expect(answer.readErrors.join('\n')).toMatch(/^vector lane failed /mu)
-    expect(runtimeB.status().degraded).toBe(true)
+    expect(answer.degraded).toBe(false)
+    expect(hasVectorReason(answer)).toBe(true)
+    expect(runtimeB.vectorStatus()?.vectorizedChunks).toBeGreaterThan(0)
+    expect(runtimeB.status().epochs.evidenceEpoch).toBe(0)
     await runtimeB.dispose()
+    const inspector = new DatabaseSync(databasePath)
+    expect((inspector.prepare('SELECT COUNT(*) AS n FROM embedding_generations').get() as { n: number }).n).toBe(2)
+    expect((inspector.prepare('SELECT COUNT(DISTINCT generation_id) AS n FROM chunks_vec').get() as { n: number }).n).toBe(2)
+    inspector.close()
   })
 
   it('pins sticky status even when the same answer also lost its query embedding', async () => {
@@ -320,7 +364,7 @@ describe('deterministic flush hooks', () => {
     expect(() => runtime.status()).toThrow('disposed')
   })
 
-  it('folds a catch-up refresh into the drain already in flight', async () => {
+  it('folds a catch-up refresh into the drain already in flight without a lost final wakeup', async () => {
     const server = await startFakeEmbedServer({ dim: 16, behaviors: ['slow'] })
     servers.push(server)
     const root = await strideWorkspace()
@@ -336,6 +380,9 @@ describe('deterministic flush hooks', () => {
     await writeFile(join(root, 'src/other.ts'), 'export const unrelatedConstant = 707\n')
     await runtime.refresh({ reason: 'manual' })
 
+    await runtime.embedDrainIdle()
+    expect(runtime.vectorStatus()).toMatchObject({ pendingJobs: 0 })
+    expect(runtime.vectorStatus()?.vectorizedChunks).toBe(runtime.vectorStatus()?.totalChunks)
     await runtime.dispose()
     await expect(runtime.embedDrainIdle()).resolves.toBeUndefined()
     expect(() => runtime.status()).toThrow('disposed')

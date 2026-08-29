@@ -18,7 +18,14 @@ import { MockAdapter, textResponse, toolCallResponse } from '../../../core/agent
 const testToolSignal = new AbortController().signal
 
 const dirs: string[] = []
-afterEach(() => { for (const d of dirs.splice(0)) rmSync(d, { recursive: true, force: true }) })
+const contexts: Context[] = []
+afterEach(async () => {
+  // Dispose before deleting hook scripts: LocalSubprocessRuntime owns process
+  // exit listeners and any still-running child. Leaking one Context per case
+  // both triggered MaxListeners warnings and amplified full-suite contention.
+  for (const ctx of contexts.splice(0)) await ctx.fiber.dispose()
+  for (const d of dirs.splice(0)) rmSync(d, { recursive: true, force: true })
+})
 function dir(): string { const d = mkdtempSync(join(tmpdir(), 'rlh-hx-cov-')); dirs.push(d); return d }
 function sh(d: string, name: string, body: string): string {
   const p = join(d, name); writeFileSync(p, body); chmodSync(p, 0o755); return p
@@ -30,6 +37,7 @@ function hooks(d: string, h: unknown): string {
 type HarnessOpts = { stderrSummaryMaxChars?: number; sessionRoot?: string }
 async function harness(configPath: string, adapter: MockAdapter, opts: HarnessOpts = {}): Promise<Context> {
   const ctx = new Context()
+  contexts.push(ctx)
   await mountAgentLoopTestDependencies(ctx)
   if (opts.sessionRoot !== undefined) await ctx.plugin(JsonlSessionPersistence, { root: opts.sessionRoot })
   await ctx.plugin(AgentLoop, { agents: [] })
@@ -364,11 +372,30 @@ export function defineCoverageCases(groups: CoverageGroup | readonly CoverageGro
       })
       const adapter = new MockAdapter([])
       const ctx = await harness(join(d, 'hooks.json'), adapter)
+      // This case verifies pre-step composition, not process startup. Keep the
+      // Shell seam real but settle its two commands in-process so full-suite
+      // CPU contention cannot consume the test's wall-clock budget while
+      // preserving runHook parsing, detached tracking, and Agent idle cleanup.
+      const run = vi.spyOn(ctx.shell, 'run').mockImplementation(async spec => ({
+        exitCode: spec.command.includes('start.sh') ? 0 : 2,
+        signal: null,
+        timedOut: false,
+        aborted: false,
+        timeoutMs: spec.timeoutMs,
+        stdout: {
+          text: spec.command.includes('start.sh')
+            ? '{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"startup-pending"}}\n'
+            : '',
+          truncated: false,
+        },
+        stderr: { text: '', truncated: false },
+      }))
       const agent = ctx.agentLoop.create(SessionId('blocked-startup'), { provider: 'mock', model: 'mock' })
 
       agent.followup(createUserMessage({ content: [{ type: 'text', text: 'go' }], source: { kind: 'user' } }))
       await waitForIdle(ctx, agent)
 
+      expect(run).toHaveBeenCalledTimes(2)
       expect(agent.inbox.nextStep.some(message =>
         message.content.some(block => block.type === 'text' && block.text.includes('startup-pending')))).toBe(true)
     })

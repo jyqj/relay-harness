@@ -169,6 +169,29 @@ type SettingsUpdateSource = 'update' | 'provider'
 
 Generated from source by `scripts/gen-cordis-catalog.ts` (verified fresh by `pnpm run verify-cordis-catalog` in doc-sync; regenerate with `pnpm run gen-cordis-catalog`) — this section is byte-identical in both language sides of the page. Signature blocks use a `ts cordis-catalog` fence and keep the original source JSDoc; dispatch modes are defined in the [primer](../cordis-primer.md#dispatch-modes), and the framework-inherited `ctx` API lives in [cordis-api/inherited.md](../cordis-api/inherited.md).
 
+<a id="ctxproductmode--productmodeservice"></a>
+
+### `ctx.productMode` — `ProductModeService`
+
+Host Remote and settings-backed single owner of product-mode state.
+
+```ts cordis-catalog
+/**
+ * Read the current resolved product mode.
+ * @returns current resolved product mode.
+ */
+@Remote('get') get(): ProductModeSnapshot
+
+/**
+ * Persist one explicit product mode.
+ * @param request - next explicit mode.
+ * @returns the resolved mode after durable settings persistence.
+ */
+@Remote('set') async set(request: ProductModeSetRequest): Promise<ProductModeSnapshot>
+```
+
+Source: [`packages/host/product-mode/src/index.ts:14`](../../packages/host/product-mode/src/index.ts)
+
 <a id="ctxsettings--settingsprovider-abstract-seam"></a>
 
 ### `ctx.settings` — `SettingsProvider` (abstract seam)

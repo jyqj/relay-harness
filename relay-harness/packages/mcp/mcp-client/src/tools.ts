@@ -31,10 +31,15 @@ export interface ToolBridgeOptions {
   registrationFailure: 'contain' | 'throw'
   serverName: string
   toolCallTimeoutMs: number
+  /** Generation ownership guard checked after every paginated fetch and before registry swap. */
+  generationActive?: () => boolean
 }
 
 /** State for one sync generation: the current set of disposers keyed by public name. */
 export type ToolDisposers = Map<string, () => void>
+const MAX_TOOL_CATALOG_ITEMS = 1_024
+const MAX_TOOL_CATALOG_PAGES = 256
+const MAX_TOOL_CATALOG_BYTES = 8 * 1024 * 1024
 
 /** Canonical MCP result exposed to Code Mode without discarding protocol blocks. */
 export type McpResult<Structured extends JsonValue = JsonValue> = {
@@ -148,10 +153,20 @@ export async function syncTools(
 ): Promise<ToolDisposers> {
   // Phase 1: fetch and build the next generation without touching the registry.
   const definitions = new Map<string, ToolDefinition>()
+  const seenCursors = new Set<string>()
   let cursor: string | undefined
+  let pages = 0
+  let catalogBytes = 0
   do {
+    pages += 1
+    if (pages > MAX_TOOL_CATALOG_PAGES) throw new Error(`mcp-client(${opts.serverName}): tools/list exceeds ${MAX_TOOL_CATALOG_PAGES} pages`)
     const response = await listToolsUncached(client, cursor)
+    if (opts.generationActive?.() === false) throw new Error(`mcp-client(${opts.serverName}): tool sync generation is stale`)
     for (const tool of response.tools) {
+      catalogBytes += new TextEncoder().encode(JSON.stringify(tool)).byteLength
+      if (definitions.size >= MAX_TOOL_CATALOG_ITEMS || catalogBytes > MAX_TOOL_CATALOG_BYTES) {
+        throw new Error(`mcp-client(${opts.serverName}): tool catalog exceeds admission limits`)
+      }
       const publicName = publicToolName(opts.serverName, tool.name)
       if (definitions.has(publicName)) {
         throw new Error(
@@ -171,9 +186,14 @@ export async function syncTools(
       ))
     }
     cursor = response.nextCursor
+    if (cursor !== undefined && seenCursors.has(cursor)) {
+      throw new Error(`mcp-client(${opts.serverName}): tools/list repeated cursor ${cursor}`)
+    }
+    if (cursor !== undefined) seenCursors.add(cursor)
   } while (cursor)
 
   // Phase 2: swap generations.
+  if (opts.generationActive?.() === false) throw new Error(`mcp-client(${opts.serverName}): tool sync generation is stale`)
   for (const dispose of previous.values()) dispose()
   const disposers: ToolDisposers = new Map()
   try {

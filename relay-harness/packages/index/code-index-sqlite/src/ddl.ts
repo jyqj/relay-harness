@@ -9,7 +9,7 @@ import type { DatabaseSync } from 'node:sqlite'
 export const CODE_INDEX_SQLITE_APPLICATION_ID = 0x43494458
 
 /** Current derived schema version. Incompatible databases reset in place. */
-export const CODE_INDEX_SQLITE_SCHEMA_VERSION = 6
+export const CODE_INDEX_SQLITE_SCHEMA_VERSION = 8
 
 /**
  * Metadata keys owned by this store. Epochs survive reopening an admitted
@@ -19,6 +19,9 @@ export const CODE_INDEX_METADATA_INDEX_EPOCH = 'index_epoch'
 
 /** Metadata key storing the evidence epoch; bumped by admissible external evidence. */
 export const CODE_INDEX_METADATA_EVIDENCE_EPOCH = 'evidence_epoch'
+
+/** Metadata key storing vector-materialization commits, separate from runtime evidence. */
+export const CODE_INDEX_METADATA_EMBEDDING_EPOCH = 'embedding_epoch'
 
 /**
  * Metadata key prefix for per-file export fingerprints; the full key is this
@@ -72,6 +75,7 @@ export const DERIVED_USER_TABLES = new Set([
   'test_edges',
   'literal_index',
   'chunks_vec',
+  'embedding_generations',
   'code_embed_jobs',
   'literal_fts',
   'literal_fts_data',
@@ -105,6 +109,9 @@ export function ensureCodeIndexSchema(db: DatabaseSync): void {
   db.prepare(`
     INSERT OR IGNORE INTO metadata (key, value) VALUES (?, ?)
   `).run(CODE_INDEX_METADATA_EVIDENCE_EPOCH, '0')
+  db.prepare(`
+    INSERT OR IGNORE INTO metadata (key, value) VALUES (?, ?)
+  `).run(CODE_INDEX_METADATA_EMBEDDING_EPOCH, '0')
   db.exec(`
     CREATE TABLE IF NOT EXISTS files (
       file_path         TEXT PRIMARY KEY,
@@ -352,16 +359,33 @@ export function ensureCodeIndexSchema(db: DatabaseSync): void {
       VALUES (new.rowid, COALESCE(new.literal, ''), COALESCE(new.literal_kind, ''));
     END;
   `)
-  // ── Vector tier (schema v5). One int8-quantized embedding row per chunk and
-  // model; the encode/decode math lives in the search package's vector-math
+  // ── Vector tier (schema v8). Generation identity covers endpoint/model,
+  // configured dimensions, normalization, quantizer, and chunker. Keeping the
+  // identity in its own durable row lets model/endpoint switches coexist and
+  // lets the provider reconcile coverage for unchanged chunks.
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS embedding_generations (
+      generation_id        TEXT PRIMARY KEY,
+      provider_id          TEXT NOT NULL,
+      endpoint_identity    TEXT NOT NULL,
+      model                TEXT NOT NULL,
+      configured_dimensions INTEGER,
+      dimension_mode       TEXT NOT NULL CHECK (dimension_mode IN ('fixed', 'provider-default')),
+      normalization_version TEXT NOT NULL,
+      quantizer_version     TEXT NOT NULL,
+      chunker_version       TEXT NOT NULL,
+      created_at            TEXT NOT NULL
+    ) STRICT
+  `)
+  // One int8-quantized embedding row per chunk and generation; the math lives
+  // in the search package's vector-math
   // module and this table only enforces its storage contract: `q` holds the
   // byte view of the Int8Array (one byte per dimension, see
   // `@relay-harness/rlh-code-index-search/vector-math`), `norm` is the ORIGINAL
   // float norm captured before quantization, and `chunk_rowid` denormalizes
   // `chunks.rowid` so readers join rowid-aligned without a lookup. The
-  // composite `(chunk_id, model)` primary key is what lets vectors of
-  // different embedding models coexist for the same chunk (v4's single-column
-  // key silently replaced across models); the `chunks` foreign key still
+  // composite `(chunk_id, generation_id)` primary key is what lets vectors of
+  // different embedding configurations coexist; the `chunks` foreign key still
   // cascades a chunk delete here exactly as it does through the other
   // chunk-owned tables. The scalar columns are STRICT-typed scalars only — per
   // the BLOB binding contract, no scalar value ever passes through the `q`
@@ -370,37 +394,40 @@ export function ensureCodeIndexSchema(db: DatabaseSync): void {
     CREATE TABLE IF NOT EXISTS chunks_vec (
       chunk_id    TEXT NOT NULL REFERENCES chunks(chunk_id) ON DELETE CASCADE,
       chunk_rowid INTEGER NOT NULL,
+      generation_id TEXT NOT NULL REFERENCES embedding_generations(generation_id) ON DELETE CASCADE,
       model       TEXT NOT NULL,
       dim         INTEGER NOT NULL,
       format      TEXT NOT NULL DEFAULT 'int8' CHECK (format = 'int8'),
       scale       REAL NOT NULL,
       q           BLOB NOT NULL,
       norm        REAL NOT NULL,
-      PRIMARY KEY (chunk_id, model)
+      PRIMARY KEY (chunk_id, generation_id)
     ) STRICT
   `)
+  db.exec('CREATE INDEX IF NOT EXISTS idx_chunks_vec_generation ON chunks_vec(generation_id)')
   db.exec('CREATE INDEX IF NOT EXISTS idx_chunks_vec_model ON chunks_vec(model)')
-  // Embedding job queue (schema v4, unchanged by v5's composite chunks_vec
-  // key), trimmed from the memory store's
+  // Embedding job queue, trimmed from the memory store's
   // extraction-jobs table. Idempotency is double-keyed: `dedupe_key` is the
-  // UNIQUE derived identity and `(chunk_id, model, content_hash)` is the
-  // semantic key — a re-enqueue of the same chunk text under the same model is
+  // UNIQUE derived identity and `(chunk_id, generation_id, content_hash)` is the
+  // semantic key — a re-enqueue of the same chunk text under the same generation is
   // a no-op, while a content revision is a distinct job. `chunk_id` cascades
   // from `chunks` so re-chunking a file purges its stale jobs with the deleted
   // chunk rows instead of leaving them to fail against replaced text.
   // `result_json` stays NULL by contract: a completed job's result IS its
-  // `chunks_vec` row, written by the drain inside the evidence-epoch
+  // `chunks_vec` row, written by the drain inside the embedding-epoch
   // transaction; only `usage_json` records the provider spend.
   db.exec(`
     CREATE TABLE IF NOT EXISTS code_embed_jobs (
       id            TEXT PRIMARY KEY,
       dedupe_key    TEXT NOT NULL UNIQUE,
       chunk_id      TEXT NOT NULL REFERENCES chunks(chunk_id) ON DELETE CASCADE,
+      generation_id TEXT NOT NULL REFERENCES embedding_generations(generation_id) ON DELETE CASCADE,
       model         TEXT NOT NULL,
       content_hash  TEXT NOT NULL,
       payload_json  TEXT NOT NULL DEFAULT '{}',
       status        TEXT NOT NULL CHECK (status IN ('pending', 'running', 'completed', 'failed')),
       attempts      INTEGER NOT NULL DEFAULT 0,
+      reconcile_resets INTEGER NOT NULL DEFAULT 0,
       max_attempts  INTEGER NOT NULL,
       available_at  INTEGER NOT NULL,
       lease_owner   TEXT,
@@ -410,12 +437,12 @@ export function ensureCodeIndexSchema(db: DatabaseSync): void {
       usage_json    TEXT,
       created_at    INTEGER NOT NULL,
       updated_at    INTEGER NOT NULL,
-      UNIQUE (chunk_id, model, content_hash)
+      UNIQUE (chunk_id, generation_id, content_hash)
     ) STRICT
   `)
   db.exec(`
     CREATE INDEX IF NOT EXISTS code_embed_jobs_claim
-    ON code_embed_jobs(status, available_at, lease_until, created_at)
+    ON code_embed_jobs(generation_id, status, available_at, lease_until, created_at)
   `)
   db.exec(`PRAGMA user_version = ${CODE_INDEX_SQLITE_SCHEMA_VERSION}`)
 }

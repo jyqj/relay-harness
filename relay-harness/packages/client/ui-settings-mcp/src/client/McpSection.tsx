@@ -519,6 +519,12 @@ function ServerRow({
               {connection.tools.join(', ')}
             </span>
           )}
+          {connection?.resources === undefined || connection.resources.length === 0 ? null : (
+            <span className={styles.tools}>{format(t('resourceCount'), { count: String(connection.resources.length) })}{' · '}{connection.resources.join(', ')}</span>
+          )}
+          {connection?.prompts === undefined || connection.prompts.length === 0 ? null : (
+            <span className={styles.tools}>{format(t('promptCount'), { count: String(connection.prompts.length) })}{' · '}{connection.prompts.join(', ')}</span>
+          )}
         </span>
         <Pill>{entry.origin === 'managed' ? t('managed') : t('composition')}</Pill>
       </div>
@@ -584,7 +590,7 @@ interface EditorDraft {
     readonly url: string
     readonly headers: string
   }
-  readonly retained: Pick<McpServerRecord, 'failOnStartupError' | 'reconnect'>
+  readonly retained: Pick<McpServerRecord, 'failOnStartupError' | 'reconnect' | 'startupTimeoutMs'>
 }
 
 type FieldError = Partial<Record<'id' | 'serverName' | 'command' | 'url' | 'env' | 'headers' | 'timeout', string>>
@@ -943,6 +949,7 @@ function editorDraft(spec: McpServerRecord): EditorDraft {
     retained: {
       ...(spec.failOnStartupError === undefined ? {} : { failOnStartupError: spec.failOnStartupError }),
       ...(spec.reconnect === undefined ? {} : { reconnect: spec.reconnect }),
+      ...(spec.startupTimeoutMs === undefined ? {} : { startupTimeoutMs: spec.startupTimeoutMs }),
     },
     stdio: spec.transport === 'stdio'
       ? { command: spec.command, args: (spec.args ?? []).join(' '), env: pairs(spec.env), cwd: spec.cwd ?? '' }
@@ -1060,11 +1067,15 @@ function specToRecord(
   const timeout = typeof spec.toolCallTimeoutMs === 'number' && Number.isInteger(spec.toolCallTimeoutMs) && spec.toolCallTimeoutMs > 0
     ? spec.toolCallTimeoutMs
     : undefined
+  const startupTimeout = typeof spec.startupTimeoutMs === 'number' && Number.isInteger(spec.startupTimeoutMs) && spec.startupTimeoutMs > 0
+    ? spec.startupTimeoutMs
+    : undefined
   const shared = {
     id,
     serverName,
     enabled,
     ...(timeout === undefined ? {} : { toolCallTimeoutMs: timeout }),
+    ...(startupTimeout === undefined ? {} : { startupTimeoutMs: startupTimeout }),
   }
   if (httpish) {
     const headers = isPlainObject(spec.headers) ? stringMap(spec.headers) : undefined
@@ -1145,6 +1156,8 @@ function isHttpUrl(value: string): boolean {
   try {
     const url = new URL(value.trim())
     return (url.protocol === 'http:' || url.protocol === 'https:') && url.hostname.length > 0
+      && url.username === '' && url.password === '' && url.hash === ''
+      && [...url.searchParams.keys()].every(key => !/(?:token|secret|password|authorization|credential|api[_-]?key|auth)$/iu.test(key))
   } catch {
     return false
   }

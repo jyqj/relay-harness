@@ -20,7 +20,7 @@ import {
   CodeIndexError,
   CODE_INDEX_VECTOR_ROW_INVALID,
 } from '@relay-harness/rlh-code-index'
-import { bumpEvidenceEpochOnceInTx, bumpIndexEpochOnceInTx } from './epoch.ts'
+import { bumpEmbeddingEpochOnceInTx, bumpIndexEpochOnceInTx } from './epoch.ts'
 import { encodeChunkText } from './codec.ts'
 import { CODE_INDEX_METADATA_EXPORT_FINGERPRINT_PREFIX } from './ddl.ts'
 
@@ -432,6 +432,8 @@ export interface ChunkVectorRowInput {
   readonly chunkId: string
   /** Denormalized `chunks.rowid` captured when the chunk row was read. */
   readonly chunkRowid: number
+  /** Complete embedding-pipeline generation identity; half the durable row key. */
+  readonly generationId?: string
   /**
    * Embedding model identity; half the row key. Vectors of different models
    * for the same chunk coexist as sibling rows.
@@ -454,12 +456,9 @@ export interface WriteChunkVectorsResult {
 }
 
 /**
- * Commit a batch of chunk vectors inside one evidence-epoch-bumped
- * transaction: the vector tier is external evidence about the code, so its
- * commits move `evidence_epoch` exactly once per transaction and leave
- * `index_epoch` frozen (see {@link ./epoch.ts!bumpEvidenceEpochOnceInTx}).
- * Re-embedding an existing `(chunk_id, model)` pair replaces exactly that
- * pair's row; a different model's row for the same chunk is untouched.
+ * Commit a batch of chunk vectors inside one embedding-epoch-bumped
+ * transaction. Re-embedding an existing `(chunk_id, generation_id)` pair
+ * replaces exactly that pair's row; other generations remain untouched.
  *
  * The embedding drain calls this once per processed job, which is the
  * evidence tier's per-commit granularity: N drained jobs advance the clock
@@ -478,11 +477,11 @@ export function writeChunkVectors(
   db: DatabaseSync,
   rows: readonly ChunkVectorRowInput[],
 ): WriteChunkVectorsResult {
-  return bumpEvidenceEpochOnceInTx(db, () => {
+  return bumpEmbeddingEpochOnceInTx(db, () => {
     const insert = db.prepare(`
       INSERT OR REPLACE INTO chunks_vec (
-        chunk_id, chunk_rowid, model, dim, format, scale, q, norm
-      ) VALUES (?, ?, ?, ?, 'int8', ?, ?, ?)
+        chunk_id, chunk_rowid, generation_id, model, dim, format, scale, q, norm
+      ) VALUES (?, ?, ?, ?, ?, 'int8', ?, ?, ?)
     `)
     for (const row of rows) {
       if (row.q.byteLength !== row.dim) {
@@ -492,10 +491,24 @@ export function writeChunkVectors(
           CODE_INDEX_VECTOR_ROW_INVALID,
         )
       }
-      insert.run(row.chunkId, row.chunkRowid, row.model, row.dim, row.scale, row.q, row.norm)
+      const generationId = row.generationId ?? ensureLegacyVectorGeneration(db, row.model)
+      insert.run(row.chunkId, row.chunkRowid, generationId, row.model, row.dim, row.scale, row.q, row.norm)
     }
     return { vectorsWritten: rows.length } satisfies WriteChunkVectorsResult
   })
+}
+
+function ensureLegacyVectorGeneration(db: DatabaseSync, model: string): string {
+  const generationId = `legacy-model:${model}`
+  db.prepare(`
+    INSERT OR IGNORE INTO embedding_generations (
+      generation_id, provider_id, endpoint_identity, model,
+      configured_dimensions, dimension_mode, normalization_version,
+      quantizer_version, chunker_version, created_at
+    ) VALUES (?, 'legacy-direct-store', 'legacy:', ?, NULL, 'provider-default',
+      'legacy', 'legacy', 'legacy', ?)
+  `).run(generationId, model, new Date().toISOString())
+  return generationId
 }
 
 /** Split a path list into SQL-variable-sized batches for `IN (...)` statements. */

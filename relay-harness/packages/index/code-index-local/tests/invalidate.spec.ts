@@ -24,6 +24,20 @@ describe('StaleInvalidator', () => {
     expect(invalidator.pending).toBe(false)
   })
 
+  it('unions path scopes but widens the burst when one caller requests a full pass', async () => {
+    vi.useFakeTimers()
+    const trigger = vi.fn()
+    const invalidator = new StaleInvalidator(10, trigger)
+    invalidator.schedule(['b.ts'])
+    invalidator.schedule(['a.ts', 'b.ts'])
+    await vi.advanceTimersByTimeAsync(10)
+    expect(trigger).toHaveBeenLastCalledWith(['a.ts', 'b.ts'])
+    invalidator.schedule(['only.ts'])
+    invalidator.schedule()
+    await vi.advanceTimersByTimeAsync(10)
+    expect(trigger).toHaveBeenLastCalledWith(undefined)
+  })
+
   it('flushes immediately past any outstanding timer', () => {
     vi.useFakeTimers()
     const trigger = vi.fn()

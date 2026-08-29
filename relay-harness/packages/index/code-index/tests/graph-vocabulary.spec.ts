@@ -156,11 +156,14 @@ describe('search hit graph score', () => {
   const baseHit: SearchHit = {
     chunkId: 'chunk:src/a.ts:0',
     filePath: 'src/a.ts',
+    language: 'typescript',
+    contentHash: 'hash-a',
     startLine: 1,
     endLine: 4,
     score: 1.5,
     rank: 1,
     reasons: ['lexical@1'],
+    scoreTrace: [{ label: 'rrf:lexical', value: 1.5 }],
     parserTier: 'generic',
     parserConfidence: 0.5,
   }

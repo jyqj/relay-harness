@@ -23,6 +23,10 @@ export interface McpClientStatus {
    * tool is registered.
    */
   readonly tools?: readonly string[]
+  /** Resource URIs advertised by the connected server's last-good generation. */
+  readonly resources?: readonly string[]
+  /** Prompt names advertised by the connected server's last-good generation. */
+  readonly prompts?: readonly string[]
 }
 
 const statuses = new WeakMap<Context, Map<string, McpClientStatus>>()

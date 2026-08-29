@@ -18,6 +18,7 @@ import {
   repoSizeTierMaxOutputChars,
   type EpochPair,
   type RepoSizeTier,
+  type SearchScoreComponent,
   type SearchHit,
   type SearchResult,
 } from '@relay-harness/rlh-code-index'
@@ -85,14 +86,17 @@ export interface SearchEngineOptions {
 interface RankedInterim {
   chunkId: string
   filePath: string
+  language: string
+  contentHash: string
   startLine: number
   endLine: number
   breadcrumb: string | undefined
   symbolName: string | undefined
   symbolKind: string | undefined
   score: number
+  scoreTrace: readonly SearchScoreComponent[]
   reasons: readonly string[]
-  parserTier: 'generic'
+  parserTier: SearchHit['parserTier']
   parserConfidence: number
 }
 
@@ -101,11 +105,14 @@ function toSearchHit(interim: RankedInterim, rank: number): SearchHit {
   return {
     chunkId: interim.chunkId,
     filePath: interim.filePath,
+    language: interim.language,
+    contentHash: interim.contentHash,
     startLine: interim.startLine,
     endLine: interim.endLine,
     ...(interim.breadcrumb === undefined ? {} : { breadcrumb: interim.breadcrumb }),
     ...(interim.symbolName === undefined ? {} : { symbolName: interim.symbolName }),
     score: interim.score,
+    scoreTrace: interim.scoreTrace,
     reasons: interim.reasons,
     parserTier: interim.parserTier,
     parserConfidence: interim.parserConfidence,
@@ -249,7 +256,7 @@ export function createSearchEngine(options: SearchEngineOptions): {
       const detail = detailsById.get(chunkId)
       if (detail === undefined) continue
       if (!plan.passesFilters(detail.filePath)) continue
-      const { rerankScore, reasons } = rerankCandidate({
+      const { rerankScore, scoreTrace, reasons } = rerankCandidate({
         chunkId,
         filePath: detail.filePath,
         breadcrumb: detail.breadcrumb,
@@ -270,15 +277,18 @@ export function createSearchEngine(options: SearchEngineOptions): {
       ranked.push({
         chunkId,
         filePath: detail.filePath,
+        language: detail.languageName,
+        contentHash: detail.contentHash,
         startLine: detail.startLine,
         endLine: detail.endLine,
         breadcrumb: detail.breadcrumb.length > 0 ? detail.breadcrumb : undefined,
         symbolName: detail.symbolName ?? undefined,
         symbolKind: detail.symbolKind ?? undefined,
         score: rerankScore,
+        scoreTrace,
         reasons: dedupeReasons(reasons),
-        parserTier: 'generic',
-        parserConfidence: 0,
+        parserTier: detail.parserTier,
+        parserConfidence: detail.parserConfidence,
       })
     }
 

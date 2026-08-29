@@ -1,0 +1,92 @@
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--rlw-alias-content-secondary);
+  cursor: pointer;
+}
+
+.button:hover:not(:disabled) {
+  background: var(--rlw-alias-background-hover);
+  color: var(--rlw-alias-content-primary);
+}
+
+.button:focus-visible {
+  outline: 2px solid var(--rlw-alias-focus-ring);
+  outline-offset: 1px;
+}
+
+.button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.button[aria-busy='true'] svg {
+  animation: pulse 900ms ease-in-out infinite alternate;
+}
+
+@keyframes pulse {
+  from { opacity: 0.45; }
+  to { opacity: 1; }
+}
+
+.dialog {
+  width: min(760px, calc(100vw - 32px));
+}
+
+.content {
+  min-height: 0;
+}
+
+.proposal {
+  display: grid;
+  gap: 18px;
+}
+
+.proposal section {
+  display: grid;
+  gap: 8px;
+}
+
+.proposal h3 {
+  margin: 0;
+  color: var(--rlw-alias-content-primary);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.proposal ul {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding-left: 20px;
+  color: var(--rlw-alias-content-secondary);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.noticeRow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.notice {
+  max-width: 240px;
+  overflow: hidden;
+  color: var(--rlw-alias-content-secondary);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.notice[data-level='error'] {
+  color: var(--rlw-alias-state-error-primary);
+}

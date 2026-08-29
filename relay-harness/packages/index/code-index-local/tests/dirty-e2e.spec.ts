@@ -212,9 +212,8 @@ describe('five-stage incremental pipeline', () => {
     expect(files.n).toBe(1)
     const idle = await runRefreshPass(await h.inputs(loadIndexedSnapshot(h.db)))
     expect(idle.changedFiles).toBe(0)
-    expect(idle.dirty).toMatchObject({ status: 'normal', marked: 0 })
-    // An unchanged pass still commits its (empty) delta, moving the epoch once.
-    epoch += 1
+    expect(idle).toMatchObject({ skipped: true, dirty: null })
+    // An unchanged pass opens no empty write transaction and freezes the epoch.
     expect(readEpochs(h.db).indexEpoch).toBe(epoch)
   })
 

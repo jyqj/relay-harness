@@ -48,6 +48,13 @@ interface SkillCreateInput extends SkillInventoryClientScope {
   modelInvocable: boolean
   userInvocable: boolean
 }
+interface SkillImportInput extends SkillInventoryClientScope {
+  kind: 'local' | 'zip' | 'github'
+  location: string
+  root: SkillCreateRoot
+  permissions: readonly string[]
+  replace?: boolean
+}
 
 interface EditorDraft {
   name: string
@@ -64,6 +71,7 @@ export interface SkillsSectionInjected {
   list: (scope: SkillInventoryClientScope) => Promise<SkillInventorySnapshot>
   get: (name: string, scope: SkillInventoryClientScope) => Promise<SkillInventoryDetail>
   create: (input: SkillCreateInput) => Promise<void>
+  importSkill: (input: SkillImportInput) => Promise<SkillInventoryDetail>
   update: (input: SkillInventoryClientScope & {
     name: string
     description: string
@@ -136,6 +144,12 @@ export function SkillsSection(props: SkillsSectionProps) {
   const [deletePending, setDeletePending] = useState(false)
   const [deleteError, setDeleteError] = useState<string | undefined>()
   const [refreshFailure, setRefreshFailure] = useState(false)
+  const [importOpen, setImportOpen] = useState(false)
+  const [importKind, setImportKind] = useState<'local' | 'zip' | 'github'>('local')
+  const [importLocation, setImportLocation] = useState('')
+  const [importPermissions, setImportPermissions] = useState('')
+  const [importPending, setImportPending] = useState(false)
+  const [importError, setImportError] = useState<string | undefined>()
 
   const load = (replace: boolean): void => {
     const sequence = loadSequence.current + 1
@@ -274,6 +288,9 @@ export function SkillsSection(props: SkillsSectionProps) {
           <p className={styles.intro}>{t('intro')}</p>
         </div>
         <div className={styles.headingActions}>
+          <Button size="sm" variant="outline" onClick={() => { setImportOpen(true); setImportError(undefined) }}>
+            {t('import')}
+          </Button>
           <Button
             size="sm"
             variant="outline"
@@ -381,6 +398,9 @@ export function SkillsSection(props: SkillsSectionProps) {
                     <div className={styles.rowMeta}>
                       {pending === 'detail' && <span className={styles.pending} role="status">{t('loadingDetail')}</span>}
                       <Pill>{t(sourceLabel(skill.source))}</Pill>
+                      <Pill>{t(skill.trust === 'bundled' ? 'trustBundled' : skill.trust === 'runtime' ? 'trustRuntime' : 'trustUnsigned')}</Pill>
+                      <Pill>{t(skill.health === 'healthy' ? 'healthHealthy' : skill.health === 'last-good' ? 'healthLastGood' : 'healthInvalid')}</Pill>
+                      {skill.version !== undefined && <Pill>{skill.version}</Pill>}
                       <Switch
                         checked={skill.modelInvocable}
                         disabled={!skill.writable || pending === 'invocation'}
@@ -479,6 +499,36 @@ export function SkillsSection(props: SkillsSectionProps) {
             })
         }}
       />
+
+      <Modal
+        open={importOpen}
+        onClose={() => { if (!importPending) setImportOpen(false) }}
+        title={t('importTitle')}
+        closeLabel={t('close')}
+        description={t('importDescription')}
+        footer={(
+          <>
+            <Button disabled={importPending} onClick={() => { setImportOpen(false) }}>{t('cancel')}</Button>
+            <Button variant="primary" disabled={importPending || importLocation.trim().length === 0} onClick={() => {
+              setImportPending(true); setImportError(undefined)
+              void props.importSkill({
+                kind: importKind, location: importLocation.trim(), root: 'user-rlh',
+                permissions: importPermissions.split(',').map(item => item.trim()).filter(Boolean), ...scope,
+              }).then(() => { setImportPending(false); setImportOpen(false); load(false) })
+                .catch((error: unknown) => { setImportPending(false); setImportError(messageOf(error, t('importFailed'))) })
+            }}>{importPending ? t('importing') : t('importConfirm')}</Button>
+          </>
+        )}
+      >
+        <div className={styles.proposal ?? styles.section}>
+          <label>{t('importKind')}<select value={importKind} onChange={(event) => { setImportKind(event.target.value as typeof importKind) }}>
+            <option value="local">{t('importLocal')}</option><option value="zip">{t('importZip')}</option><option value="github">{t('importGithub')}</option>
+          </select></label>
+          <Input value={importLocation} onChange={(event) => { setImportLocation(event.target.value) }} placeholder={t('importLocation')} />
+          <Input value={importPermissions} onChange={(event) => { setImportPermissions(event.target.value) }} placeholder={t('importPermissions')} />
+          {importError !== undefined && <p role="alert" className={styles.error}>{importError}</p>}
+        </div>
+      </Modal>
 
       <Modal
         open={deleting !== undefined}

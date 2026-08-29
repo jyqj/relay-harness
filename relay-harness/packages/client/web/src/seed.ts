@@ -11,6 +11,7 @@ import * as ReactJsxRuntime from 'react/jsx-runtime'
 import * as ReactDom from 'react-dom'
 import * as ReactDomClient from 'react-dom/client'
 import * as Cordis from '@relay-harness/cordis'
+import * as Zod from 'zod'
 import * as UiSlots from '@relay-harness/rlh-client-ui-slots'
 import * as UiPrimitives from '@relay-harness/rlh-client-ui-primitives'
 import type { PlatformModule } from './platform.ts'
@@ -35,6 +36,7 @@ export function getStaticModules(): Record<string, unknown> {
     'react-dom': preserveModuleExports(ReactDom),
     'react-dom/client': preserveModuleExports(ReactDomClient),
     '@relay-harness/cordis': preserveModuleExports(Cordis),
+    'zod': preserveModuleExports(Zod),
     '@relay-harness/rlh-client-ui-slots': preserveModuleExports(UiSlots),
     '@relay-harness/rlh-client-ui-primitives': preserveModuleExports(UiPrimitives),
   } satisfies Record<PlatformModule, unknown>

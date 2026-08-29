@@ -58,14 +58,13 @@ export class WorkspaceTypertGenerator {
           ...emitter.emit(packageModel.name),
           packageRoot: packageModel.root,
         }
-        this.validateExport(artifact)
-        artifacts.push(artifact)
+        if (this.validateExport(artifact)) artifacts.push(artifact)
       }
     }
     return artifacts
   }
 
-  private validateExport(artifact: WorkspaceEmitResult): void {
+  private validateExport(artifact: WorkspaceEmitResult): boolean {
     const manifestPath = resolve(this.root, artifact.packageRoot, 'package.json')
     const manifest = JSON.parse(readFileSync(manifestPath, 'utf8')) as {
       exports?: unknown
@@ -79,6 +78,15 @@ export class WorkspaceTypertGenerator {
     const actual = manifest.exports !== null && typeof manifest.exports === 'object'
       ? (manifest.exports as Record<string, unknown>)[subpath]
       : undefined
+    const explicitlyPublished = manifest.exports !== null
+      && typeof manifest.exports === 'object'
+      && Object.hasOwn(manifest.exports, subpath)
+    // Ordinary Cordis Context/Events are discoverable so an explicit Typert
+    // publication can be checked, but discovery alone is not an opt-in. A
+    // Remote method is different: its generated client contract cannot exist
+    // without the Host reflection artifact, so it always requires both public
+    // subpaths below.
+    if (!explicitlyPublished && artifact.remote === undefined) return false
     if (!sameExport(actual, expected)) {
       throw new TypertAnalysisError(
         `typert(${artifact.face}): ${artifact.package} must export ${subpath} as ${JSON.stringify(expected)}`,
@@ -90,7 +98,7 @@ export class WorkspaceTypertGenerator {
         throw new TypertAnalysisError(`typert(${artifact.face}): ${artifact.package} package files must include ${file}`)
       }
     }
-    if (artifact.face !== 'host') return
+    if (artifact.face !== 'host') return true
     const remoteExpected = {
       types: './lib/typert.remote-client.d.ts',
       default: './lib/typert.remote-client.js',
@@ -111,7 +119,7 @@ export class WorkspaceTypertGenerator {
           `typert(host): ${artifact.package} publishes Remote artifacts but has no Remote methods`,
         )
       }
-      return
+      return true
     }
     if (!sameExport(remoteActual, remoteExpected)) {
       throw new TypertAnalysisError(
@@ -123,6 +131,7 @@ export class WorkspaceTypertGenerator {
         throw new TypertAnalysisError(`typert(host): ${artifact.package} package files must include ${file}`)
       }
     }
+    return true
   }
 }
 

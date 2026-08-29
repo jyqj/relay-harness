@@ -9,7 +9,7 @@
  * @module @relay-harness/rlh-skill-filesystem
  */
 
-import { access, lstat, readdir, readFile, stat } from 'node:fs/promises'
+import { access, lstat, readdir, readFile, realpath, stat } from 'node:fs/promises'
 import { unwatchFile, watchFile, type Stats } from 'node:fs'
 import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path'
 import { homedir } from 'node:os'
@@ -152,6 +152,7 @@ export class FileSystemSkillProvider implements SkillProvider {
   private readonly watchManager: SkillWatchManager
   private readonly bundledSkillDir: string | undefined
   private disposal: Promise<void> | undefined
+  private readonly lastGood = new Map<string, SkillCandidate[]>()
 
   constructor(
     private readonly ctx: Context,
@@ -180,6 +181,7 @@ export class FileSystemSkillProvider implements SkillProvider {
    *   failure returns readable candidates as an incomplete observation.
    */
   async list(options: SkillLookupOptions): Promise<SkillCandidate[] | SkillProviderObservation> {
+    const key = options.cwd ?? '<global>'
     const roots = await this.roots(options.cwd)
     let complete = true
     try {
@@ -188,13 +190,20 @@ export class FileSystemSkillProvider implements SkillProvider {
       if (this.disposal !== undefined) throw error
       complete = false
     }
-    const candidates: SkillCandidate[] = []
-    for (const root of roots) {
-      for (const skill of await discoverRoot(root, this.ctx, this.name)) {
-        candidates.push(skill)
+    try {
+      const candidates: SkillCandidate[] = []
+      for (const root of roots) {
+        for (const skill of await discoverRoot(root, this.ctx, this.name)) candidates.push(skill)
       }
+      if (complete) this.lastGood.set(key, candidates)
+      return complete ? candidates : { candidates, complete: false }
+    } catch (error) {
+      if (this.disposal !== undefined) throw error
+      const candidates = this.lastGood.get(key)
+      if (candidates === undefined) throw error
+      this.ctx.logger.warn(`skill-filesystem: discovery failed; serving last-good catalog: ${errorMessage(error)}`)
+      return { candidates, complete: false }
     }
-    return complete ? candidates : { candidates, complete }
   }
 
   /**
@@ -784,7 +793,7 @@ async function listSkillRootEntriesFromNode(root: SkillRoot, ctx: Context): Prom
   const result: SkillRootEntry[] = []
   for (const entry of entries) {
     const path = join(root.path, entry.name)
-    const type = await nodeEntryKind(path, entry, ctx)
+    const type = await nodeEntryKind(path, entry, ctx, root.path)
     result.push({ name: entry.name, type: type ?? 'other', path })
   }
   return result
@@ -888,12 +897,23 @@ function fsReadErrorMessage(target: FsTarget, error: unknown): string {
   return `failed to read text file at ${target.displayPath}: ${errorMessage(error)}`
 }
 
-async function nodeEntryKind(fullPath: string, entry: { isDirectory(): boolean; isFile(): boolean; isSymbolicLink(): boolean }, ctx: Context): Promise<'directory' | 'file' | undefined> {
+async function nodeEntryKind(
+  fullPath: string,
+  entry: { isDirectory(): boolean; isFile(): boolean; isSymbolicLink(): boolean },
+  ctx: Context,
+  root: string,
+): Promise<'directory' | 'file' | undefined> {
   if (entry.isDirectory()) return 'directory'
   if (entry.isFile()) return 'file'
   /* v8 ignore next -- Non-file directory entries such as FIFOs are platform-specific and intentionally skipped. */
   if (!entry.isSymbolicLink()) return undefined
   try {
+    const [canonicalRoot, canonicalTarget] = await Promise.all([realpath(root), realpath(fullPath)])
+    const within = relative(canonicalRoot, canonicalTarget)
+    if (within === '' || within.startsWith('..') || isAbsolute(within)) {
+      ctx.logger.warn(`skill entry ${fullPath} ignored: symbolic link escapes its declared root`)
+      return undefined
+    }
     const info = await stat(fullPath)
     if (info.isDirectory()) return 'directory'
     /* v8 ignore else -- the special-file symlink branch relies on POSIX /dev/null. */

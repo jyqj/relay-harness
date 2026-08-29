@@ -88,6 +88,16 @@
     },
     {
       "doc": "docs/subsystems/code-index.md",
+      "symbol": "HydrateChunksRequest",
+      "source": "packages/index/code-index/src/types.ts"
+    },
+    {
+      "doc": "docs/subsystems/code-index.md",
+      "symbol": "HydrateChunksResult",
+      "source": "packages/index/code-index/src/types.ts"
+    },
+    {
+      "doc": "docs/subsystems/code-index.md",
       "symbol": "SearchRequest",
       "source": "packages/index/code-index/src/types.ts"
     },
@@ -180,6 +190,11 @@
       "doc": "docs/subsystems/compaction.md",
       "symbol": "PrunedEntry",
       "source": "packages/compaction/compaction-tool-result-pruner/src/types.ts"
+    },
+    {
+      "doc": "docs/subsystems/context-engine.md",
+      "symbol": "ContextPreparedEventData",
+      "source": "packages/context/context-engine/src/types.ts"
     },
     {
       "doc": "docs/subsystems/context-engine.md",

@@ -48,6 +48,15 @@ describe('plugin lifecycle over one real workspace', () => {
     const provider = ctx.get('codeIndex') as CodeIndexLocal
     expect(provider).toBeDefined()
 
+    expect((await provider.forWorkspace(root)).workspaceRoot).toMatch(/rlh-lc-run-/u)
+    const otherRoot = await mkdtemp(join(tmpdir(), 'rlh-lc-other-'))
+    extraDirs.push(otherRoot)
+    // The explicit single-workspace adapter validates the root before it
+    // mints a bound face, so a mismatch fails synchronously. The router is
+    // the async multi-workspace implementation; this legacy adapter must not
+    // silently acquire or retarget a second workspace.
+    expect(() => provider.forWorkspace(otherRoot)).toThrow(/does not match configured root/u)
+
     const answer = await provider.search({ query: 'atlasEngineWeightedSum' })
     expect(answer.hits.length).toBeGreaterThan(0)
 

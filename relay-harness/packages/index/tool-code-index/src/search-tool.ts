@@ -15,10 +15,10 @@ import { repoSizeTierMaxOutputChars } from '@relay-harness/rlh-code-index'
 import type { SearchHit, SearchRequest, SearchResult } from '@relay-harness/rlh-code-index'
 import type { ParserTier, RepoSizeTier } from '@relay-harness/rlh-code-index'
 import { defineTool } from '@relay-harness/rlh-tools'
-import type { GenericCallView, ToolResult, ToolResultView } from '@relay-harness/rlh-tools'
+import type { GenericCallView, ToolExecution, ToolResult, ToolResultView } from '@relay-harness/rlh-tools'
 import { applyExitPolicy } from './envelope.ts'
 import type { OutputTruncationEnvelope } from './envelope.ts'
-import { normalizeCodeIndexFailure, requireCodeIndex } from './errors.ts'
+import { normalizeCodeIndexFailure, requireWorkspaceCodeIndex } from './errors.ts'
 
 /** Schema-validated `search_code_index` arguments. */
 export interface SearchCodeIndexArgs {
@@ -40,6 +40,8 @@ export interface SearchToolCaps {
 export interface SearchHitView {
   chunkId: string
   filePath: string
+  language: string
+  contentHash: string
   startLine: number
   endLine: number
   breadcrumb?: string
@@ -49,6 +51,7 @@ export interface SearchHitView {
   graphScore?: number
   rank: number
   reasons: string[]
+  scoreTrace: Array<{ label: string; value: number }>
   parserTier: ParserTier
   parserConfidence: number
 }
@@ -64,7 +67,7 @@ export interface SearchToolResult {
   tier: RepoSizeTier
   hits: SearchHitView[]
   candidateCount: number
-  epochs: { indexEpoch: number; evidenceEpoch: number }
+  epochs: { indexEpoch: number; evidenceEpoch: number; embeddingEpoch?: number }
   truncated: boolean
   degraded: boolean
   readErrors: string[]
@@ -147,7 +150,7 @@ export function formatSearchHit(hit: SearchHit): string {
  * @param value - the successful canonical value.
  * @returns the model-facing text.
  */
-export function renderSearchOutput(value: SearchResult | OutputTruncationEnvelope): string {
+export function renderSearchOutput(value: SearchResult | SearchToolResult | OutputTruncationEnvelope): string {
   if (isTruncationEnvelope(value)) {
     return 'The code-index response was too large for one result '
       + `(${value._original_chars} bytes serialized against a ${value._max_chars}-byte budget); `
@@ -197,12 +200,13 @@ async function runSearchQuery(
   ctx: Context,
   args: SearchCodeIndexArgs,
   caps: SearchToolCaps,
-  signal: AbortSignal,
+  exec: Readonly<ToolExecution>,
 ): Promise<SearchToolOutput> {
   const input = parseSearchArgs(args)
   const request = toSearchRequest(input, caps.clampTopKToTier)
   try {
-    const result = await requireCodeIndex(ctx, 'search_code_index').search(request, signal)
+    const workspace = await requireWorkspaceCodeIndex(ctx, 'search_code_index', exec)
+    const result = await workspace.search(request, exec.signal)
     // Exit-side byte cap: the tier is read AFTER execution, from the answer
     // itself, mirroring the reference implementation's cached-tier semantics.
     return applyExitPolicy(toPlainSearchResult(result), 'byte-cap', repoSizeTierMaxOutputChars(result.tier))
@@ -266,6 +270,8 @@ export function applySearchTool(ctx: Context, caps: SearchToolCaps): void {
                   properties: {
                     chunkId: { type: 'string', required: true },
                     filePath: { type: 'string', required: true },
+                    language: { type: 'string', required: true },
+                    contentHash: { type: 'string', required: true },
                     startLine: { type: 'integer', required: true },
                     endLine: { type: 'integer', required: true },
                     breadcrumb: { type: 'string' },
@@ -274,6 +280,18 @@ export function applySearchTool(ctx: Context, caps: SearchToolCaps): void {
                     graphScore: { type: 'number' },
                     rank: { type: 'integer', required: true },
                     reasons: { type: 'array', required: true, items: { type: 'string' } },
+                    scoreTrace: {
+                      type: 'array',
+                      required: true,
+                      items: {
+                        type: 'object',
+                        additionalProperties: false,
+                        properties: {
+                          label: { type: 'string', required: true },
+                          value: { type: 'number', required: true },
+                        },
+                      },
+                    },
                     parserTier: { type: 'string', required: true },
                     parserConfidence: { type: 'number', required: true },
                   },
@@ -286,6 +304,7 @@ export function applySearchTool(ctx: Context, caps: SearchToolCaps): void {
                 properties: {
                   indexEpoch: { type: 'integer', required: true },
                   evidenceEpoch: { type: 'integer', required: true },
+                  embeddingEpoch: { type: 'integer' },
                 },
               },
               truncated: { type: 'boolean', required: true },
@@ -308,7 +327,7 @@ export function applySearchTool(ctx: Context, caps: SearchToolCaps): void {
       render: (_args, value) => [{ type: 'text', text: renderSearchOutput(value as SearchToolOutput) }],
     },
     async execute(args, exec) {
-      return runSearchQuery(ctx, args, caps, exec.signal)
+      return runSearchQuery(ctx, args, caps, exec)
     },
     presentCall: presentSearchCall,
     presentResult: presentSearchResult,

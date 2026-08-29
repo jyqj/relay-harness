@@ -6,6 +6,8 @@ The **model-facing consumer of the local code-index capability** (`ctx.codeIndex
 
 Function plugin (`name` / `inject` / `Config` / `apply`, no default export). Injects `tools` and `systemPrompt`; the seam is deliberately NOT injected — every execute resolves it through `ctx.get('codeIndex')`, so compositions without an index provider load cleanly and fail individual calls as structured `INDEX_TOOL_UNAVAILABLE`.
 
+Every execution binds the provider with `exec.agent.session.header.cwd` before reading or mutating. Calls without an Agent Session workspace fail closed, and refresh busy guards are keyed by canonical Workspace so two workspaces may refresh concurrently without suppressing one another.
+
 ```ts ignore-check
 // The provider supplies ctx.codeIndex; this Consumer rides on top of it.
 await ctx.plugin(LocalCodeIndexProvider)                    // the provider package for your backend

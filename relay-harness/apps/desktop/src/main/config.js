@@ -21,7 +21,7 @@ const DEFAULTS = {
   openDevTools: false,
   theme: 'relay',
   locale: 'zh',
-  simpleMode: false,
+  simpleMode: true,
   githubToken: '',
   remoteEnabled: false,
   remotePort: 3180,

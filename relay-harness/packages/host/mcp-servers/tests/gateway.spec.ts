@@ -54,7 +54,7 @@ describe('McpServersGateway', () => {
   it('publishes list, upsert, delete, retry, authorize, and setEnabled remotes', async () => {
     const { gateway } = await harness()
     expect(remoteMethods(gateway).map(item => item.method).sort()).toEqual([
-      'authorize', 'delete', 'list', 'retry', 'setEnabled', 'upsert',
+      'authorize', 'catalog', 'delete', 'getPrompt', 'list', 'readResource', 'retry', 'setEnabled', 'upsert',
     ])
   })
 

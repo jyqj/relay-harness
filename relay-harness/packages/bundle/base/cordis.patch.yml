@@ -27,6 +27,28 @@
     - id: session
       name: '@relay-harness/rlh-session'
 
+    # One host-owned Context Control Plane serves every surface, including
+    # headless/CLI Agent sessions. Providers contribute through this registry;
+    # AgentLoop supplies durable caller identity on every preparation.
+    - id: context-engine
+      name: '@relay-harness/rlh-context-engine'
+
+    # One protocol-native registry for MCP Resources and Prompts. Individual
+    # mcp-client rows publish generations here; Resources enter ContextEngine,
+    # while Prompts remain an explicit catalog/invocation seam.
+    - id: mcp-catalog
+      name: '@relay-harness/rlh-mcp-catalog'
+
+    # Prompt Enhancement history is a Context Provider, not a private composer.
+    # It is host-owned and declines ordinary agent_step requests, so the base
+    # can compose it once without duplicating AgentLoop's normal transcript.
+    - id: session-history-context
+      name: '@relay-harness/rlh-session-history-context'
+      config:
+        maxExchanges: 12
+        maxChars: 24000
+        maxTokens: 6000
+
     - id: typert
       name: '@relay-harness/rlh-typert-registry'
 
@@ -87,6 +109,9 @@
     - id: settings
       name: '@relay-harness/rlh-settings-file'
 
+    - id: product-mode
+      name: '@relay-harness/rlh-host-product-mode'
+
     # Credential sources: inherited environment over the managed
     # `$RLH_HOME/.credentials.yaml`, with project and user `.env` fallbacks.
     # Adapters resolve references per request; the Models page writes only the
@@ -136,6 +161,18 @@
       name: '@relay-harness/rlh-memory-sqlite'
       config:
         path: !!js rlhHomePath('memory/memory.db')
+
+    # Memory is a host Context Provider rather than an independent pre-step
+    # injector. The durable preset gate keeps minimal sessions memory-free while
+    # Agent steps and Prompt Enhancement share the same retrieval/provenance path.
+    - id: memory-agent
+      name: '@relay-harness/rlh-memory-agent'
+      config:
+        userId: !!js process.env.USER || process.env.USERNAME || 'local'
+        agentId: relay-harness
+        agentPresets: [standard]
+        candidateLimit: 10
+        maxContextChars: 3200
 
     # Automatic extraction is package-default off. The shipped standard
     # profile explicitly enables one host worker and restricts capture to
@@ -214,7 +251,7 @@
     - id: sandbox-policy
       name: '@relay-harness/rlh-sandbox-policy'
       config:
-        mode: !!js process.env.RLH_PERMISSION_MODE ?? 'danger-full-access'
+        mode: !!js process.env.RLH_PERMISSION_MODE ?? 'workspace-write'
         workspaceRoot: !!js process.cwd()
 
     - id: bash-sandbox
@@ -230,7 +267,7 @@
     - id: approval
       name: '@relay-harness/rlh-user-approval'
       config:
-        policy: !!js "(process.env.RLH_PERMISSION_MODE ?? 'danger-full-access') === 'danger-full-access' ? 'never' : 'ask'"
+        policy: !!js "(process.env.RLH_PERMISSION_MODE ?? 'workspace-write') === 'danger-full-access' ? 'never' : 'ask'"
 
     - id: permission
       name: '@relay-harness/rlh-permission-presets'
@@ -240,9 +277,13 @@
             sandbox: read-only
             approval: ask
           workspace-write:
+            name: Standard
+            description: Write inside the current workspace; ask before higher-impact access.
             sandbox: workspace-write
             approval: ask
           danger-full-access:
+            name: Developer Mode
+            description: Unrestricted host access without approval prompts.
             sandbox: danger-full-access
             approval: never
 

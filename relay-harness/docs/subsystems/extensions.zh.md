@@ -4,6 +4,12 @@
 
 extensions 子系统允许 agent（智能体）定义带版本的 Cordis 包、运行其 host 与浏览器两半，并在编写代码前查询获准公开的运行时元数据。包生命周期与沙箱行为由 [`packages/extensions`](../../packages/extensions/README.md) 包组说明。
 
+## MCP 与 Skill extension 边界
+
+MCP Tools、Resources/Templates 与 Prompts 保留独立的协议原生 surface。Cursor 分页会拒绝循环；list-change/reconnect 同步会保留 last-good generation，但在 registry swap 或读取前重新检查 live generation ownership。`startupTimeoutMs` 约束 connect 加 discovery。Resource Context 要求直接用户 URI mention，逐 Resource contain 失败、记录诚实 coverage，并把全部外部内容标为 untrusted。Prompt invocation 通过 catalog/Host Remote 显式发生，保留有界 rich block 与 annotation，绝不静默变成 Skill。HTTP credential 必须使用 masked header，不能进入 URL credential 或 secret query key；连接诊断会脱敏配置 secret。
+
+Skill import 保持 unsigned local installation。Project cwd 由 attached live Session 授权，writable path 被规范限制在声明的 user/project root 内，普通编辑使用原子替换。Local/ZIP/GitHub staging 会拒绝 traversal、special file、逃逸 symlink、archive/file-count/expanded-size 超限，并在替换前重新验证 copied tree。GitHub version 会选择实际 fetch ref。Permission label 是供检查的有界声明，不是 runtime authority grant。Web 与 Desktop 使用同一个 Web Settings composition。
+
 <!-- BEGIN GENERATED cordis-surface (gen-cordis-catalog.ts) — do not edit between markers -->
 
 <a id="cordis-surface"></a>
@@ -255,6 +261,60 @@ inspectPackage( agent: Agent, pluginId: CordisDynamicPluginId, packageId: Cordis
 Types: [Agent](core.md)
 
 Source: [`packages/extensions/cordis-host-runner/src/index.ts:124`](../../packages/extensions/cordis-host-runner/src/index.ts)
+
+<a id="ctxmcpcatalog--mcpcatalog"></a>
+
+### `ctx.mcpCatalog` — `McpCatalog`
+
+Protocol-native registry for connected MCP Resource and Prompt generations.
+
+```ts cordis-catalog
+/**
+ * Publish one complete connected-server generation atomically.
+ * @param generation - complete connected server generation.
+ * @returns exact rollback disposer.
+ */
+publish(generation: McpServerCatalogGeneration): () => void
+
+/**
+ * List concrete resources across connected servers.
+ * @returns all currently catalogued concrete resources.
+ */
+listResources(): McpResourceDescriptor[]
+
+/**
+ * List resource templates across connected servers.
+ * @returns all currently catalogued resource templates.
+ */
+listResourceTemplates(): McpResourceTemplateDescriptor[]
+
+/**
+ * List prompts across connected servers.
+ * @returns all currently catalogued prompts.
+ */
+listPrompts(): McpPromptDescriptor[]
+
+/**
+ * Read one concrete Resource through its owning live generation.
+ * @param serverName - owning server.
+ * @param uri - concrete URI.
+ * @param signal - caller cancellation.
+ * @returns rich Resource content.
+ */
+async readResource(serverName: string, uri: string, signal?: AbortSignal): Promise<McpResourceRead>
+
+/**
+ * Resolve one Prompt after validating required arguments.
+ * @param serverName - owning server.
+ * @param name - prompt name.
+ * @param args - string arguments.
+ * @param signal - caller cancellation.
+ * @returns resolved rich Prompt.
+ */
+async getPrompt( serverName: string, name: string, args: Readonly<Record<string, string>>, signal?: AbortSignal, ): Promise<McpPromptResult>
+```
+
+Source: [`packages/mcp/mcp-catalog/src/index.ts:39`](../../packages/mcp/mcp-catalog/src/index.ts)
 
 <a id="ctxmcpserversfile--mcpserversfile"></a>
 

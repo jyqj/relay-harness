@@ -36,7 +36,7 @@ import {
 } from '@relay-harness/rlh-code-index-graph'
 import type { DirtyPropagationReport, StoredCallEdgeRow, SymbolResolver } from '@relay-harness/rlh-code-index-graph'
 import type { PathExclusionFilter } from './gitignore.ts'
-import { exclusionFilterFromPatterns, loadWorkspaceGitIgnore } from './gitignore.ts'
+import { exclusionFilterFromPatterns } from './gitignore.ts'
 import { contentHash, contentHashFile } from './hash.ts'
 import type { IndexedSnapshotRow } from './diff.ts'
 import { confirmChangedByHash, planSnapshotDiff } from './diff.ts'
@@ -48,6 +48,10 @@ import {
 } from './chunker.ts'
 import type { ScanEntry } from './scanner.ts'
 import { DEFAULT_HARD_EXCLUDES, collectWorkspaceEntries } from './scanner.ts'
+import { mapConcurrentOrdered } from './parallel.ts'
+
+/** Maximum concurrent file read/parse operations in one refresh pass. */
+export const DEFAULT_PARSE_CONCURRENCY = 4
 
 /** Metadata ledger key carrying the last committed {@link PersistedRefreshRecord}. */
 export const CODE_INDEX_METADATA_LAST_REFRESH = 'last_refresh'
@@ -66,6 +70,8 @@ export interface RefreshPassInputs {
   readonly maxFileBytes: number
   /** Committed generation the diff fast-path reads; empty forces full writes. */
   readonly previousGeneration: ReadonlyMap<string, IndexedSnapshotRow>
+  /** Normalized workspace-relative files or directory prefixes; omitted scans the full tree. */
+  readonly paths?: readonly string[]
   /**
    * Store graph facet enabling the pipeline stages' read-backs (pre-write
    * export fingerprints, test-edge decisions, dirty propagation). Supplied
@@ -85,6 +91,8 @@ export interface RefreshPassInputs {
 
 /** What one pass observed, before runtime-side bookkeeping wraps it. */
 export interface RefreshPassOutcome {
+  /** True when scan/diff found no storage or dirty work and opened no write transaction. */
+  readonly skipped: boolean
   /** Files delete-then-reinserted with fresh chunks. */
   readonly changedFiles: number
   /** Paths dropped because they disappeared (or became unreadable mid-pass). */
@@ -106,14 +114,14 @@ export interface RefreshPassOutcome {
 }
 
 /**
- * Scan-configured exclusion stack for the whole provider lifetime: built-in
- * hard excludes and explicit config excludes are static; the root `.gitignore`
- * is loaded once here so later passes share one parsed matcher.
- * @param workspaceRoot - absolute root whose `.gitignore` applies.
+ * Build the static exclusion stack. `.gitignore` documents are deliberately
+ * discovered by the scanner on every pass, including nested documents, so an
+ * ignore-rule edit does not require restarting the provider.
+ * @param workspaceRoot - retained for call-site compatibility.
  * @param excludePatterns - caller-configured extra pattern lines.
  * @returns every layer as an ordered filter list ready for the walker.
  */
-export async function buildExclusionStack(
+export function buildExclusionStack(
   workspaceRoot: string,
   excludePatterns: readonly string[],
 ): Promise<readonly PathExclusionFilter[]> {
@@ -121,9 +129,8 @@ export async function buildExclusionStack(
   if (excludePatterns.length > 0) {
     filters.push(exclusionFilterFromPatterns(excludePatterns))
   }
-  const ignore = await loadWorkspaceGitIgnore(workspaceRoot)
-  if (ignore !== undefined) filters.push(ignore)
-  return filters
+  void workspaceRoot
+  return Promise.resolve(filters)
 }
 
 const hardExclusionFilter: PathExclusionFilter = exclusionFilterFromPatterns(DEFAULT_HARD_EXCLUDES)
@@ -312,14 +319,23 @@ export async function runRefreshPass(
   inputs: RefreshPassInputs,
   io: RefreshPassIo = defaultPassIo(inputs.workspaceRoot),
 ): Promise<RefreshPassOutcome> {
-  const scan = await collectWorkspaceEntries(inputs.workspaceRoot, inputs.includePatterns, inputs.exclusionFilters)
+  const scan = await collectWorkspaceEntries(
+    inputs.workspaceRoot,
+    inputs.includePatterns,
+    inputs.exclusionFilters,
+    inputs.paths === undefined ? {} : { paths: inputs.paths },
+  )
   const nextByPath = new Map<string, ScanEntry>(scan.entries.map(entry => [entry.path, entry]))
-  const plan = planSnapshotDiff(inputs.previousGeneration, nextByPath)
+  const previousGeneration = inputs.paths === undefined
+    ? inputs.previousGeneration
+    : new Map([...inputs.previousGeneration].filter(([path]) =>
+      inputs.paths?.some(scope => path === scope || path.startsWith(`${scope}/`)) === true))
+  const plan = planSnapshotDiff(previousGeneration, nextByPath)
 
   // A null hash here means the file turned unreadable after the scan; it stays
   // in `changedPaths` and falls out to removals during the byte re-read below.
   const confirmed = await confirmChangedByHash(
-    inputs.previousGeneration,
+    previousGeneration,
     plan.suspiciousPaths,
     io.readHash,
   )
@@ -334,30 +350,23 @@ export async function runRefreshPass(
   const parsedOutcomes = new Map<string, ParseOutcome>()
   let binarySkipped = 0
   const vanishedAfterScan: string[] = []
-  for (const relPath of confirmed.changedPaths) {
+  const processed = await mapConcurrentOrdered(confirmed.changedPaths, DEFAULT_PARSE_CONCURRENCY, async (relPath) => {
     let bytes: Uint8Array
     try {
       bytes = await io.readBytes(relPath)
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
-      vanishedAfterScan.push(relPath)
-      continue
+      return { kind: 'vanished' as const, relPath }
     }
     const entry = nextByPath.get(relPath) as ScanEntry
     if (!pipeline) {
       const upsert = composeFileUpsert(relPath, entry.mtimeMs, entry.size, bytes, inputs.maxFileBytes)
-      if (upsert === null) {
-        binarySkipped++
-        continue
-      }
-      upserts.push(upsert)
-      continue
+      return upsert === null
+        ? { kind: 'binary' as const, relPath }
+        : { kind: 'upsert' as const, relPath, upsert }
     }
     const text = decodeUtf8Strict(bytes)
-    if (text === null) {
-      binarySkipped++
-      continue
-    }
+    if (text === null) return { kind: 'binary' as const, relPath }
     // Unsupported or oversized files return `null` and fall through to the
     // generic tier, exactly like the legacy pass.
     const outcome = await parseFile(relPath, text, {
@@ -365,11 +374,21 @@ export async function runRefreshPass(
       maxFileBytes: inputs.maxFileBytes,
     })
     if (outcome === null) {
-      upserts.push(composeGenericUpsert(relPath, entry.mtimeMs, entry.size, text, bytes.byteLength, inputs.maxFileBytes))
-      continue
+      return {
+        kind: 'upsert' as const,
+        relPath,
+        upsert: composeGenericUpsert(relPath, entry.mtimeMs, entry.size, text, bytes.byteLength, inputs.maxFileBytes),
+      }
     }
-    parsedOutcomes.set(relPath, outcome)
-    upserts.push(composeParsedUpsert(relPath, entry.mtimeMs, entry.size, outcome, text))
+    return { kind: 'upsert' as const, relPath, outcome, upsert: composeParsedUpsert(relPath, entry.mtimeMs, entry.size, outcome, text) }
+  })
+  for (const item of processed) {
+    if (item.kind === 'vanished') vanishedAfterScan.push(item.relPath)
+    else if (item.kind === 'binary') binarySkipped++
+    else {
+      upserts.push(item.upsert)
+      if (item.outcome !== undefined) parsedOutcomes.set(item.relPath, item.outcome)
+    }
   }
 
   const removals = [...plan.removedPaths, ...vanishedAfterScan]
@@ -398,13 +417,24 @@ export async function runRefreshPass(
       }])),
     }
 
-  const delta = writeFilesDelta(
-    inputs.db,
-    graphDelta === undefined ? { removals, upserts } : { removals, upserts, graph: graphDelta },
-  )
+  const hasDelta = removals.length > 0 || upserts.length > 0
+  const delta = hasDelta
+    ? writeFilesDelta(
+      inputs.db,
+      graphDelta === undefined ? { removals, upserts } : { removals, upserts, graph: graphDelta },
+    )
+    : {
+      removedFiles: 0,
+      upsertedFiles: 0,
+      chunksWritten: 0,
+      symbolsWritten: 0,
+      edgesWritten: 0,
+      testEdgesWritten: 0,
+      literalsWritten: 0,
+    }
 
   let dirty: DirtyPropagationReport | null = null
-  if (pipeline && incremental) {
+  if (pipeline && incremental && hasDelta) {
     const batchPaths = [...changedPaths, ...removals]
     applyTestEdgeRebuild(
       inputs.db,
@@ -422,6 +452,7 @@ export async function runRefreshPass(
   }
 
   return {
+    skipped: !hasDelta,
     changedFiles: delta.upsertedFiles,
     removedFiles: delta.removedFiles,
     unchangedFiles: plan.unchangedCount + confirmed.hashUnchangedCount,

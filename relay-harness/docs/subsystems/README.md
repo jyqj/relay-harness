@@ -24,6 +24,7 @@ One page per subsystem of the Relay Harness: what it is, the data structures it 
 | [session-title.md](session-title.md) | durable title snapshots, cited source-message seqs, and the asynchronous provider contract |
 | [session-reference.md](session-reference.md) | structured cross-session references: `SessionReferenceInput`/`Candidate`, prepared message contexts, the stable error taxonomy |
 | [context-engine.md](context-engine.md) | the local context-engine seam: step-context contributors, the revision-bound evidence protocol, retrieval coverage, and provider observability |
+| [prompt-enhancement.md](prompt-enhancement.md) | the Prompt Enhancement seam, durable Session History Context provider, shared Context Engine adapter, no-tools auxiliary request, structured result, and browser draft lifecycle |
 | [system-prompt.md](system-prompt.md) | per-assembly context, tool-provider results, prompt sections, and cooperative assembly |
 | [tools.md](tools.md) | `ToolDefinition` full fields, the schema DSL, `ToolExecution`/`ToolResult`, tool-presentation UI types, and the guarded execution pipeline |
 | [user-questions.md](user-questions.md) | the UI-backed human question/answer seam: `AskUserQuestionRequest`, answer/options vocabulary, provider API, error taxonomy |

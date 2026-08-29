@@ -31,7 +31,8 @@
         "scripts/**/*.mjs",
         "scripts/**/*.cjs",
         "scripts/types/client-build-environment/index.d.ts",
-        "scripts/rebrand-dsh-to-rlh.ts"
+        "scripts/rebrand-dsh-to-rlh.ts",
+        "scripts/build-exe-for-python-sdk.ts"
       ],
       "ignoreUnresolved": [
         "client-build-environment"
@@ -800,7 +801,8 @@
         "src/renderer/theme.js",
         "src/renderer/window-controls.js",
         "src/host/install-rlh-plugin.mjs",
-        "scripts/**/*.{js,mjs,cjs}"
+        "scripts/**/*.{js,mjs,cjs}",
+        "src/**/*.test.js"
       ],
       "project": [
         "src/**/*.js",
@@ -815,7 +817,8 @@
       "entry": [
         "App.js",
         "web/app.js",
-        "babel.config.js"
+        "babel.config.js",
+        "web/**/*.test.js"
       ],
       "project": [
         "*.js",
@@ -860,6 +863,62 @@
       "project": [
         "src/**/*.{ts,tsx}",
         "tests/**/*.tsx"
+      ]
+    },
+    "packages/host/memory-center": {
+      "entry": [
+        "tests/**/*.spec.ts",
+        "tests/**/*.e2e.ts"
+      ],
+      "project": [
+        "src/**/*.ts",
+        "tests/**/*.ts"
+      ]
+    },
+    "packages/index/code-index-local": {
+      "entry": [
+        "tests/**/*.spec.ts",
+        "tests/fixtures/eval/typescript/src/**/*.ts"
+      ],
+      "project": [
+        "src/**/*.ts",
+        "tests/**/*.ts"
+      ]
+    },
+    "packages/client/ui-prompt-enhancement": {
+      "entry": [
+        "tests/**/*.spec.{ts,tsx}"
+      ],
+      "project": [
+        "src/**/*.{ts,tsx}",
+        "tests/**/*.{ts,tsx}"
+      ]
+    },
+    "packages/client/ui-context-inspector": {
+      "entry": [
+        "tests/**/*.spec.{ts,tsx}"
+      ],
+      "project": [
+        "src/**/*.{ts,tsx}",
+        "tests/**/*.{ts,tsx}"
+      ]
+    },
+    "packages/client/ui-code-index-center": {
+      "entry": [
+        "tests/**/*.spec.{ts,tsx}"
+      ],
+      "project": [
+        "src/**/*.{ts,tsx}",
+        "tests/**/*.{ts,tsx}"
+      ]
+    },
+    "packages/client/ui-product-shell": {
+      "entry": [
+        "tests/**/*.spec.{ts,tsx}"
+      ],
+      "project": [
+        "src/**/*.{ts,tsx}",
+        "tests/**/*.{ts,tsx}"
       ]
     }
   },

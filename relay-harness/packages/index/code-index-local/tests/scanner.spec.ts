@@ -82,6 +82,25 @@ describe('collectWorkspaceEntries', () => {
     expect(DEFAULT_HARD_EXCLUDES.length).toBe(15)
     expect(DEFAULT_INCLUDE_PATTERNS.length).toBe(27)
   })
+
+  it('loads nested gitignore documents, honors child negation, and prunes a scoped walk', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'rlh-scan-nested-'))
+    roots.push(root)
+    await writeFile(join(root, '.gitignore'), '*.generated.ts\n')
+    await writeFile(join(root, 'root.generated.ts'), 'ignored\n')
+    await mkdir(join(root, 'src/private'), { recursive: true })
+    await writeFile(join(root, 'src/.gitignore'), '!keep.generated.ts\nprivate/\n')
+    await writeFile(join(root, 'src/keep.generated.ts'), 'kept\n')
+    await writeFile(join(root, 'src/drop.generated.ts'), 'ignored\n')
+    await writeFile(join(root, 'src/other.ts'), 'outside scope\n')
+    await writeFile(join(root, 'src/private/secret.ts'), 'ignored\n')
+
+    const full = await collectWorkspaceEntries(root, ['**/*.ts'], [])
+    expect(full.entries.map(entry => entry.path)).toEqual(['src/keep.generated.ts', 'src/other.ts'])
+
+    const scoped = await collectWorkspaceEntries(root, ['**/*.ts'], [], { paths: ['src/keep.generated.ts'] })
+    expect(scoped.entries.map(entry => entry.path)).toEqual(['src/keep.generated.ts'])
+  })
 })
 
 describe('non-regular children', () => {

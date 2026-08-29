@@ -112,8 +112,9 @@ describe('client bundle purity gate', () => {
     }
 
     expect(requesting.neverBundle('react')).toBe(true)
-    expect(requesting.neverBundle('zod')).toBe(false)
+    expect(requesting.neverBundle('zod')).toBe(true)
     expect(plain.neverBundle('react')).toBe(true)
+    expect(plain.neverBundle('zod')).toBe(true)
     expect(plain.neverBundle('@relay-harness/rlh-client-runtime/client')).toBe(true)
   })
 })

@@ -4,42 +4,43 @@
     - button "General":
       - img
       - text: General
-    - button "Models":
+    - button "Appearance":
       - img
-      - text: Models
-    - button "Plugins":
+      - text: Appearance
+    - button "Interface":
       - img
-      - text: Plugins
-    - button "Agent presets":
+      - text: Interface
+    - button "Skills":
       - img
-      - text: Agent presets
+      - text: Skills
+    - button "Memory":
+      - img
+      - text: Memory
+    - button "MCP":
+      - img
+      - text: MCP
+    - button "Code Index":
+      - img
+      - text: Code Index
+    - button "About":
+      - img
+      - text: About
   - button "Open configuration file"
   - button "Close":
     - img
     - text: Close
-  - text: Agent preset Applies to sessions you start from now on. Running sessions keep the preset they began with.
-  - button "Standard mode":
-    - text: Standard mode
-    - img
   - text: Permission Choose the default permission mode for new sessions
-  - button "Full access":
-    - text: Full access
+  - button "Standard":
+    - text: Standard
     - img
   - text: Language
   - button "English":
     - text: English
     - img
-  - text: Appearance
-  - button "Light":
-    - img
-    - text: Light
-  - button "Dark":
-    - img
-    - text: Dark
-  - button "System" [pressed]:
-    - img
-    - text: System
   - text: Enter behavior while busy Busy only; Cmd/Ctrl+Enter uses the other behavior
   - button "Queue":
     - text: Queue
     - img
+  - text: Developer Mode
+  - paragraph: Show model, Agent preset, plugin, trajectory, and raw tool diagnostics.
+  - switch "Developer Mode"

@@ -56,7 +56,7 @@ describe('writeFilesDelta', () => {
       literalsWritten: 0,
     })
     expect(count(db, 'SELECT COUNT(*) AS n FROM files WHERE is_test_file = 1')).toBe(1)
-    expect(readEpochs(db)).toEqual({ indexEpoch: 1, evidenceEpoch: 0 })
+    expect(readEpochs(db)).toEqual({ indexEpoch: 1, evidenceEpoch: 0, embeddingEpoch: 0 })
     // Mirrors follow their base rows 1:1 under aligned rowids.
     expect(storageCounts(db)).toEqual({
       files: 2,
@@ -91,7 +91,7 @@ describe('writeFilesDelta', () => {
     expect(writeFilesDelta(db, delta, { now: () => '2026-08-27T00:00:05Z' })).toEqual(noGraph)
 
     expect(storageCounts(db)).toMatchObject({ files: 1, chunks: 1, chunks_fts: 1, files_fts: 1 })
-    expect(readEpochs(db)).toEqual({ indexEpoch: 2, evidenceEpoch: 0 })
+    expect(readEpochs(db)).toEqual({ indexEpoch: 2, evidenceEpoch: 0, embeddingEpoch: 0 })
     const stored = db.prepare('SELECT summary, indexed_at FROM files WHERE file_path = ?')
       .get('src/idem.ts') as { summary: string; indexed_at: string }
     expect(stored.summary).toBe('summary for src/idem.ts')
@@ -161,7 +161,7 @@ describe('writeFilesDelta', () => {
       test_edges: 0,
       literal_index: 0,
     })
-    expect(readEpochs(db)).toEqual({ indexEpoch: 0, evidenceEpoch: 0 })
+    expect(readEpochs(db)).toEqual({ indexEpoch: 0, evidenceEpoch: 0, embeddingEpoch: 0 })
   })
 
   it('mirrors plain text into the FTS tables so English and Chinese queries MATCH', async () => {
@@ -449,7 +449,7 @@ describe('writeFilesDelta', () => {
     })).toThrow(/UNIQUE|primary key/i)
     expect(count(db, 'SELECT COUNT(*) AS n FROM symbols')).toBe(1)
     expect(count(db, 'SELECT COUNT(*) AS n FROM files')).toBe(1)
-    expect(readEpochs(db)).toEqual({ indexEpoch: 1, evidenceEpoch: 0 })
+    expect(readEpochs(db)).toEqual({ indexEpoch: 1, evidenceEpoch: 0, embeddingEpoch: 0 })
   })
 })
 
@@ -561,7 +561,7 @@ describe('writeResolvedEdges', () => {
     ])
     expect(edgeRows(db).map(row => row.edge_id)).toEqual(['edge:only'])
     expect(refRows(db)).toEqual([])
-    expect(readEpochs(db)).toEqual({ indexEpoch: 2, evidenceEpoch: 0 })
+    expect(readEpochs(db)).toEqual({ indexEpoch: 2, evidenceEpoch: 0, embeddingEpoch: 0 })
   })
 
   it('rolls back completely when an update names a path without a files row', async () => {

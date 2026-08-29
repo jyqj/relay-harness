@@ -12,7 +12,7 @@ import { CurrentWorkProjection } from './work-projection.ts'
 import { WorkPage, type WorkPageInjected } from './WorkPage.tsx'
 import { LibraryPage, type LibraryPageInjected } from './LibraryPage.tsx'
 import { ProductModeRow, type ProductModeRowInjected } from './ProductModeRow.tsx'
-import { en, zh, type ProductShellKey } from './locales.ts'
+import { en, zh } from './locales.ts'
 
 /** Product copy occupant for the sidebar's built-in session-browser tab. */
 function ChatLabel({ t }: PropsRuntime<'sidebar.chat.label'> & PropsLocale<'productShell'>) { return t('nav.chat') }
@@ -20,8 +20,41 @@ function ChatLabel({ t }: PropsRuntime<'sidebar.chat.label'> & PropsLocale<'prod
 export type { ProductModeView } from './mode.ts'
 export type { WorkSummary } from './work-projection.ts'
 
-declare module '@relay-harness/rlh-client-ui-slots' {
-  interface LocaleNamespaceMap { productShell: ProductShellKey }
+/** Advanced-only surfaces hidden by Simple Mode; provenance inspection deliberately remains visible. */
+export const SIMPLE_MODE_SUPPRESSIONS = [
+  ['settings.section', 'models'],
+  ['settings.section', 'agent-presets'],
+  ['settings.section', 'plugins'],
+  ['settings.general.item', 'agent-preset'],
+  ['conversation.input.model', undefined],
+  ['conversation.hero.agentPreset', undefined],
+  ['conversation.session.header.actions', 'agent-preset'],
+  ['conversation.view', 'trajectory'],
+] as const
+
+/** Resolve a model-produced deliverable path without allowing it outside the Session workspace.
+ * @param cwd - owning Session workspace root.
+ * @param path - model-produced absolute or workspace-relative deliverable path.
+ * @returns normalized contained path, or undefined for an escape/invalid path.
+ */
+export function resolveWorkspaceDeliverable(cwd: string, path: string): string | undefined {
+  const normalize = (value: string): string => {
+    const input = value.replaceAll('\\', '/')
+    const drive = /^[A-Za-z]:/u.exec(input)?.[0]
+    const absolute = input.startsWith('/') || drive !== undefined
+    const segments: string[] = []
+    for (const segment of input.replace(/^[A-Za-z]:/u, '').split('/')) {
+      if (segment === '' || segment === '.') continue
+      if (segment === '..') { if (segments.length === 0) return ''; segments.pop(); continue }
+      segments.push(segment)
+    }
+    return `${drive ?? (absolute ? '/' : '')}${drive === undefined ? '' : '/'}${segments.join('/')}`.replace(/\/$/u, '')
+  }
+  const root = normalize(cwd)
+  const rawAbsolute = /^(?:\/|[A-Za-z]:[\\/])/u.test(path)
+  const candidate = normalize(rawAbsolute ? path : `${root}/${path}`)
+  if (root === '' || candidate === '' || (candidate !== root && !candidate.startsWith(`${root}/`))) return undefined
+  return candidate
 }
 
 export const inject = ['slots', 'sessions', 'workspaces', 'remote', 'remote.productMode', 'locale', 'settingsNavigation']
@@ -44,17 +77,9 @@ export function apply(ctx: ClientContext): void {
       for (const release of releases) release()
       releases = []
       if (product.store.getSnapshot().mode !== 'simple') return
-      releases = [
-        ctx.slots.suppress('settings.section', 'models'),
-        ctx.slots.suppress('settings.section', 'agent-presets'),
-        ctx.slots.suppress('settings.section', 'plugins'),
-        ctx.slots.suppress('settings.general.item', 'agent-preset'),
-        ctx.slots.suppress('conversation.input.model'),
-        ctx.slots.suppress('conversation.hero.agentPreset'),
-        ctx.slots.suppress('conversation.session.header.actions', 'agent-preset'),
-        ctx.slots.suppress('conversation.session.header.utilities', 'context-inspector'),
-        ctx.slots.suppress('conversation.view', 'trajectory'),
-      ]
+      releases = SIMPLE_MODE_SUPPRESSIONS.map(([slot, id]) => id === undefined
+        ? ctx.slots.suppress(slot)
+        : ctx.slots.suppress(slot, id))
     }
     sync()
     const off = product.store.subscribe(sync)
@@ -81,9 +106,8 @@ export function apply(ctx: ClientContext): void {
           const state = ctx.sessions.list.getSnapshot()
           const cwd = state.current === undefined ? undefined : state.byId[state.current]?.cwd
           if (cwd === undefined) return
-          const absolute = /^(?:\/|[A-Za-z]:[\\/])/.test(path)
-            ? path
-            : `${cwd.replace(/[\\/]$/, '')}/${path.replace(/^[\\/]+/, '')}`
+          const absolute = resolveWorkspaceDeliverable(cwd, path)
+          if (absolute === undefined) return
           await ctx.workspaces.openPath(absolute)
         },
       }),

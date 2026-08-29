@@ -1,13 +1,15 @@
 /** Runtime assembly: open/status/refresh/search lifecycle, folding, tier resize, teardown refusals. */
 
-import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { mkdtemp, rename, rm, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   clampTopKToTierCap,
   LocalCodeIndexRuntime,
   mapSearchRequest,
+  mergeRefreshOptions,
+  normalizeRefreshPaths,
   revivePersistedRecord,
 } from '../src/provider.ts'
 import { makeWorkspace, sweepWorkspaces } from './support.ts'
@@ -36,9 +38,45 @@ function runtimeFor(
 
 describe('request mapping helpers', () => {
   it('passes scope lists through and omits absent optional keys', () => {
-    const mapped = mapSearchRequest({ query: 'token', paths: ['a.ts'], recentPaths: ['b.md'], pathPrefix: 'src/' })
-    expect(mapped).toEqual({ query: 'token', paths: ['a.ts'], recentPaths: ['b.md'], pathPrefix: 'src/' })
+    const mapped = mapSearchRequest({
+      query: 'token',
+      paths: ['a.ts'],
+      recentPaths: ['b.md'],
+      boostFilePaths: ['work.ts'],
+      conversationQueries: ['older', 'newer'],
+      pinnedFilePaths: ['pin.ts'],
+      overlayFilePaths: ['dirty.ts'],
+      pathPrefix: 'src/',
+    })
+    expect(mapped).toEqual({
+      query: 'token',
+      paths: ['a.ts'],
+      recentPaths: ['b.md'],
+      boostFilePaths: ['work.ts'],
+      conversationQueries: ['older', 'newer'],
+      pinnedFilePaths: ['pin.ts'],
+      overlayFilePaths: ['dirty.ts'],
+      pathPrefix: 'src/',
+    })
     expect(mapSearchRequest({ query: 'only' })).toEqual({ query: 'only' })
+  })
+
+  it('normalizes refresh scopes and refuses workspace escapes', () => {
+    expect(normalizeRefreshPaths('/workspace', ['src/../src/a.ts', 'src/a.ts'])).toEqual(['src/a.ts'])
+    expect(normalizeRefreshPaths('/workspace', ['.'])).toBeUndefined()
+    expect(() => normalizeRefreshPaths('/workspace', ['../escape.ts'])).toThrow(/escapes the workspace/u)
+  })
+
+  it('merges post-scan refresh scopes and widens when any queued request is full', () => {
+    expect(mergeRefreshOptions([
+      { reason: 'manual', paths: ['b.ts'] },
+      { reason: 'stale', paths: ['a.ts', 'b.ts'] },
+    ])).toEqual({ reason: 'stale', paths: ['a.ts', 'b.ts'] })
+    expect(mergeRefreshOptions([{ paths: ['a.ts'] }, { reason: 'stale' }])).toEqual({ reason: 'stale' })
+    expect(mergeRefreshOptions([{ paths: ['a.ts'] }, { forceRebuild: true }])).toEqual({
+      reason: 'manual',
+      forceRebuild: true,
+    })
   })
 
   it('clamps explicit topK into the tier cap; undefined stays undefined', () => {
@@ -78,12 +116,94 @@ describe('LocalCodeIndexRuntime', () => {
     expect(before.indexedFileCount).toBe(0)
     expect(before.tier).toBe('tiny')
     expect(before.lastRefresh).toBeUndefined()
-    expect(before.epochs).toEqual({ indexEpoch: 0, evidenceEpoch: 0 })
+    expect(before.epochs).toEqual({ indexEpoch: 0, evidenceEpoch: 0, embeddingEpoch: 0 })
 
     const answer = await runtime.search({ query: 'quantizedHarmonicStride' }, new AbortController().signal)
     expect(answer.hits.length).toBeGreaterThan(0)
     expect(answer.hits[0]?.filePath).toBe('src/greeter.ts')
     expect(answer.epochs.indexEpoch).toBeGreaterThanOrEqual(1)
+    await runtime.dispose()
+  })
+
+  it('hydrates current source by content hash and rejects watcher-lagged revisions', async () => {
+    const root = await makeWorkspace('rlh-rt-hydrate-', {
+      files: { 'src/current.ts': 'export const sourceVerifiedNeedle = 1\n' },
+    })
+    const runtime = runtimeFor(root)
+    const answer = await runtime.search({ query: 'sourceVerifiedNeedle' })
+    const hit = answer.hits[0]!
+    expect(hit).toMatchObject({
+      filePath: 'src/current.ts',
+      language: 'typescript',
+      parserTier: 'semantic',
+    })
+    expect(hit.contentHash).toMatch(/^[0-9a-f]{16}$/u)
+    expect(hit.scoreTrace.reduce((sum, component) => sum + component.value, 0)).toBeCloseTo(hit.score, 12)
+
+    const hydrated = await runtime.hydrateChunks({ chunkIds: [hit.chunkId, hit.chunkId] })
+    expect(hydrated.rejected).toEqual([])
+    expect(hydrated.chunks).toHaveLength(1)
+    expect(hydrated.chunks[0]?.chunkId).toBe(hit.chunkId)
+    expect(hydrated.chunks[0]?.contentHash).toBe(hit.contentHash)
+    expect(hydrated.chunks[0]?.text).toContain('sourceVerifiedNeedle')
+    expect(hydrated.chunks[0]?.verification).toBe('source-verified')
+
+    await writeFile(join(root, 'src/current.ts'), 'export const sourceVerifiedNeedle = 2\n')
+    const stale = await runtime.hydrateChunks({ chunkIds: [hit.chunkId] })
+    expect(stale.chunks).toEqual([])
+    expect(stale.rejected).toEqual([{
+      chunkId: hit.chunkId,
+      state: 'stale',
+      reason: 'source-revision-changed',
+    }])
+    await runtime.dispose()
+  })
+
+  it('rejects hydration when an indexed parent directory is replaced by an escaping symlink', async () => {
+    const contents = 'export const escapedParentNeedle = 1\n'
+    const root = await makeWorkspace('rlh-rt-hydrate-link-', {
+      files: { 'src/current.ts': contents },
+    })
+    const outside = await mkdtemp(join(tmpdir(), 'rlh-rt-hydrate-outside-'))
+    trackedDirs.push(outside)
+    await writeFile(join(outside, 'current.ts'), contents)
+    const runtime = runtimeFor(root)
+    const hit = (await runtime.search({ query: 'escapedParentNeedle' })).hits[0]!
+    await rename(join(root, 'src'), join(root, 'src-original'))
+    await symlink(outside, join(root, 'src'), 'dir')
+
+    const hydrated = await runtime.hydrateChunks({ chunkIds: [hit.chunkId] })
+    expect(hydrated.chunks).toEqual([])
+    expect(hydrated.rejected).toEqual([{
+      chunkId: hit.chunkId,
+      state: 'unavailable',
+      reason: 'source-path-invalid',
+    }])
+    await runtime.dispose()
+  })
+
+  it('applies explicit refresh paths without removing or rereading unrelated rows', async () => {
+    const root = await makeWorkspace('rlh-rt-refresh-scope-', {
+      files: {
+        'src/a.ts': 'export const scopedAlpha = 1\n',
+        'src/b.ts': 'export const scopedBeta = 1\n',
+      },
+    })
+    const runtime = runtimeFor(root)
+    await runtime.refresh()
+    await writeFile(join(root, 'src/a.ts'), 'export const scopedAlpha = 2\n')
+    await writeFile(join(root, 'src/b.ts'), 'export const scopedBeta = 2\n')
+    const summary = await runtime.refresh({ reason: 'stale', paths: ['src/a.ts'] })
+    expect(summary).toMatchObject({ changedFiles: 1, removedFiles: 0 })
+    expect(summary.explain).toMatchObject({ scope: 'scoped', requestedPaths: 1, pass: 'ran' })
+    expect((await runtime.search({ query: 'scopedAlpha 2' })).hits[0]?.filePath).toBe('src/a.ts')
+    const oldBeta = (await runtime.search({ query: 'scopedBeta' })).hits.find(hit => hit.filePath === 'src/b.ts')!
+    expect((await runtime.hydrateChunks({ chunkIds: [oldBeta.chunkId] })).rejected[0]).toMatchObject({ state: 'stale' })
+
+    await rm(join(root, 'src/a.ts'))
+    const removed = await runtime.refresh({ reason: 'stale', paths: ['src/a.ts'] })
+    expect(removed.removedFiles).toBe(1)
+    expect(runtime.status().indexedFileCount).toBe(1)
     await runtime.dispose()
   })
 
@@ -96,6 +216,11 @@ describe('LocalCodeIndexRuntime', () => {
     const status = runtime.status()
     expect(status.indexedFileCount).toBe(1)
     expect(status.lastRefresh?.changedFiles).toBe(1)
+    expect(summary.explain).toMatchObject({ scope: 'full', pass: 'ran', degraded: false })
+    const beforeNoop = runtime.status().epochs.indexEpoch
+    const noop = await runtime.refresh({ reason: 'manual' })
+    expect(noop.explain).toMatchObject({ scope: 'full', pass: 'skipped' })
+    expect(runtime.status().epochs.indexEpoch).toBe(beforeNoop)
     await runtime.dispose()
   })
 
@@ -111,6 +236,38 @@ describe('LocalCodeIndexRuntime', () => {
     // One folded pass reports one committed summary object shared by both callers.
     expect(first).toBe(second)
     expect(runtime.status().epochs.indexEpoch).toBe(1)
+    await runtime.dispose()
+  })
+
+  it('runs one follow-up generation for scopes arriving after scanning began', async () => {
+    const root = await makeWorkspace('rlh-rt-followup-', { files: { 'one.ts': 'const one = 1\n' } })
+    const runtime = runtimeFor(root)
+    await runtime.ensureOpen()
+    let releaseFirst!: () => void
+    const firstGate = new Promise<void>((resolve) => { releaseFirst = resolve })
+    const runPass = vi.fn(async (reason: 'manual' | 'stale' | 'lazy', options?: { paths?: readonly string[] }) => {
+      ;(runtime as unknown as { inFlightPassStarted: boolean }).inFlightPassStarted = true
+      if (runPass.mock.calls.length === 1) await firstGate
+      return {
+        summary: {
+          reason,
+          changedFiles: 0,
+          removedFiles: 0,
+          chunksWritten: 0,
+          durationMs: 0,
+          epochsAfter: { indexEpoch: 0, evidenceEpoch: 0, embeddingEpoch: 0 },
+        },
+        changedPaths: options?.paths ?? [],
+      }
+    })
+    ;(runtime as unknown as { runPass: typeof runPass }).runPass = runPass
+    const first = runtime.refresh({ reason: 'manual' })
+    const folded = runtime.refresh({ reason: 'stale', paths: ['b.ts'] })
+    runtime.refresh({ reason: 'stale', paths: ['a.ts'] }).catch(() => {})
+    releaseFirst()
+    expect(await folded).toBe(await first)
+    await vi.waitFor(() =>{  expect(runPass).toHaveBeenCalledTimes(2) })
+    expect(runPass.mock.calls[1]?.[1]).toEqual({ reason: 'stale', paths: ['a.ts', 'b.ts'] })
     await runtime.dispose()
   })
 
@@ -131,15 +288,19 @@ describe('LocalCodeIndexRuntime', () => {
   it('resizes the retrieval stack when commits move the repository across tiers', async () => {
     const root = await makeWorkspace('rlh-rt-tier-', { files: {} })
     const many: Array<{ relPath: string; contents: string }> = []
-    for (let index = 0; index < 520; index++) {
+    for (let index = 0; index < 8; index++) {
       many.push({ relPath: `mod-${index}.ts`, contents: `export const value${index} = ${index}\n` })
     }
     for (const file of many) await writeFile(join(root, file.relPath), file.contents)
-    const runtime = runtimeFor(root)
+    const runtime = runtimeFor(root, {
+      // Preserve real scan/parse/commit/rebind behavior without coupling this
+      // lifecycle test to the production 500-file threshold or wall clock.
+      tierForFileCount: fileCount => fileCount < 5 ? 'tiny' : 'small',
+    })
     await runtime.refresh()
     expect(runtime.status().tier).toBe('small')
     // Deleting almost everything plus a forced rebuild walks the rebind again.
-    for (const file of many.slice(10)) {
+    for (const file of many.slice(2)) {
       await rm(join(root, file.relPath), { force: true })
     }
     await runtime.refresh({ forceRebuild: true })
@@ -318,6 +479,7 @@ describe('LocalCodeIndexRuntime', () => {
     expect(() => runtime.status()).toThrow('disposed')
     expect(() => runtime.indexedFileCount()).toThrow('disposed')
     await expect(runtime.search({ query: 'y' })).rejects.toThrow('disposed')
+    await expect(runtime.hydrateChunks({ chunkIds: ['chunk:y'] })).rejects.toThrow('disposed')
     await expect(runtime.ensureOpen()).rejects.toThrow('disposed')
 
     const unopened = runtimeFor(root)

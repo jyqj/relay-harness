@@ -8,7 +8,7 @@
  * projection (the same host-computed select the composer chip renders); a
  * pick submits the `/permission <preset>` command line, so both surfaces
  * write through one path and the pushed projection frame is the one
- * confirmation. The Full access row carries the same explicit risk gate as
+ * confirmation. The Developer Mode row carries the same explicit risk gate as
  * the composer chip; the shared popup shell owns the modal mechanics.
  * The General-settings row separately writes the default preset for sessions
  * created later through the host Settings API.
@@ -102,7 +102,7 @@ export function apply(ctx: ClientContext): void {
       }),
     ]
     return () => { for (const dispose of disposers) dispose() }
-  }, 'ui-permission: Full access confirmation dictionaries')
+  }, 'ui-permission: Developer Mode confirmation dictionaries')
   /* jscpd:ignore-end */
   const t = ctx.locale.bind(ACCESS_NS)
   const sessionFor = (session: ClientSessionContext): SessionFace | undefined =>

@@ -34,9 +34,28 @@ export const inject = ['tools']
 
 /** Default timeout for individual MCP tool calls (ms). */
 const DEFAULT_TOOL_CALL_TIMEOUT_MS = 60_000
+const DEFAULT_STARTUP_TIMEOUT_MS = 60_000
 
 /** Valid `serverName`, kept below the public tool-name budget. */
 const SERVER_NAME_PATTERN = /^[A-Za-z0-9_-]{1,32}$/
+const SECRET_QUERY_KEY = /(?:token|secret|password|authorization|credential|api[_-]?key|auth)$/iu
+
+/** Validate a Streamable HTTP endpoint without admitting URL-carried credentials.
+ * @param value - configured endpoint URL.
+ * @param label - diagnostic field label.
+ * @returns normalized absolute HTTP(S) URL.
+ */
+export function validateMcpHttpUrl(value: string, label: string = 'mcp-client url'): string {
+  let url: URL
+  try { url = new URL(value) } catch { throw new Error(`${label} must be an absolute HTTP(S) URL`) }
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') throw new Error(`${label} must use http or https`)
+  if (url.username !== '' || url.password !== '') throw new Error(`${label} must not contain URL credentials; use headers`)
+  if (url.hash !== '') throw new Error(`${label} must not contain a fragment`)
+  for (const key of url.searchParams.keys()) {
+    if (SECRET_QUERY_KEY.test(key)) throw new Error(`${label} must not carry credentials in query parameter ${key}; use headers`)
+  }
+  return url.href
+}
 
 /**
  * Live `serverName` reservations per app, keyed off `ctx.root` (multiple apps
@@ -68,6 +87,8 @@ export interface StdioConfig {
   cwd: string
   /** Per-tool-call timeout in milliseconds. */
   toolCallTimeoutMs: number
+  /** Whole connect + paginated discovery deadline in milliseconds. */
+  startupTimeoutMs?: number
   /** Fail plugin activation when the initial connection or tool synchronization fails. */
   failOnStartupError: boolean
   /** Automatic reconnect policy after a lost connection; omission uses the defaults. */
@@ -90,6 +111,8 @@ export interface StreamableHttpConfig {
   headers: Record<string, string>
   /** Per-tool-call timeout in milliseconds. */
   toolCallTimeoutMs: number
+  /** Whole connect + paginated discovery deadline in milliseconds. */
+  startupTimeoutMs?: number
   /** Fail plugin activation when the initial connection or tool synchronization fails. */
   failOnStartupError: boolean
   /** Automatic reconnect policy after a lost connection; omission uses the defaults. */
@@ -115,6 +138,7 @@ export const Config = z.union([
     env: z.dict(String).default({}),
     cwd: z.string().default(''),
     toolCallTimeoutMs: z.number().default(DEFAULT_TOOL_CALL_TIMEOUT_MS),
+    startupTimeoutMs: z.number().min(1).max(MAX_TIMER_DELAY_MS).default(DEFAULT_STARTUP_TIMEOUT_MS),
     failOnStartupError: z.boolean().default(false),
     reconnect: Reconnect,
   }),
@@ -124,6 +148,7 @@ export const Config = z.union([
     url: z.string().required(),
     headers: z.dict(String).default({}),
     toolCallTimeoutMs: z.number().default(DEFAULT_TOOL_CALL_TIMEOUT_MS),
+    startupTimeoutMs: z.number().min(1).max(MAX_TIMER_DELAY_MS).default(DEFAULT_STARTUP_TIMEOUT_MS),
     failOnStartupError: z.boolean().default(false),
     reconnect: Reconnect,
   }),
@@ -140,6 +165,12 @@ export const Config = z.union([
  * @returns startup readiness after connection and initial tool discovery settle.
  */
 export async function apply(ctx: Context, config: Config): Promise<void> {
+  if (config.transport === 'streamable-http') validateMcpHttpUrl(config.url)
+  else if (config.command.trim() === '') throw new Error('mcp-client command must not be blank')
+  const startupTimeoutMs = config.startupTimeoutMs ?? DEFAULT_STARTUP_TIMEOUT_MS
+  if (!Number.isFinite(startupTimeoutMs) || startupTimeoutMs <= 0 || startupTimeoutMs > MAX_TIMER_DELAY_MS) {
+    throw new Error(`mcp-client startupTimeoutMs must be a positive finite number no greater than ${MAX_TIMER_DELAY_MS}`)
+  }
   // Fail loud at load: reconnect misconfiguration (including programmatic
   // construction that bypassed Schemastery) rejects THIS instance before any
   // effect registers.

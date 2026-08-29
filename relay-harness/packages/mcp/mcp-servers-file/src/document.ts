@@ -4,7 +4,7 @@
  */
 
 import { parse as parseYaml, stringify as stringifyYaml } from 'yaml'
-import type { Config as McpClientConfig } from '@relay-harness/rlh-mcp-client'
+import { validateMcpHttpUrl, type Config as McpClientConfig } from '@relay-harness/rlh-mcp-client'
 import type {
   McpHttpServerRecord,
   McpReconnectRecord,
@@ -126,7 +126,20 @@ export function maskRecordSecrets(record: McpServerRecord): McpServerRecord {
     return env === undefined ? record : { ...record, env }
   }
   const headers = maskMap(record.headers)
-  return headers === undefined ? record : { ...record, headers }
+  const url = maskUrl(record.url)
+  return headers === undefined ? { ...record, url } : { ...record, url, headers }
+}
+
+function maskUrl(value: string): string {
+  try {
+    const url = new URL(value)
+    if (url.username !== '') url.username = SECRET_MASK
+    if (url.password !== '') url.password = SECRET_MASK
+    for (const key of [...url.searchParams.keys()]) if (isSecretKey(key)) url.searchParams.set(key, SECRET_MASK)
+    return url.href
+  } catch {
+    return value
+  }
 }
 
 /**
@@ -144,6 +157,7 @@ export function toClientConfig(record: McpServerRecord): McpClientConfig {
       env: { ...(record.env ?? {}) },
       cwd: record.cwd ?? '',
       toolCallTimeoutMs: record.toolCallTimeoutMs ?? 60_000,
+      startupTimeoutMs: record.startupTimeoutMs ?? 60_000,
       failOnStartupError: record.failOnStartupError ?? false,
       ...record.reconnect === undefined ? {} : { reconnect: { ...record.reconnect } },
     }
@@ -154,6 +168,7 @@ export function toClientConfig(record: McpServerRecord): McpClientConfig {
     url: record.url,
     headers: { ...(record.headers ?? {}) },
     toolCallTimeoutMs: record.toolCallTimeoutMs ?? 60_000,
+    startupTimeoutMs: record.startupTimeoutMs ?? 60_000,
     failOnStartupError: record.failOnStartupError ?? false,
     ...record.reconnect === undefined ? {} : { reconnect: { ...record.reconnect } },
   }
@@ -173,6 +188,7 @@ function parseRecord(entry: unknown, index: number): McpServerRecord {
     enabled,
     serverName,
     ...optionalNumber(raw, 'toolCallTimeoutMs', index),
+    ...optionalNumber(raw, 'startupTimeoutMs', index),
     ...optionalBoolean(raw, 'failOnStartupError', index),
     ...optionalReconnect(raw.reconnect, index),
   }
@@ -188,7 +204,7 @@ function parseRecord(entry: unknown, index: number): McpServerRecord {
     } satisfies McpStdioServerRecord
   }
   if (transport === 'streamable-http') {
-    const url = requiredString(raw.url, `servers[${String(index)}].url`)
+    const url = validateMcpHttpUrl(requiredString(raw.url, `servers[${String(index)}].url`), `servers[${String(index)}].url`)
     return {
       ...shared,
       transport: 'streamable-http',
@@ -264,6 +280,7 @@ function plainRecord(record: McpServerRecord): Record<string, unknown> {
 function optionalPlainShared(record: McpServerRecord): Record<string, unknown> {
   return {
     ...record.toolCallTimeoutMs === undefined ? {} : { toolCallTimeoutMs: record.toolCallTimeoutMs },
+    ...record.startupTimeoutMs === undefined ? {} : { startupTimeoutMs: record.startupTimeoutMs },
     ...record.failOnStartupError === undefined ? {} : { failOnStartupError: record.failOnStartupError },
     ...record.reconnect === undefined ? {} : { reconnect: { ...record.reconnect } },
   }
@@ -289,7 +306,7 @@ function booleanField(value: unknown, field: string): boolean {
   return value
 }
 
-function optionalNumber(raw: Record<string, unknown>, key: string, index: number): { toolCallTimeoutMs: number } | object {
+function optionalNumber(raw: Record<string, unknown>, key: 'toolCallTimeoutMs' | 'startupTimeoutMs', index: number): Partial<Pick<McpServerRecord, 'toolCallTimeoutMs' | 'startupTimeoutMs'>> {
   const value = raw[key]
   if (value === undefined) return {}
   if (typeof value !== 'number' || !Number.isFinite(value) || value < 1) {

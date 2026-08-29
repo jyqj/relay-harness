@@ -180,6 +180,37 @@ describe('MessageFeedbackService public contract', () => {
     expect(Object.isFrozen(listed.value.items[0])).toBe(true)
   })
 
+  it('emits Host-local material-change notifications for outcome reconcilers', async () => {
+    const { ctx, persistence } = await harness()
+    const fixture = messageFixture('changed-event')
+    persistence.persist(fixture.session)
+    const messageId = fixture.assistantMessageIds[0]
+    const changes: unknown[] = []
+    ctx.on('message-feedback/changed', (change) => { changes.push(change) })
+    const created = expectItem(await ctx.messageFeedback.put({
+      sessionId: fixture.session.id,
+      messageId,
+      rating: 'positive',
+      ifVersion: null,
+    }))
+    // An exact no-op retry has no material change and emits nothing.
+    expectItem(await ctx.messageFeedback.put({
+      sessionId: fixture.session.id,
+      messageId,
+      rating: 'positive',
+      ifVersion: created.version,
+    }))
+    await ctx.messageFeedback.delete({
+      sessionId: fixture.session.id,
+      messageId,
+      ifVersion: created.version,
+    })
+    expect(changes).toEqual([
+      { sessionId: fixture.session.id, messageId, rating: 'positive' },
+      { sessionId: fixture.session.id, messageId },
+    ])
+  })
+
   it('reports non-blank and complete UTF-8 byte limits without touching persistence', async () => {
     const { ctx, persistence } = await harness(4)
     const fixture = messageFixture('note-limits')

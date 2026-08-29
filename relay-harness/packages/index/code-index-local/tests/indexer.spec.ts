@@ -54,11 +54,11 @@ async function passInputs(root: string, db: DatabaseSync): Promise<{
 }
 
 describe('buildExclusionStack', () => {
-  it('always carries the hard layer and adds config/gitignore layers only when they exist', async () => {
+  it('keeps only static hard/config layers while the scanner reloads gitignore documents', async () => {
     const plain = await makeWorkspace('rlh-idx-bare-', { files: {} })
     expect(await buildExclusionStack(plain, [])).toHaveLength(1)
     const layered = await makeWorkspace('rlh-idx-cfg-', { files: {}, gitignore: 'x/\n' })
-    expect(await buildExclusionStack(layered, ['*.tmp'])).toHaveLength(3)
+    expect(await buildExclusionStack(layered, ['*.tmp'])).toHaveLength(2)
     const gitignoreOnly = await makeWorkspace('rlh-idx-gi-', { files: {} })
     expect(await buildExclusionStack(gitignoreOnly, [])).toHaveLength(1)
   })
@@ -242,7 +242,7 @@ describe('last_refresh ledger helpers', () => {
     const loaded = loadPersistedLastRefresh(db, revivePersistedRecord)
     expect(loaded).toEqual(summary)
     // The seeded epoch rows stay intact beside the side key.
-    expect(readEpochs(db)).toEqual({ indexEpoch: 0, evidenceEpoch: 0 })
+    expect(readEpochs(db)).toEqual({ indexEpoch: 0, evidenceEpoch: 0, embeddingEpoch: 0 })
     expect(CODE_INDEX_METADATA_INDEX_EPOCH).toBe('index_epoch')
   })
 

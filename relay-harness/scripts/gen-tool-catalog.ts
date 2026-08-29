@@ -46,7 +46,7 @@ import * as ToolBashPersistent from '@relay-harness/rlh-tool-bash-persistent'
 import * as ToolPwshPersistent from '@relay-harness/rlh-tool-pwsh-persistent'
 import CordisHostRunner from '@relay-harness/rlh-cordis-host-runner'
 import { CodeIndex } from '@relay-harness/rlh-code-index'
-import type { GraphExploreRequest, GraphExploreResult, IndexStatusReport, RefreshOptions, RefreshSummary, SearchRequest, SearchResult } from '@relay-harness/rlh-code-index'
+import type { GraphExploreRequest, GraphExploreResult, HydrateChunksRequest, HydrateChunksResult, IndexStatusReport, RefreshOptions, RefreshSummary, SearchRequest, SearchResult } from '@relay-harness/rlh-code-index'
 import * as ToolCordis from '@relay-harness/rlh-tool-cordis'
 import * as ToolCodeIndex from '@relay-harness/rlh-tool-code-index'
 import * as ToolFs from '@relay-harness/rlh-tool-fs'
@@ -112,6 +112,10 @@ class CatalogCodeIndex extends CodeIndex {
 
   override async search(_request: SearchRequest): Promise<SearchResult> {
     return Promise.reject(new Error('tool-catalog code-index stub cannot search'))
+  }
+
+  override async hydrateChunks(_request: HydrateChunksRequest): Promise<HydrateChunksResult> {
+    return Promise.reject(new Error('tool-catalog code-index stub cannot hydrate chunks'))
   }
 
   override async exploreGraph(_request: GraphExploreRequest): Promise<GraphExploreResult> {

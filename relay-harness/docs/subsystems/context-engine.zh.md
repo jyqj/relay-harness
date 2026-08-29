@@ -2,7 +2,7 @@
 
 [English](context-engine.md) | 中文
 
-本地上下文引擎 seam：一个步骤上下文 contributor 注册表，AgentLoop 在 inbox 领取与提示词组装之间查询它；外加 contributor 与知识 Provider 适配器之间交换的证据、覆盖与可观测性词汇。设计权威位于 Relay 根仓库（`docs/adr/0006-local-context-engine.md`（ADR-0006）与 `docs/agent/context-engine.md`）；本页投影 harness 侧契约。
+本地上下文引擎 seam：一个供 AgentLoop 与 Prompt Enhancement 使用、带 purpose 的上下文 contributor 注册表；外加 contributor 与知识 Provider 适配器之间交换的证据、覆盖与可观测性词汇。设计权威位于 Relay 根仓库（`docs/adr/0006-local-context-engine.md`（ADR-0006）与 `docs/agent/context-engine.md`）；本页投影 harness 侧契约。
 
 Sources: [`packages/context/context-engine/src/types.ts`](../../packages/context/context-engine/src/types.ts) · [`packages/context/context-engine/src/index.ts`](../../packages/context/context-engine/src/index.ts)
 
@@ -70,7 +70,32 @@ interface ProviderGeneration {
 
 ## 步骤上下文 seam
 
-`ContextEngineService.registerContributor` 原子保留唯一 contributor id；`prepareStep` 按注册顺序、每个已领取步骤一次地运行全部 contributor，输入为已领取消息、步骤中止信号与会话 header 工作目录。贡献的消息追加进步骤的 user 消息并落为持久 `user/message` 事件；无贡献的步骤与未部署该服务的部署逐字节一致。
+`ContextEngineService.registerContributor` 原子保留唯一 contributor id；`prepareStep` 按注册顺序、每个请求一次地运行全部 contributor，输入为显式 `agent_step` 或 `prompt_enhancement` purpose、消息、中止信号、工作目录与分离的持久 caller identity。`StepContextCaller` 提供 session／Agent／workspace identity、可选 owning turn／step、有效 preset 与 origin，而不会向 Provider 暴露 live Agent object。发布前，它会对每个 Provider 自有 contribution 做脱离、无损 JSON 校验与冻结，并原子拒绝畸形 payload 及重复/空 evidence id。它返回带归属的 contribution 以及消息、证据与覆盖聚合。purpose 必填，使 consumer 可以共享检索，而不要求 contributor 从自然语言推断意图。Base 的 `session-history-context` contributor 利用它拒绝 `agent_step`，只为 Prompt Enhancement 接纳已完成 exchange 与已批准 compaction checkpoint，防止 transcript 重复和 recall 递归。贡献的 agent-step 消息追加进步骤的 user 消息并落为持久 `user/message` 事件；无贡献的步骤与未部署该服务的部署逐字节一致。
+
+## 持久准备 trace
+
+AgentLoop 拥有获准步骤，因此也拥有持久化：它在追加经准入的 `user/message` 事件之后、分派模型请求之前，追加一条仅存在于日志的 `context/prepared` 事件。每个 contribution 保留 contributor id、证据、可选覆盖、拟议消息 id，以及经 `agent/pre-step` 后仍保持结构精确且未改写的消息事件 seq；空 seq 列表表示拟议消息被移除或改写。invariant 要求链接位于该精确开放步骤内，并拒绝重复或过晚的 trace。`Evidence.domain` 为 `JsonValue`；ContextEngine 会在准入前校验它，`Session.append` 仍是最终持久边界。trace 不包含消息内容副本，也绝不参与 `deriveMessages()`。
+
+```ts type-equiv
+/**
+ * One durable context-preparation fact, appended by AgentLoop after the accepted step's messages
+ * and before its model request. Messages remain reconstructable from `user/message`; this record
+ * carries attribution, evidence, coverage, and admission links without becoming a second transcript.
+ */
+interface ContextPreparedEventData {
+  /** Owning turn. */
+  readonly turn: number
+  /** Owning step. */
+  readonly step: number
+  /** Prepared contributions in registry order. */
+  readonly contributions: readonly ContextPreparedContributionTrace[]
+}
+```
+
+
+## Context Inspector 产品界面
+
+`contextInspector` Session Projection 折叠完整 durable log，而非浏览器分页窗口。它保留最近 50 条 `context/prepared` trace，并把每个 contributor 关联到准确进入模型的 `user/message` seq；空链接继续显示为未采纳或被改写 proposal。证据 source/path/revision、freshness、verification、truncation、provider why-used、searched/not-searched scope、rationale 与 completeness 经标准 projection 通道进入浏览器 drawer。Additive 会话头部 utility 打开抽屉，不改变 Chat node 或模型可见消息。
 
 <!-- BEGIN GENERATED cordis-surface (gen-cordis-catalog.ts) — do not edit between markers -->
 
@@ -95,12 +120,20 @@ Generated from source by `scripts/gen-cordis-catalog.ts` (verified fresh by `pnp
 registerContributor(contributor: StepContextContributor): () => void
 
 /**
- * Prepare the step context for one claimed step.
- * @param input - the claimed messages and abort signal.
+ * Prepare context for one purpose-tagged request.
+ * @param input - purpose, messages, abort signal, working directory, and durable caller identity.
  * @returns the collected context, or `undefined` when no contributor produced any.
  */
 prepareStep(input: StepContextInput): Promise<PreparedStepContext | undefined>
 ```
 
-Source: [`packages/context/context-engine/src/types.ts:203`](../../packages/context/context-engine/src/types.ts)
+Source: [`packages/context/context-engine/src/types.ts:299`](../../packages/context/context-engine/src/types.ts)
+
+<a id="ctxsessionhistorycontext--sessionhistorycontext"></a>
+
+### `ctx.sessionHistoryContext` — `SessionHistoryContext`
+
+Host service that owns the contributor registration and resolved policy.
+
+Source: [`packages/context/session-history-context/src/index.ts:94`](../../packages/context/session-history-context/src/index.ts)
 <!-- END GENERATED cordis-surface -->

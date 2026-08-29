@@ -5,7 +5,7 @@
  * The queue's SQL lives in the storage package (`code_embed_jobs` table and
  * its claim/settlement functions); this module composes it with the provider
  * client and the int8 quantizer so chunk text becomes a `chunks_vec` row with
- * one evidence-epoch transaction per job. Provider wiring (which endpoint
+ * one embedding-epoch transaction per vector batch. Provider wiring (which endpoint
  * serves which workspace) is the Service Provider's Config decision, not this
  * module's.
  *
@@ -14,6 +14,15 @@
 
 export { EmbeddingClient } from './client.ts'
 export type { EmbeddingClientOptions, EmbedResult } from './client.ts'
+export {
+  EMBEDDING_CHUNKER_VERSION,
+  EMBEDDING_NORMALIZATION_VERSION,
+  EMBEDDING_PROVIDER_ID,
+  EMBEDDING_QUANTIZER_VERSION,
+  embeddingEndpointIdentity,
+  resolveEmbeddingGeneration,
+} from './generation.ts'
+export type { EmbeddingGenerationInput } from './generation.ts'
 export {
   EmbedError,
   EMBED_ABORTED,

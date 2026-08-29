@@ -29,10 +29,12 @@ export class TreeWatcher {
   private watcher: FSWatcher | undefined
   private timer: NodeJS.Timeout | undefined
   private stateValue: TreeWatcherState = 'off'
+  private pendingPaths = new Set<string>()
+  private fullRefreshPending = false
 
   constructor(
     private readonly root: string,
-    private readonly onChange: () => void,
+    private readonly onChange: (paths?: readonly string[]) => void,
   ) {}
 
   /**
@@ -41,8 +43,8 @@ export class TreeWatcher {
    */
   start(): Promise<TreeWatcherState> {
     try {
-      this.watcher = watch(this.root, { recursive: true }, () => {
-        this.schedule()
+      this.watcher = watch(this.root, { recursive: true }, (_eventType, filename) => {
+        this.schedule(filename === null ? undefined : filename.replaceAll('\\', '/'))
       })
       this.stateValue = 'active'
     } catch {
@@ -66,18 +68,26 @@ export class TreeWatcher {
     }
     this.watcher?.close()
     this.watcher = undefined
+    this.pendingPaths.clear()
+    this.fullRefreshPending = false
     this.stateValue = 'off'
   }
 
   /**
    * Native-event entry point: register one more raw change. Bursts collapse
    * because any pending timer is replaced rather than queued.
+   * @param path - changed workspace-relative path, or omitted when the event cannot name one.
    */
-  schedule(): void {
+  schedule(path?: string): void {
+    if (path === undefined) this.fullRefreshPending = true
+    else if (!this.fullRefreshPending) this.pendingPaths.add(path)
     if (this.timer !== undefined) clearTimeout(this.timer)
     this.timer = setTimeout(() => {
       this.timer = undefined
-      this.onChange()
+      const paths = this.fullRefreshPending ? undefined : [...this.pendingPaths].sort()
+      this.pendingPaths.clear()
+      this.fullRefreshPending = false
+      this.onChange(paths)
     }, WATCHER_EVENT_DEBOUNCE_MS)
   }
 }

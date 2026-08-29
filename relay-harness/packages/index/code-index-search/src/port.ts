@@ -79,6 +79,8 @@ export interface ChunkDetailRow {
   readonly chunkId: string
   readonly filePath: string
   readonly languageName: string
+  /** Content hash of the owning indexed file revision. */
+  readonly contentHash: string
   readonly startLine: number
   readonly endLine: number
   readonly breadcrumb: string
@@ -86,6 +88,10 @@ export interface ChunkDetailRow {
   readonly symbolKind: string | null
   /** Decompressed chunk text; feeds the overlap score. */
   readonly text: string
+  /** File-level extraction tier applied to this chunk. */
+  readonly parserTier: ParserTier
+  /** File-level extraction confidence applied to this chunk. */
+  readonly parserConfidence: number
 }
 
 /** One file-summary FTS hit (`files_fts`), with the raw bm25 score as stored. */
@@ -456,6 +462,28 @@ export interface VectorCoverage {
   readonly totalChunks: number
 }
 
+/** Provider-neutral nearest-neighbor request; SQLite implements a bounded exact scan, ANN adapters may replace it. */
+export interface VectorRecallRequest {
+  readonly generationId: string
+  readonly queryVector: Float32Array
+  readonly scope: ChunkScope
+  readonly topK: number
+  readonly maxScan: number
+}
+
+/** One semantic candidate returned best-first by a vector adapter. */
+export interface VectorRecallHit {
+  readonly chunkId: string
+  readonly score: number
+}
+
+/** Bounded vector recall result with explicit coverage truncation. */
+export interface VectorRecallResult {
+  readonly hits: readonly VectorRecallHit[]
+  readonly scanned: number
+  readonly truncated: boolean
+}
+
 /**
  * Read-only vector face of an index store: quantized `chunks_vec` reads for
  * the vector lane and coverage counters for observability. Optional with the
@@ -472,6 +500,9 @@ export interface VectorReadFacet {
 
   /** Chunk-tier coverage counts for `model`. */
   vectorCoverage(model: string): VectorCoverage
+
+  /** Independent semantic candidate query; adapters may use exact scan or ANN. */
+  recallCandidates?(request: VectorRecallRequest): VectorRecallResult
 }
 
 /**

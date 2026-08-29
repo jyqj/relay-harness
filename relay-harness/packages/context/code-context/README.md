@@ -2,21 +2,21 @@
 
 English | [中文](README.zh.md)
 
-Opt-in code-index recall context. When the plugin entry carries a config section, the package registers one context-engine step-context contributor (`code-index-recall`, late-bound through `ctx.inject(['contextEngine'])`, so the engine stays optional). For each claimed step it joins the direct user messages' text blocks into one search query — with every distinct `@file` mention of the same text passed as the explicit `paths` scope — and runs one ranked search against the optional `ctx.codeIndex` seam.
+Opt-in code-index recall context. When the plugin entry carries a config section, the package registers one context-engine step-context contributor (`code-index-recall`, late-bound through `ctx.inject(['contextEngine'])`, so the engine stays optional). For each claimed step it binds `ctx.codeIndex` to `input.cwd`, joins the direct user messages' text blocks into one search query — with every distinct `@file` mention passed as the explicit `paths` scope — runs one ranked search, and batch-hydrates the selected candidates through the same immutable Workspace face.
 
-A healthy answer with hits contributes one `code-index` recall message plus one revision-bound evidence record per injected hit, and populates the reserved `coverage` field (recorded by contributors; the engine surface for reading it is a context-engine follow-up). A no-hit answer contributes a short bounded-negative message instead of silence. A degraded answer (the seam reported `degraded` or per-lane `readErrors`) or a failed search contributes nothing: it is logged as a structured warning and never rendered as a legitimate "no results" message, so derived context cannot masquerade as fresh evidence. A step whose direct user text stays under `minQueryChars`, or that has no direct user text at all, contributes nothing.
+A healthy answer with hits contributes one `code-index` recall message containing source-verified fenced snippets plus one evidence record per admitted snippet. Evidence revision is the current file content hash, its digest covers the exact injected source, and `verification` is `verified`; parser provenance, score trace, and both search/hydration epochs remain in the durable source/domain records. Stale, unavailable, or revision-drifted hydration is omitted with a warning and coverage entry. A no-hit answer contributes a short bounded-negative message. A degraded/failed search or failed/empty hydration contributes nothing, never a path-only fallback that could masquerade as evidence.
 
-The `form: 'recall'` source record keeps the projection out of derived consumers: the session-query corpus extraction skips recall-form messages, and memory extraction collects `kind: 'user'` messages only. Injection is strictly opt-in: a Loader entry without a config section constructs the `ctx.codeContext` service but registers no contributor, and the package ships in no bundle.
+The `form: 'recall'` source record keeps the projection out of derived consumers: the session-query corpus extraction skips recall-form messages, and memory extraction collects `kind: 'user'` messages only. Injection is strictly opt-in: a Loader entry without a config section constructs the `ctx.codeContext` service but registers no contributor. The default Web/Desktop composition enables it over the workspace router.
 
 ## Configuration
 
 | Key | Default | Contract |
 |---|---:|---|
-| `maxChars` | `65536` | Maximum code points of rendered hit lines included in one recall message. |
+| `maxChars` | `65536` | Maximum code points of complete snippet entries included in one recall message. |
 | `maxHits` | `8` | Maximum hits injected per step. |
 | `minQueryChars` | `8` | Minimum trimmed direct-user-text length that triggers a search. |
 
-`maxChars` and `maxHits` must be positive safe integers; `minQueryChars` must be a non-negative safe integer. Budgets apply in ranked order and count Unicode code points (an astral-plane character costs one): a hit whose rendered line does not fully fit is clipped on code-point boundaries and recorded as `truncated`, and hits beyond a budget are dropped without evidence. The message closes with a candidate footer whenever the budget cut the list or clipped a line.
+`maxChars` and `maxHits` must be positive safe integers; `minQueryChars` must be a non-negative safe integer. Budgets apply in ranked order and count Unicode code points. Each admitted entry first reserves its complete path/revision/parser header and a Markdown fence longer than every backtick run in the full source; only the source body may clip. An entry whose fixed framing cannot fit is dropped without evidence. The footer reports candidate cuts and source-verification rejections.
 
 ## Model Experience
 
@@ -24,7 +24,7 @@ The `form: 'recall'` source record keeps the projection out of derived consumers
 
 #### What the model sees
 
-After the claimed user messages of a step, one user-role recall message headed `## Code-index recall`. It frames the entries as untrusted search output, then lists one `path:start-end score reasons` line per injected hit inside a fenced `code-index-recall` block; a no-hit step gets a short message stating that nothing relevant is indexed and that this is not proof of absence. The durable source record lists every injected hit's `chunkId`, file path, line bounds, score, and truncation flag beside the query and the epoch pair.
+After the claimed user messages of a step, one user-role recall message headed `## Code-index recall`. It frames source as untrusted data, then renders each revalidated chunk as a revision/parser/ranking header plus its fenced source body inside `code-index-recall`; a no-hit step states that an index miss is not proof of absence. The durable source record carries content hash, parser provenance, score trace, truncation, and both search/hydration epochs without duplicating source bytes.
 
 #### Token effect
 
@@ -36,7 +36,6 @@ The recall message sits after the step's claimed user messages, so its content d
 
 ## Known Limitations and Deferred Work
 
-- **Epoch-grain evidence revisions** — the search seam does not expose per-chunk content hashes, so every evidence record binds its `revision` to the whole-index `indexEpoch`; any index commit invalidates all open records, not just the chunks that changed.
 - **No compaction pinning** — recall messages are ordinary user-role turns; compaction may drop them and this package neither pins nor re-injects their content.
 - **Missing `ctx.codeIndex` fails the turn** — a deployment that registers the contributor without a code-index provider makes every contributing step end in an error instead of contributing silence (the `file-reference-local` fails-loud precedent).
 - **Compaction checkpoints may re-index recall-derived text** — a checkpoint summary is a model-authored `user/message` under a plugin source, so it can restate recall-derived text and enter the session-query corpus; the `form: 'recall'` extraction skip covers only the recall messages themselves (the ADR 0006 rule-6 boundary stops at system-injected context, and a checkpoint summary sits on the assistant-reply side of it).

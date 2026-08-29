@@ -20,8 +20,9 @@
  * @module @relay-harness/rlh-code-index-local/provider
  */
 
-import { rm } from 'node:fs/promises'
+import { lstat, realpath, rm } from 'node:fs/promises'
 import { randomBytes } from 'node:crypto'
+import { isAbsolute, relative, resolve, sep } from 'node:path'
 import type { DatabaseSync } from 'node:sqlite'
 import {
   repoSizeTierFromFileCount,
@@ -30,8 +31,14 @@ import {
   repoSizeTierTokenBudget,
 } from '@relay-harness/rlh-code-index'
 import type {
+  BuildExplain,
+  CodeIndexGenerationStatus,
+  CodeIndexManagementStatus,
   GraphExploreRequest,
   GraphExploreResult,
+  HydratedChunk,
+  HydrateChunksRequest,
+  HydrateChunksResult,
   IndexStatusReport,
   RepoSizeTier,
   RefreshOptions,
@@ -44,13 +51,15 @@ import { createRetrievalPort, readEpochs } from '@relay-harness/rlh-code-index-s
 import type { JournalMode } from '@relay-harness/rlh-code-index-sqlite'
 import {
   ChunkTextCache,
-  chunkRevisionsForFiles,
+  chunkRevisionsMissingGeneration,
   chunkTextCacheCapacityForTier,
   enqueueEmbedJobs,
+  ensureEmbeddingGeneration,
   pendingEmbedCount,
   readVectorCoverage,
+  resetFailedEmbedJobsForGeneration,
 } from '@relay-harness/rlh-code-index-sqlite'
-import { createSearchEngine } from '@relay-harness/rlh-code-index-search'
+import { augmentedQueryText, createSearchEngine } from '@relay-harness/rlh-code-index-search'
 import { createVectorLane } from '@relay-harness/rlh-code-index-search'
 import type { EngineSearchRequest, RetrievalPort } from '@relay-harness/rlh-code-index-search'
 import {
@@ -66,11 +75,13 @@ import {
 import type { SymbolResolver } from '@relay-harness/rlh-code-index-graph'
 import { exploreGraphAnswer } from './explore.ts'
 import type { ExploreGraphInput } from './explore.ts'
-import { contentHash } from './hash.ts'
+import { contentHash, contentHashFile } from './hash.ts'
 import { EmbeddingClient } from './embed/client.ts'
 import { EmbedError, EMBED_PROVIDER_ERROR, EMBED_RESPONSE_INVALID } from './embed/errors.ts'
 import { drainEmbedJobs } from './embed/worker.ts'
 import type { EmbedderLike } from './embed/worker.ts'
+import type { DrainEmbedJobsResult } from './embed/worker.ts'
+import { resolveEmbeddingGeneration } from './embed/generation.ts'
 import { DEFAULT_INCLUDE_PATTERNS } from './scanner.ts'
 import {
   buildExclusionStack,
@@ -124,6 +135,11 @@ export interface LocalIndexRuntimeConfig {
   /** Global dirty-propagation promotion budget; defaults to {@link DEFAULT_DIRTY_MAX_FILES}. */
   readonly dirtyPropagationMaxFiles?: number
   /**
+   * File-count classifier override for deterministic lifecycle tests. Product
+   * composition omits it and always uses the reference tier thresholds.
+   */
+  readonly tierForFileCount?: (fileCount: number) => RepoSizeTier
+  /**
    * Embedding tier configuration; `undefined` (or an endpoint missing its
    * `baseURL` / `model` anchor) removes the whole tier: no vector lane, no
    * drain, no vector status.
@@ -143,7 +159,55 @@ export function mapSearchRequest(request: SearchRequest): { query: string } & Pa
     ...(request.pathPrefix !== undefined ? { pathPrefix: request.pathPrefix } : {}),
     ...(request.paths !== undefined ? { paths: [...request.paths] } : {}),
     ...(request.recentPaths !== undefined ? { recentPaths: [...request.recentPaths] } : {}),
+    ...(request.boostFilePaths !== undefined ? { boostFilePaths: [...request.boostFilePaths] } : {}),
+    ...(request.conversationQueries !== undefined ? { conversationQueries: [...request.conversationQueries] } : {}),
+    ...(request.pinnedFilePaths !== undefined ? { pinnedFilePaths: [...request.pinnedFilePaths] } : {}),
+    ...(request.overlayFilePaths !== undefined ? { overlayFilePaths: [...request.overlayFilePaths] } : {}),
   }
+}
+
+/**
+ * Canonicalize a public refresh scope into unique workspace-relative POSIX
+ * paths. A root path intentionally widens to a full scan; an escape is a
+ * caller error rather than a reason to scan or remove unrelated rows.
+ * @param workspaceRoot - absolute workspace boundary used for containment.
+ * @param paths - public file/directory scope, or omitted for the full tree.
+ * @returns normalized unique paths, `[]` for no files, or `undefined` for a full pass.
+ */
+export function normalizeRefreshPaths(
+  workspaceRoot: string,
+  paths: readonly string[] | undefined,
+): readonly string[] | undefined {
+  if (paths === undefined) return undefined
+  const root = resolve(workspaceRoot)
+  const normalized = new Set<string>()
+  for (const path of paths) {
+    const absolute = resolve(root, path)
+    const within = relative(root, absolute)
+    if (within.startsWith('..') || isAbsolute(within)) {
+      throw new Error(`code-index refresh path escapes the workspace: ${path}`)
+    }
+    if (within.length === 0) return undefined
+    normalized.add(within.split(sep).join('/'))
+  }
+  return [...normalized].sort()
+}
+
+/**
+ * Merge refreshes that arrived after the active pass began scanning.
+ * @param requests - queued trigger options in arrival order.
+ * @returns one widened follow-up request, or `undefined` without queued work.
+ */
+export function mergeRefreshOptions(requests: readonly RefreshOptions[]): RefreshOptions | undefined {
+  if (requests.length === 0) return undefined
+  const reason: RefreshReason = requests.some(request => request.reason === 'stale')
+    ? 'stale'
+    : requests.some(request => request.reason === 'manual' || request.reason === undefined) ? 'manual' : 'lazy'
+  const forceRebuild = requests.some(request => request.forceRebuild === true)
+  if (forceRebuild || requests.some(request => request.paths === undefined)) {
+    return { reason, ...(forceRebuild ? { forceRebuild: true } : {}) }
+  }
+  return { reason, paths: [...new Set(requests.flatMap(request => request.paths ?? []))].sort() }
 }
 
 /**
@@ -274,7 +338,20 @@ interface PersistedRefreshRecord {
   readonly removedFiles: number
   readonly chunksWritten: number
   readonly durationMs: number
-  readonly epochsAfter: { indexEpoch: number; evidenceEpoch: number }
+  readonly epochsAfter: { indexEpoch: number; evidenceEpoch: number; embeddingEpoch?: number }
+  readonly explain?: BuildExplain
+}
+
+function reviveBuildExplain(raw: unknown): BuildExplain | undefined {
+  if (typeof raw !== 'object' || raw === null) return undefined
+  const value = raw as Partial<BuildExplain>
+  if ((value.scope !== 'full' && value.scope !== 'scoped')
+    || (value.pass !== 'ran' && value.pass !== 'skipped')
+    || typeof value.requestedPaths !== 'number'
+    || typeof value.degraded !== 'boolean'
+    || !Array.isArray(value.degradationReasons)
+    || !value.degradationReasons.every(reason => typeof reason === 'string')) return undefined
+  return value as BuildExplain
 }
 
 /**
@@ -287,6 +364,7 @@ export function revivePersistedRecord(raw: unknown): RefreshSummary | undefined 
   if (typeof raw !== 'object' || raw === null) return undefined
   const candidate = raw as Partial<PersistedRefreshRecord>
   const epochsAfter = candidate.epochsAfter
+  const explain = candidate.explain === undefined ? undefined : reviveBuildExplain(candidate.explain)
   if (
     typeof candidate.reason !== 'string'
     || typeof candidate.changedFiles !== 'number'
@@ -304,7 +382,12 @@ export function revivePersistedRecord(raw: unknown): RefreshSummary | undefined 
     removedFiles: candidate.removedFiles,
     chunksWritten: candidate.chunksWritten,
     durationMs: candidate.durationMs,
-    epochsAfter: { indexEpoch: epochsAfter.indexEpoch, evidenceEpoch: epochsAfter.evidenceEpoch },
+    epochsAfter: {
+      indexEpoch: epochsAfter.indexEpoch,
+      evidenceEpoch: epochsAfter.evidenceEpoch,
+      ...(typeof epochsAfter.embeddingEpoch === 'number' ? { embeddingEpoch: epochsAfter.embeddingEpoch } : {}),
+    },
+    ...(explain === undefined ? {} : { explain }),
   }
 }
 
@@ -316,6 +399,13 @@ function isRefreshReason(value: unknown): value is RefreshReason {
 }
 
 type BoundSearch = (request: EngineSearchRequest) => SearchResult
+
+type SourceVerification =
+  | { readonly state: 'verified' }
+  | { readonly state: 'stale'; readonly reason: 'source-revision-changed' }
+  | { readonly state: 'unavailable'; readonly reason: 'source-path-invalid' | 'source-unavailable' }
+
+type EmbeddingBuildExplain = NonNullable<BuildExplain['embedding']>
 
 /**
  * Owns every mutable piece of the local code-index capability: the store
@@ -334,11 +424,15 @@ export class LocalCodeIndexRuntime {
   private watcherDegradedFlag = false
   private currentTier: RepoSizeTier | undefined = undefined
   private inFlight: Promise<RefreshSummary> | undefined
+  private inFlightPassStarted = false
+  private queuedRefreshes: RefreshOptions[] = []
   private resolver: SymbolResolver | undefined
   private embedderSlot: { readonly client: EmbeddingClient } | { readonly failure: EmbedError } | undefined
   private readonly queryVectorCache: QueryVectorCache = createQueryVectorCache()
   private drainInFlight: Promise<void> | undefined
   private drainAbort: AbortController | undefined
+  /** A reconcile committed while the worker was active; guarantees one post-drain queue observation. */
+  private drainRescheduleRequested = false
   private lastEmbedError: string | undefined
 
   constructor(private readonly config: LocalIndexRuntimeConfig) {}
@@ -356,11 +450,12 @@ export class LocalCodeIndexRuntime {
     // A probe answers the very first tier question; the bound stack is built
     // once here with that capacity instead of shipping a placeholder cache.
     const probeCount = createRetrievalPort(store.db).countFiles()
-    this.currentTier = repoSizeTierFromFileCount(probeCount)
+    this.currentTier = this.tierForFileCount(probeCount)
     const persisted = loadPersistedLastRefresh(store.db, revivePersistedRecord)
     if (persisted !== undefined) this.lastRefresh = persisted
     this.bindResolutionStack()
     this.bindRetrievalStack()
+    if (this.config.embedding !== undefined && probeCount > 0) this.reconcileEmbeddings(this.config.embedding)
   }
 
   /**
@@ -415,10 +510,11 @@ export class LocalCodeIndexRuntime {
     const port = createRetrievalPort(db, { cache: new ChunkTextCache(chunkTextCacheCapacityForTier(tier)) })
     this.port = port
     const embedding = this.config.embedding
+    const generation = embedding === undefined ? undefined : resolveEmbeddingGeneration(embedding)
     const engine = createSearchEngine({
       port,
       lanes: defaultRetrievalLanesWithGraph(
-        embedding === undefined ? undefined : createVectorLane({ model: embedding.model }),
+        generation === undefined ? undefined : createVectorLane({ generationId: generation.generationId }),
       ),
       layers: defaultPreselectLayersWithGraphNeighbor(),
       ...(embedding === undefined ? {} : {
@@ -458,6 +554,48 @@ export class LocalCodeIndexRuntime {
     return this.port as RetrievalPort
   }
 
+  /** Resolve one stored relative path without allowing a derived row to escape the workspace. */
+  private sourcePath(filePath: string): string | undefined {
+    const absolute = resolve(this.config.workspaceRoot, filePath)
+    const within = relative(this.config.workspaceRoot, absolute)
+    if (within.length === 0 || within.startsWith('..') || isAbsolute(within)) return undefined
+    return absolute
+  }
+
+  /** Re-hash one current backing file and compare it with the indexed revision. */
+  private async verifySourceRevision(
+    filePath: string,
+    expectedHash: string,
+    signal?: AbortSignal,
+  ): Promise<SourceVerification> {
+    const absolute = this.sourcePath(filePath)
+    if (absolute === undefined) return { state: 'unavailable', reason: 'source-path-invalid' }
+    try {
+      signal?.throwIfAborted()
+      const [canonicalRoot, canonicalSource] = await Promise.all([
+        realpath(this.config.workspaceRoot),
+        realpath(absolute),
+      ])
+      const canonicalWithin = relative(canonicalRoot, canonicalSource)
+      if (canonicalWithin.length === 0 || canonicalWithin.startsWith('..') || isAbsolute(canonicalWithin)) {
+        return { state: 'unavailable', reason: 'source-path-invalid' }
+      }
+      const before = await lstat(canonicalSource)
+      if (!before.isFile()) return { state: 'unavailable', reason: 'source-unavailable' }
+      const observedHash = await contentHashFile(canonicalSource)
+      signal?.throwIfAborted()
+      const after = await lstat(canonicalSource)
+      if (!after.isFile()) return { state: 'unavailable', reason: 'source-unavailable' }
+      if (before.size !== after.size || before.mtimeMs !== after.mtimeMs || observedHash !== expectedHash) {
+        return { state: 'stale', reason: 'source-revision-changed' }
+      }
+      return { state: 'verified' }
+    } catch (_error) {
+      signal?.throwIfAborted()
+      return { state: 'unavailable', reason: 'source-unavailable' }
+    }
+  }
+
   /**
    * File count through the port — the same number that resolves every tier.
    * @returns the current committed file count.
@@ -475,11 +613,51 @@ export class LocalCodeIndexRuntime {
     const fileCount = this.indexedFileCount()
     return {
       indexedFileCount: fileCount,
-      tier: repoSizeTierFromFileCount(fileCount),
+      tier: this.requireTier(),
       epochs,
       ...(this.lastRefresh === undefined ? {} : { lastRefresh: this.lastRefresh }),
       degraded: this.operationDegraded || this.watcherDegradedFlag,
     }
+  }
+
+  /** Build operator health without mutation.
+   * @returns bounded file/chunk/generation/job health.
+   */
+  managementStatus(): CodeIndexManagementStatus {
+    const db = this.requireDb()
+    const base = this.status()
+    const chunkCount = (db.prepare('SELECT COUNT(*) AS n FROM chunks').get() as { n: number }).n
+    const generations = db.prepare(`
+      SELECT g.generation_id AS generationId, g.provider_id AS providerId,
+        g.endpoint_identity AS endpointIdentity, g.model,
+        g.dimension_mode AS dimensionMode, g.configured_dimensions AS configuredDimensions,
+        (SELECT COUNT(*) FROM chunks_vec v WHERE v.generation_id = g.generation_id) AS vectorizedChunks,
+        (SELECT COUNT(*) FROM code_embed_jobs j WHERE j.generation_id = g.generation_id AND j.status = 'pending') AS pendingJobs,
+        (SELECT COUNT(*) FROM code_embed_jobs j WHERE j.generation_id = g.generation_id AND j.status = 'running') AS runningJobs,
+        (SELECT COUNT(*) FROM code_embed_jobs j WHERE j.generation_id = g.generation_id AND j.status = 'failed') AS failedJobs,
+        (SELECT last_error FROM code_embed_jobs j WHERE j.generation_id = g.generation_id
+          AND last_error IS NOT NULL ORDER BY updated_at DESC LIMIT 1) AS lastError
+      FROM embedding_generations g ORDER BY g.created_at DESC, g.generation_id ASC
+    `).all() as unknown as Array<Omit<CodeIndexGenerationStatus, 'lastError'> & { lastError: string | null }>
+    return {
+      ...base,
+      chunkCount,
+      generations: generations.map(row => ({
+        ...row,
+        ...(row.lastError === null ? { lastError: undefined } : { lastError: row.lastError.slice(0, 2_000) }),
+      })).map(({ lastError, ...row }) => lastError === undefined ? row : { ...row, lastError }),
+      ...(this.lastEmbedError === undefined ? {} : { lastError: this.lastEmbedError.slice(0, 2_000) }),
+    }
+  }
+
+  /** Reconcile generation coverage and drain bounded work.
+   * @returns settled management status.
+   */
+  async reconcile(): Promise<CodeIndexManagementStatus> {
+    await this.ensureOpen()
+    if (this.config.embedding !== undefined) this.reconcileEmbeddings(this.config.embedding)
+    await this.embedDrainIdle()
+    return this.managementStatus()
   }
 
   /**
@@ -496,26 +674,43 @@ export class LocalCodeIndexRuntime {
    * @returns what changed and the epoch pair observed after the commit.
    */
   refresh(options?: RefreshOptions): Promise<RefreshSummary> {
-    if (this.inFlight !== undefined) return this.inFlight
+    if (this.inFlight !== undefined) {
+      if (this.inFlightPassStarted) this.queuedRefreshes.push(options ?? {})
+      return this.inFlight
+    }
     const reason: RefreshReason = options?.reason ?? 'manual'
     const pass = this.runPass(reason, options)
       .then(({ summary, changedPaths }) => {
-        this.lastRefresh = summary
         this.generationCommitted = true
-        persistLastRefresh(this.requireDb(), {
-          reason: summary.reason,
-          changedFiles: summary.changedFiles,
-          removedFiles: summary.removedFiles,
-          chunksWritten: summary.chunksWritten,
-          durationMs: summary.durationMs,
-          epochsAfter: summary.epochsAfter,
-        })
         this.resizeToCurrentTier()
-        this.catchUpEmbeddings(changedPaths)
-        return summary
+        const embedding = this.catchUpEmbeddings(changedPaths)
+        const completedSummary: RefreshSummary = {
+          ...summary,
+          explain: {
+            ...summary.explain as BuildExplain,
+            embedding,
+            degraded: summary.explain?.degraded === true || this.lastEmbedError !== undefined,
+            degradationReasons: this.lastEmbedError === undefined
+              ? summary.explain?.degradationReasons ?? []
+              : [...new Set([...(summary.explain?.degradationReasons ?? []), 'embedding-unavailable'])],
+          },
+        }
+        this.lastRefresh = completedSummary
+        persistLastRefresh(this.requireDb(), {
+          ...completedSummary,
+        })
+        return completedSummary
       })
       .finally(() => {
         this.inFlight = undefined
+        this.inFlightPassStarted = false
+        const queued = mergeRefreshOptions(this.queuedRefreshes)
+        this.queuedRefreshes = []
+        if (queued !== undefined && !this.closed) {
+          void this.refresh(queued).catch(() => {
+            this.operationDegraded = true
+          })
+        }
       })
     this.inFlight = pass
     return pass
@@ -523,10 +718,21 @@ export class LocalCodeIndexRuntime {
 
   /** Rebuild the port when a commit moved the repository across tiers. */
   private resizeToCurrentTier(): void {
-    const nextTier = repoSizeTierFromFileCount(this.requirePort().countFiles())
+    const nextTier = this.tierForFileCount(this.requirePort().countFiles())
     if (this.currentTier === nextTier) return
     this.currentTier = nextTier
     this.bindRetrievalStack()
+  }
+
+  /** Resolve the configured test seam or the unchanged production classifier. */
+  private tierForFileCount(fileCount: number): RepoSizeTier {
+    return this.config.tierForFileCount?.(fileCount) ?? repoSizeTierFromFileCount(fileCount)
+  }
+
+  /** Return the tier whose cache and retrieval stack are currently bound. */
+  private requireTier(): RepoSizeTier {
+    if (this.currentTier === undefined) throw new Error('code-index-local retrieval tier is not bound')
+    return this.currentTier
   }
 
   /**
@@ -572,17 +778,38 @@ export class LocalCodeIndexRuntime {
    * idempotently.
    * @param changedPaths - workspace-relative paths this pass upserted.
    */
-  private catchUpEmbeddings(changedPaths: readonly string[]): void {
+  private catchUpEmbeddings(changedPaths: readonly string[]): EmbeddingBuildExplain | null {
     const embedding = this.config.embedding
-    if (embedding === undefined || changedPaths.length === 0) return
+    if (embedding === undefined) return null
+    void changedPaths
+    return this.reconcileEmbeddings(embedding)
+  }
+
+  /** Reconcile the current chunk set against one complete embedding generation. */
+  private reconcileEmbeddings(embedding: LocalEmbeddingRuntimeConfig): EmbeddingBuildExplain {
+    const generation = resolveEmbeddingGeneration(embedding)
+    let missingChunks = 0
+    let jobsEnqueued = 0
+    let jobsDeduplicated = 0
+    let jobsReset = 0
     try {
       const db = this.requireDb()
-      const targets = chunkRevisionsForFiles(db, changedPaths)
+      ensureEmbeddingGeneration(db, generation)
+      jobsReset = resetFailedEmbedJobsForGeneration(db, generation.generationId)
+      const targets = chunkRevisionsMissingGeneration(db, generation.generationId)
+      missingChunks = targets.length
       if (targets.length > 0) {
-        enqueueEmbedJobs(
+        const queued = enqueueEmbedJobs(
           db,
-          targets.map(target => ({ chunkId: target.chunkId, model: embedding.model, contentHash: target.contentHash })),
+          targets.map(target => ({
+            chunkId: target.chunkId,
+            generationId: generation.generationId,
+            model: embedding.model,
+            contentHash: target.contentHash,
+          })),
         )
+        jobsEnqueued = queued.enqueued
+        jobsDeduplicated = queued.duplicates
       }
     } catch (error) {
       // A storage failure between reading the batch's chunk rows and
@@ -591,14 +818,40 @@ export class LocalCodeIndexRuntime {
       // intact, and the next pass re-enqueues idempotently.
       /* v8 ignore next */
       this.lastEmbedError = String(error)
+      this.applyDrainFailure('embedding-reconcile-failed')
     }
-    if (this.drainInFlight === undefined) {
-      // A running drain already sees the new queue rows; folding into it here
-      // would double-claim, so a busy drain simply carries the catch-up.
-      this.drainInFlight = this.runEmbedDrain(embedding).finally(() => {
-        this.drainInFlight = undefined
-      })
+    this.scheduleEmbedDrain(embedding, missingChunks > 0 || jobsReset > 0)
+    return {
+      generationId: generation.generationId,
+      missingChunks,
+      jobsEnqueued,
+      jobsDeduplicated,
+      jobsReset,
+      batchesClaimed: 0,
+      batchesWritten: 0,
+      jobsCompleted: 0,
+      jobsFailed: 0,
     }
+  }
+
+  /**
+   * Fold catch-up into one worker without losing an enqueue that races the
+   * worker's final empty claim. A busy worker normally observes new rows in
+   * its loop; the reschedule bit supplies the missing post-drain observation
+   * when commit lands after that last claim but before `finally` clears the
+   * single-flight promise.
+   */
+  private scheduleEmbedDrain(embedding: LocalEmbeddingRuntimeConfig, queueMayHaveChanged: boolean): void {
+    if (this.drainInFlight !== undefined) {
+      if (queueMayHaveChanged) this.drainRescheduleRequested = true
+      return
+    }
+    this.drainInFlight = this.runEmbedDrain(embedding).finally(() => {
+      this.drainInFlight = undefined
+      const rerun = this.drainRescheduleRequested
+      this.drainRescheduleRequested = false
+      if (rerun && !this.closed && this.db !== undefined) this.scheduleEmbedDrain(embedding, false)
+    })
   }
 
   /**
@@ -613,23 +866,66 @@ export class LocalCodeIndexRuntime {
     try {
       const slot = this.resolveEmbedder(embedding)
       if ('failure' in slot) throw slot.failure
-      await drainEmbedJobs({
+      const result = await drainEmbedJobs({
         db: this.requireDb(),
         client: slot.client,
         owner: EMBED_DRAIN_OWNER,
+        generationId: resolveEmbeddingGeneration(embedding).generationId,
+        batchSize: Math.min(embedding.batchSize, embedding.maxInputsPerRequest),
         maxJobs: embedding.maxJobsPerDrain,
         maxPromptTokens: embedding.maxPromptTokensPerDrain,
         signal: controller.signal,
       })
       this.lastEmbedError = undefined
+      this.applyDrainExplain(result)
     } catch (error) {
       // Background drain: nothing above it can retry. Deterministic failures
       // re-throw from every drain, so each pass re-records the diagnosis;
       // transient ones settle through the queue's attempt budget.
       this.lastEmbedError = String(error)
+      this.applyDrainFailure('embedding-drain-failed')
     } finally {
       // Single-flight scheduling guarantees no newer drain replaced ours.
       this.drainAbort = undefined
+    }
+  }
+
+  private applyDrainExplain(result: DrainEmbedJobsResult): void {
+    const summary = this.lastRefresh
+    const explain = summary?.explain
+    const embedding = explain?.embedding
+    if (summary === undefined || explain === undefined || embedding === null || embedding === undefined) return
+    this.lastRefresh = {
+      ...summary,
+      epochsAfter: readEpochs(this.requireDb()),
+      explain: {
+        ...explain,
+        degraded: explain.degraded || result.jobsFailed > 0,
+        degradationReasons: result.jobsFailed > 0
+          ? [...new Set([...explain.degradationReasons, 'embedding-jobs-failed'])]
+          : explain.degradationReasons,
+        embedding: {
+          ...embedding,
+          batchesClaimed: result.batchesClaimed,
+          batchesWritten: result.batchesWritten,
+          jobsCompleted: result.jobsCompleted,
+          jobsFailed: result.jobsFailed,
+        },
+      },
+    }
+    persistLastRefresh(this.requireDb(), { ...this.lastRefresh })
+  }
+
+  private applyDrainFailure(reason: string): void {
+    const summary = this.lastRefresh
+    if (summary?.explain === undefined) return
+    this.lastRefresh = {
+      ...summary,
+      explain: {
+        ...summary.explain,
+        degraded: true,
+        degradationReasons: [...new Set([...summary.explain.degradationReasons, reason])],
+      },
     }
   }
 
@@ -637,8 +933,10 @@ export class LocalCodeIndexRuntime {
    * Resolve when no embedding drain is in flight. Deterministic flush hook
    * for tests and graceful callers; the refresh path never awaits it.
    */
-  embedDrainIdle(): Promise<void> {
-    return this.drainInFlight ?? Promise.resolve()
+  async embedDrainIdle(): Promise<void> {
+    // A completion may schedule the lost-wakeup follow-up in its `finally`;
+    // loop over the current identity until no generation remains.
+    while (this.drainInFlight !== undefined) await this.drainInFlight
   }
 
   /**
@@ -648,6 +946,7 @@ export class LocalCodeIndexRuntime {
    * @returns the projection, or `undefined` without an embedding tier.
    */
   vectorStatus(): {
+    generationId: string
     model: string
     pendingJobs: number
     vectorizedChunks: number
@@ -657,10 +956,12 @@ export class LocalCodeIndexRuntime {
     const embedding = this.config.embedding
     if (embedding === undefined) return undefined
     const db = this.requireDb()
-    const coverage = readVectorCoverage(db, embedding.model)
+    const generation = resolveEmbeddingGeneration(embedding)
+    const coverage = readVectorCoverage(db, generation.generationId)
     const status = {
+      generationId: generation.generationId,
       model: embedding.model,
-      pendingJobs: pendingEmbedCount(db, embedding.model),
+      pendingJobs: pendingEmbedCount(db, generation.generationId),
       vectorizedChunks: coverage.vectorizedChunks,
       totalChunks: coverage.totalChunks,
     }
@@ -681,6 +982,8 @@ export class LocalCodeIndexRuntime {
     }
     const db = this.requireDb()
     const previousGeneration = forceRebuild ? new Map() : loadIndexedSnapshot(db)
+    const paths = normalizeRefreshPaths(this.config.workspaceRoot, options?.paths)
+    this.inFlightPassStarted = true
     const outcome = await runRefreshPass({
       db,
       workspaceRoot: this.config.workspaceRoot,
@@ -688,6 +991,7 @@ export class LocalCodeIndexRuntime {
       exclusionFilters: this.exclusions,
       maxFileBytes: this.config.maxFileBytes,
       previousGeneration,
+      ...(paths === undefined ? {} : { paths }),
       graph: this.requirePort().graph,
       resolver: this.requireResolver(),
       dirtyMaxFiles: this.config.dirtyPropagationMaxFiles ?? DEFAULT_DIRTY_MAX_FILES,
@@ -700,6 +1004,24 @@ export class LocalCodeIndexRuntime {
         chunksWritten: outcome.chunksWritten,
         durationMs: Date.now() - startedAt,
         epochsAfter: readEpochs(db),
+        explain: {
+          scope: paths === undefined ? 'full' : 'scoped',
+          requestedPaths: paths?.length ?? 0,
+          pass: outcome.skipped ? 'skipped' : 'ran',
+          degraded: outcome.dirty?.partial === true || outcome.dirty?.budgetExceeded === true,
+          degradationReasons: [
+            ...(outcome.dirty?.partial === true ? ['dirty-partial'] : []),
+            ...(outcome.dirty?.budgetExceeded === true ? ['dirty-budget-exceeded'] : []),
+          ],
+          dirty: outcome.dirty === null ? null : {
+            status: outcome.dirty.status,
+            marked: outcome.dirty.marked,
+            roundsRun: outcome.dirty.roundsRun,
+            partial: outcome.dirty.partial,
+            budgetExceeded: outcome.dirty.budgetExceeded,
+          },
+          embedding: null,
+        },
       },
       changedPaths: outcome.changedPaths,
     }
@@ -713,6 +1035,7 @@ export class LocalCodeIndexRuntime {
   private async resetStore(): Promise<void> {
     const previous = this.db
     this.drainAbort?.abort()
+    this.drainRescheduleRequested = false
     this.db = undefined
     this.port = undefined
     this.engineSearch = undefined
@@ -724,6 +1047,58 @@ export class LocalCodeIndexRuntime {
         await rm(`${this.config.databasePath}${suffix}`, { force: true })
       }
     }
+  }
+
+  /**
+   * Batch-resolve full chunk bodies and re-hash each distinct backing file.
+   * Bodies from missing rows, unreadable files, or watcher-lagged revisions
+   * never enter `chunks`; callers receive a stable rejection instead.
+   * @param request - ordered chunk identities to resolve.
+   * @param signal - cancellation checked around every filesystem read.
+   * @returns source-verified chunks and explicit stale/unavailable rejects.
+   */
+  async hydrateChunks(request: HydrateChunksRequest, signal?: AbortSignal): Promise<HydrateChunksResult> {
+    signal?.throwIfAborted()
+    await this.ensureOpen()
+    if (!this.generationCommitted || this.requirePort().countFiles() === 0) {
+      await this.refresh({ reason: 'lazy' })
+    }
+    const chunkIds = [...new Set(request.chunkIds)]
+    const rows = this.requirePort().chunkRowsByIds(chunkIds)
+    signal?.throwIfAborted()
+    const byId = new Map(rows.map(row => [row.chunkId, row]))
+    const verificationByFile = new Map<string, SourceVerification>()
+    const chunks: HydratedChunk[] = []
+    const rejected: HydrateChunksResult['rejected'][number][] = []
+    for (const chunkId of chunkIds) {
+      const row = byId.get(chunkId)
+      if (row === undefined) {
+        rejected.push({ chunkId, state: 'unavailable', reason: 'not-indexed' })
+        continue
+      }
+      let verification = verificationByFile.get(row.filePath)
+      if (verification === undefined) {
+        verification = await this.verifySourceRevision(row.filePath, row.contentHash, signal)
+        verificationByFile.set(row.filePath, verification)
+      }
+      if (verification.state !== 'verified') {
+        rejected.push({ chunkId, state: verification.state, reason: verification.reason })
+        continue
+      }
+      chunks.push({
+        chunkId: row.chunkId,
+        filePath: row.filePath,
+        language: row.languageName,
+        contentHash: row.contentHash,
+        startLine: row.startLine,
+        endLine: row.endLine,
+        text: row.text,
+        parserTier: row.parserTier,
+        parserConfidence: row.parserConfidence,
+        verification: 'source-verified',
+      })
+    }
+    return { chunks, rejected, epochs: readEpochs(this.requireDb()) }
   }
 
   /**
@@ -744,7 +1119,7 @@ export class LocalCodeIndexRuntime {
     if (!this.generationCommitted || this.requirePort().countFiles() === 0) {
       await this.refresh({ reason: 'lazy' })
     }
-    const tier = repoSizeTierFromFileCount(this.requirePort().countFiles())
+    const tier = this.requireTier()
     const clampedTopK = clampTopKToTierCap(request.topK, tier)
     const embedding = this.config.embedding
     let queryVector: Float32Array | undefined
@@ -757,7 +1132,7 @@ export class LocalCodeIndexRuntime {
         try {
           queryVector = await embedQueryVector(
             slot.client,
-            request.query.trim(),
+            augmentedQueryText(request),
             this.queryVectorCache,
             embedding,
             signal,
@@ -805,7 +1180,7 @@ export class LocalCodeIndexRuntime {
     if (!this.generationCommitted || this.requirePort().countFiles() === 0) {
       await this.refresh({ reason: 'lazy' })
     }
-    const tier = repoSizeTierFromFileCount(this.requirePort().countFiles())
+    const tier = this.requireTier()
     const input: ExploreGraphInput = {
       request,
       facet: this.requirePort().graph,
@@ -826,7 +1201,9 @@ export class LocalCodeIndexRuntime {
   dispose(): Promise<void> {
     if (this.closed) return Promise.resolve()
     this.closed = true
+    this.queuedRefreshes = []
     this.drainAbort?.abort()
+    this.drainRescheduleRequested = false
     const db = this.db
     this.db = undefined
     this.port = undefined

@@ -185,6 +185,18 @@ servers:
     })
   })
 
+  it('rejects URL-carried HTTP credentials before they reach logs or Settings', () => {
+    for (const url of [
+      'https://user:pass@example.test/mcp',
+      'https://example.test/mcp?token=secret',
+      'file:///tmp/mcp.sock',
+      'https://example.test/mcp#fragment',
+    ]) {
+      expect(() => parseDocument(`servers:\n  - id: unsafe\n    transport: streamable-http\n    url: ${url}\n`))
+        .toThrow()
+    }
+  })
+
   it('upserts, disables, and removes records', () => {
     const added = upsertRecord(EMPTY_DOCUMENT, {
       id: 'memory',

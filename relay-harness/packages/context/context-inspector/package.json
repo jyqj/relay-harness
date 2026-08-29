@@ -1,0 +1,35 @@
+{
+  "name": "@relay-harness/rlh-context-inspector",
+  "description": "Durable context/prepared session projection for the browser Context Inspector",
+  "version": "0.1.0-rc.8",
+  "publishConfig": { "access": "public" },
+  "repository": { "type": "git", "url": "git+https://github.com/jyqj/relay-harness.git", "directory": "packages/context/context-inspector" },
+  "type": "module",
+  "main": "lib/index.js",
+  "types": "lib/types/index.d.ts",
+  "exports": {
+    ".": { "types": "./lib/types/index.d.ts", "default": "./lib/index.js" },
+    "./client": { "types": "./lib/types/client.d.ts", "default": "./lib/types/client.js" },
+    "./types": { "types": "./lib/types/types.d.ts", "default": "./lib/types/types.js" },
+    "./invariant": { "types": "./lib/types/invariant.d.ts", "default": "./lib/invariant.js" },
+    "./src/*": "./src/*",
+    "./package.json": "./package.json"
+  },
+  "files": ["lib/index.js", "lib/invariant.js", "lib/types/**/*.js", "lib/types/**/*.d.ts"],
+  "license": "MIT",
+  "dependencies": { "zod": "^4.4.3" },
+  "peerDependencies": {
+    "@relay-harness/rlh-context-engine": "workspace:^",
+    "@relay-harness/rlh-invariants": "workspace:^",
+    "@relay-harness/rlh-session": "workspace:^",
+    "@relay-harness/rlh-session-projection": "workspace:^",
+    "@relay-harness/cordis": "workspace:^"
+  },
+  "devDependencies": {
+    "@relay-harness/rlh-context-engine": "workspace:^",
+    "@relay-harness/rlh-invariants": "workspace:^",
+    "@relay-harness/rlh-session": "workspace:^",
+    "@relay-harness/rlh-session-projection": "workspace:^",
+    "@relay-harness/cordis": "workspace:^"
+  }
+}

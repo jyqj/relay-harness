@@ -12,6 +12,8 @@ import { Context, Service } from '@relay-harness/cordis'
 import type {
   GraphExploreRequest,
   GraphExploreResult,
+  HydrateChunksRequest,
+  HydrateChunksResult,
   IndexStatusReport,
   RefreshOptions,
   RefreshSummary,
@@ -56,6 +58,24 @@ export abstract class CodeIndex extends Service {
   abstract status(): Promise<IndexStatusReport>
 
   /**
+   * Operator-oriented health projection; providers may enrich the basic status.
+   * @returns bounded file/chunk/generation/build health for management clients.
+   */
+  async managementStatus(): Promise<import('./types.ts').CodeIndexManagementStatus> {
+    const status = await this.status()
+    return { ...status, chunkCount: 0, generations: [] }
+  }
+
+  /**
+   * Reconcile provider-derived work without requiring a destructive rebuild.
+   * @returns settled management status after reconciliation.
+   */
+  async reconcile(): Promise<import('./types.ts').CodeIndexManagementStatus> {
+    await this.refresh({ reason: 'manual' })
+    return this.managementStatus()
+  }
+
+  /**
    * Bring the derived index up to date with the workspace tree (or rebuild it).
    * Concurrent calls fold into the single in-flight pass; refresh summaries are emitted only
    * after that pass commits, never speculatively.
@@ -73,6 +93,16 @@ export abstract class CodeIndex extends Service {
   abstract search(request: SearchRequest, signal?: AbortSignal): Promise<SearchResult>
 
   /**
+   * Resolve full indexed source bodies for an ordered batch of chunk identities.
+   * Providers revalidate each backing source against its indexed content hash;
+   * stale or unavailable identities are returned only in `rejected`.
+   * @param request - ordered chunk identities to hydrate.
+   * @param signal - cancellation checked before and after the synchronous store read.
+   * @returns resolved bodies, explicit misses, and the generation observed by the read.
+   */
+  abstract hydrateChunks(request: HydrateChunksRequest, signal?: AbortSignal): Promise<HydrateChunksResult>
+
+  /**
    * Answer one structured graph question over the derived call graph.
    * @param request - the `relations` / `impact` / `tests` / `cycles` / `dead_code` question
    *   with its per-op options.
@@ -82,6 +112,58 @@ export abstract class CodeIndex extends Service {
    *   edge's endpoints resolve inside the answer's `nodes`.
    */
   abstract exploreGraph(request: GraphExploreRequest, signal?: AbortSignal): Promise<GraphExploreResult>
+
+  /**
+   * Bind this capability to one caller-owned workspace root. Multi-workspace
+   * providers override this method and route every operation to an isolated
+   * derived store. The default adapter preserves existing single-workspace
+   * providers and test doubles; production filesystem providers should
+   * override it to verify that `workspaceRoot` is their configured root.
+   * @param workspaceRoot - absolute workspace root selected by the caller's durable Session.
+   * @returns a workspace-bound operation face which cannot be retargeted after construction.
+   */
+  forWorkspace(workspaceRoot: string): Promise<CodeIndexWorkspace> {
+    return Promise.resolve(bindCodeIndexWorkspace(workspaceRoot, this))
+  }
+}
+
+/** Workspace-bound Code Index operations used by Agent, Tool, and Remote callers. */
+export interface CodeIndexWorkspace {
+  /** Canonical workspace root that owns every result and mutation through this face. */
+  readonly workspaceRoot: string
+  /** @returns current model-facing health for this workspace only. */
+  status(): Promise<IndexStatusReport>
+  /** @returns bounded operator health for this workspace only. */
+  managementStatus(): Promise<import('./types.ts').CodeIndexManagementStatus>
+  /** @returns settled status after reconciling this workspace only. */
+  reconcile(): Promise<import('./types.ts').CodeIndexManagementStatus>
+  /** @param options - workspace-local refresh options. @returns committed workspace-local summary. */
+  refresh(options?: RefreshOptions): Promise<RefreshSummary>
+  /** @param request - workspace-local retrieval request. @param signal - cancellation. @returns ranked workspace-local hits. */
+  search(request: SearchRequest, signal?: AbortSignal): Promise<SearchResult>
+  /** @param request - workspace-local chunk ids. @param signal - cancellation. @returns source-verified workspace-local bodies. */
+  hydrateChunks(request: HydrateChunksRequest, signal?: AbortSignal): Promise<HydrateChunksResult>
+  /** @param request - workspace-local graph question. @param signal - cancellation. @returns workspace-local graph answer. */
+  exploreGraph(request: GraphExploreRequest, signal?: AbortSignal): Promise<GraphExploreResult>
+}
+
+/**
+ * Adapt one legacy/single-workspace provider to the bound face.
+ * @param workspaceRoot - identity exposed to the caller.
+ * @param provider - fixed provider receiving all operations.
+ * @returns immutable delegating face.
+ */
+export function bindCodeIndexWorkspace(workspaceRoot: string, provider: CodeIndex): CodeIndexWorkspace {
+  return Object.freeze({
+    workspaceRoot,
+    status: () => provider.status(),
+    managementStatus: () => provider.managementStatus(),
+    reconcile: () => provider.reconcile(),
+    refresh: (options?: RefreshOptions) => provider.refresh(options),
+    search: (request: SearchRequest, signal?: AbortSignal) => provider.search(request, signal),
+    hydrateChunks: (request: HydrateChunksRequest, signal?: AbortSignal) => provider.hydrateChunks(request, signal),
+    exploreGraph: (request: GraphExploreRequest, signal?: AbortSignal) => provider.exploreGraph(request, signal),
+  })
 }
 
 export default CodeIndex

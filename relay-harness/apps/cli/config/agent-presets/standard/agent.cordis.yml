@@ -158,16 +158,9 @@
 
 # ── long-term memory ────────────────────────────────────────────────────────
 
-# The canonical SQLite provider is host-owned. These Consumers are preset-local:
-# minimal sessions get neither automatic recall nor memory tools, while standard
-# sessions share the stable user/workspace/agent scope across session ids.
-- id: memory-agent
-  name: '@relay-harness/rlh-memory-agent'
-  config:
-    userId: !!js process.env.USER || process.env.USERNAME || 'local'
-    agentId: relay-harness
-    candidateLimit: 10
-    maxContextChars: 3200
+# The canonical SQLite provider and its Context Provider are host-owned. The
+# latter applies a durable `standard` preset gate, so this preset only composes
+# the explicit memory-management tool while sharing recall across surfaces.
 
 - id: tool-memory
   name: '@relay-harness/rlh-tool-memory'

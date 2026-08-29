@@ -1,0 +1,50 @@
+{
+  "name": "@relay-harness/rlh-host-memory-center",
+  "description": "Governed long-term-memory Remote for the Web Memory Center",
+  "version": "0.1.0-rc.8",
+  "publishConfig": { "access": "public" },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jyqj/relay-harness.git",
+    "directory": "packages/host/memory-center"
+  },
+  "type": "module",
+  "main": "lib/index.js",
+  "types": "lib/types/index.d.ts",
+  "exports": {
+    ".": { "types": "./lib/types/index.d.ts", "default": "./lib/index.js" },
+    "./invariant": { "types": "./lib/types/invariant.d.ts", "default": "./lib/invariant.js" },
+    "./types": { "types": "./lib/types/types.d.ts", "default": "./lib/types/types.js" },
+    "./typert": { "types": "./lib/typert.host.d.ts", "default": "./lib/typert.host.js" },
+    "./remote": { "types": "./lib/typert.remote-client.d.ts", "default": "./lib/typert.remote-client.js" },
+    "./src/*": "./src/*",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib/index.js", "lib/invariant.js", "lib/types/**/*.js", "lib/types/**/*.d.ts",
+    "lib/typert.host.js", "lib/typert.host.d.ts", "lib/typert.remote-client.js", "lib/typert.remote-client.d.ts"
+  ],
+  "license": "MIT",
+  "dependencies": { "zod": "^4.4.3" },
+  "peerDependencies": {
+    "@relay-harness/rlh-invariants": "workspace:^",
+    "@relay-harness/rlh-memory": "workspace:^",
+    "@relay-harness/rlh-memory-outcome-reconciler": "workspace:^",
+    "@relay-harness/rlh-session": "workspace:^",
+    "@relay-harness/rlh-session-query": "workspace:^",
+    "@relay-harness/rlh-typert-protocol": "workspace:^",
+    "@relay-harness/cordis": "workspace:^"
+  },
+  "devDependencies": {
+    "@relay-harness/rlh-context-engine": "workspace:^",
+    "@relay-harness/rlh-invariants": "workspace:^",
+    "@relay-harness/rlh-goal": "workspace:^",
+    "@relay-harness/rlh-memory": "workspace:^",
+    "@relay-harness/rlh-memory-outcome-reconciler": "workspace:^",
+    "@relay-harness/rlh-memory-sqlite": "workspace:^",
+    "@relay-harness/rlh-session": "workspace:^",
+    "@relay-harness/rlh-session-query": "workspace:^",
+    "@relay-harness/rlh-typert-protocol": "workspace:^",
+    "@relay-harness/cordis": "workspace:^"
+  }
+}

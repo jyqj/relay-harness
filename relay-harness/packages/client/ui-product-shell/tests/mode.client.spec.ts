@@ -1,8 +1,19 @@
 import { Context } from '@relay-harness/cordis'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ProductShellService } from '../src/client/mode.ts'
+import { resolveWorkspaceDeliverable, SIMPLE_MODE_SUPPRESSIONS } from '../src/client/index.ts'
 
 describe('ProductShellService', () => {
+  it('keeps Context provenance visible in Simple Mode while suppressing advanced diagnostics', () => {
+    expect(SIMPLE_MODE_SUPPRESSIONS).not.toContainEqual(['conversation.session.header.utilities', 'context-inspector'])
+    expect(SIMPLE_MODE_SUPPRESSIONS).toContainEqual(['conversation.view', 'trajectory'])
+  })
+  it('confines model-produced deliverables to the Session workspace', () => {
+    expect(resolveWorkspaceDeliverable('/workspace', 'out/report.md')).toBe('/workspace/out/report.md')
+    expect(resolveWorkspaceDeliverable('/workspace', '/workspace/report.md')).toBe('/workspace/report.md')
+    expect(resolveWorkspaceDeliverable('/workspace', '../secret.txt')).toBeUndefined()
+    expect(resolveWorkspaceDeliverable('/workspace', '/etc/passwd')).toBeUndefined()
+  })
   afterEach(() => { Reflect.deleteProperty(globalThis, 'window') })
   it('opens simple before the Host answers, folds writes, and reloads after errors', async () => {
     const ctx = new Context()

@@ -70,7 +70,7 @@ function clientFor(server: FakeEmbedServer, dim = 16): EmbeddingClient {
 }
 
 describe('drainEmbedJobs end to end', () => {
-  it('embeds every queued chunk into chunks_vec and advances the evidence epoch exactly once per job', async () => {
+  it('embeds every queued chunk into chunks_vec and advances the embedding epoch exactly once per batch', async () => {
     const texts = ['export function alpha() {}', 'const beta = 1;', 'class Gamma {}']
     const { db, chunkIds } = await storeWithChunks(texts)
     enqueueAll(db, chunkIds, texts)
@@ -82,12 +82,15 @@ describe('drainEmbedJobs end to end', () => {
       db,
       client: clientFor(server),
       owner: 'drain-1',
+      batchSize: 3,
       maxJobs: 10,
       maxPromptTokens: 100_000,
     })
     const after = readEpochs(db)
 
     expect(result).toEqual({
+      batchesClaimed: 1,
+      batchesWritten: 1,
       jobsClaimed: 3,
       jobsCompleted: 3,
       jobsFailed: 0,
@@ -96,8 +99,9 @@ describe('drainEmbedJobs end to end', () => {
       leaseSettlementsRefused: 0,
       stoppedBecause: 'queue-empty',
     })
-    // Three jobs, three evidence transactions, index channel frozen.
-    expect(after.evidenceEpoch).toBe(before.evidenceEpoch + 3)
+    // Three jobs share one provider/write batch and one embedding-clock advance.
+    expect(after.embeddingEpoch).toBe((before.embeddingEpoch ?? 0) + 1)
+    expect(server.requests).toHaveLength(1)
     expect(after.indexEpoch).toBe(before.indexEpoch)
 
     // The stored rows round-trip byte-exactly against a fresh embedding of
@@ -156,7 +160,7 @@ describe('drainEmbedJobs end to end', () => {
     const server = await startFakeEmbedServer({ dim: 16 })
     servers.push(server)
     await drainEmbedJobs({ db, client: clientFor(server), owner: 'd1', maxJobs: 5, maxPromptTokens: 10_000 })
-    const epochAfterFirst = readEpochs(db).evidenceEpoch
+    const epochAfterFirst = readEpochs(db).embeddingEpoch
 
     // The completed job still holds its identity: the re-enqueue is ignored.
     const repeat = enqueueEmbedJobs(
@@ -168,7 +172,7 @@ describe('drainEmbedJobs end to end', () => {
     const second = await drainEmbedJobs({ db, client: clientFor(server), owner: 'd2', maxJobs: 5, maxPromptTokens: 10_000 })
     expect(second.jobsClaimed).toBe(0)
     expect(second.stoppedBecause).toBe('queue-empty')
-    expect(readEpochs(db).evidenceEpoch).toBe(epochAfterFirst)
+    expect(readEpochs(db).embeddingEpoch).toBe(epochAfterFirst)
     expect((db.prepare('SELECT COUNT(*) AS n FROM code_embed_jobs').get() as { n: number }).n).toBe(1)
   })
 
@@ -213,7 +217,7 @@ describe('drainEmbedJobs end to end', () => {
     })
     expect(first.jobsFailed).toBe(1)
     expect(first.jobsCompleted).toBe(0)
-    expect(readEpochs(db).evidenceEpoch).toBe(0)
+    expect(readEpochs(db).embeddingEpoch).toBe(0)
 
     // Before retryAt nothing is claimable; after it the retry succeeds.
     const attemptAt = 5_000 + DEFAULT_EMBED_DRAIN_RETRY_MS
@@ -223,7 +227,7 @@ describe('drainEmbedJobs end to end', () => {
     })
     expect(second.jobsCompleted).toBe(1)
     expect(second.vectorsWritten).toBe(1)
-    expect(readEpochs(db).evidenceEpoch).toBe(1)
+    expect(readEpochs(db).embeddingEpoch).toBe(1)
     const row = db.prepare('SELECT attempts, status, last_error FROM code_embed_jobs').get() as {
       attempts: number
       status: string
@@ -274,7 +278,7 @@ describe('drainEmbedJobs end to end', () => {
     expect(timedOut.usage_json).toBeNull()
     const completed = db.prepare('SELECT status FROM code_embed_jobs WHERE chunk_id = ?').get(chunkIds[1]!) as { status: string }
     expect(completed.status).toBe('completed')
-    expect(readEpochs(db).evidenceEpoch).toBe(1)
+    expect(readEpochs(db).embeddingEpoch).toBe(1)
   })
 
   it('records a timeout failure\'s partial prompt-token spend onto usage_json', async () => {
@@ -321,7 +325,7 @@ describe('drainEmbedJobs end to end', () => {
     const row = db.prepare('SELECT status, last_error FROM code_embed_jobs').get() as { status: string; last_error: string }
     expect(row.status).toBe('failed')
     expect(row.last_error).toContain('HTTP 500')
-    expect(readEpochs(db).evidenceEpoch).toBe(0)
+    expect(readEpochs(db).embeddingEpoch).toBe(0)
   })
 
   it('stops on the caller signal without settling the in-flight job', async () => {
@@ -361,10 +365,10 @@ describe('drainEmbedJobs end to end', () => {
     // chunks): simulate it with enforcement off for the raw insert.
     db.exec('PRAGMA foreign_keys = OFF')
     db.exec(`INSERT INTO code_embed_jobs (
-        id, dedupe_key, chunk_id, model, content_hash, payload_json,
+        id, dedupe_key, chunk_id, generation_id, model, content_hash, payload_json,
         status, max_attempts, available_at, created_at, updated_at
       ) VALUES (
-        'code-embed-orphan', 'orphan', 'chunk:src/gone.ts:0', 'fake-embed', 'h', '{}',
+        'code-embed-orphan', 'orphan', 'chunk:src/gone.ts:0', 'legacy-model:fake-embed', 'fake-embed', 'h', '{}',
         'pending', 2, 1, 1, 1
       )`)
     db.exec('PRAGMA foreign_keys = ON')

@@ -140,9 +140,11 @@ describe('code-context real composition', () => {
 
     // Direct seam: prepareStep carries the recall message and its evidence.
     const prepared = await context!.get('contextEngine')!.prepareStep({
+      purpose: 'agent_step',
       messages: [directUserMessage(QUERY)],
       signal: new AbortController().signal,
       cwd: root,
+      caller: { sessionId: SessionId('direct-code-test'), agentId: 'direct-code-test', workspaceId: root, turn: 1, step: 1 },
     })
     expect(prepared?.messages).toHaveLength(1)
     expect(prepared?.messages[0]?.source).toMatchObject({
@@ -153,8 +155,9 @@ describe('code-context real composition', () => {
     })
     expect(prepared?.evidence).toHaveLength(2)
     expect(prepared?.evidence[0]).toMatchObject({
-      resource: { sourceId: 'code-index', key: 'chunk:src/engine.ts:1', revision: '7' },
+      resource: { sourceId: 'code-index', key: 'chunk:src/engine.ts:1', revision: 'file-hash-v1' },
       truncated: false,
+      verification: 'verified',
     })
 
     // Loop path: the recall message appends to the request after the direct text.
@@ -169,7 +172,7 @@ describe('code-context real composition', () => {
     const recall = requestMessages[1]
     expect(recall?.source).toMatchObject({ form: 'recall', query: QUERY })
     expect(recall?.content.map(block => (block.type === 'text' ? block.text : '')).join(''))
-      .toContain('src/engine.ts:1-3 42 lexical:fts')
+      .toContain('export const spoolMarker = true')
 
     // Model-visible ⟺ logged: both messages are reconstructable from the log.
     const logged = [...agent.session.events].filter(event => event.type === 'user/message')
@@ -189,9 +192,11 @@ describe('code-context real composition', () => {
     expect(context?.get('contextEngine')).toBeDefined()
 
     const prepared = await context!.get('contextEngine')!.prepareStep({
+      purpose: 'agent_step',
       messages: [directUserMessage(QUERY)],
       signal: new AbortController().signal,
       cwd: root,
+      caller: { sessionId: SessionId('direct-code-test'), agentId: 'direct-code-test', workspaceId: root, turn: 1, step: 1 },
     })
     expect(prepared).toBeUndefined()
 

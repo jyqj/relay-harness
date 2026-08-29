@@ -302,7 +302,7 @@ describe('the shipped Web composition', () => {
     }
   })
 
-  it('logs the exact proactive memory suffix sent by the standard preset', async () => {
+  it('recalls standard-preset memory through Context Engine and settles exact durable admission', async () => {
     const adapter = new MemorySnapshotAdapter()
     const unregister = ctx.llm.registerAdapter(['memory-snapshot'], adapter)
     const userId = process.env.USER || process.env.USERNAME || 'local'
@@ -324,7 +324,9 @@ describe('the shipped Web composition', () => {
     })
     const handle = await ctx.agents.create({
       sessionId: SessionId(`memory-snapshot-${randomUUID()}`),
-      meta: { cwd: workspace },
+      // Memory recall is intentionally gated by the durable preset identity,
+      // not merely by mounting a similarly-shaped plugin subtree.
+      meta: { cwd: workspace, agentPreset: 'standard' },
       agentOptions: { provider: 'memory-snapshot', model: 'memory-snapshot' },
       setup: agentCtx => ctx.agentPresets.mount(agentCtx, 'standard').then(() => undefined),
     })
@@ -334,8 +336,43 @@ describe('the shipped Web composition', () => {
         content: [{ type: 'text', text: 'How should referenced files enter the prompt?' }],
       }))
       await handle.agent.whenIdle()
-      expect(adapter.requests.find(request => request.messages.some(message => message.source.kind === 'memory-recall')))
-        .toBeDefined()
+      const request = adapter.requests.find(candidate =>
+        candidate.messages.some(message => message.source.kind === 'memory-recall'))
+      // Other pre-step contributors may follow it; pin the direct-user/
+      // Memory ordering without reviving the obsolete "memory is the suffix"
+      // assumption.
+      expect(request?.messages
+        .filter(message => message.source.kind === 'user' || message.source.kind === 'memory-recall')
+        .map(message => message.source.kind)).toEqual(['user', 'memory-recall'])
+      const recallEvent = handle.agent.session.events.find(event =>
+        event.type === 'user/message' && event.data.source.kind === 'memory-recall')
+      if (recallEvent?.type !== 'user/message') throw new Error('memory recall did not enter the durable transcript')
+      const contextTrace = handle.agent.session.events.find(event => event.type === 'context/prepared')
+      if (contextTrace?.type !== 'context/prepared') throw new Error('memory recall has no durable Context trace')
+      const memoryContribution = contextTrace.data.contributions.find(contribution =>
+        contribution.contributorId === 'memory-agent')
+      expect(memoryContribution?.messageId).toBe(recallEvent.data.id)
+      expect(memoryContribution?.messageEventSeqs).toEqual([recallEvent.seq])
+      expect(memoryContribution?.coverage?.completeness).toBe('bounded')
+      expect(memoryContribution?.evidence).toHaveLength(1)
+      expect(memoryContribution?.evidence[0]).toMatchObject({
+        resource: {
+          sourceId: 'long-term-memory',
+          key: memory.id,
+          revision: '1',
+        },
+        freshness: 'current',
+        verification: 'verified',
+      })
+      const scope = { workspaceId: workspace, userId, agentId: 'relay-harness' }
+      const signals = await ctx.longTermMemory.listSignals(scope, memory.id)
+      expect(signals.map(signal => signal.kind).sort()).toEqual(['candidate_hit', 'injected'])
+      expect(signals.map(signal => ({ kind: signal.kind, sessionId: signal.sessionId, turn: signal.turn })))
+        .toEqual(expect.arrayContaining([
+          { kind: 'candidate_hit', sessionId: handle.agent.id, turn: 1 },
+          { kind: 'injected', sessionId: handle.agent.id, turn: 1 },
+        ]))
+      expect(await ctx.longTermMemory.read(scope, memory.id)).toMatchObject({ accessCount: 1 })
       const transcript = handle.agent.session.events.flatMap<{ type: string; source: string; text: string }>((event) => {
         if (event.type === 'user/message') {
           if (event.data.source.kind !== 'user' && event.data.source.kind !== 'memory-recall') return []
