@@ -8,6 +8,14 @@
     "remoteWorkflowDiscovery": "root-on-commit",
     "branchProtection": "unconfigured",
     "requiredCheckCandidate": "all checks passed",
+    "automationSupport": {
+      "keylessCI": "hosted",
+      "realApiE2E": "manual-until-secret-configured",
+      "issueProjectAutomation": "disabled-until-app-and-labels-configured",
+      "selfHostedStandby": "disabled-no-runners",
+      "enterpriseRunnerBenchmarks": "disabled-no-runner-contract",
+      "registryPublication": "manual-until-environments-and-tokens-configured"
+    },
     "observedRemoteBranch": "master",
     "observedAt": "2026-08-29"
   },

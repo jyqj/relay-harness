@@ -1,10 +1,7 @@
-name: Issue policy
+name: Issue policy (disabled)
 
 on:
-  pull_request:
-    types: [opened, edited, synchronize, reopened, labeled, unlabeled, ready_for_review, review_requested]
-  pull_request_review:
-    types: [submitted]
+  workflow_dispatch: {}
 
 permissions:
   contents: read
@@ -19,6 +16,7 @@ defaults:
 jobs:
   policy:
     name: Issue policy
+    if: false # Canonical kind/* labels and Project automation are not configured.
     runs-on: ubuntu-latest
     steps:
       - name: Check out trusted policy

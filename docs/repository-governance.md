@@ -15,6 +15,7 @@ GitHub 只从根 `.github/` 发现自动化，因此 Issue 模板、policy、Dep
 - 远端根只含 `README.md`、`docs/` 和 `relay-harness/`，没有根 `.github/`；
 - GitHub 仍列出 6 条历史 workflow 记录，但最后一次分支运行停在 2026-08-23 的 `a72dc590f6`，之后的 `master` commit 没有 check run；
 - `master` 没有 classic branch protection，仓库也没有 ruleset。
+- 仓库没有 Actions variable、secret、environment 或 self-hosted runner；因此 CI 已改用标准 hosted runner，真实 API E2E 保持 manual-only，Issue Project 自动化与 enterprise runner benchmark 显式禁用，release publication 只保留人工入口。
 
 本次变更在提交树中恢复根 workflow 发现。只有推送该 commit 后才能确认远端发现状态；推后必须先验证 workflow 注册和一次 keyless CI，再配置 required-check ruleset。
 

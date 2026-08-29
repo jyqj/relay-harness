@@ -1,28 +1,7 @@
-name: Issue lifecycle
+name: Issue lifecycle (disabled)
 
 on:
-  issues:
-    types:
-      - opened
-      - edited
-      - assigned
-      - unassigned
-      - labeled
-      - unlabeled
-      - closed
-      - reopened
-  pull_request:
-    types:
-      - opened
-      - edited
-      - synchronize
-      - reopened
-      - labeled
-      - unlabeled
-      - review_requested
-  pull_request_review:
-    types:
-      - submitted
+  workflow_dispatch: {}
 
 permissions:
   contents: read
@@ -39,7 +18,7 @@ defaults:
 jobs:
   lifecycle:
     name: Issue lifecycle
-    if: ${{ github.event_name != 'pull_request_review' || (github.event.action == 'submitted' && github.event.review.state == 'changes_requested') }}
+    if: false # RLH_ISSUE_APP credentials and organization Project are not configured.
     runs-on: ubuntu-latest
     steps:
       - name: Check out trusted policy
