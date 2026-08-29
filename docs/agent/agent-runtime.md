@@ -1,8 +1,10 @@
 # Agent Runtime
 
-## 1. Agent Loop
+English | [中文](agent-runtime.zh.md)
 
-work 使用固定闭环：
+## 1. Agent loop
+
+Work uses a fixed loop:
 
 ```text
 understand  读取用户目标、当前对话与显式 File Context
@@ -13,15 +15,15 @@ verify      本地确认预期效果是否成立
 decide      继续、请求最小输入、部分交付、失败或完成
 ```
 
-硬规则：
+Hard rules:
 
-1. 每轮必须推进状态或给出明确阻塞原因。
-2. 工具调用成功不能直接把任务标记为完成。
-3. 高影响动作必须经过权限门。
-4. 技术错误先在内部恢复，不把原始堆栈直接甩给普通用户。
-5. 验证结果只进入本地 Work State，不发送给调度侧。
+1. Each turn advances state or states a concrete blocking reason.
+2. A successful tool call cannot mark the task complete by itself.
+3. High-impact actions pass through a permission gate.
+4. The runtime attempts technical recovery internally rather than exposing raw stacks to ordinary users.
+5. Verification results enter local Work State only and are not sent to scheduling.
 
-## 2. 终态
+## 2. Terminal states
 
 ```text
 complete   验收条件全部满足
@@ -31,7 +33,7 @@ blocked    缺少用户输入、权限或外部条件
 cancelled  用户取消
 ```
 
-`blocked` 可以恢复执行；其余为一次 Run 的终态。用户继续修改目标时创建新 Run，并保留同一 work 的上下文。
+`blocked` can resume; the other values terminate one Run. A user goal change creates a new Run while preserving the same Work context.
 
 ## 3. Work State
 
@@ -52,28 +54,27 @@ work_state:
   updated_at: timestamp
 ```
 
-这里没有 `project_id`。文件范围由 `file_context_ref` 指向本次 work 的显式清单。
+There is no `project_id`. `file_context_ref` identifies the explicit manifest for this Work.
 
-## 4. Checkpoint 与恢复
+## 4. Checkpoints and recovery
 
-checkpoint 至少发生在：
+A checkpoint occurs at least:
 
-- 一个计划步骤结束后；
-- 高影响动作等待确认前；
-- 上下文压缩后；
-- 用户暂停或进程退出前。
+- after a plan step ends;
+- before a high-impact action waits for confirmation;
+- after context compaction;
+- before a user pause or process exit.
 
-恢复时先检查文件指纹和未完成动作。外部文件已变化时，将相关结论标记为 stale 并重新读取或验证；不盲目沿用旧状态。
+Recovery first checks file fingerprints and unfinished actions. When external files changed, the runtime marks dependent conclusions stale and reads or verifies them again instead of reusing old state blindly.
 
 ## 5. Context Manager
 
-Context Manager 为 chat、Prompt Enhancing、主 Agent 和 Subagent 生成不同投影：
+Context Manager produces distinct projections for Chat, Prompt Enhancement, the primary agent, and subagents:
 
-- 当前用户目标与必要对话；
-- 当前 work 的文件清单、相关摘要和按需正文；
-- 当前步骤需要的工具结果；
-- 与请求相关且允许使用的长期记忆；
-- 明确排除无关历史、无关文件和已过期记忆。
+- the current user goal and necessary conversation;
+- the current Work's file manifest, relevant summaries, and on-demand bodies;
+- tool results needed by the current step;
+- relevant and permitted long-term memory;
+- explicit exclusion of irrelevant history, files, and expired memory.
 
-大内容以引用和按需读取为主，不重复把全文铺入上下文。
-
+Large content stays reference-oriented and is read on demand rather than repeatedly inserting complete bodies into context.

@@ -1,47 +1,49 @@
-# 中转调度侧需求与边界
+# Relay Scheduling Requirements and Boundaries
 
-## 1. 定位
+English | [中文](overview.zh.md)
 
-中转调度侧是 Relay agent 依赖的外部项目。它接收模型调用内容、约束和路由信号，选择具体模型并以统一流式协议返回结果。
+## 1. Position
 
-## 2. 定性需求
+Relay scheduling is an external project used by the Relay agent. It receives model-call content, constraints, and routing signals, selects a concrete model, and returns results through one streaming protocol.
 
-调度侧需要维护并综合考虑：
+## 2. Qualitative requirements
 
-- 任务类型、侧重权重和难度信号；
-- 不同 benchmark 下的模型表现；
-- 模型能力与用户可见的强度等级；
-- 模型实际成本；
-- 可用性、上下文、工具调用等能力约束；
-- 后台主动运营策略，例如合作模型的流量倾向。
+Scheduling maintains and considers:
 
-具体候选过滤、归一化、权重、公式和运营边界由调度项目自行设计，本项目不作规定。
+- task type, emphasis weights, and difficulty signals;
+- model performance across benchmarks;
+- model capability and user-visible strength tiers;
+- actual model cost;
+- availability, context, tool-call, and other capability constraints;
+- active backend operating policy, including preferred traffic for partner models.
 
-## 3. 信号来源
+The scheduling project owns candidate filtering, normalization, weights, formulas, and operating limits; this project does not specify them.
 
-| 调用场景 | 信号来源 | 调度侧要求 |
+## 3. Signal sources
+
+| Call site | Signal source | Scheduling requirement |
 |---|---|---|
-| 每次 chat 请求 | 调度侧小模型 | 先生成信号，再选择模型 |
-| 每次 work 启动 | 调度侧小模型 | 先生成信号，再选择主模型 |
-| Subagent | 主 Agent | 校验所带信号后直接选型，不二次分类 |
+| Each Chat request | Scheduling-side small model | Generate a signal, then select a model |
+| Each Work start | Scheduling-side small model | Generate a signal, then select the primary model |
+| Subagent | Primary agent | Validate the supplied signal and select directly without reclassification |
 
-信号结构见 [`../agent/routing-signals.md`](../agent/routing-signals.md)。
+See [`../agent/routing-signals.md`](../agent/routing-signals.md) for signal structure.
 
-## 4. 强度与计费
+## 4. Strength and pricing
 
-- 具体模型映射到用户可见的强度等级。
-- 强度等级对应价格梯度。
-- 调度侧在调用开始时返回实际强度等级和价格版本，在结束时返回可核对用量。
-- 强度档数、套餐关系和独立思考力度尚未确定，接口使用稳定 ID 避免提前固化枚举。
+- Concrete models map to user-visible strength tiers.
+- Strength tiers map to price gradients.
+- Scheduling returns the actual strength tier and pricing version at call start and reconcilable usage at completion.
+- Tier count, plan relationship, and independent reasoning effort remain undecided, so the interface uses stable IDs rather than premature enums.
 
-## 5. 与 Agent 的边界
+## 5. Agent boundary
 
-agent 不参与：
+The agent does not participate in:
 
-- 模型训练或路由训练；
-- benchmark 维护；
-- 模型池、成本和运营权重管理；
-- 路由质量遥测与毛利统计；
-- 验证失败后的自动换模型级联。
+- model or routing training;
+- benchmark maintenance;
+- model-pool, cost, or operating-weight management;
+- routing-quality telemetry or margin reporting;
+- automatic model cascades after verification failure.
 
-调度侧也不负责 Work 状态、工具执行、文件权限、本地验证或长期记忆。
+Scheduling does not own Work state, tool execution, file permissions, local verification, or long-term memory.

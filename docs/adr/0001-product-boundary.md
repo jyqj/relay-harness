@@ -1,22 +1,24 @@
-# ADR-0001：傻瓜式通用 Agent 与系统边界
+# ADR-0001: Simple General-purpose Agent and System Boundary
 
-- **状态**：部分被 0005 取代（产品边界有效；实现语言决定失效）
-- **日期**：2026-08-20
+English | [中文](0001-product-boundary.zh.md)
+
+- **Status:** Partially superseded by 0005 (product boundary remains valid; implementation-language decision does not)
+- **Date:** 2026-08-20
 
 ## Context
 
-目标用户不应被要求理解 Prompt 工程、项目结构、具体模型或 Agent 内部工作流。产品需要把复杂性收进系统，同时将模型路由与 agent 产品独立演进。
+Target users must not need to understand prompt engineering, project structure, concrete models, or internal agent workflows. The product must absorb that complexity while allowing model routing and the agent product to evolve independently.
 
 ## Decision
 
-1. Relay 定位为零学习成本、傻瓜式可用的通用 Agent，支持 chat 与 work。
-2. work 是一次独立任务，不要求创建 Project。
-3. agent 侧由本项目完整设计；实现语言由 [ADR-0005](0005-adopt-ts-harness-runtime.md) 决定为 TypeScript Relay Harness。本条原 Rust 选择不再有效。
-4. 中转调度侧是独立项目；本项目只定义定性需求和版本化接口，不设计其内部算法。
-5. 模型路由是基础设施能力，不作为用户必须理解的产品流程。
+1. Relay is a zero-learning-curve, simple general-purpose agent with Chat and Work.
+2. Work is an independent task and does not require creating a Project.
+3. This project fully designs the agent side; [ADR-0005](0005-adopt-ts-harness-runtime.md) selects TypeScript Relay Harness as its implementation. The original Rust choice in this item is no longer valid.
+4. Relay scheduling is an independent project. This project defines qualitative requirements and a versioned interface, not its internal algorithms.
+5. Model routing is infrastructure rather than a product flow users must understand.
 
 ## Consequences
 
-- 产品文档优先描述用户体验，再描述内部模块。
-- 文件、记忆、Prompt Enhancing 都必须在无项目前提下成立。
-- 调度内部的 benchmark、成本和运营权重不进入本项目的实现设计。
+- Product documentation describes the user experience before internal modules.
+- Files, memory, and Prompt Enhancement must work without a Project prerequisite.
+- Scheduling benchmarks, costs, and operating weights do not enter this project's implementation design.

@@ -1,77 +1,79 @@
-# 产品体验：傻瓜式通用 Agent
+# Product Experience: A Simple General-purpose Agent
 
-> 当前实现状态与证据见 [`../feature-status.json`](../feature-status.json)。本文维护产品语义，不承担完成度清单。
+English | [中文](product-experience.zh.md)
 
-## 1. 默认入口
+> See [`../feature-status.json`](../feature-status.json) for current implementation status and evidence. This page owns product semantics, not a completion inventory.
 
-主界面只有用户能够直接理解的入口：
+## 1. Default entry
 
-- 输入框；
-- 文件引入；
-- `Enhance`；
-- `发送` 或 `开始 Work`。
+The main interface exposes only entries users can understand directly:
 
-模型、路由信号、Subagent、上下文预算和工具权限均不在默认界面暴露。高级设置按需展开。
+- input box;
+- file introduction;
+- `Enhance`;
+- `Send` or `Start Work`.
 
-## 2. Prompt Enhancing
+Models, routing signals, subagents, context budgets, and tool permissions do not appear in the default UI. Advanced settings expand on demand.
 
-用户先在输入框中写草稿，在**尚未提交**时主动点击 `Enhance`。Relay 基于当前合理上下文优化草稿，并将结果返回输入框：
+## 2. Prompt Enhancement
 
-1. 不自动触发；
-2. 不自动提交或开始执行；
-3. 用户可以继续编辑、撤销或提交；
-4. 不改变用户没有表达的核心目标；
-5. 无法确认的内容保留为空或写成待确认条件，不擅自编造。
+A user writes a draft and explicitly clicks `Enhance` **before submission**. Relay improves it from reasonable current context and presents the result for review:
 
-合理上下文包括当前会话、当前 work 已引入的文件及摘要、与当前草稿相关且允许使用的长期记忆，以及 Relay 当前能做什么。详细契约见 [`../agent/prompt-enhancing.md`](../agent/prompt-enhancing.md)。
+1. It never starts automatically.
+2. It never submits or starts execution automatically.
+3. The user may continue editing, undo, or submit.
+4. It does not change a core goal the user did not express.
+5. Unconfirmed content remains empty or becomes a condition requiring confirmation rather than being invented.
+
+Reasonable context includes the current session, files and summaries introduced to current Work, relevant permitted long-term memory, and Relay's current capabilities. See [`../agent/prompt-enhancing.md`](../agent/prompt-enhancing.md) for the detailed contract.
 
 ## 3. Chat
 
-chat 用于直接问答、讨论和形成需求：
+Chat supports direct questions, discussion, and forming a request:
 
-- 保持当前会话连续性；
-- 可以引入文件；
-- 可以用 `Enhance` 优化尚未提交的输入；
-- 用户可把已经形成的需求转成 work，但不要求重新填写项目资料。
+- preserve current-session continuity;
+- introduce files;
+- use `Enhance` on unsent input;
+- turn a formed request into Work without re-entering Project metadata.
 
 ## 4. Work
 
-work 的用户心智是“把这件事完成”，不是“创建项目”：
+Work means “complete this,” not “create a project”:
 
-- 一个目标对应一次 work；
-- 文件可在开始前或执行中加入；
-- Relay 显示人话进度、需要确认的动作、产物和未完成项；
-- 长任务可以退出后恢复；
-- work 结束后，用户可以继续追问、修订或基于结果创建新 work。
+- one goal creates one Work;
+- files may be added before or during execution;
+- Relay shows plain-language progress, confirmation needs, artifacts, and unfinished items;
+- a user can leave and later recover long-running Work;
+- after Work ends, the user may ask follow-ups, revise it, or create new Work from its result.
 
-## 5. 文件体验
+## 5. File experience
 
-- 用户可以拖入或选择文件/文件夹，不需要理解工作区配置。
-- 界面持续展示当前 work 可访问的资料清单。
-- 大文件先解析结构和摘要，按需读取正文。
-- 输入资料与 Relay 生成的产物分开展示。
-- 覆盖原文件、删除、外发或发布前必须明确确认。
+- Users drag or select files/folders without understanding workspace configuration.
+- The UI continuously shows material the current Work may access.
+- Large files expose structure and summaries first and bodies on demand.
+- Input material and Relay-generated artifacts appear separately.
+- Overwriting sources, deletion, external transfer, and publication require explicit confirmation.
 
-详细设计见 [`../agent/work-and-files.md`](../agent/work-and-files.md)。
+See [`../agent/work-and-files.md`](../agent/work-and-files.md) for detailed design.
 
-## 6. 长期记忆
+## 6. Long-term memory
 
-长期记忆应帮助用户少重复解释，而不是制造不可见的系统行为：
+Long-term memory reduces repeated explanation without creating invisible behavior:
 
-- 用户能够查看、修改和删除；
-- 用户可以明确要求“记住”或“不要记住”；
-- 使用记忆时应能说明引用了哪类长期信息；
-- 与当前任务无关的记忆不得注入；
-- 当前由本地治理型 Memory 与 Memory Center 实现；多设备同步仍属后续范围。
+- users can view, edit, and delete it;
+- users can explicitly say “remember” or “do not remember”;
+- memory use explains the category of long-term information referenced;
+- memory unrelated to the current task cannot be injected;
+- local governed Memory and Memory Center implement current behavior; multi-device sync remains later scope.
 
-## 7. 进度、确认与失败
+## 7. Progress, confirmation, and failure
 
-- 进度使用用户语言，例如“正在读取 3 个文件”“正在核对结果”，不展示内部类名。
-- 普通可恢复错误由系统自行处理。
-- 真正阻塞时一次只问一个关键问题。
-- 高影响动作说明对象、影响和是否可撤销后再确认。
-- 交付必须区分：已完成、部分完成、未验证和需要用户处理。
+- Progress uses user language such as “reading 3 files” or “checking results,” not internal class names.
+- The system handles ordinary recoverable errors internally.
+- When truly blocked, ask one critical question at a time.
+- Explain the target, impact, and reversibility before confirming a high-impact action.
+- Delivery distinguishes completed, partial, unverified, and user-action-required results.
 
-## 8. 渐进式能力
+## 8. Progressive capability
 
-模板、模型强度、权限策略、工具详情和运行日志可以提供高级入口，但不得阻塞默认流程。傻瓜式不是减少能力，而是把复杂能力放在正确层级。
+Templates, model strength, permission policy, tool details, and run logs may have advanced entries without blocking the default flow. Simplicity does not remove capability; it places complexity at the correct level.

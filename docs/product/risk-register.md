@@ -1,15 +1,16 @@
-# 风险清单
+# Risk Register
 
-> 当前均为设计阶段风险。状态不使用“已缓解”冒充实现完成。
+English | [中文](risk-register.zh.md)
 
-| 编号 | 风险 | 当前设计应对 | 状态 | 责任人 |
+> These product risks remain open. A status does not claim mitigation without implementation evidence.
+
+| ID | Risk | Current design response | Status | Owner |
 |---|---|---|---|---|
-| R1 | “傻瓜式”变成隐藏关键行为，用户不知道系统做了什么 | 高影响动作确认；结果与未完成项明确交付 | 开放 | `[待指派]` |
-| R2 | Prompt Enhancing 改写用户真实意图 | 仅按钮触发、不自动提交、可撤销、不编造目标 | 开放 | `[待指派]` |
-| R3 | 无项目 work 导致文件访问范围失控 | 显式 File Context、持续展示清单、默认最小访问 | 开放 | `[待指派]` |
-| R4 | 长期记忆错误、过期或越界使用 | 可查看/修改/删除；相关性与保鲜机制待专项设计 | 开放 | `[待指派]` |
-| R5 | 外部调度接口不稳定阻塞 agent | 契约版本化、SSE 错误语义、超时和取消 | 开放 | `[待指派]` |
-| R6 | 强度梯度与计费让普通用户困惑 | 计费方案未定稿；必须调用前可理解、调用后可核对 | 开放 | `[待指派]` |
-| R7 | 本地验证不足导致错误结果被当成完成 | Agent Loop 强制验证计划与诚实终态 | 开放 | `[待指派]` |
-| R8 | 为追求自动化而频繁打扰用户 | 普通错误自动恢复；只在真正阻塞或高影响动作时询问 | 开放 | `[待指派]` |
-
+| R1 | “Simple” hides critical behavior and users cannot tell what happened | Confirm high-impact actions; deliver results and unfinished items explicitly | Open | `[Unassigned]` |
+| R2 | Prompt Enhancement changes the user's real intent | Explicit button only, no automatic submission, undo, and no invented goal | Open | `[Unassigned]` |
+| R3 | Project-free Work loses control of file access | Explicit File Context, continuously visible manifest, and least access by default | Open | `[Unassigned]` |
+| R4 | Long-term memory is wrong, stale, or used out of scope | View/edit/delete plus relevance and freshness governance | Open | `[Unassigned]` |
+| R5 | Unstable external scheduling blocks the agent | Versioned contract, SSE errors, timeout, and cancellation | Open | `[Unassigned]` |
+| R6 | Strength gradients and pricing confuse ordinary users | Pricing remains undecided; it must be understandable before and reconcilable after a call | Open | `[Unassigned]` |
+| R7 | Weak local verification treats an incorrect result as complete | Agent loop requires verification planning and honest terminal states | Open | `[Unassigned]` |
+| R8 | Automation interrupts the user too often | Recover ordinary errors automatically; ask only when blocked or before high-impact actions | Open | `[Unassigned]` |

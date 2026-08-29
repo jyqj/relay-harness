@@ -1,92 +1,94 @@
-# Relay 领域上下文
+# Relay Domain Context
 
-> 本文是产品定义、系统边界和领域术语的权威入口。
+English | [中文](CONTEXT.zh.md)
 
-## 产品定义
+> This document is the authoritative entry for the product definition, system boundaries, and domain terminology.
 
-Relay 是一个**零学习成本、傻瓜式可用的通用 Agent**。用户只需要：
+## Product definition
 
-1. 用自然语言输入需求；
-2. 需要时引入文件、文件夹或其他资料；
-3. 查看结果，并只在高影响动作前作必要确认。
+Relay is a **zero-learning-curve, simple general-purpose agent**. Users only need to:
 
-Relay 负责理解上下文、补全任务、调用工具、管理长任务、验证结果和组织交付。用户不需要先学习 Prompt 工程、创建项目、选择具体模型或理解 Agent 内部模块。
+1. describe a need in natural language;
+2. add files, folders, or other material when needed;
+3. review the result and confirm only high-impact actions.
 
-## 两种使用模式
+Relay understands context, completes task structure, calls tools, manages long-running work, verifies results, and organizes delivery. Users do not need to learn prompt engineering, create a project, select a specific model, or understand internal agent modules first.
 
-| 模式 | 用户心智 | 系统行为 |
+## Two usage modes
+
+| Mode | User mental model | System behavior |
 |---|---|---|
-| **chat** | 直接对话 | 保持连续上下文，回答、解释或协助形成需求 |
-| **work** | 把一件事交给 Relay 完成 | 建立一次独立任务，执行、验证、恢复并交付产物 |
+| **chat** | Talk directly | Preserve continuous context to answer, explain, or help form a request |
+| **work** | Give Relay something to complete | Create an independent task that executes, verifies, recovers, and delivers artifacts |
 
-work **没有 Project 前置概念**。一次 work 自带自己的目标、对话、文件上下文、运行状态和产物；用户可以在开始前或执行中引入文件。
+Work has **no Project prerequisite**. Each Work owns its goal, conversation, file context, run state, and artifacts; users may add files before or during execution.
 
-## Prompt Enhancing
+## Prompt Enhancement
 
-用户在输入框中写好草稿、尚未提交时，可以主动点击 **Enhance** 按钮。系统根据当前合理上下文生成更清晰、可执行的草稿并回填输入框：
+Before submitting a draft in the input box, a user may explicitly click **Enhance**. The system uses the reasonable current context to generate a clearer, executable draft and returns it to the input box:
 
-- 不自动触发；
-- 不自动提交；
-- 用户可以继续编辑、撤销或直接提交；
-- 不读取与当前请求无关的记忆和文件；
-- 不替用户编造目标。
+- it never starts automatically;
+- it never submits automatically;
+- the user may continue editing, undo, or submit directly;
+- it does not read memory or files unrelated to the current request;
+- it does not invent a goal for the user.
 
-详细契约见 [`agent/prompt-enhancing.md`](agent/prompt-enhancing.md)。
+See [`agent/prompt-enhancing.md`](agent/prompt-enhancing.md) for the detailed contract.
 
-## 系统边界
+## System boundaries
 
-### Agent 侧（本项目重点）
+### Agent side (this project's focus)
 
-TypeScript 实现（Relay Harness，见 [ADR-0005](adr/0005-adopt-ts-harness-runtime.md)；运行时代码在 [`relay-harness/`](../relay-harness/README.md)），负责：
+The TypeScript implementation, Relay Harness ([ADR-0005](adr/0005-adopt-ts-harness-runtime.md)), lives directly at the [repository root](../README.md) and owns:
 
-- chat/work 会话与 Agent Loop；
-- Prompt Enhancing 的上下文组织；
-- Work、文件引入和产物管理；
-- 计划、工具、Skills、Subagent；
-- 本地状态、恢复、权限门和结果验证；
-- 长期记忆的产品能力。
+- Chat/Work sessions and the agent loop;
+- Prompt Enhancement context assembly;
+- Work, file introduction, and artifact management;
+- plans, tools, skills, and subagents;
+- local state, recovery, permission gates, and result verification;
+- the governed long-term memory product capability.
 
-### 中转调度侧（外部项目）
+### Relay scheduling side (external project)
 
-负责模型分级、模型信息、成本信息、benchmark 信息、入口信号生成和具体模型选择。本项目只规定：
+The scheduling project owns model tiers, model information, costs, benchmark information, entry-signal generation, and concrete model selection. This project specifies only:
 
-- agent 需要调度侧提供什么能力；
-- chat/work/Subagent 如何提交请求；
-- HTTP/JSON + SSE 接口；
-- 用户可见的模型强度等级和计费信息如何回传。
+- the capabilities the agent needs from scheduling;
+- how Chat, Work, and subagents submit requests;
+- the HTTP/JSON + SSE interface;
+- how user-visible model-strength tiers and pricing information return.
 
-本项目不规定调度侧的评分公式、权重、模型池实现或运营策略。
+This project does not specify scheduling scores, weights, model-pool implementation, or operating policy.
 
-## 设计原则
+## Design principles
 
-1. **用户说人话，系统补结构**。
-2. **默认路径最简单，高级能力渐进展开**。
-3. **Work 是任务，不是项目容器**。
-4. **文件是显式上下文，不是隐式全盘扫描**。
-5. **工具执行成功不等于任务完成，本地验证后才能交付**。
-6. **状态外置、任务可恢复**。
-7. **模型路由属于调度侧，agent 不参与训练或路由优化**。
-8. **高影响动作可确认、可审计，能撤销的优先可撤销**。
+1. **Users speak naturally; the system supplies structure.**
+2. **The default path is simplest; advanced capability appears progressively.**
+3. **Work is a task, not a project container.**
+4. **Files are explicit context, not an implicit whole-device scan.**
+5. **A successful tool execution is not task completion; delivery follows local verification.**
+6. **State is externalized and tasks are recoverable.**
+7. **Model routing belongs to scheduling; the agent does not train or optimize routing.**
+8. **High-impact actions are confirmable and auditable; prefer reversible actions where possible.**
 
-## 术语表
+## Glossary
 
-| 术语 | 定义 |
+| Term | Definition |
 |---|---|
-| chat | 连续对话模式，不进入完整的执行型 Agent Loop |
-| work | 一次可执行、可恢复、可交付的独立任务；不要求创建项目 |
-| Prompt Enhancing | 用户提交前主动调用的草稿优化能力 |
-| Work Context | 当前 work 的目标、对话、文件清单、状态与产物 |
-| File Context | 用户显式引入当前 chat 或 work 的文件、文件夹及其元数据、摘要和访问边界 |
-| Long-term Memory | 跨会话保留的用户信息与偏好；产品需求已确定，实现路径待讨论 |
-| Agent Loop | 理解 → 计划 → 行动 → 观察 → 本地验证 → 交付/恢复 |
-| Subagent | 主 Agent 为独立子任务创建的受限执行单元 |
+| chat | Continuous conversation mode that does not enter the full execution-oriented agent loop |
+| work | An independent executable, recoverable, deliverable task that requires no Project |
+| Prompt Enhancement | User-triggered draft improvement before submission |
+| Work Context | The current Work's goal, conversation, file manifest, state, and artifacts |
+| File Context | Files and folders explicitly added to the current Chat or Work, with their metadata, summaries, and access boundaries |
+| Long-term Memory | Governed user information and preferences retained across sessions |
+| agent loop | Understand → plan → act → observe → verify locally → deliver/recover |
+| subagent | A constrained execution unit created by the primary agent for an independent subtask |
 | Routing Signal | `task_type + emphasis weights + difficulty + confidence + source` |
-| 模型强度等级 | 用户可见的模型能力与价格梯度；具体模型名仍由调度侧管理 |
-| 中转调度侧 | 独立项目；根据信号、模型能力、benchmark、成本和后台策略选择模型 |
-| 本地验证 | Agent Loop 内用于确认任务结果的保底机制，不上传、不训练、不参与路由 |
+| Model-strength tier | User-visible capability and price gradient; concrete model names remain scheduling-owned |
+| Relay scheduling side | An independent project that selects models from signals, capability, benchmarks, cost, and backend policy |
+| Local verification | An agent-loop safeguard that confirms task results without upload, training, or routing participation |
 
-## 当前阶段
+## Current stage
 
-运行时已采用 [`relay-harness/`](../relay-harness/README.md)（TypeScript Harness，[ADR-0005](adr/0005-adopt-ts-harness-runtime.md)）。默认 composition 已交付 Agent Loop、恢复、工具、Subagent、Chat/Work/Library 产品壳、显式 Prompt Enhancement、本地 Context Engine、治理型 Memory、Code Index、MCP/Skills 目录，以及普通用户安全默认权限。
+The runtime is the root TypeScript Harness defined by [ADR-0005](adr/0005-adopt-ts-harness-runtime.md). Default composition ships the agent loop, recovery, tools, subagents, the Chat/Work/Library product shell, explicit Prompt Enhancement, the local Context Engine, governed Memory, Code Index, MCP/skill directories, and ordinary-user-safe permissions.
 
-当前未交付的 Relay 专属能力是外部中转调度客户端、用户可见的模型强度与计费契约。功能状态不在本文重复维护；以机器可读 [`feature-status.json`](feature-status.json) 及其 CI 证据门禁为唯一权威。
+Relay-specific capabilities that remain unshipped are the external scheduling client and the user-visible model-strength and pricing contract. This document does not duplicate feature status; the machine-readable [`feature-status.json`](feature-status.json) and its CI evidence verifier are the sole authority.

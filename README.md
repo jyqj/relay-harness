@@ -1,26 +1,70 @@
-# Relay
+# Relay Harness
 
-Relay 是一个面向普通用户的通用 Agent：用户只需用自然语言描述需求或引入文件，Relay 负责补全上下文、执行任务、验证结果并交付。
+English | [中文](README.zh.md)
 
-产品原则：
+Relay Harness (`rlh`) is an open-source general-purpose agent harness for people who want to describe a goal in ordinary language, add relevant files when needed, and receive a verified result without learning prompt engineering or agent internals.
 
-- **傻瓜式可用**：不要求用户理解 Prompt、项目、模型或 Agent 工作流。
-- **chat + work**：chat 用于对话，work 用于持续执行任务。
-- **无项目心智**：work 不要求先建项目；文件与文件夹作为一次 work 的显式上下文引入。
-- **Prompt Enhancing**：用户提交前可主动点击按钮，基于当前上下文优化草稿，但不会自动提交。
-- **长期记忆**：记住用户真正需要长期保留的信息；具体实现路径待专项讨论。
-- **模型路由外置**：agent 只消费中转调度项目的接口，不设计其内部路由算法。
+Its architecture treats **everything as a plugin** and is powered by [Cordis](https://github.com/cordiverse/cordis), whose design is described in [_A Programming Paradigm for Spatiotemporal Composability_](https://github.com/cordiverse/paper).
 
-## 仓库结构与事实来源
+## Product experience
 
-- 仓库根目录是 GitHub、产品文档和治理入口；`.github/`、`docs/feature-status.json` 与 `scripts/verify-feature-status.mjs` 只在根目录维护。
-- [`relay-harness/`](relay-harness/README.md) 是当前 TypeScript 实现 monorepo。源码尚未物理 flatten，但所有 CI、E2E、文档和发布 workflow 都从仓库根发现，并显式在该目录执行。
-- 产品定位和功能状态以根 [`docs/`](docs/README.md) 为权威；运行时类型、包和生成目录以 [`relay-harness/docs/architecture.md`](relay-harness/docs/architecture.md) 及其 subsystem 目录为权威。
-- [机器可读功能状态](docs/feature-status.json) 是“已发布／部分完成／计划中”声明的唯一状态表；CI 会核对默认 composition、Remote、UI、E2E 与文档证据。
+- **Simple by default:** Chat, Work, and Library provide the ordinary product path; advanced implementation controls stay out of the way until requested.
+- **Chat and Work:** Chat supports continuous conversation. Work owns an independent task, execution state, questions, files, outputs, verification, and recovery without requiring a Project.
+- **Explicit context:** users add files and folders to the current Chat or Work instead of granting an implicit whole-device scan.
+- **Prompt Enhancement:** users may improve an unsent draft from its current context, review the diff and sources, accept or undo it, and remain in control of submission.
+- **Local governance:** permission, memory, context evidence, checkpoints, and verification remain explicit and auditable.
 
-- [Harness 实现](relay-harness/README.md) — Relay Harness（rlh）agent runtime 与 CLI/桌面/Web 壳层（[ADR-0005](docs/adr/0005-adopt-ts-harness-runtime.md)）
-- [文档地图](docs/README.md)
-- [领域上下文](docs/CONTEXT.md)
-- [产品体验](docs/product/product-experience.md)
-- [Agent 架构](docs/agent/overview.md)
-- [当前架构决策](docs/adr/README.md)
+Current shipped, partial, and planned status is defined only by the machine-readable [feature status](docs/feature-status.json), whose verifier checks default composition, Remote/API, UI, e2e, and documentation evidence.
+
+## Developer preview
+
+Relay Harness is currently in _developer preview_ and is iterating rapidly. **THERE WILL BE COMPATIBILITY-BREAKING CHANGES.**
+
+## Run
+
+### Run from `npm`
+
+Install `Node.js`, then run:
+
+```sh
+npx @relay-harness/rlh web
+```
+
+The command starts the Web UI at `http://127.0.0.1:3080` by default and opens it in the default browser for a local launch. An SSH launch only prints the host URL because the SSH client or editor owns the local forwarded address. Pass `--no-open` to run the server without opening a browser. See the [Web UI guide](docs/user/guide/index.md).
+
+### Run from source
+
+To run from a repository checkout:
+
+```sh
+git clone https://github.com/jyqj/relay-harness.git
+cd relay-harness
+pnpm install
+pnpm run build
+pnpm rlh web
+```
+
+`pnpm run build` prepares the repository artifacts. `pnpm rlh web` uses those built artifacts without rebuilding.
+
+## Repository and documentation
+
+The TypeScript monorepo lives directly at the Git root. `apps/` contains the CLI, Web, and Desktop applications; `packages/` contains the plugin runtime; `.github/` is the only GitHub automation authority; and `docs/` contains both product and implementation documentation.
+
+- Start with the [documentation map](docs/README.md) and [domain context](docs/CONTEXT.md).
+- Read the current [architecture](docs/architecture.md) and [subsystem references](docs/subsystems/README.md) for implementation contracts.
+- Read [CONTRIBUTING.md](CONTRIBUTING.md) and the [development guide](docs/development.md) before changing the repository.
+- Agents follow [AGENTS.md](AGENTS.md).
+
+## Community and support
+
+- Submit feedback or bug reports through [GitHub Discussions](https://github.com/jyqj/relay-harness/discussions).
+- Add the [`rlh-plugin`](https://github.com/topics/rlh-plugin) topic to plugin repositories for discoverability.
+- Join the <a href="https://discord.gg/Ycq5dCaS4">Relay Harness Discord community</a>.
+
+## License
+
+[MIT](LICENSE)
+
+Relay Harness is a rebrand of DeepSeek Harness, so [LICENSE](LICENSE) keeps the upstream copyright notice the MIT terms require.
+
+Third-party dependencies and their licenses are disclosed in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

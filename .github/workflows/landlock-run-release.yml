@@ -23,7 +23,7 @@ concurrency:
 
 defaults:
   run:
-    working-directory: relay-harness/native/landlock-run
+    working-directory: native/landlock-run
 
 jobs:
   matrix:
@@ -49,13 +49,13 @@ jobs:
 
       - uses: pnpm/action-setup@v4
         with:
-          package_json_file: relay-harness/package.json
+          package_json_file: package.json
 
       - uses: actions/setup-node@v4
         with:
           node-version: 24
           cache: pnpm
-          cache-dependency-path: relay-harness/pnpm-lock.yaml
+          cache-dependency-path: pnpm-lock.yaml
 
       - name: Install dependencies
         run: pnpm install --filter @relay-harness/node-addon-landlock-run-workspace... --frozen-lockfile
@@ -75,7 +75,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact }}
-          path: relay-harness/native/landlock-run/${{ matrix.dir }}/bin/*
+          path: native/landlock-run/${{ matrix.dir }}/bin/*
           if-no-files-found: error
           retention-days: 7
 
@@ -88,13 +88,13 @@ jobs:
 
       - uses: pnpm/action-setup@v4
         with:
-          package_json_file: relay-harness/package.json
+          package_json_file: package.json
 
       - uses: actions/setup-node@v4
         with:
           node-version: 24
           cache: pnpm
-          cache-dependency-path: relay-harness/pnpm-lock.yaml
+          cache-dependency-path: pnpm-lock.yaml
 
       - name: Install dependencies
         run: pnpm install --filter @relay-harness/node-addon-landlock-run-workspace... --frozen-lockfile
@@ -111,7 +111,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           pattern: prebuild-*
-          path: relay-harness/native/landlock-run/.release/prebuild-artifacts
+          path: native/landlock-run/.release/prebuild-artifacts
 
       - name: Assemble and verify prebuilds
         run: node ./scripts/assemble-prebuilds.mjs .release/prebuild-artifacts
@@ -133,7 +133,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: npm-tarballs
-          path: relay-harness/native/landlock-run/dist/npm/*
+          path: native/landlock-run/dist/npm/*
           if-no-files-found: error
           retention-days: 7
 
@@ -162,7 +162,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: npm-tarballs
-          path: relay-harness/native/landlock-run/dist/npm
+          path: native/landlock-run/dist/npm
 
       - name: Configure npm token fallback
         env:

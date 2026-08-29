@@ -1,28 +1,30 @@
-# 产品与工程路线图
+# Product and Engineering Roadmap
 
-> 当前完成事实由 [`../feature-status.json`](../feature-status.json) 维护；本页只描述后续顺序，不重复伪造“已实现”清单。
+English | [中文](roadmap.zh.md)
 
-## 已交付产品基线
+> [`../feature-status.json`](../feature-status.json) owns current completion facts. This page describes sequence without duplicating a fabricated implementation inventory.
 
-Relay Harness 已提供普通用户安全默认值、Chat / Work / Library 产品壳、显式 Prompt Enhancement、本地 Context Engine、治理型 Memory、Code Index，以及 MCP/Skills 扩展目录。每项证据由 feature-status 门禁连接到默认 composition、Remote、UI、E2E 与文档。
+## Shipped product baseline
 
-## 下一阶段：Relay 专属路由
+Relay Harness provides ordinary-user-safe defaults, the Chat/Work/Library product shell, explicit Prompt Enhancement, local Context Engine, governed Memory, Code Index, and MCP/skill extension directories. The feature-status verifier connects each claim to default composition, Remote, UI, e2e, and documentation evidence.
 
-- 实现外部中转调度 HTTP/JSON + SSE 客户端；
-- 固化 chat、work 与 Subagent 的 Routing Signal 契约；
-- 提供用户可见的模型强度和计费说明，不暴露具体供应商路由细节；
-- 用契约夹具覆盖正常流、断流、取消、超时与非法信号。
+## Next stage: Relay-specific routing
 
-## 后续阶段：产品深化
+- Implement the external scheduling HTTP/JSON + SSE client;
+- stabilize the Routing Signal contract for Chat, Work, and subagents;
+- provide user-visible model-strength and pricing disclosure without exposing provider-routing details;
+- cover normal streams, interruption, cancellation, timeout, and invalid signals with contract fixtures.
 
-- Work 与 Library 从紧凑侧边栏投影深化为独立中心栏路由；
-- 文件引入、产物、审批、问题与恢复获得更完整的普通用户叙事；
-- 多设备同步、团队协作和共享资料；
-- 记忆导入、导出与多设备治理；
-- 更多办公和专业 Skills、浏览器及第三方连接器。
+## Later stage: product depth
 
-## 阶段门
+- Deepen Work and Library from compact sidebar projections into dedicated center-column routes;
+- give files, artifacts, approvals, questions, and recovery a more complete ordinary-user narrative;
+- multi-device synchronization, team collaboration, and shared material;
+- memory import, export, and multi-device governance;
+- more office/professional skills, browser capability, and third-party connectors.
 
-- 外部路由进入 `shipped` 前，必须同时具备默认 composition、Remote/API、UI、真实或契约 E2E 与文档证据。
-- 新手用户验收必须证明默认 Simple mode 不要求理解模型、preset、插件、轨迹或原始日志。
-- 任何源码 flatten 只在干净专用迁移窗口进行，并保留 GitHub workflow、包路径和发布历史的可验证连续性。
+## Stage gates
+
+- External routing cannot become `shipped` without default composition, Remote/API, UI, real or contract e2e, and documentation evidence.
+- New-user acceptance proves that default Simple mode does not require understanding models, presets, plugins, trajectories, or raw logs.
+- Future layout changes preserve root workflow discovery, package paths, release continuity, and the flat tracked-tree invariant.

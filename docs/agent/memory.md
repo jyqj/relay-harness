@@ -1,47 +1,49 @@
-# 长期记忆：已实现治理与产品边界
+# Long-term Memory: Implemented Governance and Product Boundary
 
-> 当前实现位于 `relay-harness/packages/memory/`，由本地存储、治理状态、outcome reconciliation、Context contributor 与 Memory Center 组成。确切实现状态见 [`../feature-status.json`](../feature-status.json)，运行时协议见 [`../../relay-harness/docs/subsystems/memory.md`](../../relay-harness/docs/subsystems/memory.md)。
+English | [中文](memory.zh.md)
 
-## 1. 目标
+> The current implementation lives under [`packages/memory/`](../../packages/memory/README.md) and comprises local storage, governance states, outcome reconciliation, a Context contributor, and Memory Center. See [`../feature-status.json`](../feature-status.json) for exact status and [`../subsystems/memory.md`](../subsystems/memory.md) for runtime protocols.
 
-长期记忆让用户少重复解释，并让 Relay 的行为逐渐贴合用户，而不是把全部聊天历史永久保存。
+## 1. Goal
 
-## 2. 需要支持的记忆
+Long-term memory reduces repeated explanation and lets Relay adapt to the user without retaining every conversation forever.
 
-- 用户明确要求记住的信息；
-- 稳定偏好，例如语言、格式和常用交付方式；
-- 经用户确认的个人背景或长期约束；
-- 对后续任务确有价值的持续事项；
-- 用户明确禁止记忆或要求忘记的内容。
+## 2. Memory categories
 
-work 不存在 Project，因此初版不设计“项目记忆”作为产品前置概念。文件和一次任务的状态归 Work Context 管理，不自动升级为长期记忆。
+- Information the user explicitly asks Relay to remember;
+- stable preferences such as language, format, and delivery method;
+- user-confirmed background or long-term constraints;
+- persistent matters that genuinely help later tasks;
+- explicit prohibitions on remembering or requests to forget.
 
-## 3. 用户控制
+Work has no Project, so the initial product does not introduce “project memory” as a prerequisite. File and task state belongs to Work Context and does not automatically become long-term memory.
 
-- 可查看、搜索、编辑和删除；
-- 支持“记住这个”“不要记住这个”“忘掉这个”；
-- 支持临时会话或本次不使用记忆；
-- 使用记忆影响回答或 Prompt Enhancing 时，可查看使用了哪类信息；
-- 删除后不得继续从派生缓存中使用。
+## 3. User control
 
-## 4. 使用边界
+- View, search, edit, and delete;
+- support “remember this,” “do not remember this,” and “forget this”;
+- support temporary sessions or not using memory for this request;
+- disclose the category of memory that affects an answer or Prompt Enhancement;
+- stop using deleted information from derived caches.
 
-- 只注入与当前请求相关的记忆；
-- 不把推测当成用户事实；
-- 过期或冲突内容不能静默覆盖新信息；
-- 敏感信息默认不形成长期记忆；
-- 不因记忆存在而扩大文件或工具权限；
-- 记忆不用于模型训练或 agent 侧路由优化。
+## 4. Use boundaries
 
-## 5. 与 Prompt Enhancing 的关系
+- Inject only memory relevant to the current request;
+- never treat an inference as a user fact;
+- never let expired or conflicting content silently override newer information;
+- do not create long-term memory from sensitive information by default;
+- do not expand file or tool permission because memory exists;
+- do not use memory for model training or agent-side routing optimization.
 
-Prompt Enhancing 可以使用相关、允许且可信的长期记忆补足已知偏好与约束，但不得利用记忆扩大用户未表达的目标。增强结果应保留可追溯的记忆类别引用。
+## 5. Relationship to Prompt Enhancement
 
-## 6. 后续范围
+Prompt Enhancement may use relevant, permitted, trusted long-term memory to supply known preferences and constraints, but it cannot expand beyond the user's expressed goal. The enhancement trace retains attributable memory-category references.
 
-- 参考主流 Web 产品的长期记忆交互与控制方式；
-- 自动记忆策略的进一步调优；
-- 保鲜、冲突和置信度治理的产品解释；
-- 多设备同步仍未交付；本地存储继续是当前事实；
-- 多设备同步、导入、导出和迁移；
-- 团队共享记忆是否存在以及如何隔离。
+## 6. Later scope
+
+- Continue evaluating common Web-product memory controls and interactions;
+- tune automatic-memory policy further;
+- improve product explanations for freshness, conflict, and confidence governance;
+- multi-device synchronization remains unshipped while local storage is authoritative;
+- multi-device sync, import, export, and migration;
+- whether shared team memory exists and how it is isolated.

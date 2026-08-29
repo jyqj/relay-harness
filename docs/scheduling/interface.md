@@ -1,8 +1,10 @@
-# Agent ↔ 中转调度接口
+# Agent ↔ Relay Scheduling Interface
 
-> 初始契约：`v1-draft`。传输采用 HTTP/JSON，请求结果通过 SSE 流式返回。
+English | [中文](interface.zh.md)
 
-## 1. 创建调用
+> Initial contract: `v1-draft`. Transport uses HTTP/JSON and streams request results through SSE.
+
+## 1. Create a call
 
 ```http
 POST /v1/routes
@@ -40,17 +42,17 @@ route_request:
     locale: string|null
 ```
 
-约束：
+Constraints:
 
-- 每次 chat 请求和每次 work 启动：`signal_mode=pre_classify` 且 `routing_signal=null`。
-- Subagent：`signal_mode=provided`，完整信号必填，`source=parent_agent`。
-- Prompt Enhancing 使用 `mode=prompt_enhance`；`conversation_semantics` 由 agent 的上下文管线根据历史结构给出，`signal_mode=pre_classify`。其结果只返回草稿，不触发工具。
-- `request_id + Idempotency-Key` 保证重复提交不会创建两次计费调用。
-- 不发送本地验证结果、checkpoint、权限审计或训练标签。
+- Each Chat request and Work start uses `signal_mode=pre_classify` with `routing_signal=null`.
+- A subagent uses `signal_mode=provided`, requires a complete signal, and sets `source=parent_agent`.
+- Prompt Enhancement uses `mode=prompt_enhance`; the agent context pipeline sets `conversation_semantics` from history structure and uses `signal_mode=pre_classify`. Its result returns a draft only and triggers no tools.
+- `request_id + Idempotency-Key` prevents duplicate submission from creating two billed calls.
+- Local verification results, checkpoints, permission audits, and training labels are not sent.
 
-## 2. SSE 事件
+## 2. SSE events
 
-每个事件包含：
+Every event contains:
 
 ```yaml
 event:
@@ -61,28 +63,28 @@ event:
   data: object
 ```
 
-事件类型：
+Event types:
 
-| type | data | 说明 |
+| type | data | Meaning |
 |---|---|---|
-| `route.started` | `{strength_level_id, pricing_version, price_preview}` | 已完成选型并开始调用 |
-| `message.delta` | `{text}` | 文本增量 |
-| `tool_call.delta` | `{call_id, name, arguments_delta}` | 工具调用增量 |
-| `usage.updated` | `{input_units, output_units}` | 可选中间用量 |
-| `route.completed` | `{usage, charge, billed_strength_level_id, pricing_version}` | 正常结束 |
-| `route.failed` | `{error}` | 调用失败，流终止 |
+| `route.started` | `{strength_level_id, pricing_version, price_preview}` | Selection completed and the call started |
+| `message.delta` | `{text}` | Text delta |
+| `tool_call.delta` | `{call_id, name, arguments_delta}` | Tool-call delta |
+| `usage.updated` | `{input_units, output_units}` | Optional intermediate usage |
+| `route.completed` | `{usage, charge, billed_strength_level_id, pricing_version}` | Normal completion |
+| `route.failed` | `{error}` | Call failed and the stream ends |
 
-同一 `request_id` 的 `sequence` 必须严格递增。`route.completed` 或 `route.failed` 之后不得再发送事件。
+`sequence` increases strictly within one `request_id`. No event follows `route.completed` or `route.failed`.
 
-## 3. 取消
+## 3. Cancellation
 
 ```http
 DELETE /v1/routes/{request_id}
 ```
 
-取消必须幂等。调度侧停止继续生成，并通过原 SSE 流返回终止事件或关闭连接；最终计费语义由计费方案定稿后补充。
+Cancellation is idempotent. Scheduling stops generation and returns a terminal event on the original SSE stream or closes the connection; final billing semantics remain pending until pricing is decided.
 
-## 4. 错误结构
+## 4. Error structure
 
 ```yaml
 error:
@@ -93,11 +95,11 @@ error:
   field: string|null
 ```
 
-错误消息必须可行动。契约不兼容、Subagent 信号缺失和侧重权重不为 `1.0` 时不得静默降级。
+Errors are actionable. Contract incompatibility, missing subagent signals, and emphasis weights not summing to `1.0` cannot degrade silently.
 
-## 5. 版本化
+## 5. Versioning
 
-- 新增可选字段走兼容版本；删除字段或改变语义必须升主版本。
-- agent 与调度项目共同维护兼容矩阵。
-- `signal_vocabulary_version` 与传输契约独立版本化。
-- 正式开发前需把本草案固化为 OpenAPI + JSON Schema，并生成契约测试夹具。
+- Adding optional fields is compatible; deleting fields or changing semantics requires a major version.
+- The agent and scheduling projects jointly maintain a compatibility matrix.
+- `signal_vocabulary_version` versions independently from the transport contract.
+- Before implementation, this draft becomes OpenAPI + JSON Schema with generated contract fixtures.

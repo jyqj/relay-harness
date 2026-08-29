@@ -1,29 +1,31 @@
-# Tools 与 Skills
+# Tools and Skills
 
-## 1. 工具层
+English | [中文](tools-and-skills.zh.md)
 
-工具是 Agent 读取或改变外部世界的唯一执行通道。初始工具类别：
+## 1. Tool layer
 
-| 类别 | 能力 |
+Tools are the only execution channel through which the agent reads or changes the external world. Initial categories:
+
+| Category | Capability |
 |---|---|
-| 文件 | 清单、读取、生成、精确编辑、导出 |
-| 终端 | 受控执行构建、测试、脚本和查询 |
-| 搜索 | 在当前 File Context 内定位内容 |
-| 网络 | 搜索和抓取公开资料 |
-| 交付 | 生成 ArtifactRef 和结果摘要 |
+| Files | Inventory, read, generate, precise edit, and export |
+| Terminal | Controlled execution of builds, tests, scripts, and queries |
+| Search | Locate content inside current File Context |
+| Network | Search and retrieve public material |
+| Delivery | Produce `ArtifactRef` and result summaries |
 
-## 2. 工具契约
+## 2. Tool contracts
 
-- 参数使用严格 Schema。
-- 输出区分成功、失败、部分结果和取消。
-- 大输出落本地引用，上下文只接收摘要。
-- 写操作尽量幂等；非幂等操作先检查已有状态。
-- 工具错误提供 Agent 可行动信息，用户界面转换为人话。
-- 工具权限受当前 work 的文件与动作边界约束。
+- Parameters use strict schemas.
+- Results distinguish success, failure, partial results, and cancellation.
+- Large output spills to a local reference and contributes only a summary to context.
+- Prefer idempotent writes; non-idempotent operations inspect existing state first.
+- Tool errors give the agent actionable information and the UI translates them into ordinary language.
+- Tool permission follows current Work file and action boundaries.
 
 ## 3. Skills
 
-Skill 是可复用的任务方法、模板和验收规则，不是新的权限来源。
+A skill is a reusable task method, template, and acceptance rule rather than a new permission source.
 
 ```yaml
 skill_manifest:
@@ -37,10 +39,9 @@ skill_manifest:
   verification: [string]
 ```
 
-规则：
+Rules:
 
-- Skill 不能扩大 File Context 或绕过权限门。
-- Prompt Enhancing 可以利用已选 Skill 的输入/输出要求帮助用户补全草稿。
-- 没有可靠输出要求的 Skill 不得声称可自动完成结构化任务。
-- 选择 Skill 不等于选择模型；模型调用仍通过外部调度接口。
-
+- A skill cannot expand File Context or bypass permission gates.
+- Prompt Enhancement may use the selected skill's input/output requirements to complete the user's draft.
+- A skill without reliable output requirements cannot claim automatic completion of a structured task.
+- Skill selection is not model selection; model calls still use the external scheduling interface.

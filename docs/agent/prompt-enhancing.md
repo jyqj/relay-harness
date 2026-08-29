@@ -1,35 +1,37 @@
-# Prompt Enhancing
+# Prompt Enhancement
 
-## 1. 产品行为
+English | [中文](prompt-enhancing.zh.md)
 
-Prompt Enhancing 是**提交前的用户主动操作**：
+## 1. Product behavior
 
-1. 用户在输入框中写草稿；
-2. 用户点击 `Enhance`；
-3. 系统构造专用上下文并请求优化；
-4. 优化结果回填输入框；
-5. 用户继续编辑、撤销或自行提交。
+Prompt Enhancement is an **explicit user action before submission**:
 
-点击 `Enhance` 不等于发送消息，不创建 work，也不触发工具执行。
+1. The user writes a draft in the input box.
+2. The user clicks `Enhance`.
+3. The system prepares dedicated context and requests an improvement.
+4. The proposal returns to the input box after review.
+5. The user continues editing, undoes the change, or submits explicitly.
 
-## 2. 合理上下文
+Clicking `Enhance` does not send a message, create Work, or execute a tool.
 
-Chat 与 Work 共用同一个 Context Composer；详细的历史投影、hydration、文件检索、Rules/Guidelines 和空历史语义见 [`prompt-enhancing-context-pipeline.md`](prompt-enhancing-context-pipeline.md)。
+## 2. Reasonable context
 
-Context Composer 只选择与当前草稿直接相关的内容：
+Chat and Work share one Context Engine. See [`prompt-enhancing-context-pipeline.md`](prompt-enhancing-context-pipeline.md) for history projection, hydration, file retrieval, Rules/Guidelines, and empty-history semantics.
 
-| 来源 | 使用规则 |
+The Context Engine selects only content directly relevant to the current draft:
+
+| Source | Use rule |
 |---|---|
-| 当前草稿 | 必选，保持核心意图 |
-| 当前会话 | 选择能够消除指代、补足已确认约束的片段 |
-| 当前 work | 若存在，仅使用目标、当前状态和相关步骤 |
-| File Context | 使用文件名、类型、用户说明和相关摘要；正文按需读取 |
-| 长期记忆 | 仅使用与草稿相关、允许使用且未过期的信息 |
-| 能力说明 | 可补充 Relay 能提供的输出形式和验收方式 |
+| Current draft | Required; preserve the core intent |
+| Current session | Select excerpts that resolve references or supply confirmed constraints |
+| Current Work | When present, use only its goal, current state, and relevant steps |
+| File Context | Use names, types, user notes, and relevant summaries; read bodies on demand |
+| Long-term memory | Use only relevant, permitted, unexpired information |
+| Capability description | May explain available output forms and acceptance methods |
 
-禁止把无关会话、整段历史、未引入文件或无关记忆塞入增强请求。
+Unrelated sessions, complete history, files not introduced by the user, and unrelated memory cannot enter the enhancement request.
 
-## 3. 输出契约
+## 3. Output contract
 
 ```yaml
 enhance_result:
@@ -39,21 +41,21 @@ enhance_result:
   context_refs: [string]
 ```
 
-界面默认只回填 `enhanced_draft`；假设和未决项可在“查看改动”中展开。任何未获上下文支持的内容不得写成确定事实。
+The UI proposes `enhanced_draft` through a diff; assumptions and unresolved items remain inspectable. Content without contextual support cannot be presented as fact.
 
-## 4. 优化目标
+## 4. Improvement goals
 
-- 明确目标和期望产物；
-- 补齐上下文中已经确定的约束；
-- 把模糊指代改成可理解表达；
-- 需要时加入验收要求；
-- 保持用户语言、语气和原始意图；
-- 不擅自扩大任务范围。
+- Clarify the goal and expected artifact;
+- add constraints already established by context;
+- replace ambiguous references with understandable wording;
+- add acceptance requirements when needed;
+- preserve the user's language, tone, and original intent;
+- never expand task scope unilaterally.
 
-## 5. 交互要求
+## 5. Interaction requirements
 
-- 原草稿可一键撤销恢复；
-- 连续点击基于当前输入框内容重新增强；
-- 增强失败不影响原草稿；
-- 文件或记忆被使用时，可展开查看来源类别；
-- 敏感内容遵循当前会话或 work 的数据边界。
+- Restore the original draft with one undo action;
+- a later click enhances the current input value;
+- enhancement failure leaves the original draft intact;
+- disclose source categories when files or memory were used;
+- sensitive content follows the current session or Work data boundary.

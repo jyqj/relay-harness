@@ -1,39 +1,41 @@
-# Relay 文档地图
+# Relay Documentation Map
 
-本目录描述 Relay 的**当前设计**，不保存完整调整历史。每个概念只设一个权威出处，其他文档以链接引用，不重复维护同一套规则。
+English | [中文](README.zh.md)
 
-## 阅读顺序
+This directory describes Relay's **current design** rather than retaining a complete change history. Each concept has one authoritative home; other documents link to it instead of maintaining duplicate rules.
 
-1. [`CONTEXT.md`](CONTEXT.md) — 产品定义、系统边界与术语
-2. [`product/vision-and-positioning.md`](product/vision-and-positioning.md) — 定位、目标用户与价值主张
-3. [`product/product-experience.md`](product/product-experience.md) — 傻瓜式体验、chat/work、Prompt Enhancing
-4. [`feature-status.json`](feature-status.json) — 当前功能完成状态及可验证证据
-5. [`repository-governance.md`](repository-governance.md) — GitHub workflow、分支保护与 nested monorepo 边界
-6. [`agent/overview.md`](agent/overview.md) — TypeScript Relay Harness 总体架构
-7. [`agent/agent-runtime.md`](agent/agent-runtime.md) — Agent Loop、状态、恢复与本地验证
-8. [`agent/work-and-files.md`](agent/work-and-files.md) — 无项目 work 与文件上下文
-9. [`agent/memory.md`](agent/memory.md) — 已实现记忆治理与产品边界
-10. [`agent/context-engine.md`](agent/context-engine.md) — 本地上下文引擎：多来源检索、Evidence 与打包
-11. [`scheduling/interface.md`](scheduling/interface.md) — 尚未交付的外部中转调度接口
+## Reading order
 
-## 目录职责
+1. [`CONTEXT.md`](CONTEXT.md) — product definition, system boundaries, and terminology
+2. [`product/vision-and-positioning.md`](product/vision-and-positioning.md) — positioning, target users, and value proposition
+3. [`product/product-experience.md`](product/product-experience.md) — simple experience, Chat/Work, and Prompt Enhancement
+4. [`feature-status.json`](feature-status.json) — current feature status and verifiable evidence
+5. [`repository-governance.md`](repository-governance.md) — GitHub workflow authority, branch protection, and flat monorepo governance
+6. [`agent/overview.md`](agent/overview.md) — overall TypeScript Relay Harness architecture
+7. [`agent/agent-runtime.md`](agent/agent-runtime.md) — agent loop, state, recovery, and local verification
+8. [`agent/work-and-files.md`](agent/work-and-files.md) — project-free Work and file context
+9. [`agent/memory.md`](agent/memory.md) — implemented memory governance and product boundaries
+10. [`agent/context-engine.md`](agent/context-engine.md) — local Context Engine, multi-source retrieval, Evidence, and packing
+11. [`scheduling/interface.md`](scheduling/interface.md) — unshipped external scheduling interface
 
-| 目录 | 权威内容 |
+## Directory responsibilities
+
+| Directory | Authoritative content |
 |---|---|
-| `adr/` | 当前仍具约束力的少量架构决策 |
-| `product/` | 产品定位、体验、计费方向、路线图与风险 |
-| `agent/` | agent 侧模块、契约和运行时设计 |
-| `scheduling/` | 外部中转调度项目的定性需求、边界与接口 |
-| `engineering/` | 当前 TypeScript 实现基线；历史 Rust 蓝图仅作被取代决策的背景 |
+| `adr/` | The small set of architecture decisions that still constrain the current design |
+| `product/` | Product positioning, experience, pricing direction, roadmap, and risks |
+| `agent/` | Agent-side modules, contracts, and runtime design |
+| `scheduling/` | Qualitative requirements, boundaries, and interface for the external scheduling project |
+| `engineering/` | Current TypeScript implementation baseline and engineering acceptance criteria |
 
-## 权威边界
+## Authority boundaries
 
-- 本目录维护产品语义、系统边界、ADR 与机器可读功能状态。
-- [`../relay-harness/docs/architecture.md`](../relay-harness/docs/architecture.md) 及其 subsystem 目录维护当前实现的包、协议、事件与配置目录。
-- `.github/` 只存在于仓库根；`relay-harness/.github` 的存在会被治理门禁拒绝。
-- 功能是否“已发布”不从路线图或 README 推断，只读取 [`feature-status.json`](feature-status.json)。
+- This directory owns product semantics, system boundaries, ADRs, and machine-readable feature status.
+- [`architecture.md`](architecture.md) and the subsystem directory own current package, protocol, event, and configuration contracts.
+- `.github/` exists only at the repository root; a nested `.github/` is rejected by the governance verifier.
+- A feature is not inferred to be shipped from a roadmap or README; read only [`feature-status.json`](feature-status.json).
 
-## 文档清单
+## Document inventory
 
 ### product/
 
@@ -60,18 +62,18 @@
 
 ### scheduling/
 
-- [`overview.md`](scheduling/overview.md) — 外部调度侧需要提供什么，不规定其内部算法
-- [`interface.md`](scheduling/interface.md) — HTTP/JSON + SSE 契约
+- [`overview.md`](scheduling/overview.md) — what external scheduling must provide, without specifying its algorithms
+- [`interface.md`](scheduling/interface.md) — HTTP/JSON + SSE contract
 
-### engineering/（历史与迁移验收）
+### engineering/
 
 - [`tech-stack.md`](engineering/tech-stack.md)
 - [`p0-scope.md`](engineering/p0-scope.md)
 
-## 维护规则
+## Maintenance rules
 
-1. **当前态优先**：删除“此前、曾经、本次调整、退役”等迁移叙事。
-2. **单一权威出处**：产品体验、运行时、记忆、调度接口分别由对应专篇维护。
-3. **事实与设想分开**：未裁决项标为 `[待决策]`；待实验参数标为 `[待标定]`。
-4. **调度边界**：本项目不设计中转调度内部算法，只定义需求和接口。
-5. **变更纪律**：只有跨模块、长期稳定且存在真实取舍的决定才进入 ADR。
+1. **Current state first:** remove migration narration such as “previously,” “used to,” or “retired.”
+2. **One authoritative home:** product experience, runtime, memory, and scheduling interfaces each belong to their dedicated document.
+3. **Separate facts from proposals:** mark unresolved decisions as `[Decision pending]` and experimental parameters as `[Calibration pending]`.
+4. **Scheduling boundary:** this project defines scheduling requirements and interfaces, not internal scheduling algorithms.
+5. **Decision discipline:** only cross-module, durable decisions with real alternatives belong in ADRs.

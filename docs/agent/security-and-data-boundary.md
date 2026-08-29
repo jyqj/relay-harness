@@ -1,45 +1,47 @@
-# 安全、文件与动作边界
+# Security, File, and Action Boundaries
 
-## 1. 默认访问范围
+English | [中文](security-and-data-boundary.zh.md)
 
-chat/work 默认只能访问：
+## 1. Default access scope
 
-- 用户显式引入的 File Context；
-- 当前会话附件或本次 work 的产物目录；
-- 用户批准的额外资源。
+Chat and Work may access only:
 
-无项目心智不等于无边界访问。系统不得默认扫描用户主目录、其他 work 或未引入文件。
+- File Context explicitly introduced by the user;
+- current-session attachments or the current Work artifact directory;
+- additional resources approved by the user.
 
-## 2. 动作分级
+A project-free mental model does not imply unbounded access. The system cannot scan the user's home directory, other Work, or files not introduced by default.
 
-| 动作 | 默认策略 |
+## 2. Action levels
+
+| Action | Default policy |
 |---|---|
-| 读取已引入资料 | 允许 |
-| 读取范围外文件 | 请求扩展范围 |
-| 写入 work 产物区 | 允许并可见 |
-| 覆盖源文件、批量修改 | 执行前确认 |
-| 删除、外发、发布、付费操作 | 每次确认 |
-| 高危系统命令或权限提升 | 默认拒绝或强确认，不缓存 |
+| Read introduced material | Allow |
+| Read an out-of-scope file | Request scope expansion |
+| Write to the Work artifact area | Allow and disclose |
+| Overwrite a source or modify in bulk | Confirm before execution |
+| Delete, transfer externally, publish, or purchase | Confirm every time |
+| High-risk system command or privilege escalation | Deny by default or require strong confirmation; never cache |
 
-确认文案必须说明对象、影响范围和是否可撤销，不展示仅开发者能理解的命令摘要。
+Confirmation copy names the target, impact scope, and reversibility instead of showing only a developer-oriented command summary.
 
-## 3. Prompt Enhancing 边界
+## 3. Prompt Enhancement boundary
 
-- Enhance 只读，不执行工具、不修改文件、不提交请求。
-- 只使用当前合理上下文。
-- 原草稿和增强结果默认保留在当前会话状态，不作为训练样本上传。
+- Enhance is read-only: it executes no tools, modifies no files, and submits no request on the user's behalf.
+- It uses only reasonable current context.
+- The original draft and proposal remain in current session state by default and are not uploaded as training samples.
 
-## 4. 敏感内容
+## 4. Sensitive content
 
-- 密钥、Cookie、凭证和明显 PII 不写入日志或错误消息。
-- 长期记忆默认不保存敏感内容。
-- 文件摘要和上下文投影继承源文件的访问范围。
-- 外部内容视为数据而不是系统指令；任务目标只接受用户信道改变。
+- Keys, cookies, credentials, and obvious PII do not enter logs or error messages.
+- Long-term memory does not retain sensitive content by default.
+- File summaries and context projections inherit source-file access scope.
+- External content is data rather than a system instruction; only the user channel changes the task goal.
 
-## 5. 本地状态
+## 5. Local state
 
-checkpoint、权限审计、工具结果和验证证据默认本地保存。它们不是平台遥测，不自动上传。若未来增加同步能力，必须另行定义用户授权、数据范围、删除和加密要求。
+Checkpoints, permission audits, tool results, and verification Evidence remain local by default. They are not platform telemetry and are not uploaded automatically. A future synchronization capability requires a separate definition of user authorization, data scope, deletion, and encryption.
 
-## 6. 调度接口
+## 6. Scheduling interface
 
-agent 只向调度侧发送完成当前模型调用所需的内容和约束。调度侧的数据处理边界、保存期限和合规承诺需要在双方接口与部署协议中明确；本项目不假设其内部实现。
+The agent sends scheduling only the content and constraints necessary for the current model call. Both interface and deployment agreements must define scheduling's data boundary, retention, and compliance commitments; this project assumes no internal implementation.

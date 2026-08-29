@@ -1,23 +1,25 @@
-# ADR-0002：事前信号路由与用户可见强度等级
+# ADR-0002: Pre-request Routing Signals and User-visible Strength Tiers
 
-- **状态**：已接受
-- **日期**：2026-08-20
+English | [中文](0002-routing-and-strength.zh.md)
+
+- **Status:** Accepted
+- **Date:** 2026-08-20
 
 ## Context
 
-agent 需要调用外部调度项目，但不应参与模型训练、路由优化或模型池管理。调度所需信息必须在调用前形成，并能覆盖 chat 请求、work 启动与 Subagent 三条路径。
+The agent needs to call the external scheduling project without participating in model training, routing optimization, or model-pool management. Scheduling input must exist before a request and cover Chat requests, Work starts, and subagents.
 
 ## Decision
 
-1. 每次 chat 请求和每次 work 启动由调度侧小模型生成路由信号。
-2. 主 Agent 唤起 Subagent 时，必须在 `SubagentSpec` 中提供完整路由信号；调度侧不二次分类。
-3. 信号结构为：稳定任务类型、侧重权重向量、难度、置信度和来源。
-4. 调度侧根据 benchmark、模型能力、成本和后台运营策略选择具体模型；具体算法不在本项目定义。
-5. 模型强度等级是用户可见的能力与价格梯度；具体模型名不对用户公开。
-6. 强度档数、套餐关系和是否设置独立“思考力度”均为 `[待决策]`。
+1. For each Chat request and Work start, a small scheduling-side model generates a routing signal.
+2. When the primary agent starts a subagent, it must supply a complete routing signal in `SubagentSpec`; scheduling does not classify it again.
+3. The signal contains a stable task type, emphasis-weight vector, difficulty, confidence, and source.
+4. Scheduling selects a concrete model from benchmarks, model capability, cost, and backend operating policy; this project does not define the algorithm.
+5. Model-strength tiers expose capability and price gradients to users; concrete model names remain hidden.
+6. The number of tiers, their plan relationship, and whether a separate “reasoning effort” exists are `[Decision pending]`.
 
 ## Consequences
 
-- agent 不接收或上传训练样本，不维护路由遥测和毛利数据。
-- 本地验证结果不反馈给调度侧，不触发模型级联。
-- agent 与调度侧只通过 [`../scheduling/interface.md`](../scheduling/interface.md) 交接。
+- The agent neither receives nor uploads training samples and maintains no routing telemetry or margin data.
+- Local verification does not feed scheduling or trigger a model cascade.
+- The agent and scheduling integrate only through [`../scheduling/interface.md`](../scheduling/interface.md).

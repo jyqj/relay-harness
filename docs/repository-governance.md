@@ -1,31 +1,35 @@
-# 仓库治理
+# Repository Governance
 
-## 正典布局
+English | [中文](repository-governance.zh.md)
 
-本次审计 checkout 的 Git 根目录是 `/Users/jin/Desktop/Relay`。产品文档与 GitHub 元数据位于根目录；已实现的 TypeScript workspace 暂时保留在 `relay-harness/`，等待独立、干净的 flatten 迁移窗口。
+## Canonical layout
 
-GitHub 只从根 `.github/` 发现自动化，因此 Issue 模板、policy、Dependabot、可复用 workflow、CI、E2E、文档、sandbox 和 release workflow 全部以根目录为唯一正典。Shell step 显式在 `relay-harness/` 执行；由 Action 自己解析的 cache 和 artifact 路径则显式带 `relay-harness/` 前缀。
+The Git root is the single repository authority. The TypeScript monorepo, product documentation, package sources, applications, scripts, and GitHub metadata all live directly under that root; no nested source monorepo remains in the tracked tree.
 
-## 远端审计快照
+`docs/feature-status.json` records this as `runtimeRoot: "."` and `sourceLayout: "root-monorepo"`. Its `branchProtection` remains `unconfigured` until a remote ruleset is observed.
 
-2026-08-29 通过 GitHub API 观测到：
+GitHub discovers automation only from root `.github/`. Issue templates, policy, Dependabot, all 15 workflows, CI, e2e, documentation, sandbox, and release workflows therefore have one canonical location. Ordinary workflow shell steps and action-owned paths resolve from the repository root; Landlock shell steps use `native/landlock-run`. Dependabot targets `/` for npm and `/python/sdk` for the Python SDK.
 
-- 仓库为公开的 `jyqj/relay-harness`，默认分支是 `master`；
-- 审计开始时远端 `master` 为 `b65b3feeb2`；
-- 远端根只含 `README.md`、`docs/` 和 `relay-harness/`，没有根 `.github/`；
-- GitHub 仍列出 6 条历史 workflow 记录，但最后一次分支运行停在 2026-08-23 的 `a72dc590f6`，之后的 `master` commit 没有 check run；
-- `master` 没有 classic branch protection，仓库也没有 ruleset。
-- 仓库没有 Actions variable、secret、environment 或 self-hosted runner；因此 CI 已改用标准 hosted runner，真实 API E2E 保持 manual-only，Issue Project 自动化与 enterprise runner benchmark 显式禁用，release publication 只保留人工入口。
+## Remote audit snapshot
 
-本次变更在提交树中恢复根 workflow 发现。只有推送该 commit 后才能确认远端发现状态；推后必须先验证 workflow 注册和一次 keyless CI，再配置 required-check ruleset。
+The GitHub API observation on 2026-08-29 found:
 
-## 必须完成的远端后续
+- the public repository is `jyqj/relay-harness`, with `master` as its default branch;
+- remote `master` was `b65b3feeb2` when the audit began;
+- the remote root contained only `README.md`, `docs/`, and `relay-harness/`, with no root `.github/`;
+- GitHub still listed six historical workflow records, but the last branch run stopped at `a72dc590f6` on 2026-08-23 and later `master` commits had no check runs;
+- `master` had neither classic branch protection nor a ruleset;
+- the repository had no Actions variable, secret, environment, or self-hosted runner, so CI uses standard hosted runners, real-API e2e remains manual-only, Issue Project automation and the enterprise-runner benchmark are explicitly disabled, and release publication remains manual.
 
-1. 推送根 workflow 迁移。
-2. 确认 GitHub 列出 `.github/workflows/` 下全部 workflow，且 `repository governance` 通过。
-3. 为 `master` 配置 ruleset：必须经过 PR，并要求稳定的 `all checks passed` check；携带 secret 的 E2E 是否设为 required 需单独裁决。
-4. 再次通过 API 读取 ruleset 与 check run；只有远端状态真实存在后，才可把 `docs/feature-status.json` 的 `branchProtection: unconfigured` 更新为已配置。
+The tracked tree restores root workflow discovery. Remote discovery becomes a fact only after the commit is pushed; verify workflow registration and one keyless CI run before configuring the required-check ruleset.
 
-## Flatten 边界
+## Required remote follow-up
 
-本次没有 flatten 源码 monorepo，因为 checkout 存在大量并行、未提交的功能改动。此时移动数千条路径会掩盖所有权并让冲突恢复失去可靠边界。未来 flatten 必须在干净专用 branch 执行，并在合并前证明 workflow、包路径、文档、release 与 Git 历史连续性。
+1. Push the root workflow and flat-layout migration.
+2. Confirm that GitHub lists every workflow under `.github/workflows/` and that `repository governance` passes.
+3. Configure a `master` ruleset that requires a PR and the stable `all checks passed` check; decide separately whether secret-bearing e2e is required.
+4. Read the ruleset and check runs through the API again; update `docs/feature-status.json` from `branchProtection: unconfigured` only after the remote state exists.
+
+## Flat-layout invariant
+
+The tracked source tree and physical checkout contain no `relay-harness/` path. Repository checks reject nested workflow authority, nested operational prefixes, and a recreated physical source root. Historical nested paths remain in Git history only.

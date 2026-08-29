@@ -1,13 +1,15 @@
-# 本地验证与效果记录
+# Local Verification and Effect Records
 
-## 1. 目的
+English | [中文](verification-and-effects.zh.md)
 
-本地验证是 Agent Loop 的保底机制，用来回答“用户想要的结果是否真的发生”。它不属于模型路由、训练、遥测或运营分析。
+## 1. Purpose
 
-## 2. 两层结果
+Local verification is an agent-loop safeguard that answers whether the result the user requested actually occurred. It is independent from model routing, training, telemetry, and operating analysis.
 
-- `ExecutionResult`：工具是否执行成功。
-- `EffectRecord`：预期结果是否经过本地检查成立。
+## 2. Two result levels
+
+- `ExecutionResult`: whether a tool executed successfully.
+- `EffectRecord`: whether a local check established the expected result.
 
 ```yaml
 effect_record:
@@ -19,22 +21,21 @@ effect_record:
   note: string|null
 ```
 
-## 3. 验证规则
+## 3. Verification rules
 
-- 计划步骤在执行前应写明可用的验收方式。
-- 写文件后回读；运行命令后查询实际状态；生成结构化产物后校验 Schema。
-- 编码任务优先使用相关测试、构建和类型检查。
-- 文档、表格和其他办公产物优先做结构、数量、引用和输入输出对账。
-- 无可靠验证方式时标记 `unverifiable`，交付时说明，不伪装完成。
+- Plan steps state an available acceptance method before execution.
+- Read files back after writing, query real state after commands, and validate schemas after generating structured artifacts.
+- Prefer relevant tests, builds, and typechecks for coding tasks.
+- Prefer structure, count, citation, and input/output reconciliation for documents, spreadsheets, and office artifacts.
+- Mark an outcome `unverifiable` and disclose it at delivery when no reliable method exists; never pretend it is complete.
 
-## 4. 终态关系
+## 4. Terminal-state relationship
 
-- 所有必要效果均 verified：`complete`。
-- 有可用产物但部分必要效果失败或不可验证：`partial`。
-- 核心效果失败且无可交付结果：`failed`。
-- 缺少外部条件或用户确认：`blocked`。
+- Every required effect verified: `complete`.
+- A deliverable exists but some required effect failed or is unverifiable: `partial`.
+- The core effect failed and no deliverable exists: `failed`.
+- An external condition or user confirmation is missing: `blocked`.
 
-## 5. 数据边界
+## 5. Data boundary
 
-EffectRecord 与 evidence 默认保存在本地 Work State。不得上传给调度侧，不生成训练样本，不用于后续模型选择。
-
+EffectRecord and Evidence remain in local Work State by default. They are not uploaded to scheduling, do not produce training samples, and do not select later models.

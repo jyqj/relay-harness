@@ -1,44 +1,45 @@
-# 愿景与定位
+# Vision and Positioning
 
-## 一句话定位
+English | [中文](vision-and-positioning.zh.md)
 
-**Relay 是一个零学习成本、傻瓜式可用的通用 Agent：用户说人话、引入资料，Relay 负责理解、执行、验证和交付。**
+## One-sentence position
 
-## 产品承诺
+**Relay is a zero-learning-curve, simple general-purpose agent: users speak naturally and introduce material; Relay understands, executes, verifies, and delivers.**
 
-| 用户不需要 | Relay 应该负责 |
+## Product promise
+
+| Users do not need to | Relay owns |
 |---|---|
-| 学 Prompt 工程 | 提供可控的 Prompt Enhancing |
-| 先创建项目和配置工作区 | 直接创建 work，并显式引入所需文件 |
-| 理解模型名和供应商 | 通过外部调度侧获得合适模型 |
-| 盯着每一步技术细节 | 用人话显示进度、阻塞和结果 |
-| 从失败命令中自行恢复 | 在安全边界内换路径、重试或请求最小帮助 |
-| 判断工具是否真的生效 | 由 Agent Loop 做本地验证 |
+| Learn prompt engineering | Controlled Prompt Enhancement |
+| Create a project and configure a workspace first | Create Work directly and introduce required files explicitly |
+| Understand model or provider names | Obtain an appropriate model through external scheduling |
+| Watch every technical step | Present progress, blockers, and results in ordinary language |
+| Recover from failed commands manually | Retry, change approach, or request minimal help inside safety boundaries |
+| Decide whether a tool really took effect | Verify locally through the agent loop |
 
-## 目标用户
+## Target users
 
-- 不熟悉 Prompt 和 Agent 工作流的普通用户；
-- 希望把一件数字工作直接交出去的人；
-- 有编码、调研、文档、表格、资料整理等混合需求的个人与团队。
+- Ordinary users unfamiliar with prompts and agent workflows;
+- people who want to hand off a piece of digital work directly;
+- individuals and teams with mixed coding, research, document, spreadsheet, and organization needs.
 
-开发者可以使用高级能力，但产品默认体验不能以开发者心智为前提。
+Developers may use advanced capabilities, but the default product experience cannot require a developer mental model.
 
-## 体验北极星
+## Experience north stars
 
-1. 用户从自然语言草稿到开始执行所需的额外操作尽可能少。
-2. 用户无需理解 Project、模型或路由也能完成任务。
-3. Relay 只在目标歧义或高影响动作真正阻塞时提问。
-4. 每次 work 都能明确交付结果、产物和未完成项。
+1. Minimize extra actions between a natural-language draft and execution.
+2. Complete tasks without requiring users to understand Projects, models, or routing.
+3. Ask only when goal ambiguity or a high-impact action truly blocks progress.
+4. Every Work clearly delivers results, artifacts, and unfinished items.
 
-## 技术优势的位置
+## Where technical advantages belong
 
-模型调度、工具、Skills、Subagent、记忆和状态恢复都是实现产品承诺的能力，不是要求用户学习的产品概念。低成本是调度能力带来的结果之一，但不能排在“把事情做好”和“容易使用”之前。
+Model scheduling, tools, skills, subagents, memory, and recovery implement the product promise; they are not concepts users must learn. Lower cost is one scheduling benefit but never outranks completing the task well and making it easy to use.
 
-## 非目标
+## Non-goals
 
-- 不做要求用户手写复杂 Prompt 的专家工具。
-- 不把 Project 作为 work 的前置入口。
-- 不让用户在默认流程中选择具体模型名。
-- 不在 agent 侧建设模型训练、路由训练集或调度算法。
-- 不用遥测替代本地任务状态、审计和验证。
-
+- An expert tool that requires users to write complex prompts.
+- A Project prerequisite for Work.
+- Concrete model-name selection in the default flow.
+- Agent-side model training, routing datasets, or scheduling algorithms.
+- Replacing local task state, audits, and verification with telemetry.

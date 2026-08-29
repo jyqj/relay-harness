@@ -1,44 +1,44 @@
-# ADR-0006：本地 Context Engine（索引与检索永不上云）
+# ADR-0006: Local Context Engine (Indexing and Retrieval Never Use Cloud Storage)
 
-- **状态**：已接受
-- **日期**：2026-08-26
+English | [中文](0006-local-context-engine.zh.md)
+
+- **Status:** Accepted
+- **Date:** 2026-08-26
 
 ## Context
 
-Relay 需要跨代码、会话、记忆、附件等多来源的深度上下文能力。参考对象 Auggie（ACE）采用云端拓扑：本地只做文件清点与哈希，索引、嵌入与重排全部在云端完成，本地仅保留 checkpoint 指针。该模式与 Relay 的既有原则冲突：ADR-0004 规定本地状态与最小权限，根仓 README 规定模型路由外置、文件是显式上下文而非隐式全盘扫描。
+Relay needs deep context across code, sessions, memory, attachments, and other sources. The reference system Auggie (ACE) uses a cloud topology: the client inventories and hashes files, while cloud services perform indexing, embedding, and reranking and the client retains only checkpoint pointers. This conflicts with Relay's established principles: ADR-0004 requires local state and least privilege, while the root README makes model routing external and files explicit context rather than an implicit whole-device scan.
 
-同时，仓库内已具备成套的本地领域能力：`relay-harness` 的 session-query（含防递归索引）、memory（含 revision 与 trust 治理）、LSP seam；`codecortex-rust` 是按"默认确定性、离线、无外部模型依赖"设计的本地代码索引引擎。缺的不是领域引擎，而是把它们接起来的控制面与统一证据协议。
+The repository already has local domain capabilities: session-query with recursive-indexing defenses, memory with revision and trust governance, the LSP seam, and a local code-index implementation designed for deterministic offline lexical and graph retrieval. The missing piece is a control plane and shared Evidence protocol connecting those engines.
 
 ## Decision
 
-1. Relay 建设本地 Context Engine：Source 注册、检索编排、证据准入、打包与追踪全部在本机完成；云端只承担模型推理本身（遵循 ADR-0002 的外部路由）。
-2. **Source 内容永不为索引、检索或排序目的离开本机**。离开本机的只有发往模型服务的请求内容，且用户可见。
-3. 索引是可删除重建的派生缓存，永远不是事实源；事实源是本地文件、Session 日志、Memory revision 等本身。
-4. 检索结果必须先成为绑定 revision 的 Evidence，再进入模型请求；裸搜索命中不得直接拼入 prompt。
-5. 检索失败、索引降级或读取错误不得静默呈现为"无结果"。
-6. 系统注入的上下文（recall / context 注入）不得被再次索引为新证据，防止派生内容递归污染索引。
-7. 不同领域 Provider 的原始分数不做跨域直接比较；全局选择使用 provider-local rank 加校准策略。
-8. 检索轨迹由 Runtime 记录，Agent 不得自证覆盖范围；否定结论必须附带 Coverage 记录。
-9. Prompt 渲染发生在上下文打包之后；Source 内容不具指令权威。
-10. 第一代不引入任何嵌入/向量依赖；语义检索 lane 是否增补，由本地评测结果触发 [待决策]，且模型与向量存储必须留在本机。
+1. Relay provides a local Context Engine. Source registration, retrieval orchestration, Evidence admission, packing, and tracing happen on the user's machine; cloud services perform only explicitly routed model inference.
+2. **Source content never leaves the machine for indexing, retrieval, or ranking.** Only user-visible model-request content may leave the machine.
+3. An index is a deletable, rebuildable derived cache and never a source of truth. Local files, session logs, and Memory revisions remain authoritative.
+4. A retrieval result must become revision-bound Evidence before entering a model request; raw search hits cannot be appended directly to a prompt.
+5. Retrieval failure, index degradation, or read errors must not silently appear as “no result.”
+6. Injected context, including recall/context messages, must not be indexed again as new Evidence, preventing recursive contamination by derived content.
+7. Raw scores from different domain providers are not directly comparable; global selection uses provider-local rank plus calibration policy.
+8. The runtime records retrieval traces; an agent cannot attest to its own coverage. Negative conclusions require a Coverage record.
+9. Prompt rendering happens after context packing. Source content carries no instruction authority.
+10. The first generation introduces no embedding/vector dependency. A semantic retrieval lane is `[Decision pending]` until local evaluation justifies it, and any model and vector storage must remain local.
 
-## 备选方案
+## Alternatives considered
 
-- **云端索引（ACE 拓扑）**：检索质量可借云端算力，但违反 ADR-0004 本地边界，索引数据出机不可接受。否决。
-- **在 `packages/context/` 上继续堆插件**：现有插件是请求前文本注入 seam，无 Source/Revision/Evidence 概念，堆叠无法长出控制面。否决。
-- **CodeCortex 作为唯一代码入口的薄 Provider**：会抹平其 graph/impact/tests 能力面与降级状态机。否决；CodeCortex 保留完整 code-native capability surface，通过 transport-neutral 适配层接入。
+- **Cloud indexing (ACE topology):** cloud compute may improve retrieval, but source data leaving the machine violates ADR-0004. Rejected.
+- **Continue adding plugins under `packages/context/`:** pre-request text-injection plugins alone do not provide Source/Revision/Evidence ownership or a control plane. Rejected.
+- **A thin provider exposing only CodeCortex search:** this would erase graph, impact, test, and degradation capabilities. Rejected; a code-native capability remains complete behind a transport-neutral adapter.
 
 ## Consequences
 
-- 隐私成为一等产品能力："索引起作用，但你的文件从未为索引离开电脑"。
-- 排序质量依赖本地确定性信号（词法、图、结构、显式引用），无云端 reranker 兜底；需以评测（参考 `cc-eval` 模式）持续验收召回。
-- 本地索引的资源治理（文件数上限、watcher 与 Agent 的 CPU 竞争、磁盘占用可见性）成为 Relay 的产品责任。
-- `packages/context/` 现有插件中，运行时事实类（时间、tmux 等）保持原位；任务级检索与打包迁入新的 context-engine 控制面（见 [`../agent/context-engine.md`](../agent/context-engine.md)）。
+- Privacy is a first-class product property: “indexing works, but your files never leave the computer for indexing.”
+- Ranking depends on deterministic local lexical, graph, structural, and explicit-reference signals without a cloud reranker; local evaluation must continuously validate recall.
+- File-count limits, watcher/agent CPU contention, and visible disk use become product responsibilities.
+- Runtime-fact plugins such as time remain in `packages/context/`; task retrieval and packing belong to the Context Engine control plane described in [`../agent/context-engine.md`](../agent/context-engine.md).
 
-## 澄清与修订（2026-08-29）
+## Clarifications
 
-实施过程中（Relay Harness 本地代码索引三期落地）出现两个需要显式裁决的边界点，现记录裁定与理由：
+**Item 6 — compaction-checkpoint corpus boundary.** Three direct defenses exclude recall messages (`form: 'recall'`) from session-query corpus extraction, memory extraction, and session-reference projection. An indirect path remains: after compaction, a checkpoint summary (`kind: 'plugin'`, without a recall marker) may restate paths and excerpts and later enter the session-query corpus. This does **not violate item 6**. A checkpoint is an aggregate derivative of the complete conversation interval, including assistant replies, and has the same Evidence level as an assistant reply; either may restate facts from the conversation. Item 6 prohibits the self-amplifying loop that re-indexes injected context verbatim as independent Evidence, and the three direct entries block that loop. Recall content also originates from the user's local code index, so incorporating it into the conversation narrative does not create belief beyond the session. [`../subsystems/code-index.md`](../subsystems/code-index.md) records this boundary under Known Limitations. Corpus weighting or cross-session promotion of checkpoint summaries must reopen this decision.
 
-**关于第 6 条——compaction checkpoint 的语料边界。** Recall 消息（`form: 'recall'`）的三道直接防线（session-query 语料抽取、memory 抽取、session-reference 投影）均已实证有效。遗留的间接通道是：recall 消息被 compaction 折叠后，checkpoint 摘要（`kind: 'plugin'`，无 recall 标记）可能复述其中的路径与片段，并随 checkpoint 进入 session-query 语料。裁定：**这不构成第 6 条违反**。checkpoint 摘要是整个对话区间（含 assistant 回复）的聚合派生物，与 assistant 回复在证据级别上同级——二者都会复述会话中出现过的事实；第 6 条所禁止的是"注入上下文被原样再索引为独立证据"的自放大回路，该回路的三个直接入口已被阻断。且 recall 内容源自用户本机代码索引（高信任源），聚合进会话叙事后不产生超越会话本身的信念。此边界判定已记录于 `relay-harness/docs/subsystems/code-index.md` 的 Known Limitations；若未来引入对 checkpoint 摘要的语料加权或跨会话提升机制，须重新开启本条裁决。
-
-**关于第 10 条——语义 lane 的落地状态。** 第 10 条"第一代不引入任何嵌入/向量依赖"在第一、二期（词法/图检索、AST 符号图）中得到遵守。第三期已落地语义向量层，触发方式为本计划裁决时的设计审阅批准（而非本条预期的"本地评测结果"）——补记该偏差，评测验收（参照 `cc-eval` 模式）仍为后续义务。第 10 条"向量存储必须留在本机"得到遵守（int8 量化列存储于本机 SQLite 派生库）；"模型留在本机"按第 2 条的既有允许修订为：**embedding 模型经由 ADR-0002 的用户路由（中转调度侧）调用，chunk 文本作为模型服务请求内容出机**——与对话推理的出机边界同型，不新增出机类别；本地无 embedding 模型依赖，未配置路由端点时语义 lane 整体缺席、词法/图检索能力不受影响。
+**Item 10 — semantic-lane status.** Lexical/graph retrieval and the AST symbol graph complied with the original “no embedding/vector dependency” decision. A later semantic-vector layer was approved during design review rather than triggered by the local evaluation anticipated here; evaluation remains required. Vector storage stays in the local derived SQLite database as quantized int8 columns. The existing model-request exception in item 2 narrows “the model stays local” as follows: an embedding model may be called through ADR-0002 user routing, and chunk text leaves the machine as model-request content. This is the same egress category as conversational inference, not a new category. No local embedding-model dependency exists; without a configured route the semantic lane is absent and lexical/graph retrieval remains available.

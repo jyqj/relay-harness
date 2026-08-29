@@ -1,28 +1,29 @@
-# 模型强度与计费方向
+# Model Strength and Pricing Direction
 
-> 本文只记录已确认方向。具体档数、套餐、积分和“思考力度”均为 `[待决策]`。
+English | [中文](pricing-and-tiers.zh.md)
 
-## 已确认
+> This page records confirmed direction only. Tier count, plans, credits, and “reasoning effort” remain `[Decision pending]`.
 
-1. 具体模型由外部中转调度侧选择，默认不向用户公开模型名。
-2. 每个模型映射到一个**用户可见的强度等级**。
-3. 强度等级同时表示能力梯度和价格梯度；实际调用应返回本次使用的强度等级及对应计费版本。
-4. 后台可以依据 benchmark、模型能力、成本和运营策略调度，但内部算法不在本项目定义。
+## Confirmed
 
-## 待决策
+1. External scheduling selects concrete models and hides model names from users by default.
+2. Every model maps to a **user-visible strength tier**.
+3. A strength tier represents both capability and price gradients; each call returns its actual tier and pricing version.
+4. Scheduling may use benchmarks, model capability, cost, and operating policy, but this project does not define its internal algorithm.
 
-- 强度等级数量、名称和能力说明；
-- 用户能否手选强度，还是只展示实际使用等级；
-- 套餐与强度上限的关系；
-- 使用积分、货币额度还是其他计量单位；
-- 是否存在独立于模型强度的“普通/深度思考”；
-- 失败调用、工具调用和长任务如何计费；
-- 账单需要展示到何种粒度。
+## Decision pending
 
-## 不可违反的体验要求
+- Number, names, and capability descriptions of strength tiers;
+- whether users may select a tier or only see the tier used;
+- relationship between plans and maximum strength;
+- whether billing uses credits, currency allowance, or another unit;
+- whether “normal/deep reasoning” exists independently from model strength;
+- pricing for failed calls, tool calls, and long-running tasks;
+- billing-detail granularity.
 
-- 默认流程不要求用户选择具体模型。
-- 计费规则必须在调用前可理解，在调用后可核对。
-- 强度等级不能在不通知用户的情况下改变语义。
-- 调度侧必须通过版本化接口返回强度等级、用量和价格版本。
+## Non-negotiable experience requirements
 
+- The default flow does not require selecting a concrete model.
+- Pricing is understandable before a call and reconcilable afterward.
+- A strength tier cannot change meaning without informing users.
+- Scheduling returns strength tier, usage, and pricing version through a versioned interface.

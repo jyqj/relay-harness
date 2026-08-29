@@ -1,52 +1,53 @@
-# Rust 技术基线（历史蓝图）
+# TypeScript Engineering Baseline
 
-> **状态说明（2026-08-23）**：本文的 Rust workspace 方案已被 [ADR-0005](../adr/0005-adopt-ts-harness-runtime.md) 取代——运行时采用 [`relay-harness/`](../../relay-harness/README.md) TypeScript Harness。保留本文用于对照模块职责映射；实现层技术事实以 `relay-harness/docs/architecture.md` 为权威。
+English | [中文](tech-stack.zh.md)
 
-## 1. 已确认
+> [ADR-0005](../adr/0005-adopt-ts-harness-runtime.md) selects the root TypeScript Relay Harness monorepo. [`../architecture.md`](../architecture.md) owns detailed runtime architecture; this page summarizes technology choices and dependency direction.
 
-- agent 后端使用 Rust。
-- 中转调度是外部项目，本仓只实现接口客户端。
-- P0 使用可复用内核库与单进程 CLI 工程入口，不先建设常驻服务。
-- P1 Web 界面可以使用 TypeScript，但不得复制 Agent Kernel 业务逻辑。
-- 跨项目接口以 OpenAPI + JSON Schema 为权威，不以 Rust 内部类型作为协议来源。
+## 1. Confirmed baseline
 
-## 2. Rust workspace
+- Runtime packages and applications use TypeScript and ESM on supported Node.js versions.
+- Relay scheduling is an external project; this repository owns only its future interface client.
+- CLI, Web, Desktop, and SDK projections reuse the same plugin runtime rather than copying agent-loop logic.
+- OpenAPI + JSON Schema remains authoritative for cross-project interfaces rather than internal TypeScript types.
+- Cordis composition and package manifests define runtime assembly.
+
+## 2. Monorepo layout
 
 ```text
-relay-kernel   Agent Loop、状态机、Context Ports、领域契约
-relay-cli      P0 工程入口与调试交互
-relay-tools    文件、终端、搜索等工具适配器
-relay-store    本地 Work State、checkpoint、审计与 evidence
-relay-router   中转调度 HTTP/JSON + SSE 客户端
+packages/    Cordis plugins grouped by domain and capability role
+apps/        CLI, Web, and Electron Desktop product applications
+python/      Python SDK and bundled runtime distribution
+native/      Platform-native helpers and packages
+examples/    Runnable compositions and integration examples
+docs/        Product, architecture, subsystem, and generated references
+scripts/     Repository gates, generators, and release tooling
 ```
 
-P1 根据产品界面需要增加 `relay-api`，复用 `relay-kernel`。
+## 3. Module rules
 
-## 3. 模块规则
+- Core runtime packages do not depend on product UI implementations.
+- Tools, storage, scheduling, memory, and context capabilities integrate through owned Cordis services and plugins.
+- Process, network, persistence, and wire errors become stable domain diagnostics at their owning adapters.
+- Local verification belongs to the agent loop, not the future scheduling client.
+- File access passes through explicit workspace/file context and permission policy.
 
-- `relay-kernel` 不直接依赖 UI、数据库驱动或 HTTP 客户端。
-- 工具、存储、调度和记忆通过 Ports 接入。
-- 外部接口错误在适配层转换为稳定领域错误。
-- 本地验证属于 kernel 流程，不属于 router client。
-- 文件访问必须经过 File Context 与权限策略。
+## 4. Component direction
 
-## 4. 组件方向
-
-| 组件 | 方向 | 状态 |
+| Component | Direction | Status |
 |---|---|---|
-| 异步运行时 | Tokio | 初步确定 |
-| 序列化 | serde | 初步确定 |
-| HTTP/SSE | reqwest + SSE parser | 初步确定 |
-| 本地存储 | SQLite | `[待验证]` |
-| CLI | clap | 初步确定 |
-| 错误建模 | thiserror；应用边界 anyhow | 初步确定 |
-| 日志 | tracing，仅本地运行日志 | 初步确定 |
-| 测试 | cargo test + 契约夹具 | 初步确定 |
+| Runtime | TypeScript + Node.js ESM | Current |
+| Composition | Cordis plugin graph | Current |
+| Persistence | Local session/storage providers, including SQLite where owned | Current |
+| Product applications | CLI + React Web + Electron Desktop | Current |
+| Package manager/build | pnpm workspaces + TypeScript project references + tsdown/Vite | Current |
+| Testing | Vitest, Playwright, snapshots, contract fixtures | Current |
+| Cross-project protocol | OpenAPI + JSON Schema + HTTP/JSON/SSE | Scheduling client planned |
+| Native isolation | Platform helpers under `native/` and sandbox packages | Current |
 
-## 5. 明确不做
+## 5. Explicit exclusions
 
-- 不在 agent 仓实现模型池、benchmark、成本权重或路由算法。
-- 不建设 agent 侧遥测平台、训练数据管道或毛利仪表盘。
-- 不让 CLI 形态反向限制最终普通用户产品体验。
-- 不在 P0 提前引入分布式状态、消息队列或微服务拆分。
-
+- This repository does not implement the scheduling model pool, benchmark weighting, cost weighting, or routing algorithm.
+- The agent side does not build a training-data pipeline or margin dashboard.
+- CLI constraints do not limit the ordinary-user product experience.
+- Distributed state, message queues, and microservice decomposition are not default runtime prerequisites.

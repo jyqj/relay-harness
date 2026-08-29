@@ -1,23 +1,25 @@
-# ADR-0003：Agent Loop 与本地验证
+# ADR-0003: Agent Loop and Local Verification
 
-- **状态**：部分被 0005 取代（Loop 与验证语义有效；Rust 实现决定失效）
-- **日期**：2026-08-20
+English | [中文](0003-agent-runtime.zh.md)
+
+- **Status:** Partially superseded by 0005 (loop and verification semantics remain valid; the Rust implementation decision does not)
+- **Date:** 2026-08-20
 
 ## Context
 
-work 模式必须能持续执行、调用工具、处理中断并可靠交付。工具返回成功并不代表用户目标已经实现，但验证机制不应与模型路由耦合。
+Work must continue execution, call tools, handle interruption, and deliver reliably. A successful tool result does not mean the user's goal is complete, but verification must remain independent from model routing.
 
 ## Decision
 
-1. 运行时实现采用 [ADR-0005](0005-adopt-ts-harness-runtime.md) 的 TypeScript Relay Harness；原 Rust 决定失效。
-2. CLI、Web 与 Desktop 复用同一 Relay Harness 包和 composition；原 Rust crate 规划失效。
-3. Agent Loop 固定为：理解 → 计划 → 行动 → 观察 → 本地验证 → 继续/交付。
-4. checkpoint、权限审计、工具结果和验证证据保存在本地运行状态中。
-5. 本地验证只决定任务终态，不上传、不训练、不参与路由。
-6. Subagent 是受限执行单元，必须携带目标、边界、验收标准、文件引用和路由信号。
+1. The runtime uses the TypeScript Relay Harness selected by [ADR-0005](0005-adopt-ts-harness-runtime.md); the original Rust decision is invalid.
+2. CLI, Web, and Desktop reuse the same Relay Harness packages and composition; the original Rust crate plan is invalid.
+3. The agent loop is fixed as understand → plan → act → observe → verify locally → continue/deliver.
+4. Checkpoints, permission audits, tool results, and verification evidence remain in local run state.
+5. Local verification decides only the task outcome; it is not uploaded, used for training, or used for routing.
+6. A subagent is a constrained execution unit and must carry a goal, boundaries, acceptance criteria, file references, and routing signal.
 
 ## Consequences
 
-- 不建设 agent 侧 Telemetry、路由飞轮或毛利仪表盘。
-- 状态恢复与验证是运行时必需能力，不是运营数据能力。
-- 当前模块边界见 [`../../relay-harness/docs/architecture.md`](../../relay-harness/docs/architecture.md)。
+- The agent side has no telemetry platform, routing flywheel, or margin dashboard.
+- Recovery and verification are runtime requirements, not operating-data capabilities.
+- See [`../architecture.md`](../architecture.md) for current module boundaries.

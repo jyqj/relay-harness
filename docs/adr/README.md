@@ -1,15 +1,16 @@
-# 当前架构决策
+# Current Architecture Decisions
 
-本目录只保留对当前设计仍有独立约束力的决策，不保存完整调整历史。
+English | [中文](README.zh.md)
 
-| 编号 | 决策 | 状态 |
+This directory retains only decisions that independently constrain the current design, not a complete change history.
+
+| Number | Decision | Status |
 |---|---|---|
-| [0001](0001-product-boundary.md) | 傻瓜式通用 Agent；调度侧是外部项目 | 已接受（第 3 条 Rust 实现被 0005 取代） |
-| [0002](0002-routing-and-strength.md) | 事前信号驱动外部路由；强度等级对用户可见 | 已接受 |
-| [0003](0003-agent-runtime.md) | Rust Agent Loop；本地验证与路由解耦 | 部分取代（Rust 实现被 0005 取代；Loop 语义与验证原则仍有效） |
-| [0004](0004-data-and-action-boundary.md) | 显式文件上下文、最小权限和本地状态 | 已接受 |
-| [0005](0005-adopt-ts-harness-runtime.md) | 采用 relay-harness/ TypeScript Harness 作为运行时 | 已接受 |
-| [0006](0006-local-context-engine.md) | 本地 Context Engine：索引与检索永不上云 | 已接受 |
+| [0001](0001-product-boundary.md) | Simple general-purpose agent; scheduling is external | Accepted (item 3's Rust implementation superseded by 0005) |
+| [0002](0002-routing-and-strength.md) | Pre-request signals drive external routing; strength tiers are user-visible | Accepted |
+| [0003](0003-agent-runtime.md) | Agent loop; local verification is independent from routing | Partially superseded (Rust implementation superseded by 0005; loop semantics and verification remain valid) |
+| [0004](0004-data-and-action-boundary.md) | Explicit file context, least privilege, and local state | Accepted |
+| [0005](0005-adopt-ts-harness-runtime.md) | Root TypeScript Relay Harness as the runtime | Accepted |
+| [0006](0006-local-context-engine.md) | Local Context Engine: indexing and retrieval stay local | Accepted |
 
-新 ADR 只用于跨模块、长期稳定且存在真实替代方案的决定。普通功能修改直接更新其权威设计文档。
-
+A new ADR is reserved for a durable cross-module decision with real alternatives. Ordinary feature changes update their authoritative design document directly.

@@ -47,10 +47,6 @@ env:
   RLH_TELEMETRY_DISABLED: '1'
 
 
-defaults:
-  run:
-    working-directory: relay-harness
-
 jobs:
   e2e:
     runs-on: ubuntu-latest
@@ -67,7 +63,7 @@ jobs:
         with:
           node-version: 24
           cache: pnpm
-          cache-dependency-path: relay-harness/pnpm-lock.yaml
+          cache-dependency-path: pnpm-lock.yaml
 
       - name: Install (immutable)
         run: pnpm install --frozen-lockfile
