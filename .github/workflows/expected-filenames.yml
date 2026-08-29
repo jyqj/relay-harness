@@ -3,9 +3,9 @@ name: Expected filenames
 on:
   pull_request:
     paths:
-      - '*[gG][oO][lL][dD][eE][nN]*'
-      - '**/*[gG][oO][lL][dD][eE][nN]*'
-      - '!vendor/**'
+      - 'relay-harness/*[gG][oO][lL][dD][eE][nN]*'
+      - 'relay-harness/**/*[gG][oO][lL][dD][eE][nN]*'
+      - '!relay-harness/vendor/**'
 
 permissions:
   contents: read
@@ -15,6 +15,10 @@ env:
   # into apps/cli/cordis.yml (AppCLIEntry disables the row when set).
   RLH_TELEMETRY_DISABLED: '1'
 
+
+defaults:
+  run:
+    working-directory: relay-harness
 
 jobs:
   expected-filenames:

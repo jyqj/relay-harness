@@ -11,6 +11,10 @@ concurrency:
   cancel-in-progress: false
 
 
+defaults:
+  run:
+    working-directory: relay-harness
+
 jobs:
   lifecycle:
     name: Issue lifecycle
@@ -33,4 +37,4 @@ jobs:
       - name: Handle repository event
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
-        run: node .github/issue-management/policy.mjs lifecycle
+        run: node ../.github/issue-management/policy.mjs lifecycle

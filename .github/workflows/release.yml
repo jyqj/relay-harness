@@ -33,6 +33,10 @@ env:
   RLH_TELEMETRY_DISABLED: '1'
 
 
+defaults:
+  run:
+    working-directory: relay-harness
+
 jobs:
   pack:
     name: Pack npm tarballs
@@ -63,7 +67,7 @@ jobs:
       - uses: actions/cache/restore@v4
         with:
           path: ${{ steps.pnpm-store.outputs.path }}
-          key: ${{ runner.os }}-node-${{ env.PRIMARY_NODE_VERSION }}-pnpm-${{ hashFiles('pnpm-lock.yaml') }}
+          key: ${{ runner.os }}-node-${{ env.PRIMARY_NODE_VERSION }}-pnpm-${{ hashFiles('relay-harness/pnpm-lock.yaml') }}
           restore-keys: |
             ${{ runner.os }}-node-${{ env.PRIMARY_NODE_VERSION }}-pnpm-
 
@@ -103,7 +107,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: rlh-npm-tarballs
-          path: dist/npm/*
+          path: relay-harness/dist/npm/*
           if-no-files-found: error
           retention-days: 7
 
@@ -142,7 +146,7 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: rlh-npm-tarballs
-          path: dist/npm
+          path: relay-harness/dist/npm
 
       - name: Publish tarballs
         env:

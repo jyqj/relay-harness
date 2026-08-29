@@ -54,6 +54,10 @@ env:
   RLH_TELEMETRY_DISABLED: '1'
 
 
+defaults:
+  run:
+    working-directory: relay-harness
+
 jobs:
   # Job-level conditions cannot inspect `matrix`, so validate target names and
   # construct the matrix before the dependent jobs.
@@ -139,7 +143,7 @@ jobs:
       - uses: actions/upload-artifact@v7
         with:
           name: relay_harness_sdk-${{ needs.plan.outputs.version }}-py3-none-any.whl
-          path: dist-python/relay_harness_sdk-${{ needs.plan.outputs.version }}-py3-none-any.whl
+          path: relay-harness/dist-python/relay_harness_sdk-${{ needs.plan.outputs.version }}-py3-none-any.whl
           if-no-files-found: error
           retention-days: 7
 
@@ -163,7 +167,7 @@ jobs:
         with:
           node-version: 24
           cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
+          cache-dependency-path: relay-harness/pnpm-lock.yaml
 
       - uses: actions/setup-python@v6.3.0
         with:
@@ -177,7 +181,7 @@ jobs:
       - uses: actions/cache@v4
         with:
           path: ~/.pkg-cache
-          key: pkg-fetch-${{ matrix.target }}-${{ hashFiles('pnpm-lock.yaml') }}
+          key: pkg-fetch-${{ matrix.target }}-${{ hashFiles('relay-harness/pnpm-lock.yaml') }}
           restore-keys: |
             pkg-fetch-${{ matrix.target }}-
 
@@ -263,7 +267,7 @@ jobs:
       - uses: actions/download-artifact@v8
         with:
           name: relay_harness_sdk-${{ needs.plan.outputs.version }}-py3-none-any.whl
-          path: dist-python
+          path: relay-harness/dist-python
 
       - name: Install local SDK and runtime wheels into a clean venv
         env:
@@ -323,6 +327,6 @@ jobs:
       - uses: actions/upload-artifact@v7
         with:
           name: ${{ steps.runtime.outputs.wheel }}
-          path: dist-python/${{ steps.runtime.outputs.wheel }}
+          path: relay-harness/dist-python/${{ steps.runtime.outputs.wheel }}
           if-no-files-found: error
           retention-days: 7

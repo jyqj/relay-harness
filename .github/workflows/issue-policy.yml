@@ -9,6 +9,10 @@ permissions:
   pull-requests: read
 
 
+defaults:
+  run:
+    working-directory: relay-harness
+
 jobs:
   policy:
     name: Issue policy
@@ -23,4 +27,4 @@ jobs:
       - name: Validate pull request
         env:
           GITHUB_TOKEN: ${{ github.token }}
-        run: node .github/issue-management/policy.mjs pr
+        run: node ../.github/issue-management/policy.mjs pr

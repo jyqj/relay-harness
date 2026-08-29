@@ -1,0 +1,411 @@
+{
+  "schemaVersion": 1,
+  "authority": "This file is the machine-readable authority for Relay product completion claims. A feature is shipped only when every evidence category passes scripts/verify-feature-status.mjs.",
+  "runtimeRoot": "relay-harness",
+  "repositoryGovernance": {
+    "sourceLayout": "nested-monorepo",
+    "workflowAuthority": ".github/workflows",
+    "remoteWorkflowDiscovery": "root-on-commit",
+    "branchProtection": "unconfigured",
+    "requiredCheckCandidate": "all checks passed",
+    "automationSupport": {
+      "keylessCI": "hosted",
+      "realApiE2E": "manual-until-secret-configured",
+      "issueProjectAutomation": "disabled-until-app-and-labels-configured",
+      "selfHostedStandby": "disabled-no-runners",
+      "enterpriseRunnerBenchmarks": "disabled-no-runner-contract",
+      "registryPublication": "manual-until-environments-and-tokens-configured"
+    },
+    "observedRemoteBranch": "master",
+    "observedAt": "2026-08-30"
+  },
+  "features": [
+    {
+      "id": "prompt-enhancement",
+      "status": "shipped",
+      "summary": "User-triggered draft enhancement with shared Context Engine evidence and explicit accept/undo UX.",
+      "evidence": {
+        "composition": [
+          {
+            "path": "packages/bundle/web-app/cordis.patch.yml",
+            "contains": [
+              "id: prompt-enhancement",
+              "id: ui-prompt-enhancement"
+            ]
+          }
+        ],
+        "remote": [
+          {
+            "path": "packages/api/remotes/src/client/index.ts",
+            "contains": [
+              "promptEnhancementRemote"
+            ]
+          }
+        ],
+        "ui": [
+          {
+            "path": "packages/client/ui-prompt-enhancement/src/client/EnhanceControl.tsx",
+            "contains": [
+              "promptEnhancementSources",
+              "sources.freshness",
+              "sources.verification"
+            ]
+          }
+        ],
+        "e2e": [
+          {
+            "path": "apps/web/tests/product-shell-prompt-context.e2e.ts",
+            "contains": [
+              "runs draft → real Remote enhance → source explanation → diff → accept → undo without auto-submit, and cancels in flight"
+            ]
+          }
+        ],
+        "docs": [
+          {
+            "path": "docs/subsystems/prompt-enhancement.md"
+          }
+        ]
+      },
+      "limitations": [
+        "Enhancement remains explicit and never submits the draft automatically."
+      ]
+    },
+    {
+      "id": "context-inspector",
+      "status": "shipped",
+      "summary": "Durable Context Engine preparation traces with browser-visible admission, Evidence, coverage, and source explanations.",
+      "evidence": {
+        "composition": [
+          {
+            "path": "packages/bundle/web-app/cordis.patch.yml",
+            "contains": [
+              "id: context-inspector",
+              "id: ui-context-inspector"
+            ]
+          }
+        ],
+        "remote": [
+          {
+            "path": "packages/host/apiproxy/src/api-proxy.ts",
+            "contains": [
+              "type: 'session/projection'",
+              "sessionProjections.onChanged"
+            ]
+          }
+        ],
+        "ui": [
+          {
+            "path": "packages/client/ui-context-inspector/src/client/ContextInspectorAction.tsx",
+            "contains": [
+              "context/prepared #",
+              "evidence.whyUsed"
+            ]
+          }
+        ],
+        "e2e": [
+          {
+            "path": "apps/web/tests/product-shell-prompt-context.e2e.ts",
+            "contains": [
+              "Inspect context used for this session",
+              "Context Inspector"
+            ]
+          }
+        ],
+        "docs": [
+          {
+            "path": "packages/context/context-inspector/README.md"
+          }
+        ]
+      },
+      "limitations": [
+        "The inspector projects durable context/prepared events; an unsent Prompt Enhancement proposal explains its own non-durable trace in the proposal dialog."
+      ]
+    },
+    {
+      "id": "governed-memory",
+      "status": "shipped",
+      "summary": "Governed local memory recall, outcome reconciliation, and a user-facing Memory Center.",
+      "evidence": {
+        "composition": [
+          {
+            "path": "packages/bundle/web-app/cordis.patch.yml",
+            "contains": [
+              "id: memory-center",
+              "id: ui-memory-center"
+            ]
+          }
+        ],
+        "remote": [
+          {
+            "path": "packages/api/remotes/src/client/index.ts",
+            "contains": [
+              "memoryCenterRemote"
+            ]
+          }
+        ],
+        "ui": [
+          {
+            "path": "packages/client/ui-memory-center/src/client/index.ts"
+          }
+        ],
+        "e2e": [
+          {
+            "path": "apps/web/tests/settings-catalog-pages.e2e.ts",
+            "contains": [
+              "drives real MCP and Skill mutations plus Memory and Code Index Remote flows"
+            ]
+          }
+        ],
+        "docs": [
+          {
+            "path": "docs/subsystems/memory.md"
+          }
+        ]
+      },
+      "limitations": [
+        "Memory admission remains governed; active storage does not imply unconditional injection."
+      ]
+    },
+    {
+      "id": "local-code-index",
+      "status": "shipped",
+      "summary": "Workspace-routed local code indexing, retrieval, diagnostics, and management UI.",
+      "evidence": {
+        "composition": [
+          {
+            "path": "packages/bundle/web-app/cordis.patch.yml",
+            "contains": [
+              "id: code-index-workspace-router",
+              "id: code-index-center",
+              "id: ui-code-index-center"
+            ]
+          }
+        ],
+        "remote": [
+          {
+            "path": "packages/api/remotes/src/client/index.ts",
+            "contains": [
+              "codeIndexCenterRemote"
+            ]
+          }
+        ],
+        "ui": [
+          {
+            "path": "packages/client/ui-code-index-center/src/client/index.ts"
+          }
+        ],
+        "e2e": [
+          {
+            "path": "packages/bundle/web-app/tests/code-index-workspace-routing.e2e.spec.ts",
+            "contains": [
+              "boots shipped provider/contributor rows and prepares verified source through the real Loader"
+            ]
+          },
+          {
+            "path": "apps/web/tests/settings-catalog-pages.e2e.ts",
+            "contains": [
+              "drives real MCP and Skill mutations plus Memory and Code Index Remote flows"
+            ]
+          }
+        ],
+        "docs": [
+          {
+            "path": "docs/subsystems/code-index.md"
+          }
+        ]
+      },
+      "limitations": [
+        "Indexes are derived local caches and never replace workspace files as facts; an optional explicitly configured embedding endpoint receives bounded chunks, while the default Web composition leaves that lane unconfigured."
+      ]
+    },
+    {
+      "id": "extension-catalogs",
+      "status": "shipped",
+      "summary": "MCP tools/resources/prompts and local Skill inventory/import surfaces with independent protocol ownership.",
+      "evidence": {
+        "composition": [
+          {
+            "path": "packages/bundle/base/cordis.patch.yml",
+            "contains": [
+              "id: mcp-catalog"
+            ]
+          },
+          {
+            "path": "packages/bundle/web-app/cordis.patch.yml",
+            "contains": [
+              "id: mcp-servers",
+              "id: skill-inventory",
+              "id: ui-settings-mcp",
+              "id: ui-settings-skills"
+            ]
+          }
+        ],
+        "remote": [
+          {
+            "path": "packages/api/remotes/src/client/index.ts",
+            "contains": [
+              "mcpServersRemote",
+              "skillInventoryRemote"
+            ]
+          }
+        ],
+        "ui": [
+          {
+            "path": "packages/client/ui-settings-mcp/src/client/index.ts"
+          },
+          {
+            "path": "packages/client/ui-settings-skills/src/client/index.ts"
+          }
+        ],
+        "e2e": [
+          {
+            "path": "apps/web/tests/settings-catalog-pages.e2e.ts",
+            "contains": [
+              "drives real MCP and Skill mutations plus Memory and Code Index Remote flows"
+            ]
+          }
+        ],
+        "docs": [
+          {
+            "path": "docs/subsystems/extensions.md"
+          }
+        ]
+      },
+      "limitations": [
+        "Unsigned local Skills are identified as such; no marketplace signature or publisher verification is claimed."
+      ]
+    },
+    {
+      "id": "product-shell",
+      "status": "shipped",
+      "summary": "Persisted Simple/Developer mode and Chat, Work, Library product navigation over real projections and launch seams.",
+      "evidence": {
+        "composition": [
+          {
+            "path": "packages/bundle/base/cordis.patch.yml",
+            "contains": [
+              "id: product-mode"
+            ]
+          },
+          {
+            "path": "packages/bundle/web-app/cordis.patch.yml",
+            "contains": [
+              "id: ui-product-shell"
+            ]
+          }
+        ],
+        "remote": [
+          {
+            "path": "packages/api/remotes/src/client/index.ts",
+            "contains": [
+              "productModeRemote"
+            ]
+          }
+        ],
+        "ui": [
+          {
+            "path": "packages/client/ui-product-shell/src/client/index.ts"
+          }
+        ],
+        "e2e": [
+          {
+            "path": "apps/web/tests/product-shell-prompt-context.e2e.ts",
+            "contains": [
+              "runs draft → real Remote enhance → source explanation → diff → accept → undo without auto-submit, and cancels in flight"
+            ]
+          },
+          {
+            "path": "apps/web/tests/settings-chrome.e2e.ts",
+            "contains": [
+              "uses Chat, Work, and Library as the shared top-level product navigation",
+              "opens the settings dialog, switches sections, and closes by every path"
+            ]
+          }
+        ],
+        "docs": [
+          {
+            "path": "packages/client/ui-product-shell/README.md"
+          }
+        ]
+      },
+      "limitations": [
+        "Work and Library currently use the sidebar navigation host rather than independent center-column routes."
+      ]
+    },
+    {
+      "id": "ordinary-user-safe-defaults",
+      "status": "shipped",
+      "summary": "Fresh sessions default to workspace-write plus ask; danger-full-access plus never is an explicit Developer Mode preset.",
+      "evidence": {
+        "composition": [
+          {
+            "path": "packages/bundle/base/cordis.patch.yml",
+            "contains": [
+              "id: permission",
+              "workspace-write",
+              "approval: ask"
+            ]
+          }
+        ],
+        "remote": [
+          {
+            "path": "packages/client/ui-settings/src/client/settings-scope.ts",
+            "contains": [
+              "settings.mutate"
+            ]
+          }
+        ],
+        "ui": [
+          {
+            "path": "packages/client/ui-permission-presets/src/client/index.ts"
+          }
+        ],
+        "e2e": [
+          {
+            "path": "apps/web/tests/permission-policy-context.e2e.ts",
+            "contains": [
+              "switches read-only, danger-full-access, and workspace-write through the real GUI command path",
+              "records cache-safe current policy before the corresponding model behavior"
+            ]
+          },
+          {
+            "path": "apps/web/tests/access-confirmation.e2e.ts",
+            "contains": [
+              "requires acknowledgement before the composer picker can enable Full access"
+            ]
+          },
+          {
+            "path": "apps/web/tests/settings-chrome.e2e.ts",
+            "contains": [
+              "stores Permission as the default for future sessions without changing an existing session",
+              "Developer Mode"
+            ]
+          }
+        ],
+        "docs": [
+          {
+            "path": "packages/client/ui-permission-presets/README.md"
+          }
+        ]
+      },
+      "limitations": [
+        "Environment and persisted user overrides intentionally take precedence over fresh-install defaults."
+      ]
+    },
+    {
+      "id": "external-model-routing",
+      "status": "planned",
+      "summary": "Relay-specific external routing and user-facing model-strength tiers remain outside the shipped runtime.",
+      "evidence": {
+        "docs": [
+          {
+            "path": "docs/scheduling/interface.md"
+          }
+        ]
+      },
+      "limitations": [
+        "No shipped default composition claims this external scheduler client today."
+      ]
+    }
+  ]
+}
