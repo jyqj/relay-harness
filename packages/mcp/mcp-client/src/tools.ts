@@ -31,6 +31,8 @@ export interface ToolBridgeOptions {
   registrationFailure: 'contain' | 'throw'
   serverName: string
   toolCallTimeoutMs: number
+  /** Complete UTF-8 JSON byte bound for one untrusted tool result. */
+  maxToolResultBytes: number
   /** Generation ownership guard checked after every paginated fetch and before registry swap. */
   generationActive?: () => boolean
 }
@@ -40,6 +42,8 @@ export type ToolDisposers = Map<string, () => void>
 const MAX_TOOL_CATALOG_ITEMS = 1_024
 const MAX_TOOL_CATALOG_PAGES = 256
 const MAX_TOOL_CATALOG_BYTES = 8 * 1024 * 1024
+/** Default complete JSON byte bound for one untrusted MCP tool result. */
+export const DEFAULT_MAX_TOOL_RESULT_BYTES = 4 * 1024 * 1024
 
 /** Canonical MCP result exposed to Code Mode without discarding protocol blocks. */
 export type McpResult<Structured extends JsonValue = JsonValue> = {
@@ -338,6 +342,7 @@ function createExecutor(
     // specific "missing required param" error the model can learn from.
     const argsObj = (typeof args === 'object' && args !== null ? args : {}) as Record<string, unknown>
     const result = await callToolUncached(client, rawName, argsObj, exec, opts)
+    assertToolResultSize(result, rawName, opts.maxToolResultBytes)
 
     // The SDK may return a legacy `toolResult` shape; normalize to content array.
     if (!Array.isArray(result.content)) {
@@ -377,6 +382,20 @@ function createExecutor(
       projections.set(exec, { value, fallback, content: projected })
     }
     return value
+  }
+}
+
+/** Reject one complete raw result before schema projection, rich decoding, or durable rendering. */
+function assertToolResultSize(result: unknown, rawName: string, maxBytes: number): void {
+  let serialized: string
+  try {
+    serialized = JSON.stringify(result)
+  } catch {
+    throw new Error(`MCP tool "${rawName}" returned a result that is not JSON-serializable`)
+  }
+  const bytes = Buffer.byteLength(serialized, 'utf8')
+  if (bytes > maxBytes) {
+    throw new Error(`MCP tool "${rawName}" result is ${String(bytes)} bytes and exceeds maxToolResultBytes ${String(maxBytes)}`)
   }
 }
 

@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
@@ -6,6 +6,8 @@ import {
   findWorkspaceRoot,
   loadExternalCorpusManifest,
   resolveExternalCorpus,
+  runExternalCorpus,
+  settleCorpusResources,
   type ExternalCorpusDefinition,
 } from './code-index-external-corpus.ts'
 
@@ -76,5 +78,116 @@ describe('code-index external corpus protocol', () => {
       root: configured,
       rootSource: 'environment',
     })
+  })
+
+  it('rejects a probe collision before allocating a temporary database', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'rlh-corpus-collision-root-'))
+    temporary.push(root)
+    const id = `collision-${process.pid}-${Date.now()}`
+    await writeFile(join(root, 'probe.ts'), 'existing source\n')
+    const before = (await readdir(tmpdir())).filter(name => name.startsWith(`rlh-code-index-corpus-${id}-`))
+    await expect(runExternalCorpus({
+      definition: definition({ id }),
+      root,
+      rootSource: 'candidate',
+    }, {
+      searchIterations: 1,
+      incrementalIterations: 1,
+      maxFileBytes: 512_000,
+    }, root)).rejects.toThrow('refusing to overwrite probe path')
+    const after = (await readdir(tmpdir())).filter(name => name.startsWith(`rlh-code-index-corpus-${id}-`))
+    expect(after).toEqual(before)
+  })
+
+  it('does not overwrite or remove a probe that appears after the initial collision check', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'rlh-corpus-late-collision-root-'))
+    temporary.push(root)
+    const id = `late-collision-${process.pid}-${Date.now()}`
+    await writeFile(join(root, 'marker.txt'), 'marker\n')
+    await Promise.all(Array.from({ length: 200 }, (_, index) => (
+      writeFile(join(root, `source-${index}.ts`), `export const corpusSource${index} = ${index}\n`)
+    )))
+    const prefix = `rlh-code-index-corpus-${id}-`
+    const running = runExternalCorpus({
+      definition: definition({
+        id,
+        thresholds: {
+          minRecallAt5: 0,
+          minMrr: 0,
+          maxFullIndexMs: 60_000,
+          maxIncrementalP95Ms: 60_000,
+          maxSearchP95Ms: 60_000,
+        },
+      }),
+      root,
+      rootSource: 'candidate',
+    }, {
+      searchIterations: 1,
+      incrementalIterations: 1,
+      maxFileBytes: 512_000,
+    }, root).then(
+      value => ({ status: 'fulfilled' as const, value }),
+      (error: unknown) => ({ status: 'rejected' as const, error }),
+    )
+    for (let attempt = 0; attempt < 1_000; attempt++) {
+      if ((await readdir(tmpdir())).some(name => name.startsWith(prefix))) break
+      await new Promise(resolve => setTimeout(resolve, 1))
+    }
+    const probe = join(root, 'probe.ts')
+    await writeFile(probe, 'late foreign source\n', { flag: 'wx' })
+    const outcome = await running
+    expect(outcome.status).toBe('rejected')
+    if (outcome.status !== 'rejected') throw new Error('late probe collision unexpectedly completed')
+    expect(outcome.error).toBeInstanceOf(Error)
+    if (!(outcome.error instanceof Error)) throw new Error('late probe collision rejected with a non-Error value')
+    expect(outcome.error.message).toContain('refusing to overwrite probe path')
+    expect(await readFile(probe, 'utf8')).toBe('late foreign source\n')
+    expect((await readdir(tmpdir())).filter(name => name.startsWith(prefix))).toEqual([])
+  })
+
+  it('removes the temporary database when the corpus run rejects before reporting', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'rlh-corpus-runtime-failure-root-'))
+    temporary.push(root)
+    const id = `runtime-failure-${process.pid}-${Date.now()}`
+    await writeFile(join(root, 'marker.txt'), 'marker\n')
+    const prefix = `rlh-code-index-corpus-${id}-`
+    const before = (await readdir(tmpdir())).filter(name => name.startsWith(prefix))
+    await expect(runExternalCorpus({
+      definition: definition({
+        id,
+        thresholds: {
+          minRecallAt5: 0,
+          minMrr: 0,
+          maxFullIndexMs: 0,
+          maxIncrementalP95Ms: 60_000,
+          maxSearchP95Ms: 60_000,
+        },
+      }),
+      root,
+      rootSource: 'candidate',
+    }, {
+      searchIterations: 1,
+      incrementalIterations: 1,
+      maxFileBytes: 512_000,
+    }, root)).rejects.toThrow('full index')
+    expect((await readdir(tmpdir())).filter(name => name.startsWith(prefix))).toEqual(before)
+  })
+
+  it('attempts every cleanup and keeps the run failure first', async () => {
+    const runFailure = new Error('run failed')
+    const cleanupFailure = new Error('cleanup failed')
+    const calls: string[] = []
+    const error = await settleCorpusResources(runFailure, [
+      () => { calls.push('probe'); return Promise.reject(cleanupFailure) },
+      () => { calls.push('runtime'); return Promise.resolve() },
+      () => { calls.push('temporary'); return Promise.reject(new Error('temporary failed')) },
+    ]).catch((caught: unknown): unknown => caught)
+    expect(calls).toEqual(['probe', 'runtime', 'temporary'])
+    expect(error).toBeInstanceOf(AggregateError)
+    expect((error as AggregateError).errors).toEqual([
+      runFailure,
+      cleanupFailure,
+      expect.objectContaining({ message: 'temporary failed' }),
+    ])
   })
 })

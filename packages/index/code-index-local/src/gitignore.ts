@@ -15,8 +15,8 @@
  * @module @relay-harness/rlh-code-index-local/gitignore
  */
 
-import { readFile } from 'node:fs/promises'
-import { join } from 'node:path'
+import { readFile, stat } from 'node:fs/promises'
+import { join, resolve } from 'node:path'
 
 /** One parsed pattern line with its gitignore modifiers resolved. */
 export interface GitignoreRule {
@@ -206,4 +206,49 @@ export async function loadWorkspaceGitIgnore(root: string): Promise<PathExclusio
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') return undefined
     throw error
   }
+}
+
+/**
+ * Load the repository-local Git exclude document, including linked worktrees.
+ * @param root - workspace root containing a `.git` directory or gitdir file.
+ * @returns the compiled low-precedence filter, or `undefined` outside Git or when absent.
+ */
+export async function loadWorkspaceGitInfoExclude(root: string): Promise<PathExclusionFilter | undefined> {
+  const dotGit = join(root, '.git')
+  let metadata: Awaited<ReturnType<typeof stat>>
+  try {
+    metadata = await stat(dotGit)
+  } catch (error: unknown) {
+    if (isErrnoCode(error, 'ENOENT')) return undefined
+    throw error
+  }
+  if (metadata.isDirectory()) return loadOptionalIgnore(join(dotGit, 'info', 'exclude'))
+  if (!metadata.isFile()) return undefined
+  const marker = await readFile(dotGit, 'utf8')
+  const match = /^gitdir:\s*(.+?)\s*$/imu.exec(marker)
+  if (match?.[1] === undefined) return undefined
+  const gitDirectory = resolve(root, match[1])
+  const direct = await loadOptionalIgnore(join(gitDirectory, 'info', 'exclude'))
+  if (direct !== undefined) return direct
+  let commonDirectory: string
+  try {
+    commonDirectory = resolve(gitDirectory, (await readFile(join(gitDirectory, 'commondir'), 'utf8')).trim())
+  } catch (error: unknown) {
+    if (isErrnoCode(error, 'ENOENT')) return undefined
+    throw error
+  }
+  return loadOptionalIgnore(join(commonDirectory, 'info', 'exclude'))
+}
+
+async function loadOptionalIgnore(path: string): Promise<PathExclusionFilter | undefined> {
+  try {
+    return compileFilter(parseGitignoreRules(await readFile(path, 'utf8')))
+  } catch (error: unknown) {
+    if (isErrnoCode(error, 'ENOENT')) return undefined
+    throw error
+  }
+}
+
+function isErrnoCode(error: unknown, code: string): error is NodeJS.ErrnoException {
+  return error instanceof Error && 'code' in error && error.code === code
 }

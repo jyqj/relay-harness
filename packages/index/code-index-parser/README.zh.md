@@ -25,7 +25,7 @@ walker 覆盖全部已内嵌语言并按参考实现分层：JS/TS 家族（Java
 
 Vue 与 Svelte 单文件组件以 `heuristic`（参考 SFC 解析器硬编码的置信度 0.78）解析：每个 `<script>` 块经合成文本抬升到 JS/TS walker——填充换行使抽取记录保持原文件行号，`lang="ts"` 选用 TypeScript grammar，文件同时获得一个横跨全文件的合成 `component` 符号（路径 stem 的 PascalCase 名、默认导出、uid 基于组件身份）。模板层产出：每个大写开头标签一条未解析的 component-usage 引用（跳过组件自身名），以及模板事件调用边（Vue 的 `@evt="h"` / `v-on:evt="h"`，Svelte 的 `on:evt={h}`），dispatch 记为 `event_emitter`，统一携带 `sfc_template` 策略标签。
 
-导入说明符相对工作区根解析（`resolveImport`）：Python 点分模块（`a.b` → `a/b.py` 或 `a/b/__init__.py`）、相对 JS 说明符按 `.ts/.tsx/.js/.jsx/.mjs` 扩展序再 `/index` 文件探测、精确带扩展名匹配；bare 模块与越出根目录的说明符返回 `null`——向上逃逸的 `..` 绝不会折叠成伪造的项目内边。
+导入说明符相对工作区根解析（`resolveImport`）：Python 点分模块（`a.b` → `a/b.py` 或 `a/b/__init__.py`）、相对 JS 说明符按 `.ts/.tsx/.mts/.cts/.js/.jsx/.mjs/.cjs` 扩展序再 `/index` 文件探测、精确带扩展名匹配；bare 模块与越出根目录的说明符返回 `null`——向上逃逸的 `..` 绝不会折叠成伪造的项目内边。
 
 分块沿用参考语义：每个符号跨度一个 chunk，跨度之间的非空白间隙成为 gap chunk，超预算符号按固定窗口切分（默认 80 行，breadcrumb 保持纯符号名），无符号文件回退纯行窗口。id 由 SHA-256 派生且确定：`uid:` 符号身份基于 `(file, qname, kind, 归一化签名)`，不受行号漂移影响；`sym:`/`call:`/`lit:`/`chunk:` 位置 id 锚定文件/行/列。
 

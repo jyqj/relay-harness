@@ -18,6 +18,7 @@ import z from '@relay-harness/schemastery'
 import { MAX_TIMER_DELAY_MS } from '@relay-harness/rlh-timeout'
 import { RECONNECT_DEFAULTS, resolveReconnectPolicy, startConnection } from './connection.ts'
 import type { ReconnectConfig } from './connection.ts'
+import { DEFAULT_MAX_TOOL_RESULT_BYTES } from './tools.ts'
 // Side-effect type import: declaration-merges `ctx.tools` onto Context.
 import type {} from '@relay-harness/rlh-tools'
 
@@ -87,6 +88,8 @@ export interface StdioConfig {
   cwd: string
   /** Per-tool-call timeout in milliseconds. */
   toolCallTimeoutMs: number
+  /** Positive safe-integer UTF-8 JSON byte bound for one complete tool result. */
+  maxToolResultBytes?: number
   /** Whole connect + paginated discovery deadline in milliseconds. */
   startupTimeoutMs?: number
   /** Fail plugin activation when the initial connection or tool synchronization fails. */
@@ -111,6 +114,8 @@ export interface StreamableHttpConfig {
   headers: Record<string, string>
   /** Per-tool-call timeout in milliseconds. */
   toolCallTimeoutMs: number
+  /** Positive safe-integer UTF-8 JSON byte bound for one complete tool result. */
+  maxToolResultBytes?: number
   /** Whole connect + paginated discovery deadline in milliseconds. */
   startupTimeoutMs?: number
   /** Fail plugin activation when the initial connection or tool synchronization fails. */
@@ -138,6 +143,7 @@ export const Config = z.union([
     env: z.dict(String).default({}),
     cwd: z.string().default(''),
     toolCallTimeoutMs: z.number().default(DEFAULT_TOOL_CALL_TIMEOUT_MS),
+    maxToolResultBytes: z.number().step(1).min(1).max(Number.MAX_SAFE_INTEGER).default(DEFAULT_MAX_TOOL_RESULT_BYTES),
     startupTimeoutMs: z.number().min(1).max(MAX_TIMER_DELAY_MS).default(DEFAULT_STARTUP_TIMEOUT_MS),
     failOnStartupError: z.boolean().default(false),
     reconnect: Reconnect,
@@ -148,6 +154,7 @@ export const Config = z.union([
     url: z.string().required(),
     headers: z.dict(String).default({}),
     toolCallTimeoutMs: z.number().default(DEFAULT_TOOL_CALL_TIMEOUT_MS),
+    maxToolResultBytes: z.number().step(1).min(1).max(Number.MAX_SAFE_INTEGER).default(DEFAULT_MAX_TOOL_RESULT_BYTES),
     startupTimeoutMs: z.number().min(1).max(MAX_TIMER_DELAY_MS).default(DEFAULT_STARTUP_TIMEOUT_MS),
     failOnStartupError: z.boolean().default(false),
     reconnect: Reconnect,

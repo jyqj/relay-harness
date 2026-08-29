@@ -107,6 +107,18 @@ function stdioConfig(reconnect?: Config['reconnect']): Config {
   }
 }
 
+function httpConfig(reconnect?: Config['reconnect']): Config {
+  return {
+    transport: 'streamable-http',
+    serverName: 'srv',
+    url: 'https://mcp.example.test/',
+    headers: {},
+    toolCallTimeoutMs: 60_000,
+    failOnStartupError: false,
+    ...reconnect === undefined ? {} : { reconnect },
+  }
+}
+
 /** The tool list the mock server advertises after a successful (re)connect. */
 function listing(...names: string[]): { tools: { name: string; inputSchema: { type: string } }[]; nextCursor: undefined } {
   return {
@@ -136,6 +148,37 @@ describe('reconnect supervisor', () => {
     mockListTools.mockResolvedValue(listing('remote'))
     mockCallTool.mockResolvedValue({ content: [{ type: 'text', text: 'ok' }] })
     ctx = await mountRegistry()
+  })
+
+  it('rejects an invalid programmatic result-byte bound before creating a transport generation', () => {
+    expect(() => startConnection(
+      ctx,
+      { ...stdioConfig({ enabled: false }), maxToolResultBytes: Number.NaN },
+      resolveReconnectPolicy({ enabled: false }, 'reconnect'),
+    )).toThrow('maxToolResultBytes must be a positive safe integer')
+    expect(instances).toHaveLength(0)
+  })
+
+  it('projects the configured result-byte bound through stdio and Streamable HTTP connections', async () => {
+    const marker = 'transport-payload-must-not-leak'
+    mockCallTool.mockResolvedValue({ content: [{ type: 'text', text: marker.repeat(8) }] })
+    const configurations: Config[] = [stdioConfig({ enabled: false }), httpConfig({ enabled: false })]
+
+    for (const configuration of configurations) {
+      const local = await mountRegistry()
+      await apply(local, { ...configuration, maxToolResultBytes: 64 })
+      const result = await local.tools.execute({
+        signal: testToolSignal,
+        callId: nextCallId(),
+        name: 'mcp__srv__remote',
+        arguments: {},
+      })
+      expect(result.isError).toBe(true)
+      const diagnostic = result.content[0]?.type === 'text' ? result.content[0].text : ''
+      expect(diagnostic).toContain('exceeds maxToolResultBytes 64')
+      expect(diagnostic).not.toContain(marker)
+      await local.fiber.dispose()
+    }
   })
 
   it('bounds a hung connect/discovery attempt and closes its generation', async () => {

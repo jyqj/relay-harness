@@ -28,5 +28,10 @@ describe('default Prompt Enhancement source closure', () => {
     const fileConfig = web.find(row => row.id === 'file-reference-local')?.config
     expect(fileConfig).toBeTypeOf('object')
     expect(fileConfig).toHaveProperty('fileContent')
+    expect(web.find(row => row.id === 'code-context')?.config).toMatchObject({
+      maxChars: 65_536,
+      maxHits: 8,
+      minQueryChars: 8,
+    })
   })
 })

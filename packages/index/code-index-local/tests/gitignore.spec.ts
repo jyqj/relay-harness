@@ -1,6 +1,6 @@
 /** Rule matrix for the minimal gitignore evaluator the scanner stacks. */
 
-import { mkdir, mkdtemp, rm } from 'node:fs/promises'
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
@@ -8,6 +8,7 @@ import {
 
   exclusionFilterFromPatterns,
   inclusionMatcherFromPatterns,
+  loadWorkspaceGitInfoExclude,
   loadWorkspaceGitIgnore,
   parseGitignoreRules,
 } from '../src/gitignore.ts'
@@ -125,6 +126,38 @@ describe('loadWorkspaceGitIgnore', () => {
     await mkdir(join(root, '.gitignore'))
     // A directory squatting on the .gitignore name yields EISDIR.
     await expect(loadWorkspaceGitIgnore(root)).rejects.toThrow()
+  })
+})
+
+describe('loadWorkspaceGitInfoExclude', () => {
+  it('loads the repository-local exclude document without requiring a root gitignore', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'rlh-git-info-'))
+    scratchDirs.push(root)
+    await mkdir(join(root, '.git', 'info'), { recursive: true })
+    await writeFile(join(root, '.git', 'info', 'exclude'), '/private-reference/\n')
+    const filter = await loadWorkspaceGitInfoExclude(root)
+    expect(filter?.excludes('private-reference', true)).toBe(true)
+    expect(filter?.excludes('src/private-reference', true)).toBe(false)
+  })
+
+  it('follows a linked worktree gitdir to the common repository exclude document', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'rlh-git-worktree-info-'))
+    scratchDirs.push(root)
+    const worktree = join(root, 'worktree')
+    const common = join(root, 'repo.git')
+    const gitDirectory = join(common, 'worktrees', 'fixture')
+    await Promise.all([
+      mkdir(worktree),
+      mkdir(join(common, 'info'), { recursive: true }),
+      mkdir(gitDirectory, { recursive: true }),
+    ])
+    await Promise.all([
+      writeFile(join(worktree, '.git'), `gitdir: ${gitDirectory}\n`),
+      writeFile(join(gitDirectory, 'commondir'), '../..\n'),
+      writeFile(join(common, 'info', 'exclude'), '*.private.ts\n'),
+    ])
+    const filter = await loadWorkspaceGitInfoExclude(worktree)
+    expect(filter?.excludes('src/fixture.private.ts')).toBe(true)
   })
 })
 

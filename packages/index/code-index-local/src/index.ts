@@ -59,7 +59,13 @@ export {
 export type { RefreshPassInputs, RefreshPassIo, RefreshPassOutcome } from './indexer.ts'
 export { DEFAULT_HARD_EXCLUDES, DEFAULT_INCLUDE_PATTERNS, DEFAULT_SCAN_IO_CONCURRENCY, collectWorkspaceEntries, walkWorkspace } from './scanner.ts'
 export type { ScanEntry, WorkspaceScan } from './scanner.ts'
-export { exclusionFilterFromPatterns, inclusionMatcherFromPatterns, parseGitignoreRules, loadWorkspaceGitIgnore } from './gitignore.ts'
+export {
+  exclusionFilterFromPatterns,
+  inclusionMatcherFromPatterns,
+  parseGitignoreRules,
+  loadWorkspaceGitIgnore,
+  loadWorkspaceGitInfoExclude,
+} from './gitignore.ts'
 export type { PathExclusionFilter } from './gitignore.ts'
 export { contentHash, contentHashFile, CONTENT_HASH_HEX_LENGTH } from './hash.ts'
 export {

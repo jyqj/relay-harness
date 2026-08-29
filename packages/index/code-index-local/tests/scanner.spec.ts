@@ -80,7 +80,41 @@ describe('collectWorkspaceEntries', () => {
       ['target/release/app.ts'],
     ])
     expect(DEFAULT_HARD_EXCLUDES.length).toBe(15)
-    expect(DEFAULT_INCLUDE_PATTERNS.length).toBe(27)
+    expect(DEFAULT_INCLUDE_PATTERNS.length).toBe(31)
+  })
+
+  it('admits every JavaScript and TypeScript module extension classified by the parser', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'rlh-scan-js-modules-'))
+    roots.push(root)
+    await Promise.all([
+      writeFile(join(root, 'module.mjs'), 'export const esm = 1\n'),
+      writeFile(join(root, 'module.cjs'), 'exports.cjs = 1\n'),
+      writeFile(join(root, 'module.mts'), 'export const esm: number = 1\n'),
+      writeFile(join(root, 'module.cts'), 'exports.cts = 1\n'),
+    ])
+    const scan = await collectWorkspaceEntries(root, DEFAULT_INCLUDE_PATTERNS, [])
+    expect(scan.entries.map(entry => entry.path)).toEqual([
+      'module.cjs',
+      'module.cts',
+      'module.mjs',
+      'module.mts',
+    ])
+  })
+
+  it('applies repository-local excludes below root gitignore rules', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'rlh-scan-git-info-'))
+    roots.push(root)
+    await mkdir(join(root, '.git', 'info'), { recursive: true })
+    await mkdir(join(root, 'private-reference'))
+    await Promise.all([
+      writeFile(join(root, '.git', 'info', 'exclude'), '/private-reference/\n*.private.ts\n'),
+      writeFile(join(root, '.gitignore'), '!keep.private.ts\n'),
+      writeFile(join(root, 'private-reference', 'hidden.ts'), 'hidden\n'),
+      writeFile(join(root, 'drop.private.ts'), 'drop\n'),
+      writeFile(join(root, 'keep.private.ts'), 'keep\n'),
+    ])
+    const scan = await collectWorkspaceEntries(root, DEFAULT_INCLUDE_PATTERNS, [])
+    expect(scan.entries.map(entry => entry.path)).toEqual(['keep.private.ts'])
   })
 
   it('loads nested gitignore documents, honors child negation, and prunes a scoped walk', async () => {

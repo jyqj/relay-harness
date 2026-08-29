@@ -553,7 +553,7 @@ export interface EmbeddingConfig {
 
 Depends on: [`JournalMode`](../packages/index/code-index-sqlite/src/index.ts)
 
-Source: [`packages/index/code-index-local/src/index.ts:232`](../packages/index/code-index-local/src/index.ts)
+Source: [`packages/index/code-index-local/src/index.ts:238`](../packages/index/code-index-local/src/index.ts)
 
 <a id="relay-harnessrlh-code-index-workspace-router"></a>
 
@@ -1688,6 +1688,8 @@ export interface StdioConfig {
   cwd: string
   /** Per-tool-call timeout in milliseconds. */
   toolCallTimeoutMs: number
+  /** Positive safe-integer UTF-8 JSON byte bound for one complete tool result. */
+  maxToolResultBytes?: number
   /** Whole connect + paginated discovery deadline in milliseconds. */
   startupTimeoutMs?: number
   /** Fail plugin activation when the initial connection or tool synchronization fails. */
@@ -1712,6 +1714,8 @@ export interface StreamableHttpConfig {
   headers: Record<string, string>
   /** Per-tool-call timeout in milliseconds. */
   toolCallTimeoutMs: number
+  /** Positive safe-integer UTF-8 JSON byte bound for one complete tool result. */
+  maxToolResultBytes?: number
   /** Whole connect + paginated discovery deadline in milliseconds. */
   startupTimeoutMs?: number
   /** Fail plugin activation when the initial connection or tool synchronization fails. */
@@ -1733,7 +1737,7 @@ export interface ReconnectConfig {
 }
 ```
 
-Source: [`packages/mcp/mcp-client/src/index.ts:123`](../packages/mcp/mcp-client/src/index.ts)
+Source: [`packages/mcp/mcp-client/src/index.ts:128`](../packages/mcp/mcp-client/src/index.ts)
 
 <a id="relay-harnessrlh-mcp-servers-file"></a>
 
@@ -1885,7 +1889,7 @@ export interface Config {
 export type JournalMode = 'wal' | 'delete' | 'truncate' | 'persist'
 ```
 
-Source: [`packages/memory/memory-sqlite/src/index.ts:82`](../packages/memory/memory-sqlite/src/index.ts)
+Source: [`packages/memory/memory-sqlite/src/index.ts:83`](../packages/memory/memory-sqlite/src/index.ts)
 
 <a id="relay-harnessrlh-message-feedback"></a>
 

@@ -6,12 +6,13 @@ import { chromium } from 'playwright'
 import { afterAll, beforeAll, describe, expect, it, onTestFailed } from 'vitest'
 import type { StreamChunk } from '@relay-harness/rlh-llm'
 import type { ReplayEntry, ReplayOverrideDoc } from '@relay-harness/rlh-llm-replay'
+import type {} from '@relay-harness/rlh-memory'
 import type { SessionEvent } from '@relay-harness/rlh-session'
 import { launchWebScaffold, watchConsole, type WebScaffold } from './scaffold.ts'
 import { connectFreshWorkspace, newEnglishPage, saveFailureShot } from './support.ts'
 
 const FIRST_PROMPT = 'Remember that browser acceptance must stay explicit.'
-const DRAFT = 'improve prompt enhance e2e'
+const DRAFT = 'improve browser acceptance prompt enhance e2e'
 const ENHANCED = 'Improve Prompt Enhancement and verify its real browser acceptance flow without submitting it.'
 const STALE_DRAFT = 'second enhancement attempt'
 
@@ -70,6 +71,28 @@ describe('web e2e: ordinary product shell and Prompt Enhancement', () => {
     await page.goto(scaffold.baseUrl, { waitUntil: 'load' })
     await page.waitForSelector('[class*="frame"]', { timeout: 30_000 })
     await connectFreshWorkspace(page, scaffold.workspaceCwd, 'product-shell-prompt-context')
+    const workspace = join(scaffold.workspaceCwd, 'product-shell-prompt-context')
+    const session = scaffold.ctx.sessions.list().find(item => item.header.cwd === workspace)
+    if (session === undefined) throw new Error('Prompt Enhancement e2e did not attach its workspace Session')
+    await scaffold.ctx.longTermMemory.remember({
+      scope: {
+        workspaceId: workspace,
+        userId: process.env.USER || process.env.USERNAME || 'local',
+        agentId: 'relay-harness',
+      },
+      kind: 'preference',
+      content: 'Browser acceptance must stay explicit.',
+      importance: 4,
+      confidence: 1,
+      trust: 'user-stated',
+      status: 'active',
+      evidence: [{
+        sessionId: session.id,
+        eventSeqs: [0],
+        verification: 'user-statement',
+        excerpt: 'browser acceptance must stay explicit',
+      }],
+    })
   }, 120_000)
 
   afterAll(async () => {
@@ -104,6 +127,13 @@ describe('web e2e: ordinary product shell and Prompt Enhancement', () => {
       event.type === 'user/message' && event.data.source.kind === 'user'
     )).length
     expect(directMessagesAfterTurn).toBe(1)
+    const inspectContext = page.getByRole('button', { name: 'Inspect context used for this session' })
+    await expect.poll(() => inspectContext.textContent(), { timeout: 10_000 }).toMatch(/^Context [1-9]\d*$/u)
+    await inspectContext.click()
+    const inspector = page.getByRole('dialog', { name: 'Context Inspector' })
+    await inspector.getByText(/context\/prepared #/u).first().waitFor({ timeout: 10_000 })
+    await inspector.getByText(/Model-admitted|Rejected or rewritten/u).first().waitFor({ timeout: 10_000 })
+    await inspector.getByRole('button', { name: 'Close', exact: true }).last().click()
 
     await composer.fill(DRAFT)
     await page.getByRole('button', { name: 'Enhance prompt' }).click()
@@ -114,6 +144,7 @@ describe('web e2e: ordinary product shell and Prompt Enhancement', () => {
     const sources = proposal.getByRole('region', { name: 'Sources used this time' })
     await sources.waitFor()
     await proposal.getByText('History', { exact: true }).first().waitFor()
+    await proposal.getByText('Memory', { exact: true }).first().waitFor()
     await expect.poll(() => sources.textContent()).toContain('Freshness: Current')
     await expect.poll(() => sources.textContent()).toContain('Verification: Verified')
     await proposal.getByText(/completed-turn/).first().waitFor()

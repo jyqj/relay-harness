@@ -39,8 +39,16 @@ describe('import resolution', () => {
   it('resolves extensionless js specifiers through the extension order', () => {
     seed('src/utils/helper.ts')
     seed('src/utils/other.tsx')
+    seed('src/utils/esm.mts')
+    seed('src/utils/common.cts')
+    seed('src/utils/runtime.mjs')
+    seed('src/utils/legacy.cjs')
     expect(resolveImport(root, 'src/main.ts', './utils/helper')).toBe('src/utils/helper.ts')
     expect(resolveImport(root, 'src/main.ts', './utils/other')).toBe('src/utils/other.tsx')
+    expect(resolveImport(root, 'src/main.ts', './utils/esm')).toBe('src/utils/esm.mts')
+    expect(resolveImport(root, 'src/main.ts', './utils/common')).toBe('src/utils/common.cts')
+    expect(resolveImport(root, 'src/main.ts', './utils/runtime')).toBe('src/utils/runtime.mjs')
+    expect(resolveImport(root, 'src/main.ts', './utils/legacy')).toBe('src/utils/legacy.cjs')
   })
 
   it('prefers a direct file match over an index module', () => {

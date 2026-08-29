@@ -10,21 +10,18 @@
     - button "Interface":
       - img
       - text: Interface
-    - button "Models":
-      - img
-      - text: Models
-    - button "Plugins":
-      - img
-      - text: Plugins
     - button "Skills":
       - img
       - text: Skills
+    - button "Memory":
+      - img
+      - text: Memory
     - button "MCP":
       - img
       - text: MCP
-    - button "Agent presets":
+    - button "Code Index":
       - img
-      - text: Agent presets
+      - text: Code Index
     - button "About":
       - img
       - text: About
@@ -33,7 +30,7 @@
     - img
     - text: Close
   - heading "MCP servers" [level=2]
-  - paragraph: Manage local MCP servers. Managed rows write ~/.rlh/mcp-servers.yaml; composition rows are read-only.
+  - paragraph: Manage local MCP servers. Managed rows write ~/.rlh/mcp-servers.yaml. Sign in on an HTTP row so its tools are available in chat. Composition rows are read-only.
   - button "Add server":
     - img
   - button "Refresh":

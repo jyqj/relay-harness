@@ -12,6 +12,8 @@ import AgentLoop from '@relay-harness/rlh-agent-loop'
 import { mountAgentLoopTestDependencies } from '@relay-harness/rlh-agent-loop-testkit'
 import { LocalBashExecutor } from '@relay-harness/rlh-bash-local'
 import LocalSubprocessRuntime from '@relay-harness/rlh-subprocess-local'
+import { ShellExecutor } from '@relay-harness/rlh-shell'
+import type { ShellExecRequest, ShellExecSpec, ShellProcess, ShellRunResult } from '@relay-harness/rlh-shell'
 import * as HooksCodex from '@relay-harness/rlh-hooks-codex'
 import { MockAdapter, textResponse, toolCallResponse } from '../../../core/agent-loop/tests/mock-adapter.ts'
 
@@ -39,20 +41,67 @@ function writeHooks(dir: string, hooks: unknown): void {
   writeFileSync(join(dir, 'hooks.json'), JSON.stringify({ hooks }))
 }
 
-async function harnessWithConfig(configPath: string, adapter: MockAdapter, beforeHooks?: (ctx: Context) => void): Promise<Context> {
+interface HookHarnessOptions {
+  beforeHooks?: (ctx: Context) => void
+  deterministicOutputs?: Readonly<Record<string, string>>
+}
+
+/** Deterministic foreground runner for bridge state tests that do not exercise process behavior. */
+class DeterministicHookExecutor extends ShellExecutor {
+  constructor(ctx: Context, private readonly outputs: Readonly<Record<string, string>>) {
+    super(ctx)
+  }
+
+  resolve(request: ShellExecRequest): ShellExecSpec {
+    return {
+      command: request.command,
+      workdir: request.workdir ?? '/stub',
+      timeoutMs: request.timeoutMs ?? 1_000,
+      stdoutMaxBytes: request.stdoutMaxBytes ?? 64_000,
+      ...request.signal ? { signal: request.signal } : {},
+      ...request.stdin !== undefined ? { stdin: request.stdin } : {},
+      ...request.env !== undefined ? { env: request.env } : {},
+      sandboxPolicy: request.sandboxPolicy,
+    }
+  }
+
+  async run(spec: ShellExecSpec): Promise<ShellRunResult> {
+    return {
+      exitCode: 0,
+      signal: null,
+      timedOut: false,
+      aborted: false,
+      timeoutMs: spec.timeoutMs,
+      stdout: { text: this.outputs[spec.command] ?? '', truncated: false },
+      stderr: { text: '', truncated: false },
+    }
+  }
+
+  start(): ShellProcess {
+    throw new Error('DeterministicHookExecutor only supports foreground hook runs')
+  }
+}
+
+async function harnessWithConfig(configPath: string, adapter: MockAdapter, options: HookHarnessOptions = {}): Promise<Context> {
   const ctx = new Context()
   await mountAgentLoopTestDependencies(ctx)
   await ctx.plugin(AgentLoop, { agents: [] })
-  await ctx.plugin(LocalSubprocessRuntime)
-  await ctx.plugin(LocalBashExecutor, { timeoutMs: 10_000 })
-  beforeHooks?.(ctx)
+  if (options.deterministicOutputs === undefined) {
+    await ctx.plugin(LocalSubprocessRuntime)
+    await ctx.plugin(LocalBashExecutor, { timeoutMs: 10_000 })
+  } else {
+    await ctx.plugin(DeterministicHookExecutor, options.deterministicOutputs)
+  }
+  options.beforeHooks?.(ctx)
   await ctx.plugin(HooksCodex, { configPath, model: 'test-model' })
   ctx.llm.registerAdapter(['mock'], adapter)
   return ctx
 }
 
 async function harness(dir: string, adapter: MockAdapter, beforeHooks?: (ctx: Context) => void): Promise<Context> {
-  return harnessWithConfig(join(dir, 'hooks.json'), adapter, beforeHooks)
+  return harnessWithConfig(join(dir, 'hooks.json'), adapter, {
+    ...beforeHooks !== undefined ? { beforeHooks } : {},
+  })
 }
 
 function waitForIdle(_ctx: Context, agent: Agent): Promise<void> {
@@ -191,7 +240,7 @@ describe('hooks-codex bridge', () => {
     const dir = configDir()
     const adapter = new MockAdapter([textResponse('one'), textResponse('two')])
     const warn = vi.fn()
-    const ctx = await harnessWithConfig(dir, adapter, (ctx) => { ctx.logger.warn = warn as never })
+    const ctx = await harnessWithConfig(dir, adapter, { beforeHooks: (ctx) => { ctx.logger.warn = warn as never } })
     const agent = ctx.agentLoop.create(SessionId('config-directory'), { provider: 'mock', model: 'mock' })
 
     agent.followup(createUserMessage({ content: [{ type: 'text', text: 'one' }], source: { kind: 'user' } }))
@@ -214,7 +263,7 @@ describe('hooks-codex bridge', () => {
     writeFileSync(configPath, '{ malformed')
     const adapter = new MockAdapter([textResponse('one'), textResponse('two')])
     const warn = vi.fn()
-    const ctx = await harnessWithConfig(configPath, adapter, (ctx) => { ctx.logger.warn = warn as never })
+    const ctx = await harnessWithConfig(configPath, adapter, { beforeHooks: (ctx) => { ctx.logger.warn = warn as never } })
     const agent = ctx.agentLoop.create(SessionId('malformed-cache'), { provider: 'mock', model: 'mock' })
 
     agent.followup(createUserMessage({ content: [{ type: 'text', text: 'one' }], source: { kind: 'user' } }))
@@ -234,12 +283,14 @@ describe('hooks-codex bridge', () => {
       mkdirSync(join(repo, '.codex'), { recursive: true })
       mkdirSync(join(repo, 'pkg'), { recursive: true })
     }
-    const hookA = script(repoA, 'a.sh', '#!/usr/bin/env bash\necho "context-from-a"\n')
-    const hookB = script(repoB, 'b.sh', '#!/usr/bin/env bash\necho "context-from-b"\n')
+    const hookA = 'hook-a'
+    const hookB = 'hook-b'
     writeFileSync(join(repoA, '.codex/hooks.json'), JSON.stringify({ hooks: { UserPromptSubmit: [{ hooks: [{ command: hookA }] }] } }))
     writeFileSync(join(repoB, '.codex/hooks.json'), JSON.stringify({ hooks: { UserPromptSubmit: [{ hooks: [{ command: hookB }] }] } }))
     const adapter = new MockAdapter([textResponse('a done'), textResponse('b done')])
-    const ctx = await harnessWithConfig('.codex/hooks.json', adapter)
+    const ctx = await harnessWithConfig('.codex/hooks.json', adapter, {
+      deterministicOutputs: { [hookA]: 'context-from-a', [hookB]: 'context-from-b' },
+    })
 
     const agentA = ctx.agentLoop.create(SessionId('repo-a'), { provider: 'mock', model: 'mock' }, { cwd: join(repoA, 'pkg') })
     agentA.followup(createUserMessage({ content: [{ type: 'text', text: 'run a' }], source: { kind: 'user' } }))
@@ -276,12 +327,17 @@ describe('hooks-codex bridge', () => {
     const repo = configDir()
     mkdirSync(join(repo, '.git'), { recursive: true })
     mkdirSync(join(repo, '.codex'), { recursive: true })
-    const first = script(repo, 'first.sh', '#!/usr/bin/env bash\necho "config-version-one"\n')
-    const second = script(repo, 'second.sh', '#!/usr/bin/env bash\necho "config-version-two-expanded"\n')
+    const first = 'hook-version-one'
+    const second = 'hook-version-two'
     const configPath = join(repo, '.codex/hooks.json')
     writeFileSync(configPath, JSON.stringify({ hooks: { UserPromptSubmit: [{ hooks: [{ command: first }] }] } }))
     const adapter = new MockAdapter([textResponse('first'), textResponse('second')])
-    const ctx = await harnessWithConfig('.codex/hooks.json', adapter)
+    const ctx = await harnessWithConfig('.codex/hooks.json', adapter, {
+      deterministicOutputs: {
+        [first]: 'config-version-one',
+        [second]: 'config-version-two-expanded',
+      },
+    })
     const agent = ctx.agentLoop.create(SessionId('reload'), { provider: 'mock', model: 'mock' }, { cwd: repo })
 
     agent.followup(createUserMessage({ content: [{ type: 'text', text: 'one' }], source: { kind: 'user' } }))

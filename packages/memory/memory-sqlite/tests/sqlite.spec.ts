@@ -578,15 +578,79 @@ describe('SQLite long-term memory', () => {
     const db = new DatabaseSync(path)
     expect(db.prepare('SELECT COUNT(*) AS count FROM memory_extraction_jobs')
       .get()).toEqual({ count: 1 })
-    db.close()
     await first.fiber.dispose()
+    const afterSiblingClose = await second.memoryExtractionQueue.enqueue({
+      ...input,
+      turn: 8,
+      sourceHash: 'e'.repeat(64),
+    })
+    expect(afterSiblingClose.status).toBe('pending')
+    expect(db.prepare('SELECT COUNT(*) AS count FROM memory_extraction_jobs')
+      .get()).toEqual({ count: 2 })
+    db.close()
     await second.fiber.dispose()
   })
 
   it('rejects a fresh foreign owner heartbeat, fails its writes loudly, and reclaims a stale one', async () => {
     const path = await databasePath()
     const owner = await harness(path)
+    const entry = await owner.longTermMemory.remember({
+      scope,
+      kind: 'fact',
+      content: 'Owned store rejects every zombie writer.',
+      importance: 1,
+      confidence: 1,
+      trust: 'user-stated',
+      status: 'active',
+      evidence: [userEvidence],
+    })
+    const prepared = await owner.longTermMemory.prepare({
+      scope,
+      sessionId: SessionId('owner-prepared'),
+      turn: 1,
+      query: 'zombie writer',
+      candidateLimit: 5,
+    }, new AbortController().signal)
+    const preparedCommit = await owner.longTermMemory.prepare({
+      scope,
+      sessionId: SessionId('owner-prepared-commit'),
+      turn: 2,
+      query: 'zombie writer',
+      candidateLimit: 5,
+    }, new AbortController().signal)
+    const extractionBase = {
+      scope,
+      sessionId: SessionId('owner-extraction'),
+      promptVersion: 1 as const,
+      route: { provider: 'mock', model: 'mock' },
+      sources: [{ kind: 'user' as const, text: 'Remember owner fencing.', evidence: userEvidence }],
+      maxAttempts: 1,
+    }
+    const completeJob = await owner.memoryExtractionQueue.enqueue({
+      ...extractionBase, turn: 2, sourceHash: '1'.repeat(64),
+    })
+    const failJob = await owner.memoryExtractionQueue.enqueue({
+      ...extractionBase, turn: 3, sourceHash: '2'.repeat(64),
+    })
+    const terminalJob = await owner.memoryExtractionQueue.enqueue({
+      ...extractionBase, turn: 4, sourceHash: '3'.repeat(64),
+    })
+    const leaseBase = Math.max(completeJob.availableAt, failJob.availableAt, terminalJob.availableAt)
+    const completeLease = await owner.memoryExtractionQueue.claim({
+      workerId: 'owner-complete', leaseMs: 60_000, now: leaseBase,
+    })
+    const failLease = await owner.memoryExtractionQueue.claim({
+      workerId: 'owner-fail', leaseMs: 60_000, now: leaseBase,
+    })
+    const terminalLease = await owner.memoryExtractionQueue.claim({
+      workerId: 'owner-terminal', leaseMs: 1_000, now: leaseBase,
+    })
+    if (completeLease === undefined || failLease === undefined || terminalLease === undefined) {
+      throw new Error('owner fencing fixture failed to lease all extraction jobs')
+    }
     const db = new DatabaseSync(path)
+    const usefulBefore = db.prepare('SELECT useful_access_count AS count FROM memory_entries WHERE memory_id = ?')
+      .get(entry.id)
     db.prepare('UPDATE memory_store_owner SET pid = ?, heartbeat_at = ? WHERE id = 1')
       .run(process.pid + 1, Date.now())
     await expect(harness(path)).rejects.toThrow('fresh owner heartbeat')
@@ -601,6 +665,54 @@ describe('SQLite long-term memory', () => {
       evidence: [userEvidence],
     })
     await expect(zombieWrite()).rejects.toThrow('another live process')
+    await expect(Promise.resolve().then(() => owner.longTermMemory.prepare({
+      scope,
+      sessionId: SessionId('owner-zombie-prepare'),
+      turn: 5,
+      query: 'no matching candidate exists for this write',
+      candidateLimit: 5,
+    }, new AbortController().signal))).rejects.toThrow('another live process')
+    await expect(Promise.resolve().then(() => owner.longTermMemory.commit({
+      prepared: preparedCommit,
+      recalledMemoryIds: [entry.id],
+    }))).rejects.toThrow('another live process')
+    await expect(Promise.resolve().then(() => owner.longTermMemory.abort({ prepared, reason: 'owner-replaced' })))
+      .rejects.toThrow('another live process')
+    await expect(Promise.resolve().then(() => owner.longTermMemory.search({ scope, query: 'zombie writer', limit: 5 })))
+      .rejects.toThrow('another live process')
+    await expect(Promise.resolve().then(() => owner.memoryExtractionQueue.claim({
+      workerId: 'owner-after-expiry', leaseMs: 1_000, now: leaseBase + 1_000,
+    }))).rejects.toThrow('another live process')
+    await expect(Promise.resolve().then(() => owner.memoryExtractionQueue.complete({
+      jobId: completeLease.id,
+      workerId: 'owner-complete',
+      result: { memoryIds: [], candidateCount: 0, skippedCount: 0, outputHash: '4'.repeat(64) },
+    }))).rejects.toThrow('another live process')
+    await expect(Promise.resolve().then(() => owner.memoryExtractionQueue.fail({
+      jobId: failLease.id,
+      workerId: 'owner-fail',
+      error: 'owner replaced',
+      retryAt: leaseBase + 120_000,
+    }))).rejects.toThrow('another live process')
+    await expect(Promise.resolve().then(() => owner.memoryExtractionQueue.enqueue({
+      ...extractionBase, turn: 2, sourceHash: '1'.repeat(64),
+    }))).rejects.toThrow('another live process')
+    await expect(Promise.resolve().then(() => owner.memoryExtractionQueue.enqueue({
+      ...extractionBase, turn: 6, sourceHash: '5'.repeat(64),
+    }))).rejects.toThrow('another live process')
+    for (const turn of [prepared, preparedCommit]) {
+      expect(db.prepare('SELECT status FROM memory_turns WHERE handle = ?').get(turn.handle))
+        .toEqual({ status: 'prepared' })
+    }
+    expect(db.prepare('SELECT COUNT(*) AS count FROM memory_turns WHERE session_id = ?')
+      .get('owner-zombie-prepare')).toEqual({ count: 0 })
+    expect(db.prepare('SELECT useful_access_count AS count FROM memory_entries WHERE memory_id = ?')
+      .get(entry.id)).toEqual(usefulBefore)
+    for (const job of [completeLease, failLease, terminalLease]) {
+      expect(db.prepare('SELECT status FROM memory_extraction_jobs WHERE id = ?').get(job.id))
+        .toEqual({ status: 'running' })
+    }
+    expect(db.prepare('SELECT COUNT(*) AS count FROM memory_extraction_jobs').get()).toEqual({ count: 3 })
     db.prepare('UPDATE memory_store_owner SET heartbeat_at = ? WHERE id = 1')
       .run(Date.now() - 31_000)
     db.close()

@@ -185,20 +185,22 @@ export async function runExternalCorpus(
   defaults: ExternalCorpusManifest['defaults'],
   workspaceRoot = findWorkspaceRoot(),
 ): Promise<ExternalCorpusReport> {
-  const temporary = await mkdtemp(join(tmpdir(), `rlh-code-index-corpus-${resolved.definition.id}-`))
-  const databasePath = join(temporary, 'index.sqlite3')
-  const runtime = new LocalCodeIndexRuntime({
-    workspaceRoot: resolved.root,
-    databasePath,
-    journalMode: 'wal',
-    excludePatterns: [],
-    maxFileBytes: defaults.maxFileBytes,
-  })
   const probe = join(resolved.root, resolved.definition.incrementalProbePath)
   if (existsSync(probe)) {
     throw new Error(`code-index external corpus: refusing to overwrite probe path ${probe}`)
   }
-  try {
+  const temporary = await mkdtemp(join(tmpdir(), `rlh-code-index-corpus-${resolved.definition.id}-`))
+  const databasePath = join(temporary, 'index.sqlite3')
+  let runtime: LocalCodeIndexRuntime | undefined
+  let probeOwned = false
+  const outcome = await (async (): Promise<ExternalCorpusReport> => {
+    runtime = new LocalCodeIndexRuntime({
+      workspaceRoot: resolved.root,
+      databasePath,
+      journalMode: 'wal',
+      excludePatterns: [],
+      maxFileBytes: defaults.maxFileBytes,
+    })
     const fullStarted = performance.now()
     const summary = await runtime.refresh({ reason: 'manual', forceRebuild: true })
     const fullObservedMs = performance.now() - fullStarted
@@ -217,7 +219,20 @@ export async function runExternalCorpus(
     const incrementalSamples: number[] = []
     try {
       for (let revision = 1; revision <= defaults.incrementalIterations; revision++) {
-        await writeFile(probe, `export const relayExternalCorpusProbe = ${revision}\n`)
+        const source = `export const relayExternalCorpusProbe = ${revision}\n`
+        if (!probeOwned) {
+          try {
+            await writeFile(probe, source, { flag: 'wx' })
+          } catch (error: unknown) {
+            if (isErrnoCode(error, 'EEXIST')) {
+              throw new Error(`code-index external corpus: refusing to overwrite probe path ${probe}`, { cause: error })
+            }
+            throw error
+          }
+          probeOwned = true
+        } else {
+          await writeFile(probe, source)
+        }
         const incremental = await runtime.refresh({
           reason: 'stale',
           paths: [resolved.definition.incrementalProbePath],
@@ -228,8 +243,11 @@ export async function runExternalCorpus(
         incrementalSamples.push(incremental.durationMs)
       }
     } finally {
-      await rm(probe, { force: true })
-      await runtime.refresh({ reason: 'stale', paths: [resolved.definition.incrementalProbePath] })
+      if (probeOwned) {
+        await rm(probe, { force: true })
+        probeOwned = false
+        await runtime.refresh({ reason: 'stale', paths: [resolved.definition.incrementalProbePath] })
+      }
     }
 
     assertRetrievalThresholds(quality, incrementalSamples, resolved.definition.thresholds)
@@ -276,11 +294,53 @@ export async function runExternalCorpus(
       thresholds: resolved.definition.thresholds,
       gate: 'passed',
     }
-  } finally {
-    await rm(probe, { force: true })
-    await runtime.dispose()
-    await rm(temporary, { recursive: true, force: true })
+  })().then(
+    value => ({ status: 'fulfilled' as const, value }),
+    (error: unknown) => ({ status: 'rejected' as const, error }),
+  )
+  await settleCorpusResources(
+    outcome.status === 'rejected' ? outcome.error : undefined,
+    [
+      async () => {
+        if (!probeOwned) return
+        await rm(probe, { force: true })
+        probeOwned = false
+      },
+      () => runtime?.dispose() ?? Promise.resolve(),
+      () => rm(temporary, { recursive: true, force: true }),
+    ],
+  )
+  /* v8 ignore next -- a rejected outcome always throws from settleCorpusResources */
+  if (outcome.status === 'rejected') throw outcome.error
+  return outcome.value
+}
+
+function isErrnoCode(error: unknown, code: string): error is NodeJS.ErrnoException {
+  return error instanceof Error && 'code' in error && error.code === code
+}
+
+/**
+ * Attempt every corpus cleanup in order while retaining the run failure as
+ * the first AggregateError cause when cleanup also fails.
+ */
+export async function settleCorpusResources(
+  runFailure: unknown,
+  cleanups: readonly (() => Promise<unknown>)[],
+): Promise<void> {
+  const failures: Error[] = []
+  for (const cleanup of cleanups) {
+    try { await cleanup() } catch (error: unknown) { failures.push(asError(error, 'corpus cleanup rejected')) }
   }
+  if (runFailure !== undefined) {
+    const primary = asError(runFailure, 'corpus run rejected')
+    if (failures.length === 0) throw primary
+    throw new AggregateError([primary, ...failures], 'code-index external corpus run and cleanup failed')
+  }
+  if (failures.length > 0) throw new AggregateError(failures, 'code-index external corpus cleanup failed')
+}
+
+function asError(value: unknown, message: string): Error {
+  return value instanceof Error ? value : new Error(message, { cause: value })
 }
 
 function rootLabel(root: string, workspaceRoot: string): string {

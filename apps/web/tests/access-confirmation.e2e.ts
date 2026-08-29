@@ -1,4 +1,4 @@
-// Web e2e scenario: every visible permission picker gates Developer Mode behind
+// Web e2e scenario: the current-session picker gates Full access behind
 // the same locale-aware, in-page risk confirmation. Zero model calls: the
 // scenario boots the shipped Web composition and exercises the real
 // permission projection, client command path, HTTP RPC, and pushed update.
@@ -17,7 +17,7 @@ const SNAPSHOT_DIR = fileURLToPath(new URL('./snapshots/access-confirmation', im
 const UI_EXPECTED = join(SNAPSHOT_DIR, 'ui.expected.md')
 const MODE = webSnapshotMode()
 
-describe('web e2e: Developer Mode confirmation', () => {
+describe('web e2e: Full access confirmation', () => {
   let scaffold: WebScaffold
   let browser: Browser
   let page: Page
@@ -45,18 +45,18 @@ describe('web e2e: Developer Mode confirmation', () => {
     await scaffold?.close()
   })
 
-  it('requires acknowledgement before the composer picker can enable Developer Mode', async () => {
+  it('requires acknowledgement before the composer picker can enable Full access', async () => {
     onTestFailed(() => saveFailureShot(page, 'web-e2e-full-access-confirmation'))
     const access = page.locator('button[aria-label^="访问模式"]').first()
     await access.waitFor({ timeout: 10_000 })
 
-    expect(await access.getAttribute('aria-label')).toBe('访问模式，当前：Workspace Write')
+    expect(await access.getAttribute('aria-label')).toBe('访问模式，当前：Standard')
 
     await access.click()
-    await page.getByRole('menuitem', { name: 'Developer Mode' }).click()
-    const dialog = page.getByRole('dialog', { name: '确认启用 Developer Mode？' })
+    await page.getByRole('menuitem', { name: 'Full access' }).click()
+    const dialog = page.getByRole('dialog', { name: '确认启用 Full access？' })
     await dialog.waitFor({ timeout: 10_000 })
-    const enable = dialog.getByRole('button', { name: '启用 Developer Mode' })
+    const enable = dialog.getByRole('button', { name: '启用 Full access' })
     expect(await enable.isDisabled()).toBe(true)
 
     // The modal is in this page's body (not a native/new window) and escapes
@@ -69,7 +69,7 @@ describe('web e2e: Developer Mode confirmation', () => {
     expect(await enable.isEnabled()).toBe(true)
     await enable.click()
     await expect.poll(() => access.getAttribute('aria-label'), { timeout: 10_000 })
-      .toBe('访问模式，当前：Developer Mode')
+      .toBe('访问模式，当前：Full access')
     expect(await dialog.count()).toBe(0)
     expect(tripwire.pageErrors).toEqual([])
   }, 60_000)

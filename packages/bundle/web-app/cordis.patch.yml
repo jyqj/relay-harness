@@ -145,6 +145,10 @@
 
     - id: code-context
       name: '@relay-harness/rlh-code-context'
+      config:
+        maxChars: 65536
+        maxHits: 8
+        minQueryChars: 8
 
     # Phone remote shares this Host and cannot see a native OS chooser on the
     # desktop display. Pin the browse pair so every client gets the in-app

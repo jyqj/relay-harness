@@ -53,6 +53,7 @@ import { memoryContentHash, openMemoryDatabase, type JournalMode } from './schem
 import {
   claimMemoryStoreOwnership,
   currentMemoryStoreOwner,
+  MemoryStoreOwnershipError,
   refreshMemoryStoreOwner,
   releaseMemoryStoreOwnership,
   type MemoryStoreOwner,
@@ -245,26 +246,28 @@ export class SqliteLongTermMemory extends LongTermMemory {
       statuses: ['active'],
     })
     const now = Date.now()
-    this.requireDb().prepare(`
-      INSERT INTO memory_turns (
-        handle, workspace_id, user_id, agent_id, session_id, turn, query,
-        candidates_json, status, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'prepared', ?, ?)
-    `).run(
-      handle,
-      input.scope.workspaceId,
-      input.scope.userId,
-      input.scope.agentId,
-      input.sessionId,
-      input.turn,
-      query,
-      JSON.stringify(candidates),
-      now,
-      now,
-    )
-    for (const candidate of candidates) {
-      this.recordSignal(candidate.entry.id, 'candidate_hit', input.sessionId, input.turn)
-    }
+    this.withOwnedWrite((db) => {
+      db.prepare(`
+        INSERT INTO memory_turns (
+          handle, workspace_id, user_id, agent_id, session_id, turn, query,
+          candidates_json, status, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'prepared', ?, ?)
+      `).run(
+        handle,
+        input.scope.workspaceId,
+        input.scope.userId,
+        input.scope.agentId,
+        input.sessionId,
+        input.turn,
+        query,
+        JSON.stringify(candidates),
+        now,
+        now,
+      )
+      for (const candidate of candidates) {
+        this.recordSignal(db, candidate.entry.id, 'candidate_hit', input.sessionId, input.turn)
+      }
+    })
     return Promise.resolve({
       handle,
       scope: snapshotScope(input.scope),
@@ -276,22 +279,22 @@ export class SqliteLongTermMemory extends LongTermMemory {
   }
 
   override commit(input: CommitMemoryTurnInput): Promise<void> {
-    const db = this.requireDb()
-    const row = requireTurn(db, input.prepared.handle)
     const recalled = uniqueIds(input.recalledMemoryIds)
-    if (row.status === 'aborted') throw new Error(`memory turn ${row.handle} is already aborted`)
-    if (row.status === 'committed') {
-      if (row.recalled_ids_json !== JSON.stringify(recalled)) {
-        throw new Error(`memory turn ${row.handle} was committed with different recalled memories`)
-      }
-      return Promise.resolve()
-    }
     const candidateIds = new Set(input.prepared.candidates.map(candidate => candidate.entry.id))
     for (const id of recalled) {
-      if (!candidateIds.has(id)) throw new Error(`memory turn ${row.handle} cannot commit unprepared memory ${id}`)
+      if (!candidateIds.has(id)) {
+        throw new Error(`memory turn ${input.prepared.handle} cannot commit unprepared memory ${id}`)
+      }
     }
-    db.exec('BEGIN IMMEDIATE')
-    try {
+    this.withOwnedWrite((db) => {
+      const row = requireTurn(db, input.prepared.handle)
+      if (row.status === 'aborted') throw new Error(`memory turn ${row.handle} is already aborted`)
+      if (row.status === 'committed') {
+        if (row.recalled_ids_json !== JSON.stringify(recalled)) {
+          throw new Error(`memory turn ${row.handle} was committed with different recalled memories`)
+        }
+        return
+      }
       db.prepare(`
         UPDATE memory_turns
         SET status = 'committed', recalled_ids_json = ?, updated_at = ?
@@ -304,25 +307,22 @@ export class SqliteLongTermMemory extends LongTermMemory {
               entry_json = json_set(entry_json, '$.accessCount', access_count + 1)
           WHERE memory_id = ?
         `).run(id)
-        this.recordSignal(id, 'injected', input.prepared.sessionId, input.prepared.turn)
+        this.recordSignal(db, id, 'injected', input.prepared.sessionId, input.prepared.turn)
       }
-      this.refreshOwner(db)
-      db.exec('COMMIT')
-    } catch (error: unknown) {
-      db.exec('ROLLBACK')
-      throw error
-    }
+    })
     return Promise.resolve()
   }
 
   override abort(input: AbortMemoryTurnInput): Promise<void> {
-    const row = requireTurn(this.requireDb(), input.prepared.handle)
-    if (row.status === 'committed') throw new Error(`memory turn ${row.handle} is already committed`)
-    if (row.status === 'aborted') return Promise.resolve()
-    this.requireDb().prepare(`
-      UPDATE memory_turns SET status = 'aborted', reason = ?, updated_at = ?
-      WHERE handle = ? AND status = 'prepared'
-    `).run(requireText('reason', input.reason), Date.now(), row.handle)
+    this.withOwnedWrite((db) => {
+      const row = requireTurn(db, input.prepared.handle)
+      if (row.status === 'committed') throw new Error(`memory turn ${row.handle} is already committed`)
+      if (row.status === 'aborted') return
+      db.prepare(`
+        UPDATE memory_turns SET status = 'aborted', reason = ?, updated_at = ?
+        WHERE handle = ? AND status = 'prepared'
+      `).run(requireText('reason', input.reason), Date.now(), row.handle)
+    })
     return Promise.resolve()
   }
 
@@ -558,9 +558,7 @@ export class SqliteLongTermMemory extends LongTermMemory {
     signal?.throwIfAborted()
     assertScope(input.scope)
     validateOutcomes(input)
-    const db = this.requireDb()
-    db.exec('BEGIN IMMEDIATE')
-    try {
+    this.withOwnedWrite((db) => {
       db.prepare(`
         DELETE FROM memory_outcomes
         WHERE workspace_id = ? AND user_id = ? AND agent_id = ? AND session_id = ?
@@ -587,12 +585,7 @@ export class SqliteLongTermMemory extends LongTermMemory {
           JSON.stringify(outcome),
         )
       }
-      this.refreshOwner(db)
-      db.exec('COMMIT')
-    } catch (error: unknown) {
-      db.exec('ROLLBACK')
-      throw error
-    }
+    })
     return Promise.resolve()
   }
 
@@ -642,7 +635,7 @@ export class SqliteLongTermMemory extends LongTermMemory {
     this.closed = true
     if (this.db !== undefined) {
       try {
-        releaseMemoryStoreOwnership(this.db, this.owner)
+        releaseMemoryStoreOwnership(this.db, this.owner, this.config.path)
       } catch {
         // Ownership release is best-effort; heartbeat staleness bounds any leftover claim.
       }
@@ -697,25 +690,20 @@ export class SqliteLongTermMemory extends LongTermMemory {
 
   private countUsefulAccesses(hits: readonly MemorySearchHit[]): void {
     if (hits.length === 0) return
-    const db = this.requireDb()
     try {
-      db.exec('BEGIN IMMEDIATE')
-      const update = db.prepare(`
-        UPDATE memory_entries
-        SET useful_access_count = useful_access_count + 1,
-            entry_json = json_set(entry_json, '$.usefulAccessCount', useful_access_count + 1)
-        WHERE memory_id = ?
-      `)
-      for (const hit of hits) update.run(hit.entry.id)
-      db.exec('COMMIT')
-    } catch {
+      this.withOwnedWrite((db) => {
+        const update = db.prepare(`
+          UPDATE memory_entries
+          SET useful_access_count = useful_access_count + 1,
+              entry_json = json_set(entry_json, '$.usefulAccessCount', useful_access_count + 1)
+          WHERE memory_id = ?
+        `)
+        for (const hit of hits) update.run(hit.entry.id)
+      })
+    } catch (error: unknown) {
       // Search and recall stay available when access accounting cannot commit;
       // the read path fails open by contract.
-      try {
-        db.exec('ROLLBACK')
-      } catch {
-        // The connection itself failed; SQLite owns that diagnosis.
-      }
+      if (error instanceof MemoryStoreOwnershipError) throw error
     }
   }
 
@@ -775,9 +763,7 @@ export class SqliteLongTermMemory extends LongTermMemory {
     governance?: { readonly memoryId: MemoryIdType; readonly signal: NonNullable<ReviseMemoryInput['governance']> },
   ): void {
     for (const entry of entries) validateEntry(entry, this.config)
-    const db = this.requireDb()
-    db.exec('BEGIN IMMEDIATE')
-    try {
+    this.withOwnedWrite((db) => {
       for (const entry of entries) {
         const json = JSON.stringify(entry)
         db.prepare(`
@@ -846,6 +832,7 @@ export class SqliteLongTermMemory extends LongTermMemory {
       }
       if (governance !== undefined) {
         this.insertSignal(
+          db,
           governance.memoryId,
           governance.signal.kind,
           governance.signal.sessionId,
@@ -853,28 +840,40 @@ export class SqliteLongTermMemory extends LongTermMemory {
           governance.signal.eventSeqs,
         )
       }
-      this.refreshOwner(db)
-      db.exec('COMMIT')
-    } catch (error: unknown) {
-      db.exec('ROLLBACK')
-      throw error
-    }
+    })
   }
 
   private refreshOwner(db: DatabaseSync): void {
     refreshMemoryStoreOwner(db, this.owner, this.config.ownerStaleMs, this.config.path)
   }
 
+  /** Fence and settle one synchronous canonical-store mutation atomically. */
+  private withOwnedWrite<T>(operation: (db: DatabaseSync) => T): T {
+    const db = this.requireDb()
+    db.exec('BEGIN IMMEDIATE')
+    try {
+      this.refreshOwner(db)
+      const value = operation(db)
+      db.exec('COMMIT')
+      return value
+    } catch (error: unknown) {
+      db.exec('ROLLBACK')
+      throw error
+    }
+  }
+
   private recordSignal(
+    db: DatabaseSync,
     id: MemoryIdType,
     signal: 'candidate_hit' | 'injected' | 'user_confirmed' | 'user_rejected',
     sessionId?: string,
     turn?: number,
   ): void {
-    this.insertSignal(id, signal, sessionId, turn, [])
+    this.insertSignal(db, id, signal, sessionId, turn, [])
   }
 
   private insertSignal(
+    db: DatabaseSync,
     id: MemoryIdType,
     signal: MemorySignalKind,
     sessionId: string | undefined,
@@ -884,7 +883,7 @@ export class SqliteLongTermMemory extends LongTermMemory {
     const signalId = eventSeqs.length === 0
       ? randomUUID()
       : createHash('sha256').update(JSON.stringify({ id, signal, sessionId, eventSeqs })).digest('hex')
-    this.requireDb().prepare(`
+    db.prepare(`
       INSERT OR IGNORE INTO memory_signals (
         id, memory_id, signal, session_id, turn, created_at, metadata_json
       ) VALUES (?, ?, ?, ?, ?, ?, ?)
@@ -905,9 +904,7 @@ export class SqliteLongTermMemory extends LongTermMemory {
     const payloadJson = JSON.stringify(payload)
     const dedupeKey = extractionDedupeKey(payload)
     const id = MemoryExtractionJobId(`memory-extraction-${dedupeKey}`)
-    const db = this.requireDb()
-    db.exec('BEGIN IMMEDIATE')
-    try {
+    const result = this.withOwnedWrite((db) => {
       const existing = db.prepare(
         'SELECT * FROM memory_extraction_jobs WHERE dedupe_key = ?',
       ).get(dedupeKey) as ExtractionJobRow | undefined
@@ -915,8 +912,7 @@ export class SqliteLongTermMemory extends LongTermMemory {
         if (existing.payload_json !== payloadJson || existing.max_attempts !== input.maxAttempts) {
           throw new Error(`memory extraction job ${existing.id} was enqueued with different input`)
         }
-        db.exec('COMMIT')
-        return Promise.resolve(parseExtractionJob(existing))
+        return parseExtractionJob(existing)
       }
       const now = Date.now()
       db.prepare(`
@@ -940,13 +936,9 @@ export class SqliteLongTermMemory extends LongTermMemory {
         now,
         now,
       )
-      this.refreshOwner(db)
-      db.exec('COMMIT')
-    } catch (error: unknown) {
-      db.exec('ROLLBACK')
-      throw error
-    }
-    return Promise.resolve(this.requireExtractionJob(id))
+      return this.requireExtractionJob(id)
+    })
+    return Promise.resolve(result)
   }
 
   private claimExtraction(input: ClaimMemoryExtractionInput): Promise<MemoryExtractionJob | undefined> {
@@ -954,9 +946,7 @@ export class SqliteLongTermMemory extends LongTermMemory {
     assertPositiveSafeInteger('extraction leaseMs', input.leaseMs)
     const now = input.now ?? Date.now()
     if (!Number.isSafeInteger(now) || now < 0) throw new Error('memory extraction now must be a non-negative safe integer')
-    const db = this.requireDb()
-    db.exec('BEGIN IMMEDIATE')
-    try {
+    const claimed = this.withOwnedWrite((db) => {
       db.prepare(`
         UPDATE memory_extraction_jobs
         SET status = 'failed', lease_owner = NULL, lease_until = NULL,
@@ -973,38 +963,32 @@ export class SqliteLongTermMemory extends LongTermMemory {
         ORDER BY available_at ASC, created_at ASC, id ASC
         LIMIT 1
       `).get(now, now) as { id: string } | undefined
-      if (candidate === undefined) {
-        db.exec('COMMIT')
-        return Promise.resolve(undefined)
-      }
+      if (candidate === undefined) return undefined
       db.prepare(`
         UPDATE memory_extraction_jobs
         SET status = 'running', attempts = attempts + 1,
             lease_owner = ?, lease_until = ?, updated_at = ?
         WHERE id = ?
       `).run(workerId, now + input.leaseMs, now, candidate.id)
-      this.refreshOwner(db)
-      const claimed = this.requireExtractionJob(MemoryExtractionJobId(candidate.id))
-      db.exec('COMMIT')
-      return Promise.resolve(claimed)
-    } catch (error: unknown) {
-      db.exec('ROLLBACK')
-      throw error
-    }
+      return this.requireExtractionJob(MemoryExtractionJobId(candidate.id))
+    })
+    return Promise.resolve(claimed)
   }
 
   private completeExtraction(input: CompleteMemoryExtractionInput): Promise<MemoryExtractionJob> {
     const workerId = requireText('extraction workerId', input.workerId)
     validateExtractionResult(input.result)
     const now = Date.now()
-    const changed = this.requireDb().prepare(`
-      UPDATE memory_extraction_jobs
-      SET status = 'completed', result_json = ?, lease_owner = NULL,
-          lease_until = NULL, last_error = NULL, updated_at = ?
-      WHERE id = ? AND status = 'running' AND lease_owner = ?
-        AND lease_until IS NOT NULL AND lease_until > ?
-    `).run(JSON.stringify(input.result), now, input.jobId, workerId, now).changes
-    if (changed !== 1) throw new Error(`memory extraction job ${input.jobId} is not leased by ${workerId}`)
+    this.withOwnedWrite((db) => {
+      const changed = db.prepare(`
+        UPDATE memory_extraction_jobs
+        SET status = 'completed', result_json = ?, lease_owner = NULL,
+            lease_until = NULL, last_error = NULL, updated_at = ?
+        WHERE id = ? AND status = 'running' AND lease_owner = ?
+          AND lease_until IS NOT NULL AND lease_until > ?
+      `).run(JSON.stringify(input.result), now, input.jobId, workerId, now).changes
+      if (changed !== 1) throw new Error(`memory extraction job ${input.jobId} is not leased by ${workerId}`)
+    })
     return Promise.resolve(this.requireExtractionJob(input.jobId))
   }
 
@@ -1015,19 +999,23 @@ export class SqliteLongTermMemory extends LongTermMemory {
     if (!Number.isSafeInteger(input.retryAt) || input.retryAt < 0) {
       throw new Error('memory extraction retryAt must be a non-negative safe integer')
     }
-    const row = this.requireExtractionJob(input.jobId)
-    if (row.status !== 'running' || row.leaseOwner !== workerId
-      || row.leaseUntil === undefined || row.leaseUntil <= Date.now()) {
-      throw new Error(`memory extraction job ${input.jobId} is not leased by ${workerId}`)
-    }
-    const terminal = row.attempts >= row.maxAttempts
-    const changed = this.requireDb().prepare(`
-      UPDATE memory_extraction_jobs
-      SET status = ?, available_at = ?, lease_owner = NULL, lease_until = NULL,
-          last_error = ?, updated_at = ?
-      WHERE id = ? AND status = 'running' AND lease_owner = ?
-    `).run(terminal ? 'failed' : 'pending', input.retryAt, error, Date.now(), input.jobId, workerId).changes
-    if (changed !== 1) throw new Error(`memory extraction job ${input.jobId} changed before failure settlement`)
+    const now = Date.now()
+    this.withOwnedWrite((db) => {
+      const row = this.requireExtractionJob(input.jobId)
+      if (row.status !== 'running' || row.leaseOwner !== workerId
+        || row.leaseUntil === undefined || row.leaseUntil <= now) {
+        throw new Error(`memory extraction job ${input.jobId} is not leased by ${workerId}`)
+      }
+      const terminal = row.attempts >= row.maxAttempts
+      const changed = db.prepare(`
+        UPDATE memory_extraction_jobs
+        SET status = ?, available_at = ?, lease_owner = NULL, lease_until = NULL,
+            last_error = ?, updated_at = ?
+        WHERE id = ? AND status = 'running' AND lease_owner = ?
+          AND lease_until IS NOT NULL AND lease_until > ?
+      `).run(terminal ? 'failed' : 'pending', input.retryAt, error, now, input.jobId, workerId, now).changes
+      if (changed !== 1) throw new Error(`memory extraction job ${input.jobId} changed before failure settlement`)
+    })
     return Promise.resolve(this.requireExtractionJob(input.jobId))
   }
 

@@ -17,7 +17,7 @@ Relay Harness 本地代码索引能力的文件系统 Service Provider：为一�
 
 ## 管线
 
-单次 pass（`runRefreshPass`）以有界并发 stat 按广度优先遍历工作区，用 mtime+size 快路径对照上一代分类每个文件；可疑候选以有界并发哈希做二次确认（抑制 touch 误报与 mtime 抖动）。运行时提供 resolver 与 graph facet 时，pass 跑五个阶段：变更文件以保持确定顺序的四路并发经 `parseFile` 解析（不支持或超限的文件回落通用层——至多 80 行的行窗、`generic` 解析层、置信度 0.5；无法解码的载荷按二进制跳过），新鲜的调用边在写入前对照常驻符号目录完成解析绑定，随后恰好提交一个携带逐文件导出指纹的 delta，执行 test-edge 重建决策，最后由脏传播阶段重解析每次导出面变化或删除的传递导入方。每个阶段的写入落在各自随写递增 epoch 的事务里，因此 pass 的 epoch 前进恰好等于其提交次数；全量构建不携带脏阶段。缺省 resolver 时退化为早期阶段的通用切片 delta。硬排除与显式 `exclude` 模式保持静态层；每次 pass 在遍历时发现根目录及嵌套 `.gitignore`。ignore 文档按根到叶顺序生效，因此更深层的否定规则可以覆盖祖先规则；被排除的目录在下降前剪枝，symlink 一律不展开遍历。`RefreshOptions.paths` 将扫描、diff 与删除集合限制在规范化后的工作区相对文件或目录前缀。
+单次 pass（`runRefreshPass`）以有界并发 stat 按广度优先遍历工作区，用 mtime+size 快路径对照上一代分类每个文件；可疑候选以有界并发哈希做二次确认（抑制 touch 误报与 mtime 抖动）。运行时提供 resolver 与 graph facet 时，pass 跑五个阶段：变更文件以保持确定顺序的四路并发经 `parseFile` 解析（不支持或超限的文件回落通用层——至多 80 行的行窗、`generic` 解析层、置信度 0.5；无法解码的载荷按二进制跳过），新鲜的调用边在写入前对照常驻符号目录完成解析绑定，随后恰好提交一个携带逐文件导出指纹的 delta，执行 test-edge 重建决策，最后由脏传播阶段重解析每次导出面变化或删除的传递导入方。每个阶段的写入落在各自随写递增 epoch 的事务里，因此 pass 的 epoch 前进恰好等于其提交次数；全量构建不携带脏阶段。缺省 resolver 时退化为早期阶段的通用切片 delta。硬排除与显式 `exclude` 模式保持静态层。每次 pass 都会加载仓库本地 `.git/info/exclude`（包括 linked worktree 的 common Git 目录），并在遍历时发现根目录及嵌套 `.gitignore`；仓库本地文档优先级较低，随后 ignore 文档按根到叶顺序生效，因此更晚的否定规则可以恢复其路径。被排除的目录在下降前剪枝，symlink 一律不展开遍历。`RefreshOptions.paths` 将扫描、diff 与删除集合限制在规范化后的工作区相对文件或目录前缀。
 
 每次刷新都携带 `BuildExplain`：全量/定域决策、请求路径数、执行/跳过、dirty closure 状态与预算降级，以及 generation 回填和 Embedding 批次/job 完成数。无 delta 的 pass 跳过写事务且不推进 `indexEpoch`；status 保留异步完成后的 Embedding 计数。
 
@@ -55,7 +55,7 @@ Relay Harness 本地代码索引能力的文件系统 Service Provider：为一�
 
 ## 检索评测
 
-`evaluateRetrieval(index, corpus)` 通过公开 `search` seam 执行相关性判断，报告宏平均 Recall@5/MRR 及逐 case 排名。检入的 TypeScript、Python、Go fixture 仓库、本包真实工作区与定域增量样本形成快速可执行门禁。可重复的真实仓库 runner（`pnpm run eval:code-index:corpus`）读取检入 manifest，而不复制 corpus 源码：Relay monorepo 是 required CI corpus；已授权 CodeCortex/Auggie checkout 默认 optional，除非显式选择或通过环境变量提供。它通过公开 runtime seam 测量全量索引、七次定域提交、重复搜索延迟、parser tier/文件/chunk 覆盖、致命 parser 失败及文件级 Recall@5/MRR。
+`evaluateRetrieval(index, corpus)` 通过公开 `search` seam 执行相关性判断，报告宏平均 Recall@5/MRR 及逐 case 排名。检入的 TypeScript、Python、Go fixture 仓库、本包真实工作区与定域增量样本形成快速可执行门禁。可重复的真实仓库 runner（`pnpm run eval:code-index:corpus`）读取检入 manifest，而不复制 corpus 源码：Relay monorepo 是 required CI corpus；已授权 CodeCortex/Auggie checkout 默认 optional，除非显式选择或通过环境变量提供。增量 probe 使用排他创建，不删除非自身创建的路径；即使某项清理失败，runner 仍会尝试清理 probe、runtime 与临时存储。runner 通过公开 runtime seam 测量全量索引、七次定域提交、重复搜索延迟、parser tier/文件/chunk 覆盖、致命 parser 失败及文件级 Recall@5/MRR。
 
 ## Model Experience
 
@@ -67,7 +67,7 @@ Relay Harness 本地代码索引能力的文件系统 Service Provider：为一�
 
 ## 已知限制与延后工作
 
-- **性能证据可执行但并非普适**——2026-08-29 Apple Silicon 实测真实 Relay checkout：8,256 文件 / 85,472 chunks，全量 120.65 s，增量 p95 80 ms，搜索 p50/p95 0.051/0.087 ms，Recall@5 0.80、MRR 0.60、致命 parser 错误为零。可选 CodeCortex Rust checkout：366 文件 / 5,523 chunks，全量 7.13 s，增量 p95 28 ms，搜索 p50/p95 0.050/0.080 ms，Recall@5/MRR 1.00/1.00、致命 parser 错误为零。这些是检入的单机观测，不是普适容量声明；应在目标 CI/硬件上重跑 manifest gate。
+- **性能证据可执行但并非普适**——2026-08-30 Apple Silicon 实测真实 Relay checkout：8,440 文件 / 87,184 chunks，全量 55.19 s，增量 p95 31 ms，搜索 p50/p95 0.043/0.079 ms，Recall@5 0.80、MRR 0.60、致命 parser 错误为零。可选 CodeCortex Rust checkout：366 文件 / 5,523 chunks，全量 3.16 s，增量 p95 8 ms，搜索 p50/p95 0.044/0.059 ms，Recall@5/MRR 1.00/1.00、致命 parser 错误为零。可选 Auggie 恢复源码 checkout：1,705 文件 / 88,028 chunks，全量 88.52 s，增量 p95 13 ms，搜索 p50/p95 0.044/0.052 ms，Recall@5/MRR 0.50/0.50、致命 parser 错误为零。这些是单机观测，不是普适容量声明；应在目标 CI/硬件上重跑 manifest gate。
 - **explore 忠实投影已存边，包括瑕疵** — 每个函数在声明行都有一条自环调用边（解析器的 regex 兜底 lane 把 `name()` 参数表读成了调用点），`explore_code_graph` 的答案会包含它；过滤属解析侧职责，不在读取侧做。
 - **存储根推导是过渡方案** — 带 workspace 哈希的文件名避免多 checkout 互踩，但还不是计划中的可配置 storage-root 布局；其落地时会一并迁移。
 - **watcher 降级刻意安静** — 失败即退到 touch 驱动失效并只留下一个 `status()` 标志；事件相对 pass 也可能滞后一个防抖窗口。

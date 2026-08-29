@@ -146,6 +146,7 @@ const defaultOpts: ToolBridgeOptions = {
   registrationFailure: 'contain',
   serverName: 'srv',
   toolCallTimeoutMs: 60_000,
+  maxToolResultBytes: 4 * 1024 * 1024,
 }
 
 // ---- Tests ----
@@ -821,6 +822,112 @@ describe('tool execution', () => {
     expect(failure.error).toMatchObject({ info: { code: 'INVALID_TOOL_OUTPUT' } })
     expect(failure.content[0]?.type === 'text' ? failure.content[0].text : '')
       .toContain('value.structuredContent.answer')
+  })
+
+  it('admits a complete raw result exactly at maxToolResultBytes', async () => {
+    const raw: MockCallResult = { content: [{ type: 'text', text: '边界🙂' }] }
+    const serialized = JSON.stringify(raw)
+    const maxToolResultBytes = Buffer.byteLength(serialized, 'utf8')
+    expect(maxToolResultBytes).toBeGreaterThan(serialized.length)
+    const client = createMockClient(
+      [{ name: 'bounded', inputSchema: { type: 'object' } }],
+      raw,
+    )
+    await syncTools(client as never, ctx, { ...defaultOpts, maxToolResultBytes }, new Map())
+
+    const result = await ctx.tools.execute({
+      signal: testToolSignal, callId: CallId('bounded'), name: 'mcp__srv__bounded', arguments: {},
+    })
+
+    expect(result.isError).toBe(false)
+  })
+
+  it('rejects oversized text, image, blob, and structured results before schema or rich projection', async () => {
+    const marker = 'payload-must-not-reach-the-diagnostic'
+    const cases: Array<{
+      name: string
+      result: MockCallResult
+      outputSchema?: Record<string, unknown>
+    }> = [
+      { name: 'large-text', result: { content: [{ type: 'text', text: marker.repeat(8) }] } },
+      {
+        name: 'large-binary',
+        result: { content: [{ type: 'image', mimeType: 'image/png', data: Buffer.from(marker.repeat(8)).toString('base64') }] },
+      },
+      {
+        name: 'large-structured',
+        result: { content: [], structuredContent: { answer: marker.repeat(8) } },
+        outputSchema: {
+          type: 'object', additionalProperties: false,
+          properties: { answer: { type: 'integer' } }, required: ['answer'],
+        },
+      },
+      {
+        name: 'large-blob',
+        result: {
+          content: [{
+            type: 'resource',
+            resource: {
+              uri: 'file:///oversized.bin',
+              blob: Buffer.from(marker.repeat(8)).toString('base64'),
+            },
+          }],
+        },
+      },
+    ]
+    for (const row of cases) {
+      const local = await mountRegistry()
+      const client = createMockClient(
+        [{ name: row.name, inputSchema: { type: 'object' }, ...row.outputSchema === undefined ? {} : { outputSchema: row.outputSchema } }],
+        row.result,
+      )
+      const bytes = Buffer.byteLength(JSON.stringify(row.result), 'utf8')
+      await syncTools(client as never, local, { ...defaultOpts, maxToolResultBytes: bytes - 1 }, new Map())
+
+      const result = await local.tools.execute({
+        signal: testToolSignal, callId: CallId(row.name), name: `mcp__srv__${row.name}`, arguments: {},
+      })
+
+      expect(result.isError).toBe(true)
+      const diagnostic = textAt(result.content)
+      expect(diagnostic).toContain(`result is ${String(bytes)} bytes and exceeds maxToolResultBytes ${String(bytes - 1)}`)
+      expect(diagnostic).not.toContain(marker)
+      expect(diagnostic).not.toContain('value.structuredContent.answer')
+    }
+  })
+
+  it('rejects circular and otherwise non-serializable results without disclosing result fields', async () => {
+    const marker = 'payload-must-not-reach-the-diagnostic'
+    const circular: Record<string, unknown> = {
+      content: [{ type: 'text', text: marker }],
+    }
+    circular.self = circular
+    const cases: unknown[] = [
+      circular,
+      { content: [], structuredContent: { private: marker, invalid: 1n } },
+    ]
+
+    for (const [index, raw] of cases.entries()) {
+      const local = await mountRegistry()
+      const client = createMockClient(
+        [{ name: `non-json-${String(index)}`, inputSchema: { type: 'object' } }],
+        raw as never,
+      )
+      await syncTools(client as never, local, defaultOpts, new Map())
+
+      const result = await local.tools.execute({
+        signal: testToolSignal,
+        callId: CallId(`non-json-${String(index)}`),
+        name: `mcp__srv__non-json-${String(index)}`,
+        arguments: {},
+      })
+
+      expect(result.isError).toBe(true)
+      const diagnostic = textAt(result.content)
+      expect(diagnostic).toContain('returned a result that is not JSON-serializable')
+      expect(diagnostic).not.toContain(marker)
+      expect(diagnostic).not.toContain('private')
+    }
   })
 
   it('falls back to JsonValue for unsupported advertised output schemas', async () => {

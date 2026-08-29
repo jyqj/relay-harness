@@ -10,7 +10,7 @@ import { existsSync, statSync } from 'node:fs'
 import { join, posix } from 'node:path'
 
 /** Extension probe order for extensionless relative specifiers. */
-const EXTENSIONS = ['.ts', '.tsx', '.js', '.jsx', '.mjs'] as const
+const EXTENSIONS = ['.ts', '.tsx', '.mts', '.cts', '.js', '.jsx', '.mjs', '.cjs'] as const
 
 /**
  * Resolve `importString` from `fromFile` to a path relative to `projectRoot`,

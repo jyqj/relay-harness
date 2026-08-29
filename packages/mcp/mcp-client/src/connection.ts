@@ -27,7 +27,7 @@ import { createTransport } from './transport.ts'
 import { reportMcpClientStatus, type McpConnectionHealth } from './status.ts'
 import { syncTools } from './tools.ts'
 import { syncCatalog } from './catalog.ts'
-import type { ToolBridgeOptions, ToolDisposers } from './tools.ts'
+import { DEFAULT_MAX_TOOL_RESULT_BYTES, type ToolBridgeOptions, type ToolDisposers } from './tools.ts'
 import type { Config } from './index.ts'
 
 /** Automatic reconnect policy for one MCP server connection. */
@@ -173,6 +173,10 @@ export interface ConnectionHandle {
  * @returns Handle with a `ready` promise for startup-await and a `dispose` for teardown.
  */
 export function startConnection(ctx: Context, config: Config, policy: ResolvedReconnectPolicy): ConnectionHandle {
+  const maxToolResultBytes = config.maxToolResultBytes ?? DEFAULT_MAX_TOOL_RESULT_BYTES
+  if (!Number.isSafeInteger(maxToolResultBytes) || maxToolResultBytes < 1) {
+    throw new Error(`mcp-client(${config.serverName}): maxToolResultBytes must be a positive safe integer`)
+  }
   const label = `mcp-client(${config.serverName})`
   const root = ctx.root
   const catalog = ctx.get('mcpCatalog')
@@ -197,6 +201,7 @@ export function startConnection(ctx: Context, config: Config, policy: ResolvedRe
     registrationFailure: 'contain',
     serverName: config.serverName,
     toolCallTimeoutMs: config.toolCallTimeoutMs,
+    maxToolResultBytes,
   }
   // The initial sync uses 'throw' when failOnStartupError is configured, so
   // a registration conflict propagates to the startup-await path. Re-syncs

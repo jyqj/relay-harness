@@ -8,9 +8,9 @@ Provider 会拒绝无关数据库和未知的规范 schema 版本。缺失目录
 
 Active 写入要求用户陈述或成功工具结果证据。常见私钥、访问令牌、密码和 API Key 形式会在 Provider 操作中同时从 content 与 summary 被拒绝，因此其他 Consumer 无法绕过工具检查。按规范化 kind/content 做精确去重会返回已有 identity，并可晋升匹配的 candidate，而不是创建分叉。当被记住的内容与一条已死的 `superseded` 或 `tombstoned` 条目精确匹配时，新 identity 记录 `supersedes`，死条目获得带反向 `supersededBy` 链接的 `superseded` 版本，两者在同一事务内写入；`forget` 只追加 tombstone，从不写 supersede 链。
 
-每次搜索或召回命中都会在 fail-open 事务中递增 `usefulAccessCount`，而已提交的注入递增 `accessCount`。该计数无法提交时，检索与召回仍然可用。
+每次搜索或召回命中都会在事务中递增 `usefulAccessCount`，而已提交的注入递增 `accessCount`。普通计数失败保持 fail-open，使检索继续可用；ownership CAS 失败是例外，它会在回滚后显式失败，因为已被取代的 Provider 不能继续读写规范存储。
 
-每个规范数据库路径由一个进程拥有。Provider 在启动时认领一条 pid/boot-id 心跳记录，在每个写事务内刷新它，并在正常关闭时释放；遇到新鲜的他进程心跳时启动会显式失败（过期心跳可被重新认领），被取代的 owner 之后的写入也会显式失败，而不是静默共写。
+每个规范数据库路径由一个进程拥有。Provider 在启动时认领一条 pid/boot-id 心跳记录，并在每个写事务（包括待结算轮次、访问计数和提取租约结算）的第一次数据变更前执行 ownership CAS。同进程的多个 handle 会共同保留该进程的认领，直到最后一个 handle 关闭。遇到新鲜的他进程心跳时启动会显式失败（过期心跳可被重新认领），被取代的 owner 的所有后续写入都会回滚并显式失败，而不是静默共写。
 
 提取 admission 按 Scope、session、turn 与 source hash 幂等；去重检查与插入共享同一个 `BEGIN IMMEDIATE` 事务，因此来自不同连接的并发 enqueue 只会准入一个 job。原子 claim 会增加 attempts 并携带有期限的 worker lease；过期 lease 可被重新领取，而最终一次过期会进入 terminal failed。成功 job 只保留 memory id、计数和 output hash，不保存原始模型输出。schema version 4 增加 per-Session outcome observation 与有界显式影响 ranking；version 3 增加单 owner 心跳表，version 2 增加确定性 content hash，version-1 store 会在队列启用前就地迁移。
 

@@ -64,7 +64,7 @@ export interface RefreshPassInputs {
   readonly workspaceRoot: string
   /** Include globs deciding candidate files. */
   readonly includePatterns: readonly string[]
-  /** Complete exclusion stack (hard ∪ config ∪ parsed `.gitignore`). */
+  /** Static hard/config exclusions; the scanner adds repository-local Git ignore documents. */
   readonly exclusionFilters: readonly PathExclusionFilter[]
   /** Byte ceiling beyond which files record rows without chunks. */
   readonly maxFileBytes: number
@@ -114,8 +114,8 @@ export interface RefreshPassOutcome {
 }
 
 /**
- * Build the static exclusion stack. `.gitignore` documents are deliberately
- * discovered by the scanner on every pass, including nested documents, so an
+ * Build the static exclusion stack. Repository-local `.git/info/exclude` and
+ * `.gitignore` documents are discovered by the scanner on every pass, so an
  * ignore-rule edit does not require restarting the provider.
  * @param workspaceRoot - retained for call-site compatibility.
  * @param excludePatterns - caller-configured extra pattern lines.

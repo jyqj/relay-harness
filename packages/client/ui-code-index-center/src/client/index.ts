@@ -33,7 +33,7 @@ export function apply(ctx: ClientContext): void {
   ctx.slots.inject('settings.section', () => ctx.slots.register({
     name: 'settings.section',
     id: 'code-index',
-    order: 18,
+    order: 19,
     label: () => t('nav'),
     locale: 'settings.codeIndex',
     inject: (): CodeIndexCenterInjected => ({

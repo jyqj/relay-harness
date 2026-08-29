@@ -17,7 +17,7 @@ import { readdir, stat } from 'node:fs/promises'
 import { join } from 'node:path'
 import { compareStrings } from '@relay-harness/rlh-code-index-search'
 import type { PathExclusionFilter } from './gitignore.ts'
-import { inclusionMatcherFromPatterns, loadWorkspaceGitIgnore } from './gitignore.ts'
+import { inclusionMatcherFromPatterns, loadWorkspaceGitIgnore, loadWorkspaceGitInfoExclude } from './gitignore.ts'
 import { mapConcurrentOrdered } from './parallel.ts'
 
 /** Maximum concurrent symlink/stat operations within one directory batch. */
@@ -46,8 +46,12 @@ export const DEFAULT_HARD_EXCLUDES: readonly string[] = [
 export const DEFAULT_INCLUDE_PATTERNS: readonly string[] = [
   '**/*.py',
   '**/*.js',
+  '**/*.mjs',
+  '**/*.cjs',
   '**/*.jsx',
   '**/*.ts',
+  '**/*.mts',
+  '**/*.cts',
   '**/*.tsx',
   '**/*.vue',
   '**/*.svelte',
@@ -182,7 +186,12 @@ export async function* walkWorkspace(
   options: WorkspaceWalkOptions = {},
 ): AsyncGenerator<readonly ScanEntry[], void, undefined> {
   const includeMatcher = inclusionMatcherFromPatterns(include)
-  const queue: PendingDirectory[] = [{ absolute: root, relative: '', ignoreStack: [] }]
+  const gitInfoExclude = await loadWorkspaceGitInfoExclude(root)
+  const queue: PendingDirectory[] = [{
+    absolute: root,
+    relative: '',
+    ignoreStack: gitInfoExclude === undefined ? [] : [{ base: '', filter: gitInfoExclude }],
+  }]
   while (queue.length > 0) {
     const current = queue.shift() as PendingDirectory
     const dirents = await readdir(current.absolute, { withFileTypes: true })

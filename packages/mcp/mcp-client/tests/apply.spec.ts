@@ -125,6 +125,26 @@ describe('mcp-client plugin module exports', () => {
     expect(resolved.serverName).toBe('github-prod_1')
   })
 
+  it('materializes the same bounded tool-result default for stdio and HTTP', () => {
+    const stdio = ConfigSchema({
+      transport: 'stdio', serverName: 'stdio', command: 'echo',
+    } as never)
+    const http = ConfigSchema({
+      transport: 'streamable-http', serverName: 'http', url: 'https://mcp.example.test',
+    } as never)
+    expect(stdio.maxToolResultBytes).toBe(4 * 1024 * 1024)
+    expect(http.maxToolResultBytes).toBe(4 * 1024 * 1024)
+    expect(() => ConfigSchema({
+      transport: 'stdio', serverName: 'bad', command: 'echo', maxToolResultBytes: 1.5,
+    } as never)).toThrow()
+    expect(() => ConfigSchema({
+      transport: 'streamable-http', serverName: 'bad', url: 'https://mcp.example.test', maxToolResultBytes: 0,
+    } as never)).toThrow()
+    expect(() => ConfigSchema({
+      transport: 'stdio', serverName: 'bad', command: 'echo', maxToolResultBytes: Number.MAX_SAFE_INTEGER + 1,
+    } as never)).toThrow()
+  })
+
   it('Config schema materializes reconnect defaults and merges partial overrides', () => {
     const omitted = ConfigSchema({
       transport: 'stdio',

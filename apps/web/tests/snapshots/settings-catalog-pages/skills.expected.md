@@ -10,21 +10,18 @@
     - button "Interface":
       - img
       - text: Interface
-    - button "Models":
-      - img
-      - text: Models
-    - button "Plugins":
-      - img
-      - text: Plugins
     - button "Skills":
       - img
       - text: Skills
+    - button "Memory":
+      - img
+      - text: Memory
     - button "MCP":
       - img
       - text: MCP
-    - button "Agent presets":
+    - button "Code Index":
       - img
-      - text: Agent presets
+      - text: Code Index
     - button "About":
       - img
       - text: About
@@ -34,6 +31,7 @@
     - text: Close
   - heading "Skills" [level=2]
   - paragraph: Find and manage user, current-project, and bundled skills.
+  - button "Import"
   - button "Add skill":
     - img
   - button "Refresh":
@@ -47,5 +45,5 @@
       - button "settings-catalog-fixture Deterministic skill for Settings composition coverage" [disabled]:
         - img
         - text: settings-catalog-fixture Deterministic skill for Settings composition coverage
-      - text: Bundled
+      - text: Bundled Bundled Healthy
       - switch "Model invocation for settings-catalog-fixture" [disabled]

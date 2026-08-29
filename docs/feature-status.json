@@ -44,6 +44,29 @@
       "limitations": ["Enhancement remains explicit and never submits the draft automatically."]
     },
     {
+      "id": "context-inspector",
+      "status": "shipped",
+      "summary": "Durable Context Engine preparation traces with browser-visible admission, Evidence, coverage, and source explanations.",
+      "evidence": {
+        "composition": [
+          { "path": "packages/bundle/web-app/cordis.patch.yml", "contains": ["id: context-inspector", "id: ui-context-inspector"] }
+        ],
+        "remote": [
+          { "path": "packages/host/apiproxy/src/api-proxy.ts", "contains": ["type: 'session/projection'", "sessionProjections.onChanged"] }
+        ],
+        "ui": [
+          { "path": "packages/client/ui-context-inspector/src/client/ContextInspectorAction.tsx", "contains": ["context/prepared #", "evidence.whyUsed"] }
+        ],
+        "e2e": [
+          { "path": "apps/web/tests/product-shell-prompt-context.e2e.ts", "contains": ["Inspect context used for this session", "Context Inspector"] }
+        ],
+        "docs": [
+          { "path": "packages/context/context-inspector/README.md" }
+        ]
+      },
+      "limitations": ["The inspector projects durable context/prepared events; an unsent Prompt Enhancement proposal explains its own non-durable trace in the proposal dialog."]
+    },
+    {
       "id": "governed-memory",
       "status": "shipped",
       "summary": "Governed local memory recall, outcome reconciliation, and a user-facing Memory Center.",
@@ -58,7 +81,7 @@
           { "path": "packages/client/ui-memory-center/src/client/index.ts" }
         ],
         "e2e": [
-          { "path": "apps/web/tests/settings-catalog-pages.e2e.ts" }
+          { "path": "apps/web/tests/settings-catalog-pages.e2e.ts", "contains": ["drives real MCP and Skill mutations plus Memory and Code Index Remote flows"] }
         ],
         "docs": [
           { "path": "docs/subsystems/memory.md" }
@@ -81,7 +104,8 @@
           { "path": "packages/client/ui-code-index-center/src/client/index.ts" }
         ],
         "e2e": [
-          { "path": "packages/bundle/web-app/tests/code-index-workspace-routing.e2e.spec.ts" }
+          { "path": "packages/bundle/web-app/tests/code-index-workspace-routing.e2e.spec.ts", "contains": ["boots shipped provider/contributor rows and prepares verified source through the real Loader"] },
+          { "path": "apps/web/tests/settings-catalog-pages.e2e.ts", "contains": ["drives real MCP and Skill mutations plus Memory and Code Index Remote flows"] }
         ],
         "docs": [
           { "path": "docs/subsystems/code-index.md" }
@@ -106,7 +130,7 @@
           { "path": "packages/client/ui-settings-skills/src/client/index.ts" }
         ],
         "e2e": [
-          { "path": "apps/web/tests/settings-catalog-pages.e2e.ts" }
+          { "path": "apps/web/tests/settings-catalog-pages.e2e.ts", "contains": ["drives real MCP and Skill mutations plus Memory and Code Index Remote flows"] }
         ],
         "docs": [
           { "path": "docs/subsystems/extensions.md" }
@@ -130,7 +154,8 @@
           { "path": "packages/client/ui-product-shell/src/client/index.ts" }
         ],
         "e2e": [
-          { "path": "apps/web/tests/product-shell-prompt-context.e2e.ts" }
+          { "path": "apps/web/tests/product-shell-prompt-context.e2e.ts", "contains": ["runs draft → real Remote enhance → source explanation → diff → accept → undo without auto-submit, and cancels in flight"] },
+          { "path": "apps/web/tests/settings-chrome.e2e.ts", "contains": ["uses Chat, Work, and Library as the shared top-level product navigation", "opens the settings dialog, switches sections, and closes by every path"] }
         ],
         "docs": [
           { "path": "packages/client/ui-product-shell/README.md" }
@@ -153,8 +178,9 @@
           { "path": "packages/client/ui-permission-presets/src/client/index.ts" }
         ],
         "e2e": [
-          { "path": "apps/web/tests/permission-policy-context.e2e.ts" },
-          { "path": "apps/web/tests/access-confirmation.e2e.ts" }
+          { "path": "apps/web/tests/permission-policy-context.e2e.ts", "contains": ["switches read-only, danger-full-access, and workspace-write through the real GUI command path", "records cache-safe current policy before the corresponding model behavior"] },
+          { "path": "apps/web/tests/access-confirmation.e2e.ts", "contains": ["requires acknowledgement before the composer picker can enable Full access"] },
+          { "path": "apps/web/tests/settings-chrome.e2e.ts", "contains": ["stores Permission as the default for future sessions without changing an existing session", "Developer Mode"] }
         ],
         "docs": [
           { "path": "packages/client/ui-permission-presets/README.md" }

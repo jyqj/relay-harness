@@ -266,7 +266,15 @@ export interface MemoryStoreOwner {
   readonly bootId: string
 }
 
+/** A write attempted after another process claimed the canonical store. */
+export class MemoryStoreOwnershipError extends Error {}
+
 let cachedBootId: string | undefined
+const localOwnershipReferences = new Map<string, number>()
+
+function ownershipReferenceKey(label: string): string | undefined {
+  return label === ':memory:' ? undefined : resolve(label)
+}
 
 function processBootId(): string {
   if (cachedBootId === undefined) {
@@ -311,7 +319,7 @@ export function claimMemoryStoreOwnership(
     ).get() as { pid: number; boot_id: string; heartbeat_at: number } | undefined
     if (row !== undefined && (row.pid !== owner.pid || row.boot_id !== owner.bootId)
       && row.heartbeat_at > now - staleMs) {
-      throw new Error(
+      throw new MemoryStoreOwnershipError(
         `memory database at "${label}" has a fresh owner heartbeat from process ${row.pid}`
         + ` (boot ${row.boot_id}, ${now - row.heartbeat_at}ms old); run one memory-owning process`
         + ' per database path, or disable the memory-sqlite plugin in the other process',
@@ -326,6 +334,8 @@ export function claimMemoryStoreOwnership(
         heartbeat_at = excluded.heartbeat_at
     `).run(owner.pid, owner.bootId, now)
     db.exec('COMMIT')
+    const key = ownershipReferenceKey(label)
+    if (key !== undefined) localOwnershipReferences.set(key, (localOwnershipReferences.get(key) ?? 0) + 1)
   } catch (error: unknown) {
     db.exec('ROLLBACK')
     throw error
@@ -353,7 +363,7 @@ export function refreshMemoryStoreOwner(
     WHERE id = 1 AND ((pid = ? AND boot_id = ?) OR heartbeat_at <= ?)
   `).run(owner.pid, owner.bootId, now, owner.pid, owner.bootId, now - staleMs).changes
   if (changed !== 1) {
-    throw new Error(`memory database at "${label}" is owned by another live process`)
+    throw new MemoryStoreOwnershipError(`memory database at "${label}" is owned by another live process`)
   }
 }
 
@@ -361,8 +371,18 @@ export function refreshMemoryStoreOwner(
  * Release ownership on clean provider shutdown so an immediate restart is admitted.
  * @param db - initialized canonical database handle.
  * @param owner - current process identity.
+ * @param label - database path used to retain same-process sibling providers.
  */
-export function releaseMemoryStoreOwnership(db: DatabaseSync, owner: MemoryStoreOwner): void {
+export function releaseMemoryStoreOwnership(db: DatabaseSync, owner: MemoryStoreOwner, label: string): void {
+  const key = ownershipReferenceKey(label)
+  if (key !== undefined) {
+    const references = localOwnershipReferences.get(key) ?? 0
+    if (references > 1) {
+      localOwnershipReferences.set(key, references - 1)
+      return
+    }
+    localOwnershipReferences.delete(key)
+  }
   db.prepare('DELETE FROM memory_store_owner WHERE id = 1 AND pid = ? AND boot_id = ?')
     .run(owner.pid, owner.bootId)
 }
