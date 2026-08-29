@@ -167,6 +167,8 @@ function appendAssistant(
   session.append('context/prepared', {
     turn,
     step: 1,
+    plan: prepared.plan,
+    decisions: prepared.decisions,
     contributions: prepared.contributions.map((contribution, index) => ({
       contributorId: contribution.contributorId,
       messageId: contribution.message.id,

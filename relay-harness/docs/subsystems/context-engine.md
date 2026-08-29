@@ -70,11 +70,11 @@ interface ProviderGeneration {
 
 ## Step-context seam
 
-`ContextEngineService.registerContributor` reserves a unique contributor id atomically; `prepareStep` runs every contributor once per request, in registration order, with an explicit `agent_step` or `prompt_enhancement` purpose, messages, abort signal, working directory, and detached durable caller identity. `StepContextCaller` supplies session/Agent/workspace identity, optional owning turn/step, effective preset, and origin without exposing a live Agent object to providers. Before publication it detaches, lossless-JSON validates, and freezes every provider-owned contribution, rejecting malformed payloads and duplicate/empty evidence ids atomically. It returns attributed contributions together with message, evidence, and coverage aggregates. The purpose is mandatory so consumers share retrieval without asking contributors to infer intent from prose. The base `session-history-context` contributor uses it to decline `agent_step` and admit only completed exchanges plus approved compaction checkpoints for Prompt Enhancement, preventing transcript duplication and recursive recall. Contributed agent-step messages append to the step's user messages and are recorded as durable `user/message` events; a step without contributions is byte-identical to a deployment without the service.
+`ContextEngineService.registerContributor` reserves a unique contributor id atomically. `prepareStep` resolves a deterministic plan from the request purpose and each contributor's declared purposes, assigns local character/token/deadline allowances, and runs eligible providers in registration order with isolated child abort signals. Explicit-reference candidates rank before provider-discovered recall for duplicate suppression and total-budget selection; selected messages return to registration order. `StepContextCaller` supplies session/Agent/workspace identity, optional owning turn/step, effective preset, and origin without exposing a live Agent object. Before publication the engine detaches, lossless-JSON validates, and freezes provider-owned contributions. A parent abort fails atomically, while a timeout or disposed registration generation ignores the late result and continues later providers. Providers retain retrieval and hydration policy; the engine owns eligibility, budgets, packing, and decision trace.
 
 ## Durable preparation trace
 
-AgentLoop owns the accepted step and therefore owns durability: after appending its admitted `user/message` events and before dispatching the model request, it appends one log-only `context/prepared` event. Each contribution retains its contributor id, evidence, optional coverage, proposed message id, and the seqs of structurally exact, unmodified message events that survived `agent/pre-step`; an empty seq list records a removed or rewritten proposal. The invariant requires links to lie inside that exact open step and rejects duplicate or late traces. `Evidence.domain` is `JsonValue`; ContextEngine validates it before admission and `Session.append` remains the final durable boundary. The trace contains no copy of message content and never participates in `deriveMessages()`.
+AgentLoop owns the accepted step and therefore owns durability: after appending admitted `user/message` events and before dispatching the model request, it appends one log-only `context/prepared` event. The event retains the plan, selected/rejected decisions, and each selected contribution's evidence, optional coverage, proposed message id, and structurally exact admitted message seqs. A rejection-only trace records timeout, disposal, duplicate, or budget outcomes without adding model-visible content. The invariant requires links to lie inside the exact open step and rejects empty unaccounted or late traces. `Evidence.domain` is `JsonValue`; ContextEngine validates it before admission and `Session.append` remains the final durable boundary. The trace contains no copy of message content and never participates in `deriveMessages()`.
 
 ```ts type-equiv
 /**
@@ -89,6 +89,10 @@ interface ContextPreparedEventData {
   readonly step: number
   /** Prepared contributions in registry order. */
   readonly contributions: readonly ContextPreparedContributionTrace[]
+  /** Deterministic provider eligibility and budget plan. */
+  readonly plan: ContextRetrievalPlan
+  /** Selected and rejected packing outcomes. */
+  readonly decisions: readonly ContextCandidateDecision[]
 }
 ```
 
@@ -109,7 +113,7 @@ Generated from source by `scripts/gen-cordis-catalog.ts` (verified fresh by `pnp
 
 ### `ctx.contextEngine` — `ContextEngineService`
 
-`ctx.contextEngine`. Owns the contributor registry and the step preparation call; retrieval planning, hydration, and packing enrich `prepareStep` inside implementations of this seam.
+`ctx.contextEngine`. Owns contributor registration, deterministic planning, and packing.
 
 ```ts cordis-catalog
 /**
@@ -121,13 +125,13 @@ registerContributor(contributor: StepContextContributor): () => void
 
 /**
  * Prepare context for one purpose-tagged request.
- * @param input - purpose, messages, abort signal, working directory, and durable caller identity.
- * @returns the collected context, or `undefined` when no contributor produced any.
+ * @param input - purpose, messages, parent abort signal, working directory, and caller identity.
+ * @returns selected context and its decision trace, or `undefined` when every provider declines.
  */
-prepareStep(input: StepContextInput): Promise<PreparedStepContext | undefined>
+prepareStep(input: ContextPrepareInput): Promise<PreparedStepContext | undefined>
 ```
 
-Source: [`packages/context/context-engine/src/types.ts:299`](../../packages/context/context-engine/src/types.ts)
+Source: [`packages/context/context-engine/src/types.ts:386`](../../packages/context/context-engine/src/types.ts)
 
 <a id="ctxsessionhistorycontext--sessionhistorycontext"></a>
 

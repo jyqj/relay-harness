@@ -32,10 +32,10 @@
           { "path": "relay-harness/packages/api/remotes/src/client/index.ts", "contains": ["promptEnhancementRemote"] }
         ],
         "ui": [
-          { "path": "relay-harness/packages/client/ui-prompt-enhancement/src/client/index.ts" }
+          { "path": "relay-harness/packages/client/ui-prompt-enhancement/src/client/EnhanceControl.tsx", "contains": ["promptEnhancementSources", "sources.freshness", "sources.verification"] }
         ],
         "e2e": [
-          { "path": "relay-harness/apps/web/tests/product-shell-prompt-context.e2e.ts" }
+          { "path": "relay-harness/apps/web/tests/product-shell-prompt-context.e2e.ts", "contains": ["runs draft → real Remote enhance → source explanation → diff → accept → undo without auto-submit, and cancels in flight"] }
         ],
         "docs": [
           { "path": "relay-harness/docs/subsystems/prompt-enhancement.md" }

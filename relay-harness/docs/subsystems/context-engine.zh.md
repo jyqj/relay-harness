@@ -70,11 +70,11 @@ interface ProviderGeneration {
 
 ## 步骤上下文 seam
 
-`ContextEngineService.registerContributor` 原子保留唯一 contributor id；`prepareStep` 按注册顺序、每个请求一次地运行全部 contributor，输入为显式 `agent_step` 或 `prompt_enhancement` purpose、消息、中止信号、工作目录与分离的持久 caller identity。`StepContextCaller` 提供 session／Agent／workspace identity、可选 owning turn／step、有效 preset 与 origin，而不会向 Provider 暴露 live Agent object。发布前，它会对每个 Provider 自有 contribution 做脱离、无损 JSON 校验与冻结，并原子拒绝畸形 payload 及重复/空 evidence id。它返回带归属的 contribution 以及消息、证据与覆盖聚合。purpose 必填，使 consumer 可以共享检索，而不要求 contributor 从自然语言推断意图。Base 的 `session-history-context` contributor 利用它拒绝 `agent_step`，只为 Prompt Enhancement 接纳已完成 exchange 与已批准 compaction checkpoint，防止 transcript 重复和 recall 递归。贡献的 agent-step 消息追加进步骤的 user 消息并落为持久 `user/message` 事件；无贡献的步骤与未部署该服务的部署逐字节一致。
+`ContextEngineService.registerContributor` 原子保留唯一 contributor id。`prepareStep` 根据请求 purpose 与每个 contributor 声明的 purposes 解析确定性 plan，分配局部字符／token／deadline 配额，再以隔离的子 abort signal 按注册顺序运行合格 Provider。显式引用候选优先于 Provider 发现的 recall 参与去重和总预算选择；选中消息返回注册顺序。`StepContextCaller` 提供 session／Agent／workspace identity、可选 owning turn／step、有效 preset 与 origin，而不会暴露 live Agent object。发布前，引擎会脱离、无损 JSON 校验并冻结 Provider 自有 contribution。父 abort 原子失败；timeout 或已释放注册代际会忽略迟到结果并继续后续 Provider。Provider 保留检索与 hydration policy；引擎拥有资格、预算、打包与决策 trace。
 
 ## 持久准备 trace
 
-AgentLoop 拥有获准步骤，因此也拥有持久化：它在追加经准入的 `user/message` 事件之后、分派模型请求之前，追加一条仅存在于日志的 `context/prepared` 事件。每个 contribution 保留 contributor id、证据、可选覆盖、拟议消息 id，以及经 `agent/pre-step` 后仍保持结构精确且未改写的消息事件 seq；空 seq 列表表示拟议消息被移除或改写。invariant 要求链接位于该精确开放步骤内，并拒绝重复或过晚的 trace。`Evidence.domain` 为 `JsonValue`；ContextEngine 会在准入前校验它，`Session.append` 仍是最终持久边界。trace 不包含消息内容副本，也绝不参与 `deriveMessages()`。
+AgentLoop 拥有获准步骤，因此也拥有持久化：它在追加经准入的 `user/message` 事件之后、分派模型请求之前，追加一条仅存在于日志的 `context/prepared` 事件。事件保留 plan、选中／拒绝 decisions，以及每个选中 contribution 的 Evidence、可选 Coverage、拟议消息 id 和结构精确的准入消息 seq。仅含拒绝的 trace 会记录 timeout、释放、重复或预算结果，而不添加模型可见内容。invariant 要求链接位于精确开放步骤内，并拒绝空且无说明或过晚的 trace。`Evidence.domain` 为 `JsonValue`；ContextEngine 会在准入前校验它，`Session.append` 仍是最终持久边界。trace 不包含消息内容副本，也绝不参与 `deriveMessages()`。
 
 ```ts type-equiv
 /**
@@ -89,6 +89,10 @@ interface ContextPreparedEventData {
   readonly step: number
   /** Prepared contributions in registry order. */
   readonly contributions: readonly ContextPreparedContributionTrace[]
+  /** Deterministic provider eligibility and budget plan. */
+  readonly plan: ContextRetrievalPlan
+  /** Selected and rejected packing outcomes. */
+  readonly decisions: readonly ContextCandidateDecision[]
 }
 ```
 
@@ -109,7 +113,7 @@ Generated from source by `scripts/gen-cordis-catalog.ts` (verified fresh by `pnp
 
 ### `ctx.contextEngine` — `ContextEngineService`
 
-`ctx.contextEngine`. Owns the contributor registry and the step preparation call; retrieval planning, hydration, and packing enrich `prepareStep` inside implementations of this seam.
+`ctx.contextEngine`. Owns contributor registration, deterministic planning, and packing.
 
 ```ts cordis-catalog
 /**
@@ -121,13 +125,13 @@ registerContributor(contributor: StepContextContributor): () => void
 
 /**
  * Prepare context for one purpose-tagged request.
- * @param input - purpose, messages, abort signal, working directory, and durable caller identity.
- * @returns the collected context, or `undefined` when no contributor produced any.
+ * @param input - purpose, messages, parent abort signal, working directory, and caller identity.
+ * @returns selected context and its decision trace, or `undefined` when every provider declines.
  */
-prepareStep(input: StepContextInput): Promise<PreparedStepContext | undefined>
+prepareStep(input: ContextPrepareInput): Promise<PreparedStepContext | undefined>
 ```
 
-Source: [`packages/context/context-engine/src/types.ts:299`](../../packages/context/context-engine/src/types.ts)
+Source: [`packages/context/context-engine/src/types.ts:386`](../../packages/context/context-engine/src/types.ts)
 
 <a id="ctxsessionhistorycontext--sessionhistorycontext"></a>
 

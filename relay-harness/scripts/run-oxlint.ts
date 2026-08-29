@@ -24,6 +24,36 @@ export interface OxlintInvocation {
   readonly env: NodeJS.ProcessEnv
 }
 
+/** Observable completion facts from one Oxlint child process. */
+export interface OxlintProcessResult {
+  readonly error?: Error
+  readonly signal: NodeJS.Signals | null
+  readonly status: number | null
+  readonly stdout: string
+  readonly stderr: string
+}
+
+/** Whether a child result is buffered for a decision or owns the parent streams directly. */
+export type OxlintProcessMode = 'capture' | 'inherit'
+
+/** Synchronous child-process seam used to verify bounded retry orchestration deterministically. */
+export type OxlintProcessRunner = (
+  invocation: OxlintInvocation,
+  mode: OxlintProcessMode,
+) => OxlintProcessResult
+
+/** Captured output channels used only when the first fix pass succeeds. */
+export interface OxlintOutput {
+  /** Write bytes captured from Oxlint stdout. */
+  readonly stdout: (text: string) => void
+  /** Write bytes captured from Oxlint stderr. */
+  readonly stderr: (text: string) => void
+}
+
+function completionOf(result: OxlintProcessResult): Pick<OxlintProcessResult, 'signal' | 'status'> {
+  return { signal: result.signal, status: result.status }
+}
+
 /**
  * Apply the repository worker bound to both Oxlint backends.
  * @param args - Oxlint CLI arguments requested by the caller.
@@ -56,42 +86,73 @@ function completeFrom(result: { readonly signal: NodeJS.Signals | null; readonly
   process.exitCode = result.status ?? 1
 }
 
-function main(): void {
-  const invocation = resolveOxlintInvocation(process.argv.slice(2), process.env)
-  if (!isFixInvocation(invocation.args)) {
+function spawnOxlint(invocation: OxlintInvocation, mode: OxlintProcessMode): OxlintProcessResult {
+  if (mode === 'capture') {
     const result = spawnSync(process.execPath, [oxlintCli, ...invocation.args], {
+      encoding: 'utf8',
       env: invocation.env,
-      stdio: 'inherit',
+      maxBuffer: MAX_CAPTURED_OUTPUT_BYTES,
     })
-    if (result.error !== undefined) throw result.error
-    completeFrom(result)
-    return
+    return {
+      ...result.error === undefined ? {} : { error: result.error },
+      signal: result.signal,
+      status: result.status,
+      stdout: result.stdout,
+      stderr: result.stderr,
+    }
   }
-
-  const first = spawnSync(process.execPath, [oxlintCli, ...invocation.args], {
-    encoding: 'utf8',
-    env: invocation.env,
-    maxBuffer: MAX_CAPTURED_OUTPUT_BYTES,
-  })
-  if (first.error !== undefined) throw first.error
-  if (first.signal !== null) {
-    completeFrom(first)
-    return
-  }
-  if (first.status === 0) {
-    process.stdout.write(first.stdout)
-    process.stderr.write(first.stderr)
-    process.exitCode = 0
-    return
-  }
-
-  // Overlapping JS-plugin fixes can expose one more fixable diagnostic after the first pass.
-  const second = spawnSync(process.execPath, [oxlintCli, ...invocation.args], {
+  const result = spawnSync(process.execPath, [oxlintCli, ...invocation.args], {
     env: invocation.env,
     stdio: 'inherit',
   })
+  return {
+    ...result.error === undefined ? {} : { error: result.error },
+    signal: result.signal,
+    status: result.status,
+    stdout: '',
+    stderr: '',
+  }
+}
+
+/**
+ * Run validation once or a fix invocation with one bounded retry.
+ * @param invocation - completed Oxlint arguments and environment.
+ * @param runner - synchronous process runner; production uses the real Oxlint executable.
+ * @param output - parent channels for a successful captured first fix pass.
+ * @returns the final child completion used for signal and exit-status propagation.
+ */
+export function executeOxlint(
+  invocation: OxlintInvocation,
+  runner: OxlintProcessRunner = spawnOxlint,
+  output: OxlintOutput = {
+    stdout: text => process.stdout.write(text),
+    stderr: text => process.stderr.write(text),
+  },
+): Pick<OxlintProcessResult, 'signal' | 'status'> {
+  if (!isFixInvocation(invocation.args)) {
+    const result = runner(invocation, 'inherit')
+    if (result.error !== undefined) throw result.error
+    return completionOf(result)
+  }
+
+  const first = runner(invocation, 'capture')
+  if (first.error !== undefined) throw first.error
+  if (first.signal !== null) return completionOf(first)
+  if (first.status === 0) {
+    output.stdout(first.stdout)
+    output.stderr(first.stderr)
+    return completionOf(first)
+  }
+
+  // Overlapping JS-plugin fixes can expose one more fixable diagnostic after the first pass.
+  const second = runner(invocation, 'inherit')
   if (second.error !== undefined) throw second.error
-  completeFrom(second)
+  return completionOf(second)
+}
+
+function main(): void {
+  const invocation = resolveOxlintInvocation(process.argv.slice(2), process.env)
+  completeFrom(executeOxlint(invocation))
 }
 
 const entrypoint = process.argv[1]

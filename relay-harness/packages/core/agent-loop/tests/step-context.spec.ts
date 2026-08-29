@@ -53,6 +53,25 @@ class ScriptedEngine extends Service {
 /** Build one complete attributed preparation around a model-visible message. */
 function prepared(message: UserMessage, evidence: readonly Evidence[] = [], coverage?: CoverageRecord): PreparedStepContext {
   return {
+    plan: {
+      purpose: 'agent_step',
+      budget: { maxChars: 100, maxTokens: 100 },
+      contributors: [{
+        contributorId: 'scripted',
+        eligible: true,
+        reason: 'purpose_supported',
+        budget: { maxChars: 100, maxTokens: 100, timeoutMs: 50 },
+      }],
+    },
+    decisions: [{
+      contributorId: 'scripted',
+      messageId: message.id,
+      outcome: 'selected',
+      reasons: ['within_budget'],
+      priority: 'provider',
+      chars: 1,
+      tokens: 1,
+    }],
     contributions: [{
       contributorId: 'scripted',
       message,
@@ -164,6 +183,8 @@ describe('step-context seam', () => {
       },
     })
     if (trace?.type !== 'context/prepared') throw new Error('missing context/prepared')
+    expect(trace.data.plan.purpose).toBe('agent_step')
+    expect(trace.data.decisions[0]).toMatchObject({ contributorId: 'scripted', outcome: 'selected' })
     const contextEvent = agent.session.events.find(event =>
       event.type === 'user/message' && event.data.id === contextMessage.id)
     expect(trace.data.contributions[0]?.messageEventSeqs).toEqual([contextEvent?.seq])
@@ -188,6 +209,39 @@ describe('step-context seam', () => {
     send(absentAgent, 'hello')
     await waitForIdle(absentCtx, absentAgent)
     expect(requestTexts(absent)).toEqual([['hello']])
+  })
+
+  it('durably records retrieval rejection decisions without adding model-visible context', async () => {
+    const adapter = new MockAdapter([textResponse('ok')])
+    const ctx = await harness(adapter)
+    new ScriptedEngine(ctx, {
+      plan: {
+        purpose: 'agent_step',
+        budget: { maxChars: 100, maxTokens: 100 },
+        contributors: [{
+          contributorId: 'slow', eligible: true, reason: 'purpose_supported',
+          budget: { maxChars: 100, maxTokens: 100, timeoutMs: 5 },
+        }],
+      },
+      decisions: [{ contributorId: 'slow', outcome: 'rejected', reasons: ['timeout'] }],
+      contributions: [],
+      messages: [],
+      evidence: [],
+      coverage: [],
+    })
+    const agent = ctx.agentLoop.create(SessionId('rejected-context'), { provider: 'mock', model: 'mock' })
+
+    send(agent, 'hello')
+    await waitForIdle(ctx, agent)
+
+    expect(requestTexts(adapter)).toEqual([['hello']])
+    expect(agent.session.events.find(event => event.type === 'context/prepared')).toMatchObject({
+      type: 'context/prepared',
+      data: {
+        contributions: [],
+        decisions: [{ contributorId: 'slow', outcome: 'rejected', reasons: ['timeout'] }],
+      },
+    })
   })
 
   it('keeps evidence but does not link a context proposal rewritten by pre-step', async () => {

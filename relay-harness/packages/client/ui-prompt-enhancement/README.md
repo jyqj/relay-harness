@@ -2,7 +2,7 @@
 
 English | [中文](README.zh.md)
 
-Composer control registered in `conversation.input.right`. A click calls the generated `promptEnhancement` Remote with the exact draft and cancellation, turns the busy control into an accessible Remote cancellation action, and opens an Original/Enhanced diff with assumptions and open questions. Only Accept replaces a draft whose value and monotonic `draftRev` still match the attempt, preventing ABA edits. Replacement uses the ordinary input transaction, so both the existing composer undo and the explicit Undo action restore the original under another revision CAS. Cancel, failure, mismatched Host output, session switch/removal, unmount, and stale results retain the draft, and the control never submits.
+Composer control registered in `conversation.input.right`. A click calls the generated `promptEnhancement` Remote with the exact draft and cancellation, turns the busy control into an accessible Remote cancellation action, and opens an Original/Enhanced diff with assumptions and open questions. The proposal also projects admitted Context Engine Evidence as File, Code, Memory, History, or MCP source rows with the resource key, provider-owned selection reason, freshness, and verification state. Unknown or malformed opaque trace entries are not guessed. Only Accept replaces a draft whose value and monotonic `draftRev` still match the attempt, preventing ABA edits. Replacement uses the ordinary input transaction, so both the existing composer undo and the explicit Undo action restore the original under another revision CAS. Cancel, failure, mismatched Host output, session switch/removal, unmount, and stale results retain the draft, and the control never submits.
 
 ## Model Experience
 
@@ -10,7 +10,7 @@ Composer control registered in `conversation.input.right`. A click calls the gen
 
 #### What the model sees
 
-The control initiates the `promptEnhancement.enhance` Remote; the Host provider owns the separate auxiliary request, while browser UI state and copy add nothing model-visible.
+The control initiates the `promptEnhancement.enhance` Remote; the Host provider owns the separate auxiliary request and the trace facts, while browser UI state, source labels, and copy add nothing model-visible. The control is part of the ordinary composer in Simple and Developer modes.
 
 #### Token effect
 

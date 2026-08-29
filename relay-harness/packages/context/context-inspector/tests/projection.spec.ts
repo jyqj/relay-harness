@@ -12,7 +12,20 @@ describe('contextInspector projection', () => {
     const admitted = createUserMessage({ content: [{ type: 'text', text: 'hydrated source context' }], source: { kind: 'user' } })
     const linked = session.append('user/message', admitted, { surfaceOp: 'append' })
     session.append('context/prepared', {
-      turn: 1, step: 1, contributions: [
+      turn: 1,
+      step: 1,
+      plan: {
+        purpose: 'agent_step', budget: { maxChars: 100, maxTokens: 100 },
+        contributors: ['files', 'code'].map(contributorId => ({
+          contributorId, eligible: true as const, reason: 'purpose_supported' as const,
+          budget: { maxChars: 100, maxTokens: 100, timeoutMs: 50 },
+        })),
+      },
+      decisions: [
+        { contributorId: 'files', messageId: admitted.id, outcome: 'selected', reasons: ['within_budget'] },
+        { contributorId: 'code', messageId: 'rewritten' as typeof admitted.id, outcome: 'selected', reasons: ['within_budget'] },
+      ],
+      contributions: [
         { contributorId: 'files', messageId: admitted.id, messageEventSeqs: [linked.seq], evidence: [{ evidenceId: EvidenceId('ev:file'), resource: { sourceId: SourceId('files'), key: 'chunk:a', revision: 'h1' }, truncated: false, freshness: 'current', verification: 'verified', domain: { filePath: 'src/a.ts', selectionReason: ['explicit reference'] } }], coverage: { searched: ['src/a.ts'], notSearched: ['vendor'], rationale: 'explicit scope', completeness: 'bounded' } },
         { contributorId: 'code', messageId: 'rewritten' as typeof admitted.id, messageEventSeqs: [], evidence: [], coverage: { searched: ['index'], notSearched: [], completeness: 'best-effort' } },
       ],
@@ -21,7 +34,17 @@ describe('contextInspector projection', () => {
     for (const event of session.events) state = contextInspectorProjectionDefinition.apply(state, event)
     const view = contextInspectorProjectionDefinition.view(state)
     expect(view.traces).toHaveLength(1)
-    expect(view.traces[0]).toMatchObject({ admittedContributions: 1, rejectedContributions: 1, evidenceCount: 1 })
+    expect(view.traces[0]).toMatchObject({
+      admittedContributions: 1,
+      rejectedContributions: 1,
+      retrievalRejections: 0,
+      evidenceCount: 1,
+      plan: { purpose: 'agent_step' },
+      decisions: [
+        { contributorId: 'files', outcome: 'selected' },
+        { contributorId: 'code', outcome: 'selected' },
+      ],
+    })
     expect(view.traces[0]?.contributions[0]).toMatchObject({ admitted: true, linkedMessages: [{ seq: linked.seq, preview: 'hydrated source context' }] })
     expect(view.traces[0]?.contributions[0]?.evidence[0]).toMatchObject({ whyUsed: ['explicit reference'], path: 'src/a.ts', resource: { key: 'chunk:a' } })
     expect(view.traces[0]?.contributions[1]).toMatchObject({ admitted: false, linkedMessages: [] })

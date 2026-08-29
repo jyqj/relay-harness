@@ -12,6 +12,7 @@ import {
 } from '@relay-harness/rlh-client-ui-primitives'
 import type {} from '@relay-harness/rlh-client-ui-conversation/client'
 import type { PromptEnhancementInjected } from './index.ts'
+import { promptEnhancementSources } from './contextTrace.ts'
 import css from './EnhanceControl.module.css'
 
 /** Full slot props: InputZone owner share, injected actions, and locale. */
@@ -97,6 +98,7 @@ export function EnhanceControl({ session, input, inputActions, enhance, t }: Enh
   const disabled = cancelling
     || (!busy && (input.phase !== 'plain' || input.draft.trim().length === 0 || session.removed))
   const label = t(cancelling ? 'button.cancelling' : busy ? 'button.cancel' : 'button.label')
+  const sources = proposal === null ? [] : promptEnhancementSources(proposal.result.contextTrace)
   const closeProposal = (): void => { setProposal(null) }
   const acceptProposal = (): void => {
     if (proposal === null) return
@@ -172,6 +174,27 @@ export function EnhanceControl({ session, input, inputActions, enhance, t }: Enh
               <section>
                 <h3>{t('proposal.questions')}</h3>
                 <ul>{proposal.result.openQuestions.map((item, index) => <li key={index}>{item}</li>)}</ul>
+              </section>
+            )}
+            {sources.length > 0 && (
+              <section aria-label={t('sources.title')}>
+                <h3>{t('sources.title')}</h3>
+                <ul className={css.sources}>
+                  {sources.map((source, index) => (
+                    <li key={`${source.kind}:${source.key}:${String(index)}`}>
+                      <div className={css.sourceHeading}>
+                        <span className={css.sourceBadge}>{t(`sources.kind.${source.kind}`)}</span>
+                        <span className={css.sourceKey} title={source.key}>{source.key}</span>
+                      </div>
+                      <p><strong>{t('sources.why')}:</strong> {source.why.join(' · ')}</p>
+                      <p>
+                        <strong>{t('sources.freshness')}:</strong> {t(`sources.freshness.${source.freshness}`)}
+                        {' · '}
+                        <strong>{t('sources.verification')}:</strong> {t(`sources.verification.${source.verification}`)}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
               </section>
             )}
           </div>

@@ -189,5 +189,9 @@ describe('Prompt Enhancement Context Engine vertical slice', () => {
         { contributorId: 'code-index-recall' },
       ],
     })
+    const traceJson = JSON.stringify(providerRequest?.context.trace)
+    expect(traceJson).toContain('"contributorId":"session-history","eligible":true')
+    expect(traceJson).toContain('"contributorId":"file-reference-content","outcome":"selected"')
+    expect(traceJson).toContain('"priority":"explicit-reference"')
   })
 })

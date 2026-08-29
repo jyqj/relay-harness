@@ -639,7 +639,7 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
   {
     key: 'contextEngine',
     summary: '`ctx.contextEngine`.',
-    description: '`ctx.contextEngine`. Owns the contributor registry and the step preparation call; retrieval planning, hydration, and packing enrich `prepareStep` inside implementations of this seam.',
+    description: '`ctx.contextEngine`. Owns contributor registration, deterministic planning, and packing.',
     methods: [
       {
         signature: 'registerContributor(contributor: StepContextContributor): () => void',
@@ -648,10 +648,10 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         returns: 'a disposer removing the registration.',
       },
       {
-        signature: 'prepareStep(input: StepContextInput): Promise<PreparedStepContext | undefined>',
+        signature: 'prepareStep(input: ContextPrepareInput): Promise<PreparedStepContext | undefined>',
         description: 'Prepare context for one purpose-tagged request.',
-        parameters: [{ name: 'input', description: 'purpose, messages, abort signal, working directory, and durable caller identity.' }],
-        returns: 'the collected context, or `undefined` when no contributor produced any.',
+        parameters: [{ name: 'input', description: 'purpose, messages, parent abort signal, working directory, and caller identity.' }],
+        returns: 'selected context and its decision trace, or `undefined` when every provider declines.',
       },
     ],
   },
@@ -3608,12 +3608,40 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export type ContentBlockType = keyof ContentBlockMap;',
   },
   {
+    name: 'ContextBudget',
+    declaration: 'export interface ContextBudget {\n    readonly maxChars: number;\n    readonly maxTokens: number;\n}',
+  },
+  {
+    name: 'ContextCandidateDecision',
+    declaration: 'export interface ContextCandidateDecision {\n    readonly contributorId: string;\n    readonly messageId?: UserMessage[\'id\'];\n    readonly outcome: \'selected\' | \'rejected\';\n    readonly reasons: readonly string[];\n    readonly priority?: ContextSelectionPriority;\n    readonly chars?: number;\n    readonly tokens?: number;\n}',
+  },
+  {
+    name: 'ContextCandidateSelection',
+    declaration: 'export interface ContextCandidateSelection {\n    readonly priority: ContextSelectionPriority;\n    readonly reasons: readonly string[];\n    readonly dedupeKey?: string;\n}',
+  },
+  {
     name: 'ContextFormed',
     declaration: 'export type ContextFormed = {\n    readonly form?: never;\n} | {\n    readonly form: \'instructions\';\n} | {\n    readonly form: \'catalog\';\n} | {\n    readonly form: \'snapshot\';\n    readonly sections: readonly ContextSnapshotSection[];\n} | {\n    readonly form: \'notice\';\n    readonly summary: string;\n} | {\n    readonly form: \'relay\';\n} | {\n    readonly form: \'recall\';\n};',
   },
   {
+    name: 'ContextPrepareInput',
+    declaration: 'export interface ContextPrepareInput {\n    readonly purpose: ContextPurpose;\n    readonly messages: readonly UserMessage[];\n    readonly signal: AbortSignal;\n    readonly cwd: string;\n    readonly caller: StepContextCaller;\n}',
+  },
+  {
     name: 'ContextPurpose',
     declaration: 'export type ContextPurpose = \'agent_step\' | \'prompt_enhancement\';',
+  },
+  {
+    name: 'ContextRetrievalPlan',
+    declaration: 'export interface ContextRetrievalPlan {\n    readonly purpose: ContextPurpose;\n    readonly budget: ContextBudget;\n    readonly contributors: readonly ContextRetrievalPlanEntry[];\n}',
+  },
+  {
+    name: 'ContextRetrievalPlanEntry',
+    declaration: 'export interface ContextRetrievalPlanEntry {\n    readonly contributorId: string;\n    readonly eligible: boolean;\n    readonly reason: \'purpose_supported\' | \'purpose_not_supported\';\n    readonly budget?: Omit<ContributorContextBudget, \'deadlineAt\'>;\n}',
+  },
+  {
+    name: 'ContextSelectionPriority',
+    declaration: 'export type ContextSelectionPriority = \'explicit-reference\' | \'provider\';',
   },
   {
     name: 'ContextSnapshotSection',
@@ -3645,7 +3673,11 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'ContributedStepContext',
-    declaration: 'export interface ContributedStepContext {\n    readonly message: UserMessage;\n    readonly evidence?: readonly Evidence[];\n    readonly coverage?: CoverageRecord;\n}',
+    declaration: 'export interface ContributedStepContext {\n    readonly message: UserMessage;\n    readonly evidence?: readonly Evidence[];\n    readonly coverage?: CoverageRecord;\n    readonly selection?: ContextCandidateSelection;\n}',
+  },
+  {
+    name: 'ContributorContextBudget',
+    declaration: 'export interface ContributorContextBudget {\n    readonly maxChars: number;\n    readonly maxTokens: number;\n    readonly timeoutMs: number;\n    readonly deadlineAt: number;\n}',
   },
   {
     name: 'CordisDynamicPackageId',
@@ -4589,7 +4621,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'PreparedStepContext',
-    declaration: 'export interface PreparedStepContext {\n    readonly contributions: readonly PreparedContextContribution[];\n    readonly messages: readonly UserMessage[];\n    readonly evidence: readonly Evidence[];\n    readonly coverage: readonly CoverageRecord[];\n}',
+    declaration: 'export interface PreparedStepContext {\n    readonly plan: ContextRetrievalPlan;\n    readonly decisions: readonly ContextCandidateDecision[];\n    readonly contributions: readonly PreparedContextContribution[];\n    readonly messages: readonly UserMessage[];\n    readonly evidence: readonly Evidence[];\n    readonly coverage: readonly CoverageRecord[];\n}',
   },
   {
     name: 'PrepareMemoryTurnInput',
@@ -5337,11 +5369,11 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'StepContextContributor',
-    declaration: 'export interface StepContextContributor {\n    readonly id: string;\n    contribute(input: StepContextInput): Promise<ContributedStepContext | undefined>;\n}',
+    declaration: 'export interface StepContextContributor {\n    readonly id: string;\n    readonly purposes?: readonly ContextPurpose[];\n    contribute(input: StepContextInput): Promise<ContributedStepContext | undefined>;\n}',
   },
   {
     name: 'StepContextInput',
-    declaration: 'export interface StepContextInput {\n    readonly purpose: ContextPurpose;\n    readonly messages: readonly UserMessage[];\n    readonly signal: AbortSignal;\n    readonly cwd: string;\n    readonly caller: StepContextCaller;\n}',
+    declaration: 'export interface StepContextInput extends ContextPrepareInput {\n    readonly budget: ContributorContextBudget;\n}',
   },
   {
     name: 'StorageBackend',

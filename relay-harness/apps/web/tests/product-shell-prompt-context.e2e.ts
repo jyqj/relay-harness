@@ -1,58 +1,147 @@
+import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import type { Browser, Page } from 'playwright'
 import { chromium } from 'playwright'
-import { describe, expect, it, onTestFailed } from 'vitest'
+import { afterAll, beforeAll, describe, expect, it, onTestFailed } from 'vitest'
+import type { StreamChunk } from '@relay-harness/rlh-llm'
+import type { ReplayEntry, ReplayOverrideDoc } from '@relay-harness/rlh-llm-replay'
+import type { SessionEvent } from '@relay-harness/rlh-session'
+import { launchWebScaffold, watchConsole, type WebScaffold } from './scaffold.ts'
 import { connectFreshWorkspace, newEnglishPage, saveFailureShot } from './support.ts'
 
-const SCAFFOLD_MODULE = './scaffold.ts'
+const FIRST_PROMPT = 'Remember that browser acceptance must stay explicit.'
+const DRAFT = 'improve prompt enhance e2e'
+const ENHANCED = 'Improve Prompt Enhancement and verify its real browser acceptance flow without submitting it.'
+const STALE_DRAFT = 'second enhancement attempt'
 
-interface Scaffold {
-  baseUrl: string
-  workspaceCwd: string
-  close(): Promise<void>
+function textEntry(text: string, pieces = 1): ReplayEntry {
+  const points = Array.from(text)
+  const size = Math.ceil(points.length / pieces)
+  const deltas = Array.from({ length: pieces }, (_, index) => points.slice(index * size, (index + 1) * size).join(''))
+    .filter(Boolean)
+  const chunks: StreamChunk[] = [
+    { type: 'block-start', index: 0, blockType: 'text' },
+    ...deltas.map(part => ({ type: 'text-delta' as const, index: 0, text: part })),
+    { type: 'block-end', index: 0, block: { type: 'text', text } },
+    { type: 'usage', usage: { inputTokens: 32, outputTokens: 32 } },
+    { type: 'finish', reason: { kind: 'stop' } },
+  ]
+  return { kind: 'chunks', chunks }
 }
 
-describe('web e2e: ordinary product shell and context controls', () => {
-  it('keeps provenance and Enhance visible in Simple Mode and navigates real Work/Library pages', async () => {
-    const api = await import(SCAFFOLD_MODULE) as {
-      launchWebScaffold(): Promise<Scaffold>
-      watchConsole(page: Page): { warnings: string[]; pageErrors: string[] }
-    }
-    let scaffold: Scaffold | undefined
-    let browser: Browser | undefined
-    let page: Page | undefined
-    try {
-      scaffold = await api.launchWebScaffold()
-      browser = await chromium.launch()
-      page = await newEnglishPage(browser)
-      const tripwire = api.watchConsole(page)
-      onTestFailed(() => {
-        if (page) void saveFailureShot(page, 'product-shell-prompt-context')
-      })
-      await page.goto(scaffold.baseUrl, { waitUntil: 'load' })
-      await page.waitForSelector('[class*="frame"]', { timeout: 30_000 })
-      await connectFreshWorkspace(page, scaffold.workspaceCwd, 'product-shell')
+function enhancementOutput(enhancedDraft: string): string {
+  return JSON.stringify({
+    enhancedDraft,
+    assumptions: ['The shipped browser composition remains authoritative.'],
+    openQuestions: [],
+  })
+}
 
-      await expect(page.getByRole('button', { name: 'Enhance prompt' }).count()).resolves.toBe(1)
-      const boot = await page.evaluate(() => (
-        (window as unknown as { __RLH_BOOT__?: { entries?: Array<{ id?: string }> } })
-          .__RLH_BOOT__?.entries ?? []
-      ).map(item => item.id))
-      expect(boot).toContain('@relay-harness/rlh-client-ui-context-inspector')
+function replayScript(): ReplayOverrideDoc {
+  return [
+    textEntry('PRIOR_HISTORY_DONE'),
+    textEntry(enhancementOutput(ENHANCED), 4),
+    textEntry(enhancementOutput('This cancelled proposal must not overwrite the live editor.'), 60),
+  ]
+}
 
-      await page.getByRole('tab', { name: 'Work', exact: true }).click()
-      await page.getByRole('heading', { name: 'Current work', exact: true }).waitFor()
-      await page.getByRole('tab', { name: 'Library', exact: true }).click()
-      await page.getByRole('heading', { name: 'Library', exact: true }).waitFor()
-      await page.getByRole('button', { name: 'Settings', exact: true }).click()
-      const dialog = page.getByRole('dialog', { name: 'Settings' })
-      const mode = dialog.getByRole('switch', { name: 'Developer Mode' })
-      await mode.waitFor()
-      expect(await mode.isChecked()).toBe(false)
-      expect(tripwire.pageErrors).toEqual([])
-      expect(tripwire.warnings).toEqual([])
-    } finally {
-      await browser?.close()
-      await scaffold?.close()
+describe('web e2e: ordinary product shell and Prompt Enhancement', () => {
+  let replayDir: string
+  let scaffold: WebScaffold
+  let browser: Browser
+  let page: Page
+  let tripwire: ReturnType<typeof watchConsole>
+  const events: SessionEvent[] = []
+
+  beforeAll(async () => {
+    replayDir = await mkdtemp(join(tmpdir(), 'rlh-prompt-enhancement-e2e-'))
+    const replayOverride = join(replayDir, 'replay.override.json')
+    await writeFile(replayOverride, JSON.stringify(replayScript()))
+    scaffold = await launchWebScaffold({
+      replayFixture: join(replayDir, 'override-only.jsonl'),
+      replayOverride,
+      paceMs: 25,
+    })
+    scaffold.ctx.on('session/event', (_session, event: SessionEvent) => { events.push(event) })
+    browser = await chromium.launch()
+    page = await newEnglishPage(browser)
+    tripwire = watchConsole(page)
+    await page.goto(scaffold.baseUrl, { waitUntil: 'load' })
+    await page.waitForSelector('[class*="frame"]', { timeout: 30_000 })
+    await connectFreshWorkspace(page, scaffold.workspaceCwd, 'product-shell-prompt-context')
+  }, 120_000)
+
+  afterAll(async () => {
+    const failures: unknown[] = []
+    await browser?.close().catch((error: unknown) => failures.push(error))
+    await scaffold?.close().catch((error: unknown) => failures.push(error))
+    if (replayDir !== undefined) {
+      await rm(replayDir, { recursive: true, force: true }).catch((error: unknown) => failures.push(error))
     }
+    if (failures.length === 1) throw failures[0]
+    if (failures.length > 1) throw new AggregateError(failures, 'Prompt Enhancement e2e cleanup failed')
+  })
+
+  it('runs draft → real Remote enhance → source explanation → diff → accept → undo without auto-submit, and cancels in flight', async () => {
+    onTestFailed(() => saveFailureShot(page, 'product-shell-prompt-context'))
+    const composer = page.locator('textarea:enabled').last()
+    await composer.waitFor({ timeout: 15_000 })
+
+    await expect(page.getByRole('button', { name: 'Enhance prompt' }).count()).resolves.toBe(1)
+    await page.getByRole('button', { name: 'Settings', exact: true }).click()
+    const mode = page.getByRole('dialog', { name: 'Settings' }).getByRole('switch', { name: 'Developer Mode' })
+    await mode.waitFor()
+    expect(await mode.isChecked()).toBe(false)
+    await page.keyboard.press('Escape')
+
+    await composer.fill(FIRST_PROMPT)
+    const settled = scaffold.whenTurnSettled(30_000)
+    await page.getByRole('button', { name: 'Send message', exact: true }).click()
+    await settled
+    await page.getByText('PRIOR_HISTORY_DONE', { exact: true }).waitFor()
+    const directMessagesAfterTurn = events.filter(event => (
+      event.type === 'user/message' && event.data.source.kind === 'user'
+    )).length
+    expect(directMessagesAfterTurn).toBe(1)
+
+    await composer.fill(DRAFT)
+    await page.getByRole('button', { name: 'Enhance prompt' }).click()
+    const proposal = page.getByRole('dialog', { name: 'Enhancement proposal' })
+    await proposal.waitFor({ timeout: 30_000 })
+    await expect(proposal.getByText(DRAFT, { exact: true }).count()).resolves.toBeGreaterThan(0)
+    await expect(proposal.getByText(ENHANCED, { exact: true }).count()).resolves.toBeGreaterThan(0)
+    const sources = proposal.getByRole('region', { name: 'Sources used this time' })
+    await sources.waitFor()
+    await proposal.getByText('History', { exact: true }).first().waitFor()
+    await expect.poll(() => sources.textContent()).toContain('Freshness: Current')
+    await expect.poll(() => sources.textContent()).toContain('Verification: Verified')
+    await proposal.getByText(/completed-turn/).first().waitFor()
+    expect(await composer.inputValue()).toBe(DRAFT)
+
+    await proposal.getByRole('button', { name: 'Accept enhancement' }).click()
+    await expect.poll(() => composer.inputValue()).toBe(ENHANCED)
+    expect(events.filter(event => event.type === 'turn/start')).toHaveLength(1)
+    expect(events.filter(event => event.type === 'user/message' && event.data.source.kind === 'user')).toHaveLength(1)
+
+    await page.getByRole('button', { name: 'Undo enhancement' }).click()
+    await expect.poll(() => composer.inputValue()).toBe(DRAFT)
+    expect(events.filter(event => event.type === 'turn/start')).toHaveLength(1)
+
+    await composer.fill(STALE_DRAFT)
+    await page.getByRole('button', { name: 'Enhance prompt' }).click()
+    const cancel = page.getByRole('button', { name: 'Cancel prompt enhancement' })
+    await cancel.waitFor()
+    await cancel.click()
+    await page.getByRole('button', { name: 'Enhance prompt' }).waitFor()
+    expect(await composer.inputValue()).toBe(STALE_DRAFT)
+    expect(await page.getByRole('dialog', { name: 'Enhancement proposal' }).count()).toBe(0)
+    expect(events.filter(event => event.type === 'turn/start')).toHaveLength(1)
+    expect(events.filter(event => event.type === 'user/message' && event.data.source.kind === 'user')).toHaveLength(1)
+    expect(events.filter(event => (
+      (event as { readonly type: string }).type === 'prompt-enhancement/llm-request'
+    )).length).toBeGreaterThanOrEqual(2)
+    expect(tripwire.pageErrors).toEqual([])
+    expect(tripwire.warnings).toEqual([])
   }, 120_000)
 })

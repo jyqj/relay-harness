@@ -1,5 +1,10 @@
 /** Client-safe Context Inspector projection vocabulary. */
-import type { CoverageRecord, Evidence } from '@relay-harness/rlh-context-engine/types'
+import type {
+  ContextCandidateDecision,
+  ContextRetrievalPlan,
+  CoverageRecord,
+  Evidence,
+} from '@relay-harness/rlh-context-engine/types'
 
 /** Exact admitted user/message fact linked by a preparation trace. */
 export interface ContextInspectorLinkedMessage {
@@ -28,9 +33,12 @@ export interface ContextInspectorTrace {
   readonly seq: number
   readonly turn: number
   readonly step: number
+  readonly plan: ContextRetrievalPlan
+  readonly decisions: readonly ContextCandidateDecision[]
   readonly contributions: readonly ContextInspectorContribution[]
   readonly admittedContributions: number
   readonly rejectedContributions: number
+  readonly retrievalRejections: number
   readonly evidenceCount: number
 }
 /** Bounded whole-log projection delivered to the browser. */

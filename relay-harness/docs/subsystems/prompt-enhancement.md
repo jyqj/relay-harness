@@ -2,7 +2,7 @@
 
 English | [中文](prompt-enhancement.zh.md)
 
-Prompt Enhancement improves an unsent draft through a separate, cancellable model request. The Host service owns one Context Engine adapter and one enhancement provider; the Web client owns initiation, compare-before-replace, and undo. No path submits the draft or enters AgentLoop.
+Prompt Enhancement improves an unsent draft through a separate, cancellable model request. The Host service owns one Context Engine adapter and one enhancement provider; the Web client owns initiation, Context Evidence explanation, compare-before-replace, and undo. The proposal presents admitted File, Code, Memory, History, and MCP Evidence with its resource, provider selection reason, freshness, and verification state in both Simple and Developer modes. No path submits the draft or enters AgentLoop.
 
 Sources: [`packages/context/prompt-enhancement/src/index.ts`](../../packages/context/prompt-enhancement/src/index.ts) · [`packages/context/prompt-enhancement-llm/src/index.ts`](../../packages/context/prompt-enhancement-llm/src/index.ts) · [`packages/context/prompt-enhancement-context-engine/src/index.ts`](../../packages/context/prompt-enhancement-context-engine/src/index.ts) · [`packages/client/ui-prompt-enhancement/src/client/index.ts`](../../packages/client/ui-prompt-enhancement/src/client/index.ts)
 

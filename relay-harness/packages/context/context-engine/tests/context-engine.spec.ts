@@ -7,6 +7,7 @@ import ContextEngine, {
   EvidenceId,
   SourceId,
   type ContributedStepContext,
+  type ContextPrepareInput,
   type CoverageRecord,
   type Evidence,
   type StepContextContributor,
@@ -14,13 +15,13 @@ import ContextEngine, {
 } from '@relay-harness/rlh-context-engine'
 
 /** Mount a ContextEngine service on a fresh root context. */
-async function mountEngine(): Promise<{ ctx: Context; engine: ContextEngine }> {
+async function mountEngine(config?: ConstructorParameters<typeof ContextEngine>[1]): Promise<{ ctx: Context; engine: ContextEngine }> {
   const ctx = new Context()
-  await ctx.plugin(ContextEngine)
+  await ctx.plugin(ContextEngine, config)
   return { ctx, engine: ctx.contextEngine as ContextEngine }
 }
 
-function input(): StepContextInput {
+function input(): ContextPrepareInput {
   return {
     purpose: 'agent_step',
     messages: [createUserMessage({ source: { kind: 'user' }, content: [{ type: 'text', text: 'hi' }] })],
@@ -69,6 +70,14 @@ function makeContributor(
 }
 
 describe('ContextEngine registration', () => {
+  it('rejects invalid planning budgets before publishing the service', () => {
+    expect(() => new ContextEngine(new Context(), { maxChars: 0 })).toThrow(expect.objectContaining({
+      code: 'CONTEXT_ENGINE_INVALID_CONFIG',
+    }))
+    expect(() => new ContextEngine(new Context(), { contributorTimeoutMs: Number.MAX_SAFE_INTEGER }))
+      .toThrow(expect.objectContaining({ code: 'CONTEXT_ENGINE_INVALID_CONFIG' }))
+  })
+
   it('rejects an empty or whitespace contributor id', async () => {
     const { engine } = await mountEngine()
     expect(() => engine.registerContributor(makeContributor('  ', undefined))).toThrow(ContextEngineError)
@@ -106,6 +115,191 @@ describe('ContextEngine registration', () => {
 })
 
 describe('ContextEngine prepareStep', () => {
+  it('plans only contributors eligible for the requested purpose', async () => {
+    const { engine } = await mountEngine()
+    let agentCalls = 0
+    let enhancementCalls = 0
+    engine.registerContributor({
+      id: 'agent-only',
+      purposes: ['agent_step'],
+      contribute() { agentCalls += 1; return Promise.resolve(contributed('agent')) },
+    })
+    engine.registerContributor({
+      id: 'enhancement-only',
+      purposes: ['prompt_enhancement'],
+      contribute() { enhancementCalls += 1; return Promise.resolve(contributed('enhancement')) },
+    })
+
+    const prepared = await engine.prepareStep({ ...input(), purpose: 'prompt_enhancement' })
+
+    expect(agentCalls).toBe(0)
+    expect(enhancementCalls).toBe(1)
+    expect(prepared?.messages.map(message => (message.content[0] as { text: string }).text))
+      .toEqual(['enhancement'])
+    expect(prepared?.plan.contributors).toEqual([
+      { contributorId: 'agent-only', eligible: false, reason: 'purpose_not_supported' },
+      expect.objectContaining({
+        contributorId: 'enhancement-only', eligible: true, reason: 'purpose_supported',
+      }),
+    ])
+  })
+
+  it('packs explicit-reference context before ordinary provider context under the total budget', async () => {
+    const { engine } = await mountEngine({ maxChars: 8, maxTokens: 100 })
+    engine.registerContributor(makeContributor('ordinary', {
+      ...contributed('normal'),
+      selection: { priority: 'provider', reasons: ['semantic_match'] },
+    }))
+    engine.registerContributor(makeContributor('explicit', {
+      ...contributed('explicit'),
+      selection: { priority: 'explicit-reference', reasons: ['direct_user_reference'] },
+    }))
+
+    const prepared = await engine.prepareStep(input())
+
+    expect(prepared?.messages.map(message => (message.content[0] as { text: string }).text))
+      .toEqual(['explicit'])
+    expect(prepared?.decisions).toEqual([
+      expect.objectContaining({ contributorId: 'explicit', outcome: 'selected' }),
+      expect.objectContaining({ contributorId: 'ordinary', outcome: 'rejected', reasons: ['total_char_budget'] }),
+    ])
+  })
+
+  it('times out one provider, aborts its local signal, and still runs later providers', async () => {
+    const { engine } = await mountEngine({ contributorTimeoutMs: 5 })
+    let slowSignal: AbortSignal | undefined
+    let laterCalls = 0
+    engine.registerContributor({
+      id: 'slow',
+      contribute(received) {
+        slowSignal = received.signal
+        return new Promise((resolve) => {
+          setTimeout(() => { resolve(contributed('late')) }, 40)
+        })
+      },
+    })
+    engine.registerContributor({
+      id: 'later',
+      contribute() { laterCalls += 1; return Promise.resolve(contributed('later')) },
+    })
+
+    const prepared = await engine.prepareStep(input())
+
+    expect(slowSignal?.aborted).toBe(true)
+    expect(laterCalls).toBe(1)
+    expect(prepared?.messages.map(message => (message.content[0] as { text: string }).text))
+      .toEqual(['later'])
+    expect(prepared?.decisions).toContainEqual({
+      contributorId: 'slow', outcome: 'rejected', reasons: ['timeout'],
+    })
+  })
+
+  it('normalizes a signal-aware provider rejection caused by its deadline as timeout', async () => {
+    const { engine } = await mountEngine({ contributorTimeoutMs: 5 })
+    engine.registerContributor({
+      id: 'cooperative-slow',
+      contribute(received) {
+        return new Promise((_resolve, reject) => {
+          received.signal.addEventListener('abort', () => {
+            reject(received.signal.reason instanceof Error
+              ? received.signal.reason
+              : new Error('provider signal aborted'))
+          }, { once: true })
+        })
+      },
+    })
+
+    await expect(engine.prepareStep(input())).resolves.toMatchObject({
+      messages: [],
+      decisions: [{ contributorId: 'cooperative-slow', outcome: 'rejected', reasons: ['timeout'] }],
+    })
+  })
+
+  it('does not publish a late result from a disposed registration generation', async () => {
+    const { engine } = await mountEngine()
+    let release!: (value: ContributedStepContext) => void
+    const dispose = engine.registerContributor({
+      id: 'replaceable',
+      contribute: () => new Promise((resolve) => { release = resolve }),
+    })
+    const preparing = engine.prepareStep(input())
+    await Promise.resolve()
+    dispose()
+    engine.registerContributor(makeContributor('replaceable', contributed('successor')))
+    release(contributed('stale'))
+
+    const prepared = await preparing
+
+    expect(prepared?.messages).toEqual([])
+    expect(prepared?.decisions).toEqual([
+      { contributorId: 'replaceable', outcome: 'rejected', reasons: ['disposed'] },
+    ])
+    expect((await engine.prepareStep(input()))?.messages.map(
+      message => (message.content[0] as { text: string }).text,
+    )).toEqual(['successor'])
+  })
+
+  it('passes a contributor-local allowance and rejects a provider that exceeds it', async () => {
+    const { engine } = await mountEngine({
+      maxChars: 100,
+      maxTokens: 100,
+      maxContributorChars: 4,
+      maxContributorTokens: 100,
+      contributorTimeoutMs: 25,
+    })
+    let seenBudget: StepContextInput['budget'] | undefined
+    engine.registerContributor({
+      id: 'oversize',
+      contribute(received) {
+        seenBudget = received.budget
+        return Promise.resolve(contributed('12345'))
+      },
+    })
+
+    const prepared = await engine.prepareStep(input())
+
+    expect(seenBudget).toMatchObject({ maxChars: 4, maxTokens: 100, timeoutMs: 25 })
+    expect(seenBudget?.deadlineAt).toBeGreaterThan(0)
+    expect(prepared?.messages).toEqual([])
+    expect(prepared?.decisions).toContainEqual(expect.objectContaining({
+      contributorId: 'oversize', outcome: 'rejected', reasons: ['contributor_char_budget'],
+    }))
+  })
+
+  it('deduplicates provider candidates after priority ranking', async () => {
+    const { engine } = await mountEngine()
+    engine.registerContributor(makeContributor('discovery', {
+      ...contributed('ordinary rendering', [evidence]),
+      selection: { priority: 'provider', reasons: ['semantic_match'], dedupeKey: 'resource:a' },
+    }))
+    engine.registerContributor(makeContributor('reference', {
+      ...contributed('explicit rendering', [evidence]),
+      selection: { priority: 'explicit-reference', reasons: ['direct_user_reference'], dedupeKey: 'resource:a' },
+    }))
+
+    const prepared = await engine.prepareStep(input())
+
+    expect(prepared?.messages.map(message => (message.content[0] as { text: string }).text))
+      .toEqual(['explicit rendering'])
+    expect(prepared?.decisions).toEqual([
+      expect.objectContaining({ contributorId: 'reference', outcome: 'selected' }),
+      expect.objectContaining({ contributorId: 'discovery', outcome: 'rejected', reasons: ['duplicate'] }),
+    ])
+  })
+
+  it('enforces the complete token budget independently of the character budget', async () => {
+    const { engine } = await mountEngine({ maxChars: 100, maxTokens: 5, maxContributorTokens: 100 })
+    engine.registerContributor(makeContributor('first', contributed('1')))
+    engine.registerContributor(makeContributor('second', contributed('2')))
+
+    const prepared = await engine.prepareStep(input())
+
+    expect(prepared?.messages).toHaveLength(1)
+    expect(prepared?.decisions).toContainEqual(expect.objectContaining({
+      contributorId: 'second', outcome: 'rejected', reasons: ['total_token_budget'],
+    }))
+  })
+
   it('returns undefined with no contributors and when all contributors decline', async () => {
     const { engine } = await mountEngine()
     expect(await engine.prepareStep(input())).toBeUndefined()
@@ -114,7 +308,7 @@ describe('ContextEngine prepareStep', () => {
     expect(await engine.prepareStep(input())).toBeUndefined()
   })
 
-  it('passes one input through to every contributor and keeps registration order', async () => {
+  it('passes the request through with provider-local controls and keeps registration order', async () => {
     const { engine } = await mountEngine()
     const a = makeContributor('a', contributed('from a'))
     const b = makeContributor('b', contributed('from b'))
@@ -123,10 +317,11 @@ describe('ContextEngine prepareStep', () => {
     const step = input()
     const prepared = await engine.prepareStep(step)
     expect(prepared?.messages.map(message => (message.content[0] as { text: string }).text)).toEqual(['from a', 'from b'])
-    expect(a.seen[0]).toBe(step)
-    expect(b.seen[0]).toBe(step)
     expect(a.seen[0]?.messages).toBe(step.messages)
-    expect(a.seen[0]?.signal).toBe(step.signal)
+    expect(a.seen[0]?.caller).toBe(step.caller)
+    expect(a.seen[0]?.signal).not.toBe(step.signal)
+    expect(a.seen[0]?.budget).toMatchObject({ maxChars: 64_000, maxTokens: 16_000, timeoutMs: 5_000 })
+    expect(b.seen[0]?.budget).toMatchObject({ maxChars: 64_000, maxTokens: 16_000, timeoutMs: 5_000 })
   })
 
   it('stops before later contributors and publishes nothing after cancellation', async () => {

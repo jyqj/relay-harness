@@ -4,7 +4,7 @@ import { Context } from '@relay-harness/cordis'
 import { describe, expect, it, vi } from 'vitest'
 import type { Agent } from '@relay-harness/rlh-agent'
 import { createUserMessage } from '@relay-harness/rlh-llm'
-import type { StepContextInput } from '@relay-harness/rlh-context-engine'
+import type { ContextPrepareInput } from '@relay-harness/rlh-context-engine'
 import type { PromptEnhancementContextProvider } from '@relay-harness/rlh-prompt-enhancement'
 import * as plugin from '../src/index.ts'
 
@@ -27,7 +27,13 @@ describe('prompt-enhancement-context-engine', () => {
       source: { kind: 'plugin', plugin: 'code-context' },
       content: [{ type: 'text', text: 'verified snippet' }],
     })
-    const prepareStep = vi.fn((_input: StepContextInput) => Promise.resolve({
+    const prepareStep = vi.fn((_input: ContextPrepareInput) => Promise.resolve({
+      plan: {
+        purpose: 'prompt_enhancement' as const,
+        budget: { maxChars: 100, maxTokens: 100 },
+        contributors: [],
+      },
+      decisions: [],
       messages: [message],
       evidence: [],
       coverage: [],
@@ -73,6 +79,12 @@ describe('prompt-enhancement-context-engine', () => {
     expect(result.messages).toEqual([message])
     expect(result.trace).toEqual({
       purpose: 'prompt_enhancement',
+      plan: {
+        purpose: 'prompt_enhancement',
+        budget: { maxChars: 100, maxTokens: 100 },
+        contributors: [],
+      },
+      decisions: [],
       contributions: [{
         contributorId: 'code-context',
         messageId: message.id,
@@ -107,6 +119,12 @@ describe('prompt-enhancement-context-engine', () => {
       content: [{ type: 'text', text: 'bad' }],
     })
     const prepareStep = vi.fn(() => Promise.resolve({
+      plan: {
+        purpose: 'prompt_enhancement' as const,
+        budget: { maxChars: 100, maxTokens: 100 },
+        contributors: [],
+      },
+      decisions: [],
       messages: [message],
       evidence: [],
       coverage: [],

@@ -141,6 +141,7 @@ export function apply(ctx: Context, config: Config = {}): void {
 
   const contributor: StepContextContributor = {
     id: name,
+    purposes: ['agent_step', 'prompt_enhancement'],
     contribute: input => contributeMemory(ctx, resolved, pending, lifecycle, track, input),
   }
   ctx.effect(() => ctx.contextEngine.registerContributor(contributor), 'memoryAgent.contextContributor')

@@ -56,7 +56,7 @@ Misconfiguration fails loud at load: the workspace root must be an existing dire
 
 ## Retrieval Evaluation
 
-`evaluateRetrieval(index, corpus)` executes relevance judgments through the public `search` seam and reports macro Recall@5/MRR plus retained per-case rankings. Checked-in TypeScript, Python, and Go fixture repositories, this package as a real workspace, and scoped incremental samples feed an executable gate for Recall@5, MRR, and incremental p95. The fixture set is still smaller than a broad external-repository corpus.
+`evaluateRetrieval(index, corpus)` executes relevance judgments through the public `search` seam and reports macro Recall@5/MRR plus retained per-case rankings. Checked-in TypeScript, Python, and Go fixture repositories, this package as a real workspace, and scoped incremental samples feed the fast executable gate. The repeatable real-repository runner (`pnpm run eval:code-index:corpus`) consumes a checked-in manifest without copying corpus source: the Relay monorepo is the required CI corpus, while authorized CodeCortex/Auggie checkouts are optional unless selected explicitly or supplied by environment variable. It measures full indexing, seven scoped commits, repeated search latency, parser-tier/file/chunk coverage, fatal parser failures, and file-level Recall@5/MRR through the public runtime seam.
 
 ## Model Experience
 
@@ -68,7 +68,7 @@ No direct request-prefix changes; cached conversations stay valid because index 
 
 ## Known Limitations and Deferred Work
 
-- **Performance evidence is executable, not universal** — the REAL-composition suite logs its 9-file full pass, the eval gate indexes this checked-out package and three language fixtures, and scoped updates enforce a 2 s p95 ceiling. Cross-machine large-repository capacity still needs broader corpus runs.
+- **Performance evidence is executable, not universal** — the 2026-08-29 Apple-silicon run indexed the real Relay checkout at 8,256 files / 85,472 chunks in 120.65 s, with incremental p95 80 ms, search p50/p95 0.051/0.087 ms, Recall@5 0.80, MRR 0.60, and zero fatal parser errors. The optional CodeCortex Rust checkout indexed 366 files / 5,523 chunks in 7.13 s, with incremental p95 28 ms, search p50/p95 0.050/0.080 ms, Recall@5/MRR 1.00/1.00, and zero fatal parser errors. These are committed single-machine observations, not universal capacity claims; rerun the manifest gate on target CI/hardware.
 - **Explore projects stored edges faithfully, warts included** — every function carries a self-loop call edge at its declaration line (the parser's regex fallback lane reads the `name()` parameter list as a call site), and `explore_code_graph` answers include it; filtering is a parser-side concern, not a read-side one.
 - **Storage-root derivation is interim** — the workspace-hash filename avoids multi-checkout clobbering but is not the planned configurable storage-root layout; expect a migration when it lands.
 - **Watcher degradation is silent-by-design** — refusal downgrades to touch-driven invalidation and one `status()` flag; events may also lag passes up to one debounce window.

@@ -2,7 +2,7 @@
 
 [English](README.md) | 中文
 
-从 durable `context/prepared` 派生的有界全日志 Session Projection。它把每项贡献关联到准确进入模型的 `user/message` seq，保留未采纳/被改写的空链接、证据 provenance、source/path/revision、freshness、verification、truncation、coverage 与 provider why-used 原因。保留最近 50 条 trace 和 500 条消息事实，并显示更早 trace 数。
+从 durable `context/prepared` 派生的有界全日志 Session Projection。它保留确定性 retrieval plan 与选中／拒绝 decisions，把每项选中贡献关联到准确进入模型的 `user/message` seq，并保留未采纳／被改写的空链接、Evidence provenance、source/path/revision、freshness、verification、truncation、Coverage 与 provider why-used 原因。保留最近 50 条 trace 和 500 条消息事实，并显示更早 trace 数。
 
 ## Model Experience
 

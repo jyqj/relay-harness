@@ -1,0 +1,161 @@
+{
+  "schemaVersion": 1,
+  "reports": [
+    {
+      "schemaVersion": 1,
+      "generatedAt": "2026-08-29T13:03:31.389Z",
+      "corpusId": "relay-monorepo",
+      "rootLabel": ".",
+      "rootSource": "candidate",
+      "fullIndex": {
+        "observedMs": 120651.985834,
+        "providerDurationMs": 120633,
+        "changedFiles": 8256,
+        "removedFiles": 0,
+        "chunksWritten": 85472
+      },
+      "index": {
+        "files": 8256,
+        "chunks": 85472,
+        "tier": "medium",
+        "parserErrors": 0,
+        "parserFailurePolicy": "fatal-atomic",
+        "parserTierFiles": {
+          "generic": 4395,
+          "semantic": 3859,
+          "tree-sitter": 2
+        },
+        "filesWithoutChunks": 1,
+        "degraded": false,
+        "degradationReasons": []
+      },
+      "incremental": {
+        "samplesMs": [
+          63,
+          78,
+          67,
+          80,
+          49,
+          56,
+          42
+        ],
+        "p95Ms": 80
+      },
+      "search": {
+        "samplesMs": [
+          0.2450000000098953,
+          0.07391700000152923,
+          0.0690420000028098,
+          0.07370800001081079,
+          0.08704199999920093,
+          0.06729099999938626,
+          0.060207999995327555,
+          0.05683300000964664,
+          0.055540999994263984,
+          0.054374999992433004,
+          0.05383299999812152,
+          0.06154099998821039,
+          0.05237499999930151,
+          0.05025000000023283,
+          0.051124999998137355,
+          0.050541999997221865,
+          0.05099999999220017,
+          0.04933300000266172,
+          0.049084000012953766,
+          0.04945900000166148,
+          0.05004200000257697,
+          0.04920899998978712,
+          0.05062500000349246,
+          0.049457999994046986,
+          0.054166000001714565,
+          0.05079199999454431,
+          0.05049999999755528,
+          0.050333999999566004,
+          0.05312499999126885,
+          0.05133400000340771,
+          0.05029199999989942,
+          0.05008300000918098,
+          0.05012499999429565,
+          0.0676250000105938,
+          0.05000000000291038
+        ],
+        "p50Ms": 0.051124999998137355,
+        "p95Ms": 0.08704199999920093
+      },
+      "quality": {
+        "cases": [
+          {
+            "id": "refresh-scope",
+            "recallAt5": 1,
+            "reciprocalRank": 1,
+            "retrievedPaths": [
+              "packages/index/code-index-local/src/provider.ts",
+              "scripts/verify-runtime-closure.ts",
+              "scripts/gen-third-party-notices.spec.ts",
+              "scripts/gen-third-party-notices.ts",
+              "scripts/verify-runtime-closure.spec.ts"
+            ]
+          },
+          {
+            "id": "context-inspector",
+            "recallAt5": 1,
+            "reciprocalRank": 0.5,
+            "retrievedPaths": [
+              "packages/context/context-inspector/src/projection.ts",
+              "packages/context/context-inspector/src/types.ts",
+              "packages/context/context-inspector/src/projection.ts",
+              "packages/context/context-inspector/src/projection.ts",
+              "packages/context/context-inspector/src/projection.ts"
+            ]
+          },
+          {
+            "id": "mcp-catalog",
+            "recallAt5": 1,
+            "reciprocalRank": 1,
+            "retrievedPaths": [
+              "packages/mcp/mcp-catalog/src/index.ts",
+              "packages/mcp/mcp-catalog/src/index.ts",
+              "packages/mcp/mcp-catalog/src/index.ts",
+              "packages/mcp/mcp-catalog/src/index.ts",
+              "docs/subsystems/extensions.md"
+            ]
+          },
+          {
+            "id": "product-mode",
+            "recallAt5": 0,
+            "reciprocalRank": 0,
+            "retrievedPaths": [
+              "apps/web/tests/access-confirmation.e2e.ts",
+              "apps/web/tests/access-confirmation.e2e.ts",
+              "apps/web/tests/agent-preset-authoring.e2e.ts",
+              "apps/web/tests/agent-preset-selection.e2e.ts",
+              "apps/web/tests/approval-composer.e2e.ts"
+            ]
+          },
+          {
+            "id": "embedding-generation",
+            "recallAt5": 1,
+            "reciprocalRank": 0.5,
+            "retrievedPaths": [
+              "packages/index/code-index-sqlite/src/embedding-generation.ts",
+              "packages/index/code-index-local/src/embed/generation.ts",
+              "packages/index/code-index-sqlite/src/embedding-generation.ts",
+              "packages/index/code-index-sqlite/src/embedding-generation.ts",
+              "packages/index/code-index-sqlite/src/embedding-generation.ts"
+            ]
+          }
+        ],
+        "recallAt5": 0.8,
+        "mrr": 0.6
+      },
+      "thresholds": {
+        "minRecallAt5": 0.6,
+        "minMrr": 0.5,
+        "maxFullIndexMs": 180000,
+        "maxIncrementalP95Ms": 5000,
+        "maxSearchP95Ms": 2000
+      },
+      "gate": "passed"
+    }
+  ]
+}

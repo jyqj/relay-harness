@@ -407,7 +407,7 @@ Source: [`packages/compaction/compaction/src/types.ts:33`](../packages/compactio
 'context/prepared': ContextPreparedEventData
 ```
 
-Source: [`packages/context/context-engine/src/types.ts:291`](../packages/context/context-engine/src/types.ts)
+Source: [`packages/context/context-engine/src/types.ts:379`](../packages/context/context-engine/src/types.ts)
 
 ### `feedback/*`
 

@@ -33,6 +33,13 @@ describe('rlh-base bundle', () => {
     expect(rows.length).toBeGreaterThan(50)
     expect(rows.some(row => row.id === 'agent-loop')).toBe(true)
     expect(rows.filter(row => row.id === 'context-engine')).toHaveLength(1)
+    expect(rows.find(row => row.id === 'context-engine')?.config).toEqual({
+      maxChars: 64000,
+      maxTokens: 16000,
+      maxContributorChars: 64000,
+      maxContributorTokens: 16000,
+      contributorTimeoutMs: 5000,
+    })
     expect(rows.filter(row => row.id === 'mcp-catalog')).toHaveLength(1)
     expect(rows.find(row => row.id === 'session-history-context')?.config).toEqual({
       maxExchanges: 12,

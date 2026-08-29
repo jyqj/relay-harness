@@ -91,6 +91,9 @@ describe('McpCatalog', () => {
       messages: [createUserMessage({ source: { kind: 'user' }, content: [{ type: 'text', text: 'Use docs://guide' }] })],
     })
     expect(prepared?.contributions[0]?.contributorId).toBe('mcp-resources')
+    expect(prepared?.decisions).toContainEqual(expect.objectContaining({
+      contributorId: 'mcp-resources', outcome: 'selected', priority: 'explicit-reference',
+    }))
     const block = prepared?.messages[0]?.content[0]
     expect(block?.type === 'text' && block.text.includes('guide body')).toBe(true)
     expect(prepared?.evidence[0]).toMatchObject({ freshness: 'current', verification: 'verified', resource: { key: 'docs://guide' } })

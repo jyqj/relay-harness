@@ -67,6 +67,17 @@ describe('MemoryCenterGateway', () => {
     session.append('context/prepared', {
       turn: 1,
       step: 1,
+      plan: {
+        purpose: 'agent_step', budget: { maxChars: 100, maxTokens: 100 },
+        contributors: [{
+          contributorId: 'memory-agent', eligible: true, reason: 'purpose_supported',
+          budget: { maxChars: 100, maxTokens: 100, timeoutMs: 50 },
+        }],
+      },
+      decisions: [{
+        contributorId: 'memory-agent', messageId: 'memory-message' as never,
+        outcome: 'selected', reasons: ['within_budget'],
+      }],
       contributions: [{
         contributorId: 'memory-agent',
         messageId: 'memory-message' as never,

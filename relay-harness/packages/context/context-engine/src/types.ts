@@ -145,6 +145,29 @@ export interface ProviderExplain {
 /** Why context is being prepared; contributors use it to select purpose-specific retrieval and packing. */
 export type ContextPurpose = 'agent_step' | 'prompt_enhancement'
 
+/** Deterministic priority used when the total context budget cannot admit every candidate. */
+export type ContextSelectionPriority = 'explicit-reference' | 'provider'
+
+/** Character/token allowance assigned to one eligible contributor by the retrieval plan. */
+export interface ContributorContextBudget {
+  /** Maximum Unicode code points the contributor should return. */
+  readonly maxChars: number
+  /** Maximum estimated model tokens the contributor should return. */
+  readonly maxTokens: number
+  /** Monotonic duration available to the provider before its result is ignored. */
+  readonly timeoutMs: number
+  /** Wall-clock deadline supplied for provider APIs that accept absolute deadlines. */
+  readonly deadlineAt: number
+}
+
+/** Total packing budget resolved for one request. */
+export interface ContextBudget {
+  /** Maximum Unicode code points selected across all context messages. */
+  readonly maxChars: number
+  /** Maximum estimated model tokens selected across all context messages. */
+  readonly maxTokens: number
+}
+
 /**
  * Durable identity of the caller whose context is being prepared.  Contributors must not retain
  * live Agent objects: this detached value is enough to address provider-local scope, correlate a
@@ -169,12 +192,10 @@ export interface StepContextCaller {
 }
 
 /**
- * One preparation input to every contributor: purpose, user messages, abort signal, cwd, and a
- * detached durable caller identity. Working sets and explicit references arrive inside the
- * messages themselves (file mentions, session references), so request construction stays
- * deterministic without giving providers a live Agent object.
+ * One preparation request supplied by AgentLoop or another consumer. Working sets and explicit
+ * references arrive inside messages, so deterministic planning needs no live Agent or model call.
  */
-export interface StepContextInput {
+export interface ContextPrepareInput {
   /** The caller's purpose; contributors may decline purposes they do not support. */
   readonly purpose: ContextPurpose
   /** The user messages claimed for this step, in claim order. */
@@ -187,12 +208,28 @@ export interface StepContextInput {
   readonly caller: StepContextCaller
 }
 
+/** Provider request derived from one Context preparation plan. */
+export interface StepContextInput extends ContextPrepareInput {
+  /** Contributor-local allowance assigned by ContextEngine. */
+  readonly budget: ContributorContextBudget
+}
+
+/** Provider-owned selection metadata interpreted only by deterministic packing. */
+export interface ContextCandidateSelection {
+  /** Explicit user references outrank provider-discovered candidates. */
+  readonly priority: ContextSelectionPriority
+  /** Stable provider reasons explaining why this candidate was returned. */
+  readonly reasons: readonly string[]
+  /** Optional provider identity for cross-provider duplicate suppression. */
+  readonly dedupeKey?: string
+}
+
 /**
  * One contributor's result for a step. `message` is model-visible and the contributor owns its
  * source attribution; `evidence` and `coverage` record what the message rests on. ContextEngine
- * detaches, lossless-JSON validates, and freezes the complete result before publication; evidence
- * ids must be non-empty and unique across the complete preparation. Returning `undefined`
- * contributes nothing.
+ * detaches, lossless-JSON validates, and freezes the complete result before publication. Evidence
+ * ids must be non-empty and unique within one candidate; selected candidates must also be unique
+ * together. Returning `undefined` contributes nothing.
  */
 export interface ContributedStepContext {
   /** The model-visible context message; appended after the claimed messages. */
@@ -201,21 +238,65 @@ export interface ContributedStepContext {
   readonly evidence?: readonly Evidence[]
   /** What the contributor actually inspected to produce the message. */
   readonly coverage?: CoverageRecord
+  /** Selection metadata; omission means ordinary provider priority. */
+  readonly selection?: ContextCandidateSelection
 }
 
 /**
- * One registered step-context contributor. Contributors run in registration order, once per
- * prepared request, and see the same purpose and messages.
+ * One registered step-context contributor. Eligible contributors run in registration order, once
+ * per request, with an isolated signal and contributor-local allowance.
  */
 export interface StepContextContributor {
   /** Stable contributor identity; unique within the registry. */
   readonly id: string
+  /** Purposes this provider supports; omission preserves eligibility for every purpose. */
+  readonly purposes?: readonly ContextPurpose[]
   /**
    * Contribute context for one step.
    * @param input - the purpose, messages, abort signal, and cwd for the preparation.
    * @returns the contributed context, or `undefined` when this step needs none.
    */
   contribute(input: StepContextInput): Promise<ContributedStepContext | undefined>
+}
+
+/** One deterministic provider read in the request plan. */
+export interface ContextRetrievalPlanEntry {
+  /** Registered contributor generation addressed by this entry. */
+  readonly contributorId: string
+  /** Whether this provider supports the request purpose. */
+  readonly eligible: boolean
+  /** Stable eligibility reason. */
+  readonly reason: 'purpose_supported' | 'purpose_not_supported'
+  /** Local allowance when eligible. */
+  readonly budget?: Omit<ContributorContextBudget, 'deadlineAt'>
+}
+
+/** Deterministic request plan resolved before any provider runs. */
+export interface ContextRetrievalPlan {
+  /** Purpose used for eligibility. */
+  readonly purpose: ContextPurpose
+  /** Total packing allowance. */
+  readonly budget: ContextBudget
+  /** Providers in registration order, including purpose-ineligible providers. */
+  readonly contributors: readonly ContextRetrievalPlanEntry[]
+}
+
+/** Why one candidate was selected or rejected by the Context Engine. */
+export interface ContextCandidateDecision {
+  /** Contributor that produced, declined, timed out, or lost the candidate. */
+  readonly contributorId: string
+  /** Candidate message identity when a provider returned one. */
+  readonly messageId?: UserMessage['id']
+  /** Final packing outcome. */
+  readonly outcome: 'selected' | 'rejected'
+  /** Stable decision tokens in evaluation order. */
+  readonly reasons: readonly string[]
+  /** Selection priority of returned candidates. */
+  readonly priority?: ContextSelectionPriority
+  /** Unicode code points charged to the candidate. */
+  readonly chars?: number
+  /** Estimated model tokens charged to the candidate. */
+  readonly tokens?: number
 }
 
 /**
@@ -235,11 +316,14 @@ export interface PreparedContextContribution {
 }
 
 /**
- * A prepared context request: attributed model-visible messages and the evidence behind them.
- * `undefined` from {@link ContextEngineService.prepareStep} means no contributor produced
- * context this step.
+ * A prepared context request: deterministic plan, decisions, attributed model-visible messages,
+ * and their evidence. A rejection-only result contains no messages but remains durable.
  */
 export interface PreparedStepContext {
+  /** Deterministic provider eligibility and budget plan. */
+  readonly plan: ContextRetrievalPlan
+  /** Selected and rejected outcomes in deterministic decision order. */
+  readonly decisions: readonly ContextCandidateDecision[]
   /** Attributed results in contributor registration order. */
   readonly contributions: readonly PreparedContextContribution[]
   /** Contributor messages in contributor registration order. */
@@ -280,6 +364,10 @@ export interface ContextPreparedEventData {
   readonly step: number
   /** Prepared contributions in registry order. */
   readonly contributions: readonly ContextPreparedContributionTrace[]
+  /** Deterministic provider eligibility and budget plan. */
+  readonly plan: ContextRetrievalPlan
+  /** Selected and rejected packing outcomes. */
+  readonly decisions: readonly ContextCandidateDecision[]
 }
 
 declare module '@relay-harness/rlh-session/types' {
@@ -293,8 +381,7 @@ declare module '@relay-harness/rlh-session/types' {
 }
 
 /**
- * `ctx.contextEngine`. Owns the contributor registry and the step preparation call; retrieval
- * planning, hydration, and packing enrich `prepareStep` inside implementations of this seam.
+ * `ctx.contextEngine`. Owns contributor registration, deterministic planning, and packing.
  */
 export interface ContextEngineService {
   /**
@@ -305,8 +392,8 @@ export interface ContextEngineService {
   registerContributor(contributor: StepContextContributor): () => void
   /**
    * Prepare context for one purpose-tagged request.
-   * @param input - purpose, messages, abort signal, working directory, and durable caller identity.
-   * @returns the collected context, or `undefined` when no contributor produced any.
+   * @param input - purpose, messages, parent abort signal, working directory, and caller identity.
+   * @returns selected context and its decision trace, or `undefined` when every provider declines.
    */
-  prepareStep(input: StepContextInput): Promise<PreparedStepContext | undefined>
+  prepareStep(input: ContextPrepareInput): Promise<PreparedStepContext | undefined>
 }

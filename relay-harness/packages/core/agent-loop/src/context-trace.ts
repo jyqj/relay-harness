@@ -33,6 +33,8 @@ export function materializeContextPrepared(
 ): ContextPreparedEventData {
   return {
     ...position,
+    plan: prepared.plan,
+    decisions: prepared.decisions,
     contributions: prepared.contributions.map(contribution => ({
       contributorId: contribution.contributorId,
       messageId: contribution.message.id,

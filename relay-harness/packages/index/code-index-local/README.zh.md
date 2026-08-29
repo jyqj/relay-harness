@@ -55,7 +55,7 @@ Relay Harness 本地代码索引能力的文件系统 Service Provider：为一�
 
 ## 检索评测
 
-`evaluateRetrieval(index, corpus)` 通过公开 `search` seam 执行相关性判断，报告宏平均 Recall@5/MRR 及逐 case 排名。检入的 TypeScript、Python、Go fixture 仓库、本包真实工作区与定域增量样本形成 Recall@5、MRR、增量 p95 的可执行门禁；fixture 规模仍小于广泛外部仓库 corpus。
+`evaluateRetrieval(index, corpus)` 通过公开 `search` seam 执行相关性判断，报告宏平均 Recall@5/MRR 及逐 case 排名。检入的 TypeScript、Python、Go fixture 仓库、本包真实工作区与定域增量样本形成快速可执行门禁。可重复的真实仓库 runner（`pnpm run eval:code-index:corpus`）读取检入 manifest，而不复制 corpus 源码：Relay monorepo 是 required CI corpus；已授权 CodeCortex/Auggie checkout 默认 optional，除非显式选择或通过环境变量提供。它通过公开 runtime seam 测量全量索引、七次定域提交、重复搜索延迟、parser tier/文件/chunk 覆盖、致命 parser 失败及文件级 Recall@5/MRR。
 
 ## Model Experience
 
@@ -67,7 +67,7 @@ Relay Harness 本地代码索引能力的文件系统 Service Provider：为一�
 
 ## 已知限制与延后工作
 
-- **性能证据可执行但并非普适**——REAL 组合测试记录 9 文件全量 pass，eval 门禁索引当前 package 与三个语言 fixture，定域更新执行 2 s p95 上限；跨机器大型仓库容量仍需更广 corpus。
+- **性能证据可执行但并非普适**——2026-08-29 Apple Silicon 实测真实 Relay checkout：8,256 文件 / 85,472 chunks，全量 120.65 s，增量 p95 80 ms，搜索 p50/p95 0.051/0.087 ms，Recall@5 0.80、MRR 0.60、致命 parser 错误为零。可选 CodeCortex Rust checkout：366 文件 / 5,523 chunks，全量 7.13 s，增量 p95 28 ms，搜索 p50/p95 0.050/0.080 ms，Recall@5/MRR 1.00/1.00、致命 parser 错误为零。这些是检入的单机观测，不是普适容量声明；应在目标 CI/硬件上重跑 manifest gate。
 - **explore 忠实投影已存边，包括瑕疵** — 每个函数在声明行都有一条自环调用边（解析器的 regex 兜底 lane 把 `name()` 参数表读成了调用点），`explore_code_graph` 的答案会包含它；过滤属解析侧职责，不在读取侧做。
 - **存储根推导是过渡方案** — 带 workspace 哈希的文件名避免多 checkout 互踩，但还不是计划中的可配置 storage-root 布局；其落地时会一并迁移。
 - **watcher 降级刻意安静** — 失败即退到 touch 驱动失效并只留下一个 `status()` 标志；事件相对 pass 也可能滞后一个防抖窗口。

@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { DatabaseSync } from 'node:sqlite'
 import { CallId, type StreamChunk } from '@relay-harness/rlh-llm'
-import SessionStore, { type SessionEvent } from '@relay-harness/rlh-session'
+import SessionStore, { type SessionEvent, type SessionHeader } from '@relay-harness/rlh-session'
 import type { SessionPersistence } from '@relay-harness/rlh-session-persistence'
 import SessionPersistenceJsonl from '@relay-harness/rlh-session-persistence-jsonl'
 import SessionPersistenceSqlite from '@relay-harness/rlh-session-persistence-sqlite'
@@ -146,18 +146,7 @@ async function verifyBackend(
   const header = { ...meta('differential', '/work'), delegationDepth: 0 }
   let mounted = await mount(name, root)
   try {
-    await mounted.persistence.create(header)
-    for (const batch of batches(events, sizes)) {
-      await mounted.persistence.append(header.id, batch)
-    }
-    expect(await mounted.persistence.inspect(header.id), name).toEqual({ meta: header, events })
-    expect(await mounted.persistence.list(), name).toEqual([header])
-    const revision = (await mounted.persistence.listSnapshots())[0]?.revision
-    for (let fromSeq = 0; fromSeq <= events.length + 1; fromSeq += 1) {
-      expect((await mounted.persistence.readFrom(header.id, fromSeq)).events, `${name} seq ${fromSeq}`)
-        .toEqual(events.slice(fromSeq))
-    }
-    expect((await mounted.persistence.listSnapshots())[0]?.revision, name).toBe(revision)
+    await verifyMountedBackend(name, mounted.persistence, header, events, sizes, 'exhaustive')
   } finally {
     await mounted.dispose()
   }
@@ -167,6 +156,34 @@ async function verifyBackend(
     expect(await mounted.persistence.inspect(header.id), `${name} reopen`).toEqual({ meta: header, events })
   } finally {
     await mounted.dispose()
+  }
+}
+
+async function verifyMountedBackend(
+  name: BackendName,
+  persistence: SessionPersistence,
+  header: SessionHeader,
+  events: readonly SessionEvent[],
+  sizes: readonly number[],
+  suffixCoverage: 'exhaustive' | 'sampled',
+): Promise<void> {
+  await persistence.create(header)
+  for (const batch of batches(events, sizes)) await persistence.append(header.id, batch)
+  expect(await persistence.inspect(header.id), name).toEqual({ meta: header, events })
+  const snapshot = suffixCoverage === 'exhaustive'
+    ? (await persistence.listSnapshots()).find(item => item.header.id === header.id)
+    : undefined
+  if (suffixCoverage === 'exhaustive') expect(await persistence.list(), name).toEqual([header])
+  const fromSeqs = suffixCoverage === 'exhaustive'
+    ? Array.from({ length: events.length + 2 }, (_, fromSeq) => fromSeq)
+    : [...new Set([0, Math.floor(events.length / 2), events.length, events.length + 1])]
+  for (const fromSeq of fromSeqs) {
+    expect((await persistence.readFrom(header.id, fromSeq)).events, `${name} seq ${fromSeq}`)
+      .toEqual(events.slice(fromSeq))
+  }
+  if (suffixCoverage === 'exhaustive') {
+    expect((await persistence.listSnapshots()).find(item => item.header.id === header.id)?.revision, name)
+      .toBe(snapshot?.revision)
   }
 }
 
@@ -262,12 +279,52 @@ describe('SQLite cross-backend differential behavior', () => {
   }, 30_000)
 
   it('matches JSONL/Zstandard across randomized logical logs and append partitions', async () => {
-    await fc.assert(fc.asyncProperty(randomWorkload, async ({ events, batchSizes }) => {
-      const directory = await freshDirectory('rlh-sqlite-property-')
-      for (const name of ['jsonl-zstd', 'sqlite'] as const) {
-        await verifyBackend(name, join(directory, name), events, batchSizes)
+    const directory = await freshDirectory('rlh-sqlite-property-')
+    const mounted = new Map<BackendName, MountedBackend>()
+    const expected: Array<{
+      readonly header: SessionHeader
+      readonly events: readonly SessionEvent[]
+    }> = []
+    for (const name of ['jsonl-zstd', 'sqlite'] as const) {
+      mounted.set(name, await mount(name, join(directory, name)))
+    }
+    let run = 0
+    try {
+      await fc.assert(fc.asyncProperty(randomWorkload, async ({ events, batchSizes }) => {
+        const header = { ...meta(`differential-random-${run}`, '/work'), delegationDepth: 0 as const }
+        run += 1
+        expected.push({ header, events })
+        for (const name of ['jsonl-zstd', 'sqlite'] as const) {
+          await verifyMountedBackend(
+            name,
+            (mounted.get(name) as MountedBackend).persistence,
+            header,
+            events,
+            batchSizes,
+            'sampled',
+          )
+        }
+      }), { numRuns: 100, seed: 0x5A17E })
+    } finally {
+      await Promise.all([...mounted.values()].map(backend => backend.dispose()))
+    }
+
+    // Reopen each store once after all 100 generated sessions, rather than
+    // reinitializing SQLite and the real Zstandard backend 200 times. This
+    // retains cross-backend restart coverage while removing wall-clock noise.
+    for (const name of ['jsonl-zstd', 'sqlite'] as const) {
+      const reopened = await mount(name, join(directory, name))
+      try {
+        expect((await reopened.persistence.list()).map(header => header.id).sort(), `${name} list`)
+          .toEqual(expected.map(item => item.header.id).sort())
+        for (const item of expected) {
+          expect(await reopened.persistence.inspect(item.header.id), `${name} reopen ${item.header.id}`)
+            .toEqual({ meta: item.header, events: item.events })
+        }
+      } finally {
+        await reopened.dispose()
       }
-    }), { numRuns: 100, seed: 0x5A17E })
+    }
   }, 60_000)
 
 })

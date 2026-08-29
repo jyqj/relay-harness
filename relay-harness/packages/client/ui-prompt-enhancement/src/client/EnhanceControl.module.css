@@ -71,6 +71,51 @@
   line-height: 20px;
 }
 
+.sources {
+  padding: 0;
+  list-style: none;
+}
+
+.sources li {
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+  border: 1px solid var(--rlw-alias-border-l2);
+  border-radius: 8px;
+  background: var(--rlw-alias-bg-layer-2);
+}
+
+.sources p {
+  margin: 0;
+}
+
+.sourceHeading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.sourceBadge {
+  flex: none;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--rlw-alias-interactive-bg-hover);
+  color: var(--rlw-alias-label-primary);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.sourceKey {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--rlw-alias-label-primary);
+  font-family: var(--rlw-font-mono);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .noticeRow {
   display: inline-flex;
   align-items: center;

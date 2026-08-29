@@ -104,9 +104,12 @@ export const contextInspectorProjectionDefinition: ProjectionDefinition<'context
       seq: event.seq,
       turn: event.data.turn,
       step: event.data.step,
+      plan: event.data.plan,
+      decisions: event.data.decisions,
       contributions,
       admittedContributions: contributions.filter(item => item.admitted).length,
       rejectedContributions: contributions.filter(item => !item.admitted).length,
+      retrievalRejections: event.data.decisions.filter(item => item.outcome === 'rejected').length,
       evidenceCount: contributions.reduce((sum, item) => sum + item.evidence.length, 0),
     }
     const traces = [...state.projection.traces, trace]

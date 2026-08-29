@@ -123,6 +123,7 @@ declare module '@relay-harness/cordis' {
 /** Read-only Context Engine contributor over one caller Session's durable log. */
 export class SessionHistoryContextContributor implements StepContextContributor {
   readonly id = 'session-history'
+  readonly purposes = ['prompt_enhancement'] as const
 
   constructor(
     private readonly ctx: Context,

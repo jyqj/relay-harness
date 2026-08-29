@@ -32,6 +32,12 @@
     # AgentLoop supplies durable caller identity on every preparation.
     - id: context-engine
       name: '@relay-harness/rlh-context-engine'
+      config:
+        maxChars: 64000
+        maxTokens: 16000
+        maxContributorChars: 64000
+        maxContributorTokens: 16000
+        contributorTimeoutMs: 5000
 
     # One protocol-native registry for MCP Resources and Prompts. Individual
     # mcp-client rows publish generations here; Resources enter ContextEngine,

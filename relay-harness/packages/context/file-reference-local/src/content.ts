@@ -68,6 +68,7 @@ type AdmittedFile =
  */
 export class FileReferenceContentContributor implements StepContextContributor {
   readonly id = 'file-reference-content'
+  readonly purposes = ['agent_step', 'prompt_enhancement'] as const
 
   constructor(
     private readonly ctx: Context,
@@ -138,7 +139,15 @@ export class FileReferenceContentContributor implements StepContextContributor {
       source: { kind: 'file-reference', form: 'recall', version: 1, cwd: input.cwd, files },
       content: [{ type: 'text', text: renderRecallPrompt(admitted) }],
     })
-    return { message, evidence }
+    return {
+      message,
+      evidence,
+      selection: {
+        priority: 'explicit-reference',
+        reasons: ['direct_user_reference'],
+        dedupeKey: `file-reference:${mentions.join('\u0000')}`,
+      },
+    }
   }
 }
 

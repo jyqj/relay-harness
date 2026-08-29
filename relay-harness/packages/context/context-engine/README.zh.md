@@ -2,22 +2,32 @@
 
 [English](README.md) | 中文
 
-本地上下文引擎 seam（`ctx.contextEngine`）的 Service Definition：上下文 contributor 注册表、每个请求一次确定且带 purpose 的 `prepareStep` 通行，以及 contributor 与知识 Provider 适配器之间交换的证据、覆盖与可观测性词汇。设计权威：Relay 根仓库 `docs/adr/0006-local-context-engine.md`（ADR-0006）与 `docs/agent/context-engine.md`。
+本地上下文引擎 seam（`ctx.contextEngine`）的 Service Definition 与确定性控制平面实现：purpose 资格、Provider 本地检索 deadline 与配额、整消息打包、决策 trace，以及 contributor 与知识 Provider 适配器之间交换的证据、覆盖与可观测性词汇。设计权威：Relay 根仓库 `docs/adr/0006-local-context-engine.md`（ADR-0006）与 `docs/agent/context-engine.md`。
 
-AgentLoop 在 inbox 领取与提示词组装之间调用该 seam（见 [architecture 轮次流](../../../docs/architecture.md#turn-flow)）；贡献的消息追加进步骤的 user 消息并落为持久 `user/message` 事件。步骤获准后，AgentLoop 还会在这些消息之后、模型请求之前记录一条仅存在于日志的 `context/prepared` trace；它保留 contributor 归属、JSON 安全的证据、覆盖记录与精确消息事件 seq 链接，但不复制 transcript 内容。无贡献的步骤与未部署该服务的部署逐字节一致。
+AgentLoop 在 inbox 领取与提示词组装之间调用该 seam（见 [architecture 轮次流](../../../docs/architecture.md#turn-flow)）；选中消息追加进步骤的 user 消息并落为持久 `user/message` 事件。步骤获准后，AgentLoop 还会在这些消息之后、模型请求之前记录一条仅存在于日志的 `context/prepared` trace；它保留已解析 plan、选中／拒绝决策、contributor 归属、JSON 安全的证据、覆盖记录与精确消息事件 seq 链接，但不复制 transcript 内容。所有合格 contributor 都主动放弃时返回 `undefined`；timeout、已释放代际、重复或预算拒绝会返回仅含拒绝信息的准备结果，让获准步骤记录未注入上下文的原因。
 
 ## Service API（`ctx.contextEngine`）
 
 | 成员 | 语义 |
 |---|---|
 | `registerContributor(contributor)` | 原子保留唯一非空 contributor id；无效或重复注册不发布任何内容并抛出 `ContextEngineError`（`CONTEXT_ENGINE_INVALID_CONTRIBUTOR` / `CONTEXT_ENGINE_CONFLICT`）。返回只移除该注册的 disposer。 |
-| `prepareStep(input)` | 按注册顺序、每 contributor 一次地运行全部已注册 contributor，输入为显式 purpose、消息、中止信号、工作目录及分离的持久 caller identity（session、Agent、workspace、turn／step、preset、origin）；对每个返回 contribution 做脱离、无损 JSON 校验与冻结后，再返回带归属的 contribution 以及消息、证据与覆盖聚合。畸形 payload 或重复/空 evidence id 会以 `CONTEXT_ENGINE_INVALID_CONTRIBUTION` 原子失败。无任何贡献时返回 `undefined`。 |
+| `prepareStep(input)` | 解析 purpose 资格与局部配额，以子 abort signal 和 deadline 运行每个合格 contributor，再让显式引用先于 Provider 发现结果参与预算选择与去重。选中消息仍保持注册顺序。不可变结果带 plan、decisions、带归属 contribution、消息、证据与覆盖。畸形 payload、空／候选内重复 Evidence id，或选中候选之间的重复 Evidence id 会原子失败。只有全部合格 contributor 都主动放弃且没有拒绝需要记录时才返回 `undefined`。 |
 
-contributor 按注册顺序串行执行，保证打包后的消息顺序跨重启确定可复现；并行扇出随检索 planner 到来。必填 `purpose` 让普通 agent-step 检索与无副作用 Prompt Enhancement 准备复用同一 seam，而无需从消息文本推断意图。工作集与显式引用随消息本身到达（文件提及、会话引用），使请求构造无需模型调用即保持确定性。
+planner 是确定性的，不调用模型。`StepContextContributor.purposes` 声明 Provider 资格；省略时支持全部 purpose。每个合格 Provider 都收到带局部字符／token 上限、timeout 与绝对 deadline 的 `StepContextInput.budget`。Provider 保留自己的检索算法，并应在该配额内裁剪。子 signal timeout 不会中止父请求，因此后续 Provider 仍会运行；超时或已释放注册代际的迟到结果会被忽略。父请求 signal 仍会原子中止整次准备。
+
+## 配置
+
+| 字段 | 默认值 | 含义 |
+|---|---:|---|
+| `maxChars` | `64000` | 所有选中上下文消息的 Unicode code point 总上限。 |
+| `maxTokens` | `16000` | `ctx.tokenMeter` 下的总 token 上限；meter 缺席时使用引擎的确定性后备估算。 |
+| `maxContributorChars` | `64000` | 单 Provider 字符上限。 |
+| `maxContributorTokens` | `16000` | 单 Provider token 上限。 |
+| `contributorTimeoutMs` | `5000` | 单 Provider wall-clock deadline；超时只中止该 Provider 读取。 |
 
 ## 词汇
 
-`ResourceRef` 以 `sourceId` + 不透明 `key` + 可选 `revision`（省略表示显式未知，绝不是"任意版本"）寻址一个资源。`Evidence` 是绑定该 revision 的一条已准入观察，带 `digest`、`truncated`、`freshness`、`verification`——`unverified` 是显式状态而非默认值；Provider 自有的 `domain` 数据必须是无损 JSON，因为获准证据会进入持久 trace。evidence id 在完整准备结果中必须唯一。`CoverageRecord` 记录一次检索实际检查了什么（`searched`、`notSearched`、`rationale`、`completeness`）；`NegativeFinding` 携带断言、检查过的范围与置信级别；无覆盖记录的零命中读作"此处未找到"，绝不是"不存在"。`ProviderHealthState`、`ProviderGeneration`（index/evidence 双时钟代际）与 `ProviderExplain`（稳定 token 截断原因、降级读错误）是 CodeCortex 桥接等知识 Provider 适配器将报告的可观测性面。全部类型见 [`src/types.ts`](src/types.ts)，投影见 [docs/subsystems/context-engine.md](../../../docs/subsystems/context-engine.md)。
+`ContextRetrievalPlan` 在 Provider 运行前记录 purpose 资格及解析后的总／局部预算。`ContextCandidateDecision` 以稳定 reason 记录 `selected` 或 `rejected`，例如 `timeout`、`disposed`、`duplicate` 及拒绝候选的字符／token 预算。`ContextCandidateSelection` 让显式文件、代码路径或 MCP Resource 引用优先于 Provider 发现的 recall，而不把检索移进引擎。`ResourceRef`、`Evidence`、`CoverageRecord`、`NegativeFinding` 及 Provider health/generation/explain 类型保持 Provider 中立语义。全部类型见 [`src/types.ts`](src/types.ts)，投影见 [docs/subsystems/context-engine.md](../../../docs/subsystems/context-engine.md)。
 
 ## Model Experience
 
@@ -29,6 +39,7 @@ contributor 按注册顺序串行执行，保证打包后的消息顺序跨重�
 
 ## Known Limitations and Deferred Work
 
-- **仅排序** —— `prepareStep` 只排序与拼接贡献；检索规划、预算划分、hydration 验证与打包策略在后续阶段落地并增强该 seam，而非替换它。
-- **Provider 覆盖仍不完整** —— 发行的 file-reference、本地 code-index、长期记忆、Prompt 专用 Session History 与 MCP Resource contributor 已生成 Evidence；通用 session-query、LSP 与统一 planner policy 仍待实现。
-- **无按 contributor 的超时策略** —— contributor 收到步骤信号并必须透传。引擎在每个 contributor 前后检查取消，abort 后绝不运行后续 contributor；但它无法中断忽略 signal 的 contributor，也尚未强制 deadline。
+- **Provider 串行读取** —— deadline 可避免一个不合作 Provider 阻塞后续读取，但合格 Provider 仍按注册顺序执行，尚未并行扇出。
+- **整消息打包** —— Provider 在局部配额内自行裁剪／hydrate；引擎会拒绝超大 contribution，而不会切开 Provider 自有的消息／Evidence 对应关系。
+- **Provider 覆盖仍不完整** —— 发行的 file-reference、本地 code-index、长期记忆、Prompt 专用 Session History 与 MCP Resource contributor 会生成 Evidence；通用 session-query 与 LSP Provider 仍待实现。
+- **Hydration policy 仍由 Provider 所有** —— 引擎校验 JSON 持久性与 Evidence identity；各来源 Provider 拥有当前源读取、revision 对比及内容 digest 验证。

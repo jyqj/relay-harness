@@ -2,7 +2,7 @@
 
 [English](prompt-enhancement.md) | 中文
 
-Prompt Enhancement 通过独立、可取消的模型请求改善未提交草稿。Host 服务拥有一个 Context Engine 适配器和一个增强提供方；Web 客户端拥有发起、替换前比较与撤销。任何路径都不会提交草稿或进入 AgentLoop。
+Prompt Enhancement 通过独立、可取消的模型请求改善未提交草稿。Host 服务拥有一个 Context Engine 适配器和一个增强提供方；Web 客户端拥有发起、Context Evidence 解释、替换前比较与撤销。建议在 Simple 和 Developer 模式下都会展示已接纳的文件、代码、Memory、History 与 MCP Evidence，以及其资源、provider 选择原因、新鲜度和验证状态。任何路径都不会提交草稿或进入 AgentLoop。
 
 来源：[`packages/context/prompt-enhancement/src/index.ts`](../../packages/context/prompt-enhancement/src/index.ts) · [`packages/context/prompt-enhancement-llm/src/index.ts`](../../packages/context/prompt-enhancement-llm/src/index.ts) · [`packages/context/prompt-enhancement-context-engine/src/index.ts`](../../packages/context/prompt-enhancement-context-engine/src/index.ts) · [`packages/client/ui-prompt-enhancement/src/client/index.ts`](../../packages/client/ui-prompt-enhancement/src/client/index.ts)
 

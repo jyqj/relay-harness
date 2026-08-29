@@ -9,6 +9,7 @@ overrides:
   '@relay-harness/schemastery': link:vendor/schemastery
 
 patchedDependencies:
+  '@earendil-works/pi-ai@0.82.1': a95d496057258ba745295037c4a87b40dce983221c48926c4bd947cc5ea5b0db
   node-pty@1.2.0-beta.15: bf7557ab3966a61177eaeb2cb0f8ed62cac0a979f97ad93a5ebab3c853a562dd
 
 importers:
@@ -4624,6 +4625,10 @@ importers:
         version: link:../../core/tools
 
   packages/context/context-engine:
+    dependencies:
+      '@relay-harness/schemastery':
+        specifier: link:../../../vendor/schemastery
+        version: link:../../../vendor/schemastery
     devDependencies:
       '@relay-harness/cordis':
         specifier: workspace:^
@@ -7365,7 +7370,7 @@ importers:
     dependencies:
       '@earendil-works/pi-ai':
         specifier: ^0.82.1
-        version: 0.82.1(@modelcontextprotocol/sdk@1.30.0(supports-color@9.4.0)(zod@4.4.3))(supports-color@9.4.0)(ws@8.21.3)(zod@4.4.3)
+        version: 0.82.1(patch_hash=a95d496057258ba745295037c4a87b40dce983221c48926c4bd947cc5ea5b0db)(@modelcontextprotocol/sdk@1.30.0(supports-color@9.4.0)(zod@4.4.3))(supports-color@9.4.0)(ws@8.21.3)(zod@4.4.3)
       '@relay-harness/schemastery':
         specifier: link:../../../vendor/schemastery
         version: link:../../../vendor/schemastery
@@ -18347,7 +18352,7 @@ snapshots:
     transitivePeerDependencies:
       - '@algolia/client-search'
 
-  '@earendil-works/pi-ai@0.82.1(@modelcontextprotocol/sdk@1.30.0(supports-color@9.4.0)(zod@4.4.3))(supports-color@9.4.0)(ws@8.21.3)(zod@4.4.3)':
+  '@earendil-works/pi-ai@0.82.1(patch_hash=a95d496057258ba745295037c4a87b40dce983221c48926c4bd947cc5ea5b0db)(@modelcontextprotocol/sdk@1.30.0(supports-color@9.4.0)(zod@4.4.3))(supports-color@9.4.0)(ws@8.21.3)(zod@4.4.3)':
     dependencies:
       '@anthropic-ai/sdk': 0.91.1(zod@4.4.3)
       '@aws-sdk/client-bedrock-runtime': 3.1048.0

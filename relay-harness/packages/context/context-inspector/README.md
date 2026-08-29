@@ -2,7 +2,7 @@
 
 English | [中文](README.zh.md)
 
-Bounded whole-log Session Projection for durable `context/prepared` facts. It links each contribution to exact admitted `user/message` seqs, preserves rejected/rewritten empty links, evidence provenance, source/path/revision, freshness, verification, truncation, coverage, and provider-owned why-used reasons. The latest 50 traces and 500 message facts are retained; older trace count remains visible.
+Bounded whole-log Session Projection for durable `context/prepared` facts. It retains the deterministic retrieval plan and selected/rejected decisions, links each selected contribution to exact admitted `user/message` seqs, and preserves rejected/rewritten empty links, Evidence provenance, source/path/revision, freshness, verification, truncation, Coverage, and provider-owned why-used reasons. The latest 50 traces and 500 message facts are retained; older trace count remains visible.
 
 ## Model Experience
 

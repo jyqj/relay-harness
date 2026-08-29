@@ -42,8 +42,34 @@ function validateEvent(session: Session, event: SessionEvent, fail: InvariantFai
     || candidate.type === 'tool/result')) {
     fail('context/prepared must precede request dispatch and model/tool output in its owning step')
   }
-  if (event.data.contributions.length === 0) {
-    fail('context/prepared must carry at least one attributed contribution')
+  if (event.data.contributions.length === 0
+    && !event.data.decisions.some(decision => decision.outcome === 'rejected')) {
+    fail('context/prepared must carry an attributed contribution or a rejected retrieval decision')
+  }
+  if (event.data.plan.purpose !== 'agent_step') {
+    fail(`context/prepared carries non-Agent purpose "${event.data.plan.purpose}"`)
+  }
+  const eligiblePlanIds = new Set<string>()
+  const planIds = new Set<string>()
+  for (const entry of event.data.plan.contributors) {
+    if (entry.contributorId.trim() === '' || planIds.has(entry.contributorId)) {
+      fail(`context/prepared carries duplicate or empty plan contributor "${entry.contributorId}"`)
+    }
+    planIds.add(entry.contributorId)
+    if (entry.eligible) eligiblePlanIds.add(entry.contributorId)
+  }
+  const decisionsByContributor = new Map<string, typeof event.data.decisions[number]>()
+  for (const decision of event.data.decisions) {
+    if (!eligiblePlanIds.has(decision.contributorId)) {
+      fail(`context/prepared decision names unplanned or ineligible contributor "${decision.contributorId}"`)
+    }
+    if (decisionsByContributor.has(decision.contributorId)) {
+      fail(`context/prepared repeats decision for contributor "${decision.contributorId}"`)
+    }
+    if (decision.outcome === 'selected' && decision.messageId === undefined) {
+      fail(`context/prepared selected decision for "${decision.contributorId}" has no message id`)
+    }
+    decisionsByContributor.set(decision.contributorId, decision)
   }
   const contributorIds = new Set<string>()
   const evidenceIds = new Set<string>()
@@ -59,6 +85,10 @@ function validateEvent(session: Session, event: SessionEvent, fail: InvariantFai
       fail(`context/prepared repeats contributor id "${contribution.contributorId}"`)
     }
     contributorIds.add(contribution.contributorId)
+    const decision = decisionsByContributor.get(contribution.contributorId)
+    if (decision?.outcome !== 'selected' || decision.messageId !== contribution.messageId) {
+      fail(`context/prepared contribution "${contribution.contributorId}" has no selected decision for message ${String(contribution.messageId)}`)
+    }
     for (const evidence of contribution.evidence) {
       if (evidenceIds.has(evidence.evidenceId)) {
         fail(`context/prepared repeats evidence id "${evidence.evidenceId}"`)
@@ -80,6 +110,11 @@ function validateEvent(session: Session, event: SessionEvent, fail: InvariantFai
       if (message.data.id !== contribution.messageId) {
         fail(`context/prepared contribution "${contribution.contributorId}" names message ${String(contribution.messageId)} but seq ${seq} carries ${String(message.data.id)}`)
       }
+    }
+  }
+  for (const decision of event.data.decisions) {
+    if (decision.outcome === 'selected' && !contributorIds.has(decision.contributorId)) {
+      fail(`context/prepared selected decision for "${decision.contributorId}" has no contribution`)
     }
   }
 }

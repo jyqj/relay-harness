@@ -676,6 +676,28 @@ export interface ToolResultPruneConfig {
 
 Source: [`packages/compaction/compaction-tool-result-pruner/src/types.ts:4`](../packages/compaction/compaction-tool-result-pruner/src/types.ts)
 
+<a id="relay-harnessrlh-context-engine"></a>
+
+## `@relay-harness/rlh-context-engine`
+
+```ts config-catalog
+/** Loader policy for deterministic retrieval planning and packing. */
+export interface Config {
+  /** Complete Unicode-code-point allowance across selected context messages. */
+  readonly maxChars?: number
+  /** Complete estimated-token allowance across selected context messages. */
+  readonly maxTokens?: number
+  /** Maximum Unicode-code-point allowance assigned to one provider. */
+  readonly maxContributorChars?: number
+  /** Maximum estimated-token allowance assigned to one provider. */
+  readonly maxContributorTokens?: number
+  /** Wall-clock allowance for one provider before its late result is ignored. */
+  readonly contributorTimeoutMs?: number
+}
+```
+
+Source: [`packages/context/context-engine/src/index.ts:89`](../packages/context/context-engine/src/index.ts)
+
 <a id="relay-harnessrlh-cordis-host-runner"></a>
 
 ## `@relay-harness/rlh-cordis-host-runner`
@@ -3915,7 +3937,6 @@ These load from a `cordis.yml` entry with no `config:` block; they declare no co
 - `@relay-harness/rlh-command-feedback` — requires `commands` ([`packages/feedback/command-feedback/src/index.ts`](../packages/feedback/command-feedback/src/index.ts))
 - `@relay-harness/rlh-command-goal` — requires `commands` · `goals` ([`packages/goal/command-goal/src/index.ts`](../packages/goal/command-goal/src/index.ts))
 - `@relay-harness/rlh-commands` ([`packages/interaction/commands/src/index.ts`](../packages/interaction/commands/src/index.ts))
-- `@relay-harness/rlh-context-engine` ([`packages/context/context-engine/src/index.ts`](../packages/context/context-engine/src/index.ts))
 - `@relay-harness/rlh-context-inspector` — requires `sessionProjections` ([`packages/context/context-inspector/src/index.ts`](../packages/context/context-inspector/src/index.ts))
 - `@relay-harness/rlh-cordis-client-runner` ([`packages/extensions/cordis-client-runner/src/index.ts`](../packages/extensions/cordis-client-runner/src/index.ts))
 - `@relay-harness/rlh-fs-e2b` — requires `e2b` ([`packages/e2b/fs-e2b/src/index.ts`](../packages/e2b/fs-e2b/src/index.ts))

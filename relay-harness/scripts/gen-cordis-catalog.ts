@@ -345,6 +345,7 @@ export const LINK_MAP: Readonly<Record<string, string>> = {
   ContextEngine: 'context-engine.md',
   ContextEngineError: 'context-engine.md',
   ContextEngineService: 'context-engine.md',
+  ContextPrepareInput: 'context-engine.md',
   ContributedStepContext: 'context-engine.md',
   CoverageCompleteness: 'context-engine.md',
   CoverageRecord: 'context-engine.md',

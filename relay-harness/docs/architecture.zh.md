@@ -91,7 +91,7 @@ turn/end
 
 输入通过同一个 inbox 到达驱动器。有些消息会立即唤醒它；注入的上下文会留在 inbox 中，直到另一条消息将其唤醒。
 
-`agent/pre-step` 决定模型看到什么。监听器可以改写已领取的消息，也可以直接拒绝它们；首次领取被拒绝或被改写为空时，仍会关闭一个不含步骤的持久轮次，因此日志会记录这次尝试。每个步骤都会在组装提示词前捕获 scope 工具定义与 Code Mode 后端，再把执行绑定到最终声明的名称；streaming 期间的注册变更影响下一步骤，而不是当前响应。在工具捕获与组装之前，可选的 `ctx.contextEngine` 服务（`@relay-harness/rlh-context-engine`）会基于已领取的消息准备带归属的步骤上下文。贡献消息作为已领取的 user 消息追加在 runtime-context 快照之前。`agent/pre-step` 准入该步骤后，AgentLoop 先追加普通 `user/message` 事件，再追加一条仅存在于日志的 `context/prepared` trace，把每个 contributor 的证据与覆盖绑定到经准入后仍未被改写的精确消息事件 seq；请求仍只从 surface 消息重建，不从重复 trace 文本重建。无贡献的步骤与未部署该服务的部署完全一致。其他提示词片段与上下文仍是普通的逐组装贡献。
+`agent/pre-step` 决定模型看到什么。监听器可以改写已领取的消息，也可以直接拒绝它们；首次领取被拒绝或被改写为空时，仍会关闭一个不含步骤的持久轮次，因此日志会记录这次尝试。每个步骤都会在组装提示词前捕获 scope 工具定义与 Code Mode 后端，再把执行绑定到最终声明的名称；streaming 期间的注册变更影响下一步骤，而不是当前响应。在工具捕获与组装之前，可选的 `ctx.contextEngine` 服务（`@relay-harness/rlh-context-engine`）会解析 purpose 资格、Provider 本地 deadline 与配额，再在统一总预算下对来自已领取消息的带归属上下文做确定性去重和打包。选中消息作为已领取 user 消息追加在 runtime-context 快照之前。`agent/pre-step` 准入该步骤后，AgentLoop 先追加普通 `user/message` 事件，再追加一条仅存在于日志的 `context/prepared` trace，其中包含 retrieval plan、选中／拒绝 decisions、Evidence 与 Coverage，以及经准入后仍未改写消息的精确 seq 链接；仅含拒绝的 trace 不添加模型可见内容。请求仍只从 surface 消息重建，不从重复 trace 文本重建。全部合格 Provider 都主动放弃的请求与未部署该服务的部署完全一致。其他提示词片段与上下文仍是普通的逐组装贡献。
 
 详情见[时序图](agent-lifecycle.md)、[工具流水线](tool-execution-pipeline.md)和[取消与错误恢复](subsystems/core.md#the-agent-handle)。
 

@@ -6,6 +6,11 @@ import { join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { flattenDiagnosticMessageText, parseConfigFileTextToJson } from 'typescript'
 import { describe, expect, it } from 'vitest'
+import {
+  executeOxlint,
+  type OxlintProcessMode,
+  type OxlintProcessRunner,
+} from './run-oxlint.ts'
 
 const repositoryRoot = fileURLToPath(new URL('..', import.meta.url))
 const oxlintCli = fileURLToPath(new URL('../node_modules/oxlint/bin/oxlint', import.meta.url))
@@ -325,28 +330,34 @@ export const longProbe = 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 +
     }
   })
 
-  it('prints only the final diagnostics when a fix retry still fails', async () => {
-    const suffix = randomUUID()
-    const path = join(repositoryRoot, 'scripts', `staged-lint-probe-${suffix}.ts`)
-
-    try {
-      await writeFile(path, `export const longProbe = ${'1 + '.repeat(80)}1\n`)
-      const result = runRepositoryOxlint([
-        '--config',
-        '.oxlintrc.staged.json',
-        '--format',
-        'unix',
-        '--fix',
-        relative(repositoryRoot, path),
-      ])
-      const output = normalizedOutput(result)
-
-      expect(result.error).toBeUndefined()
-      expect(result.status, output).toBe(1)
-      expect(output.match(/@stylistic\(max-len\)/g)).toHaveLength(1)
-    } finally {
-      await rm(path, { force: true })
+  it('prints only the final diagnostics when a fix retry still fails', () => {
+    const modes: OxlintProcessMode[] = []
+    const stdout: string[] = []
+    const stderr: string[] = []
+    const runner: OxlintProcessRunner = (_invocation, mode) => {
+      modes.push(mode)
+      if (mode === 'capture') {
+        return {
+          signal: null,
+          status: 1,
+          stdout: 'obsolete first-pass output\n',
+          stderr: 'obsolete first-pass diagnostic\n',
+        }
+      }
+      stderr.push('final diagnostic\n')
+      return { signal: null, status: 1, stdout: '', stderr: '' }
     }
+
+    const result = executeOxlint(
+      { args: ['--fix', 'fixture.ts'], env: {} },
+      runner,
+      { stdout: text => stdout.push(text), stderr: text => stderr.push(text) },
+    )
+
+    expect(result).toEqual({ signal: null, status: 1 })
+    expect(modes).toEqual(['capture', 'inherit'])
+    expect(stdout).toEqual([])
+    expect(stderr).toEqual(['final diagnostic\n'])
   })
 
   it.each(['--fix', '--fix-suggestions', '--fix-dangerously'])(

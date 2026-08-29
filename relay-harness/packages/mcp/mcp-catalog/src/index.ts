@@ -58,6 +58,7 @@ export class McpCatalog extends Service {
     }
     ctx.inject(['contextEngine'], scope => scope.contextEngine.registerContributor({
       id: 'mcp-resources',
+      purposes: ['agent_step', 'prompt_enhancement'],
       contribute: input => this.contribute(input),
     }))
   }
@@ -239,6 +240,11 @@ export class McpCatalog extends Service {
         searched: rendered.map(item => `${item.serverName}:${item.uri}`),
         notSearched,
         completeness: notSearched.length === 0 ? 'exhaustive' : 'bounded',
+      },
+      selection: {
+        priority: 'explicit-reference',
+        reasons: ['direct_user_reference'],
+        dedupeKey: `mcp-resources:${rendered.map(item => `${item.serverName}:${item.uri}`).join('\u0000')}`,
       },
     }
   }

@@ -92,6 +92,7 @@ interface AdmittedHit {
  */
 export class CodeContextContributor implements StepContextContributor {
   readonly id = 'code-index-recall'
+  readonly purposes = ['agent_step', 'prompt_enhancement'] as const
 
   constructor(
     private readonly ctx: Context,
@@ -200,6 +201,11 @@ export class CodeContextContributor implements StepContextContributor {
       message,
       evidence: admittedEvidence(admitted, result.epochs, hydration.epochs),
       coverage: boundedCoverage(direct.text, rejected),
+      selection: {
+        priority: direct.mentions.length > 0 ? 'explicit-reference' : 'provider',
+        reasons: direct.mentions.length > 0 ? ['direct_user_reference'] : ['provider_ranked_recall'],
+        dedupeKey: `code-index:${admitted.map(({ hit }) => hit.chunkId).join(',')}`,
+      },
     }
   }
 }

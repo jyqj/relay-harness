@@ -1,0 +1,161 @@
+{
+  "schemaVersion": 1,
+  "reports": [
+    {
+      "schemaVersion": 1,
+      "generatedAt": "2026-08-29T13:03:51.541Z",
+      "corpusId": "codecortex-rust",
+      "rootLabel": "codecortex-rust_副本",
+      "rootSource": "candidate",
+      "fullIndex": {
+        "observedMs": 7127.448833,
+        "providerDurationMs": 7112,
+        "changedFiles": 366,
+        "removedFiles": 0,
+        "chunksWritten": 5523
+      },
+      "index": {
+        "files": 366,
+        "chunks": 5523,
+        "tier": "tiny",
+        "parserErrors": 0,
+        "parserFailurePolicy": "fatal-atomic",
+        "parserTierFiles": {
+          "generic": 129,
+          "semantic": 235,
+          "tree-sitter": 2
+        },
+        "filesWithoutChunks": 0,
+        "degraded": false,
+        "degradationReasons": []
+      },
+      "incremental": {
+        "samplesMs": [
+          28,
+          11,
+          8,
+          12,
+          11,
+          10,
+          3
+        ],
+        "p95Ms": 28
+      },
+      "search": {
+        "samplesMs": [
+          0.09008299999914016,
+          0.06624999999985448,
+          0.06304199999976845,
+          0.06500000000050932,
+          0.07987499999944703,
+          0.05795799999941664,
+          0.05179200000020501,
+          0.050208000000566244,
+          0.050166999999419204,
+          0.04916699999921548,
+          0.050583000000187894,
+          0.04937500000050932,
+          0.049082999999882304,
+          0.04949999999917054,
+          0.04941599999983737,
+          0.051541000000725035,
+          0.05099999999947613,
+          0.04929199999969569,
+          0.04912499999954889,
+          0.04991700000027777,
+          0.050041000000419444,
+          0.04912499999954889,
+          0.04862499999944703,
+          0.049624999999650754,
+          0.05104199999914272,
+          0.05029199999989942,
+          0.04874999999992724,
+          0.04916700000103447,
+          0.04899999999906868,
+          0.04920800000036252,
+          0.048874999998588464,
+          0.04883300000074087,
+          0.050416000000041095,
+          0.0531250000003638,
+          0.048875000000407454
+        ],
+        "p50Ms": 0.04991700000027777,
+        "p95Ms": 0.07987499999944703
+      },
+      "quality": {
+        "cases": [
+          {
+            "id": "scanner",
+            "recallAt5": 1,
+            "reciprocalRank": 1,
+            "retrievedPaths": [
+              "crates/cc-index/src/scanner.rs",
+              "crates/cc-index/src/scanner.rs",
+              "crates/cc-index/src/scanner.rs",
+              "crates/cc-index/src/scanner.rs",
+              "crates/cc-index/src/scanner.rs"
+            ]
+          },
+          {
+            "id": "memory-budget",
+            "recallAt5": 1,
+            "reciprocalRank": 1,
+            "retrievedPaths": [
+              "crates/cc-index/src/memory_budget.rs",
+              "crates/cc-index/src/memory_budget.rs",
+              "crates/cc-index/src/memory_budget.rs",
+              "crates/cc-index/src/memory_budget.rs",
+              "crates/cc-index/src/memory_budget.rs"
+            ]
+          },
+          {
+            "id": "hierarchy",
+            "recallAt5": 1,
+            "reciprocalRank": 1,
+            "retrievedPaths": [
+              "crates/cc-index/src/hierarchy.rs",
+              "crates/cc-index/src/hierarchy.rs",
+              "crates/cc-model/src/edge.rs",
+              "crates/cc-index/src/indexer_phases/resolve.rs",
+              "crates/cc-index/src/hierarchy.rs"
+            ]
+          },
+          {
+            "id": "kubernetes",
+            "recallAt5": 1,
+            "reciprocalRank": 1,
+            "retrievedPaths": [
+              "crates/cc-index/src/infra_k8s.rs",
+              "crates/cc-index/src/infra_k8s.rs",
+              "crates/cc-index/src/infra_k8s.rs",
+              "crates/cc-index/src/infra_k8s.rs",
+              "crates/cc-index/src/infra_k8s.rs"
+            ]
+          },
+          {
+            "id": "build-plan",
+            "recallAt5": 1,
+            "reciprocalRank": 1,
+            "retrievedPaths": [
+              "crates/cc-index/src/build_plan.rs",
+              "crates/cc-index/src/build_plan.rs",
+              "crates/cc-index/src/build_plan.rs",
+              "crates/cc-index/src/build_plan.rs",
+              "crates/cc-index/src/build_plan.rs"
+            ]
+          }
+        ],
+        "recallAt5": 1,
+        "mrr": 1
+      },
+      "thresholds": {
+        "minRecallAt5": 0.6,
+        "minMrr": 0.5,
+        "maxFullIndexMs": 180000,
+        "maxIncrementalP95Ms": 5000,
+        "maxSearchP95Ms": 2000
+      },
+      "gate": "passed"
+    }
+  ]
+}

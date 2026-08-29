@@ -18,7 +18,7 @@ The `lint:fix` package script and staged lefthook job use that runner directly. 
 
 ## Verification
 
-The executable lint contract drives a deliberately overlapping style violation through the repository runner and requires a successful exit plus exact final bytes. The same contract pins the complete Stylistic rule set, project-free TypeGraph fixture coverage, the package scripts, the staged hook command, the deleted formatter configuration, and the absence of direct ESLint parser and runner dependencies. Existing executable probes continue to cover the Stylistic and SonarJS compatibility plugins, project-free staged validation, and type-aware project discovery.
+The executable lint contract drives a deliberately overlapping style violation through the repository runner and requires a successful exit plus exact final bytes. Retry-output orchestration uses the runner's synchronous process seam with deterministic first- and second-pass results, proving that obsolete captured diagnostics stay hidden while the final inherited diagnostic remains visible without coupling that assertion to two real linter startups. The same contract pins the complete Stylistic rule set, project-free TypeGraph fixture coverage, the package scripts, the staged hook command, the deleted formatter configuration, and the absence of direct ESLint parser and runner dependencies. Existing executable probes continue to cover the Stylistic and SonarJS compatibility plugins, project-free staged validation, and type-aware project discovery.
 
 ## Alternatives considered
 

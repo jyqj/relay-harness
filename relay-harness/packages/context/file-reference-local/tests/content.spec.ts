@@ -103,6 +103,9 @@ describe('FileReferenceContentContributor', () => {
       userMessage(`and the absolute ${absolute}`),
     ])
     expect(contributed).toBeDefined()
+    expect(contributed!.decisions).toContainEqual(expect.objectContaining({
+      contributorId: 'file-reference-content', outcome: 'selected', priority: 'explicit-reference',
+    }))
     const source = contributed!.messages[0]!.source
     expect(source).toMatchObject({ kind: 'file-reference', form: 'recall', version: 1, cwd: root })
     if (source.kind !== 'file-reference') throw new Error('unreachable')

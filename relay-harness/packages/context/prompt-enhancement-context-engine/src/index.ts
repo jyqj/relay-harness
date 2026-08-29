@@ -84,6 +84,27 @@ export function apply(ctx: Context): void {
 function traceOf(prepared: PreparedStepContext | undefined): JsonValue {
   const trace = snapshotJsonValue({
     purpose: PROMPT_ENHANCEMENT_CONTEXT_PURPOSE,
+    ...prepared === undefined ? {} : {
+      plan: {
+        purpose: prepared.plan.purpose,
+        budget: { ...prepared.plan.budget },
+        contributors: prepared.plan.contributors.map(entry => ({
+          contributorId: entry.contributorId,
+          eligible: entry.eligible,
+          reason: entry.reason,
+          ...entry.budget === undefined ? {} : { budget: { ...entry.budget } },
+        })),
+      },
+      decisions: prepared.decisions.map(decision => ({
+        contributorId: decision.contributorId,
+        outcome: decision.outcome,
+        reasons: [...decision.reasons],
+        ...decision.messageId === undefined ? {} : { messageId: decision.messageId },
+        ...decision.priority === undefined ? {} : { priority: decision.priority },
+        ...decision.chars === undefined ? {} : { chars: decision.chars },
+        ...decision.tokens === undefined ? {} : { tokens: decision.tokens },
+      })),
+    },
     contributions: (prepared?.contributions ?? []).map(contribution => ({
       contributorId: contribution.contributorId,
       messageId: contribution.message.id,

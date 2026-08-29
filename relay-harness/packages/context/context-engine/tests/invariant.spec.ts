@@ -18,6 +18,18 @@ function trace(messageId: string, messageEventSeqs: readonly number[] = [2]): Co
   return {
     turn: 1,
     step: 1,
+    plan: {
+      purpose: 'agent_step',
+      budget: { maxChars: 100, maxTokens: 100 },
+      contributors: [{
+        contributorId: 'files', eligible: true, reason: 'purpose_supported',
+        budget: { maxChars: 100, maxTokens: 100, timeoutMs: 50 },
+      }],
+    },
+    decisions: [{
+      contributorId: 'files', messageId: messageId as never, outcome: 'selected',
+      reasons: ['within_budget'], priority: 'provider', chars: 1, tokens: 1,
+    }],
     contributions: [{
       contributorId: 'files',
       messageId: messageId as ContextPreparedEventData['contributions'][number]['messageId'],
@@ -35,6 +47,39 @@ function trace(messageId: string, messageEventSeqs: readonly number[] = [2]): Co
 }
 
 describe('context-engine durable trace invariants', () => {
+  it('accepts a rejection-only trace and rejects an empty unaccounted preparation', async () => {
+    const ctx = await setup()
+    const session = ctx.sessions.create(SessionId('rejected-context-trace'))
+    session.append('turn/start', { turn: 1 })
+    session.append('step/start', { turn: 1, step: 1 })
+
+    expect(() => session.append('context/prepared', {
+      turn: 1,
+      step: 1,
+      contributions: [],
+      plan: {
+        purpose: 'agent_step', budget: { maxChars: 100, maxTokens: 100 },
+        contributors: [{
+          contributorId: 'slow', eligible: true, reason: 'purpose_supported',
+          budget: { maxChars: 100, maxTokens: 100, timeoutMs: 5 },
+        }],
+      },
+      decisions: [{ contributorId: 'slow', outcome: 'rejected', reasons: ['timeout'] }],
+    })).not.toThrow()
+
+    const other = ctx.sessions.create(SessionId('empty-context-trace'))
+    other.append('turn/start', { turn: 1 })
+    other.append('step/start', { turn: 1, step: 1 })
+    expect(() => other.append('context/prepared', {
+      turn: 1,
+      step: 1,
+      contributions: [],
+      plan: { purpose: 'agent_step', budget: { maxChars: 100, maxTokens: 100 }, contributors: [] },
+      decisions: [],
+    }))
+      .toThrow(/attributed contribution or a rejected retrieval decision/)
+  })
+
   it('accepts an open-step trace that references its earlier exact user message', async () => {
     const ctx = await setup()
     const session = ctx.sessions.create(SessionId('valid-context-trace'))
@@ -44,6 +89,18 @@ describe('context-engine durable trace invariants', () => {
     session.append('user/message', message, { surfaceOp: 'append' })
 
     expect(() => session.append('context/prepared', trace(message.id))).not.toThrow()
+  })
+
+  it('rejects a selected contribution without its plan decision', async () => {
+    const ctx = await setup()
+    const session = ctx.sessions.create(SessionId('missing-context-decision'))
+    session.append('turn/start', { turn: 1 })
+    session.append('step/start', { turn: 1, step: 1 })
+    const message = createUserMessage({ content: [{ type: 'text', text: 'context' }], source: { kind: 'user' } })
+    session.append('user/message', message, { surfaceOp: 'append' })
+
+    expect(() => session.append('context/prepared', { ...trace(message.id), decisions: [] }))
+      .toThrow(/has no selected decision/)
   })
 
   it('rejects a trace outside its named open step', async () => {

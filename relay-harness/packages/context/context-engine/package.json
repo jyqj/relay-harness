@@ -43,6 +43,9 @@
     "@relay-harness/rlh-session": "workspace:^",
     "@relay-harness/cordis": "workspace:^"
   },
+  "dependencies": {
+    "@relay-harness/schemastery": "workspace:^"
+  },
   "devDependencies": {
     "@relay-harness/rlh-brand": "workspace:^",
     "@relay-harness/rlh-invariants": "workspace:^",

@@ -82,6 +82,18 @@ describe('EnhanceControl', () => {
         assumptions: ['The existing test runner remains authoritative.'],
         openQuestions: ['Which browser versions are required?'],
         model: { provider: 'p', model: 'm' },
+        contextTrace: {
+          purpose: 'prompt_enhancement',
+          contributions: [{
+            contributorId: 'session-history-context',
+            evidence: [{
+              resource: { sourceId: 'session-history', key: 'session/enhance-ui/event/4' },
+              freshness: 'current',
+              verification: 'verified',
+              domain: { selectionReasons: ['completed-turn', 'within-history-budget'] },
+            }],
+          }],
+        },
       },
     }))
     const view = render(<EnhanceControl {...({
@@ -91,6 +103,12 @@ describe('EnhanceControl', () => {
     expect(enhance).toHaveBeenCalledWith('original', expect.any(AbortSignal))
     expect(screen.getByRole('dialog', { name: 'Enhancement proposal' })).toBeTruthy()
     expect(screen.getByText('The existing test runner remains authoritative.')).toBeTruthy()
+    const sources = screen.getByRole('region', { name: 'Sources used this time' })
+    expect(sources).toBeTruthy()
+    expect(screen.getByText('History')).toBeTruthy()
+    expect(screen.getByText(/completed-turn · within-history-budget/)).toBeTruthy()
+    expect(sources.textContent).toContain('Freshness: Current')
+    expect(sources.textContent).toContain('Verification: Verified')
     expect(setDraft).not.toHaveBeenCalled()
     fireEvent.click(screen.getByRole('button', { name: 'Accept enhancement' }))
     expect(setDraft).toHaveBeenCalledWith('better')
@@ -105,6 +123,42 @@ describe('EnhanceControl', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Undo enhancement' }))
     expect(setDraft).toHaveBeenNthCalledWith(2, 'original')
     expect(submit).not.toHaveBeenCalled()
+  })
+
+  it('explains admitted File, Code, Memory, History, and MCP evidence without guessing unknown sources', async () => {
+    const evidence = [
+      ['file-reference-content', 'file-reference-local', '/workspace/spec.md', 'unverified', { selectionReason: 'explicit @file' }],
+      ['code-context', 'code-index', 'chunk:src/a.ts:1', 'verified', { filePath: 'src/a.ts', reasons: ['semantic match'] }],
+      ['memory-agent', 'long-term-memory', 'memory-1', 'partially-verified', { matchedBy: ['exact scope'] }],
+      ['session-history-context', 'session-history', 'session/s/event/4', 'verified', { selectionReasons: ['completed-turn'] }],
+      ['mcp-catalog', 'mcp:docs', 'mcp://docs/guide', 'verified', { serverName: 'docs', selectionReasons: ['explicit-uri-mention'] }],
+      ['unknown', 'private-source', 'opaque', 'verified', { selectionReasons: ['unknown'] }],
+    ].map(([contributorId, sourceId, key, verification, domain]) => ({
+      contributorId,
+      evidence: [{ resource: { sourceId, key }, freshness: 'current', verification, domain }],
+    }))
+    render(<EnhanceControl {...({
+      session,
+      input,
+      inputActions: { setDraft: vi.fn() },
+      enhance: () => Promise.resolve({
+        kind: 'enhanced',
+        result: {
+          originalDraft: 'original', enhancedDraft: 'better', assumptions: [], openQuestions: [],
+          model: { provider: 'p', model: 'm' },
+          contextTrace: { purpose: 'prompt_enhancement', contributions: evidence },
+        },
+      }),
+      t,
+    } as EnhanceControlProps)} />)
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Enhance prompt' })) })
+    for (const label of ['File', 'Code', 'Memory', 'History', 'MCP']) {
+      expect(screen.getByText(label)).toBeTruthy()
+    }
+    expect(screen.getByText('/workspace/spec.md')).toBeTruthy()
+    expect(screen.getByText('src/a.ts')).toBeTruthy()
+    expect(screen.getByText('docs · mcp://docs/guide')).toBeTruthy()
+    expect(screen.queryByText('opaque')).toBeNull()
   })
 
   it('retains a changed draft, reports provider failure, and cancels on unmount', async () => {

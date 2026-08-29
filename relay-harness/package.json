@@ -152,7 +152,9 @@
     "pack:desktop": "pnpm --filter relay-harness-desktop run pack",
     "dist:desktop": "pnpm --filter relay-harness-desktop run dist",
     "dist:desktop:mac": "pnpm --filter relay-harness-desktop run dist:mac",
-    "postinstall": "node scripts/install-lefthook.mjs"
+    "postinstall": "node scripts/install-lefthook.mjs",
+    "eval:code-index:corpus": "tsx scripts/code-index-external-corpus.ts",
+    "eval:code-index:corpus:ci": "tsx scripts/code-index-external-corpus.ts --ci"
   },
   "devDependencies": {
     "@agentclientprotocol/sdk": "0.25.1",

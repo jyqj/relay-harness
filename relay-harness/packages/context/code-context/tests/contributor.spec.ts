@@ -101,6 +101,7 @@ function contribute(
   return harness.contributor.contribute({
     purpose: 'agent_step', messages, signal, cwd: CWD,
     caller: { sessionId: SessionId('code-test'), agentId: 'code-test', workspaceId: CWD, turn: 1, step: 1 },
+    budget: { maxChars: 65_536, maxTokens: 16_384, timeoutMs: 5_000, deadlineAt: Date.now() + 5_000 },
   })
 }
 

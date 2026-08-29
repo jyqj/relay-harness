@@ -336,8 +336,12 @@ describe('PiAiAdapter provider routing', () => {
   })
 
   it('stops the SDK request when the adapter idle watchdog expires', async () => {
-    const server = await mockServer([{ events: textEvents, delayMs: 200 }])
-    const ctx = await harness(server.url, { streamIdleTimeoutMs: 20 })
+    // Keep this test on the active-response cleanup path. pi-ai loads each API
+    // implementation lazily; timing that local import would exercise setup,
+    // not ownership of an already-open SDK response body.
+    await import('@earendil-works/pi-ai/api/openai-completions')
+    const server = await mockServer([{ events: textEvents, delayMs: 500 }])
+    const ctx = await harness(server.url, { streamIdleTimeoutMs: 30 })
 
     const result = await assemble(ctx, { model: 'deepseek-v4-flash', messages: [] })
     expect(result.finish).toMatchObject({ kind: 'error', failure: { code: 'TIMEOUT' } })
