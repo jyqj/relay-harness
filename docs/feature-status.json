@@ -1,0 +1,169 @@
+{
+  "schemaVersion": 1,
+  "authority": "This file is the machine-readable authority for Relay product completion claims. A feature is shipped only when every evidence category passes scripts/verify-feature-status.mjs.",
+  "runtimeRoot": "relay-harness",
+  "repositoryGovernance": {
+    "sourceLayout": "nested-monorepo",
+    "workflowAuthority": ".github/workflows",
+    "remoteWorkflowDiscovery": "root-on-commit",
+    "branchProtection": "unconfigured",
+    "requiredCheckCandidate": "all checks passed",
+    "observedRemoteBranch": "master",
+    "observedAt": "2026-08-29"
+  },
+  "features": [
+    {
+      "id": "prompt-enhancement",
+      "status": "shipped",
+      "summary": "User-triggered draft enhancement with shared Context Engine evidence and explicit accept/undo UX.",
+      "evidence": {
+        "composition": [
+          { "path": "relay-harness/packages/bundle/web-app/cordis.patch.yml", "contains": ["id: prompt-enhancement", "id: ui-prompt-enhancement"] }
+        ],
+        "remote": [
+          { "path": "relay-harness/packages/api/remotes/src/client/index.ts", "contains": ["promptEnhancementRemote"] }
+        ],
+        "ui": [
+          { "path": "relay-harness/packages/client/ui-prompt-enhancement/src/client/index.ts" }
+        ],
+        "e2e": [
+          { "path": "relay-harness/apps/web/tests/product-shell-prompt-context.e2e.ts" }
+        ],
+        "docs": [
+          { "path": "relay-harness/docs/subsystems/prompt-enhancement.md" }
+        ]
+      },
+      "limitations": ["Enhancement remains explicit and never submits the draft automatically."]
+    },
+    {
+      "id": "governed-memory",
+      "status": "shipped",
+      "summary": "Governed local memory recall, outcome reconciliation, and a user-facing Memory Center.",
+      "evidence": {
+        "composition": [
+          { "path": "relay-harness/packages/bundle/web-app/cordis.patch.yml", "contains": ["id: memory-center", "id: ui-memory-center"] }
+        ],
+        "remote": [
+          { "path": "relay-harness/packages/api/remotes/src/client/index.ts", "contains": ["memoryCenterRemote"] }
+        ],
+        "ui": [
+          { "path": "relay-harness/packages/client/ui-memory-center/src/client/index.ts" }
+        ],
+        "e2e": [
+          { "path": "relay-harness/apps/web/tests/settings-catalog-pages.e2e.ts" }
+        ],
+        "docs": [
+          { "path": "relay-harness/docs/subsystems/memory.md" }
+        ]
+      },
+      "limitations": ["Memory admission remains governed; active storage does not imply unconditional injection."]
+    },
+    {
+      "id": "local-code-index",
+      "status": "shipped",
+      "summary": "Workspace-routed local code indexing, retrieval, diagnostics, and management UI.",
+      "evidence": {
+        "composition": [
+          { "path": "relay-harness/packages/bundle/web-app/cordis.patch.yml", "contains": ["id: code-index-workspace-router", "id: code-index-center", "id: ui-code-index-center"] }
+        ],
+        "remote": [
+          { "path": "relay-harness/packages/api/remotes/src/client/index.ts", "contains": ["codeIndexCenterRemote"] }
+        ],
+        "ui": [
+          { "path": "relay-harness/packages/client/ui-code-index-center/src/client/index.ts" }
+        ],
+        "e2e": [
+          { "path": "relay-harness/packages/bundle/web-app/tests/code-index-workspace-routing.e2e.spec.ts" }
+        ],
+        "docs": [
+          { "path": "relay-harness/docs/subsystems/code-index.md" }
+        ]
+      },
+      "limitations": ["Indexes are derived local caches and never replace workspace files as facts; an optional explicitly configured embedding endpoint receives bounded chunks, while the default Web composition leaves that lane unconfigured."]
+    },
+    {
+      "id": "extension-catalogs",
+      "status": "shipped",
+      "summary": "MCP tools/resources/prompts and local Skill inventory/import surfaces with independent protocol ownership.",
+      "evidence": {
+        "composition": [
+          { "path": "relay-harness/packages/bundle/base/cordis.patch.yml", "contains": ["id: mcp-catalog"] },
+          { "path": "relay-harness/packages/bundle/web-app/cordis.patch.yml", "contains": ["id: mcp-servers", "id: skill-inventory", "id: ui-settings-mcp", "id: ui-settings-skills"] }
+        ],
+        "remote": [
+          { "path": "relay-harness/packages/api/remotes/src/client/index.ts", "contains": ["mcpServersRemote", "skillInventoryRemote"] }
+        ],
+        "ui": [
+          { "path": "relay-harness/packages/client/ui-settings-mcp/src/client/index.ts" },
+          { "path": "relay-harness/packages/client/ui-settings-skills/src/client/index.ts" }
+        ],
+        "e2e": [
+          { "path": "relay-harness/apps/web/tests/settings-catalog-pages.e2e.ts" }
+        ],
+        "docs": [
+          { "path": "relay-harness/docs/subsystems/extensions.md" }
+        ]
+      },
+      "limitations": ["Unsigned local Skills are identified as such; no marketplace signature or publisher verification is claimed."]
+    },
+    {
+      "id": "product-shell",
+      "status": "shipped",
+      "summary": "Persisted Simple/Developer mode and Chat, Work, Library product navigation over real projections and launch seams.",
+      "evidence": {
+        "composition": [
+          { "path": "relay-harness/packages/bundle/base/cordis.patch.yml", "contains": ["id: product-mode"] },
+          { "path": "relay-harness/packages/bundle/web-app/cordis.patch.yml", "contains": ["id: ui-product-shell"] }
+        ],
+        "remote": [
+          { "path": "relay-harness/packages/api/remotes/src/client/index.ts", "contains": ["productModeRemote"] }
+        ],
+        "ui": [
+          { "path": "relay-harness/packages/client/ui-product-shell/src/client/index.ts" }
+        ],
+        "e2e": [
+          { "path": "relay-harness/apps/web/tests/product-shell-prompt-context.e2e.ts" }
+        ],
+        "docs": [
+          { "path": "relay-harness/packages/client/ui-product-shell/README.md" }
+        ]
+      },
+      "limitations": ["Work and Library currently use the sidebar navigation host rather than independent center-column routes."]
+    },
+    {
+      "id": "ordinary-user-safe-defaults",
+      "status": "shipped",
+      "summary": "Fresh sessions default to workspace-write plus ask; danger-full-access plus never is an explicit Developer Mode preset.",
+      "evidence": {
+        "composition": [
+          { "path": "relay-harness/packages/bundle/base/cordis.patch.yml", "contains": ["id: permission", "workspace-write", "approval: ask"] }
+        ],
+        "remote": [
+          { "path": "relay-harness/packages/client/ui-settings/src/client/settings-scope.ts", "contains": ["settings.mutate"] }
+        ],
+        "ui": [
+          { "path": "relay-harness/packages/client/ui-permission-presets/src/client/index.ts" }
+        ],
+        "e2e": [
+          { "path": "relay-harness/apps/web/tests/permission-policy-context.e2e.ts" },
+          { "path": "relay-harness/apps/web/tests/access-confirmation.e2e.ts" }
+        ],
+        "docs": [
+          { "path": "relay-harness/packages/client/ui-permission-presets/README.md" }
+        ]
+      },
+      "limitations": ["Environment and persisted user overrides intentionally take precedence over fresh-install defaults."]
+    },
+    {
+      "id": "external-model-routing",
+      "status": "planned",
+      "summary": "Relay-specific external routing and user-facing model-strength tiers remain outside the shipped runtime.",
+      "evidence": {
+        "docs": [
+          { "path": "docs/scheduling/interface.md" }
+        ]
+      },
+      "limitations": ["No shipped default composition claims this external scheduler client today."]
+    }
+  ]
+}

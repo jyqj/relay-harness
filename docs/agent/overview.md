@@ -13,7 +13,7 @@ flowchart TB
   CC["Context Composer"]
   CHAT["Chat Session"]
   WORK["Work Manager"]
-  K["Rust Agent Kernel"]
+  K["TypeScript Relay Harness Runtime"]
   ORC["Orchestrator / Subagent"]
   TOOLS["Tools & Skills"]
   VERIFY["Local Verifier"]

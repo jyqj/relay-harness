@@ -5,13 +5,16 @@ on:
     branches: [master]
     paths:
       - '.github/workflows/docs-pages.yml'
+      - 'README.md'
       - 'docs/**'
-      - 'package.json'
-      - 'pnpm-lock.yaml'
-      - 'pnpm-workspace.yaml'
-      - 'scripts/project-doc-site.ts'
-      - 'scripts/project-doc-site.spec.ts'
-      - 'website/**'
+      - 'scripts/verify-feature-status.mjs'
+      - 'relay-harness/docs/**'
+      - 'relay-harness/package.json'
+      - 'relay-harness/pnpm-lock.yaml'
+      - 'relay-harness/pnpm-workspace.yaml'
+      - 'relay-harness/scripts/project-doc-site.ts'
+      - 'relay-harness/scripts/project-doc-site.spec.ts'
+      - 'relay-harness/website/**'
   workflow_dispatch:
 
 concurrency:
@@ -30,6 +33,11 @@ env:
   # into apps/cli/cordis.yml (AppCLIEntry disables the row when set).
   RLH_TELEMETRY_DISABLED: '1'
 
+
+defaults:
+  run:
+    working-directory: relay-harness
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -39,12 +47,16 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
+      - name: Verify repository and feature-status authority
+        run: node ../scripts/verify-feature-status.mjs
+
       - uses: pnpm/action-setup@v4
 
       - uses: actions/setup-node@v6
         with:
           node-version: ${{ env.PRIMARY_NODE_VERSION }}
           cache: pnpm
+          cache-dependency-path: relay-harness/pnpm-lock.yaml
 
       - name: Install (immutable)
         run: pnpm install --frozen-lockfile
@@ -61,7 +73,7 @@ jobs:
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v5
         with:
-          path: website/.dist
+          path: relay-harness/website/.dist
 
   deploy:
     needs: build

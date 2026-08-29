@@ -1,70 +1,30 @@
-# P0 范围与验收
+# 当前工程基线与验收
 
-## 目标
+## 状态
 
-P0 建立 Rust Agent 基础能力。CLI 是工程验证入口；真正面向普通用户的 Web 体验在后续阶段复用同一内核。
+早期 Rust P0 蓝图已被 [ADR-0005](../adr/0005-adopt-ts-harness-runtime.md) 取代。当前实现是 [`relay-harness/`](../../relay-harness/README.md) TypeScript monorepo；本文件只描述当前工程门，不再规划 Rust workspace。
 
-## M0：领域骨架
+功能完成状态以 [`../feature-status.json`](../feature-status.json) 为权威。一个功能只有同时具备默认 composition、Remote/API、UI、E2E 和文档证据，才可标记为 `shipped`。
 
-- 建立 Rust workspace；
-- 定义 Work、Run、Step、File Context、Artifact、EffectRecord；
-- 定义 Ports：store、tools、router、memory、clock、approval；
-- 实现 work 终态机。
+## 已交付基线
 
-**验收**：状态转换单元测试覆盖 complete、partial、failed、blocked、cancelled；领域对象中不存在必填 `project_id`。
+- Agent Loop、Session 日志、恢复、checkpoint 与 Subagent；
+- CLI、Web、Desktop 共用 runtime 与 composition；
+- workspace-write + ask 的普通用户安全默认值；
+- Chat / Work / Library 产品壳与显式 Prompt Enhancement；
+- 本地 Context Engine、Memory、Code Index；
+- MCP tools/resources/prompts 与 Skills inventory/import。
 
-## M1：无项目 Work 与文件
+## 当前工程门
 
-- 创建独立 work；
-- 文件/文件夹引入、清单、指纹和访问模式；
-- 大文件按需读取接口；
-- 输入与产物分离；
-- 范围外访问和覆盖源文件经过确认。
+1. 仓库根 `.github/workflows/` 是 GitHub 自动化的唯一入口，workflow 显式在 `relay-harness/` 执行。
+2. `scripts/verify-feature-status.mjs` 校验功能声明和默认 composition 闭包。
+3. `relay-harness` 的 `typecheck`、定向测试、Web snapshots、`doc-sync` 与 release rehearsal 分别证明自己的边界；窄 PASS 不得表述成全仓 green。
+4. 生成的 config、persistence、tool、Cordis 与 capability 目录必须随源码刷新。
+5. 未实现的外部中转调度客户端和模型强度 UI 保持 `planned`，不得进入 shipped 文案。
 
-**验收**：用户只提供一句目标和若干文件即可开始；未引入文件不可访问；文件变化后能识别 stale。
+## 下一验收目标
 
-## M2：Agent Loop 与工具
-
-- understand/plan/act/observe/verify/decide；
-- 文件、终端、搜索和交付工具；
-- 权限门与本地审计；
-- 人话错误映射。
-
-**验收**：在固定夹具上完成文件整理与代码修改任务；工具成功但效果不成立时不能标 complete。
-
-## M3：外部调度接口
-
-- 实现 `POST /v1/routes`；
-- 消费 SSE 事件并组装文本/工具调用；
-- 幂等、超时、取消和错误映射；
-- 首次 chat/work 使用 `pre_classify`；
-- Subagent 使用主 Agent 提供的完整信号。
-
-**验收**：契约夹具覆盖正常流、工具调用、断流、重复请求、非法信号、超时和取消；本地验证数据不进入请求。
-
-## M4：Subagent、验证与恢复
-
-- SubagentSpec/Result；
-- 上下文与权限隔离；
-- 本地验证与 EffectRecord；
-- checkpoint、退出和恢复。
-
-**验收**：长任务中断后恢复，不重复已确认步骤；Subagent 缺路由信号时拒绝创建；验证结果只保存在本地 Work State。
-
-## M5：产品能力接口预留
-
-- Prompt Enhancing 的 Context Composer 与结果契约；
-- chat/work 共享的输入上下文接口；
-- 长期记忆 Port，只定义用户控制与查询能力，不提前锁实现；
-- 面向 P1 Web 的稳定 application service 边界。
-
-**验收**：Enhance 在提交前独立调用、不创建 work、不执行工具、可恢复原草稿；Context Composer 不读取无关文件和记忆。
-
-## P0 非目标
-
-- 面向普通用户的完整 Web 产品；
-- 长期记忆的最终存储与检索方案；
-- 强度档数、套餐和最终计费；
-- 中转调度内部实现；
-- agent 遥测、模型训练或路由飞轮。
-
+- 外部调度 HTTP/JSON + SSE 客户端与契约夹具；
+- 用户可见模型强度和计费说明；
+- 在干净迁移窗口评估是否把 `relay-harness/` 物理 flatten 到仓库根。

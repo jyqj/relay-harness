@@ -87,4 +87,6 @@ TypeScript 实现（Relay Harness，见 [ADR-0005](adr/0005-adopt-ts-harness-run
 
 ## 当前阶段
 
-运行时已采用 [`relay-harness/`](../relay-harness/README.md)（TypeScript Harness，[ADR-0005](adr/0005-adopt-ts-harness-runtime.md)），Agent Loop、会话恢复、工具、Subagent 等基础能力已实现。Relay 产品语义仍是缺口：chat/work 双模式、Prompt Enhancing、中转调度客户端和模型强度展示尚未在 harness 之上落地。未裁决的计费细节和长期记忆实现路径继续标记为 `[待决策]`。
+运行时已采用 [`relay-harness/`](../relay-harness/README.md)（TypeScript Harness，[ADR-0005](adr/0005-adopt-ts-harness-runtime.md)）。默认 composition 已交付 Agent Loop、恢复、工具、Subagent、Chat/Work/Library 产品壳、显式 Prompt Enhancement、本地 Context Engine、治理型 Memory、Code Index、MCP/Skills 目录，以及普通用户安全默认权限。
+
+当前未交付的 Relay 专属能力是外部中转调度客户端、用户可见的模型强度与计费契约。功能状态不在本文重复维护；以机器可读 [`feature-status.json`](feature-status.json) 及其 CI 证据门禁为唯一权威。

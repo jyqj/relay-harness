@@ -1,6 +1,6 @@
-# 长期记忆：产品需求
+# 长期记忆：已实现治理与产品边界
 
-> 当前只收口产品需求。存储、检索、摘要、向量化、保鲜和模型选择等实现路径将在专项设计中讨论。
+> 当前实现位于 `relay-harness/packages/memory/`，由本地存储、治理状态、outcome reconciliation、Context contributor 与 Memory Center 组成。确切实现状态见 [`../feature-status.json`](../feature-status.json)，运行时协议见 [`../../relay-harness/docs/subsystems/memory.md`](../../relay-harness/docs/subsystems/memory.md)。
 
 ## 1. 目标
 
@@ -37,12 +37,11 @@ work 不存在 Project，因此初版不设计“项目记忆”作为产品前�
 
 Prompt Enhancing 可以使用相关、允许且可信的长期记忆补足已知偏好与约束，但不得利用记忆扩大用户未表达的目标。增强结果应保留可追溯的记忆类别引用。
 
-## 6. 待专项讨论
+## 6. 后续范围
 
 - 参考主流 Web 产品的长期记忆交互与控制方式；
-- 自动记忆与显式记忆的边界；
-- 保鲜、冲突、置信度和遗忘机制；
-- 本地、云端或混合存储；
+- 自动记忆策略的进一步调优；
+- 保鲜、冲突和置信度治理的产品解释；
+- 多设备同步仍未交付；本地存储继续是当前事实；
 - 多设备同步、导入、导出和迁移；
 - 团队共享记忆是否存在以及如何隔离。
-

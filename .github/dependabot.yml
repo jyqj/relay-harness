@@ -2,7 +2,7 @@ version: 2
 
 updates:
   - package-ecosystem: "npm"
-    directory: "/"
+    directory: "/relay-harness"
     exclude-paths:
       # Vendored Cordis sources follow vendor/README.md instead of registry updates.
       - "vendor/**"
@@ -17,7 +17,7 @@ updates:
       - "area/infra"
 
   - package-ecosystem: "uv"
-    directory: "/python/sdk"
+    directory: "/relay-harness/python/sdk"
     schedule:
       interval: "cron"
       cronjob: "0 4 * * *"

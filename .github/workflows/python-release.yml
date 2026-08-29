@@ -24,6 +24,11 @@ concurrency:
   group: ${{ github.event_name == 'workflow_dispatch' && inputs.publish && 'python-publication' || format('{0}-{1}', github.workflow, github.ref) }}
   cancel-in-progress: false
 
+
+defaults:
+  run:
+    working-directory: relay-harness
+
 jobs:
   build:
     name: Build four wheels
@@ -54,7 +59,7 @@ jobs:
       - uses: actions/download-artifact@v8
         with:
           pattern: relay_harness_*
-          path: dist
+          path: relay-harness/dist
           merge-multiple: true
 
       - name: Resolve installed wheel version
@@ -140,7 +145,7 @@ jobs:
       - uses: actions/download-artifact@v8
         with:
           pattern: relay_harness_*
-          path: dist
+          path: relay-harness/dist
           merge-multiple: true
 
       - name: Check release contents
@@ -179,7 +184,7 @@ jobs:
       - uses: actions/upload-artifact@v7
         with:
           name: python-release-${{ steps.version.outputs.version }}
-          path: dist/*
+          path: relay-harness/dist/*
           if-no-files-found: error
           retention-days: 7
 
@@ -197,7 +202,7 @@ jobs:
       - uses: actions/download-artifact@v8
         with:
           name: python-release-${{ needs.validate.outputs.version }}
-          path: dist
+          path: relay-harness/dist
 
       - name: Verify release artifact hashes
         run: cd dist && sha256sum -c SHA256SUMS
@@ -232,7 +237,7 @@ jobs:
       - uses: actions/download-artifact@v8
         with:
           name: python-release-${{ needs.validate.outputs.version }}
-          path: dist
+          path: relay-harness/dist
 
       - name: Verify release artifact hashes
         run: cd dist && sha256sum -c SHA256SUMS

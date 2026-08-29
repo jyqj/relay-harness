@@ -4,11 +4,14 @@ import * as yaml from 'js-yaml'
 import { describe, expect, it } from 'vitest'
 
 const root = resolve(import.meta.dirname, '..')
+// GitHub discovers workflows only from the outer repository root; ordinary
+// build/test fixtures below still resolve against the inner workspace root.
+const repositoryRoot = resolve(root, '..')
 const runnerPrivatePnpmDestination = '${{ runner.temp }}/setup-pnpm'
 
 describe('CI workflow', () => {
   it('isolates every pnpm action setup destination per runner', () => {
-    const workflow: unknown = yaml.load(readFileSync(resolve(root, '.github/workflows/ci.yml'), 'utf8'))
+    const workflow: unknown = yaml.load(readFileSync(resolve(repositoryRoot, '.github/workflows/ci.yml'), 'utf8'))
     if (!isRecord(workflow) || !isRecord(workflow.jobs)) throw new TypeError('CI workflow must define jobs')
 
     const setups = Object.entries(workflow.jobs).flatMap(([jobName, job]) => {
@@ -159,7 +162,7 @@ describe('CI workflow', () => {
       })
       .map(([name]) => name)
       .sort()
-    expect(pushReachable).toEqual(['serial-linux-selfhosted', 'serial-windows', 'wine-apt-cache'])
+    expect(pushReachable).toEqual(['repository-governance', 'serial-linux-selfhosted', 'serial-windows', 'wine-apt-cache'])
 
     // Why workflow_dispatch must keep cancelling: each benchmark fans out to a
     // dozen larger runners at once, in this same group on master. If it stopped
@@ -437,7 +440,8 @@ describe('Git hooks', () => {
 })
 
 function loadWorkflow(path: string): Record<string, unknown> {
-  const workflow: unknown = yaml.load(readFileSync(resolve(root, path), 'utf8'))
+  const base = path.startsWith('.github/') ? repositoryRoot : root
+  const workflow: unknown = yaml.load(readFileSync(resolve(base, path), 'utf8'))
   if (!isRecord(workflow)) throw new TypeError(`${path} must define a workflow`)
   return workflow
 }

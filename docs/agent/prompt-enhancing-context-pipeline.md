@@ -73,7 +73,7 @@ Context Composer 从当前 conversation 事件流中只保留：
 
 ## 5. History Hydration
 
-历史中的引用在 Rust agent 侧完成 hydration：
+历史中的引用在 Relay Harness Context Engine 侧完成 hydration：
 
 | 引用类型 | Hydration 结果 |
 |---|---|
@@ -111,7 +111,7 @@ retrieval_scope:
 
 ### Rules
 
-Rules 是结构化约束，例如 Skill 输出契约、文件操作限制和当前任务规则。客户端或 Rust agent 根据 active context 过滤，只发送适用于当前草稿的规则。
+Rules 是结构化约束，例如 Skill 输出契约、文件操作限制和当前任务规则。客户端或 Relay Harness runtime 根据 active context 过滤，只发送适用于当前草稿的规则。
 
 ### Guidelines
 
@@ -181,7 +181,7 @@ route_request:
 | Chat/Work 共用上下文收集逻辑 | 直接采纳 |
 | 当前输入只传文本节点 | 采纳，附件走独立引用 |
 | 成功 Exchange、checkpoint、summary 投影 | 采纳 |
-| 文件、图片、checkpoint、编辑事件 hydration | 采纳，放在 Rust agent 侧 |
+| 文件、图片、checkpoint、编辑事件 hydration | 采纳，放在 Relay Harness Context Engine 侧 |
 | history summary 控制历史长度 | 采纳，增加来源范围引用 |
 | 始终提供 blob 索引供检索 | 改造后采纳：仅当前显式 File Context manifest |
 | Rules 按 active context 过滤 | 采纳 |

@@ -15,6 +15,7 @@ import {
 import { clientBundle } from '../packages/client/tsdown.client.ts'
 
 const root = resolve(import.meta.dirname, '..')
+const repositoryRoot = resolve(root, '..')
 const PROBE_NAME = 'RLH_CLIENT_BUILD_TEST'
 const COMMIT_HASH = '0123456789abcdef0123456789abcdef01234567'
 const PROBE_KEY = `process.env.${PROBE_NAME}`
@@ -165,7 +166,7 @@ describe('client build environment', () => {
   it('keeps public client values out of workflow-wide environments', () => {
     for (const name of rlhBuildWorkflows) {
       const path = `.github/workflows/${name}`
-      const document: unknown = yaml.load(readFileSync(resolve(root, path), 'utf8'))
+      const document: unknown = yaml.load(readFileSync(resolve(repositoryRoot, path), 'utf8'))
       if (typeof document !== 'object' || document === null || Array.isArray(document)) {
         throw new TypeError(`${path} must contain a workflow object`)
       }

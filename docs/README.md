@@ -7,13 +7,14 @@
 1. [`CONTEXT.md`](CONTEXT.md) — 产品定义、系统边界与术语
 2. [`product/vision-and-positioning.md`](product/vision-and-positioning.md) — 定位、目标用户与价值主张
 3. [`product/product-experience.md`](product/product-experience.md) — 傻瓜式体验、chat/work、Prompt Enhancing
-4. [`agent/overview.md`](agent/overview.md) — Rust agent 的总体架构
-5. [`agent/agent-runtime.md`](agent/agent-runtime.md) — Agent Loop、状态、恢复与本地验证
-6. [`agent/work-and-files.md`](agent/work-and-files.md) — 无项目 work 与文件上下文
-7. [`agent/memory.md`](agent/memory.md) — 长期记忆需求与待决策项
-8. [`agent/context-engine.md`](agent/context-engine.md) — 本地上下文引擎：多来源检索、Evidence 与打包
-9. [`scheduling/interface.md`](scheduling/interface.md) — 外部中转调度接口
-10. [`engineering/p0-scope.md`](engineering/p0-scope.md) — 开发起步顺序与验收
+4. [`feature-status.json`](feature-status.json) — 当前功能完成状态及可验证证据
+5. [`repository-governance.md`](repository-governance.md) — GitHub workflow、分支保护与 nested monorepo 边界
+6. [`agent/overview.md`](agent/overview.md) — TypeScript Relay Harness 总体架构
+7. [`agent/agent-runtime.md`](agent/agent-runtime.md) — Agent Loop、状态、恢复与本地验证
+8. [`agent/work-and-files.md`](agent/work-and-files.md) — 无项目 work 与文件上下文
+9. [`agent/memory.md`](agent/memory.md) — 已实现记忆治理与产品边界
+10. [`agent/context-engine.md`](agent/context-engine.md) — 本地上下文引擎：多来源检索、Evidence 与打包
+11. [`scheduling/interface.md`](scheduling/interface.md) — 尚未交付的外部中转调度接口
 
 ## 目录职责
 
@@ -23,7 +24,14 @@
 | `product/` | 产品定位、体验、计费方向、路线图与风险 |
 | `agent/` | agent 侧模块、契约和运行时设计 |
 | `scheduling/` | 外部中转调度项目的定性需求、边界与接口 |
-| `engineering/` | Rust 技术基线、开发阶段和验收 |
+| `engineering/` | 当前 TypeScript 实现基线；历史 Rust 蓝图仅作被取代决策的背景 |
+
+## 权威边界
+
+- 本目录维护产品语义、系统边界、ADR 与机器可读功能状态。
+- [`../relay-harness/docs/architecture.md`](../relay-harness/docs/architecture.md) 及其 subsystem 目录维护当前实现的包、协议、事件与配置目录。
+- `.github/` 只存在于仓库根；`relay-harness/.github` 的存在会被治理门禁拒绝。
+- 功能是否“已发布”不从路线图或 README 推断，只读取 [`feature-status.json`](feature-status.json)。
 
 ## 文档清单
 
@@ -55,7 +63,7 @@
 - [`overview.md`](scheduling/overview.md) — 外部调度侧需要提供什么，不规定其内部算法
 - [`interface.md`](scheduling/interface.md) — HTTP/JSON + SSE 契约
 
-### engineering/
+### engineering/（历史与迁移验收）
 
 - [`tech-stack.md`](engineering/tech-stack.md)
 - [`p0-scope.md`](engineering/p0-scope.md)

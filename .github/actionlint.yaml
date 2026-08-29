@@ -1,0 +1,6 @@
+self-hosted-runner:
+  labels:
+    - vm-backup
+    - rlh-win-ci
+    - rlh-ubuntu-*
+    - rlh-windows-*

@@ -9,19 +9,19 @@ on:
     paths:
       - '.github/workflows/landlock-run.yml'
       - '.github/workflows/landlock-run-release.yml'
-      - 'native/landlock-run/**'
-      - 'package.json'
-      - 'pnpm-lock.yaml'
-      - 'pnpm-workspace.yaml'
+      - 'relay-harness/native/landlock-run/**'
+      - 'relay-harness/package.json'
+      - 'relay-harness/pnpm-lock.yaml'
+      - 'relay-harness/pnpm-workspace.yaml'
   push:
     branches: [master]
     paths:
       - '.github/workflows/landlock-run.yml'
       - '.github/workflows/landlock-run-release.yml'
-      - 'native/landlock-run/**'
-      - 'package.json'
-      - 'pnpm-lock.yaml'
-      - 'pnpm-workspace.yaml'
+      - 'relay-harness/native/landlock-run/**'
+      - 'relay-harness/package.json'
+      - 'relay-harness/pnpm-lock.yaml'
+      - 'relay-harness/pnpm-workspace.yaml'
   workflow_dispatch:
 
 concurrency:
@@ -38,7 +38,7 @@ env:
 
 defaults:
   run:
-    working-directory: native/landlock-run
+    working-directory: relay-harness/native/landlock-run
 
 jobs:
   matrix:
@@ -64,13 +64,13 @@ jobs:
 
       - uses: pnpm/action-setup@v4
         with:
-          package_json_file: package.json
+          package_json_file: relay-harness/package.json
 
       - uses: actions/setup-node@v4
         with:
           node-version: 24
           cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
+          cache-dependency-path: relay-harness/pnpm-lock.yaml
 
       - name: Install dependencies
         run: pnpm install --filter @relay-harness/node-addon-landlock-run-workspace... --frozen-lockfile
@@ -115,13 +115,13 @@ jobs:
 
       - uses: pnpm/action-setup@v4
         with:
-          package_json_file: package.json
+          package_json_file: relay-harness/package.json
 
       - uses: actions/setup-node@v4
         with:
           node-version: 24
           cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
+          cache-dependency-path: relay-harness/pnpm-lock.yaml
 
       - name: Install dependencies
         run: pnpm install --filter @relay-harness/node-addon-landlock-run-workspace... --frozen-lockfile
