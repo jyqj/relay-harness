@@ -203,17 +203,16 @@ export function SidebarRoot({
       </div>
 
       {navTabs.length > 0 && (
-        <div className={css.tabList} role="tablist" aria-label={t('tab.sessions')}>
+        <div className={css.tabList} role="tablist" aria-label={t('tab.navigation')}>
           <button
             type="button"
             className={clsx(css.tab, activeTab === SESSIONS_TAB_ID && css.tabActive)}
             role="tab"
-            aria-label={t('tab.sessions')}
             aria-selected={activeTab === SESSIONS_TAB_ID}
             onClick={() => { actions.selectTab(SESSIONS_TAB_ID) }}
           >
             <IconNewChatOutline16 size={wide ? 14 : 18} />
-            {wide && <span className={clsx(css.tabLabel, css.wide)}>{t('tab.sessions')}</span>}
+            <span className={clsx(css.tabLabel, wide && css.wide)}>{renderSlot('sidebar.chat.label', {}, { fallback: t('tab.sessions') })}</span>
           </button>
           {navTabs.map(row => (
             <button

@@ -58,10 +58,11 @@ function mountShell({
       renderSlot={((
         key: string,
         owner: SidebarFooterActionOwnerProps | SidebarPageOwnerProps | SidebarSectionOwnerProps | SidebarSettingsOwnerProps,
-        opts?: { entryKey?: string; only?: string },
+        opts?: { entryKey?: string; only?: string; fallback?: ReactNode },
       ) => {
         if (key === 'sidebar.brand.mark') return brandMark
         if (key === 'sidebar.brand.name') return brandName
+        if (key === 'sidebar.chat.label') return opts?.fallback
         if (key === 'sidebar.settings') {
           settingsOwner = owner
           return <div data-testid="settings-seat" data-wide={owner.wide} />

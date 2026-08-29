@@ -27,7 +27,7 @@ import { InterfaceSection } from './InterfaceSection.tsx'
 import { CloseBehaviorRow } from './CloseBehaviorRow.tsx'
 import { AboutSection } from './AboutSection.tsx'
 import { HarnessRestartRow } from './HarnessRestartRow.tsx'
-import { SimpleModeRow } from './SimpleModeRow.tsx'
+import { SettingsNavigationService } from './navigation.ts'
 import { canPersistCloseBehavior, desktopShell } from './desktop-shell.ts'
 import { SettingsDocumentAction } from './SettingsDocumentAction.tsx'
 import type { SettingsDocumentActionInjected } from './SettingsDocumentAction.tsx'
@@ -44,7 +44,7 @@ export type {
   InterfaceSectionComponentProps,
 } from './InterfaceSection.tsx'
 export type { HarnessRestartRowProps } from './HarnessRestartRow.tsx'
-export type { SimpleModeRowProps } from './SimpleModeRow.tsx'
+export type { SettingsNavigationSnapshot } from './navigation.ts'
 export type { AboutSectionProps } from './AboutSection.tsx'
 export type { SettingsDocumentActionInjected, SettingsDocumentActionProps } from './SettingsDocumentAction.tsx'
 export type { SettingsDocumentState } from './settings-document-store.ts'
@@ -74,6 +74,7 @@ export const inject = ['slots', 'locale', 'connection', 'settingsScope']
  * @param ctx - client root context.
  */
 export function apply(ctx: ClientContext): void {
+  const navigation = new SettingsNavigationService(ctx)
   ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'ui-settings-general: dictionaries')
 
   // Copy freshness is framework-owned: components read the standard `t`
@@ -112,7 +113,7 @@ export function apply(ctx: ClientContext): void {
           if (version !== rowsVersion || revision !== rowsRevision) {
             rowsVersion = version
             rowsRevision = revision
-            rows = ctx.slots.entries('settings.section')
+            rows = ctx.slots.entriesOfSlot('settings.section')
               .map(e => ({
                 /* v8 ignore next -- list-slot registration requires id (SlotCore rejects an entry without one) */
                 id: e.options.id ?? '',
@@ -149,6 +150,7 @@ export function apply(ctx: ClientContext): void {
         },
         subscribe: listener => ctx.slots.subscribe('settings.onboarding', listener),
       },
+      settingsNavigation: navigation.store,
     },
   })
   ctx.slots.inject('sidebar.settings', () => ctx.slots.register({
@@ -209,12 +211,6 @@ export function apply(ctx: ClientContext): void {
   // Harness process to restart. Feature-owned rows keep their earlier orders.
   const shell = desktopShell()
   if (shell?.getConfig && shell.saveConfig) {
-    ctx.slots.inject('settings.general.item', () => ctx.slots.register({
-      name: 'settings.general.item',
-      id: 'simple-mode',
-      order: 30,
-      locale: NS,
-    }, SimpleModeRow))
     ctx.slots.inject('settings.general.item', () => ctx.slots.register({
       name: 'settings.general.item',
       id: 'harness-restart',

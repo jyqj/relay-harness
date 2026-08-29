@@ -120,7 +120,7 @@ function SettingsPanel({ rows, renderSlot, activeId, motionState, open, onSelect
  * @returns the settings shell element tree.
  */
 export function SettingsRoot(props: SettingsRootComponentProps) {
-  const { wide, useSections, useOnboardingSteps, useSessions, renderSlot, t } = props
+  const { wide, useSections, useOnboardingSteps, useSettingsNavigation, useSessions, renderSlot, t } = props
   const [open, setOpen] = useState(false)
   const [activeId, setActiveId] = useState<string | undefined>(undefined)
   const [completedOnboarding, setCompletedOnboarding] = useState<ReadonlySet<string>>(() => new Set())
@@ -132,6 +132,11 @@ export function SettingsRoot(props: SettingsRootComponentProps) {
     setActiveId(id)
     setOpen(true)
   }, [])
+  const navigation = useSettingsNavigation(value => value)
+  useEffect(() => {
+    if (navigation.revision === 0 || navigation.section === undefined) return
+    openSection(navigation.section)
+  }, [navigation, openSection])
 
   // The ledger tick keeps the nav rows fresh: registrants re-register with
   // freshly localized text on locale change, and the trigger/header/close

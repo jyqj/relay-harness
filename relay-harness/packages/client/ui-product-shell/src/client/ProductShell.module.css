@@ -1,0 +1,18 @@
+.page { display: flex; min-height: 100%; flex-direction: column; gap: 12px; padding: 16px 12px; color: var(--rlw-alias-label-primary); }
+.page h2 { margin: 0; font-size: 14px; font-weight: 600; }
+.page p { margin: 0; color: var(--rlw-alias-label-secondary); font-size: 12px; line-height: 1.5; }
+.railMark { display: grid; height: 36px; place-items: center; color: var(--rlw-alias-label-secondary); font-size: 11px; font-weight: 700; }
+.metrics { display: flex; flex-direction: column; gap: 7px; margin: 0; }
+.metrics div { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; padding: 8px; border-radius: 8px; background: var(--rlw-alias-bg-module-platform); }
+.metrics dt { color: var(--rlw-alias-label-secondary); font-size: 12px; }
+.metrics dd { overflow: hidden; margin: 0; max-width: 150px; color: var(--rlw-alias-label-primary); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.deliverables { display: flex; flex-direction: column; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.deliverables button { overflow: hidden; width: 100%; border: 0; padding: 5px 7px; background: transparent; color: var(--rlw-alias-label-primary); cursor: pointer; font: inherit; text-align: left; text-overflow: ellipsis; white-space: nowrap; }
+.filesButton { min-height: 34px; border: 1px solid var(--rlw-alias-border-l2); border-radius: 8px; background: var(--rlw-alias-bg-module-platform); color: var(--rlw-alias-label-primary); cursor: pointer; text-align: left; }
+.libraryGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.libraryGrid button { min-height: 38px; border: 1px solid var(--rlw-alias-border-l2); border-radius: 8px; background: var(--rlw-alias-bg-module-platform); color: var(--rlw-alias-label-primary); cursor: pointer; text-align: left; }
+.libraryGrid button:disabled { cursor: default; opacity: .45; }
+.modeRow { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+.modeRow p { margin: 4px 0 0; color: var(--rlw-alias-label-secondary); font-size: 12px; }
+.modeTitle { color: var(--rlw-alias-label-primary); font-size: 13px; font-weight: 500; }
+.switch input { width: 34px; height: 20px; }

@@ -31,6 +31,8 @@ declare module '@relay-harness/rlh-client-ui-slots' {
      * package's `sidebar` entry; the shell supplies a generic text fallback.
      */
     'sidebar.brand.name': { kind: 'single'; scope: 'root'; owner: SidebarBrandNameOwnerProps }
+    /** Product-level label for the built-in session browser tab. */
+    'sidebar.chat.label': { kind: 'single'; scope: 'root'; owner: SidebarChatLabelOwnerProps }
     /**
      * The workspace/session browsing region: section header, search, the
      * grouped/flat session list, and every workspace dialog. Declared by this
@@ -75,6 +77,9 @@ export interface SidebarBrandNameOwnerProps {
   /** Marker field: the occupant owns its own content and width. */
   children?: never
 }
+
+/** Empty owner share for the product-level Chat label. */
+export interface SidebarChatLabelOwnerProps { children?: never }
 
 /**
  * Owner share of the browser hole — the only facts crossing the shell/region
@@ -151,6 +156,7 @@ export type SidebarRootComponentProps =
   & PropsRenderSlots<
     | 'sidebar.brand.mark'
     | 'sidebar.brand.name'
+    | 'sidebar.chat.label'
     | 'sidebar.workspaces'
     | 'sidebar.nav.tab'
     | 'sidebar.page'

@@ -35,6 +35,8 @@ function mount({
   // plays a ledger change through the same observable contract.
   let current = rows
   const listeners = new Set<() => void>()
+  let navigation = { section: undefined as string | undefined, revision: 0 }
+  const navigationListeners = new Set<() => void>()
   const renderSlot = vi.fn(
     ((key: string, _owner: unknown, opts?: { only?: string }) => {
       if (key === 'settings.section') return <div data-testid={`section-${opts?.only ?? 'all'}`} />
@@ -55,6 +57,15 @@ function mount({
     wide,
     t: ((key: string) => key),
     useOnboardingSteps: select => select(steps),
+    useSettingsNavigation: (select) => {
+      const [, force] = useState(0)
+      useEffect(() => {
+        const listener = () => { force(n => n + 1) }
+        navigationListeners.add(listener)
+        return () => { navigationListeners.delete(listener) }
+      }, [])
+      return select(navigation)
+    },
     useSections: (select) => {
       const [, force] = useState(0)
       useEffect(() => {
@@ -73,7 +84,13 @@ function mount({
       for (const fn of [...listeners]) fn()
     })
   }
-  return { view, renderSlot, bump, listeners }
+  const navigate = (section: string) => {
+    act(() => {
+      navigation = { section, revision: navigation.revision + 1 }
+      for (const fn of [...navigationListeners]) fn()
+    })
+  }
+  return { view, renderSlot, bump, navigate, listeners }
 }
 
 function openPanel() {
@@ -81,6 +98,13 @@ function openPanel() {
 }
 
 describe('SettingsRoot trigger', () => {
+  it('opens the requested registered section through the shared navigation seam', () => {
+    const { navigate } = mount()
+    navigate('models')
+    expect(screen.getByRole('dialog')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Models' }).getAttribute('aria-current')).toBe('true')
+  })
+
   it('renders the trigger seat content as the accessible name (no aria-label of its own)', () => {
     const { renderSlot } = mount()
     const trigger = screen.getByRole('button', { name: 'Settings' })

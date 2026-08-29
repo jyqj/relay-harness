@@ -692,6 +692,12 @@ export class SlotCore {
    * (disposal authority remains with the registrant).
    */
   private abdicated = new WeakSet<StoredEntry>()
+  /**
+   * Product-shell visibility overlays, keyed by slot and cell. The ledger
+   * remains intact (entries(), snapshots, and disposal authority are
+   * unchanged); only the render projection omits suppressed cells.
+   */
+  private suppressed = new Map<string, Map<string | undefined, number>>()
   private entryErrorListeners
     = new Set<(key: string, entry: StoredEntry, error: unknown, info: { abdicated: boolean }) => void>()
 
@@ -940,15 +946,43 @@ export class SlotCore {
     if (kind === 'chain') return rec.entries
     const heads: StoredEntry[] = []
     const seenCells = new Set<string | undefined>()
+    const suppressed = this.suppressed.get(key)
     for (const entry of rec.entries) {
       if (this.abdicated.has(entry)) continue
       // Single-kind entries all share the one undefined cell.
       const cell = kind === 'keyed' ? entry.options.key : kind === 'list' ? entry.options.id : undefined
+      if ((suppressed?.get(cell) ?? 0) > 0) continue
       if (seenCells.has(cell)) continue
       seenCells.add(cell)
       heads.push(entry)
     }
     return heads
+  }
+
+  /**
+   * Suppress one render cell without mutating its registration lifetime.
+   * Multiple policies may suppress the same cell; it becomes visible after
+   * the final disposer runs. A policy may arrive before the declaration or
+   * contribution and still applies when that cell later appears.
+   * @param key - target slot key.
+   * @param cell - list id / keyed key; omit for a single slot.
+   * @returns idempotent disposer releasing this policy claim.
+   */
+  suppress(key: string, cell?: string): () => void {
+    const cells = this.suppressed.get(key) ?? new Map<string | undefined, number>()
+    this.suppressed.set(key, cells)
+    cells.set(cell, (cells.get(cell) ?? 0) + 1)
+    this.markDirty(key, this.record(key))
+    let disposed = false
+    return () => {
+      if (disposed) return
+      disposed = true
+      const count = cells.get(cell) ?? 0
+      if (count <= 1) cells.delete(cell)
+      else cells.set(cell, count - 1)
+      if (cells.size === 0) this.suppressed.delete(key)
+      this.markDirty(key, this.record(key))
+    }
   }
 
   /**

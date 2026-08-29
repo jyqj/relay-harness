@@ -10,7 +10,7 @@ import { SidebarRoot } from './SidebarRoot.tsx'
 import { en, zh, type SidebarKey } from './locales.ts'
 
 export type {
-  SidebarBrandMarkOwnerProps, SidebarBrandNameOwnerProps, SidebarFooterActionOwnerProps,
+  SidebarBrandMarkOwnerProps, SidebarBrandNameOwnerProps, SidebarChatLabelOwnerProps, SidebarFooterActionOwnerProps,
   SidebarNavTabOwnerProps, SidebarPageOwnerProps,
   SidebarRootComponentProps, SidebarRootInjected, SidebarSectionOwnerProps,
   SidebarSettingsOwnerProps,
@@ -53,7 +53,7 @@ export function apply(ctx: ClientContext): void {
           if (version !== tabsVersion || revision !== tabsRevision) {
             tabsVersion = version
             tabsRevision = revision
-            tabRows = ctx.slots.entries('sidebar.nav.tab')
+            tabRows = ctx.slots.entriesOfSlot('sidebar.nav.tab')
               .map(entry => ({
                 /* v8 ignore next -- list-slot registration requires id */
                 id: entry.options.id ?? '',
@@ -85,6 +85,7 @@ export function apply(ctx: ClientContext): void {
       children: {
         'sidebar.brand.mark': { kind: 'single', scope: 'root' },
         'sidebar.brand.name': { kind: 'single', scope: 'root' },
+        'sidebar.chat.label': { kind: 'single', scope: 'root' },
         'sidebar.workspaces': { kind: 'single', scope: 'root' },
         'sidebar.nav.tab': { kind: 'list', scope: 'root' },
         'sidebar.page': { kind: 'keyed', scope: 'root' },

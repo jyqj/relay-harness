@@ -339,6 +339,15 @@
   color: var(--rlw-alias-label-primary);
 }
 
+.collapsed .tabLabel {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
 /* Region seat: always mounted so the foot never moves. Its trailing margin
    cancels the wide shell inset so the nested scrollbar can sit at the sidebar
    edge; the browser restores that inset inside its own rows. */

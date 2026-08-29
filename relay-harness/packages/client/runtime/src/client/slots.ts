@@ -319,6 +319,20 @@ export class SlotRegistry extends Service {
   }
 
   /**
+   * Temporarily remove one slot cell from render projections while retaining
+   * its registration and lifecycle. Product policy uses this for Simple mode;
+   * unloading or switching mode restores the exact existing contribution.
+   * @param key - target slot key.
+   * @param cell - list id / keyed key; omit for a single slot.
+   * @returns disposer releasing this suppression claim.
+   */
+  suppress(key: keyof SlotMap & string, cell?: string): () => void {
+    const dispose = this._core.suppress(key, cell)
+    const disposeEffect = this.ctx.effect(() => dispose, `slots.suppress(${JSON.stringify(key)}, ${JSON.stringify(cell)})`)
+    return () => { void disposeEffect() }
+  }
+
+  /**
    * Export the current JSON-safe Slot declaration tree for read-only inspection.
    * @param root - exact live Slot root; omitted returns all roots.
    * @returns selected Slot trees.

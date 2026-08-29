@@ -37,6 +37,8 @@ export type SettingsRootInjected = {
     sections: HostObservable<readonly SettingsSectionRow[]>
     /** settings.onboarding ledger projected into coordinator order. */
     onboardingSteps: HostObservable<readonly SettingsOnboardingStep[]>
+    /** Cross-feature requests to open Settings on one real registered page. */
+    settingsNavigation: HostObservable<{ readonly section: string | undefined; readonly revision: number }>
   }
 }
 
