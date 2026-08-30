@@ -49,4 +49,4 @@ function offerFromPaste(value) {
   }
 }
 
-export { OFFER_VERSION, decodeOffer, offerFromHash, offerFromPaste };
+export { decodeOffer, offerFromHash, offerFromPaste };

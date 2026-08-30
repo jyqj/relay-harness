@@ -12,7 +12,7 @@ Status: implemented
 
 在 Service Definition 一侧，`watch()` 的释放器只把观察者从集合中移除——已经接到 watcher 链尾的调用在 dispose 之后照常运行，服务 dispose 时也没有任何环节排空已启动的调用；`settings/updated` 的手动扇出只捕获同步抛错，异步监听器的 rejection 会以 unhandled rejection 的形式逃逸；`structuredClone` 则放行 Date、Map、BigInt 与循环引用，而 YAML/JSON 存储会在重载往返中悄悄扭曲这些值（Date 会变成时间戳字符串，BigInt 会变成普通数字）。
 
-YAML 写入则整体替换 namespace 节点，把分节内的每条注释都删掉——而这个保注释的提供方承诺过要保住它们。
+YAML 写入则整体替换 namespace 节点，把分节内的每条注释都删掉——而这个保注释的提供方承诺过要保住它们。registrant 卸载还会直接移除 namespace，却不等待已经启动的 watcher；旧 owner 可能在替代注册建立后才完成持久化，使新 owner 永久停留在陈旧快照。最后，普通属性赋值会在克隆与合并期间把合法 JSON 键 `__proto__` 当成继承 setter，而不是保留为 own data。
 
 ## 决策
 
@@ -20,9 +20,9 @@ YAML 写入则整体替换 namespace 节点，把分节内的每条注释都删�
 
 **写入持有以 `wx` 创建的同目录 `<file>.lock`。**读-渲染-rename 循环在一把跨进程写锁下运行，采用指数退避与 2 s 获取期限。`EEXIST` 直接表示竞争；只有 `lstat` 确认锁路径存在时，`EPERM` 才表示竞争，因为 Windows 可能把针对该现有路径的独占创建报告为权限拒绝。无关的权限故障仍会响亮失败。竞争者会超时，但不会移除现有锁，因为锁龄无法区分已经崩溃的所有者与被暂停但仍存活的写入方；遗留锁恢复须由操作者执行。读方从不加锁——rename 提交是原子的——因此竞争只发生在写方之间。重试与期限常量是协议不变式，而非部署配置。
 
-**观察者 dispose 达到完全停稳。**watcher 携带一个 `active` 标志，排队的调用即将启动时先检查它，因此在调用等待期间已经运行过的释放器能让这次启动彻底不发生；已启动的调用会登记进服务级的 `pendingTails` 集合，dispose 排空除了等待各写队列，还会等待该集合。`settings/updated` 扇出会把监听器返回的 thenable 的 rejection 收容进与同步抛错相同的监听器诊断；事件约定现已写明 `INVARIANT` 重抛只服务同步监听器——不变式配套插件必须保持同步，而已交付的那个配套插件本就是同步的。
+**观察者 dispose 达到完全停稳。**watcher 携带一个 `active` 标志，排队的调用即将启动时先检查它，因此在调用等待期间已经运行过的释放器能让这次启动彻底不发生；已启动的调用会登记进服务级的 `pendingTails` 集合，服务 dispose 排空除了等待各写队列，还会等待该集合。namespace 注册自身的 disposer 同样会停用 watcher 并等待其尾链，因此回调不会活过 registrant fiber。旧 owner 若在替代注册建立后才完成持久化，替代注册会重新解析并发布已提交分节。`settings/updated` 扇出会把监听器返回的 thenable 的 rejection 收容进与同步抛错相同的监听器诊断；事件约定现已写明 `INVARIANT` 重抛只服务同步监听器——不变式配套插件必须保持同步，而已交付的那个配套插件本就是同步的。
 
-**写入边界只放行 JSON 数据。**调用时刻的快照就是一次 `cloneJsonShaped` 遍历：它把 patch 从调用方分离出来，并在任何内容持久化之前拒绝一切非 JSON 值——Date、Map、BigInt、非有限数值、函数、symbol、类实例、值为 `undefined` 的数组元素、循环引用——拒绝时附带该值以 `$` 为根的路径。显式为 `undefined` 的对象条目仍会跳过（稀疏 patch 约定），这一约定如今在边界处强制执行，而不再放在 `mergeLayers` 内部。
+**写入边界只放行 JSON 数据。**调用时刻的快照就是一次 `cloneJsonShaped` 遍历：它把 patch 从调用方分离出来，并在任何内容持久化之前拒绝一切非 JSON 值——Date、Map、BigInt、非有限数值、函数、symbol、类实例、值为 `undefined` 的数组元素、循环引用——拒绝时附带该值以 `$` 为根的路径。显式为 `undefined` 的对象条目仍会跳过（稀疏 patch 约定），这一约定如今在边界处强制执行，而不再放在 `mergeLayers` 内部。克隆与合并通过定义可枚举 own property 写值，而不经继承 setter，因此 `__proto__` 与其他合法 JSON 键都会保持为数据，不会改变对象原型。
 
 **YAML 编辑是叶子级 diff。**`renderYaml` 对比已存储分节与下一份分节，只对变化的值应用 `setIn`、对移除的键应用 `deleteIn`，并沿 map 递归。注释、锚点与格式在每个未触碰节点上以及每个被改键值对的键节点上全部保留；数组等非 map 值在不相等时整体替换（`deepEqualJson` 是共享的判定谓词），其内部注释随之一并被带走。
 

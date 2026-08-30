@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/adr/0005-adopt-ts-harness-runtime.md
-0005-adopt-ts-harness-runtime.md: 036a06572b0a7583404003434f1b91ce9211e5b0
-0005-adopt-ts-harness-runtime.zh.md: 58fac2e1409129a059f28130dc5f66880f7f0ed4
+0005-adopt-ts-harness-runtime.md: 2aa7c4aee7df4d293f4a8d1f79ed3848fc218612
+0005-adopt-ts-harness-runtime.zh.md: 27d33a88b2741f5977f0c0ae58c2b3c14450df13

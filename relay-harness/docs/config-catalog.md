@@ -111,6 +111,8 @@ Source: [`packages/core/agent-default-model/src/index.ts:41`](../packages/core/a
 export interface Config {
   /** Harness home containing the fixed user-global `AGENTS.md`; defaults to `$RLH_HOME` or `~/.rlh`. */
   rlhHome?: string
+  /** Absolute roots whose files may be targeted by instruction symlinks in addition to the owning project/home root. */
+  additionalAllowedRoots?: string[]
   /** Directory entries that identify the project root while walking upward from the session cwd. */
   projectRootMarkers?: string[]
   /** UTF-8 byte cap for one rendered baseline or dynamic batch; non-positive or non-finite disables loading. */
@@ -603,6 +605,8 @@ export interface Config {
    * fixed result-envelope syntax is excluded.
    */
   maxOutputBytes?: number
+  /** Hard cap for one binding argument or resolution after lossless-JSON materialization. */
+  maxBindingBytes?: number
   /** The worker's max old-generation heap in MiB (`resourceLimits`); overflow kills the worker, surfacing as kind `'worker-exit'`. */
   maxOldGenerationSizeMb?: number
 }
@@ -729,6 +733,8 @@ export interface Config {
   watch?: boolean
   /** Watcher write-settle window in milliseconds; defaults to 100. */
   debounceMs?: number
+  /** One-time Desktop `credentials.json` import; only its legacy `apiKey` field is consumed and scrubbed. */
+  legacyDesktopJsonPath?: string
 }
 ```
 
@@ -1491,7 +1497,7 @@ export type PiAiThinkingFormat = NonNullable<OpenAICompletionsCompat['thinkingFo
 
 Depends on: `Api` (`@earendil-works/pi-ai`) · `CacheRetention` (`@earendil-works/pi-ai`) · `Model` (`@earendil-works/pi-ai`) · `ModelThinkingLevel` (`@earendil-works/pi-ai`) · `OpenAICompletionsCompat` (`@earendil-works/pi-ai`) · [`RetryPolicyConfig`](../packages/llm/llm/src/index.ts) · `ThinkingBudgets` (`@earendil-works/pi-ai`) · `Transport` (`@earendil-works/pi-ai`)
 
-Source: [`packages/llm/llm-pi-ai/src/config.ts:201`](../packages/llm/llm-pi-ai/src/config.ts)
+Source: [`packages/llm/llm-pi-ai/src/config.ts:235`](../packages/llm/llm-pi-ai/src/config.ts)
 
 <a id="relay-harnessrlh-llm-replay"></a>
 
@@ -2213,6 +2219,10 @@ Requires: `agents`
 export interface JsonRpcConfig {
   /** Report max-token turn/subagent termination as a successful SDK result. */
   maxTokensAsSuccess?: boolean
+  /** Maximum UTF-8 bytes in one inbound or outbound JSON-RPC frame. */
+  maxFrameBytes?: number
+  /** Maximum bytes retained across unsettled JSON-RPC output writes. */
+  maxQueuedWriteBytes?: number
   /** Transport input override; production uses `process.stdin`. */
   input?: Readable
   /** Transport output override; production uses `process.stdout`. */
@@ -2224,7 +2234,7 @@ export interface JsonRpcConfig {
 
 Depends on: `Readable` (`node:stream`) · `Writable` (`node:stream`)
 
-Source: [`packages/sdk/server/src/index.ts:25`](../packages/sdk/server/src/index.ts)
+Source: [`packages/sdk/server/src/index.ts:29`](../packages/sdk/server/src/index.ts)
 
 <a id="relay-harnessrlh-session-history-context"></a>
 
@@ -2719,7 +2729,7 @@ export interface Config {
 }
 ```
 
-Source: [`packages/subagent/subagent/src/index.ts:131`](../packages/subagent/subagent/src/index.ts)
+Source: [`packages/subagent/subagent/src/index.ts:133`](../packages/subagent/subagent/src/index.ts)
 
 <a id="relay-harnessrlh-subagent-acp"></a>
 
@@ -3071,6 +3081,8 @@ export interface Config {
   minUsefulDeltaTokens?: number
   /** Consecutive unproductive continuations that stop the steering (default 2). */
   maxLowDeltaStreak?: number
+  /** Maximum model-request steps admitted in one turn (default 64). */
+  maxStepsPerTurn?: number
 }
 ```
 

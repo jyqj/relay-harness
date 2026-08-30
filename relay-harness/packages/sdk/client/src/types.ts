@@ -36,6 +36,12 @@ export interface HarnessClientOptions {
   env?: NodeJS.ProcessEnv
   /** Per-request timeout (ms); `undefined` waits indefinitely (a turn can legitimately run long). */
   requestTimeoutMs?: number
+  /** Maximum UTF-8 bytes in one inbound or outbound JSON-RPC frame (default 64 MiB). */
+  maxFrameBytes?: number
+  /** Maximum bytes retained across unsettled JSON-RPC output writes (default one 64 MiB frame plus delimiter). */
+  maxQueuedWriteBytes?: number
+  /** Maximum queued notifications per subscription before that subscription fails (default 4096). */
+  maxNotificationQueueSize?: number
   /** Bound (ms) on the protocol `shutdown` exchange inside `close()` (default 1000). */
   shutdownTimeoutMs?: number
   /** Grace (ms) for the runtime's stdin-EOF quiesce during `close()` (default 6000). */

@@ -404,4 +404,4 @@ class RelayClient extends EventEmitter {
   }
 }
 
-module.exports = { RelayClient, normalizeClientRelayOrigin };
+module.exports = { RelayClient };

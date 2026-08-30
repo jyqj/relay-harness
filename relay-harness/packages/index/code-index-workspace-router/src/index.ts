@@ -140,7 +140,11 @@ export class CodeIndexWorkspaceRouter extends CodeIndex {
     ctx.effect(() => async () => { await this.disposeRouter() }, 'code-index-workspace-router.teardown')
   }
 
-  /** Bind a canonical Workspace without opening it until the first operation. */
+  /**
+   * Bind a canonical Workspace without opening it until the first operation.
+   * @param workspaceRoot - caller-selected absolute workspace root.
+   * @returns an immutable workspace face routed to its isolated derived store.
+   */
   override async forWorkspace(workspaceRoot: string): Promise<CodeIndexWorkspace> {
     const canonical = await canonicalWorkspaceRoot(workspaceRoot)
     return Object.freeze({
@@ -161,22 +165,50 @@ export class CodeIndexWorkspaceRouter extends CodeIndex {
     })
   }
 
-  /** Process-wide unscoped status is forbidden on a multi-Workspace provider. */
+  /**
+   * Reject process-wide status on a multi-Workspace provider.
+   * @returns a rejected promise requiring a workspace-bound face.
+   */
   override status(): Promise<IndexStatusReport> { return Promise.reject(workspaceRequired()) }
-  /** Process-wide unscoped management status is forbidden on a multi-Workspace provider. */
+  /**
+   * Reject process-wide management status on a multi-Workspace provider.
+   * @returns a rejected promise requiring a workspace-bound face.
+   */
   override managementStatus(): Promise<CodeIndexManagementStatus> { return Promise.reject(workspaceRequired()) }
-  /** Process-wide unscoped reconciliation is forbidden on a multi-Workspace provider. */
+  /**
+   * Reject process-wide reconciliation on a multi-Workspace provider.
+   * @returns a rejected promise requiring a workspace-bound face.
+   */
   override reconcile(): Promise<CodeIndexManagementStatus> { return Promise.reject(workspaceRequired()) }
-  /** Process-wide unscoped refresh is forbidden on a multi-Workspace provider. */
+  /**
+   * Reject process-wide refresh on a multi-Workspace provider.
+   * @param _options - unused because a workspace is required before refresh.
+   * @returns a rejected promise requiring a workspace-bound face.
+   */
   override refresh(_options?: RefreshOptions): Promise<RefreshSummary> { return Promise.reject(workspaceRequired()) }
-  /** Process-wide unscoped search is forbidden on a multi-Workspace provider. */
+  /**
+   * Reject process-wide search on a multi-Workspace provider.
+   * @param _request - unused because a workspace is required before search.
+   * @param _signal - unused caller cancellation.
+   * @returns a rejected promise requiring a workspace-bound face.
+   */
   override search(_request: SearchRequest, _signal?: AbortSignal): Promise<SearchResult> { return Promise.reject(workspaceRequired()) }
-  /** Process-wide unscoped hydration is forbidden on a multi-Workspace provider. */
+  /**
+   * Reject process-wide hydration on a multi-Workspace provider.
+   * @param _request - unused because a workspace is required before hydration.
+   * @param _signal - unused caller cancellation.
+   * @returns a rejected promise requiring a workspace-bound face.
+   */
   override hydrateChunks(
     _request: HydrateChunksRequest,
     _signal?: AbortSignal,
   ): Promise<HydrateChunksResult> { return Promise.reject(workspaceRequired()) }
-  /** Process-wide unscoped graph exploration is forbidden on a multi-Workspace provider. */
+  /**
+   * Reject process-wide graph exploration on a multi-Workspace provider.
+   * @param _request - unused because a workspace is required before graph exploration.
+   * @param _signal - unused caller cancellation.
+   * @returns a rejected promise requiring a workspace-bound face.
+   */
   override exploreGraph(
     _request: GraphExploreRequest,
     _signal?: AbortSignal,

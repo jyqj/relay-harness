@@ -8,7 +8,7 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/jyqj/relay-harness.git",
-    "directory": "packages/index/tool-code-index"
+    "directory": "relay-harness/packages/index/tool-code-index"
   },
   "type": "module",
   "main": "lib/index.js",

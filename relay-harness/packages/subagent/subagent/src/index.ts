@@ -126,6 +126,8 @@ export type {
 } from './continuation.ts'
 export type { ContinuableSetupContribution } from './activation-setup-registry.ts'
 export type { SubagentDescendantListEntry, SubagentListEntry } from './list-children.ts'
+export { SUBAGENT_DELIVERY_VERSION } from './delivery.ts'
+export type { SubagentDeliveryAcceptedData, SubagentDeliveryClaimedData } from './delivery.ts'
 
 /** Deployment capacity shared by every subagent provider and consumer. */
 export interface Config {
@@ -277,17 +279,14 @@ export class SubagentRuntime extends Service {
   }
 
   /**
-   * Deliver one later message to a continuable child as its next FIFO turn. A
-   * resident child's Agent inbox accepts it directly (waking a `waiting`
-   * Activation), while an absent one is cold-resumed from its persisted
-   * Session. The Agent inbox is the only queue, so every accepted message has
-   * one observable order.
+   * Durably accept one later message for a continuable child, then deliver its
+   * next FIFO turn. A resident child's inbox receives it after the mailbox
+   * commit; an absent one is cold-resumed and replays older unclaimed entries.
    * @param parent - the exact live direct parent authorizing this delivery.
    * @param childId - durable child session id.
    * @param content - user-role content to deliver.
-   * @param options - the message source fields and caller cancellation, which stops the
-   *   operation only before inbox acceptance.
-   * @returns the accepted message's inbox id.
+   * @param options - source, caller cancellation before durable acceptance, and optional idempotency key.
+   * @returns the accepted message's durable receipt id.
    * @throws when continuation services are unavailable, parent authority is
    *   rejected, or the message was not admitted.
    */

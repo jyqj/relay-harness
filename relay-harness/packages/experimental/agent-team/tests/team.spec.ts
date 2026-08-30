@@ -990,7 +990,7 @@ describe('Team mailbox and waiting', () => {
     })
 
     expect(first.status).toBe('accepted')
-    expect(flushed).toEqual([lead.id, target.id, lead.id])
+    expect(flushed).toEqual([lead.id, target.id, target.id, lead.id])
     expect(durable(lead).pendingMessages).toEqual([])
     expect(target.inbox.nextTurn.some(message => message.source.kind === 'team-message'
       && message.source.messageId === first.messageId)).toBe(true)
@@ -1001,7 +1001,7 @@ describe('Team mailbox and waiting', () => {
     })
 
     expect(second.status).toBe('accepted')
-    expect(flushed).toEqual([lead.id, target.id, lead.id])
+    expect(flushed).toEqual([lead.id, target.id, target.id, lead.id])
     expect(durable(lead).pendingMessages).toEqual([])
     expect(target.inbox.nextTurn.filter(message => message.source.kind === 'team-message'
       && (message.source.messageId === first.messageId || message.source.messageId === second.messageId)))

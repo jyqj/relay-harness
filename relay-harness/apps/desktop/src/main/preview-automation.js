@@ -232,8 +232,5 @@ function createPreviewAutomation(host) {
 }
 
 module.exports = {
-  AUTOMATION_SNAPSHOT_HTML_MAX_CHARS,
-  AUTOMATION_WAIT_DEFAULT_TIMEOUT_MS,
-  AUTOMATION_WAIT_POLL_MS,
   createPreviewAutomation,
 };

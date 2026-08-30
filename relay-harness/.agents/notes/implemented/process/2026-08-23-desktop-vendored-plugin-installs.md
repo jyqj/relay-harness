@@ -16,9 +16,9 @@ A vendored plugin's dependencies are installed, not committed. `pnpm run vendor:
 
 The registry is not a packaging prerequisite for correctness, only for speed. `scripts/after-pack.js` already restored the plugin's install into the packaged tree, installed from the lockfile when the packaged copy was short, and threw when the result was still incomplete. That fallback now carries the offline case: a pack on a host that cannot reach the registry fails with the missing dependency named, rather than shipping a plugin that cannot mount.
 
-A vendored plugin's *compiled* half stays committed. `rlhmarket/lib` and `rlhbot/lib` are build output with no source in this tree and, for `rlhbot`, no published tarball either, so no install can regenerate them; `apps/desktop/.gitignore` un-ignores each by name.
+A loadable vendored plugin's *compiled* half stays committed. `rlhmarket/lib` is build output with no source in this tree, so `apps/desktop/.gitignore` un-ignores it by name. The archival `rlhbot` drop declares `lib` entry points but does not carry that subtree, has no source here, and has no published tarball. `ensureRlhbotPlugin` therefore validates `main` and every local `exports` entry before any copy, preset, link, or patch write. An incomplete package is unavailable: the installer removes an older managed copy and patch, leaves a separately installed package untouched, and does not mount the archival client-only half.
 
-`vendor/vendor-plugins.test.js` gates both halves of the rule. It fails when any path under `vendor/` that git tracks sits inside a `node_modules` directory, when a present install disagrees with its lockfile, and when a lockfile cannot resolve a dependency the plugin declares — that last one catches a lockfile that would install an unmountable plugin without needing to run the install. The install checks skip when the working copy has not synced, which is the ordinary state of a fresh clone that only runs tests.
+`vendor/vendor-plugins.test.js` gates the inventory rule. It fails when any path under `vendor/` that git tracks sits inside a `node_modules` directory, when a present install disagrees with its lockfile, and when a lockfile cannot resolve a dependency the plugin declares — that last one catches a lockfile that would install an unmountable plugin without needing to run the install. It also keeps every recorded missing subtree honest. The record permits an incomplete archival drop to remain; runtime admission remains stricter. The install checks skip when the working copy has not synced, which is the ordinary state of a fresh clone that only runs tests.
 
 ## Alternatives considered
 
@@ -32,6 +32,6 @@ A vendored plugin's *compiled* half stays committed. `rlhmarket/lib` and `rlhbot
 
 ## Consequences
 
-A dependency change to a vendored plugin is now a lockfile diff. Cloning the repository no longer materializes a working marketplace plugin, but the paths that need one install it, and `ensureRlhMarketPlugin` already reported a missing install as `missing-source:node_modules:<names>` and left the plugin unmounted rather than failing Harness start.
+A dependency change to a vendored plugin is a lockfile diff. Cloning the repository does not materialize a working marketplace plugin, but the paths that need one install it, and `ensureRlhMarketPlugin` reports a missing install as `missing-source:node_modules:<names>` and leaves the plugin unmounted rather than failing Harness start.
 
-`vendor/plugins.json` still records what each drop does not carry and why, and `rlhbot/lib` remains listed there: it predates the ignore fix, cannot be refetched, and the sidebar-bot and group-room suites stay skipped against that record until it is restored.
+`vendor/plugins.json` records what each drop does not carry and why. `rlhbot/lib` remains listed there because it cannot be rebuilt or refetched. Desktop starts without rlhbot, logs that the preset is not enabled, and never writes an incomplete package into the profile. The sidebar-bot and group-room suites stay skipped against that record until the complete Host half is restored.

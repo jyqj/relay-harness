@@ -31,6 +31,7 @@ function writeSource(dir) {
     },
   }, null, 2)}\n`, 'utf8');
   fs.writeFileSync(path.join(dir, 'lib', 'index.js'), 'export const name = "rlh-bot"\n', 'utf8');
+  fs.writeFileSync(path.join(dir, 'lib', 'ask-participant.js'), 'export const name = "ask-participant"\n', 'utf8');
   fs.writeFileSync(path.join(dir, 'client', 'client.js'), 'export function apply() {}\n', 'utf8');
   fs.writeFileSync(path.join(dir, 'cordis.patch.yml'), [
     '- insert:',
@@ -154,7 +155,68 @@ test('ensureRlhbotPlugin fails closed when the bundled package is missing', () =
       profileDir: path.join(home, 'profiles', 'web'),
     });
     assert.equal(result.ok, false);
+    assert.equal(result.disabled, true);
     assert.match(result.error, /missing-source/);
+  } finally {
+    fs.rmSync(home, { recursive: true, force: true });
+    fs.rmSync(source, { recursive: true, force: true });
+  }
+});
+
+test('ensureRlhbotPlugin refuses a package whose main entry is missing without writing profile state', () => {
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'rlh-home-'));
+  const source = writeSource(fs.mkdtempSync(path.join(os.tmpdir(), 'rlhbot-src-')));
+  try {
+    fs.rmSync(path.join(source, 'lib', 'index.js'));
+    const profileDir = path.join(home, 'profiles', 'web');
+    const result = ensureRlhbotPlugin({ sourceDir: source, profileDir });
+    assert.equal(result.ok, false);
+    assert.equal(result.disabled, true);
+    assert.match(result.error, /missing-source:entry:lib\/index\.js/);
+    assert.equal(fs.existsSync(path.join(profileDir, 'desktop-plugins', 'rlhbot')), false);
+    assert.equal(fs.existsSync(path.join(profileDir, 'node_modules', 'rlhbot')), false);
+    assert.equal(fs.existsSync(path.join(profileDir, 'cordis.patch.yml')), false);
+    assert.equal(fs.existsSync(path.join(home, '.agent-presets', 'rlhbot-room')), false);
+  } finally {
+    fs.rmSync(home, { recursive: true, force: true });
+    fs.rmSync(source, { recursive: true, force: true });
+  }
+});
+
+test('ensureRlhbotPlugin removes a stale managed install when an exported Host entry is missing', () => {
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'rlh-home-'));
+  const source = writeSource(fs.mkdtempSync(path.join(os.tmpdir(), 'rlhbot-src-')));
+  try {
+    fs.rmSync(path.join(source, 'lib', 'ask-participant.js'), { force: true });
+    const profileDir = path.join(home, 'profiles', 'web');
+    const dest = path.join(profileDir, 'desktop-plugins', 'rlhbot');
+    const linked = path.join(profileDir, 'node_modules', 'rlhbot');
+    const presetDir = path.join(home, '.agent-presets', 'rlhbot-room');
+    fs.mkdirSync(dest, { recursive: true });
+    fs.writeFileSync(path.join(dest, 'package.json'), '{"name":"rlhbot"}\n');
+    fs.mkdirSync(path.dirname(linked), { recursive: true });
+    fs.symlinkSync(dest, linked, process.platform === 'win32' ? 'junction' : 'dir');
+    fs.writeFileSync(path.join(profileDir, 'cordis.patch.yml'), [
+      RLHBOT_BEGIN,
+      '- insert:',
+      '    - id: rlh-bot',
+      '      name: "rlhbot"',
+      RLHBOT_END,
+      '',
+    ].join('\n'));
+    fs.mkdirSync(presetDir, { recursive: true });
+    fs.writeFileSync(path.join(presetDir, 'agent.cordis.yml'), '- id: stale\n');
+
+    const result = ensureRlhbotPlugin({ sourceDir: source, profileDir });
+    assert.equal(result.ok, false);
+    assert.equal(result.disabled, true);
+    assert.match(result.error, /missing-source:entry:lib\/ask-participant\.js/);
+    assert.equal(fs.existsSync(dest), false);
+    assert.equal(fs.existsSync(linked), false);
+    assert.equal(fs.existsSync(presetDir), false);
+    const patch = fs.readFileSync(path.join(profileDir, 'cordis.patch.yml'), 'utf8');
+    assert.equal(patch.includes(RLHBOT_BEGIN), false);
+    assert.equal(patch.includes('id: rlh-bot'), false);
   } finally {
     fs.rmSync(home, { recursive: true, force: true });
     fs.rmSync(source, { recursive: true, force: true });
@@ -181,8 +243,19 @@ test('ensureRlhbotPlugin fails closed when the room preset is missing', () => {
 // Entry points and versions are gated in vendor/vendor-plugins.test.js, which
 // reads them from package.json; this covers what the offline profile copy
 // reads and package.json does not name.
-test('repo vendors rlhbot for offline profile copy', () => {
+test('repo keeps incomplete rlhbot unmounted until its Host half is restored', () => {
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'rlh-home-'));
   const root = path.join(__dirname, '..', '..', 'vendor', 'rlhbot');
-  assert.equal(fs.existsSync(path.join(root, 'cordis.patch.yml')), true);
-  assert.equal(fs.existsSync(path.join(root, 'presets', 'rlhbot-room', 'agent.cordis.yml')), true);
+  try {
+    const profileDir = path.join(home, 'profiles', 'web');
+    const result = ensureRlhbotPlugin({ sourceDir: root, profileDir });
+    assert.equal(result.ok, false);
+    assert.equal(result.disabled, true);
+    assert.match(result.error, /missing-source:entry:lib\/index\.js/);
+    assert.equal(fs.existsSync(path.join(profileDir, 'desktop-plugins', 'rlhbot')), false);
+    assert.equal(fs.existsSync(path.join(profileDir, 'node_modules', 'rlhbot')), false);
+    assert.equal(fs.existsSync(path.join(profileDir, 'cordis.patch.yml')), false);
+  } finally {
+    fs.rmSync(home, { recursive: true, force: true });
+  }
 });

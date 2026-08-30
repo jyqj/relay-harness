@@ -1,14 +1,14 @@
 // @ts-check
 'use strict';
 
-const { ipcRenderer } = require('electron');
+const { contextBridge, ipcRenderer } = require('electron');
 const {
   START_PICK_CHANNEL,
   CANCEL_PICK_CHANNEL,
-  ELEMENT_PICKED_CHANNEL,
   ANNOTATION_CAPTURED_CHANNEL,
   ANNOTATION_THEME_CHANNEL,
-  HUMAN_INPUT_CHANNEL,
+  PREVIEW_GUEST_INTERFACE_KEY,
+  createPreviewGuestInterface,
 } = require('./preview-guest-protocol');
 const { resolveAnnotationSubmission } = require('./preview-annotation-keyboard');
 const { computeLabelPosition } = require('./preview-pick-label');
@@ -32,7 +32,8 @@ const {
   unionRects,
 } = require('./preview-guest-geometry');
 
-globalThis.ipcRenderer = ipcRenderer;
+const previewGuest = createPreviewGuestInterface(ipcRenderer);
+contextBridge.exposeInMainWorld(PREVIEW_GUEST_INTERFACE_KEY, previewGuest);
 
 const MAX_MARQUEE_ELEMENTS = 20;
 
@@ -42,7 +43,7 @@ let annotationTheme = null;
 
 function reportHumanPointerInput(event) {
   if (!event.isTrusted) return;
-  ipcRenderer.send(HUMAN_INPUT_CHANNEL, {
+  previewGuest.humanInput.report({
     kind: 'pointer',
     x: event.clientX,
     y: event.clientY,
@@ -52,7 +53,7 @@ function reportHumanPointerInput(event) {
 
 function reportHumanKeyInput(event) {
   if (!event.isTrusted) return;
-  ipcRenderer.send(HUMAN_INPUT_CHANNEL, {
+  previewGuest.humanInput.report({
     kind: 'key',
     key: event.key,
     code: event.code,
@@ -928,7 +929,7 @@ function startAnnotation() {
     cursorStyle.remove();
     host.remove();
     activeSession = null;
-    if (notifyMain) ipcRenderer.send(ELEMENT_PICKED_CHANNEL, null);
+    if (notifyMain) previewGuest.annotation.cancel();
   };
 
   const onCancel = () => teardown(false);
@@ -987,7 +988,7 @@ function startAnnotation() {
         ...regions.map((region) => region.rect),
         ...strokes.map((stroke) => stroke.bounds),
       ], viewportSize());
-      ipcRenderer.send(ELEMENT_PICKED_CHANNEL, annotation, screenshotRect, submission);
+      previewGuest.annotation.submit(annotation, screenshotRect, submission);
     });
   };
   submit.addEventListener('click', () => submitAnnotation('attach'));

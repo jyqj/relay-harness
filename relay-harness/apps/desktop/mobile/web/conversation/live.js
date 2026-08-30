@@ -36,4 +36,4 @@ function muxPatch(frame, sessionId) {
   return null;
 }
 
-export { muxPatch, titleFromProjection };
+export { muxPatch };

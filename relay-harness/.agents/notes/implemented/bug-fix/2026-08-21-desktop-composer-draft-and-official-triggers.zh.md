@@ -16,7 +16,7 @@ ui-files 不注册 `path` input-trigger 来源。输入框 `@` 是官方 ui-refe
 
 InputBar 没有 `listSkillNames`，也没有本地 `$` 菜单。技能只用官方 `/`（ui-skill）。
 
-桌面主进程不构造 `RemoteGateway`。传给 HarnessController 的是 `createDisabledRemote()`：`sync`／`stop` 为空操作，`snapshot` 为 `{ available: false, enabled: false, listening: false }`。`packages/bundle/web-app/cordis.patch.yml` 里 `ui-settings-remote` 保持注释。磁盘上的用户 `remoteEnabled` 不改写。
+桌面主进程不构造 `RemoteGateway`。传给 HarnessController 的是 `createDisabledRemote()`：`sync`／`stop` 为空操作，`snapshot` 为 `{ available: false, enabled: false, listening: false }`。`REMOTE_FEATURE_ENABLED` 为 `false`；即使旧文件请求 Remote，配置归一化与公开 renderer 投影仍强制 `remoteEnabled: false`、`remoteAvailable: false`、LAN 模式和空中继 URL。`packages/bundle/web-app/cordis.patch.yml` 里 `ui-settings-remote` 保持注释。存储的偏好仅作为惰性输入保留，不会打开网络入口。
 
 ## 曾考虑的替代方案
 
@@ -30,11 +30,11 @@ InputBar 没有 `listSkillNames`，也没有本地 `$` 菜单。技能只用官�
 
 ## 后果
 
-Mention、拖拽、加入对话能在 session-maybe fiber 上写入草稿。键入 `@` 不再把工作区当作第二套来源遍历。键入 `$` 不会打开技能菜单。用户配置里即使仍有 `remoteEnabled: true`，也不会监听，直到以后的版本再次启动网关。
+Mention、拖拽、加入对话能在 session-maybe fiber 上写入草稿。键入 `@` 不再把工作区当作第二套来源遍历。键入 `$` 不会打开技能菜单。用户配置里即使仍有 `remoteEnabled: true`，公开投影仍是 unavailable/disabled，且永远不会打开 listener。
 
 ## 测试
 
-三包 `draft.client.spec.ts`：`ctx.sessions` 无 inject 即抛，`ctx.get('sessions')` 仍能写入；缺少 `get('sessions')` 返回 false。ui-files apply 钉住没有 `name: 'path'` 来源。InputBar 钉住 `$fo` 打不出 menuitem。`post-merge-desktop-ui.e2e.ts` 对 `note.md` 点 Mention，断言输入框有 `[note.md](note.md)` 且控制台 tripwire 为空，并断言键入 `@` 后没有 `[data-source="path"]`。release-ui-walk 把 `files.mentionAppended` 列为必过。`remote.test.js` 钉住 `createDisabledRemote` 的 `listening !== true` 且不创建 `http.createServer`，以及 `src/main/index.js` 不 `new RemoteGateway`。
+三包 `draft.client.spec.ts`：`ctx.sessions` 无 inject 即抛，`ctx.get('sessions')` 仍能写入；缺少 `get('sessions')` 返回 false。ui-files apply 钉住没有 `name: 'path'` 来源。InputBar 钉住 `$fo` 打不出 menuitem。`post-merge-desktop-ui.e2e.ts` 对 `note.md` 点 Mention，断言输入框有 `[note.md](note.md)` 且控制台 tripwire 为空，并断言键入 `@` 后没有 `[data-source="path"]`。release-ui-walk 把 `files.mentionAppended` 列为必过。Desktop config 与 IPC 测试钉住 false feature flag、false 公开投影、被拒绝的 open action、被丢弃的 enable request 与 disabled snapshot；`remote.test.js` 钉住 `src/main/index.js` 从不构造 `RemoteGateway`。
 
 ## 相关
 

@@ -4,7 +4,7 @@
 
 ## 状态
 
-[ADR-0005](../adr/0005-adopt-ts-harness-runtime.md) 选择根目录 TypeScript monorepo 作为当前实现。本文件描述当前工程验收，不再规划 Rust workspace。
+[ADR-0005](../adr/0005-adopt-ts-harness-runtime.md) 选择 `relay-harness/` runtime root 下的 TypeScript monorepo 作为当前实现。本文件描述当前工程验收，不再规划 Rust workspace。
 
 功能完成状态以 [`../feature-status.json`](../feature-status.json) 为权威。一个功能只有同时具备默认 composition、Remote/API、UI、e2e 和文档证据，才可标记为 `shipped`。
 
@@ -19,7 +19,7 @@
 
 ## 当前工程门
 
-1. 根 `.github/workflows/` 是 GitHub 自动化的唯一入口，workflow 在根 monorepo 上运行。
+1. 根 `.github/workflows/` 是 GitHub 自动化的唯一入口，workflow 在 `relay-harness/` runtime monorepo 上运行。
 2. `scripts/verify-feature-status.mjs` 校验功能声明和默认 composition 闭包。
 3. 类型检查、定向测试、Web snapshot、`doc-sync` 与 release rehearsal 分别证明自己的边界；窄 PASS 不得表述成全仓 green。
 4. 生成的 config、persistence、tool、Cordis 与 capability 目录必须随源码刷新。

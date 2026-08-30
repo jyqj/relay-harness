@@ -39,7 +39,7 @@ work **没有 Project 前置概念**。一次 work 自带自己的目标、对�
 
 ### Agent 侧（本项目重点）
 
-TypeScript 实现 Relay Harness（见 [ADR-0005](adr/0005-adopt-ts-harness-runtime.md)）直接位于[仓库根目录](../README.md)，负责：
+TypeScript 实现 Relay Harness（见 [ADR-0005](adr/0005-adopt-ts-harness-runtime.md)）位于 checkout 的 [`relay-harness/` runtime root](repository-governance.md#canonical-layout)，负责：
 
 - chat/work 会话与 Agent Loop；
 - Prompt Enhancing 的上下文组织；
@@ -89,6 +89,6 @@ TypeScript 实现 Relay Harness（见 [ADR-0005](adr/0005-adopt-ts-harness-runti
 
 ## 当前阶段
 
-运行时是 [ADR-0005](adr/0005-adopt-ts-harness-runtime.md) 定义的根目录 TypeScript Harness。默认 composition 已交付 Agent Loop、恢复、工具、Subagent、Chat/Work/Library 产品壳、显式 Prompt Enhancement、本地 Context Engine、治理型 Memory、Code Index、MCP/Skills 目录，以及普通用户安全默认权限。
+运行时是 [ADR-0005](adr/0005-adopt-ts-harness-runtime.md) 定义并位于 runtime root 下的 TypeScript Harness。默认 composition 已交付 Agent Loop、恢复、工具、Subagent、Chat/Work/Library 产品壳、显式 Prompt Enhancement、本地 Context Engine、治理型 Memory、Code Index、MCP/Skills 目录，以及普通用户安全默认权限。
 
 当前未交付的 Relay 专属能力是外部中转调度客户端、用户可见的模型强度与计费契约。功能状态不在本文重复维护；以机器可读 [`feature-status.json`](feature-status.json) 及其 CI 证据门禁为唯一权威。

@@ -203,16 +203,18 @@ describe('desktop install plugin module', { concurrency: false }, () => {
     const mod = await import(copyRealPlugin(dir));
     assert.equal(mod.name, 'rlhd-desktop-plugin-install');
     let registered = false;
-    await mod.apply({ tools: { register() { registered = true; } } });
+    await mod.applyWithEnvironment({ tools: { register() { registered = true; } } }, {});
     assert.equal(registered, false);
 
-    process.env.RLH_DESKTOP_INSTALL_URL = 'http://127.0.0.1:1';
-    process.env.RLH_DESKTOP_INSTALL_TOKEN = 'token';
     const errors = [];
     const previousError = console.error;
     console.error = (...args) => { errors.push(args.map(String).join(' ')); };
     try {
-      await mod.apply({ tools: { register() { registered = true; } } });
+      await mod.applyWithEnvironment({ tools: { register() { registered = true; } } }, {
+        RLH_DESKTOP_INSTALL_URL: 'http://127.0.0.1:1',
+        RLH_DESKTOP_INSTALL_TOKEN: 'token',
+        RLH_HARNESS_ROOT: path.join(dir, 'missing-harness'),
+      });
     } finally {
       console.error = previousError;
     }

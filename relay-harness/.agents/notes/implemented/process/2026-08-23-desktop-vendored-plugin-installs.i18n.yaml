@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/process/2026-08-23-desktop-vendored-plugin-installs.md
-2026-08-23-desktop-vendored-plugin-installs.md: 8dee153c7ad28f4101a354e2b55529d5bbd93da2
-2026-08-23-desktop-vendored-plugin-installs.zh.md: cad50c52ef54e008c2f29a51d8550ca84f2c0c4d
+2026-08-23-desktop-vendored-plugin-installs.md: a67d36c918f7e11475c13546f005d62c03041d4d
+2026-08-23-desktop-vendored-plugin-installs.zh.md: 2152900a96ad01c135f68321a1fda14c291c618a

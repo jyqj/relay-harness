@@ -124,6 +124,10 @@
     # managed document, which is never materialized into the process environment.
     - id: credentials
       name: '@relay-harness/rlh-credentials-local'
+      config:
+        # Desktop passes only this path. The provider imports the legacy apiKey
+        # once into `.credentials.yaml` and scrubs it from the JSON source.
+        legacyDesktopJsonPath: !!js process.env.RLH_DESKTOP_LEGACY_CREDENTIALS_PATH
 
     # The pi-ai multi-provider twin, mounted dormant: zero routes (and no extra
     # models in the picker) until a `llm-pi-ai:` settings section supplies provider
@@ -429,13 +433,12 @@
     - id: tool-subagent-report
       name: '@relay-harness/rlh-tool-subagent-report'
 
+    # The engine serves the fixed deployment-owned Ralph script. The arbitrary
+    # model-written workflow Consumer is intentionally absent from this bundle.
     - id: workflow-worker-thread
       name: '@relay-harness/rlh-workflow-worker-thread'
       config:
         provider: spawn
-
-    - id: tool-workflow
-      name: '@relay-harness/rlh-tool-workflow'
 
     - id: timeout-policy
       name: '@relay-harness/rlh-tool-call-timeout-policy'

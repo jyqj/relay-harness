@@ -686,5 +686,4 @@ module.exports = {
   createDisabledRemote,
   rewriteProxyHeaders,
   shouldGzipProxy,
-  DEFAULT_PORT,
 };

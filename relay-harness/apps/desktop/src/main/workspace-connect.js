@@ -245,7 +245,6 @@ module.exports = {
   pageEval,
   pageScript,
   clickNamed,
-  pressEnter,
   makeRecorder,
   connectConfiguredWorkspace,
 };

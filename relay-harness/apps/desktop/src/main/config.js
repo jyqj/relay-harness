@@ -6,7 +6,9 @@ const { projectRoot } = require('./paths');
 const { DEFAULT_CLOSE_TO_TRAY } = require('./close-behavior');
 const { normalizeRelayHostToken } = require('../shared/relay-auth');
 
-const REMOTE_FEATURE_ENABLED = true;
+// Remote networking remains deliberately deferred. Keep configuration parsing
+// for forward compatibility, but never expose or activate a listener in this build.
+const REMOTE_FEATURE_ENABLED = false;
 
 const DEFAULTS = {
   workspace: '',
@@ -235,22 +237,24 @@ function loadConfig() {
 
 function saveConfig(next) {
   const current = loadConfig();
+  // API keys belong to Runtime `ctx.credentials`. Preserve a pre-seam value
+  // only until credentials-local imports and scrubs it; never accept a new
+  // Desktop-owned value.
+  const { apiKey: _requestedApiKey, ...accepted } = next;
   const merged = normalizeShellSurface(
-    normalizeRemoteConfig(normalizePluginRecovery(normalizeHarnessRecovery({ ...current, ...next }))),
+    normalizeRemoteConfig(normalizePluginRecovery(normalizeHarnessRecovery({ ...current, ...accepted }))),
   );
   if (merged.githubToken === '********') {
     merged.githubToken = current.githubToken;
   }
-  if (merged.apiKey === '********') {
-    merged.apiKey = current.apiKey;
-  }
+  merged.apiKey = current.apiKey;
   merged.locale = merged.locale === 'en' ? 'en' : 'zh';
   delete merged.pluginSubagent;
   delete merged.pluginGenUi;
   const { apiKey, baseUrl, githubToken, remoteToken, remoteRelayToken, remoteDevices, ...publicLayer } = merged;
   writeJson(configPath(), publicLayer);
   writeJson(credentialsPath(), {
-    apiKey: apiKey || '',
+    ...(apiKey ? { apiKey } : {}),
     baseUrl: baseUrl || '',
     githubToken: githubToken || '',
     remoteToken: remoteToken || '',
@@ -268,11 +272,11 @@ function publicConfig(config) {
     hasApiKey: Boolean(config.apiKey),
     simpleMode: config.simpleMode === true,
     hasGithubToken: Boolean(config.githubToken),
-    remoteEnabled: Boolean(config.remoteEnabled),
+    remoteEnabled: REMOTE_FEATURE_ENABLED && Boolean(config.remoteEnabled),
     remoteAvailable: REMOTE_FEATURE_ENABLED,
     remotePort: Number(config.remotePort) || DEFAULTS.remotePort,
-    remoteMode: config.remoteMode === 'relay' ? 'relay' : 'lan',
-    remoteRelayUrl: config.remoteRelayUrl || '',
+    remoteMode: REMOTE_FEATURE_ENABLED && config.remoteMode === 'relay' ? 'relay' : 'lan',
+    remoteRelayUrl: REMOTE_FEATURE_ENABLED ? (config.remoteRelayUrl || '') : '',
     remoteToken: '',
     remoteRelayToken: '',
     remoteDevices: [],
@@ -287,6 +291,7 @@ module.exports = {
   publicConfig,
   defaultWorkspace,
   configPath,
+  credentialsPath,
   normalizeHarnessRecovery,
   normalizePluginRecovery,
   normalizeRendererConfigPatch,

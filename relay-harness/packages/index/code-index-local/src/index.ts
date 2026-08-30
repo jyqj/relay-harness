@@ -482,32 +482,67 @@ export class CodeIndexLocal extends CodeIndex {
     return Promise.resolve(bindCodeIndexWorkspace(canonical, this))
   }
 
+  /**
+   * Report the configured workspace index health after opening its derived store.
+   * @returns current file count, tier, epochs, refresh summary, and degradation state.
+   */
   override async status(): Promise<IndexStatusReport> {
     await this.runtime.ensureOpen()
     return this.runtime.status()
   }
 
+  /**
+   * Report the operator projection after opening the derived store.
+   * @returns bounded file, chunk, generation, and build health.
+   */
   override async managementStatus(): Promise<CodeIndexManagementStatus> {
     await this.runtime.ensureOpen()
     return this.runtime.managementStatus()
   }
 
+  /**
+   * Drain provider-derived embedding work without rebuilding the source index.
+   * @returns settled management status after reconciliation.
+   */
   override reconcile(): Promise<CodeIndexManagementStatus> {
     return this.runtime.reconcile()
   }
 
+  /**
+   * Refresh the configured workspace index.
+   * @param options - refresh reason and optional candidate paths.
+   * @returns committed diff and generation summary.
+   */
   override refresh(options?: RefreshOptions): Promise<RefreshSummary> {
     return this.runtime.refresh(options)
   }
 
+  /**
+   * Search the configured workspace's current derived generation.
+   * @param request - bounded query and optional retrieval filters.
+   * @param signal - cancellation for the active search.
+   * @returns ranked hits and the epoch pair observed by the read.
+   */
   override async search(request: SearchRequest, signal?: AbortSignal): Promise<SearchResult> {
     return this.runtime.search(request, signal)
   }
 
+  /**
+   * Hydrate indexed chunk identities from their current source files.
+   * @param request - ordered chunk identities to hydrate.
+   * @param signal - cancellation checked around the store and source reads.
+   * @returns verified bodies, explicit rejections, and the observed generation.
+   */
   override hydrateChunks(request: HydrateChunksRequest, signal?: AbortSignal): Promise<HydrateChunksResult> {
     return this.runtime.hydrateChunks(request, signal)
   }
 
+  /**
+   * Answer one bounded graph question over the configured workspace index.
+   * @param request - graph operation and its operation-specific limits.
+   * @param signal - cancellation for the active graph read.
+   * @returns graph nodes, edges, and the explain envelope under the observed epochs.
+   */
   override async exploreGraph(request: GraphExploreRequest, signal?: AbortSignal): Promise<GraphExploreResult> {
     return this.runtime.exploreGraph(request, signal)
   }

@@ -141,7 +141,10 @@ describe('desktop install control', { concurrency: false }, () => {
     const injected = desktopInstallEnv();
     assert.match(injected.RLH_DESKTOP_INSTALL_URL, /^http:\/\/127\.0\.0\.1:\d+$/);
     assert.equal(injected.RLH_DESKTOP_INSTALL_TOKEN.length, 64);
-    const env = new RlhManager({ loadConfig: () => ({}) }).spawnEnv({}, null);
+    const env = new RlhManager({
+      loadConfig: () => ({}),
+      credentialsPath: () => '/private/desktop/credentials.json',
+    }).spawnEnv({}, null);
     assert.equal(env.RLH_DESKTOP_INSTALL_URL, injected.RLH_DESKTOP_INSTALL_URL);
     assert.equal(env.RLH_DESKTOP_INSTALL_TOKEN, injected.RLH_DESKTOP_INSTALL_TOKEN);
   });

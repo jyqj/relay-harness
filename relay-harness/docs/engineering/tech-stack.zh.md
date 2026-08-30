@@ -2,7 +2,7 @@
 
 [English](tech-stack.md) | 中文
 
-> [ADR-0005](../adr/0005-adopt-ts-harness-runtime.md) 选择根目录 TypeScript Relay Harness monorepo。详细运行时架构由 [`../architecture.md`](../architecture.md) 维护；本页概述技术选择与依赖方向。
+> [ADR-0005](../adr/0005-adopt-ts-harness-runtime.md) 选择 `relay-harness/` runtime root 下的 TypeScript Relay Harness monorepo。详细运行时架构由 [`../architecture.md`](../architecture.md) 维护；本页概述技术选择与依赖方向。
 
 ## 1. 已确认基线
 

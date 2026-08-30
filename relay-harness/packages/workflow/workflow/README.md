@@ -4,7 +4,7 @@ English | [中文](README.zh.md)
 
 The workflow seam (`ctx.workflowEngine`) executes a model-written orchestration script that can fan out subagents. The seam defines the script, run, result, error, and event contracts; an engine decides how to isolate and execute the script.
 
-`@relay-harness/rlh-workflow-worker-thread` is the current engine and `@relay-harness/rlh-tool-workflow` is the model-facing consumer. A future process or sandbox engine can replace the implementation without changing the tool.
+`@relay-harness/rlh-workflow-worker-thread` is the current engine and `@relay-harness/rlh-tool-workflow` is the generic model-facing consumer. The ordinary-user base mounts the engine only for `rlh-tool-ralph`'s deployment-owned fixed script and omits `rlh-tool-workflow` because the current engine does not sandbox model-written code; the shipped Cordis-creation preset and user-authored profile patches are explicit developer opt-ins for arbitrary scripts. A future process or sandbox engine can replace the implementation without changing the tool.
 
 The package root is the Host face. The browser-safe `@relay-harness/rlh-workflow/types` subpath contains run identities, metadata, results, and observe-only lifecycle payloads without importing `Agent`, Cordis services, or Host context declarations; Host-only `WorkflowStartRequest` and `WorkflowRun` live behind the package root.
 

@@ -18,6 +18,23 @@ const { readPin } = require('../shared/harness-upstream');
 const EXPECTED_URL = 'http://127.0.0.1:3080';
 const CHILD_PID = 4242;
 
+test('spawn environment passes only the legacy credential path to Runtime migration', () => {
+  const legacyPath = '/private/desktop/credentials.json';
+  const manager = new RlhManager({ credentialsPath: () => legacyPath });
+  const secret = 'desktop-secret-must-not-enter-env';
+  const previous = process.env.DEEPSEEK_API_KEY;
+  delete process.env.DEEPSEEK_API_KEY;
+  try {
+    const env = manager.spawnEnv({ apiKey: secret }, null);
+    assert.equal(env.DEEPSEEK_API_KEY, undefined);
+    assert.equal(env.RLH_DESKTOP_LEGACY_CREDENTIALS_PATH, legacyPath);
+    assert.equal(JSON.stringify(env).includes(secret), false);
+  } finally {
+    if (previous === undefined) delete process.env.DEEPSEEK_API_KEY;
+    else process.env.DEEPSEEK_API_KEY = previous;
+  }
+});
+
 const tick = (ms = 2) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function waitFor(fn, { timeout = 3000, interval = 2 } = {}) {
@@ -111,6 +128,7 @@ function makeHarness(overrides = {}) {
       calls.killOwned += 1;
       return 0;
     },
+    credentialsPath: () => path.join(workspace, 'credentials.json'),
     ...overrides.deps,
   };
   const manager = new RlhManager(deps);

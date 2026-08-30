@@ -119,7 +119,7 @@ rlh 的验证会一并安装 vendored 族的 pack 产物。harness 的包把 ven
 
 | 项 | 内容 |
 |---|---|
-| 发布集 manifest | 去掉 `private: true`；按序列补 `publishConfig.access` 与带各自 `directory` 的 `repository` |
+| 发布集 manifest | 去掉 `private: true`；按序列补 `publishConfig.access`，并添加以 Git 根为相对起点的 `repository.directory`（`relay-harness/<runtime-relative-directory>`） |
 | 发布集边界 | `packages/*/*`、`apps/*`、`vendor/*` 的全部成员 |
 | 依赖协议 | workspace 内部引用为 `workspace:^`，由 `check-workspace-constraints.ts` 与 invariant companion 规则强制 |
 | 根 `AGENTS.md` | 「vendored 包是 `private: true`」这条约定不再成立 |

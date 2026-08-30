@@ -61,6 +61,7 @@ async function mountPlugin(
   options: {
     writeDelayMs?: number
     failFlush?: boolean
+    maxFrameBytes?: number
     beforeServer?: (ctx: Context) => Promise<void> | void
   } = {},
 ): Promise<ApplyHarness> {
@@ -107,7 +108,12 @@ async function mountPlugin(
   const exit = (code: number): void => { events.push({ kind: 'exit', code }) }
 
   ctx.effect(() => () => { events.push({ kind: 'root-disposed' }) }, 'jsonrpc test root-disposal witness')
-  const fiber = await ctx.plugin(jsonrpc, { input, output, exit })
+  const fiber = await ctx.plugin(jsonrpc, {
+    input,
+    output,
+    exit,
+    ...options.maxFrameBytes === undefined ? {} : { maxFrameBytes: options.maxFrameBytes },
+  })
 
   const frames = (): Record<string, unknown>[] =>
     events.flatMap(event => event.kind === 'frame' ? [event.frame] : [])
@@ -329,6 +335,20 @@ describe('rlh-sdk-jsonrpc-server plugin apply', () => {
       harness.send({ jsonrpc: '2.0', id: 'after-flush-failure', method: 'initialize', params: { cwd: storageDir, provider: 'deepseek-official', model: 'x' } })
       await settle()
       expect(harness.frames().length).toBe(before)
+    } finally {
+      await harness.dispose()
+      await rm(storageDir, { recursive: true, force: true })
+    }
+  })
+
+  it('fails closed and exits 1 when an unterminated input frame exceeds its cap', async () => {
+    const storageDir = await mkdtemp(join(tmpdir(), 'rlh-jsonrpc-apply-frame-limit-'))
+    const harness = await mountPlugin(storageDir, { maxFrameBytes: 32 })
+    try {
+      harness.sendRaw('x'.repeat(33))
+      await waitFor(() => harness.exits().length > 0 ? true : undefined, 'exit after frame overflow')
+      expect(harness.exits()).toEqual([1])
+      expect(harness.events.filter(event => event.kind === 'root-disposed')).toHaveLength(1)
     } finally {
       await harness.dispose()
       await rm(storageDir, { recursive: true, force: true })

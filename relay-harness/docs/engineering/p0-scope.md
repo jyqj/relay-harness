@@ -4,7 +4,7 @@ English | [中文](p0-scope.zh.md)
 
 ## Status
 
-[ADR-0005](../adr/0005-adopt-ts-harness-runtime.md) selects the root TypeScript monorepo as the current implementation. This document describes current engineering acceptance rather than planning a Rust workspace.
+[ADR-0005](../adr/0005-adopt-ts-harness-runtime.md) selects the TypeScript monorepo under the `relay-harness/` runtime root as the current implementation. This document describes current engineering acceptance rather than planning a Rust workspace.
 
 [`../feature-status.json`](../feature-status.json) is authoritative for feature completion. A feature may be `shipped` only when default composition, Remote/API, UI, e2e, and documentation evidence all exist.
 
@@ -19,7 +19,7 @@ English | [中文](p0-scope.zh.md)
 
 ## Current engineering gates
 
-1. Root `.github/workflows/` is the only GitHub automation entry and workflows operate on the root monorepo.
+1. Root `.github/workflows/` is the only GitHub automation entry and workflows operate on the `relay-harness/` runtime monorepo.
 2. `scripts/verify-feature-status.mjs` validates feature claims and default-composition closure.
 3. Typecheck, focused tests, Web snapshots, `doc-sync`, and release rehearsal each prove their own boundary; a narrow pass is never described as repository-wide green.
 4. Generated config, persistence, tool, Cordis, and capability catalogs stay fresh with source.

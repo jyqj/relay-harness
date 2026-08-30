@@ -126,7 +126,6 @@ function createDevice(userAgent, token) {
 }
 
 module.exports = {
-  generateDeviceId,
   deviceName,
   deviceDetail,
   normalizeDevices,

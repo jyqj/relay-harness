@@ -1,6 +1,6 @@
 /**
  * Read-side retrieval face of the derived SQLite store: an implementation of
- * the search package's {@link https://github.com/jyqj/relay-harness/blob/master/packages/index/code-index-search/src/port.ts | RetrievalPort}
+ * the search package's {@link https://github.com/jyqj/relay-harness/blob/master/relay-harness/packages/index/code-index-search/src/port.ts | RetrievalPort}
  * over raw SQL.
  *
  * Ported from the reference implementation's retrieval read model

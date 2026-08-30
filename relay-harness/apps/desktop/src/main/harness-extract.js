@@ -104,7 +104,6 @@ async function ensurePackagedHarness(log = () => {}) {
 
 module.exports = {
   harnessArchivePath,
-  extractedHarnessRoot,
   packagedHarnessRoot,
   ensurePackagedHarness,
   hasBuiltHarness,

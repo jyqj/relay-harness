@@ -1,4 +1,4 @@
-import { chmod, mkdtemp, mkdir, rm, stat, symlink, utimes, writeFile } from 'node:fs/promises'
+import { chmod, mkdtemp, mkdir, realpath, rm, stat, symlink, utimes, writeFile } from 'node:fs/promises'
 import { dirname, isAbsolute, join, relative, resolve } from 'node:path'
 import { tmpdir } from 'node:os'
 import { describe, expect, it, vi } from 'vitest'
@@ -452,7 +452,7 @@ describe('workspace context instruction discovery', () => {
     }
   })
 
-  it('follows a symlinked instruction file to its target content', async () => {
+  it('rejects a project instruction symlink whose final target is outside every allowed root', async () => {
     const root = await tempRepo()
     const home = await tempRepo()
     const outside = await tempRepo()
@@ -464,8 +464,8 @@ describe('workspace context instruction discovery', () => {
       const files = await discoverBaselineInstructionFiles({ cwd: root, rlhHome: home })
       const loaded = await loadBaselineInstructions({ cwd: root, rlhHome: home, maxBytes: 65536 })
 
-      expect(files.map(file => file.displayPath)).toContain('AGENTS.md')
-      expect(loaded?.text).toContain('shared instruction body')
+      expect(files.map(file => file.displayPath)).not.toContain('AGENTS.md')
+      expect(loaded).toBeUndefined()
     } finally {
       await rm(root, { recursive: true, force: true })
       await rm(home, { recursive: true, force: true })
@@ -473,7 +473,31 @@ describe('workspace context instruction discovery', () => {
     }
   })
 
-  it('follows a symlinked instruction file through ctx.fs to its target content', async () => {
+  it('loads an off-root instruction symlink only when its target root is explicitly allowed', async () => {
+    const root = await tempRepo()
+    const home = await tempRepo()
+    const outside = await tempRepo()
+    try {
+      await mkdir(join(root, '.git'), { recursive: true })
+      await write(join(outside, 'shared.md'), 'explicitly allowed instruction body')
+      await symlink(join(outside, 'shared.md'), join(root, 'AGENTS.md'))
+
+      const loaded = await loadBaselineInstructions({
+        cwd: root,
+        rlhHome: home,
+        maxBytes: 65536,
+        additionalAllowedRoots: [outside],
+      })
+
+      expect(loaded?.text).toContain('explicitly allowed instruction body')
+    } finally {
+      await rm(root, { recursive: true, force: true })
+      await rm(home, { recursive: true, force: true })
+      await rm(outside, { recursive: true, force: true })
+    }
+  })
+
+  it('rejects an off-root project instruction symlink through ctx.fs', async () => {
     const root = await tempRepo()
     const home = await tempRepo()
     const outside = await tempRepo()
@@ -487,7 +511,33 @@ describe('workspace context instruction discovery', () => {
 
       await composeBaselinePrefix(ctx, agent)
 
-      expect(derivedText(agent)).toContain('shared provider instruction body')
+      expectNoDerivedMessages(agent)
+    } finally {
+      await rm(root, { recursive: true, force: true })
+      await rm(home, { recursive: true, force: true })
+      await rm(outside, { recursive: true, force: true })
+    }
+  })
+
+  it('honors an explicit additional instruction root through ctx.fs', async () => {
+    const root = await tempRepo()
+    const home = await tempRepo()
+    const outside = await tempRepo()
+    try {
+      await mkdir(join(root, '.git'), { recursive: true })
+      await write(join(outside, 'shared.md'), 'explicit provider instruction body')
+      await symlink(join(outside, 'shared.md'), join(root, 'AGENTS.md'))
+      const ctx = new Context()
+      await mountWorkspaceContext(ctx, {
+        rlhHome: home,
+        maxBytes: 65536,
+        additionalAllowedRoots: [outside],
+      })
+      const agent = stubAgent(root)
+
+      await composeBaselinePrefix(ctx, agent)
+
+      expect(derivedText(agent)).toContain('explicit provider instruction body')
     } finally {
       await rm(root, { recursive: true, force: true })
       await rm(home, { recursive: true, force: true })
@@ -993,6 +1043,15 @@ describe('workspace context request injection', () => {
     const ctx = new Context()
 
     await expect(ctx.plugin(workspaceContext, {} as workspaceContext.Config)).rejects.toThrow(/maxBytes/)
+  })
+
+  it('rejects a relative additional instruction root at plugin load', async () => {
+    const ctx = new Context()
+
+    await expect(ctx.plugin(workspaceContext, {
+      maxBytes: 65536,
+      additionalAllowedRoots: ['shared-instructions'],
+    })).rejects.toThrow(/additionalAllowedRoots entries must be absolute paths/)
   })
 
   it('mounts without requiring a filesystem provider', async () => {
@@ -2589,7 +2648,7 @@ describe('workspace context request injection', () => {
       observedStats.clear()
       await isolated.loadBaselineInstructions({ cwd: root, rlhHome: home, maxBytes: 65536 })
 
-      expect(observedStats.get(join(root, 'AGENTS.md'))).toBe(1)
+      expect(observedStats.get(await realpath(join(root, 'AGENTS.md')))).toBe(1)
     } finally {
       vi.doUnmock('node:fs/promises')
       vi.resetModules()

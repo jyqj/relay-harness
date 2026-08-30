@@ -12,7 +12,9 @@ Status: implemented
 
 `relay-harness/` 是唯一 tracked 产品/runtime monorepo。本地 `auggie-packages/` 与 `codecortex-rust_副本/` 目录作为同级参考项目保留，并由 Git 忽略。产品源码、文档、包元数据、脚本和构建输出全部归属 `relay-harness/`。
 
-GitHub 自动化是有意保留的例外，因为 GitHub 只从 Git 根发现 workflow。根 `.github/` 继续作为唯一 workflow、Issue policy 与 Dependabot 权威；其 shell step 从 `relay-harness/` 运行，action-owned path 使用显式前缀。外层 `.gitignore` 只管理容器本地参考目录，`relay-harness/.gitignore` 管理 runtime 构建残留。
+面向 GitHub 的仓库元数据是有意保留的例外。根 `.github/` 继续作为唯一 workflow、Issue policy 与 Dependabot 权威，因为 GitHub 只在此处发现 workflow；其 shell step 从 `relay-harness/` 运行，action-owned path 使用显式前缀。仅用于跳转的根 `README.md` 把访问者引向 runtime 文档，与 runtime 文件逐字节一致的根 `LICENSE` 支持仓库许可证识别，但不形成第二套产品文档权威。外层 `.gitignore` 只管理容器本地参考目录，`relay-harness/.gitignore` 管理 runtime 构建残留。
+
+面向仓库的路径使用同一套外层根坐标。已发布包的 `repository.directory` 值与绝对 GitHub blob 链接都以 `relay-harness/` 开头；monorepo 内的命令、workspace 发现与相对源码链接仍以 runtime root 为起点。workspace 约束会推导并强制这一转换，而不会把 runtime-relative 包路径当成 npm 仓库元数据。
 
 ## 考虑过的替代方案
 
@@ -23,4 +25,4 @@ GitHub 自动化是有意保留的例外，因为 GitHub 只从 Git 根发现 wo
 
 ## 后果
 
-可见的外层目录只包含 `relay-harness/` 和两个参考项目。根治理隐藏在 `.github/` 下；外层不保留生成依赖或构建输出。Feature status 记录 `runtimeRoot: "relay-harness"`，CI 与 Dependabot 显式指向该根，仓库检查会拒绝在其外部出现第二套 tracked runtime tree。
+可见的外层目录包含跳转 README、许可证、`relay-harness/` 与两个本地参考项目。根治理位于 `.github/` 下；外层不保留生成依赖或构建输出。Feature status 记录 `runtimeRoot: "relay-harness"`，CI 与 Dependabot 显式指向该根，仓库检查会拒绝在其外部出现第二套 tracked runtime tree，npm/PyPI 源码链接通过外层前缀解析。

@@ -273,6 +273,20 @@ test('logs and continues when the rlhbot preset fails', async () => {
   assert.ok(f.rlh.logs.some((line) => /rlhbot/.test(line) && /offline/.test(line)));
 });
 
+test('reports an incomplete bundled rlhbot as disabled and still starts Harness', async () => {
+  const f = fixture({
+    ensureRlhbotPlugin: async () => ({
+      ok: false,
+      disabled: true,
+      error: 'missing-source:entry:lib/index.js',
+    }),
+  });
+  await f.controller.start();
+  assert.equal(f.rlh.startCalls, 1);
+  assert.ok(f.rlh.logs.some((line) => /rlhbot/.test(line) && /未启用/.test(line) && /lib\/index\.js/.test(line)));
+  assert.equal(f.rlh.logs.some((line) => /预置 rlhbot 失败/.test(line)), false);
+});
+
 test('plugin-tree startup failure retries once with the official template overlay', async () => {
   const first = Object.assign(new Error('rlh exited'), { pluginTree: true });
   const f = fixture({

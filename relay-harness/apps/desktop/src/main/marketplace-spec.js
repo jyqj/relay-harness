@@ -96,7 +96,5 @@ function isAllowedMarketplaceSpec(spec, plugin) {
 module.exports = {
   GITHUB_PATH_SPEC,
   parseGithubSpec,
-  ownerRepoMatches,
-  isValidMarketplacePathSpec,
   isAllowedMarketplaceSpec,
 };

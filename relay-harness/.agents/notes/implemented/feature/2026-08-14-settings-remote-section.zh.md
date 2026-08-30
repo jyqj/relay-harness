@@ -10,7 +10,7 @@ Status: implemented
 
 ## 决策
 
-远程是 `@relay-harness/rlh-client-ui-settings-remote` 里受桌面门控的 `sidebar.footer.action`（`id: 'remote'`），画在设置齿轮旁边。触发器和标题文案是 **远程**。网关关闭时手机图标用次级文字色，开启后用主文字色。弹窗暴露一对 `ui-primitives` `Button` 的开启／关闭、一对 `Button` 的局域网／服务器中继（`size="sm"`：选中 `primary`，未选中 `ghost`）、配对二维码，以及带描边和 `IconChevronRightOutline14` 的 **已连接设备** 行；点该行打开设备管理。改模式先写入 `snap.mode`，不置弹窗级 busy，因此开启／关闭按钮保持可点。改模式只换配对二维码；远程开启时局域网网关和出站中继都保持运行，只有关闭远程才会停掉它们。端口、地址、复制、换令牌和中继地址编辑不在这一面。注册仍要求 `desktopShell()` 提供 `getRemote`／`saveRemote`／`rotateRemoteToken`／`unbindRemoteDevice`。配对 URL 把密钥放在 `#offer=`。扫码成功后给这台设备签发长期凭证，和二维码里的配对密钥分开；解绑后该设备失效。中继是桌面对已配置源的出站连接（默认 `http://125.124.85.212:8411`）。rlh 仍然绑定 `127.0.0.1`。web-app 补丁当前注释掉 `ui-settings-remote` 行，因此这个页脚动作不会被组装。桌面主进程不构造 `RemoteGateway`（[桌面输入框草稿查找与官方触发器](../bug-fix/2026-08-21-desktop-composer-draft-and-official-triggers.md)）。
+Remote 的 dormant UI 实现是 `@relay-harness/rlh-client-ui-settings-remote` 中受桌面门控的 `sidebar.footer.action`（`id: 'remote'`），设计位于设置齿轮旁，包含开启／关闭、LAN／中继、配对二维码与已连接设备控件。它不属于已交付 composition：web-app 补丁注释掉 `ui-settings-remote`，桌面 preload 不暴露 Remote 方法，`REMOTE_FEATURE_ENABLED` 与 `remoteAvailable` 均为 false，主进程只构造 `createDisabledRemote()` 而非 `RemoteGateway`（[桌面输入框草稿查找与官方触发器](../bug-fix/2026-08-21-desktop-composer-draft-and-official-triggers.md)）。用户无法到达任何 Remote 控件或网络入口。
 
 ## 考虑过的替代
 
@@ -22,4 +22,4 @@ Status: implemented
 
 ## 后果
 
-GUI 测试必须证明没有 `window.shell` 时不出现、关闭时触发器是暗的、开启时弹窗有二维码和已连接设备行、开启／关闭和局域网／中继都是 radio `Button`，以及解绑。改模式时开启／关闭按钮必须保持可点，并且不得启停局域网网关或中继。监听／令牌／中继／设备仍归主进程 IPC。标题栏和托盘不再打开远程设置节。
+Dormant 包测试保留拟议控件行为，但不把它组装进产品。已交付 composition 的测试要求该行保持注释；Desktop config／IPC 测试要求投影始终 unavailable/disabled；标题栏、托盘、preload 与设置均不暴露 Remote 入口。

@@ -5,7 +5,6 @@
 
 import { globSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, resolve, sep } from 'node:path'
-import { pathToFileURL } from 'node:url'
 import ts from 'typescript'
 import { TypeScriptProject } from './ts-project.ts'
 
@@ -15,7 +14,6 @@ const MANIFEST_GLOBS = ['packages/*/*/package.json', 'apps/*/package.json', 'ven
 const CONFIG_GLOB = 'packages/*/*/tsdown.config.ts'
 const PLATFORM_SOURCE = 'packages/client/web/src/platform.ts'
 const PARSER_PRELOAD_SOURCE = 'packages/client/modules/src/index.ts'
-const STATIC_PRESET_SOURCE = 'packages/client/tsdown.client.ts'
 const CORDIS = '@relay-harness/cordis'
 const RLH_PREFIX = '@relay-harness/rlh-'
 const CLIENT_WEB = '@relay-harness/rlh-client-web'
@@ -703,25 +701,57 @@ function stringArray(
   return value as string[]
 }
 
-async function readStaticLinkedRoster(root: string): Promise<Set<string>> {
-  const presetUrl = pathToFileURL(resolve(import.meta.dirname, '..', STATIC_PRESET_SOURCE)).href
-  const preset = await import(presetUrl) as { isStaticLinkedConfig?: unknown }
-  if (typeof preset.isStaticLinkedConfig !== 'function') {
-    throw new Error(GATE + ': ' + STATIC_PRESET_SOURCE + ' exports no isStaticLinkedConfig')
+/**
+ * Read literal package ids passed to the imported `staticLinked` preset.
+ * @param path - config path used for TypeScript parsing diagnostics.
+ * @param source - package tsdown config source.
+ * @returns package ids declared through the static Client assembly channel.
+ */
+export function collectStaticLinkedPackageNames(path: string, source: string): string[] {
+  const sourceFile = ts.createSourceFile(path, source, ts.ScriptTarget.Latest, true)
+  const localNames = new Set<string>()
+  for (const statement of sourceFile.statements) {
+    if (!ts.isImportDeclaration(statement)
+      || !ts.isStringLiteral(statement.moduleSpecifier)
+      || !statement.moduleSpecifier.text.endsWith('/tsdown.client.ts')) continue
+    const bindings = statement.importClause?.namedBindings
+    if (bindings === undefined || !ts.isNamedImports(bindings)) continue
+    for (const element of bindings.elements) {
+      if ((element.propertyName ?? element.name).text === 'staticLinked') localNames.add(element.name.text)
+    }
   }
-  const predicate = preset.isStaticLinkedConfig as (configs: readonly unknown[]) => boolean
+  const packages: string[] = []
+  const visit = (node: ts.Node): void => {
+    if (ts.isCallExpression(node)
+      && ts.isIdentifier(node.expression)
+      && localNames.has(node.expression.text)) {
+      const id = node.arguments[0]
+      if (id === undefined || !ts.isStringLiteral(id)) {
+        throw new Error(`${GATE}: ${path}: staticLinked package id must be a string literal`)
+      }
+      packages.push(id.text)
+    }
+    ts.forEachChild(node, visit)
+  }
+  visit(sourceFile)
+  return packages
+}
+
+function readStaticLinkedRoster(root: string): Set<string> {
   const roster = new Set<string>()
   for (const configPath of globSync(CONFIG_GLOB, { cwd: root }).map(normalizePath).sort()) {
-    const loaded = await import(pathToFileURL(resolve(root, configPath)).href) as { default?: unknown }
-    if (typeof loaded.default !== 'function') continue
-    const configs = (loaded.default as (input: { env: Record<string, string> }) => unknown)({
-      env: { RLH_BUILD_FACE: 'client' },
-    })
-    if (!Array.isArray(configs) || !predicate(configs)) continue
+    const names = collectStaticLinkedPackageNames(configPath, readFileSync(resolve(root, configPath), 'utf8'))
+    if (names.length === 0) continue
     const manifest = JSON.parse(
       readFileSync(resolve(root, configPath.replace(/tsdown\.config\.ts$/, 'package.json')), 'utf8'),
     ) as Manifest
-    if (typeof manifest.name === 'string') roster.add(manifest.name)
+    if (typeof manifest.name !== 'string') throw new Error(`${GATE}: ${configPath}: package has no name`)
+    for (const name of names) {
+      if (name !== manifest.name) {
+        throw new Error(`${GATE}: ${configPath}: staticLinked id ${JSON.stringify(name)} does not match ${manifest.name}`)
+      }
+      roster.add(name)
+    }
   }
   return roster
 }
@@ -765,10 +795,10 @@ function readStringLiteralArray(root: string, sourcePath: string, name: string):
   throw new Error(GATE + ': ' + sourcePath + ' declares no ' + name)
 }
 
-async function readFacts(root: string): Promise<ClientPackageFacts> {
+function readFacts(root: string): ClientPackageFacts {
   const { declarations, malformed } = readClientDeclarations(root)
   const byManifest = new Map(declarations.map(entry => [entry.manifest, entry]))
-  const staticLinkedPackages = await readStaticLinkedRoster(root)
+  const staticLinkedPackages = readStaticLinkedRoster(root)
   const project = new TypeScriptProject(root, 'client')
   const packages: ClientPackage[] = []
 
@@ -881,9 +911,9 @@ function normalizePath(path: string): string {
   return path.split(sep).join('/')
 }
 
-async function main(): Promise<void> {
+function main(): void {
   const root = resolve(import.meta.dirname, '..')
-  let facts = await readFacts(root)
+  let facts = readFacts(root)
   if (process.argv.includes('--fix')) {
     const changed = fixClientPackageManifests(root, facts)
     console.log(
@@ -891,7 +921,7 @@ async function main(): Promise<void> {
         ? GATE + ': no mechanically fixable manifest changes.'
         : GATE + ': fixed ' + String(changed.length) + ' manifest(s): ' + changed.join(', '),
     )
-    facts = await readFacts(root)
+    facts = readFacts(root)
   }
   const violations = collectClientPackageViolations(facts)
   if (violations.length > 0) {
@@ -910,5 +940,5 @@ async function main(): Promise<void> {
 }
 
 if (process.argv[1] !== undefined && import.meta.filename === resolve(process.argv[1])) {
-  await main()
+  main()
 }

@@ -15,7 +15,7 @@
 
 ### 首次搭建
 
-在仓库根目录安装依赖：
+在 runtime monorepo 根目录（Git checkout 内的 `relay-harness/`）安装依赖：
 
 ```sh
 pnpm install
@@ -91,7 +91,7 @@ pnpm run build
 
 ### 环境变量
 
-真实的 DeepSeek 适配器和需要密钥的 agent 演示从环境变量或仓库根目录一个被 gitignore 的 `.env` 文件读取凭证：
+真实的 DeepSeek 适配器和需要密钥的 agent 演示从环境变量或 runtime monorepo 根目录一个被 gitignore 的 `.env` 文件读取凭证：
 
 ```sh
 DEEPSEEK_API_KEY=sk-...
@@ -134,7 +134,7 @@ keyless [CI 工作流](../../.github/workflows/ci.yml) 将独立门禁分组到�
 pnpm run build
 ```
 
-单次运行的 Headless coding agent 需要环境变量或仓库根目录 `.env` 中的 `DEEPSEEK_API_KEY`：
+单次运行的 Headless coding agent 需要环境变量或 runtime 根目录 `.env` 中的 `DEEPSEEK_API_KEY`：
 
 ```sh
 pnpm rlh --profile headless "summarize this workspace"

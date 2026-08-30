@@ -3,7 +3,7 @@
   "description": "Workspace-aware Code Index provider router with canonical identities, isolated derived stores, and bounded lifecycle",
   "version": "0.1.0-rc.8",
   "publishConfig": { "access": "public" },
-  "repository": { "type": "git", "url": "git+https://github.com/jyqj/relay-harness.git", "directory": "packages/index/code-index-workspace-router" },
+  "repository": { "type": "git", "url": "git+https://github.com/jyqj/relay-harness.git", "directory": "relay-harness/packages/index/code-index-workspace-router" },
   "type": "module",
   "main": "lib/index.js",
   "types": "lib/types/index.d.ts",

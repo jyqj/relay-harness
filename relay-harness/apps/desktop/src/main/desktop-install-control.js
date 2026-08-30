@@ -174,7 +174,6 @@ function stopDesktopInstallControl() {
 }
 
 module.exports = {
-  RESTART_DELAY_MS,
   desktopInstallEnv,
   desktopInstallReady,
   startDesktopInstallControl,

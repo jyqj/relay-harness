@@ -16,7 +16,7 @@ ui-files does not register a `path` input-trigger source. Composer `@` is offici
 
 InputBar has no `listSkillNames` and no local `$` menu. Skills use official `/` via ui-skill.
 
-The desktop main process does not construct `RemoteGateway`. It passes `createDisabledRemote()` into HarnessController: `sync`/`stop` are no-ops and `snapshot` is `{ available: false, enabled: false, listening: false }`. `ui-settings-remote` stays commented in `packages/bundle/web-app/cordis.patch.yml`. User `remoteEnabled` on disk is not rewritten.
+The desktop main process does not construct `RemoteGateway`. It passes `createDisabledRemote()` into HarnessController: `sync`/`stop` are no-ops and `snapshot` is `{ available: false, enabled: false, listening: false }`. `REMOTE_FEATURE_ENABLED` is `false`; config normalization and the public renderer projection force `remoteEnabled: false`, `remoteAvailable: false`, LAN mode, and no relay URL even when an older file requests Remote. `ui-settings-remote` stays commented in `packages/bundle/web-app/cordis.patch.yml`. The stored preference is retained as inert input rather than opening a network entry.
 
 ## Alternatives considered
 
@@ -30,11 +30,11 @@ The desktop main process does not construct `RemoteGateway`. It passes `createDi
 
 ## Consequences
 
-Mention, drag, and Add to chat write the draft on a session-maybe fiber. Typing `@` no longer walks the workspace as a second source. Typing `$` does not open a skill menu. A user config with `remoteEnabled: true` does not listen until a later version starts the gateway again.
+Mention, drag, and Add to chat write the draft on a session-maybe fiber. Typing `@` no longer walks the workspace as a second source. Typing `$` does not open a skill menu. A user config with `remoteEnabled: true` projects as unavailable and disabled and never opens a listener.
 
 ## Testing
 
-`draft.client.spec.ts` in the three packages: `ctx.sessions` throws without inject and `ctx.get('sessions')` still writes; missing `get('sessions')` returns false. ui-files apply pins no `name: 'path'` source. InputBar pins `$fo` does not open a menuitem. `post-merge-desktop-ui.e2e.ts` clicks Mention on `note.md` and asserts `[note.md](note.md)` with an empty console tripwire, and asserts `[data-source="path"]` is absent after typing `@`. release-ui-walk requires `files.mentionAppended`. `remote.test.js` pins `createDisabledRemote` `listening !== true` and no `http.createServer`, and that `src/main/index.js` does not `new RemoteGateway`.
+`draft.client.spec.ts` in the three packages: `ctx.sessions` throws without inject and `ctx.get('sessions')` still writes; missing `get('sessions')` returns false. ui-files apply pins no `name: 'path'` source. InputBar pins `$fo` does not open a menuitem. `post-merge-desktop-ui.e2e.ts` clicks Mention on `note.md` and asserts `[note.md](note.md)` with an empty console tripwire, and asserts `[data-source="path"]` is absent after typing `@`. release-ui-walk requires `files.mentionAppended`. Desktop config and IPC tests pin the false feature flag, false public projection, rejected open action, discarded enable request, and disabled snapshot; `remote.test.js` pins that `src/main/index.js` never constructs `RemoteGateway`.
 
 ## Related
 

@@ -63,6 +63,8 @@ export interface Config {
   watch?: boolean
   /** Watcher write-settle window in milliseconds; defaults to 100. */
   debounceMs?: number
+  /** One-time Desktop `credentials.json` import; only its legacy `apiKey` field is consumed and scrubbed. */
+  legacyDesktopJsonPath?: string
 }
 
 /** Fully resolved provider parameters; defaulting happens here, never inline. */
@@ -70,6 +72,7 @@ interface ResolvedSpec {
   filename: string
   watch: boolean
   debounceMs: number
+  legacyDesktopJsonPath?: string
 }
 
 /**
@@ -83,6 +86,9 @@ export function resolveSpec(config: Config): ResolvedSpec {
     filename: resolve(config.path ?? join(resolveRlhHome(config.rlhHome), CREDENTIALS_FILENAME)),
     watch: config.watch ?? true,
     debounceMs: config.debounceMs ?? 100,
+    ...config.legacyDesktopJsonPath === undefined || config.legacyDesktopJsonPath === ''
+      ? {}
+      : { legacyDesktopJsonPath: resolve(config.legacyDesktopJsonPath) },
   }
 }
 
@@ -215,6 +221,7 @@ export class LocalCredentialProvider extends CredentialProvider {
     rlhHome: z.string(),
     watch: z.boolean().default(true),
     debounceMs: z.number().min(0).default(100),
+    legacyDesktopJsonPath: z.string(),
   })
 
   private readonly spec: ResolvedSpec
@@ -272,6 +279,7 @@ export class LocalCredentialProvider extends CredentialProvider {
       await this.operations
     }
     await this.loadInitial()
+    await this.migrateLegacyDesktopCredential()
     if (!this.spec.watch) return
     /* jscpd:ignore-start -- same watcher discipline as settings-file by design:
        the serialized-refresh and quiesce-on-dispose shape is the reviewed
@@ -434,6 +442,67 @@ export class LocalCredentialProvider extends CredentialProvider {
     }
     this.values = parseCredentialsDocument(text, this.spec.filename)
     this.text = text
+  }
+
+  /**
+   * Move the Desktop shell's pre-seam API key into this provider's authoritative
+   * document, then remove that value from the legacy JSON file. A managed value
+   * already present wins. The source is rewritten owner-only even when the key
+   * was empty; no diagnostic includes the value.
+   */
+  private async migrateLegacyDesktopCredential(): Promise<void> {
+    const legacyPath = this.spec.legacyDesktopJsonPath
+    if (legacyPath === undefined) return
+    if (legacyPath === this.spec.filename) {
+      throw new Error('credentials-local: legacy Desktop JSON path must differ from the credentials document')
+    }
+    let text: string
+    try {
+      text = await readFile(legacyPath, 'utf8')
+    } catch (error) {
+      if (isENOENT(error)) return
+      throw new Error(`credentials-local: cannot read legacy Desktop credentials at ${legacyPath}`, { cause: error })
+    }
+    let parsed: unknown
+    try {
+      parsed = JSON.parse(text) as unknown
+    } catch (error) {
+      throw new Error(`credentials-local: legacy Desktop credentials at ${legacyPath} are not valid JSON`, { cause: error })
+    }
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+      throw new Error(`credentials-local: legacy Desktop credentials at ${legacyPath} must be a JSON object`)
+    }
+    const source = parsed as Record<string, unknown>
+    if (!Object.hasOwn(source, 'apiKey')) return
+    const value = source['apiKey']
+    if (typeof value !== 'string') {
+      throw new Error('credentials-local: legacy Desktop credential apiKey must be a string')
+    }
+
+    if (value.length > 0) {
+      const ref = credentialRef('DEEPSEEK_API_KEY')
+      await mkdir(dirname(this.spec.filename), { recursive: true, mode: 0o700 })
+      await withFileLock(this.spec.filename, async () => {
+        await this.reconcileFromDisk()
+        if (this.values.has(ref)) return
+        const nextText = renderDocument(this.text, ref, value)
+        await writeFileAtomic(this.spec.filename, nextText, { mode: 0o600, dirMode: 0o700 })
+        this.text = nextText
+        this.values.set(ref, value)
+      })
+    }
+
+    const sanitized: Record<string, unknown> = {}
+    for (const [key, entry] of Object.entries(source)) {
+      if (key === 'apiKey') continue
+      Object.defineProperty(sanitized, key, {
+        value: entry,
+        enumerable: true,
+        configurable: true,
+        writable: true,
+      })
+    }
+    await writeFileAtomic(legacyPath, `${JSON.stringify(sanitized, null, 2)}\n`, { mode: 0o600, dirMode: 0o700 })
   }
 
   /* jscpd:ignore-start -- same deliberate mirror of settings-file's reload and

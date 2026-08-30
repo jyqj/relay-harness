@@ -15,7 +15,7 @@ The setup tutorial takes a new contributor from prerequisites to a checked check
 
 ### First-time setup
 
-Install dependencies from the repo root:
+Install dependencies from the runtime monorepo root (`relay-harness/` inside the Git checkout):
 
 ```sh
 pnpm install
@@ -91,7 +91,7 @@ pnpm run build
 
 ### Environment variables
 
-The real DeepSeek adapter and key-backed agent demos read credentials from the environment or from a gitignored `.env` at the repo root:
+The real DeepSeek adapter and key-backed agent demos read credentials from the environment or from a gitignored `.env` at the runtime monorepo root:
 
 ```sh
 DEEPSEEK_API_KEY=sk-...
@@ -134,7 +134,7 @@ Run the repository build separately before using these source-checkout demos:
 pnpm run build
 ```
 
-The one-shot Headless coding agent needs `DEEPSEEK_API_KEY` in the environment or repo-root `.env`:
+The one-shot Headless coding agent needs `DEEPSEEK_API_KEY` in the environment or the runtime-root `.env`:
 
 ```sh
 pnpm rlh --profile headless "summarize this workspace"

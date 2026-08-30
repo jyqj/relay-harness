@@ -18,7 +18,7 @@ Cordis 是 Relay Harness 底层的插件框架：它是一个小型运行时，�
 
 ```sh
 git clone https://github.com/jyqj/relay-harness.git
-cd relay-harness
+cd relay-harness/relay-harness
 pnpm install
 ```
 

@@ -97,7 +97,6 @@ function ensureRlhMarketPlugin(options = {}) {
 }
 
 module.exports = {
-  RLHMARKET_PACKAGE,
   RLHMARKET_BEGIN,
   RLHMARKET_END,
   ensureRlhMarketPlugin,

@@ -8,7 +8,7 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/jyqj/relay-harness.git",
-    "directory": "packages/typert/loader"
+    "directory": "relay-harness/packages/typert/loader"
   },
   "type": "module",
   "main": "lib/index.js",

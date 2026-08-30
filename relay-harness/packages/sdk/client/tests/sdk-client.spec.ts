@@ -15,6 +15,7 @@ import {
   HarnessClient,
   HarnessSession,
   JsonRpcResponseError,
+  NotificationQueueOverflowError,
   RequestTimeoutError,
   SdkProtocolError,
   TransportClosedError,
@@ -382,6 +383,30 @@ describe('HarnessClient', () => {
     idleOnly.close()
     await expect(all.next()).rejects.toThrow('notification subscription closed')
     await client.close()
+  })
+
+  it('fails only a slow subscription after its bounded notification queue fills', async () => {
+    const client = new HarnessClient({ command: 'unused', maxNotificationQueueSize: 2 })
+    const subscription = client.subscribe()
+    const inject = (index: number): void => {
+      (client as unknown as { dispatchNotification(n: HarnessNotification): void }).dispatchNotification({
+        method: 'session.event',
+        params: { index },
+      })
+    }
+
+    inject(1)
+    inject(2)
+    inject(3)
+
+    expect(subscription.tryNext()?.params.index).toBe(1)
+    expect(subscription.tryNext()?.params.index).toBe(2)
+    await expect(subscription.next()).rejects.toBeInstanceOf(NotificationQueueOverflowError)
+  })
+
+  it('rejects an invalid notification queue limit before spawning a runtime', () => {
+    expect(() => new HarnessClient({ command: 'unused', maxNotificationQueueSize: 0 }))
+      .toThrow(/maxNotificationQueueSize must be a positive safe integer/)
   })
 
   it('contains a throwing filter to its own subscription', async () => {

@@ -8,7 +8,7 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/jyqj/relay-harness.git",
-    "directory": "packages/shell/pwsh-sandbox"
+    "directory": "relay-harness/packages/shell/pwsh-sandbox"
   },
   "type": "module",
   "main": "lib/index.js",

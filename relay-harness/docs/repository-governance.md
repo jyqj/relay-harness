@@ -8,7 +8,9 @@ The Git checkout is an outer container: `relay-harness/` is the only tracked pro
 
 `docs/feature-status.json` records this as `runtimeRoot: "relay-harness"` and `sourceLayout: "nested-monorepo"`. Its `branchProtection` remains `unconfigured` until a remote ruleset is observed.
 
-GitHub discovers automation only from root `.github/`, so workflows, Issue policy, and Dependabot remain at the Git root. Ordinary workflow shell steps run with `working-directory: relay-harness`; Landlock shell steps use `relay-harness/native/landlock-run`. Dependabot targets `/relay-harness` for npm and `/relay-harness/python/sdk` for the Python SDK.
+The Git-root `README.md` only directs visitors to the runtime documentation, while the root `LICENSE` supports repository license discovery; neither creates a second runtime tree. GitHub discovers automation only from root `.github/`, so workflows, Issue policy, and Dependabot remain at the Git root. Ordinary workflow shell steps run with `working-directory: relay-harness`; Landlock shell steps use `relay-harness/native/landlock-run`. Dependabot targets `/relay-harness` for npm and `/relay-harness/python/sdk` for the Python SDK.
+
+Public repository metadata is also Git-root-relative: every published package's `repository.directory` and every absolute `blob/master` source link begins with `relay-harness/`. Contributor commands and relative source paths remain runtime-root-relative. `check-workspace-constraints` rejects package metadata that drops the outer prefix.
 
 ## Remote audit snapshot
 

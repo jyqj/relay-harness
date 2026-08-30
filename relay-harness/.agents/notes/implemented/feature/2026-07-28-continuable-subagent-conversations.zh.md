@@ -4,6 +4,8 @@ Status: implemented
 
 [English](2026-07-28-continuable-subagent-conversations.md) | 中文
 
+原有 inbox 接受持久性限制已被[持久可继续 subagent 投递](../bug-fix/2026-08-31-durable-continuable-subagent-delivery.md)取代；后者仍以 Agent inbox 作为执行 FIFO，但在其前加入由 Session 支撑的 accepted／claimed mailbox。
+
 本记录取代[可继续的后台 subagent](../../implemented/feature/2026-07-21-continuable-background-subagents.md)中由 Task 支撑的继续执行管理器。它保留[将 subagent 控制合并到 subagent 服务](../../implemented/simplification/2026-07-26-merge-subagent-control-service.md)确立的单一 `ctx.subagents` 服务，以及[以意图命名的 subagent 继续执行操作](../../implemented/simplification/2026-07-27-intent-named-subagent-continuation-operations.md)确立的 `followup` 操作。
 
 ## 问题

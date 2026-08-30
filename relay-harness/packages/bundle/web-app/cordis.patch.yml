@@ -314,8 +314,9 @@
     - id: ui-settings-plugin-inventory
       name: '@relay-harness/rlh-client-ui-settings-plugin-inventory'
 
-    # Phone-remote UI is hidden for this release; re-enable in the next one.
-    # The plugin stays built and tested, only the composition row is gated.
+    # Phone Remote is deferred: the desktop build exposes no network entry and
+    # this UI remains outside the shipped composition. The plugin stays built
+    # and unit-tested without implying a release date.
     # - id: ui-settings-remote
     #   name: '@relay-harness/rlh-client-ui-settings-remote'
 
@@ -551,9 +552,6 @@
 # registered once per live session, which throws on the second.
 
 - id: workflow-worker-thread
-  disabled: true
-
-- id: tool-workflow
   disabled: true
 
 - id: tool-ralph

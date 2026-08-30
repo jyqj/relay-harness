@@ -8,7 +8,7 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/jyqj/relay-harness.git",
-    "directory": "packages/context/file-reference"
+    "directory": "relay-harness/packages/context/file-reference"
   },
   "type": "module",
   "main": "lib/index.js",
@@ -66,7 +66,5 @@
     "@relay-harness/rlh-llm": "workspace:^",
     "@relay-harness/rlh-typert-protocol": "workspace:^"
   },
-  "dependencies": {
-    "zod": "^4.4.3"
-  }
+  "dependencies": {}
 }

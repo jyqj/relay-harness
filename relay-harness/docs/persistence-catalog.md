@@ -737,6 +737,28 @@ Source: [`packages/core/session/src/types.ts:272`](../packages/core/session/src/
 
 ### `subagent/*`
 
+<a id="subagentdelivery-accepted--log-only"></a>
+
+#### `subagent/delivery-accepted` — log-only
+
+```ts persistence-catalog
+/** Durable continuable-child mailbox entry, committed before inbox publication. */
+'subagent/delivery-accepted': SubagentDeliveryAcceptedData
+```
+
+Source: [`packages/subagent/subagent/src/continuation.ts:111`](../packages/subagent/subagent/src/continuation.ts)
+
+<a id="subagentdelivery-claimed--log-only"></a>
+
+#### `subagent/delivery-claimed` — log-only
+
+```ts persistence-catalog
+/** Durable acknowledgement after the accepted message enters `user/message`. */
+'subagent/delivery-claimed': SubagentDeliveryClaimedData
+```
+
+Source: [`packages/subagent/subagent/src/continuation.ts:113`](../packages/subagent/subagent/src/continuation.ts)
+
 <a id="subagentdescriptor--log-only"></a>
 
 #### `subagent/descriptor` — log-only

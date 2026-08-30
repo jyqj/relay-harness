@@ -612,6 +612,108 @@ describe('third review regressions', () => {
     expect(finished).toBe(true)
   })
 
+  it('waits for an in-flight watch invocation when its registrant disposes', async () => {
+    const { ctx, provider } = await boot()
+    let release: (() => void) | undefined
+    let finished = false
+    const registrant = ctx.plugin({
+      inject: ['settings'],
+      apply: (child: Context) => {
+        const scope = child.settings.register(settingsNamespace('ui-theme'), ThemeSchema)
+        scope.watch(async () => {
+          await new Promise<void>((resolve) => { release = resolve })
+          finished = true
+        })
+      },
+    })
+    await registrant
+    provider.pushExternal({ 'ui-theme': { theme: 'light' } })
+    await vi.waitFor(() => { expect(release).toBeDefined() })
+    let disposed = false
+    const disposal = registrant.dispose().then(() => { disposed = true })
+    await new Promise(resolve => setTimeout(resolve, 15))
+    expect(disposed).toBe(false)
+    release!()
+    await disposal
+    expect(finished).toBe(true)
+  })
+
+  it('resyncs a replacement registration after the previous owner persist completes', async () => {
+    const { ctx } = await boot({ persistDelayMs: 30 })
+    let first: SettingsScope<ThemeConfig> | undefined
+    const oldOwner = ctx.plugin({
+      inject: ['settings'],
+      apply: (child: Context) => {
+        first = child.settings.register(settingsNamespace('ui-theme'), ThemeSchema)
+      },
+    })
+    await oldOwner
+    const pending = first!.update({ theme: 'light', fontSize: 20 })
+    await new Promise(resolve => setTimeout(resolve, 5))
+    await oldOwner.dispose()
+
+    let replacement: SettingsScope<ThemeConfig> | undefined
+    const watcher = vi.fn()
+    const newOwner = ctx.plugin({
+      inject: ['settings'],
+      apply: (child: Context) => {
+        replacement = child.settings.register(settingsNamespace('ui-theme'), ThemeSchema)
+        replacement.watch(watcher)
+      },
+    })
+    await newOwner
+    expect(replacement!.get()).toEqual({ theme: 'dark', fontSize: 14 })
+    await pending
+    await vi.waitFor(() => {
+      expect(replacement!.get()).toEqual({ theme: 'light', fontSize: 20 })
+    })
+    expect(watcher).toHaveBeenCalledWith(
+      { theme: 'light', fontSize: 20 },
+      { theme: 'dark', fontSize: 14 },
+    )
+    await newOwner.dispose()
+  })
+
+  it('keeps a replacement registration last-good when a predecessor commit violates its schema', async () => {
+    const { ctx } = await boot({ persistDelayMs: 20 })
+    let first: SettingsScope<ThemeConfig> | undefined
+    const oldOwner = ctx.plugin({
+      inject: ['settings'],
+      apply: (child: Context) => {
+        first = child.settings.register(settingsNamespace('ui-theme'), ThemeSchema)
+      },
+    })
+    await oldOwner
+    const pending = first!.update({ theme: 'light' })
+    await new Promise(resolve => setTimeout(resolve, 5))
+    await oldOwner.dispose()
+
+    const darkOnly = z.object({ theme: z.const('dark').default('dark') })
+    let replacement: SettingsScope<{ theme: 'dark' }> | undefined
+    const newOwner = ctx.plugin({
+      inject: ['settings'],
+      apply: (child: Context) => {
+        replacement = child.settings.register(settingsNamespace('ui-theme'), darkOnly)
+      },
+    })
+    await newOwner
+    await pending
+    expect(replacement!.get()).toEqual({ theme: 'dark' })
+    await newOwner.dispose()
+  })
+
+  it('preserves __proto__ as own JSON data without changing object prototypes', async () => {
+    const { ctx, provider } = await boot()
+    const scope = ctx.settings.register(settingsNamespace('json-data'), z.object({ value: z.any() }))
+    const patch = JSON.parse('{"value":{"__proto__":{"polluted":true},"safe":1}}') as object
+    await scope.update(patch)
+    const stored = (provider.persisted[0]!.section['value']) as Record<string, unknown>
+    expect(Object.getPrototypeOf(stored)).toBe(Object.prototype)
+    expect(Object.hasOwn(stored, '__proto__')).toBe(true)
+    expect(stored['__proto__']).toEqual({ polluted: true })
+    expect(({} as { polluted?: boolean }).polluted).toBeUndefined()
+  })
+
   it('rejects a Date at its path before anything persists', async () => {
     const { ctx, provider } = await boot()
     const scope = ctx.settings.register(settingsNamespace('ui-theme'), z.object({ value: z.any() }))

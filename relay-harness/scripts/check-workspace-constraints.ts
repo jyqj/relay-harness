@@ -48,6 +48,8 @@ const repositoryUrl = 'git+https://github.com/relay-harness/relay-harness.git'
  * their trusted publishing against the repository that runs the workflow.
  */
 const publishedRepositoryUrl = 'git+https://github.com/jyqj/relay-harness.git'
+/** Runtime-root prefix required by npm's Git-root-relative repository.directory field. */
+const repositoryRuntimeRoot = 'relay-harness'
 /** Private packages that participate in workspace checks but not releases. */
 const experimentalPackageDirectory = /^packages\/experimental\/[^/]+$/
 /** npm namespace reserved for private experimental packages. */
@@ -102,6 +104,15 @@ export interface PackageManifest {
 export interface WorkspaceManifest {
   dir: string
   manifest: PackageManifest
+}
+
+/**
+ * Convert a runtime-root-relative workspace directory to repository.directory.
+ * @param dir - Package directory relative to the runtime monorepo root.
+ * @returns Package directory relative to the outer Git repository root.
+ */
+export function publishedRepositoryDirectory(dir: string): string {
+  return `${repositoryRuntimeRoot}/${dir}`
 }
 
 function readJson(path: string): PackageManifest {
@@ -278,7 +289,7 @@ export function checkWorkspace({ dir, manifest }: WorkspaceManifest): string[] {
     if (manifest.publishConfig?.access !== 'public') {
       errors.push(`${label}: published Landlock package must set publishConfig.access to "public"`)
     }
-    const expectedDirectory = dir
+    const expectedDirectory = publishedRepositoryDirectory(dir)
     if (manifest.repository?.type !== 'git'
       || manifest.repository.url !== repositoryUrl
       || manifest.repository.directory !== expectedDirectory) {
@@ -303,8 +314,8 @@ export function checkWorkspace({ dir, manifest }: WorkspaceManifest): string[] {
     }
     if (manifest.repository?.type !== 'git'
       || manifest.repository.url !== publishedRepositoryUrl
-      || manifest.repository.directory !== dir) {
-      errors.push(`${label}: release member repository must use ${publishedRepositoryUrl} with directory ${dir}`)
+      || manifest.repository.directory !== publishedRepositoryDirectory(dir)) {
+      errors.push(`${label}: release member repository must use ${publishedRepositoryUrl} with directory ${publishedRepositoryDirectory(dir)}`)
     }
   } else if (!experimentalPackageDirectory.test(dir) && manifest.private !== true) {
     errors.push(`${label}: package.json must set "private": true`)

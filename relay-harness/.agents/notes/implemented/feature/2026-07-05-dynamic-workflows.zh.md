@@ -4,6 +4,8 @@ Status: implemented
 
 [English](2026-07-05-dynamic-workflows.md) | 中文
 
+该能力仍已实现；在具备沙箱的引擎出现前，[普通用户执行与指令约束](../bug-fix/2026-08-31-ordinary-user-execution-and-instruction-containment.md)会把随发行版提供的暴露范围收窄到显式 developer opt-in。
+
 ## 问题
 
 harness 可以通过 `rlh-tool-subagent` 将一个任务委派给一个子 agent（智能体），但需要扇出到多个独立部分的工作——跨多文件审计、迁移、多角度调研、对抗式验证——迫使模型逐轮次编排：每个中间结果都落入父上下文，计划无处持久存储，每一步的协调都要消耗一次模型往返。Claude Code 以[动态工作流](https://code.claude.com/docs/en/workflows)的形式提供了这一能力：模型编写一段 JavaScript 编排脚本，运行时执行它，由脚本（而非对话）持有循环、分支和中间结果。

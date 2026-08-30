@@ -5,8 +5,8 @@
  */
 
 import { createReadStream } from 'node:fs'
-import { stat } from 'node:fs/promises'
-import { dirname, isAbsolute, join, relative, resolve } from 'node:path'
+import { realpath, stat } from 'node:fs/promises'
+import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path'
 import type { FileSystem, FsInfo, FsTarget, FsVersion } from '@relay-harness/rlh-fs'
 import { assertNever } from '@relay-harness/rlh-llm'
 import { rlhHomeDisplay } from '@relay-harness/rlh-home-paths'
@@ -35,6 +35,8 @@ export interface LoadedInstructionFile extends InstructionFile {
 
 interface DiscoveredInstructionFile extends InstructionFile {
   target?: FsTarget
+  /** Canonical host path captured after the allowed-root check. */
+  hostPath?: string
   size?: number
   version?: FsVersion
   /** Root-chain precedence; larger values are more specific, user-global is -1. */
@@ -51,6 +53,7 @@ export interface ProbedInstructionFile extends InstructionFile {
 interface DiscoverOptions {
   cwd: string
   rlhHome?: string
+  additionalAllowedRoots?: string[]
   projectRootMarkers?: string[]
   instructionFileCandidates?: string[]
   localInstructionFileCandidates?: string[]
@@ -81,6 +84,7 @@ export type ScopeInstructionProbe =
 
 interface StatFileInfo {
   target?: FsTarget
+  hostPath?: string
   size?: number
   version?: FsVersion
 }
@@ -125,15 +129,30 @@ function isMissingPathError(error: unknown): boolean {
   return error instanceof Error && 'code' in error && (error.code === 'ENOENT' || error.code === 'ENOTDIR')
 }
 
-async function nodeStatFile(path: string, signal?: AbortSignal): Promise<StatFileProbe> {
+function pathWithin(root: string, target: string): boolean {
+  const descendant = relative(root, target)
+  return descendant === ''
+    || (descendant !== '..' && !descendant.startsWith(`..${sep}`) && !isAbsolute(descendant))
+}
+
+async function nodeStatFile(
+  path: string,
+  allowedRoots: readonly string[],
+  signal?: AbortSignal,
+): Promise<StatFileProbe> {
   try {
     signal?.throwIfAborted()
-    // stat (not lstat) follows a final-component symlink so a link to a regular
-    // file loads; a broken link surfaces as ENOENT and is treated as absent below.
-    const info = await stat(path)
+    const target = await realpath(path)
+    const canonicalRoots = await Promise.all(allowedRoots.map(async (root) => {
+      try { return await realpath(root) } catch { return undefined }
+    }))
+    if (!canonicalRoots.some(root => root !== undefined && pathWithin(root, target))) {
+      return { kind: 'absent' }
+    }
+    const info = await stat(target)
     signal?.throwIfAborted()
     if (!info.isFile()) return { kind: 'absent' }
-    return { kind: 'present', info: { size: info.size } }
+    return { kind: 'present', info: { hostPath: target, size: info.size } }
   } catch (error: unknown) {
     signal?.throwIfAborted()
     return isMissingPathError(error) ? { kind: 'absent' } : { kind: 'unavailable' }
@@ -143,6 +162,7 @@ async function nodeStatFile(path: string, signal?: AbortSignal): Promise<StatFil
 async function fsStatFile(
   path: string,
   fileSystem: FileSystem,
+  allowedRoots: readonly string[],
   signal?: AbortSignal,
 ): Promise<StatFileProbe> {
   // resolve() follows a final-component symlink to its target's stable identity;
@@ -151,6 +171,9 @@ async function fsStatFile(
   try {
     const target = await fileSystem.resolve(path, signalOptions(signal))
     signal?.throwIfAborted()
+    if (!await targetIsAllowed(fileSystem, target, allowedRoots, signal)) {
+      return { kind: 'absent' }
+    }
     const info = await fileSystem.stat(target, signal)
     signal?.throwIfAborted()
     if (info?.type !== 'file') return { kind: 'absent' }
@@ -164,12 +187,28 @@ async function fsStatFile(
   }
 }
 
+async function targetIsAllowed(
+  fileSystem: FileSystem,
+  target: FsTarget,
+  allowedRoots: readonly string[],
+  signal?: AbortSignal,
+): Promise<boolean> {
+  const roots = await Promise.all(allowedRoots.map(async (root) => {
+    try { return await fileSystem.resolve(root, signalOptions(signal)) } catch { return undefined }
+  }))
+  signal?.throwIfAborted()
+  return roots.some(root => root !== undefined && fileSystem.contains(root, target))
+}
+
 async function statFile(
   path: string,
+  allowedRoots: readonly string[],
   fileSystem?: FileSystem,
   signal?: AbortSignal,
 ): Promise<StatFileProbe> {
-  return fileSystem === undefined ? nodeStatFile(path, signal) : fsStatFile(path, fileSystem, signal)
+  return fileSystem === undefined
+    ? nodeStatFile(path, allowedRoots, signal)
+    : fsStatFile(path, fileSystem, allowedRoots, signal)
 }
 
 async function probeRootMarker(
@@ -285,6 +324,7 @@ export function relativeDisplay(root: string, path: string): string {
 async function allExistingInstructionFiles(
   dir: string,
   root: string,
+  allowedRoots: readonly string[],
   priority: number,
   instructionFileCandidates: readonly string[],
   fileSystem?: FileSystem,
@@ -293,7 +333,7 @@ async function allExistingInstructionFiles(
   const found: DiscoveredInstructionFile[] = []
   for (const candidate of instructionFileCandidates) {
     const path = join(dir, candidate)
-    const probe = await statFile(path, fileSystem, signal)
+    const probe = await statFile(path, allowedRoots, fileSystem, signal)
     switch (probe.kind) {
       case 'present':
         found.push({ absolutePath: path, displayPath: relativeDisplay(root, path), priority, ...probe.info })
@@ -325,7 +365,12 @@ async function discoverInstructionFiles(
   }
 
   const userGlobal = join(config.rlhHome, USER_GLOBAL_FILE)
-  const userGlobalProbe = await statFile(userGlobal, fileSystem, options.signal)
+  const userGlobalProbe = await statFile(
+    userGlobal,
+    [config.rlhHome, ...config.additionalAllowedRoots],
+    fileSystem,
+    options.signal,
+  )
   switch (userGlobalProbe.kind) {
     case 'present':
       addFile({
@@ -348,7 +393,15 @@ async function discoverInstructionFiles(
     ?? await findProjectRoot(cwd, config.projectRootMarkers, fileSystem, options.signal)
   for (const [priority, dir] of ancestorChain(projectRoot, cwd).entries()) {
     for (const candidates of [config.instructionFileCandidates, config.localInstructionFileCandidates]) {
-      for (const file of await allExistingInstructionFiles(dir, projectRoot, priority, candidates, fileSystem, options.signal)) {
+      for (const file of await allExistingInstructionFiles(
+        dir,
+        projectRoot,
+        [projectRoot, ...config.additionalAllowedRoots],
+        priority,
+        candidates,
+        fileSystem,
+        options.signal,
+      )) {
         addFile(file)
       }
     }
@@ -373,7 +426,7 @@ async function* nodeTextChunks(path: string, signal?: AbortSignal): AsyncIterabl
 }
 
 async function readBounded(
-  file: { absolutePath: string; target?: FsTarget; size?: number },
+  file: { absolutePath: string; target?: FsTarget; hostPath?: string; size?: number },
   maxSourceBytes: number,
   budget: InstructionReadBudget,
   fileSystem?: FileSystem,
@@ -384,7 +437,7 @@ async function readBounded(
   if (file.size !== undefined && (file.size > maxSourceBytes || file.size > budget.remainingBytes)) return undefined
   try {
     const chunks = fileSystem === undefined || file.target === undefined
-      ? nodeTextChunks(file.absolutePath, signal)
+      ? nodeTextChunks(file.hostPath ?? file.absolutePath, signal)
       : await fileSystem.streamText(file.target, signal)
     const parts: string[] = []
     let bytes = 0
@@ -534,6 +587,11 @@ export async function probeScopeInstruction(
   let info: FsInfo | undefined
   try {
     target = await fileSystem.resolve(absolutePath, signalOptions(signal))
+    const allowedRoots = [
+      directory === USER_GLOBAL_DIRECTORY ? resolved.rlhHome : projectRoot,
+      ...resolved.additionalAllowedRoots,
+    ]
+    if (!await targetIsAllowed(fileSystem, target, allowedRoots, signal)) return { kind: 'absent' }
     info = await fileSystem.stat(target, signal)
   } catch {
     signal?.throwIfAborted()

@@ -27,4 +27,4 @@ Relay Harness provides ordinary-user-safe defaults, the Chat/Work/Library produc
 
 - External routing cannot become `shipped` without default composition, Remote/API, UI, real or contract e2e, and documentation evidence.
 - New-user acceptance proves that default Simple mode does not require understanding models, presets, plugins, trajectories, or raw logs.
-- Future layout changes preserve root workflow discovery, package paths, release continuity, and the flat tracked-tree invariant.
+- Future layout changes preserve root workflow discovery, Git-root-relative package metadata, release continuity, and the outer-container/runtime-root split.

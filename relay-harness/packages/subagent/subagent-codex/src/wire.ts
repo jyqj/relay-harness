@@ -260,6 +260,7 @@ export class CodexAppServerWire {
         this.fail(thrown(error))
       }
     })
+    this.transport.onFailure((error) => { this.fail(thrown(error)) })
     this.input.on('error', this.onInputError)
     this.input.on('end', this.onInputEnd)
     // Pipe errors can race protocol closure and process teardown. Retain both

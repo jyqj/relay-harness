@@ -25,6 +25,9 @@ Under the product CLI, resolution reads the launcher's frozen [environment snaps
 | `rlhHome` | `$RLH_HOME` or `~/.rlh` | Harness home used when `path` is omitted. |
 | `watch` | `true` | Hot-publish external edits. |
 | `debounceMs` | `100` | Watcher write-settle window. |
+| `legacyDesktopJsonPath` | unset | One-time import source for the Desktop shell's pre-seam `apiKey`; product composition supplies only the path. |
+
+When `legacyDesktopJsonPath` names a legacy Desktop `credentials.json`, startup moves its non-empty `apiKey` to the `DEEPSEEK_API_KEY` reference in the managed document unless that reference already exists, then atomically removes only `apiKey` from the JSON source. The managed value always wins; unrelated Desktop credentials remain. Both files are rewritten owner-only, and errors identify the field/path without including any part of its value. Desktop passes the path through `RLH_DESKTOP_LEGACY_CREDENTIALS_PATH`; it never materializes the legacy value as `DEEPSEEK_API_KEY`, so the migrated key stays writable from the Models page.
 
 ## The document
 
@@ -43,7 +46,7 @@ Any string value round-trips, multi-line values included, so no entry is unwrita
 
 ## Permissions
 
-The provider creates the directory `0700` and creates or atomically replaces the document `0600`. It holds what it *reads* to that same bound: on POSIX a document carrying any group or other permission bit fails before its contents are parsed — at boot and on every reload — and the error names the `chmod 600` repair. Windows has no mode to inspect, so the check is skipped there rather than faked.
+The provider creates the directory `0700` and creates or atomically replaces the document `0600`; a rewritten legacy Desktop JSON source receives the same modes. It holds what it *reads* to that same bound: on POSIX a document carrying any group or other permission bit fails before its contents are parsed — at boot and on every reload — and the error names the `chmod 600` repair. Windows has no mode to inspect, so the check is skipped there rather than faked.
 
 ## Hot reload
 

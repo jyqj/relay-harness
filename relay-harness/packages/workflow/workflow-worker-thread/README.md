@@ -19,7 +19,7 @@ The worker still provides useful containment:
 - The worker starts with an empty environment, except unbuilt loader plumbing, so ambient credentials do not cross through `process.env`.
 - Host/worker messages use structured-clone data, with plain-JSON validation at the script boundary.
 
-A genuinely untrusted-script sandbox would require a different engine behind the same workflow seam.
+A genuinely untrusted-script sandbox would require a different engine behind the same workflow seam. The ordinary-user base mounts this engine only for Ralph's deployment-owned fixed script and does not mount the generic model-written workflow tool; the shipped Cordis-creation preset remains an explicit developer opt-in for arbitrary scripts.
 
 ## Script contract
 

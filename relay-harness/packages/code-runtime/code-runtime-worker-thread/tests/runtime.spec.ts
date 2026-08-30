@@ -597,6 +597,34 @@ describe('WorkerThreadCodeRuntime — hostile programs (real workers)', () => {
     expect(result.value).toEqual({ name: 'ToolCallError', toolName: 'bad', message: 'binding resolution must be lossless JSON' })
   })
 
+  it('rejects an oversized binding resolution before cloning it back into the worker', async () => {
+    const { runtime } = await setup({ maxBindingBytes: 32 })
+    const result = await runtime.run({
+      program: 'try { await tools.large({}) } catch (error) { return { name: error.name, toolName: error.toolName, message: error.message } }',
+      bindings: tools({ large: async () => ({ text: 'x'.repeat(100) }) }),
+    })
+    expect(result.value).toEqual({
+      name: 'ToolCallError',
+      toolName: 'large',
+      message: 'binding resolution exceeds 32 bytes',
+    })
+  })
+
+  it('rejects oversized binding arguments before invoking the host function', async () => {
+    const { runtime } = await setup({ maxBindingBytes: 32 })
+    let calls = 0
+    const result = await runtime.run({
+      program: 'try { await tools.large({ text: "x".repeat(100) }) } catch (error) { return { name: error.name, toolName: error.toolName, message: error.message } }',
+      bindings: tools({ large: async () => { calls += 1; return null } }),
+    })
+    expect(calls).toBe(0)
+    expect(result.value).toEqual({
+      name: 'ToolCallError',
+      toolName: 'large',
+      message: 'binding arguments exceed 32 bytes',
+    })
+  })
+
   it('rejects lossy binding arguments in the worker before invoking the host binding', async () => {
     const { runtime } = await setup()
     let calls = 0
@@ -861,6 +889,14 @@ describe('WorkerThreadCodeRuntime — seam misuse and lifecycle', () => {
     const ctx = new Context()
     await expect(ctx.plugin(WorkerThreadCodeRuntime, { maxOutputBytes: 3 })).rejects.toThrow(/safe integer of at least 4/)
     await expect(ctx.plugin(WorkerThreadCodeRuntime, { maxOutputBytes: 4.5 })).rejects.toThrow(/safe integer of at least 4/)
+  })
+
+  it('requires maxBindingBytes to be a positive safe integer', async () => {
+    const ctx = new Context()
+    await expect(ctx.plugin(WorkerThreadCodeRuntime, { maxBindingBytes: 0 }))
+      .rejects.toThrow(/maxBindingBytes/)
+    await expect(ctx.plugin(WorkerThreadCodeRuntime, { maxBindingBytes: 1.5 }))
+      .rejects.toThrow(/maxBindingBytes/)
   })
 
   it('keeps runs isolated: no state survives from one run to the next', async () => {

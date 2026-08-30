@@ -8,7 +8,9 @@ Git checkout 是外层容器：`relay-harness/` 是唯一 tracked 产品/runtime
 
 `docs/feature-status.json` 以 `runtimeRoot: "relay-harness"` 和 `sourceLayout: "nested-monorepo"` 记录该事实。在远端 ruleset 被实际观测前，`branchProtection` 继续为 `unconfigured`。
 
-GitHub 只从根 `.github/` 发现自动化，因此 workflow、Issue policy 与 Dependabot 保留在 Git 根。普通 workflow shell step 使用 `working-directory: relay-harness`；Landlock shell step 使用 `relay-harness/native/landlock-run`。Dependabot 的 npm 目录为 `/relay-harness`，Python SDK 目录为 `/relay-harness/python/sdk`。
+Git 根的 `README.md` 只负责把访问者引向 runtime 文档，根 `LICENSE` 负责仓库许可证识别；二者不构成第二套 runtime。GitHub 只从根 `.github/` 发现自动化，因此 workflow、Issue policy 与 Dependabot 保留在 Git 根。普通 workflow shell step 使用 `working-directory: relay-harness`；Landlock shell step 使用 `relay-harness/native/landlock-run`。Dependabot 的 npm 目录为 `/relay-harness`，Python SDK 目录为 `/relay-harness/python/sdk`。
+
+公开仓库元数据同样以 Git 根为相对起点：每个已发布包的 `repository.directory` 和每条绝对 `blob/master` 源码链接都以 `relay-harness/` 开头。贡献者命令与相对源码路径仍以 runtime root 为起点。`check-workspace-constraints` 会拒绝遗漏外层前缀的包元数据。
 
 ## 远端审计快照
 

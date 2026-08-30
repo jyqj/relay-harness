@@ -227,9 +227,6 @@
       config:
         provider: spawn
 
-    - id: tool-workflow
-      name: '@relay-harness/rlh-tool-workflow'
-
     - id: tool-ralph
       name: '@relay-harness/rlh-tool-ralph'
       config:

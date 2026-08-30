@@ -43,11 +43,6 @@ const FAMILY_SEEDS = {
   },
 };
 
-const THEMES = Object.entries(FAMILY_SEEDS).flatMap(([id, family]) => ([
-  tokensFromSeeds(id, family.name, 'dark', family.dark),
-  tokensFromSeeds(id, family.name, 'light', family.light),
-]));
-
 function rlhHome() {
   const fromEnv = process.env.RLH_HOME;
   if (typeof fromEnv === 'string' && fromEnv.trim()) {
@@ -210,29 +205,9 @@ function resolveTheme(config = {}, options = {}) {
   return tokensFromSeeds(family.id || familyId, family.name || familyId, mode, seeds);
 }
 
-function themeCssVars(theme) {
-  return {
-    '--bg': theme.bg,
-    '--fg': theme.fg,
-    '--muted': theme.muted,
-    '--accent': theme.accent,
-    '--field': theme.field,
-    '--line': theme.line,
-    '--button-fg': theme.buttonFg,
-  };
-}
-
-function harnessThemeCss(theme) {
-  return `::selection { background: ${theme.accent}; color: ${theme.buttonFg}; }`;
-}
-
 module.exports = {
-  THEMES,
   FAMILY_SEEDS,
   listThemes,
   resolveTheme,
-  themeCssVars,
-  harnessThemeCss,
-  readHarnessThemeSettings,
   parseSimpleYaml,
 };

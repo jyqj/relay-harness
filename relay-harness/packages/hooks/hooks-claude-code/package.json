@@ -8,7 +8,7 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/jyqj/relay-harness.git",
-    "directory": "packages/hooks/hooks-claude-code"
+    "directory": "relay-harness/packages/hooks/hooks-claude-code"
   },
   "type": "module",
   "main": "lib/index.js",

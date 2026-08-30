@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/engineering/tech-stack.md
-tech-stack.md: 540ac2fa6625d9134d5d3172835b92eadde9bafc
-tech-stack.zh.md: 8097635ebc67e46f8435805cca2850e7801265c3
+tech-stack.md: a6f60db24321a416634a1b7dce2c2033770dece4
+tech-stack.zh.md: 6f01aa269eafe56f45f5743bca4a33517d28fd58

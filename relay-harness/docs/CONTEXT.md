@@ -39,7 +39,7 @@ See [`agent/prompt-enhancing.md`](agent/prompt-enhancing.md) for the detailed co
 
 ### Agent side (this project's focus)
 
-The TypeScript implementation, Relay Harness ([ADR-0005](adr/0005-adopt-ts-harness-runtime.md)), lives directly at the [repository root](../README.md) and owns:
+The TypeScript implementation, Relay Harness ([ADR-0005](adr/0005-adopt-ts-harness-runtime.md)), lives in the checkout's [`relay-harness/` runtime root](repository-governance.md#canonical-layout) and owns:
 
 - Chat/Work sessions and the agent loop;
 - Prompt Enhancement context assembly;
@@ -89,6 +89,6 @@ This project does not specify scheduling scores, weights, model-pool implementat
 
 ## Current stage
 
-The runtime is the root TypeScript Harness defined by [ADR-0005](adr/0005-adopt-ts-harness-runtime.md). Default composition ships the agent loop, recovery, tools, subagents, the Chat/Work/Library product shell, explicit Prompt Enhancement, the local Context Engine, governed Memory, Code Index, MCP/skill directories, and ordinary-user-safe permissions.
+The runtime is the TypeScript Harness under the runtime root defined by [ADR-0005](adr/0005-adopt-ts-harness-runtime.md). Default composition ships the agent loop, recovery, tools, subagents, the Chat/Work/Library product shell, explicit Prompt Enhancement, the local Context Engine, governed Memory, Code Index, MCP/skill directories, and ordinary-user-safe permissions.
 
 Relay-specific capabilities that remain unshipped are the external scheduling client and the user-visible model-strength and pricing contract. This document does not duplicate feature status; the machine-readable [`feature-status.json`](feature-status.json) and its CI evidence verifier are the sole authority.

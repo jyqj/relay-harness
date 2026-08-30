@@ -106,7 +106,9 @@ function readApiCredentials() {
     const { loadConfig } = require('./config');
     const config = loadConfig();
     return {
-      apiKey: typeof config.apiKey === 'string' ? config.apiKey : '',
+      // Persistent keys belong to Runtime credentials. Desktop may use only an
+      // explicit launch-environment override for its private generation path.
+      apiKey: typeof process.env.DEEPSEEK_API_KEY === 'string' ? process.env.DEEPSEEK_API_KEY : '',
       baseUrl: typeof config.baseUrl === 'string' ? config.baseUrl : '',
     };
   } catch {
@@ -226,11 +228,9 @@ async function generatePrContent(input) {
 }
 
 module.exports = {
-  DEFAULT_SUBJECT,
   fallbackFromStaged,
   generateCommitMessage,
   generatePrContent,
-  limitContext,
   parseGeneratedJson,
   sanitizeCommitMessage,
   sanitizeGeneratedLine,

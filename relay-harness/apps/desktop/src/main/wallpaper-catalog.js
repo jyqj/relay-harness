@@ -5,7 +5,6 @@ const USER_AGENT = 'Relay-Harness-Desktop';
 const MAX_CATALOG_BYTES = 4_000_000;
 const MAX_IMAGE_BYTES = 12 * 1024 * 1024;
 const MAX_ITEMS_PER_SOURCE = 500;
-const MAX_CUSTOM_CATALOGS = 8;
 const MAX_REDIRECTS = 4;
 const CATALOG_TIMEOUT_MS = 8000;
 const IMAGE_TIMEOUT_MS = 20000;
@@ -522,11 +521,8 @@ async function downloadWallpaper(url) {
 }
 
 module.exports = {
-  MAX_CUSTOM_CATALOGS,
-  MAX_ITEMS_PER_SOURCE,
   bingCatalogUrls,
   parseCatalogJson,
   listWallpaperCatalog,
   downloadWallpaper,
-  isAllowedWallpaperUrl,
 };

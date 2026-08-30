@@ -6,7 +6,7 @@ This tutorial creates a minimal Harness plugin and loads it into the Web UI. Sta
 
 ## Create a local project
 
-From the repository root, create a scratch project for the tutorial:
+From the runtime monorepo root, create a scratch project for the tutorial:
 
 ```sh
 mkdir -p scratch-plugin/src
@@ -45,7 +45,7 @@ export function apply(ctx: Context) {
 
 ## Register it in cordis.yml
 
-Run `pwd` from the repository root, then create `scratch-plugin/cordis.yml` as a Web overlay that inserts the local plugin. Replace `/absolute/path/to/relay-harness` below with the printed path:
+Run `pwd` from the runtime monorepo root, then create `scratch-plugin/cordis.yml` as a Web overlay that inserts the local plugin. Replace `/absolute/path/to/relay-harness` below with the printed path:
 
 ```yaml
 - insert:

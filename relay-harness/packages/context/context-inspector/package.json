@@ -3,7 +3,7 @@
   "description": "Durable context/prepared session projection for the browser Context Inspector",
   "version": "0.1.0-rc.8",
   "publishConfig": { "access": "public" },
-  "repository": { "type": "git", "url": "git+https://github.com/jyqj/relay-harness.git", "directory": "packages/context/context-inspector" },
+  "repository": { "type": "git", "url": "git+https://github.com/jyqj/relay-harness.git", "directory": "relay-harness/packages/context/context-inspector" },
   "type": "module",
   "main": "lib/index.js",
   "types": "lib/types/index.d.ts",

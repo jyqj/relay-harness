@@ -10,21 +10,24 @@ export const inject = ['tools']
 
 const DESCRIPTION = 'Install a Relay Harness plugin into the desktop web profile from a github:owner/repo[#sha] spec. Prepare scripts run on this machine, outside the sandbox. Call only for the spec the user named. If needsAllowBuilds is true, ask the user, then retry with those allowBuilds keys. A successful install restarts the desktop app to load the plugin.'
 
-function controlConfig() {
-  const url = process.env.RLH_DESKTOP_INSTALL_URL
-  const token = process.env.RLH_DESKTOP_INSTALL_TOKEN
+function controlConfig(environment) {
+  const url = environment.RLH_DESKTOP_INSTALL_URL
+  const token = environment.RLH_DESKTOP_INSTALL_TOKEN
   if (!url || !token) return null
   return { url, token }
 }
 
-function requireAnchors() {
+function requireAnchors(environment) {
   const anchors = []
-  const harnessRoot = process.env.RLH_HARNESS_ROOT
+  const harnessRoot = environment.RLH_HARNESS_ROOT
   if (harnessRoot) {
     anchors.push(path.join(harnessRoot, 'package.json'))
     anchors.push(path.join(harnessRoot, 'apps', 'cli', 'package.json'))
+  } else {
+    // Development fallback only. An explicit but incomplete Harness root must
+    // fail closed instead of resolving a similarly named package elsewhere.
+    anchors.push(fileURLToPath(import.meta.url))
   }
-  anchors.push(fileURLToPath(import.meta.url))
   return anchors
 }
 
@@ -35,9 +38,9 @@ function requireAnchors() {
  * the profile fallback cannot see the package.
  * @returns defineTool from @relay-harness/rlh-tools.
  */
-async function loadDefineTool() {
+async function loadDefineTool(environment) {
   let lastError
-  for (const anchor of requireAnchors()) {
+  for (const anchor of requireAnchors(environment)) {
     if (!existsSync(anchor)) continue
     try {
       const resolved = createRequire(anchor).resolve('@relay-harness/rlh-tools')
@@ -54,12 +57,12 @@ async function loadDefineTool() {
  * Register install_rlh_plugin when the desktop control endpoint is in the environment.
  * @param ctx - Host context with the tools registry.
  */
-export async function apply(ctx) {
-  const control = controlConfig()
+export async function applyWithEnvironment(ctx, environment) {
+  const control = controlConfig(environment)
   if (control === null) return
   let defineTool
   try {
-    defineTool = await loadDefineTool()
+    defineTool = await loadDefineTool(environment)
   } catch (error) {
     const message = error && error.message ? error.message : String(error)
     console.error(`[rlhd-desktop-plugin-install] skipped install_rlh_plugin: ${message}`)
@@ -101,4 +104,9 @@ export async function apply(ctx) {
     },
     presentCall: args => ({ card: 'generic', title: '安装插件', kind: 'other', rawInput: args.spec }),
   }))
+}
+
+/** Register using the immutable environment snapshot Cordis supplied at invocation time. */
+export async function apply(ctx) {
+  return applyWithEnvironment(ctx, { ...process.env })
 }

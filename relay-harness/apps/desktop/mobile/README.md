@@ -2,16 +2,13 @@
 
 English | [中文](README.zh.md)
 
-Scanning the QR code in the desktop **Remote** dialog opens this directory's independent `mobile/web` SPA, not the official four-column `rlh web` UI.
+Phone Remote is deferred in the current desktop build. No Remote dialog is composed, `remoteAvailable` is false, and the main process opens neither the LAN gateway nor an outbound relay. This directory retains the independent `mobile/web` implementation and its unit tests as dormant assets; it is not a shipped network entry.
 
 ## Web
 
-1. Open Remote on the desktop and select LAN or HTTPS relay mode.
-2. Scan with the system camera or browser. The secret remains in `#offer=`.
-3. After login on port 3180 or the relay, the server returns this directory's `index.html`; `/api/*` and WebSocket traffic still proxy to local `127.0.0.1:3080`.
-4. During development, `pnpm run test:desktop` runs `mobile/web/**/*.test.js`.
+`pnpm run test:desktop` exercises `mobile/web/**/*.test.js` without enabling the feature. The dormant protocol expects a fragment-held offer, a local gateway, and an HTTPS relay, but none is constructed by the desktop entry point.
 
-The relay must use HTTPS. Traffic passes through the relay operator; this is not end-to-end encryption for session content.
+The dormant relay design requires HTTPS. Traffic would pass through the relay operator rather than provide end-to-end encryption for session content.
 
 ## Android
 

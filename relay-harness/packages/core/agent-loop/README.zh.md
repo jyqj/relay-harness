@@ -133,4 +133,4 @@ interface Config {
 - **关系并发需要规范身份**：一元 `isConcurrencySafe` 处理全局安全调用；拥有提供方解析身份的工具使用 `resourceIntents`，未声明的关系安全仍保持独占（参见[设计原理](../../../.agents/notes/implemented/architecture/2026-08-21-tool-resource-intent-locks.md)）。
 - **配置 label 默认对应新会话**：省略 `sessionId` 时，每次启动都会创建新的 `${id}-session-<uuid>`；如需确切的恢复或创建行为，必须显式提供稳定的 `sessionId`，而 `resumeSessionId` 要求已有持久化历史。
 - **配置 agent 没有逐 agent persona 字段或 setup 钩子**：它们使用部署 persona；只有编程式 `ctx.agents.create()` / `resume()` 工厂选项支持带作用域的 persona／工具组合。
-- **没有内置轮次预算**：工具调用或 steering 会让当前轮次继续；限制失控轮次的策略必须从既有生命周期扩展点（如 `agent/turn-stopping`）执行取消。
+- **loop 内部没有轮次预算**：工具调用或 steering 会让当前轮次继续；随发行版提供的 base 会组合 `rlh-token-budget-controller`，在 64 条持久 step start 之后拒绝下一次 pre-step。移除该策略的自定义 composition 必须提供自己的生命周期扩展。

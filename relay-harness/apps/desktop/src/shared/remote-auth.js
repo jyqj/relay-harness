@@ -83,10 +83,8 @@ function clearCookieHeader() {
 
 module.exports = {
   COOKIE_NAME,
-  DEVICE_COOKIE_MAX_AGE,
   generateToken,
   tokensEqual,
-  parseCookies,
   tokenFromHeaders,
   matchingToken,
   isAuthorized,

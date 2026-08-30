@@ -617,8 +617,6 @@ function assertReleaseQaResult(result) {
 
 module.exports = {
   runReleaseUiWalk,
-  connectConfiguredWorkspace,
-  makeRecorder,
   assertReleaseQaResult,
   QA_REQUIRED_STEPS,
   PAGE_HELPERS,

@@ -30,7 +30,7 @@ function readSource(name) {
   return fs.readFileSync(path.join(__dirname, name), 'utf8');
 }
 
-test('guest preload and helpers keep ipcRenderer and omit leftover brand markers', () => {
+test('guest preload exposes only the isolated preview interface and omits leftover brand markers', () => {
   const files = [
     'preview-guest-preload.js',
     'preview-guest-protocol.js',
@@ -45,7 +45,9 @@ test('guest preload and helpers keep ipcRenderer and omit leftover brand markers
     assert.doesNotMatch(source, BRAND, name);
   }
   const preload = readSource('preview-guest-preload.js');
-  assert.match(preload, /globalThis\.ipcRenderer = ipcRenderer/);
+  assert.match(preload, /contextBridge\.exposeInMainWorld\(PREVIEW_GUEST_INTERFACE_KEY, previewGuest\)/);
+  assert.match(preload, /createPreviewGuestInterface\(ipcRenderer\)/);
+  assert.doesNotMatch(preload, /globalThis\.ipcRenderer|window\.ipcRenderer/);
   assert.doesNotMatch(preload, /react-grab/);
   assert.equal(OVERLAY_ATTRIBUTE, 'data-rlhd-annotation-ui');
   assert.equal(TOOL_ATTRIBUTE, 'data-rlhd-annotation-tool');

@@ -32,6 +32,8 @@ macOS 构建未签名：右键选择“打开”，或执行 `xattr -cr /Applica
 
 `Ctrl+,` 打开设置。
 
+本构建暂缓交付手机 Remote。产品未组装 Remote 控件，公开能力始终报告 unavailable/disabled，桌面端不会打开 LAN 或中继 listener。
+
 <table>
   <tr>
     <td align="center" width="50%"><img src="assets/screenshot-surfaces.jpg" alt="对话和文件栏" /></td>

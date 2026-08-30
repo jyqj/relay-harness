@@ -231,8 +231,6 @@ async function installUpdate(onProgress) {
 }
 
 module.exports = {
-  GITHUB_OWNER,
-  GITHUB_REPO,
   REPO_URL,
   RELEASES_PAGE,
   currentVersion,

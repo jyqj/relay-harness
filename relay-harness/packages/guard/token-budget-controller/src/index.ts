@@ -12,7 +12,7 @@
 import type { Context } from '@relay-harness/cordis'
 import z from '@relay-harness/schemastery'
 import type { Agent } from '@relay-harness/rlh-agent'
-import { createUserMessage } from '@relay-harness/rlh-llm'
+import { createUserMessage, HarnessError } from '@relay-harness/rlh-llm'
 import type { MessageSource } from '@relay-harness/rlh-llm'
 
 export const name = 'token-budget-controller'
@@ -33,13 +33,25 @@ export interface Config {
   minUsefulDeltaTokens?: number
   /** Consecutive unproductive continuations that stop the steering (default 2). */
   maxLowDeltaStreak?: number
+  /** Maximum model-request steps admitted in one turn (default 64). */
+  maxStepsPerTurn?: number
 }
 
 export const Config: z<Config> = z.object({
   maxContinuations: z.number().default(8),
   minUsefulDeltaTokens: z.number().default(500),
   maxLowDeltaStreak: z.number().default(2),
+  maxStepsPerTurn: z.number().default(64),
 })
+
+/** A turn attempted to exceed its durable step-start budget. */
+export class TurnStepBudgetError extends HarnessError {
+  /** @param limit - configured maximum model-request steps in one turn. */
+  constructor(readonly limit: number) {
+    super(`turn step budget exhausted at ${limit} model requests`, 'TURN_STEP_BUDGET_EXCEEDED')
+    this.name = 'TurnStepBudgetError'
+  }
+}
 
 /** The `{kind:'plugin'}` source stamped on every nudge this controller steers. */
 const PLUGIN_SOURCE: MessageSource = { kind: 'plugin', plugin: 'token-budget-controller' }
@@ -66,6 +78,7 @@ export function apply(ctx: Context, config: Config): void {
   const maxContinuations = config.maxContinuations as number
   const minUsefulDeltaTokens = config.minUsefulDeltaTokens as number
   const maxLowDeltaStreak = config.maxLowDeltaStreak as number
+  const maxStepsPerTurn = config.maxStepsPerTurn as number
   if (!Number.isInteger(maxContinuations) || maxContinuations < 1) {
     throw new Error(`token-budget-controller: invalid maxContinuations ${maxContinuations} — must be an integer >= 1`)
   }
@@ -74,6 +87,9 @@ export function apply(ctx: Context, config: Config): void {
   }
   if (!Number.isInteger(maxLowDeltaStreak) || maxLowDeltaStreak < 1) {
     throw new Error(`token-budget-controller: invalid maxLowDeltaStreak ${maxLowDeltaStreak} — must be an integer >= 1`)
+  }
+  if (!Number.isInteger(maxStepsPerTurn) || maxStepsPerTurn < 1) {
+    throw new Error(`token-budget-controller: invalid maxStepsPerTurn ${maxStepsPerTurn} — must be an integer >= 1`)
   }
 
   const states = new WeakMap<Agent, BudgetState>()
@@ -105,6 +121,18 @@ export function apply(ctx: Context, config: Config): void {
     }
     return closed
   }
+
+  /** Number of model-request steps durably started in one turn. */
+  function startedSteps(agent: Agent, turn: number): number {
+    return agent.session.events.filter(event => event.type === 'step/start' && event.data.turn === turn).length
+  }
+
+  ctx.on('agent/pre-step', async ({ agent, turn }, next) => {
+    const decision = await next()
+    if (decision.kind === 'reject') return decision
+    if (startedSteps(agent, turn) >= maxStepsPerTurn) throw new TurnStepBudgetError(maxStepsPerTurn)
+    return decision
+  })
 
   ctx.on('agent/turn-stopping', ({ agent, turn, signal }) => {
     /* v8 ignore next -- defensive: the loop re-checks abort immediately after the serial dispatch */

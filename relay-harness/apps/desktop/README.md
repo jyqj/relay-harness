@@ -32,6 +32,8 @@ The macOS build is unsigned: right-click → Open, or run `xattr -cr /Applicatio
 
 `Ctrl+,` opens Settings.
 
+Phone Remote is deferred in this build. No Remote control is composed, the public capability reports unavailable/disabled, and the desktop opens no LAN or relay listener.
+
 <table>
   <tr>
     <td align="center" width="50%"><img src="assets/screenshot-surfaces.jpg" alt="Chat and Files column" /></td>

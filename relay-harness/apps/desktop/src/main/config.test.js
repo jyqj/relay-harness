@@ -25,6 +25,7 @@ require.cache[electronPath] = {
 const {
   DEFAULTS,
   REMOTE_FEATURE_ENABLED,
+  credentialsPath,
   loadConfig,
   publicConfig,
   saveConfig,
@@ -104,15 +105,15 @@ test('simple mode is on for fresh installs and an explicit choice survives a rou
   assert.equal(loadConfig().simpleMode, false);
 });
 
-test('remote can be enabled and HTTP relay origins stay discarded', () => {
-  assert.equal(REMOTE_FEATURE_ENABLED, true);
+test('Remote remains deferred and persisted requests cannot enable a network entry', () => {
+  assert.equal(REMOTE_FEATURE_ENABLED, false);
   const httpRelay = saveConfig({
     remoteEnabled: true,
     remoteMode: 'relay',
     remoteRelayUrl: 'http://relay.example:8787/path',
     remoteRelayToken: 'a'.repeat(32),
   });
-  assert.equal(httpRelay.remoteEnabled, true);
+  assert.equal(httpRelay.remoteEnabled, false);
   assert.equal(httpRelay.remoteMode, 'lan');
   assert.equal(httpRelay.remoteRelayUrl, '');
   const httpsRelay = saveConfig({
@@ -121,9 +122,29 @@ test('remote can be enabled and HTTP relay origins stay discarded', () => {
     remoteRelayUrl: 'https://relay.example/path',
     remoteRelayToken: 'a'.repeat(32),
   });
-  assert.equal(httpsRelay.remoteEnabled, true);
-  assert.equal(httpsRelay.remoteMode, 'relay');
-  assert.equal(httpsRelay.remoteRelayUrl, 'https://relay.example');
+  assert.equal(httpsRelay.remoteEnabled, false);
+  assert.equal(httpsRelay.remoteMode, 'lan');
+  assert.equal(httpsRelay.remoteRelayUrl, '');
+  assert.deepEqual(publicConfig({
+    ...DEFAULTS,
+    remoteEnabled: true,
+    remoteMode: 'relay',
+    remoteRelayUrl: 'https://relay.example',
+  }), {
+    ...DEFAULTS,
+    apiKey: '',
+    githubToken: '',
+    hasApiKey: false,
+    simpleMode: true,
+    hasGithubToken: false,
+    remoteEnabled: false,
+    remoteAvailable: false,
+    remoteMode: 'lan',
+    remoteRelayUrl: '',
+    remoteToken: '',
+    remoteRelayToken: '',
+    remoteDevices: [],
+  });
 });
 
 test('saveConfig persists normalized recovery settings', () => {
@@ -154,8 +175,13 @@ test('saveConfig rejects out-of-range recovery values before writing', () => {
 });
 
 test('publicConfig masks credentials and only reports presence flags', () => {
-  const before = loadConfig();
-  saveConfig({ apiKey: 'sk-test-secret', githubToken: 'ghp_test_secret', remoteToken: 'rt-test-secret' });
+  const file = credentialsPath();
+  const before = fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : null;
+  fs.writeFileSync(file, `${JSON.stringify({
+    apiKey: 'sk-test-secret',
+    githubToken: 'ghp_test_secret',
+    remoteToken: 'rt-test-secret',
+  }, null, 2)}\n`, { mode: 0o600 });
   try {
     const view = publicConfig(loadConfig());
     assert.equal(view.apiKey, '********');
@@ -164,6 +190,22 @@ test('publicConfig masks credentials and only reports presence flags', () => {
     assert.equal(view.hasApiKey, true);
     assert.equal(view.hasGithubToken, true);
   } finally {
-    saveConfig({ apiKey: before.apiKey, githubToken: before.githubToken, remoteToken: before.remoteToken });
+    if (before === null) fs.rmSync(file, { force: true });
+    else fs.writeFileSync(file, before, { mode: 0o600 });
+  }
+});
+
+test('saveConfig never creates a new Desktop-owned API key', () => {
+  const file = credentialsPath();
+  const before = fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : null;
+  fs.rmSync(file, { force: true });
+  try {
+    saveConfig({ apiKey: 'must-live-behind-runtime-credentials' });
+    const stored = JSON.parse(fs.readFileSync(file, 'utf8'));
+    assert.equal(Object.hasOwn(stored, 'apiKey'), false);
+    assert.equal(loadConfig().apiKey, '');
+  } finally {
+    if (before === null) fs.rmSync(file, { force: true });
+    else fs.writeFileSync(file, before, { mode: 0o600 });
   }
 });

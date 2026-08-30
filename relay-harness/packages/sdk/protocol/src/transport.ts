@@ -14,6 +14,43 @@ type JsonRpcId = string | number
 type RequestHandler = (method: string, params: Record<string, unknown>) => Promise<unknown>
 type NotificationHandler = (method: string, params: Record<string, unknown>) => void
 
+/** Default bound for one newline-delimited JSON-RPC frame (64 MiB). */
+export const DEFAULT_JSON_RPC_MAX_FRAME_BYTES = 64 * 1024 * 1024
+/** Default aggregate bound: one maximum frame plus its newline delimiter. */
+export const DEFAULT_JSON_RPC_MAX_QUEUED_WRITE_BYTES = 64 * 1024 * 1024 + 1
+
+/** Resource limits for one line transport. */
+export interface JsonRpcLineTransportOptions {
+  /** Maximum UTF-8 bytes in one inbound or outbound frame. */
+  maxFrameBytes?: number
+  /** Maximum UTF-8 bytes retained across unsettled output writes. */
+  maxQueuedWriteBytes?: number
+}
+
+/** A peer or caller attempted to send one frame above the configured limit. */
+export class JsonRpcFrameTooLargeError extends Error {
+  /**
+   * @param bytes - observed frame bytes.
+   * @param limit - configured maximum frame bytes.
+   */
+  constructor(readonly bytes: number, readonly limit: number) {
+    super(`JSON-RPC frame exceeds ${limit} bytes (${bytes})`)
+    this.name = 'JsonRpcFrameTooLargeError'
+  }
+}
+
+/** Outbound writes exceeded the configured unsettled-byte budget. */
+export class JsonRpcWriteQueueOverflowError extends Error {
+  /**
+   * @param bytes - aggregate bytes the new frame would retain.
+   * @param limit - configured maximum unsettled bytes.
+   */
+  constructor(readonly bytes: number, readonly limit: number) {
+    super(`JSON-RPC write queue exceeds ${limit} bytes (${bytes})`)
+    this.name = 'JsonRpcWriteQueueOverflowError'
+  }
+}
+
 /** A JSON-RPC error response, preserving the wire `code` and optional `data`. */
 export class JsonRpcResponseError extends Error {
   /**
@@ -61,16 +98,35 @@ interface PendingRequest {
  */
 export class JsonRpcLineTransport implements JsonRpcTransportPeer {
   private buffer = ''
+  private bufferBytes = 0
   private readonly decoder = new StringDecoder('utf8')
   private started = false
   private requestHandler: RequestHandler | undefined
   private notificationHandler: NotificationHandler | undefined
+  private failureHandler: ((error: Error) => void) | undefined
   private readonly pending = new Map<JsonRpcId, PendingRequest>()
+  private readonly maxFrameBytes: number
+  private readonly maxQueuedWriteBytes: number
+  private unsettledWriteBytes = 0
+  private failure: Error | undefined
+  private observableFailure = false
 
   constructor(
     private readonly input: Readable,
     private readonly output: Writable,
-  ) {}
+    options: JsonRpcLineTransportOptions = {},
+  ) {
+    this.maxFrameBytes = positiveLimit(
+      options.maxFrameBytes,
+      DEFAULT_JSON_RPC_MAX_FRAME_BYTES,
+      'maxFrameBytes',
+    )
+    this.maxQueuedWriteBytes = positiveLimit(
+      options.maxQueuedWriteBytes,
+      DEFAULT_JSON_RPC_MAX_QUEUED_WRITE_BYTES,
+      'maxQueuedWriteBytes',
+    )
+  }
 
   /** Attach the input listeners and begin reading frames. Idempotent. */
   start(): void {
@@ -89,6 +145,15 @@ export class JsonRpcLineTransport implements JsonRpcTransportPeer {
     this.input.off('error', this.onInputError)
     this.input.off('end', this.onInputEnd)
     this.failPending(new Error('JSON-RPC transport closed'))
+  }
+
+  /**
+   * Observe terminal input/output failures, including resource-limit refusal.
+   * @param handler - replaces the prior failure observer.
+   */
+  onFailure(handler: (error: Error) => void): void {
+    this.failureHandler = handler
+    if (this.failure !== undefined && this.observableFailure) handler(this.failure)
   }
 
   /**
@@ -164,38 +229,67 @@ export class JsonRpcLineTransport implements JsonRpcTransportPeer {
    * @returns a promise that settles with the output write callback.
    */
   flush(): Promise<void> {
+    if (this.failure !== undefined) return Promise.reject(this.failure)
     return new Promise<void>((resolve, reject) => {
-      this.output.write('', (error) => {
-        if (error) reject(error)
-        else resolve()
-      })
+      try {
+        this.output.write('', (error) => {
+          if (error) {
+            const failure = normalizeError(error)
+            this.fail(failure)
+            reject(failure)
+          } else resolve()
+        })
+      } catch (error) {
+        const failure = normalizeError(error)
+        this.fail(failure)
+        reject(failure)
+      }
     })
   }
 
   private readonly onData = (chunk: Buffer | string): void => {
+    if (this.failure !== undefined) return
+    this.bufferBytes += typeof chunk === 'string' ? Buffer.byteLength(chunk, 'utf8') : chunk.byteLength
     this.buffer += typeof chunk === 'string' ? chunk : this.decoder.write(chunk)
-    this.drainLines()
-  }
-
-  private drainLines(): void {
-    for (;;) {
-      const newline = this.buffer.indexOf('\n')
-      if (newline < 0) break
-      const line = this.buffer.slice(0, newline).trim()
-      this.buffer = this.buffer.slice(newline + 1)
-      if (!line) continue
-      void this.handleLine(line)
+    if (!this.drainLines()) return
+    if (this.bufferBytes > this.maxFrameBytes) {
+      this.fail(new JsonRpcFrameTooLargeError(this.bufferBytes, this.maxFrameBytes))
     }
   }
 
+  private drainLines(): boolean {
+    for (;;) {
+      const newline = this.buffer.indexOf('\n')
+      if (newline < 0) break
+      const rawLine = this.buffer.slice(0, newline)
+      const lineBytes = Buffer.byteLength(rawLine, 'utf8')
+      if (lineBytes > this.maxFrameBytes) {
+        this.fail(new JsonRpcFrameTooLargeError(lineBytes, this.maxFrameBytes))
+        return false
+      }
+      const consumed = this.buffer.slice(0, newline + 1)
+      const line = rawLine.trim()
+      this.buffer = this.buffer.slice(newline + 1)
+      this.bufferBytes = Math.max(0, this.bufferBytes - Buffer.byteLength(consumed, 'utf8'))
+      if (!line) continue
+      void this.handleLine(line).catch((error: unknown) => { this.fail(normalizeError(error)) })
+    }
+    return true
+  }
+
   private readonly onInputError = (error: Error): void => {
-    this.failPending(error)
+    this.fail(error)
   }
 
   private readonly onInputEnd = (): void => {
+    if (this.failure !== undefined) return
     this.buffer += this.decoder.end()
-    this.drainLines()
-    this.failPending(new Error('JSON-RPC input closed'))
+    if (!this.drainLines()) return
+    if (this.bufferBytes > this.maxFrameBytes) {
+      this.fail(new JsonRpcFrameTooLargeError(this.bufferBytes, this.maxFrameBytes))
+      return
+    }
+    this.fail(new Error('JSON-RPC input closed'), false)
   }
 
   private async handleLine(line: string): Promise<void> {
@@ -258,7 +352,35 @@ export class JsonRpcLineTransport implements JsonRpcTransportPeer {
   }
 
   private write(message: Record<string, unknown>): void {
-    this.output.write(`${JSON.stringify(message)}\n`)
+    if (this.failure !== undefined) throw this.failure
+    const frame = `${JSON.stringify(message)}\n`
+    const bytes = Buffer.byteLength(frame, 'utf8')
+    if (bytes - 1 > this.maxFrameBytes) throw new JsonRpcFrameTooLargeError(bytes - 1, this.maxFrameBytes)
+    const retained = this.unsettledWriteBytes + bytes
+    if (retained > this.maxQueuedWriteBytes) {
+      throw new JsonRpcWriteQueueOverflowError(retained, this.maxQueuedWriteBytes)
+    }
+    this.unsettledWriteBytes = retained
+    try {
+      this.output.write(frame, (error) => {
+        this.unsettledWriteBytes = Math.max(0, this.unsettledWriteBytes - bytes)
+        if (error) this.fail(normalizeError(error))
+      })
+    } catch (error) {
+      this.unsettledWriteBytes = Math.max(0, this.unsettledWriteBytes - bytes)
+      throw normalizeError(error)
+    }
+  }
+
+  private fail(error: Error, observable = true): void {
+    if (this.failure !== undefined) return
+    this.failure = error
+    this.observableFailure = observable
+    this.input.off('data', this.onData)
+    this.input.off('error', this.onInputError)
+    this.input.off('end', this.onInputEnd)
+    this.failPending(error)
+    if (observable) this.failureHandler?.(error)
   }
 
   private failPending(error: Error): void {
@@ -276,4 +398,16 @@ function objectParams(params: unknown): Record<string, unknown> {
 /** Normalize an abort reason into the rejection Error (a non-Error reason is stringified). */
 function abortError(reason: unknown): Error {
   return reason instanceof Error ? reason : new Error(`JSON-RPC request aborted: ${String(reason)}`)
+}
+
+function positiveLimit(value: number | undefined, fallback: number, name: string): number {
+  const resolved = value ?? fallback
+  if (!Number.isSafeInteger(resolved) || resolved < 1) {
+    throw new TypeError(`JSON-RPC ${name} must be a positive safe integer`)
+  }
+  return resolved
+}
+
+function normalizeError(error: unknown): Error {
+  return error instanceof Error ? error : new Error(String(error))
 }

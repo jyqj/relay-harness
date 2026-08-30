@@ -118,7 +118,6 @@ function cursorStyles() {
 }
 
 module.exports = {
-  CHROME_LAYER_Z_INDEX,
   CONTENT_LAYER_Z_INDEX,
   OVERLAY_ATTRIBUTE,
   OVERLAY_STYLES,

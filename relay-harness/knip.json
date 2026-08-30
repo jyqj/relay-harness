@@ -3,9 +3,6 @@
   "exclude": [
     "duplicates"
   ],
-  "ignore": [
-    "**/lib/**"
-  ],
   "ignoreBinaries": [
     "bwrap",
     "icacls",
@@ -30,6 +27,7 @@
       "entry": [
         "scripts/**/*.mjs",
         "scripts/**/*.cjs",
+        "scripts/build-exe-for-python-sdk.ts",
         "scripts/types/client-build-environment/index.d.ts",
         "scripts/rebrand-dsh-to-rlh.ts"
       ],
@@ -106,6 +104,10 @@
       "ignoreDependencies": [
         "@relay-harness/rlh-client-ui-directory-picker-browse",
         "@relay-harness/rlh-client-ui-directory-picker-native"
+      ],
+      "project": [
+        "src/**/*.ts",
+        "tests/**/*.ts"
       ]
     },
     "packages/extensions/cordis-host-runner": {
@@ -508,8 +510,18 @@
         "tests/**/*.ts"
       ]
     },
-    "packages/context/file-reference": {},
-    "packages/context/session-reference": {},
+    "packages/context/file-reference": {
+      "project": [
+        "src/**/*.ts",
+        "tests/**/*.ts"
+      ]
+    },
+    "packages/context/session-reference": {
+      "project": [
+        "src/**/*.ts",
+        "tests/**/*.ts"
+      ]
+    },
     "packages/session/session-checkpoint-policy": {
       "entry": [
         "tests/**/*.spec.ts",
@@ -779,22 +791,36 @@
     "packages/bundle/base": {
       "ignoreDependencies": [
         "@relay-harness/.+"
+      ],
+      "project": [
+        "src/**/*.ts",
+        "tests/**/*.ts"
       ]
     },
     "packages/bundle/headless": {
       "ignoreDependencies": [
         "@relay-harness/rlh-code-runtime-worker-thread"
+      ],
+      "project": [
+        "src/**/*.ts",
+        "tests/**/*.ts"
       ]
     },
     "packages/bundle/web-app": {
       "ignoreDependencies": [
         "@relay-harness/.+"
+      ],
+      "project": [
+        "src/**/*.ts",
+        "tests/**/*.ts"
       ]
     },
     "apps/desktop": {
       "entry": [
         "src/main/preview-guest-preload.js",
         "src/main/harness-chrome-inject.js",
+        "src/main/release-ui-walk.js",
+        "src/main/composer-official-qa.js",
         "src/renderer/boot.js",
         "src/renderer/boot-recovery.js",
         "src/renderer/theme.js",
@@ -834,6 +860,10 @@
     "packages/bundle/issue-automation": {
       "ignoreDependencies": [
         "@relay-harness/rlh-client-ui-issue-orchestration"
+      ],
+      "project": [
+        "src/**/*.ts",
+        "tests/**/*.ts"
       ]
     },
     "packages/llm/llm-vision-fallback": {

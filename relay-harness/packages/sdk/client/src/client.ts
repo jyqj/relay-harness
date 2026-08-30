@@ -29,6 +29,8 @@ const STDERR_TAIL_LIMIT = 400
 
 /** Grace for the runtime's stdio streams to settle after its exit edge. */
 const STREAM_SETTLE_MS = 100
+/** Default queued notifications retained by one subscription. */
+export const DEFAULT_NOTIFICATION_QUEUE_SIZE = 4096
 
 /**
  * The runtime subprocess is gone or unusable: it exited, its stdio closed, or
@@ -64,10 +66,20 @@ export class SdkProtocolError extends Error {
   }
 }
 
+/** A notification consumer did not drain its bounded subscription queue. */
+export class NotificationQueueOverflowError extends Error {
+  /** @param limit - configured maximum queued notifications. */
+  constructor(readonly limit: number) {
+    super(`notification subscription exceeded ${limit} queued items`)
+    this.name = 'NotificationQueueOverflowError'
+  }
+}
+
 interface SubscriptionState {
   readonly queue: HarnessNotification[]
   readonly waiters: { resolve: (item: HarnessNotification) => void; reject: (error: Error) => void }[]
   readonly filter: NotificationFilter | undefined
+  readonly maxQueueSize: number
   failure: Error | undefined
 }
 
@@ -159,7 +171,10 @@ class NotificationSubscriptionImpl implements NotificationSubscription {
     if (!matches) return
     const waiter = this.state.waiters.shift()
     if (waiter !== undefined) waiter.resolve(notification)
-    else this.state.queue.push(notification)
+    else if (this.state.queue.length >= this.state.maxQueueSize) {
+      this.unsubscribe()
+      this.fail(new NotificationQueueOverflowError(this.state.maxQueueSize))
+    } else this.state.queue.push(notification)
   }
 
   /**
@@ -192,9 +207,12 @@ export class HarnessClient {
   private spawnError: Error | undefined
   private streamsSettled: Promise<void> = Promise.resolve()
   private closeTask: Promise<void> | undefined
+  private readonly maxNotificationQueueSize: number
 
   /** @param options - launch spec, complete child environment, and timeouts. */
-  constructor(readonly options: HarnessClientOptions) {}
+  constructor(readonly options: HarnessClientOptions) {
+    this.maxNotificationQueueSize = positiveQueueLimit(options.maxNotificationQueueSize)
+  }
 
   /**
    * Spawn the runtime subprocess and start reading frames. Idempotent while
@@ -254,7 +272,16 @@ export class HarnessClient {
       // will never be answered.
       this.transport?.close()
     })
-    const transport = new JsonRpcLineTransport(child.stdout, child.stdin)
+    const transport = new JsonRpcLineTransport(child.stdout, child.stdin, {
+      ...(this.options.maxFrameBytes === undefined ? {} : { maxFrameBytes: this.options.maxFrameBytes }),
+      ...(this.options.maxQueuedWriteBytes === undefined
+        ? {}
+        : { maxQueuedWriteBytes: this.options.maxQueuedWriteBytes }),
+    })
+    transport.onFailure((error) => {
+      this.spawnError ??= error
+      this.failSubscriptions(new TransportClosedError(`Relay Harness runtime transport failed: ${error.message}`))
+    })
     transport.onNotification((method, params) => { this.dispatchNotification({ method, params }) })
     transport.start()
     this.transport = transport
@@ -341,7 +368,13 @@ export class HarnessClient {
    */
   subscribe(filter?: NotificationFilter): NotificationSubscription {
     const id = String(this.subscriptionSerial++)
-    const state: SubscriptionState = { queue: [], waiters: [], filter, failure: undefined }
+    const state: SubscriptionState = {
+      queue: [],
+      waiters: [],
+      filter,
+      maxQueueSize: this.maxNotificationQueueSize,
+      failure: undefined,
+    }
     const subscription = new NotificationSubscriptionImpl(state, () => { this.subscriptions.delete(id) })
     if (this.closeTask !== undefined || this.exitCode !== undefined || this.spawnError !== undefined) {
       subscription.fail(this.closedError('Relay Harness runtime closed'))
@@ -455,6 +488,14 @@ export class HarnessClient {
     if (this.stderrTail.length > 0) parts.push(`stderr tail:\n${this.stderrTail.join('\n')}`)
     return new TransportClosedError(parts.join('\n'))
   }
+}
+
+function positiveQueueLimit(value: number | undefined): number {
+  const resolved = value ?? DEFAULT_NOTIFICATION_QUEUE_SIZE
+  if (!Number.isSafeInteger(resolved) || resolved < 1) {
+    throw new TypeError('maxNotificationQueueSize must be a positive safe integer')
+  }
+  return resolved
 }
 
 /**

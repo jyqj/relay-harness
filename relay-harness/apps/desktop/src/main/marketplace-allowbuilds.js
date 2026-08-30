@@ -1,5 +1,5 @@
 // @ts-check
-const { isValidAllowBuild, normalizeAllowBuilds } = require('../host/install-rlh-plugin-client');
+const { isValidAllowBuild } = require('../host/install-rlh-plugin-client');
 
 /**
  * Parse package names pnpm asked the user to allow-build.
@@ -39,4 +39,4 @@ function parseAllowBuilds(log) {
   return [...names].filter(isValidAllowBuild);
 }
 
-module.exports = { parseAllowBuilds, normalizeAllowBuilds };
+module.exports = { parseAllowBuilds };

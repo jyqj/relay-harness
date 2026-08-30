@@ -38,7 +38,7 @@ To run from a repository checkout:
 
 ```sh
 git clone https://github.com/jyqj/relay-harness.git
-cd relay-harness
+cd relay-harness/relay-harness
 pnpm install
 pnpm run build
 pnpm rlh web
@@ -48,7 +48,7 @@ pnpm rlh web
 
 ## Repository and documentation
 
-The TypeScript monorepo lives directly at the Git root. `apps/` contains the CLI, Web, and Desktop applications; `packages/` contains the plugin runtime; `.github/` is the only GitHub automation authority; and `docs/` contains both product and implementation documentation.
+The Git checkout is an outer container. The TypeScript runtime monorepo lives under `relay-harness/`; inside it, `apps/` contains the CLI, Web, and Desktop applications, `packages/` contains the plugin runtime, and `docs/` contains product and implementation documentation. Root `.github/` is the only GitHub automation authority.
 
 - Start with the [documentation map](docs/README.md) and [domain context](docs/CONTEXT.md).
 - Read the current [architecture](docs/architecture.md) and [subsystem references](docs/subsystems/README.md) for implementation contracts.

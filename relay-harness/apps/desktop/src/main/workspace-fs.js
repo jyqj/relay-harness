@@ -203,6 +203,5 @@ module.exports = {
   readFileMedia,
   writeFile,
   setWorkspaceAuthority,
-  MAX_WRITE_BYTES,
 };
 

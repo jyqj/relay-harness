@@ -196,6 +196,5 @@ module.exports = {
   normalizeAllowBuilds,
   normalizeInstallResult,
   renderInstall,
-  requestDesktopInstall,
   executeInstallRlhPlugin,
 };

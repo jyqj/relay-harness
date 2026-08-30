@@ -10,7 +10,7 @@
 
 该插件还会观察第一方 `read`、`write` 和 `edit` 调用成功后产生的不可变 `tools/result`。每个已接受的 touch 都会检查新达到的后代 scope 以及之前加载的每个 scope。每个已配置候选名称都是所在目录中的独立 scope：新出现的文件会在 agent inbox 中排入一项新增；已改变文件会排入一项替换；文件消失或成为同一目录中较早候选文件的重复项时，会排入一则移除通知。原生调用与 Code Mode 子分派共享该路径：嵌套 touch 会沿不透明的父级执行 token 逐层上浮，直到顶层结果落定；在 agent loop（智能体循环）步骤内产生的 touch，须等持久 `step/end` 后才开始异步投影。打开的步骤之外直接执行工具时，则立即投影。这样无需依赖文件系统时序，也能保持工具调用／结果／步骤的相邻关系。这种发现跟随结构化文件系统活动，而不是 shell `cd`，因为每次本地 bash 调用都启动新 shell，解析任意 shell 语法也不可靠。
 
-指令读取使用可选 `ctx.fs` 提供方。该插件不会静态注入 `fs`，因此没有提供方的产品树仍可启动，指令加载在提供方出现前不执行任何操作。它会解析每个候选文件并对解析结果执行 stat，因此会跟随路径最后一段的 symlink 到其目标：指向常规文件的链接会加载目标内容，缺失路径或非文件目标（包括指向目录的链接）则已确认不存在。resolve 或 stat 异常会改为将该候选文件的 scope 标记为暂时不可用。项目根标记探测更严格：提供方或宿主错误会停止向上遍历，而不是被当作不存在，因为继续遍历可能跨入祖先项目。首次发现会 fail closed；恢复会话若已有兼容的可见基线，则保留该最后可信基线，并在根标记探测恢复前跳过刷新。前缀取消与动态工具取消会传播到解析、元数据探测与流式读取。文件加载后的提供方失败会视为暂时不可用，而非文件已删除的证据。
+指令读取使用可选 `ctx.fs` 提供方。该插件不会静态注入 `fs`，因此没有提供方的产品树仍可启动，指令加载在提供方出现前不执行任何操作。它会解析每个候选文件并对解析结果执行 stat，但只有规范化目标仍位于候选文件所属允许根内时，才会跟随路径最后一段的 symlink：用户全局文件的根是 `$RLH_HOME`，项目候选文件的根是已发现的项目根。`additionalAllowedRoots` 可显式授权其他绝对路径根。树外目标、缺失路径或非文件目标都会被确认为不存在；resolve、包含关系检查或 stat 异常则会将该候选文件的 scope 标记为暂时不可用。宿主读取会使用已检查的规范化目标，因此之后替换最终链接也无法重定向读取。项目根标记探测更严格：提供方或宿主错误会停止向上遍历，而不是被当作不存在，因为继续遍历可能跨入祖先项目。首次发现会 fail closed；恢复会话若已有兼容的可见基线，则保留该最后可信基线，并在根标记探测恢复前跳过刷新。前缀取消与动态工具取消会传播到解析、包含关系检查、元数据探测与流式读取。文件加载后的提供方失败会视为暂时不可用，而非文件已删除的证据。
 
 ## 提示词结构
 
@@ -59,6 +59,7 @@ These instructions apply to work under `packages/app` and are ACTIVE and MANDATO
 ```ts
 export interface Config {
   rlhHome?: string
+  additionalAllowedRoots?: string[]
   projectRootMarkers?: string[]
   maxBytes: number
   maxSourceBytes?: number
@@ -68,7 +69,7 @@ export interface Config {
 }
 ```
 
-`maxBytes` 必填，因此每个部署都必须显式选择提示词预算。`maxSourceBytes` 在渲染前限制单个源指令文件，默认为 1 MiB。`maxTotalSourceBytes` 限制一次基线或对账批次读取的全部源内容，默认等于解析后的 `maxSourceBytes`；因此，降低单文件上限也会降低总上限，除非部署同时显式配置两者。`projectRootMarkers` 默认为 `['.git']`，`instructionFileCandidates` 默认为 `['AGENTS.md', 'CLAUDE.md']`。每个项目目录中的所有现有候选文件都会加载，在去除周围空白后与较早候选文件内容匹配的文件会被丢弃。因此，使用默认设置时，内容相同的 `AGENTS.md` 与 `CLAUDE.md` 只渲染一次（作为 `AGENTS.md`），真正不同的同级文件则同时应用。`localInstructionFileCandidates` 默认为 `['AGENTS.local.md', 'CLAUDE.local.md']`，会与同一目录的基础文件一起加载其现有 overlay（渲染在它们之后），并应用同一个每目录去重；空列表会禁用 overlay。两个列表中的候选项都必须是同一目录下的文件名，因此会忽略空项、`.`／`..` 以及包含 `/` 或 `\` 的项。
+`maxBytes` 必填，因此每个部署都必须显式选择提示词预算。`maxSourceBytes` 在渲染前限制单个源指令文件，默认为 1 MiB。`maxTotalSourceBytes` 限制一次基线或对账批次读取的全部源内容，默认等于解析后的 `maxSourceBytes`；因此，降低单文件上限也会降低总上限，除非部署同时显式配置两者。`additionalAllowedRoots` 默认为空，只接受绝对路径；改动它会改变持久基线标识，并使可见基线重新校验。`projectRootMarkers` 默认为 `['.git']`，`instructionFileCandidates` 默认为 `['AGENTS.md', 'CLAUDE.md']`。每个项目目录中的所有现有候选文件都会加载，在去除周围空白后与较早候选文件内容匹配的文件会被丢弃。因此，使用默认设置时，内容相同的 `AGENTS.md` 与 `CLAUDE.md` 只渲染一次（作为 `AGENTS.md`），真正不同的同级文件则同时应用。`localInstructionFileCandidates` 默认为 `['AGENTS.local.md', 'CLAUDE.local.md']`，会与同一目录的基础文件一起加载其现有 overlay（渲染在它们之后），并应用同一个每目录去重；空列表会禁用 overlay。两个列表中的候选项都必须是同一目录下的文件名，因此会忽略空项、`.`／`..` 以及包含 `/` 或 `\` 的项。
 
 用户全局文件始终是 `$RLH_HOME/AGENTS.md`，没有本地 overlay；两个候选列表只控制项目 scope。`$RLH_HOME` 默认为 `~/.rlh`，已配置的 `~`、`~/...` 与 Windows 风格 `~\...` 前缀会基于操作系统 home 目录展开。非正数或非有限渲染预算或源预算会同时禁用基线与动态加载；已配置的源预算必须是正整数。
 
@@ -166,5 +167,5 @@ The previously loaded instructions from this file no longer apply.
 - **刷新由 touch 驱动**：没有 watcher；外部编辑会在下一次成功的第一方 `read`、`write` 或 `edit` 时、恢复过程对账可见基线时，或进入步骤的 pre-step 恢复被遮蔽的基线时可见。
 - **候选语义有意保持简单**：不解释小写名称、`.claude/rules/` 与 `@path` import；项目 scope 默认加载 `AGENTS.local.md`／`CLAUDE.local.md` overlay，但用户全局 `$RLH_HOME` scope 没有本地 overlay，其他自定义名称需要显式候选配置。
 - **每目录去重基于内容**：只有在去除首尾空白后字节完全一致时，才折叠同级候选文件。`CLAUDE.md` 若 symlink 到同级 `AGENTS.md`，会解析为相同内容，并像任何重复项一样折叠；从 `AGENTS.md` 漂移的独立实体副本则会与它一起完整加载。
-- **Symlink 指令文件会跨越信任边界跟随**：最终组件是 symlink 的候选文件会被解析并加载其目标，因此克隆仓库可以将树外文件内容呈现为较低优先级的工作区指引（它绝不会覆盖 system、developer 或用户直接下达的指令）。加载不受信任仓库时，请用文件系统策略门禁或 OS 沙箱限制 `ctx.fs`。
+- **Symlink 会受根目录约束，而非一律禁止**：`CLAUDE.md → AGENTS.md` 这类同根镜像照常生效；若共享规范文件位于所属项目／home 根之外，则必须通过 `additionalAllowedRoots` 显式授权。
 - **指令内容受限但不会被摘要**：超出预算的宽泛文件会被省略，最具体文件可能被截断；该插件绝不请求模型压缩指令文本。

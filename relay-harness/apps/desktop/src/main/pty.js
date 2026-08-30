@@ -461,8 +461,6 @@ function registerPtyIpc(ipcMain, controller, options = {}) {
 
 module.exports = {
   BACKEND_UNAVAILABLE,
-  DEFAULT_OPEN_COLS,
-  DEFAULT_OPEN_ROWS,
   createPtyController,
   registerPtyIpc,
   setWorkspaceAuthority,

@@ -71,6 +71,40 @@ export const DEFAULT_MAX_TOKENS = 32_768
  */
 export const DEFAULT_INPUT: readonly PiAiModality[] = ['text']
 
+/** Header names whose values are credentials and therefore may not live in settings. */
+const SENSITIVE_HEADERS = new Set([
+  'authorization',
+  'proxy-authorization',
+  'cookie',
+  'set-cookie',
+  'api-key',
+  'x-api-key',
+  'x-goog-api-key',
+  'anthropic-api-key',
+])
+
+/** Whether a configured header name conventionally carries a credential. */
+function isSensitiveHeader(name: string): boolean {
+  const normalized = name.trim().toLowerCase()
+  return SENSITIVE_HEADERS.has(normalized)
+    || normalized.endsWith('-api-key')
+    || normalized === 'token'
+    || normalized.endsWith('-token')
+    || normalized === 'secret'
+    || normalized.endsWith('-secret')
+}
+
+/** Reject secret-bearing headers before a settings document can persist or describe them. */
+function assertPublicHeaders(provider: string, headers: Readonly<Record<string, string>> | undefined): void {
+  if (headers === undefined) return
+  const sensitive = Object.keys(headers).find(isSensitiveHeader)
+  if (sensitive === undefined) return
+  throw new Error(
+    `llm-pi-ai: provider "${provider}" configures sensitive header ${JSON.stringify(sensitive)};`
+    + ' settings headers are public configuration — store the credential behind apiKeyEnv instead',
+  )
+}
+
 export type {
   PiAiCompatProfile,
   PiAiModality,
@@ -379,6 +413,7 @@ export function resolveProfiles(
     if (source.displayName !== undefined && source.displayName.length === 0) {
       throw new Error(`llm-pi-ai: provider "${provider}" has an empty displayName`)
     }
+    assertPublicHeaders(provider, source.headers)
     const streamIdleTimeoutMs = source.streamIdleTimeoutMs ?? DEFAULT_STREAM_IDLE_TIMEOUT_MS
     if (!Number.isFinite(streamIdleTimeoutMs)
       || streamIdleTimeoutMs <= 0

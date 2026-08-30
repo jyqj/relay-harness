@@ -8,7 +8,7 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/jyqj/relay-harness.git",
-    "directory": "packages/host/mcp-servers"
+    "directory": "relay-harness/packages/host/mcp-servers"
   },
   "type": "module",
   "main": "lib/index.js",

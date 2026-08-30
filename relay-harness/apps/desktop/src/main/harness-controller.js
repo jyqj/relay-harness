@@ -422,7 +422,8 @@ class HarnessController extends EventEmitter {
       const rlhbot = await this.ensureRlhbotPlugin();
       this.assertOperationCurrent(generation);
       if (rlhbot && rlhbot.ok === false) {
-        this.rlh.log(`预置 rlhbot 失败：${rlhbot.error || 'unknown'}`, 'app');
+        const state = rlhbot.disabled === true ? '未启用' : '失败';
+        this.rlh.log(`预置 rlhbot ${state}：${rlhbot.error || 'unknown'}`, 'app');
       }
     } catch (error) {
       this.rlh.log(`预置 rlhbot 失败：${errorMessage(error)}`, 'app');
@@ -576,6 +577,4 @@ class HarnessController extends EventEmitter {
 
 module.exports = {
   HarnessController,
-  DEFAULT_STABLE_MS,
-  MAX_RESTART_DELAY_MS,
 };

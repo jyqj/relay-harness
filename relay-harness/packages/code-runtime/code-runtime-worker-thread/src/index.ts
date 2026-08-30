@@ -46,6 +46,8 @@ export interface Config {
    * fixed result-envelope syntax is excluded.
    */
   maxOutputBytes?: number
+  /** Hard cap for one binding argument or resolution after lossless-JSON materialization. */
+  maxBindingBytes?: number
   /** The worker's max old-generation heap in MiB (`resourceLimits`); overflow kills the worker, surfacing as kind `'worker-exit'`. */
   maxOldGenerationSizeMb?: number
 }
@@ -240,6 +242,7 @@ export class WorkerThreadCodeRuntime extends CodeRuntime {
     computeMs: z.number().default(60_000),
     maxWallMs: z.number().default(600_000),
     maxOutputBytes: z.number().default(67_108_864),
+    maxBindingBytes: z.number().default(67_108_864),
     maxOldGenerationSizeMb: z.number().default(512),
   })
 
@@ -260,6 +263,9 @@ export class WorkerThreadCodeRuntime extends CodeRuntime {
     }
     if (!Number.isSafeInteger(this.config.maxOutputBytes) || this.config.maxOutputBytes < MIN_OUTPUT_BYTES) {
       throw new Error(`rlh-code-runtime-worker-thread: config.maxOutputBytes must be a safe integer of at least ${MIN_OUTPUT_BYTES}, got ${String(this.config.maxOutputBytes)}`)
+    }
+    if (!Number.isSafeInteger(this.config.maxBindingBytes) || this.config.maxBindingBytes < 1) {
+      throw new Error(`rlh-code-runtime-worker-thread: config.maxBindingBytes must be a positive safe integer, got ${String(this.config.maxBindingBytes)}`)
     }
     // maxWallMs reaches setTimeout, which clamps any delay above
     // MAX_TIMER_DELAY_MS to 1 ms; the positivity check above accepts such a
@@ -486,6 +492,10 @@ export class WorkerThreadCodeRuntime extends CodeRuntime {
           reply({ type: 'reply', id: message.id, ok: false, message: 'binding arguments must be lossless JSON' })
           return
         }
+        if (jsonValueBytesUpTo(args, this.config.maxBindingBytes) === undefined) {
+          reply({ type: 'reply', id: message.id, ok: false, message: `binding arguments exceed ${this.config.maxBindingBytes} bytes` })
+          return
+        }
         void (async () => {
           try {
             const resolved = await fn(args)
@@ -497,6 +507,8 @@ export class WorkerThreadCodeRuntime extends CodeRuntime {
             }
             if (value === undefined) {
               reply({ type: 'reply', id: message.id, ok: false, message: 'binding resolution must be lossless JSON' })
+            } else if (jsonValueBytesUpTo(value, this.config.maxBindingBytes) === undefined) {
+              reply({ type: 'reply', id: message.id, ok: false, message: `binding resolution exceeds ${this.config.maxBindingBytes} bytes` })
             } else {
               reply({ type: 'reply', id: message.id, ok: true, value: encodeWorkerJson(value) })
             }

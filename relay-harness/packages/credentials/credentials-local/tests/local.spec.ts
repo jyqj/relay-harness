@@ -15,6 +15,7 @@ function writeCredentials(file: string, text: string): Promise<void> {
 
 const KEY = credentialRef('RLH_CRED_TEST')
 const OTHER = credentialRef('RLH_CRED_OTHER')
+const DEEPSEEK_KEY = credentialRef('DEEPSEEK_API_KEY')
 
 const cleanups: Array<() => Promise<void>> = []
 
@@ -56,6 +57,13 @@ describe('resolveSpec', () => {
   it('lets an explicit path win over the home', () => {
     const spec = resolveSpec({ path: '/etc/rlh/creds.yaml', rlhHome: '/ignored', watch: false, debounceMs: 5 })
     expect(spec).toEqual({ filename: resolve('/etc/rlh/creds.yaml'), watch: false, debounceMs: 5 })
+  })
+
+  it('resolves a non-empty legacy Desktop import path and ignores an empty one', () => {
+    expect(resolveSpec({ rlhHome: '/home', legacyDesktopJsonPath: '/desktop/credentials.json' }))
+      .toMatchObject({ legacyDesktopJsonPath: resolve('/desktop/credentials.json') })
+    expect(resolveSpec({ rlhHome: '/home', legacyDesktopJsonPath: '' }))
+      .not.toHaveProperty('legacyDesktopJsonPath')
   })
 })
 
@@ -103,6 +111,99 @@ describe('layering and reads', () => {
     await mkdir(path)
     const ctx = new Context()
     await expect(ctx.plugin(LocalCredentialProvider, { path, watch: false })).rejects.toThrow()
+  })
+})
+
+describe('legacy Desktop migration', () => {
+  it('moves the legacy API key into the managed store and scrubs the JSON source', async () => {
+    const dir = await tempDir()
+    const path = join(dir, '.credentials.yaml')
+    const legacyPath = join(dir, 'desktop-credentials.json')
+    const secret = 'legacy-secret-never-log'
+    await writeFile(legacyPath, `${JSON.stringify({ apiKey: secret, githubToken: 'keep-reference' }, null, 2)}\n`, { mode: 0o600 })
+
+    const ctx = await boot({ path, watch: false, legacyDesktopJsonPath: legacyPath })
+    expect(await ctx.credentials.resolve(DEEPSEEK_KEY)).toEqual({ value: secret, source: 'file' })
+    const legacy = JSON.parse(await readFile(legacyPath, 'utf8')) as Record<string, unknown>
+    expect(Object.hasOwn(legacy, 'apiKey')).toBe(false)
+    expect(legacy['githubToken']).toBe('keep-reference')
+    expect(await readFile(path, 'utf8')).not.toContain('apiKey')
+    if (process.platform !== 'win32') {
+      expect((await stat(path)).mode & 0o777).toBe(0o600)
+      expect((await stat(legacyPath)).mode & 0o777).toBe(0o600)
+    }
+  })
+
+  it('keeps the managed credential authoritative while scrubbing a stale Desktop value', async () => {
+    const dir = await tempDir()
+    const path = join(dir, '.credentials.yaml')
+    const legacyPath = join(dir, 'desktop-credentials.json')
+    await writeCredentials(path, 'DEEPSEEK_API_KEY: managed-wins\n')
+    await writeFile(legacyPath, '{"apiKey":"stale-legacy","remoteToken":"keep"}\n', { mode: 0o600 })
+
+    const ctx = await boot({ path, watch: false, legacyDesktopJsonPath: legacyPath })
+    expect(await ctx.credentials.resolve(DEEPSEEK_KEY)).toEqual({ value: 'managed-wins', source: 'file' })
+    expect(await readFile(path, 'utf8')).toBe('DEEPSEEK_API_KEY: managed-wins\n')
+    expect(JSON.parse(await readFile(legacyPath, 'utf8'))).toEqual({ remoteToken: 'keep' })
+  })
+
+  it('fails loud without echoing a malformed legacy credential value', async () => {
+    const dir = await tempDir()
+    const path = join(dir, '.credentials.yaml')
+    const legacyPath = join(dir, 'desktop-credentials.json')
+    const secret = 'legacy-secret-never-echo'
+    await writeFile(legacyPath, `{"apiKey":{"secret":"${secret}"}}\n`, { mode: 0o600 })
+    let failure: unknown
+    try {
+      await new Context().plugin(LocalCredentialProvider, { path, watch: false, legacyDesktopJsonPath: legacyPath })
+    } catch (error) {
+      failure = error
+    }
+    expect(String(failure)).toMatch(/legacy Desktop credential.*string/)
+    expect(String(failure)).not.toContain(secret)
+    expect((failure as Error).stack ?? '').not.toContain(secret)
+  })
+
+  it('treats an absent legacy file and a JSON object without apiKey as no-ops', async () => {
+    const dir = await tempDir()
+    const path = join(dir, '.credentials.yaml')
+    const missing = join(dir, 'missing.json')
+    const absent = await boot({ path, watch: false, legacyDesktopJsonPath: missing })
+    expect(await absent.credentials.resolve(DEEPSEEK_KEY)).toBeUndefined()
+
+    const legacyPath = join(dir, 'desktop-credentials.json')
+    await writeFile(legacyPath, '{"githubToken":"keep"}\n', { mode: 0o600 })
+    const noKey = await boot({ path, watch: false, legacyDesktopJsonPath: legacyPath })
+    expect(await noKey.credentials.resolve(DEEPSEEK_KEY)).toBeUndefined()
+    expect(await readFile(legacyPath, 'utf8')).toBe('{"githubToken":"keep"}\n')
+  })
+
+  it('scrubs an empty legacy API key without creating a managed value', async () => {
+    const dir = await tempDir()
+    const path = join(dir, '.credentials.yaml')
+    const legacyPath = join(dir, 'desktop-credentials.json')
+    await writeFile(legacyPath, '{"apiKey":"","remoteToken":"keep"}\n', { mode: 0o600 })
+    const ctx = await boot({ path, watch: false, legacyDesktopJsonPath: legacyPath })
+    expect(await ctx.credentials.resolve(DEEPSEEK_KEY)).toBeUndefined()
+    expect(JSON.parse(await readFile(legacyPath, 'utf8'))).toEqual({ remoteToken: 'keep' })
+  })
+
+  it.each([
+    ['the managed document itself', 'same'],
+    ['invalid JSON', 'invalid-json'],
+    ['a non-object root', 'array'],
+    ['an unreadable source', 'directory'],
+  ])('fails loud for %s as a legacy import source', async (_label, kind) => {
+    const dir = await tempDir()
+    const path = join(dir, '.credentials.yaml')
+    let legacyPath = join(dir, 'desktop-credentials.json')
+    if (kind === 'same') legacyPath = path
+    else if (kind === 'invalid-json') await writeFile(legacyPath, '{broken\n', { mode: 0o600 })
+    else if (kind === 'array') await writeFile(legacyPath, '[]\n', { mode: 0o600 })
+    else await mkdir(legacyPath)
+    const ctx = new Context()
+    await expect(ctx.plugin(LocalCredentialProvider, { path, watch: false, legacyDesktopJsonPath: legacyPath }))
+      .rejects.toThrow(/legacy Desktop|must differ/)
   })
 })
 

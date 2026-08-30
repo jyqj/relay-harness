@@ -4,7 +4,7 @@
  * @module @relay-harness/rlh-agent-instructions/config
  */
 
-import { relative } from 'node:path'
+import { isAbsolute, relative, resolve } from 'node:path'
 import z from '@relay-harness/schemastery'
 import { resolveRlhHome } from '@relay-harness/rlh-home-paths'
 
@@ -18,6 +18,8 @@ const RESERVED_PATH_SEGMENTS = new Set(['', '.', '..'])
 export interface Config {
   /** Harness home containing the fixed user-global `AGENTS.md`; defaults to `$RLH_HOME` or `~/.rlh`. */
   rlhHome?: string
+  /** Absolute roots whose files may be targeted by instruction symlinks in addition to the owning project/home root. */
+  additionalAllowedRoots?: string[]
   /** Directory entries that identify the project root while walking upward from the session cwd. */
   projectRootMarkers?: string[]
   /** UTF-8 byte cap for one rendered baseline or dynamic batch; non-positive or non-finite disables loading. */
@@ -40,6 +42,7 @@ export interface Config {
 
 export const Config: z<Config> = z.object({
   rlhHome: z.string(),
+  additionalAllowedRoots: z.array(z.string()),
   projectRootMarkers: z.array(z.string()).default([...DEFAULT_PROJECT_ROOT_MARKERS]),
   maxBytes: z.number().required(),
   maxSourceBytes: z.number().step(1).min(1).default(DEFAULT_MAX_SOURCE_BYTES),
@@ -51,6 +54,7 @@ export const Config: z<Config> = z.object({
 /** Normalized instruction discovery configuration. */
 export interface ResolvedDiscoveryConfig {
   rlhHome: string
+  additionalAllowedRoots: string[]
   projectRootMarkers: string[]
   instructionFileCandidates: string[]
   localInstructionFileCandidates: string[]
@@ -77,6 +81,7 @@ export function workspaceBaselineIdentity(
 ): string {
   return JSON.stringify({
     projectRoot: relative(cwd, projectRoot),
+    additionalAllowedRoots: config.additionalAllowedRoots,
     projectRootMarkers: config.projectRootMarkers,
     maxBytes: config.maxBytes,
     maxSourceBytes: config.maxSourceBytes,
@@ -107,10 +112,11 @@ export function resolveConfig(config: Config): ResolvedConfig {
  * @returns normalized home, root markers, and instruction candidates.
  */
 export function resolveDiscoveryConfig(
-  config: Pick<Config, 'rlhHome' | 'projectRootMarkers' | 'instructionFileCandidates' | 'localInstructionFileCandidates'>,
+  config: Pick<Config, 'rlhHome' | 'additionalAllowedRoots' | 'projectRootMarkers' | 'instructionFileCandidates' | 'localInstructionFileCandidates'>,
 ): ResolvedDiscoveryConfig {
   return {
     rlhHome: resolveRlhHome(config.rlhHome),
+    additionalAllowedRoots: resolveAdditionalAllowedRoots(config.additionalAllowedRoots),
     projectRootMarkers: config.projectRootMarkers ?? [...DEFAULT_PROJECT_ROOT_MARKERS],
     instructionFileCandidates: resolveInstructionFileCandidates(
       config.instructionFileCandidates,
@@ -121,6 +127,15 @@ export function resolveDiscoveryConfig(
       DEFAULT_LOCAL_INSTRUCTION_FILE_CANDIDATES,
     ),
   }
+}
+
+function resolveAdditionalAllowedRoots(roots: string[] | undefined): string[] {
+  const resolved = new Set<string>()
+  for (const root of roots ?? []) {
+    if (!isAbsolute(root)) throw new Error('agent-instructions additionalAllowedRoots entries must be absolute paths')
+    resolved.add(resolve(root))
+  }
+  return [...resolved]
 }
 
 function resolveInstructionFileCandidates(candidates: string[] | undefined, fallback: readonly string[]): string[] {

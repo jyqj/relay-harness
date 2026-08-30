@@ -119,7 +119,7 @@ The verification also packs the Landlock entry, which `rlh-sandbox-local` declar
 
 | Item | Content |
 |---|---|
-| release-set manifests | `private: true` removed; `publishConfig.access` per sequence and `repository` with each package's `directory` added |
+| release-set manifests | `private: true` removed; `publishConfig.access` per sequence and Git-root-relative `repository.directory` (`relay-harness/<runtime-relative-directory>`) added |
 | release-set boundary | every member of `packages/*/*`, `apps/*`, and `vendor/*` |
 | dependency protocol | workspace-internal references are `workspace:^`, with `check-workspace-constraints.ts` and the invariant-companion rule requiring it |
 | root `AGENTS.md` | the convention that vendored packages are `private: true` no longer holds |

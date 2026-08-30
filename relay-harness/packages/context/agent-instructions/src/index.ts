@@ -148,6 +148,7 @@ export function apply(ctx: Context, config: Config): void {
       const instructions = await loadBaselineInstructionSet({
         cwd,
         rlhHome: resolved.rlhHome,
+        additionalAllowedRoots: resolved.additionalAllowedRoots,
         projectRootMarkers: resolved.projectRootMarkers,
         maxBytes: resolved.maxBytes,
         maxSourceBytes: resolved.maxSourceBytes,

@@ -8,7 +8,7 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/jyqj/relay-harness.git",
-    "directory": "packages/workflow/tool-workflow"
+    "directory": "relay-harness/packages/workflow/tool-workflow"
   },
   "type": "module",
   "main": "lib/index.js",

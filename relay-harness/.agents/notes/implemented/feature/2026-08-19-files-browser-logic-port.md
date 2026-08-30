@@ -12,7 +12,7 @@ The desktop Files and Browser occupants already owned search, save, and a loopba
 
 This desktop ports those Files/Browser loops from the local reference tree `C:\Ai\t3code` and rebrands every live identifier to `rlhd`. Effect/Atom/Schema peel to Promises and `webContents`. Playwright Chromium, `playwright-core`, and `__t3PlaywrightInjected` are not shipped; automation is CDP on the existing guest. Chrome stays official rlh `ui-primitives` plus `--rlw-alias-*` (no Pierre, lucide, shadcn, or Tailwind).
 
-The guest BrowserView is `contextIsolation: false`, `sandbox: true`, and `nodeIntegration: false` so the pick overlay can use `ipcRenderer`. The harness main window stays `contextIsolation: true`. The PiP window stays `contextIsolation: true`. Guest documents may be any `http(s)`; `file:` documents are cancelled. Address bar `normalizePreviewUrl` treats a bare loopback host as `http` and a bare public host as `https`. The harness main window loopback wall is unchanged.
+The guest BrowserView is `contextIsolation: true`, `sandbox: true`, and `nodeIntegration: false`. Its preload keeps `ipcRenderer` private and exposes only a frozen `rlhdPreviewGuest` interface through `contextBridge`: annotation submit/cancel and human-input reporting, each pinned to its named preview channel. The harness main window and PiP window also keep `contextIsolation: true`. Guest documents may be any `http(s)`; `file:` documents are cancelled. Address bar `normalizePreviewUrl` treats a bare loopback host as `http` and a bare public host as `https`. The harness main window loopback wall is unchanged.
 
 rlhd extras stay: dirty-tab Keep/Discard/Save, `error.changed`, occupancy hide (`overlayOpen || pipOpen`), and the token-prefixed workspace file server. Preview IPC that reaches the guest is harness-authorized only. Recording is host-renderer `MediaRecorder`; artifacts land under `userData/preview-recordings/`.
 
@@ -26,17 +26,17 @@ rlhd extras stay: dirty-tab Keep/Discard/Save, `error.changed`, occupancy hide (
 
 **Copy Pierre into the slot tree.** Rejected: design language requires `ui-primitives` and `--rlw-alias-*`; a second icon/component kit is a second skin.
 
-**Drop guest `sandbox`.** Rejected: pick needs `ipcRenderer` in the guest, which `contextIsolation: false` already provides; sandbox stays on.
+**Expose `ipcRenderer` to the guest document.** Rejected: a public preview page must not choose arbitrary Electron IPC channels; the isolated preload maps the three outbound operations to fixed channels while the main process validates annotation payloads on that guest's own `webContents`.
 
 **Open the harness main window to public http(s).** Rejected: the main window still loads the harness UI and the user API key; only the guest document may be public `http(s)`.
 
 ## Consequences
 
-Guest, main, and PiP isolation are a split, not one preference object. Pick overlay IPC is available only in the guest. Recording frames arrive over IPC into the host renderer; there is no second browser. Artifacts under `userData/preview-recordings/` are desktop-local files. Harness-only preview IPC stays authorized on `window.shell`; the boot window never receives guest control channels.
+Guest, main, and PiP all isolate their page world from preload privileges. The guest's page-facing bridge cannot invoke, subscribe to, or name arbitrary IPC channels. Recording frames arrive over IPC into the host renderer; there is no second browser. Artifacts under `userData/preview-recordings/` are desktop-local files. Harness-only preview IPC stays authorized on `window.shell`; the boot window never receives guest control channels.
 
 ## Testing
 
-`src/main/workspace-fs.test.js` pins the 1 MiB caps and traversal. `src/main/preview.test.js` pins public https guests, pick, PiP isolation, and automation method wiring against fakes. `src/main/preview-session.test.js` pins guest webPreferences and leftover UA-token strip. `src/preload/shell-api.test.js` pins authorized preview IPC. `ui-files` pins uncapped search, mention drag, revealLine, and Add to chat. `ui-preview` pins More occupancy hide including PiP, device-toolbar `setBounds`, pick markdown, and host MediaRecorder with a fake recorder. Live Electron MediaRecorder and live CDP on a real guest are not proven.
+`src/main/workspace-fs.test.js` pins the 1 MiB caps and traversal. `src/main/preview.test.js` pins public https guests, pick, PiP isolation, and automation method wiring against fakes. `src/main/preview-session.test.js` pins isolated guest webPreferences and leftover UA-token strip. `preview-guest-protocol.test.js` pins the exact frozen bridge keys and their three outbound messages; `preview-guest-preload.test.js` rejects a raw `ipcRenderer` global. `src/preload/shell-api.test.js` pins authorized preview IPC. `ui-files` pins uncapped search, mention drag, revealLine, and Add to chat. `ui-preview` pins More occupancy hide including PiP, device-toolbar `setBounds`, pick markdown, and host MediaRecorder with a fake recorder. Live Electron MediaRecorder and live CDP on a real guest are not proven.
 
 ## Related
 

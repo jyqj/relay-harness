@@ -4,6 +4,8 @@ Status: implemented
 
 English | [中文](2026-07-21-follow-instruction-symlinks.zh.md)
 
+Partially superseded by [ordinary-user execution and instruction containment](../bug-fix/2026-08-31-ordinary-user-execution-and-instruction-containment.md): symlinks remain supported, but off-root targets now require an explicit `additionalAllowedRoots` grant.
+
 ## Problem
 
 The [agent-instructions plugin](2026-06-24-workspace-context.md) probed each instruction candidate with `ctx.fs.lstat` before resolving, rejecting any final-component symlink so a repository-owned link could not point instruction loading at content outside the workspace. That no-follow invariant blocked a deliberate, supported setup: a user who symlinks `$RLH_HOME/AGENTS.md` — or a project `AGENTS.md` — to a canonical instruction file kept elsewhere, sharing one house-style file across tools and homes, saw the link silently ignored. It also forced content dedup to treat the ubiquitous `CLAUDE.md → AGENTS.md` mirror as a special skipped case rather than an ordinary duplicate. The repository owner asked to follow symlinked instruction files unconditionally across every scope, accepting the residual trust-boundary risk recorded below.

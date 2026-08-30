@@ -17,7 +17,7 @@ dependencies = [
 
 [project.urls]
 Homepage = "https://github.com/jyqj/relay-harness"
-Documentation = "https://github.com/jyqj/relay-harness/blob/master/docs/user/guide/python-sdk.md"
+Documentation = "https://github.com/jyqj/relay-harness/blob/master/relay-harness/docs/user/guide/python-sdk.md"
 Issues = "https://github.com/jyqj/relay-harness/issues"
 Source = "https://github.com/jyqj/relay-harness"
 

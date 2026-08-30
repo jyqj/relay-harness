@@ -265,7 +265,11 @@ export class TeamMailbox {
           return true
         }
       }
-      await this.ctx.subagents.followup(root, message.targetId, content, { source, signal })
+      await this.ctx.subagents.followup(root, message.targetId, content, {
+        source,
+        signal,
+        idempotencyKey: `team:${message.id}`,
+      })
       return target === undefined
         ? true
         : await this.checkpointDelivered(root, target.session, message.id)

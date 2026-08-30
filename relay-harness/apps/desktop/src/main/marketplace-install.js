@@ -84,13 +84,9 @@ function ensurePnpmShim(nodeBin) {
 }
 
 function pluginEnv(nodeBin) {
-  const config = loadConfig();
   const env = { ...process.env };
   delete env.ELECTRON_RUN_AS_NODE;
   delete env.ELECTRON_NO_ASAR;
-  if (config.apiKey) {
-    env.DEEPSEEK_API_KEY = config.apiKey;
-  }
   env.npm_config_update_notifier = 'false';
   env.CI = env.CI || '1';
   const extras = [];
@@ -648,11 +644,7 @@ async function installMarketplacePlugin(id, options = {}) {
 
 module.exports = {
   listInstalledPlugins,
-  parseAllowBuilds,
-  allowBuildsInWorkspace,
   installPlugin,
   uninstallPlugin,
   installMarketplacePlugin,
-  resolveCli,
-  runPlugin,
 };

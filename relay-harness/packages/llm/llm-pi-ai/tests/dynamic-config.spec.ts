@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Context } from '@relay-harness/cordis'
-import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import LlmRuntime, { LlmAdapter } from '@relay-harness/rlh-llm'
@@ -167,6 +167,21 @@ describe('request-level dynamic profiles', () => {
     // and then quietly disabling every route in the namespace.
     await expect(ctx.settings.update(NS, { providers: { 'not-a-real-provider': {} } }))
       .rejects.toThrow(/resolves no models/)
+    expect(ctx.llm.listProviders().map(provider => provider.id)).toEqual(['openai'])
+  })
+
+  it('refuses a secret-bearing header before settings persistence or describe can expose it', async () => {
+    const dir = await home()
+    const ctx = await boot(dir, { providers: { openai: {} } })
+    const secret = 'settings-header-secret-never-persist'
+
+    await expect(ctx.settings.update(NS, {
+      providers: { openai: { headers: { Authorization: secret } } },
+    })).rejects.toThrow(/sensitive header.*apiKeyEnv/)
+    const descriptor = ctx.settings.describe({ redactSecrets: true })
+      .find(item => item.ns === NS)
+    expect(JSON.stringify(descriptor)).not.toContain(secret)
+    await expect(readFile(join(dir, 'settings.yaml'), 'utf8')).rejects.toMatchObject({ code: 'ENOENT' })
     expect(ctx.llm.listProviders().map(provider => provider.id)).toEqual(['openai'])
   })
 

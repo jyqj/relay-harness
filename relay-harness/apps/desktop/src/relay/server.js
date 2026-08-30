@@ -285,6 +285,4 @@ if (require.main === module) {
 
 module.exports = {
   RelayServer,
-  DEFAULT_PORT,
-  main,
 };

@@ -130,6 +130,5 @@ function missingRuntimeFiles(packageDir, options = {}) {
 }
 
 module.exports = {
-  declaredEntryRelatives,
   missingRuntimeFiles,
 };

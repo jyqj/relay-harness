@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write docs/repository-governance.md
-repository-governance.md: 791d759ae33da1b9ab933c12da5f8395dd6d1d4a
-repository-governance.zh.md: 0db15c69e2db3a589143a586d73486e5d365e16f
+repository-governance.md: 37b14e9fd1e2c3d636482f7fca142633ad4a234b
+repository-governance.zh.md: 33ba8020152c55e06fed6d2b8ce7fca30143982c

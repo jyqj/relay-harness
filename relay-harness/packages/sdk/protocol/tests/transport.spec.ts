@@ -1,7 +1,12 @@
 import { once } from 'node:events'
 import { PassThrough, Writable } from 'node:stream'
 import { describe, expect, it } from 'vitest'
-import { JsonRpcLineTransport, JsonRpcResponseError } from '../src/index.ts'
+import {
+  JsonRpcFrameTooLargeError,
+  JsonRpcLineTransport,
+  JsonRpcResponseError,
+  JsonRpcWriteQueueOverflowError,
+} from '../src/index.ts'
 
 function transportPair() {
   const aToB = new PassThrough()
@@ -187,6 +192,69 @@ describe('JsonRpcLineTransport', () => {
 
     expect(notifications).toEqual([{ method: 'message', params: { text: '你好' } }])
     transport.close()
+  })
+
+  it('accepts a large read chunk when each newline-delimited frame fits', async () => {
+    const input = new PassThrough()
+    const notifications: string[] = []
+    const transport = new JsonRpcLineTransport(input, new PassThrough(), { maxFrameBytes: 64 })
+    transport.onNotification((method) => { notifications.push(method) })
+    transport.start()
+
+    input.write([
+      JSON.stringify({ jsonrpc: '2.0', method: 'one' }),
+      JSON.stringify({ jsonrpc: '2.0', method: 'two' }),
+      '',
+    ].join('\n'))
+    await new Promise(resolve => setTimeout(resolve, 10))
+
+    expect(notifications).toEqual(['one', 'two'])
+    transport.close()
+  })
+
+  it('fails the transport when a partial inbound frame crosses the byte cap', async () => {
+    const input = new PassThrough()
+    const transport = new JsonRpcLineTransport(input, new PassThrough(), { maxFrameBytes: 16 })
+    const failure = new Promise<Error>((resolve) => { transport.onFailure(resolve) })
+    transport.start()
+
+    input.write('x'.repeat(17))
+
+    await expect(failure).resolves.toBeInstanceOf(JsonRpcFrameTooLargeError)
+    expect(input.listenerCount('data')).toBe(0)
+  })
+
+  it('rejects an outbound frame above the frame cap', () => {
+    const transport = new JsonRpcLineTransport(new PassThrough(), new PassThrough(), { maxFrameBytes: 32 })
+    expect(() => { transport.notify('oversized', { value: 'x'.repeat(40) }) })
+      .toThrow(JsonRpcFrameTooLargeError)
+  })
+
+  it('bounds frames retained by unsettled output writes', () => {
+    const callbacks: ((error?: Error) => void)[] = []
+    const output = {
+      write(_chunk: string, callback?: (error?: Error) => void) {
+        if (callback !== undefined) callbacks.push(callback)
+        return false
+      },
+    }
+    const transport = new JsonRpcLineTransport(new PassThrough(), output as never, {
+      maxFrameBytes: 256,
+      maxQueuedWriteBytes: 90,
+    })
+
+    transport.notify('one', { value: 'x'.repeat(20) })
+    expect(() => { transport.notify('two', { value: 'x'.repeat(20) }) })
+      .toThrow(JsonRpcWriteQueueOverflowError)
+    callbacks.shift()?.()
+    expect(() => { transport.notify('three', { value: 'x'.repeat(20) }) }).not.toThrow()
+  })
+
+  it('rejects invalid transport resource limits at construction', () => {
+    expect(() => new JsonRpcLineTransport(new PassThrough(), new PassThrough(), { maxFrameBytes: 0 }))
+      .toThrow(/maxFrameBytes must be a positive safe integer/)
+    expect(() => new JsonRpcLineTransport(new PassThrough(), new PassThrough(), { maxQueuedWriteBytes: 1.5 }))
+      .toThrow(/maxQueuedWriteBytes must be a positive safe integer/)
   })
 
   it('flush waits for all earlier output writes', async () => {

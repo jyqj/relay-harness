@@ -8,6 +8,7 @@ import {
   collectClientPackageViolations,
   collectRuntimeSourcePackageUses,
   collectSourcePackageUses,
+  collectStaticLinkedPackageNames,
   fixClientPackageManifests,
   readClientDeclarations,
   type ClientDeclaration,
@@ -20,6 +21,23 @@ const roots: string[] = []
 
 afterEach(() => {
   for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true })
+})
+
+describe('static Client assembly discovery', () => {
+  it('reads a literal id without importing the tsdown config or its artifact dependencies', () => {
+    expect(collectStaticLinkedPackageNames('tsdown.config.ts', [
+      "import { staticLinked as clientEntry } from '../tsdown.client.ts'",
+      "export default clientEntry('@relay-harness/rlh-client-demo', ['lib/types/index.js'])",
+    ].join('\n'))).toEqual(['@relay-harness/rlh-client-demo'])
+  })
+
+  it('rejects a computed static package id', () => {
+    expect(() => collectStaticLinkedPackageNames('tsdown.config.ts', [
+      "import { staticLinked } from '../tsdown.client.ts'",
+      "const id = '@relay-harness/rlh-client-demo'",
+      "export default staticLinked(id, ['lib/types/index.js'])",
+    ].join('\n'))).toThrow(/package id must be a string literal/)
+  })
 })
 
 function declaration(

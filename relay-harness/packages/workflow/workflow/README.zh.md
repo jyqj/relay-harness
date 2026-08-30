@@ -4,7 +4,7 @@
 
 工作流 seam（扩展点，`ctx.workflowEngine`）执行由模型编写、可扇出 subagent 的编排脚本。该 seam 定义脚本、运行、结果、错误和事件契约；引擎负责决定如何隔离并执行脚本。
 
-`@relay-harness/rlh-workflow-worker-thread` 是当前引擎，`@relay-harness/rlh-tool-workflow` 是面向模型的消费方。未来的进程或沙箱引擎可以替换实现，而无需更改工具。
+`@relay-harness/rlh-workflow-worker-thread` 是当前引擎，`@relay-harness/rlh-tool-workflow` 是通用的面向模型消费方。面向普通用户的 base 只为 `rlh-tool-ralph` 的部署方固定脚本挂载引擎，并省略 `rlh-tool-workflow`，因为当前引擎不会对模型编写的代码提供沙箱；随发行版提供的 Cordis 创造 preset 与用户自行编写的 profile patch 是任意脚本的显式 developer opt-in。未来的进程或沙箱引擎可以替换实现，而无需更改工具。
 
 包根是 Host face。浏览器安全的 `@relay-harness/rlh-workflow/types` 子路径包含运行身份、元数据、结果和仅供观察的生命周期 payload，不导入 `Agent`、Cordis service 或 Host Context 声明；Host 专用的 `WorkflowStartRequest` 与 `WorkflowRun` 只从包根提供。
 

@@ -8,7 +8,7 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/jyqj/relay-harness.git",
-    "directory": "packages/client/ui-directory-picker-native"
+    "directory": "relay-harness/packages/client/ui-directory-picker-native"
   },
   "type": "module",
   "main": "lib/index.js",

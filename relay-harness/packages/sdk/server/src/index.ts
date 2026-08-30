@@ -12,7 +12,11 @@
 import type { Context } from '@relay-harness/cordis'
 import type { Readable, Writable } from 'node:stream'
 import Schema from '@relay-harness/schemastery'
-import { JsonRpcLineTransport } from '@relay-harness/rlh-sdk-protocol'
+import {
+  DEFAULT_JSON_RPC_MAX_FRAME_BYTES,
+  DEFAULT_JSON_RPC_MAX_QUEUED_WRITE_BYTES,
+  JsonRpcLineTransport,
+} from '@relay-harness/rlh-sdk-protocol'
 import { HarnessSdkJsonRpcServer } from './server.ts'
 
 export * from './server.ts'
@@ -25,6 +29,10 @@ export const inject = ['agents']
 export interface JsonRpcConfig {
   /** Report max-token turn/subagent termination as a successful SDK result. */
   maxTokensAsSuccess?: boolean
+  /** Maximum UTF-8 bytes in one inbound or outbound JSON-RPC frame. */
+  maxFrameBytes?: number
+  /** Maximum bytes retained across unsettled JSON-RPC output writes. */
+  maxQueuedWriteBytes?: number
   /** Transport input override; production uses `process.stdin`. */
   input?: Readable
   /** Transport output override; production uses `process.stdout`. */
@@ -35,6 +43,8 @@ export interface JsonRpcConfig {
 
 export const Config: Schema<JsonRpcConfig> = Schema.object({
   maxTokensAsSuccess: Schema.boolean().default(false),
+  maxFrameBytes: Schema.number().step(1).min(1).default(DEFAULT_JSON_RPC_MAX_FRAME_BYTES),
+  maxQueuedWriteBytes: Schema.number().step(1).min(1).default(DEFAULT_JSON_RPC_MAX_QUEUED_WRITE_BYTES),
 })
 
 /**
@@ -45,7 +55,8 @@ export const Config: Schema<JsonRpcConfig> = Schema.object({
  */
 export function apply(ctx: Context, config: JsonRpcConfig): void {
   // Cordis applies the schema default before invoking the plugin.
-  const resolvedConfig = config as JsonRpcConfig & { maxTokensAsSuccess: boolean }
+  const resolvedConfig = config as Required<Pick<JsonRpcConfig,
+    'maxTokensAsSuccess' | 'maxFrameBytes' | 'maxQueuedWriteBytes'>> & JsonRpcConfig
   // Protocol shutdown owns the complete runtime process, so it must await the
   // root lifecycle (including persistence) before exiting.
   const rootFiber = ctx.root.fiber
@@ -56,7 +67,10 @@ export function apply(ctx: Context, config: JsonRpcConfig): void {
   /* v8 ignore next -- production exit wiring; tests always inject the runtime hooks */
   const exit = config.exit ?? ((code: number): void => { process.exit(code) })
 
-  const transport = new JsonRpcLineTransport(input, output)
+  const transport = new JsonRpcLineTransport(input, output, {
+    maxFrameBytes: resolvedConfig.maxFrameBytes,
+    maxQueuedWriteBytes: resolvedConfig.maxQueuedWriteBytes,
+  })
   const server = new HarnessSdkJsonRpcServer(ctx, transport, {
     maxTokensAsSuccess: resolvedConfig.maxTokensAsSuccess,
   })
@@ -64,11 +78,11 @@ export function apply(ctx: Context, config: JsonRpcConfig): void {
   // Share one exit task so racing shutdown requests cannot dispose the root or
   // exit the process more than once.
   let exitTask: Promise<void> | undefined
-  const disposeAndExit = (): Promise<void> => {
+  const disposeAndExit = (code = 0): Promise<void> => {
     exitTask ??= (async () => {
       await Promise.allSettled([Promise.resolve().then(() => transport.flush())])
       await Promise.allSettled([Promise.resolve().then(() => rootFiber.dispose())])
-      exit(0)
+      exit(code)
     })()
     return exitTask
   }
@@ -86,6 +100,9 @@ export function apply(ctx: Context, config: JsonRpcConfig): void {
       setImmediate(() => { void disposeAndExit() })
     }
     return result
+  })
+  transport.onFailure(() => {
+    setImmediate(() => { void disposeAndExit(1) })
   })
 
   ctx.effect(() => {

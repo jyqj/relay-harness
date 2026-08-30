@@ -27,4 +27,4 @@ Relay Harness 已提供普通用户安全默认值、Chat / Work / Library 产�
 
 - 外部路由进入 `shipped` 前，必须同时具备默认 composition、Remote/API、UI、真实或契约 E2E 与文档证据。
 - 新手用户验收必须证明默认 Simple mode 不要求理解模型、preset、插件、轨迹或原始日志。
-- 未来布局变更必须保持根 workflow 发现、包路径、发布连续性与扁平 tracked tree 不变量。
+- 未来布局变更必须保持根 workflow 发现、Git-root-relative 包元数据、发布连续性与 outer-container/runtime-root 分层。

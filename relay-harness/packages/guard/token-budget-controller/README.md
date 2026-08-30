@@ -4,9 +4,10 @@ English | [中文](README.zh.md)
 
 A stop-boundary output-budget override, not a model-facing tool: it never appears in the tool list. When a turn closes on a `max-tokens` finish — the model was cut off at the output-token ceiling mid-answer — the controller overrides the stop and steers one continue nudge into the closing turn, so the model resumes where it was cut off instead of leaving the task half-written. Prior art: the token-budget meta-controller pattern (continuation with diminishing-returns detection).
 
-Two bounds keep continuation honest:
+Three bounds keep one turn honest:
 
-- **Per-turn cap** — at most `maxContinuations` nudges per turn; the counter resets when the turn number changes.
+- **Step cap** — at most `maxStepsPerTurn` durable `step/start` records per turn; the next pre-step fails before another model request.
+- **Continuation cap** — at most `maxContinuations` nudges per turn; the counter resets when the turn number changes.
 - **Diminishing-returns detection** — each continuation's produced output (the step's `usage.outputTokens`) is compared against `minUsefulDeltaTokens`; after `maxLowDeltaStreak` consecutive unproductive continuations the controller stops steering, because a model that answers each nudge with near-empty output has nothing left to say. A continuation whose usage is unreported counts as productive — the cap alone bounds those.
 
 A turn that closes on a plain `stop` finish is NOT this controller's domain and is left to other stop-boundary listeners (including `@relay-harness/rlh-behavior-correction`).
@@ -20,13 +21,14 @@ A turn that closes on a plain `stop` finish is NOT this controller's domain and 
     maxContinuations: 8        # default; continue nudges allowed per turn
     minUsefulDeltaTokens: 500  # default; output tokens below which a continuation is unproductive
     maxLowDeltaStreak: 2       # default; consecutive unproductive continuations that stop steering
+    maxStepsPerTurn: 64        # default; total model-request steps admitted per turn
 ```
 
 Every value fails loud at plugin load: a non-integer or sub-minimum value throws, never a silent fall-back to defaults.
 
 ## Decision and delivery semantics
 
-The decision is a pure function of the session log read at `agent/turn-stopping`: the turn's last finish chunk must be `max-tokens`, and the per-step output series is the turn's `assistant/message` usage in order (the initial cutoff response first, one entry per continuation). The nudge rides `agent.steer(...)` as a plugin-sourced `user/message` (source `{kind: 'plugin', plugin: 'token-budget-controller'}`), so the loop re-reads its inbox and runs another step in the same turn; the message is model-visible, source-attributed, and reconstructable from the session log with no new session event.
+The step cap is reconstructed from durable `step/start` events at `agent/pre-step`, so resume cannot reset it. The continuation decision is a pure function of the session log read at `agent/turn-stopping`: the turn's last finish chunk must be `max-tokens`, and the per-step output series is the turn's `assistant/message` usage in order (the initial cutoff response first, one entry per continuation). The nudge rides `agent.steer(...)` as a plugin-sourced `user/message` (source `{kind: 'plugin', plugin: 'token-budget-controller'}`), so the loop re-reads its inbox and runs another step in the same turn; the message is model-visible, source-attributed, and reconstructable from the session log with no new session event.
 
 State is per-agent and in-memory only: a `WeakMap<Agent, …>` keys the continuation counter by the live agent object and turn number. A session resumed from persistence starts with a fresh counter — the controller is a heuristic override, not a logged invariant, and one re-nudge after resume is the accepted cost. The nudge does not change `maxTokens`: the API-level ceiling still bounds each step, while the controller bounds how many continuations follow.
 
@@ -55,5 +57,5 @@ Append-only; the nudge follows the reusable request prefix and does not invalida
 ## Known Limitations and Deferred Work
 
 - **No input-side budget** — the controller governs output continuation only; context-window pressure remains the compaction engine's domain.
-- **Counters do not survive resume** — the per-turn continuation count restarts from zero after a session reload.
+- **Continuation counters do not survive resume** — the heuristic nudge count restarts after reload; the hard step cap remains durable because it counts `step/start`.
 - **Usage is adapter-reported** — a provider that misreports `outputTokens` distorts the diminishing-returns check; unreported usage falls back to the cap.

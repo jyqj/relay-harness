@@ -8,7 +8,7 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/jyqj/relay-harness.git",
-    "directory": "packages/attachment/attachment"
+    "directory": "relay-harness/packages/attachment/attachment"
   },
   "type": "module",
   "main": "lib/index.js",

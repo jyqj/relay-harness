@@ -277,11 +277,11 @@ describe('PiAiAdapter provider routing', () => {
     expect(server.paths).toEqual(['/v1/responses'])
   })
 
-  it('uses OpenAI Responses against an Azure project v1 path with its API key header', async () => {
+  it('refuses Azure API key headers in public profile configuration', async () => {
     const server = await mockServer([{ status: 401, body: JSON.stringify({ error: { message: 'expected mock failure' } }) }])
     const ctx = new Context()
     await ctx.plugin(LlmRuntime)
-    await ctx.plugin(LlmPiAi, {
+    await expect(ctx.plugin(LlmPiAi, {
       providers: {
         openai: {
           apiKeyEnv: 'PI_TEST_KEY',
@@ -289,12 +289,8 @@ describe('PiAiAdapter provider routing', () => {
           headers: { 'api-key': 'test-key', Authorization: '' },
         },
       },
-    })
-    const result = await assemble(ctx, { provider: 'openai', model: 'gpt-5.5', messages: [] })
-    expect(result.finish.kind).toBe('error')
-    expect(server.paths).toEqual(['/api/projects/openai/openai/v1/responses'])
-    expect(server.headers[0]?.['api-key']).toBe('test-key')
-    expect(server.headers[0]?.authorization).toBe('')
+    })).rejects.toThrow(/sensitive header.*apiKeyEnv/)
+    expect(server.paths).toEqual([])
   })
 
   it.each([

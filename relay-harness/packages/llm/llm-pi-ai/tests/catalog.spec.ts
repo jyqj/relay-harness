@@ -357,23 +357,30 @@ describe('hand-declared providers', () => {
     expect(server.requests).toHaveLength(0)
   })
 
-  it('authenticates an unauthenticated route through a configured header', async () => {
-    const server = await mockServer([{ events: textEvents }])
-    const ctx = await harness({
-      providers: {
-        'local-llm': {
-          api: 'openai-completions',
-          baseURL: `${server.url}/v1`,
-          headers: { Authorization: 'Bearer local' },
-          models: [{ id: 'qwen3', contextWindow: 32_768, maxTokens: 2048 }],
-        },
-      },
-    })
-
-    const result = await assemble(ctx, { provider: 'local-llm', model: 'qwen3', messages: [] })
-    expect(result.finish).toEqual({ kind: 'stop' })
-    expect(server.headers[0]?.authorization).toBe('Bearer local')
-  })
+  it.each([
+    'Authorization', 'api-key', 'X-API-Key', 'Cookie',
+    'company-api-key', 'Token', 'x-auth-token', 'Secret', 'x-client-secret',
+  ])(
+    'rejects sensitive configured header %s without echoing its value',
+    (header) => {
+      const secret = 'header-secret-never-echo'
+      let failure: unknown
+      try {
+        resolveProfiles({
+          'local-llm': {
+            api: 'openai-completions',
+            baseURL: 'https://local.example/v1',
+            headers: { [header]: secret },
+            models: [{ id: 'qwen3', contextWindow: 32_768, maxTokens: 2048 }],
+          },
+        })
+      } catch (error) {
+        failure = error
+      }
+      expect(String(failure)).toMatch(/sensitive header.*apiKeyEnv/)
+      expect(String(failure)).not.toContain(secret)
+    },
+  )
 
   it('rejects a capacity that is not a positive integer', () => {
     const declare = (model: LlmPiAi.PiAiModelProfile): (() => unknown) =>

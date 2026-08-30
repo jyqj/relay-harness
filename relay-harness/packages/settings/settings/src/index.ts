@@ -108,7 +108,8 @@ export interface SettingsScope<T> {
    * of one callback run asynchronously, one at a time, in commit order; a
    * rejection is contained and logged like a sync throw. After the disposer
    * returns, no further invocation starts — one already queued is skipped;
-   * one already started still settles, and service disposal waits for it.
+   * one already started still settles, and registration or service disposal
+   * waits for it.
    * @param callback - invoked after each commit with the next and previous values.
    * @returns the disposer removing this observer.
    */
@@ -153,7 +154,7 @@ export function deepEqualJson(a: unknown, b: unknown): boolean {
   const right = b as Record<string, unknown>
   const keys = Object.keys(left)
   if (keys.length !== Object.keys(right).length) return false
-  return keys.every(key => key in right && deepEqualJson(left[key], right[key]))
+  return keys.every(key => Object.hasOwn(right, key) && deepEqualJson(left[key], right[key]))
 }
 
 /**
@@ -187,6 +188,23 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) return false
   const proto: unknown = Object.getPrototypeOf(value)
   return proto === Object.prototype || proto === null
+}
+
+/** Define one enumerable own data property without invoking `__proto__` setters. */
+function setOwn(target: Record<string, unknown>, key: string, value: unknown): void {
+  Object.defineProperty(target, key, {
+    value,
+    enumerable: true,
+    configurable: true,
+    writable: true,
+  })
+}
+
+/** Copy a plain JSON object through own-property definition. */
+function copyOwn(source: Readonly<Record<string, unknown>>): Record<string, unknown> {
+  const copy: Record<string, unknown> = {}
+  for (const [key, value] of Object.entries(source)) setOwn(copy, key, value)
+  return copy
 }
 
 /**
@@ -272,12 +290,10 @@ function cloneJsonShaped(
     if (isPlainObject(value)) {
       if (visiting.has(value)) throw reject('a circular reference', path)
       visiting.add(value)
-      // TODO(settings-json-properties): Use property-safe construction here and
-      // in mergeLayers so valid JSON keys such as "__proto__" remain own data.
       const out: Record<string, unknown> = {}
       for (const [key, entry] of Object.entries(value)) {
         if (entry === undefined) continue
-        out[key] = clone(entry, `${path}.${key}`)
+        setOwn(out, key, clone(entry, `${path}.${key}`))
       }
       visiting.delete(value)
       return out
@@ -297,9 +313,9 @@ function cloneJsonShaped(
 function mergeLayers(under: unknown, over: unknown): unknown {
   if (over === undefined) return under
   if (!isPlainObject(under) || !isPlainObject(over)) return over
-  const merged: Record<string, unknown> = { ...under }
+  const merged = copyOwn(under)
   for (const [key, value] of Object.entries(over)) {
-    merged[key] = key in merged ? mergeLayers(merged[key], value) : value
+    setOwn(merged, key, Object.hasOwn(merged, key) ? mergeLayers(merged[key], value) : value)
   }
   return merged
 }
@@ -450,9 +466,15 @@ export abstract class SettingsProvider extends Service {
     }
     this.ctx.effect(() => {
       this.registrations.set(ns, registration)
-      // TODO(settings-registration-quiescence): Deactivate every watcher and await
-      // its tail on disposal so callbacks cannot outlive the registrant fiber.
-      return () => this.registrations.delete(ns)
+      return async () => {
+        // Cordis effect disposal is idempotent, and duplicate registration is
+        // refused until this disposer removes the owner.
+        this.registrations.delete(ns)
+        const watchers = [...registration.watchers]
+        for (const watcher of watchers) watcher.active = false
+        registration.watchers.clear()
+        await Promise.allSettled(watchers.map(watcher => watcher.tail))
+      }
     }, `settings.register(${JSON.stringify(String(ns))})`)
     return {
       get: () => registration.resolved as T,
@@ -636,11 +658,23 @@ export abstract class SettingsProvider extends Service {
       // only when this registration is still the namespace owner — a fiber
       // disposed (or replaced) mid-persist must not receive the notification.
       this.document[ns] = section
-      // TODO(settings-replacement-resync): Re-resolve any replacement registration
-      // from this persisted section so an old in-flight write cannot leave it stale.
-      if (this.registrations.get(ns) === registration && !this.isStopped()) {
+      const owner = this.registrations.get(ns)
+      if (owner === registration && !this.isStopped()) {
         this.bumpRevision(registration, current, section)
         this.commit(registration, next, 'update')
+      } else if (owner !== undefined && !this.isStopped()) {
+        // The old owner began this durable write, then unloaded while persist
+        // was in flight. The replacement registered against the preceding raw
+        // section, so bring it to the commit that storage and `document` now
+        // own instead of leaving its get()/watchers permanently stale.
+        try {
+          const replacement = deepFreeze(this.resolve(owner.schema, owner.base, section, owner.validate))
+          this.bumpRevision(owner, current, section)
+          this.commit(owner, replacement, 'update')
+        } catch (error) {
+          this.ctx.logger.warn('settings: replacement "%s" rejected a committed predecessor write; keeping its last good value', ns)
+          this.ctx.logger.warn(error)
+        }
       }
     })
     this.writeQueues.set(ns, run)

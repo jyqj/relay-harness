@@ -12,7 +12,9 @@
 export { RelayHarness, HarnessSession } from './api.ts'
 export type { RunOptions } from './api.ts'
 export {
+  DEFAULT_NOTIFICATION_QUEUE_SIZE,
   HarnessClient,
+  NotificationQueueOverflowError,
   RequestTimeoutError,
   SdkProtocolError,
   TransportClosedError,

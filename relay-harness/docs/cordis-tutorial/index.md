@@ -16,7 +16,7 @@ You need a clone of this repository with dependencies installed; the [developmen
 
 ```sh
 git clone https://github.com/jyqj/relay-harness.git
-cd relay-harness
+cd relay-harness/relay-harness
 pnpm install
 ```
 

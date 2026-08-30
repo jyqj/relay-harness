@@ -5,6 +5,7 @@ import {
   checkExperimentalDependencyIsolation,
   checkExperimentalManifest,
   checkWorkspace,
+  publishedRepositoryDirectory,
   type WorkspaceManifest,
 } from './check-workspace-constraints.ts'
 
@@ -82,5 +83,29 @@ describe('private application constraints', () => {
       dir: 'apps/desktop',
       manifest: { name: 'relay-harness-desktop', private: true },
     })).toEqual([])
+  })
+})
+
+describe('published repository directories', () => {
+  it('converts runtime package paths to outer Git-root-relative metadata', () => {
+    expect(publishedRepositoryDirectory('packages/core/session')).toBe('relay-harness/packages/core/session')
+    expect(publishedRepositoryDirectory('native/landlock-run/packages/entry')).toBe('relay-harness/native/landlock-run/packages/entry')
+  })
+
+  it('rejects the pre-container release-member directory', () => {
+    expect(checkWorkspace({
+      dir: 'vendor/cosmokit',
+      manifest: {
+        name: '@relay-harness/cosmokit',
+        publishConfig: { access: 'public' },
+        repository: {
+          type: 'git',
+          url: 'git+https://github.com/jyqj/relay-harness.git',
+          directory: 'vendor/cosmokit',
+        },
+      },
+    })).toEqual([
+      '@relay-harness/cosmokit: release member repository must use git+https://github.com/jyqj/relay-harness.git with directory relay-harness/vendor/cosmokit',
+    ])
   })
 })

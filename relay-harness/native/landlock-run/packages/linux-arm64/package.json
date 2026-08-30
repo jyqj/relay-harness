@@ -5,7 +5,7 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/relay-harness/relay-harness.git",
-    "directory": "native/landlock-run/packages/linux-arm64"
+    "directory": "relay-harness/native/landlock-run/packages/linux-arm64"
   },
   "os": [
     "linux"

@@ -205,7 +205,6 @@ function parsePorcelainZ(stdout) {
 
 module.exports = {
   buildWorkingTree,
-  emptyWorkingTree,
   isNtfsReservedGitPath,
   isUnbornHeadStderr,
   mergeNumstatMaps,

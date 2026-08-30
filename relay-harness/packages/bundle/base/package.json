@@ -8,7 +8,7 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/jyqj/relay-harness.git",
-    "directory": "packages/bundle/base"
+    "directory": "relay-harness/packages/bundle/base"
   },
   "type": "module",
   "main": "lib/index.js",
@@ -120,7 +120,6 @@
     "@relay-harness/rlh-tool-memory": "workspace:^",
     "@relay-harness/rlh-tool-todo": "workspace:^",
     "@relay-harness/rlh-tool-web": "workspace:^",
-    "@relay-harness/rlh-tool-workflow": "workspace:^",
     "@relay-harness/rlh-tools": "workspace:^",
     "@relay-harness/rlh-typert-loader": "workspace:^",
     "@relay-harness/rlh-typert-registry": "workspace:^",

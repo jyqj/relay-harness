@@ -2,7 +2,7 @@
 
 English | [中文](tech-stack.zh.md)
 
-> [ADR-0005](../adr/0005-adopt-ts-harness-runtime.md) selects the root TypeScript Relay Harness monorepo. [`../architecture.md`](../architecture.md) owns detailed runtime architecture; this page summarizes technology choices and dependency direction.
+> [ADR-0005](../adr/0005-adopt-ts-harness-runtime.md) selects the TypeScript Relay Harness monorepo under the `relay-harness/` runtime root. [`../architecture.md`](../architecture.md) owns detailed runtime architecture; this page summarizes technology choices and dependency direction.
 
 ## 1. Confirmed baseline
 

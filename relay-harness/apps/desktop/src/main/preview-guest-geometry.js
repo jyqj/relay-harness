@@ -123,8 +123,6 @@ function strokeBounds(points, width) {
 }
 
 module.exports = {
-  ANNOTATION_BOUNDS_PADDING,
-  MIN_USABLE_RECT_SIZE,
   isUsableRect,
   normalizeRect,
   pathFromPoints,

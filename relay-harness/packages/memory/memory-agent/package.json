@@ -6,7 +6,7 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/jyqj/relay-harness.git",
-    "directory": "packages/memory/memory-agent"
+    "directory": "relay-harness/packages/memory/memory-agent"
   },
   "type": "module",
   "main": "lib/index.js",

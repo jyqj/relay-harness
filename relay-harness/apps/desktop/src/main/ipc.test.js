@@ -82,6 +82,7 @@ function loadIpc(options = {}) {
   const installMarketplaceCalls = [];
   const installPluginCalls = [];
   const uninstallCalls = [];
+  const configSaveCalls = [];
   let startHarnessCalls = 0;
   const installResult = options.installResult || { ok: true };
   const startHarnessImpl = options.startHarness || (async () => {});
@@ -114,7 +115,10 @@ function loadIpc(options = {}) {
       theme: 'midnight',
       workspace: '',
     }),
-    saveConfig: (patch) => patch,
+    saveConfig: (patch) => {
+      configSaveCalls.push(patch);
+      return patch;
+    },
     publicConfig: (config) => ({ theme: config.theme }),
     normalizeRendererConfigPatch: (patch) => patch || {},
   });
@@ -229,6 +233,7 @@ function loadIpc(options = {}) {
     installMarketplaceCalls,
     installPluginCalls,
     uninstallCalls,
+    configSaveCalls,
     startHarness() {
       return startHarnessCalls;
     },
@@ -502,7 +507,7 @@ test('shell:save-boot-log is boot-only and writes rlh.logs not a renderer path',
   }
 });
 
-test('shell:get-remote reports unavailable for the disabled remote stub even when the feature flag is on', async () => {
+test('Remote IPC remains unavailable and discards enable requests while deferred', async () => {
   const { createDisabledRemote } = require('./remote');
   let syncCalls = 0;
   const remote = createDisabledRemote();
@@ -513,8 +518,12 @@ test('shell:get-remote reports unavailable for the disabled remote stub even whe
       return remote.sync();
     },
   };
-  const ipc = loadIpc({ remote: wrapped, remoteFeatureEnabled: true });
+  const ipc = loadIpc({ remote: wrapped, remoteFeatureEnabled: false });
   try {
+    await assert.rejects(
+      () => ipc.invoke('shell:open-remote', harnessEvent()),
+      /Remote is disabled in this build/,
+    );
     const snap = await ipc.invoke('shell:get-remote', harnessEvent());
     assert.deepEqual(snap, {
       available: false,
@@ -526,13 +535,18 @@ test('shell:get-remote reports unavailable for the disabled remote stub even whe
     assert.equal(saved.enabled, false);
     assert.equal(saved.listening, false);
     assert.equal(syncCalls, 1);
+    assert.deepEqual(ipc.configSaveCalls.at(-1), {
+      remoteEnabled: false,
+      remoteMode: 'lan',
+      remoteRelayUrl: '',
+    });
   } finally {
     ipc.restore();
   }
 });
 
 test('shell:get-remote stays unavailable when remote is null', async () => {
-  const ipc = loadIpc({ remote: null, remoteFeatureEnabled: true });
+  const ipc = loadIpc({ remote: null, remoteFeatureEnabled: false });
   try {
     const snap = await ipc.invoke('shell:get-remote', harnessEvent());
     assert.deepEqual(snap, {

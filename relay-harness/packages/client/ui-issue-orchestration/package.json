@@ -3,7 +3,7 @@
   "description": "Running, retrying, and blocked issue automation operator overlay",
   "version": "0.1.0-rc.8",
   "publishConfig": { "access": "public" },
-  "repository": { "type": "git", "url": "git+https://github.com/jyqj/relay-harness.git", "directory": "packages/client/ui-issue-orchestration" },
+  "repository": { "type": "git", "url": "git+https://github.com/jyqj/relay-harness.git", "directory": "relay-harness/packages/client/ui-issue-orchestration" },
   "type": "module",
   "main": "lib/index.js",
   "types": "lib/types/index.d.ts",

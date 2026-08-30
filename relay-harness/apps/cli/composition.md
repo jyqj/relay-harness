@@ -144,8 +144,6 @@ flowchart LR
   cfg --> plugin_rlh_base_tool_subagent_report
   plugin_rlh_base_workflow_worker_thread["workflow-worker-thread<br/>@relay-harness/rlh-workflow-worker-thread"]
   cfg --> plugin_rlh_base_workflow_worker_thread
-  plugin_rlh_base_tool_workflow["tool-workflow<br/>@relay-harness/rlh-tool-workflow"]
-  cfg --> plugin_rlh_base_tool_workflow
   plugin_rlh_base_timeout_policy["timeout-policy<br/>@relay-harness/rlh-tool-call-timeout-policy"]
   cfg --> plugin_rlh_base_timeout_policy
   plugin_rlh_base_spill_local["spill-local<br/>@relay-harness/rlh-spill-local"]
@@ -258,7 +256,6 @@ flowchart LR
 | `tool-subagent-fork` | `@relay-harness/rlh-tool-subagent` |
 | `tool-subagent-report` | `@relay-harness/rlh-tool-subagent-report` |
 | `workflow-worker-thread` | `@relay-harness/rlh-workflow-worker-thread` |
-| `tool-workflow` | `@relay-harness/rlh-tool-workflow` |
 | `timeout-policy` | `@relay-harness/rlh-tool-call-timeout-policy` |
 | `spill-local` | `@relay-harness/rlh-spill-local` |
 | `spill-policy` | `@relay-harness/rlh-spill-policy` |

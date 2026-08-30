@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/guard/token-budget-controller/README.md
-README.md: 4419a95d2f29e11c467c890965b3226bf89aba37
-README.zh.md: d588de007b400b991d0200859556a56573063462
+README.md: 0eedd770324c68c5d72733c7d32e5712efe544c7
+README.zh.md: 0d2b1e17703ec7917a93b563e37f059661f66e6d

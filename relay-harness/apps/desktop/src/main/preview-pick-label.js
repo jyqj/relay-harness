@@ -40,7 +40,5 @@ function computeLabelPosition(input) {
 }
 
 module.exports = {
-  LABEL_GAP,
-  VIEWPORT_MARGIN,
   computeLabelPosition,
 };

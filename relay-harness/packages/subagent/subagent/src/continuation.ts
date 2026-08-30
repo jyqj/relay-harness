@@ -54,6 +54,13 @@ import type { ActivationObserver, ActivationTerminal } from './lifecycle.ts'
 import { SubagentError } from './error.ts'
 import type SubagentActivationSetupRegistry from './activation-setup-registry.ts'
 import type { SubagentAdmissionLease } from './admission.ts'
+import {
+  acceptedSubagentDelivery,
+  pendingSubagentDeliveries,
+  subagentDeliveryNeedsClaim,
+  SUBAGENT_DELIVERY_VERSION,
+} from './delivery.ts'
+import type { SubagentDeliveryAcceptedData, SubagentDeliveryClaimedData } from './delivery.ts'
 
 /** Attribution for a model coordinator's follow-up to one of its children. */
 export interface CoordinatorMessageSource {
@@ -95,6 +102,15 @@ declare module '@relay-harness/rlh-llm' {
     coordinator: CoordinatorMessageSource
     'subagent-report': SubagentReportMessageSource
     'subagent-settled': SubagentSettledMessageSource
+  }
+}
+
+declare module '@relay-harness/rlh-session/types' {
+  interface SessionEventMap {
+    /** Durable continuable-child mailbox entry, committed before inbox publication. */
+    'subagent/delivery-accepted': SubagentDeliveryAcceptedData
+    /** Durable acknowledgement after the accepted message enters `user/message`. */
+    'subagent/delivery-claimed': SubagentDeliveryClaimedData
   }
 }
 
@@ -153,6 +169,8 @@ export interface SubagentFollowupOptions {
   readonly source: MessageSource
   /** Caller cancellation, owning the operation only until inbox acceptance. */
   readonly signal: AbortSignal
+  /** Stable caller retry key; reusing it with the same delivery returns the original receipt. */
+  readonly idempotencyKey?: string
 }
 
 /**
@@ -407,9 +425,8 @@ export class SubagentContinuationManager {
    * Start one continuable background child: reserve its durable identity,
    * resolve the provider's detached creation spec, create the child Agent
    * through the private activation-owner scope, establish any continuable-parent
-   * ownership, and submit the initial prompt. Resolves when inbox acceptance
-   * yields the message id — without waiting for the turn to start or for the
-   * message to reach the Session log.
+   * ownership, and durably commit the initial prompt before inbox publication.
+   * Resolves with its stable message-id receipt without waiting for the turn.
    *
    * Every failure before that acceptance rejects without either id, disposing
    * any created handle and rolling back the Activation and parent ownership.
@@ -486,6 +503,7 @@ export class SubagentContinuationManager {
           { kind: 'user' },
           parent,
           spec.signal,
+          undefined,
         )
       })
       return { childId, messageId }
@@ -508,14 +526,14 @@ export class SubagentContinuationManager {
    * cold-resumes a new Activation from the persisted Session. The Agent inbox
    * is the only queue, so every accepted message has one observable order.
    *
-   * The caller signal owns lookup, materialization, and admission only until
-   * inbox acceptance; afterwards the accepted turn cannot be cancelled through
-   * this service.
+   * The caller signal owns lookup, materialization, and admission until the
+   * durable mailbox commit; afterwards the accepted turn cannot be cancelled
+   * through this service.
    * @param parent - the exact live direct parent authorizing this delivery.
    * @param childId - the durable child session id.
    * @param content - the user-role content to deliver.
-   * @param options - the message source fields and caller cancellation.
-   * @returns the accepted message's inbox id.
+   * @param options - message source, caller cancellation, and optional retry key.
+   * @returns the accepted message's durable receipt id.
    * @throws when parent authority, availability, or admission rejects the delivery.
    */
   async followup(
@@ -538,7 +556,9 @@ export class SubagentContinuationManager {
         if (activation.disposal !== undefined) {
           return activation.disposal.then(() => undefined, () => undefined)
         }
-        return this.submitAdmitted(activation, content, options.source, parent, options.signal)
+        return this.submitAdmitted(
+          activation, content, options.source, parent, options.signal, options.idempotencyKey,
+        )
       })
       /* v8 ignore start -- only the lost-cutoff arm above returns undefined, so only that
        * race reaches the retry below, which then cold-resumes a new Activation. */
@@ -1015,7 +1035,9 @@ export class SubagentContinuationManager {
     } finally {
       if (!transferred) admission.release()
     }
-    return this.submitMaterialized(activation, content, options.source, parent, options.signal)
+    return this.submitMaterialized(
+      activation, content, options.source, parent, options.signal, options.idempotencyKey,
+    )
   }
 
   /**
@@ -1033,9 +1055,10 @@ export class SubagentContinuationManager {
     source: MessageSource,
     parent: Agent,
     signal: AbortSignal,
+    idempotencyKey: string | undefined,
   ): Promise<MessageId> {
     try {
-      return this.submitAdmitted(activation, content, source, parent, signal)
+      return await this.submitAdmitted(activation, content, source, parent, signal, idempotencyKey)
     } catch (error: unknown) {
       /* v8 ignore next -- rollback disposal failures must not mask the
        * pre-acceptance signal, drain, or lifecycle failure. */
@@ -1146,11 +1169,35 @@ export class SubagentContinuationManager {
       handle.agent.ctx.on('agent/inbox/discarded', ({ message }) => {
         if (activation.accepted.delete(message.id)) this.wake(activation)
       })
+      handle.agent.ctx.on('session/event', (session, event) => {
+        if (session !== handle.agent.session || event.type !== 'user/message') return
+        void Promise.resolve().then(() => {
+          const pending = subagentDeliveryNeedsClaim(
+            session.events.slice(session.header.seedLength ?? 0), event.data.id,
+          )
+          if (!pending) return
+          session.append('subagent/delivery-claimed', {
+            version: SUBAGENT_DELIVERY_VERSION,
+            messageId: event.data.id,
+          })
+        }).catch((error: unknown) => {
+          this.ctx.logger.warn(`subagent "${activation.childId}": delivery acknowledgement failed: ${String(error)}`)
+        })
+      })
       // Agent creation committed setup at its publication boundary;
       // revocations from here on are immediate live revocation.
       // Publish the start edge before any turn can run, so observers see this
       // epoch before its first request.
       observer.start(handle.agent)
+      const pending = pendingSubagentDeliveries(
+        handle.agent.session.events.slice(handle.agent.session.header.seedLength ?? 0),
+      )
+      for (const delivery of pending) {
+        this.admitWaking(activation, delivery.message.id, () => {
+          handle.agent.followup(delivery.message)
+        })
+        activation.announced = true
+      }
     } catch (error: unknown) {
       // Listener exceptions are contained by the lifecycle emitter; a start
       // publication throw therefore leaves no residency edge to pair.
@@ -1212,20 +1259,52 @@ export class SubagentContinuationManager {
   }
 
   /**
-   * Submit one message as the child's next FIFO turn and return its accepted
-   * inbox id. Acceptance is the operation's success boundary; the manager owns
-   * the Activation independently afterwards.
+   * Commit one message to the child's durable mailbox, then enqueue its next
+   * FIFO turn and return the stable receipt id.
    */
-  private submit(
+  private async submit(
     activation: Activation,
     content: ContentBlock[],
     source: MessageSource,
     parent: Agent,
-  ): MessageId {
+    idempotencyKey: string | undefined,
+  ): Promise<MessageId> {
+    if (idempotencyKey !== undefined
+      && (idempotencyKey.trim() === '' || Array.from(idempotencyKey).length > 256)) {
+      throw new SubagentError('subagent delivery idempotencyKey must be 1-256 Unicode code points', 'INVALID_ARGUMENT')
+    }
     // Parent-originated delivery keeps the parent live through ownership, so
     // establish it before the message can enter the child's inbox.
     this.acquireOwnership(parent, activation.childId)
     const message = createUserMessage({ content, source })
+    const key = idempotencyKey ?? message.id
+    const existing = acceptedSubagentDelivery(
+      activation.handle.agent.session.events.slice(activation.handle.agent.session.header.seedLength ?? 0),
+      key,
+    )
+    if (existing !== undefined) {
+      if (JSON.stringify(existing.message.content) !== JSON.stringify(message.content)
+        || JSON.stringify(existing.message.source) !== JSON.stringify(message.source)) {
+        throw new SubagentError(
+          `subagent delivery idempotency key ${JSON.stringify(key)} was reused with different content`,
+          'DUPLICATE_DELIVERY',
+        )
+      }
+      return existing.message.id
+    }
+    activation.handle.agent.session.append('subagent/delivery-accepted', {
+      version: SUBAGENT_DELIVERY_VERSION,
+      idempotencyKey: key,
+      message,
+    })
+    const durable = await this.ctx.get('sessions')?.flush(activation.handle.agent.session) ?? false
+    if (!durable) {
+      throw new SubagentError('continuable subagent delivery requires durable session persistence', 'CONTINUATION_UNAVAILABLE')
+    }
+    if (disposalOf(activation) !== undefined) {
+      activation.announced = true
+      return message.id
+    }
     const accepted = this.admitWaking(activation, message.id, () => {
       activation.handle.agent.followup(message)
     })
@@ -1267,13 +1346,14 @@ export class SubagentContinuationManager {
    * manager drain, or Activation disposal that wins before this synchronous
    * span rejects without inbox acceptance.
    */
-  private submitAdmitted(
+  private async submitAdmitted(
     activation: Activation,
     content: ContentBlock[],
     source: MessageSource,
     parent: Agent,
     signal: AbortSignal,
-  ): MessageId {
+    idempotencyKey: string | undefined,
+  ): Promise<MessageId> {
     signal.throwIfAborted()
     this.assertAdmitting(parent)
     /* v8 ignore next 6 -- only a synchronous re-entrant disposer can change
@@ -1289,7 +1369,7 @@ export class SubagentContinuationManager {
       activation.childId,
       activation.handle.agent.session.header.parentSession,
     )
-    return this.submit(activation, content, source, parent)
+    return this.submit(activation, content, source, parent, idempotencyKey)
   }
 
   /**

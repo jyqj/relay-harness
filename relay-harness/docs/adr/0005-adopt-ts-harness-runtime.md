@@ -9,11 +9,11 @@ English | [中文](0005-adopt-ts-harness-runtime.zh.md)
 
 ADR-0001 and ADR-0003 selected a Rust agent backend and planned a five-crate workspace including `relay-kernel` (see [`../engineering/tech-stack.md`](../engineering/tech-stack.md)). No implementation existed when that blueprint was written.
 
-The repository instead contains the mature TypeScript Relay Harness monorepo at its root. It provides the agent loop, session persistence and recovery, tools and skills, subagents, permissions and approvals, plan mode, compaction, LSP, sandboxes, CLI/Web/Electron applications, and an established coverage, snapshot, and documentation-gate system. A new Rust implementation would remain behind this verified runtime.
+The repository instead contains the mature TypeScript Relay Harness monorepo under the checkout's `relay-harness/` runtime root. It provides the agent loop, session persistence and recovery, tools and skills, subagents, permissions and approvals, plan mode, compaction, LSP, sandboxes, CLI/Web/Electron applications, and an established coverage, snapshot, and documentation-gate system. A new Rust implementation would remain behind this verified runtime.
 
 ## Decision
 
-1. Relay uses the root TypeScript monorepo, branded Relay Harness (`rlh`), as its agent runtime and does not start a separate Rust kernel implementation.
+1. Relay uses the TypeScript monorepo under the `relay-harness/` runtime root, branded Relay Harness (`rlh`), as its agent runtime and does not start a separate Rust kernel implementation.
 2. This ADR supersedes ADR-0001 item 3 (“backend uses Rust”) and ADR-0003 items 1–2 (Rust and a reusable kernel library) at the implementation level; their product-boundary and agent-loop semantics remain valid.
 3. Responsibilities from the Rust blueprint map to current package groups:
    - `relay-kernel` → `packages/core` (session / system-prompt / tools / agent / agent-loop)

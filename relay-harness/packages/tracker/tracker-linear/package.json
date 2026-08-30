@@ -3,7 +3,7 @@
   "description": "Linear GraphQL tracker and host-tool provider for Relay Harness issue automation",
   "version": "0.1.0-rc.8",
   "publishConfig": { "access": "public" },
-  "repository": { "type": "git", "url": "git+https://github.com/jyqj/relay-harness.git", "directory": "packages/tracker/tracker-linear" },
+  "repository": { "type": "git", "url": "git+https://github.com/jyqj/relay-harness.git", "directory": "relay-harness/packages/tracker/tracker-linear" },
   "type": "module",
   "main": "lib/index.js",
   "types": "lib/types/index.d.ts",

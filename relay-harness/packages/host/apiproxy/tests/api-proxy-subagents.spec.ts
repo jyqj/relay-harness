@@ -274,7 +274,10 @@ describe('subagent gateway', () => {
       parent,
       CHILD,
       content,
-      { source: { kind: 'user', rpcId: RpcId('subagent-rpc') }, signal },
+      {
+        source: { kind: 'user', rpcId: RpcId('subagent-rpc') },
+        signal,
+      },
     )
   })
 

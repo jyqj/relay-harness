@@ -25,6 +25,9 @@
 | `rlhHome` | `$RLH_HOME` 或 `~/.rlh` | `path` 缺省时使用的 harness home。 |
 | `watch` | `true` | 热发布外部编辑。 |
 | `debounceMs` | `100` | watcher 写入稳定窗口。 |
+| `legacyDesktopJsonPath` | 未设置 | Desktop 外壳在凭据 seam 之前遗留的 `apiKey` 一次性导入源；产品组合只提供路径。 |
+
+当 `legacyDesktopJsonPath` 指向旧 Desktop `credentials.json` 时，启动会把其中非空的 `apiKey` 移到受管文档的 `DEEPSEEK_API_KEY` 引用下；若该引用已经存在，则始终保留受管值。随后只从 JSON 源原子删除 `apiKey`，其他 Desktop 凭据保持不变。两份文件都以仅属主模式重写，错误只点名字段与路径，绝不包含值的任何部分。Desktop 通过 `RLH_DESKTOP_LEGACY_CREDENTIALS_PATH` 传递路径，绝不再把遗留值物化成 `DEEPSEEK_API_KEY`，因此迁移后的密钥仍可从 Models 页轮换。
 
 ## 文档本身
 
@@ -43,7 +46,7 @@ OPENAI_API_KEY: sk-…
 
 ## 权限
 
-提供方以 `0700` 创建目录，以 `0600` 创建或原子替换文档。它对*读取*同样守住这条界线：在 POSIX 上，只要文档带有任何 group 或 other 权限位，就会在解析其内容之前失败——启动时与每次 reload 都检查——并在错误里给出 `chmod 600` 的修复命令。Windows 没有可检查的 mode，因此在那里跳过该检查而不是伪造它。
+提供方以 `0700` 创建目录，以 `0600` 创建或原子替换文档；被重写的旧 Desktop JSON 源也使用相同模式。它对*读取*同样守住这条界线：在 POSIX 上，只要文档带有任何 group 或 other 权限位，就会在解析其内容之前失败——启动时与每次 reload 都检查——并在错误里给出 `chmod 600` 的修复命令。Windows 没有可检查的 mode，因此在那里跳过该检查而不是伪造它。
 
 ## 热重载
 

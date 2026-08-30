@@ -13,7 +13,7 @@ authors = [{ name = "DeepSeek" }]
 
 [project.urls]
 Homepage = "https://github.com/jyqj/relay-harness"
-Documentation = "https://github.com/jyqj/relay-harness/blob/master/python/sdk-runtime/README.md"
+Documentation = "https://github.com/jyqj/relay-harness/blob/master/relay-harness/python/sdk-runtime/README.md"
 Issues = "https://github.com/jyqj/relay-harness/issues"
 Source = "https://github.com/jyqj/relay-harness"
 

@@ -8,7 +8,7 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/jyqj/relay-harness.git",
-    "directory": "packages/session/session-persistence-sqlite"
+    "directory": "relay-harness/packages/session/session-persistence-sqlite"
   },
   "type": "module",
   "main": "lib/index.js",

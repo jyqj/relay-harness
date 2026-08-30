@@ -5,7 +5,7 @@
  * admission of database files with in-place rebuild, the chunk-text codec over
  * the `(text_encoding, text)` column pair, exactly-once index-epoch writes,
  * the incremental file-delta writer, an LRU decoded-text cache, and a
- * {@link https://github.com/jyqj/relay-harness/blob/master/packages/index/code-index-search/src/port.ts | RetrievalPort}
+ * {@link https://github.com/jyqj/relay-harness/blob/master/relay-harness/packages/index/code-index-search/src/port.ts | RetrievalPort}
  * adapter the ranking engine consumes. Scan/diff orchestration and everything
  * model-facing stay provider concerns. This package registers no service, no
  * Config, and no model-facing surface.

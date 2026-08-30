@@ -3,7 +3,7 @@ const net = require('net');
 const path = require('path');
 const { spawn, execFileSync } = require('child_process');
 const EventEmitter = require('events');
-const { loadConfig, configPath } = require('./config');
+const { loadConfig, configPath, credentialsPath } = require('./config');
 const { harnessRoot } = require('./paths');
 const { ensurePackagedHarness, harnessArchivePath } = require('./harness-extract');
 const { prependPath } = require('../shared/env-path');
@@ -495,6 +495,7 @@ class RlhManager extends EventEmitter {
       resolveNpx: options.resolveNpx || resolveNpx,
       resolveNodeBin: options.resolveNodeBin || resolveNodeBin,
       readPin: options.readPin || defaultReadPin,
+      credentialsPath: options.credentialsPath || credentialsPath,
     };
   }
 
@@ -624,9 +625,9 @@ class RlhManager extends EventEmitter {
     const env = { ...process.env };
     delete env.ELECTRON_RUN_AS_NODE;
     delete env.ELECTRON_NO_ASAR;
-    if (config.apiKey) {
-      env.DEEPSEEK_API_KEY = config.apiKey;
-    }
+    // Path only, never the secret: credentials-local imports the one legacy
+    // Desktop field into its managed store and scrubs the JSON source.
+    env.RLH_DESKTOP_LEGACY_CREDENTIALS_PATH = this._deps.credentialsPath();
     if (config.baseUrl) {
       env.DEEPSEEK_BASE_URL = config.baseUrl;
     }
@@ -971,7 +972,5 @@ module.exports = {
   resolveNodeBin,
   resolveRlhBin,
   sourceHarnessStatus,
-  probePort,
-  findFreePort,
   ensureOwnedPort,
 };

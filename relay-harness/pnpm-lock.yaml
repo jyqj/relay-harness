@@ -1464,9 +1464,6 @@ importers:
       '@relay-harness/rlh-tool-web':
         specifier: workspace:^
         version: link:../../web/tool-web
-      '@relay-harness/rlh-tool-workflow':
-        specifier: workspace:^
-        version: link:../../workflow/tool-workflow
       '@relay-harness/rlh-tools':
         specifier: workspace:^
         version: link:../../core/tools
@@ -4668,10 +4665,6 @@ importers:
         version: link:../../session/session-projection
 
   packages/context/file-reference:
-    dependencies:
-      zod:
-        specifier: ^4.4.3
-        version: 4.4.3
     devDependencies:
       '@relay-harness/cordis':
         specifier: workspace:^
@@ -4731,9 +4724,6 @@ importers:
       '@relay-harness/schemastery':
         specifier: link:../../../vendor/schemastery
         version: link:../../../vendor/schemastery
-      zod:
-        specifier: ^4.4.3
-        version: 4.4.3
     devDependencies:
       '@relay-harness/cordis':
         specifier: workspace:^
@@ -4887,9 +4877,6 @@ importers:
       '@relay-harness/schemastery':
         specifier: link:../../../vendor/schemastery
         version: link:../../../vendor/schemastery
-      zod:
-        specifier: ^4.4.3
-        version: 4.4.3
     devDependencies:
       '@relay-harness/cordis':
         specifier: workspace:^
@@ -5614,9 +5601,6 @@ importers:
       '@relay-harness/schemastery':
         specifier: link:../../../vendor/schemastery
         version: link:../../../vendor/schemastery
-      zod:
-        specifier: ^4.4.3
-        version: 4.4.3
     devDependencies:
       '@relay-harness/cordis':
         specifier: workspace:^
@@ -6595,10 +6579,6 @@ importers:
         version: link:../../typert/registry
 
   packages/host/code-index-center:
-    dependencies:
-      zod:
-        specifier: ^4.4.3
-        version: 4.4.3
     devDependencies:
       '@relay-harness/cordis':
         specifier: workspace:^
@@ -6804,9 +6784,6 @@ importers:
       '@relay-harness/schemastery':
         specifier: link:../../../vendor/schemastery
         version: link:../../../vendor/schemastery
-      zod:
-        specifier: ^4.4.3
-        version: 4.4.3
     devDependencies:
       '@relay-harness/cordis':
         specifier: workspace:^
@@ -7071,10 +7048,6 @@ importers:
         version: link:../../core/tools
 
   packages/interaction/commands:
-    dependencies:
-      zod:
-        specifier: ^4.4.3
-        version: 4.4.3
     devDependencies:
       '@relay-harness/cordis':
         specifier: workspace:^

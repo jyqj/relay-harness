@@ -10,7 +10,7 @@ This directory retains only decisions that independently constrain the current d
 | [0002](0002-routing-and-strength.md) | Pre-request signals drive external routing; strength tiers are user-visible | Accepted |
 | [0003](0003-agent-runtime.md) | Agent loop; local verification is independent from routing | Partially superseded (Rust implementation superseded by 0005; loop semantics and verification remain valid) |
 | [0004](0004-data-and-action-boundary.md) | Explicit file context, least privilege, and local state | Accepted |
-| [0005](0005-adopt-ts-harness-runtime.md) | Root TypeScript Relay Harness as the runtime | Accepted |
+| [0005](0005-adopt-ts-harness-runtime.md) | TypeScript Relay Harness under the runtime root | Accepted |
 | [0006](0006-local-context-engine.md) | Local Context Engine: indexing and retrieval stay local | Accepted |
 
 A new ADR is reserved for a durable cross-module decision with real alternatives. Ordinary feature changes update their authoritative design document directly.

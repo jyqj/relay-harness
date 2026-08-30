@@ -4,6 +4,8 @@ Status: implemented
 
 [English](2026-07-21-follow-instruction-symlinks.md) | 中文
 
+本决策已被[普通用户执行与指令约束](../bug-fix/2026-08-31-ordinary-user-execution-and-instruction-containment.md)部分取代：symlink 仍受支持，但树外目标现在需要通过 `additionalAllowedRoots` 显式授权。
+
 ## 问题
 
 [agent-instructions 插件](2026-06-24-workspace-context.md)在解析前用 `ctx.fs.lstat` 探测每个指令候选，拒绝任何末段的符号链接，从而使仓库自有的链接无法把指令加载指向工作区之外的内容。这条「不跟随」不变式挡住了一个有意为之、且受支持的配置：用户若把 `$RLH_HOME/AGENTS.md`（或某个项目的 `AGENTS.md`）符号链接到别处保存的一个规范指令文件，以便在多个工具与多个 home 之间共享同一份规范文件，就会看到该链接被悄悄忽略。它还迫使内容去重把无处不在的 `CLAUDE.md → AGENTS.md` 镜像当作一个被跳过的特例来处理，而非一个普通的重复文件。仓库所有者要求在每个 scope 上无条件跟随符号链接指向的指令文件，并接受下文记录的残余信任边界风险。

@@ -1,8 +1,6 @@
 // @ts-check
 'use strict';
 
-const PLUGIN_BOOT_FAILED = 'PLUGIN_BOOT_FAILED';
-
 const PLUGIN_TREE_MARKERS = [
   'plugin tree failed to load',
   'cannot resolve profile bundle',
@@ -28,7 +26,5 @@ function isPluginTreeFailure(text) {
 }
 
 module.exports = {
-  PLUGIN_BOOT_FAILED,
-  PLUGIN_TREE_MARKERS,
   isPluginTreeFailure,
 };

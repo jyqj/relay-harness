@@ -18,7 +18,7 @@
 
 ```sh
 git clone https://github.com/jyqj/relay-harness.git
-cd relay-harness
+cd relay-harness/relay-harness
 python -m venv .venv
 . .venv/bin/activate
 python -m pip install relay-harness-sdk

@@ -8,8 +8,15 @@
  * @module @relay-harness/rlh-sdk-protocol
  */
 
-export { JsonRpcLineTransport, JsonRpcResponseError } from './transport.ts'
-export type { JsonRpcTransportPeer } from './transport.ts'
+export {
+  DEFAULT_JSON_RPC_MAX_FRAME_BYTES,
+  DEFAULT_JSON_RPC_MAX_QUEUED_WRITE_BYTES,
+  JsonRpcFrameTooLargeError,
+  JsonRpcLineTransport,
+  JsonRpcResponseError,
+  JsonRpcWriteQueueOverflowError,
+} from './transport.ts'
+export type { JsonRpcLineTransportOptions, JsonRpcTransportPeer } from './transport.ts'
 export type {
   HarnessSdkNotificationMap,
   HarnessSdkRequestMap,

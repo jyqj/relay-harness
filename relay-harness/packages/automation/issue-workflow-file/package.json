@@ -3,7 +3,7 @@
   "description": "Markdown/YAML last-known-good issue workflow provider for Relay Harness",
   "version": "0.1.0-rc.8",
   "publishConfig": { "access": "public" },
-  "repository": { "type": "git", "url": "git+https://github.com/jyqj/relay-harness.git", "directory": "packages/automation/issue-workflow-file" },
+  "repository": { "type": "git", "url": "git+https://github.com/jyqj/relay-harness.git", "directory": "relay-harness/packages/automation/issue-workflow-file" },
   "type": "module",
   "main": "lib/index.js",
   "types": "lib/types/index.d.ts",

@@ -6,7 +6,7 @@
 
 ## 创建本地项目
 
-在仓库根目录创建本教程使用的临时项目：
+在 runtime monorepo 根目录创建本教程使用的临时项目：
 
 ```sh
 mkdir -p scratch-plugin/src
@@ -45,7 +45,7 @@ export function apply(ctx: Context) {
 
 ## 注册到 cordis.yml
 
-在仓库根目录运行 `pwd`，然后创建 `scratch-plugin/cordis.yml`，作为插入本地插件的 Web 覆盖层。请将下文的 `/absolute/path/to/relay-harness` 替换为命令打印的路径：
+在 runtime monorepo 根目录运行 `pwd`，然后创建 `scratch-plugin/cordis.yml`，作为插入本地插件的 Web 覆盖层。请将下文的 `/absolute/path/to/relay-harness` 替换为命令打印的路径：
 
 ```yaml
 - insert:

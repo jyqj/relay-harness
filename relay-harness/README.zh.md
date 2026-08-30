@@ -38,7 +38,7 @@ npx @relay-harness/rlh web
 
 ```sh
 git clone https://github.com/jyqj/relay-harness.git
-cd relay-harness
+cd relay-harness/relay-harness
 pnpm install
 pnpm run build
 pnpm rlh web
@@ -48,7 +48,7 @@ pnpm rlh web
 
 ## 仓库与文档
 
-TypeScript monorepo 直接位于 Git 根目录。`apps/` 包含 CLI、Web 与 Desktop 应用；`packages/` 包含插件运行时；`.github/` 是唯一的 GitHub 自动化权威；`docs/` 同时包含产品和实现文档。
+Git checkout 是外层容器。TypeScript runtime monorepo 位于其中的 `relay-harness/` 下；在该目录内，`apps/` 包含 CLI、Web 与 Desktop 应用，`packages/` 包含插件运行时，`docs/` 包含产品和实现文档。根 `.github/` 是唯一的 GitHub 自动化权威。
 
 - 从[文档地图](docs/README.md)与[领域上下文](docs/CONTEXT.md)开始阅读。
 - 当前实现约定见[架构](docs/architecture.md)与[子系统参考](docs/subsystems/README.md)。

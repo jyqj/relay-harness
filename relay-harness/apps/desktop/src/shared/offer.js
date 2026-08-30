@@ -29,7 +29,6 @@ function offerFromHash(hash) {
 }
 
 module.exports = {
-  OFFER_VERSION,
   encodeOffer,
   decodeOffer,
   offerFromHash,

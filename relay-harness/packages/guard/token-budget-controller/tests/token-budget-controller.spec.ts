@@ -81,6 +81,23 @@ describe('continuation on max-tokens', () => {
     })
   })
 
+  it('fails the turn before a model request beyond maxStepsPerTurn', async () => {
+    const ctx = await harness({ maxContinuations: 8, maxStepsPerTurn: 2 })
+    const agent = startAgent(ctx, new MockAdapter([
+      maxTokensResponse('one'),
+      maxTokensResponse('two'),
+      textResponse('must not run'),
+    ]), 'tb-step-cap')
+    await agent.whenIdle()
+
+    expect(agent.session.events.filter(event => event.type === 'step/start')).toHaveLength(2)
+    expect(agent.session.events.filter(event => event.type === 'assistant/message')).toHaveLength(2)
+    const turnEnd = agent.session.events.findLast(event => event.type === 'turn/end')
+    expect(turnEnd?.data.reason.kind).toBe('error')
+    if (turnEnd?.data.reason.kind !== 'error') throw new Error('expected an error turn end')
+    expect(turnEnd.data.reason.error.message).toContain('turn step budget exhausted at 2')
+  })
+
   it('leaves a normally finished turn alone', async () => {
     const ctx = await harness()
     const agent = startAgent(ctx, new MockAdapter([
@@ -166,6 +183,7 @@ describe('fail-loud config validation', () => {
     [{ maxContinuations: 1.5 }, /maxContinuations/],
     [{ minUsefulDeltaTokens: 0 }, /minUsefulDeltaTokens/],
     [{ maxLowDeltaStreak: 0 }, /maxLowDeltaStreak/],
+    [{ maxStepsPerTurn: 0 }, /maxStepsPerTurn/],
   ] as const)('rejects invalid config %#', async (config, message) => {
     await expect(harness(config)).rejects.toThrow(message)
   })

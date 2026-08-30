@@ -66,10 +66,21 @@ describe('rlh-base bundle', () => {
     expect(rows.find(row => row.id === 'session-telemetry-otel')?.config?.['mode']).toEqual({
       __jsExpr: "process.env.RLH_TELEMETRY_MODE || 'DISABLED'",
     })
+    const legacyCredentialsPath = rows.find(row => row.id === 'credentials')
+      ?.config?.['legacyDesktopJsonPath'] as { __jsExpr: string }
+    expect(evaluate({ process: { env: {} } }, legacyCredentialsPath.__jsExpr)).toBeUndefined()
+    expect(evaluate({ process: { env: { RLH_DESKTOP_LEGACY_CREDENTIALS_PATH: '/desktop/credentials.json' } } }, legacyCredentialsPath.__jsExpr))
+      .toBe('/desktop/credentials.json')
     expect(rows.filter(row => row.id === 'subagent-codex')).toHaveLength(0)
     expect(rows.filter(row => row.id === 'subagent-claude-code')).toHaveLength(0)
+    expect(rows.filter(row => row.id === 'workflow-worker-thread')).toHaveLength(1)
+    expect(rows.filter(row => row.id === 'tool-workflow')).toHaveLength(0)
+    expect(rows.filter(row => row.id === 'tool-ralph')).toHaveLength(1)
     expect(manifest.dependencies).not.toHaveProperty('@relay-harness/rlh-subagent-codex')
     expect(manifest.dependencies).not.toHaveProperty('@relay-harness/rlh-subagent-claude-code')
+    expect(manifest.dependencies).not.toHaveProperty('@relay-harness/rlh-tool-workflow')
+    expect(manifest.dependencies).toHaveProperty('@relay-harness/rlh-workflow-worker-thread')
+    expect(manifest.dependencies).toHaveProperty('@relay-harness/rlh-tool-ralph')
   })
 
   it('gates each shell stack by platform with a symmetric disabled expression', () => {

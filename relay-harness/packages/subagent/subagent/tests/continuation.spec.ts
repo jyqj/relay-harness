@@ -172,21 +172,24 @@ function observeCancel(agent: Agent, callback: () => void): void {
 }
 
 describe('SubagentRuntime.startContinuable', () => {
-  it('returns both identities at inbox acceptance, without waiting for the turn or the log', async () => {
+  it('returns both identities after durable acceptance without waiting for the turn', async () => {
     const { ctx, parent, adapter } = await setup([textResponse('first answer')])
-    const enqueued: { id: MessageId; loggedYet: boolean }[] = []
+    const enqueued: { id: MessageId; durable: boolean; loggedYet: boolean }[] = []
     ctx.on('agent/inbox/inserted', ({ agent, message }) => {
-      // Acceptance is the boundary `startContinuable` resolves at, so observe
-      // the log state exactly there rather than after later microtasks.
-      enqueued.push({ id: message.id, loggedYet: hasUserText(agent.session.events, 'child task') })
+      enqueued.push({
+        id: message.id,
+        durable: agent.session.events.some(event => event.type === 'subagent/delivery-accepted'
+          && event.data.message.id === message.id),
+        loggedYet: hasUserText(agent.session.events, 'child task'),
+      })
     })
 
     const started = await ctx.subagents.startContinuable(startSpec(parent))
 
     expect(started.childId).toMatch(/[0-9a-f-]{36}/)
-    // The returned id is exactly the accepted inbox message's id, and nothing
-    // was logged or requested to earn it.
-    expect(enqueued).toEqual([{ id: started.messageId, loggedYet: false }])
+    // The returned id is exactly the durable mailbox message's inbox identity;
+    // the model-visible turn still has not started.
+    expect(enqueued).toEqual([{ id: started.messageId, durable: true, loggedYet: false }])
     expect(adapter.requests).toEqual([])
 
     await waitNoActivation(ctx, started.childId)
@@ -473,6 +476,34 @@ describe('SubagentRuntime.startContinuable', () => {
 })
 
 describe('SubagentRuntime.followup residency routing', () => {
+  it('returns the original durable receipt when an idempotency key is retried', async () => {
+    const releaseFirst = Promise.withResolvers<undefined>()
+    const adapter = new GatedAdapter([
+      { chunks: textResponse('first'), gate: releaseFirst.promise },
+      { chunks: textResponse('second') },
+    ])
+    const { ctx, parent } = await setupWith(adapter)
+    const started = await ctx.subagents.startContinuable(startSpec(parent))
+    await vi.waitFor(() => { expect(adapter.requests).toHaveLength(1) })
+    const options = {
+      source: { kind: 'user' as const },
+      signal: testSignal,
+      idempotencyKey: 'parent-request-1',
+    }
+
+    const first = await ctx.subagents.followup(parent, started.childId, message('retry-safe'), options)
+    const retry = await ctx.subagents.followup(parent, started.childId, message('retry-safe'), options)
+
+    expect(retry).toBe(first)
+    const child = ctx.agents.get(started.childId)!
+    expect(child.session.events.filter(event => event.type === 'subagent/delivery-accepted'
+      && event.data.idempotencyKey === 'parent-request-1')).toHaveLength(1)
+    releaseFirst.resolve(undefined)
+    await waitNoActivation(ctx, started.childId)
+    const loaded = await ctx.sessionPersistence.load(started.childId)
+    expect(userTexts(loaded.events).filter(text => text === 'retry-safe')).toHaveLength(1)
+  })
+
   it('enqueues in the same Activation while it is running, preserving one inbox FIFO', async () => {
     const releaseFirst = Promise.withResolvers<undefined>()
     const adapter = new GatedAdapter([
@@ -761,12 +792,16 @@ describe('continuable durability and teardown', () => {
   })
 
   it('logs a failed final flush after every listener settles without failing the Activation', async () => {
-    const { ctx, parent } = await setup([textResponse('answer')])
+    const release = Promise.withResolvers<undefined>()
+    const adapter = new GatedAdapter([{ chunks: textResponse('answer'), gate: release.promise }])
+    const { ctx, parent } = await setupWith(adapter)
     const warnings: string[] = []
     const ends: SubagentRunEndInfo[] = []
     let peerFlushed = false
     ctx.logger.warn = (message: string) => { warnings.push(message) }
     ctx.on('subagent/end', info => void ends.push(info))
+    const started = await ctx.subagents.startContinuable(startSpec(parent))
+    await vi.waitFor(() => { expect(adapter.requests).toHaveLength(1) })
     ctx.on('session/flush', (session) => {
       if (session.header.parentSession !== undefined) throw new Error('disk full')
     })
@@ -774,7 +809,7 @@ describe('continuable durability and teardown', () => {
       if (session.header.parentSession !== undefined) peerFlushed = true
     })
 
-    const started = await ctx.subagents.startContinuable(startSpec(parent))
+    release.resolve(undefined)
     await waitNoActivation(ctx, started.childId)
     expect(peerFlushed).toBe(true)
     expect(warnings.some(warning => warning.includes('best-effort final session flush failed'))).toBe(true)
@@ -1193,13 +1228,13 @@ describe('continuable durability and teardown', () => {
 
     await expect(delivery).resolves.toBeTypeOf('string')
     await drained
-    expect(order).toEqual(['enqueue', 'cancel'])
+    expect(order).toEqual(['cancel'])
   })
 
-  it('has no automatic replay for an accepted but unlogged message', async () => {
+  it('replays a durably accepted but unclaimed message before a new cold-resume follow-up', async () => {
     const hold = Promise.withResolvers<undefined>()
     const adapter = new GatedAdapter([{ chunks: textResponse('first'), gate: hold.promise }])
-    const { ctx, parent } = await setupWith(adapter)
+    const { ctx, parent, root } = await setupWith(adapter)
     const started = await ctx.subagents.startContinuable(startSpec(parent))
     await vi.waitFor(() => { expect(adapter.requests).toHaveLength(1) })
     // Accepted into the inbox, but this queued turn never opens.
@@ -1210,9 +1245,22 @@ describe('continuable durability and teardown', () => {
     await drained
     await waitNoActivation(ctx, started.childId)
 
-    const loaded = await ctx.sessionPersistence.load(started.childId)
-    // Only what actually reached the log is reconstructable.
-    expect(hasUserText(loaded.events, 'never logged')).toBe(false)
+    const accepted = await ctx.sessionPersistence.load(started.childId)
+    expect(hasUserText(accepted.events, 'never logged')).toBe(false)
+    expect(accepted.events.some(event => event.type === 'subagent/delivery-accepted')).toBe(true)
+
+    const fresh = new Context()
+    await mountAgentLoopTestDependencies(fresh)
+    await fresh.plugin(JsonlSessionPersistence, { root: root! })
+    await fresh.plugin(AgentLoop, { agents: [] })
+    await fresh.plugin(SubagentRuntime)
+    fresh.llm.registerAdapter(['mock'], new MockAdapter([textResponse('replayed'), textResponse('new')]))
+    const freshParent = fresh.agentLoop.create(parent.id, parent.options)
+    await followup(fresh, freshParent, started.childId, message('new follow-up'))
+    await waitNoActivation(fresh, started.childId)
+
+    const recovered = await fresh.sessionPersistence.load(started.childId)
+    expect(userTexts(recovered.events)).toEqual(['child task', 'never logged', 'new follow-up'])
   })
 })
 

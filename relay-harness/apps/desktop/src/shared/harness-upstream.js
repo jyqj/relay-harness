@@ -6,7 +6,6 @@ const path = require('node:path');
 /** @typedef {{ repo: string, ref: string, sha: string, npm: string }} HarnessPin */
 
 const PIN_RELATIVE = 'vendor/harness-upstream.json';
-const DEFAULT_REPO = 'https://github.com/jyqj/relay-harness.git';
 const RC5_SHA = '47f943859bef60e4160492346772ded9b24f765a';
 const SQUASH_WITNESS = 'd2df50d17fdca6547e14264efc2cf4fc526e9a7a';
 const FULL_SHA = /^[0-9a-f]{40}$/;
@@ -132,8 +131,6 @@ function assertRc5Witness(git, pin) {
 }
 
 module.exports = {
-  PIN_RELATIVE,
-  DEFAULT_REPO,
   RC5_SHA,
   SQUASH_WITNESS,
   parsePin,

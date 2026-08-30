@@ -8,7 +8,7 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/jyqj/relay-harness.git",
-    "directory": "packages/llm/llm-deepseek"
+    "directory": "relay-harness/packages/llm/llm-deepseek"
   },
   "type": "module",
   "main": "lib/index.js",
