@@ -43,7 +43,7 @@ jobs:
       contents: read
       pages: read
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Verify repository and feature-status authority
         run: node scripts/verify-feature-status.mjs
