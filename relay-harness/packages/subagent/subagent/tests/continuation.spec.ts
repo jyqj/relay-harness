@@ -18,6 +18,7 @@ import InvariantRegistry from '@relay-harness/rlh-invariants'
 import { MockAdapter, maxTokensResponse, textResponse, toolCallResponse } from '../../../core/agent-loop/tests/mock-adapter.ts'
 import SubagentRuntime, {
   SubagentError,
+  SubagentActivationLeaseStore,
   SUBAGENT_DESCRIPTOR_VERSION,
 } from '../src/index.ts'
 import type { SubagentRunEndInfo, SubagentRunInfo } from '../src/index.ts'
@@ -751,6 +752,118 @@ describe('continuable child ownership', () => {
 })
 
 describe('continuable durability and teardown', () => {
+  it('refuses a second runtime while another process owner holds the child Activation lease', async () => {
+    const hold = Promise.withResolvers<undefined>()
+    const root = mkdtempSync(join(tmpdir(), 'rlh-subagent-cross-owner-'))
+    roots.push(root)
+    const persistenceRoot = join(root, 'sessions')
+    const leasePath = join(root, 'activation-leases.sqlite3')
+    const first = new Context()
+    await mountAgentLoopTestDependencies(first)
+    await first.plugin(JsonlSessionPersistence, { root: persistenceRoot })
+    await first.plugin(AgentLoop, { agents: [] })
+    await first.plugin(SubagentRuntime, { activationLeasePath: leasePath })
+    await first.plugin(SubagentSpawn, { providerName: 'spawn' })
+    const firstAdapter = new GatedAdapter([{ chunks: textResponse('held'), gate: hold.promise }])
+    first.llm.registerAdapter(['mock'], firstAdapter)
+    const firstParent = first.agentLoop.create(SessionId('leased-parent'), { provider: 'mock', model: 'mock' })
+    const started = await first.subagents.startContinuable(startSpec(firstParent))
+    await vi.waitFor(() => { expect(firstAdapter.requests).toHaveLength(1) })
+
+    const second = new Context()
+    await mountAgentLoopTestDependencies(second)
+    await second.plugin(JsonlSessionPersistence, { root: persistenceRoot })
+    await second.plugin(AgentLoop, { agents: [] })
+    await second.plugin(SubagentRuntime, { activationLeasePath: leasePath })
+    const secondParent = second.agentLoop.create(firstParent.id, firstParent.options)
+
+    await expect(followup(second, secondParent, started.childId, message('must not overlap')))
+      .rejects.toMatchObject({ code: 'ACTIVATION_LEASE_HELD' })
+    expect(second.agents.get(started.childId)).toBeUndefined()
+
+    hold.resolve(undefined)
+    await drainManager(first)
+    await second.fiber.dispose()
+  })
+
+  it('fences a slow materialization taken over before Agent publication', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'rlh-subagent-slow-lease-'))
+    roots.push(root)
+    const leasePath = join(root, 'leases.sqlite3')
+    const { ctx, parent } = await setup([], {
+      subagents: { activationLeasePath: leasePath, activationLeaseMs: 100, activationLeaseRenewMs: 25 },
+    })
+    const childId = SessionId('slow-leased-child')
+    const manager = (ctx.subagents as unknown as {
+      continuations: { ownerCtx: Context }
+    }).continuations
+    const originalCreate = manager.ownerCtx.agents.create.bind(manager.ownerCtx.agents)
+    const entered = Promise.withResolvers<undefined>()
+    const release = Promise.withResolvers<undefined>()
+    manager.ownerCtx.agents.create = async (options) => {
+      entered.resolve(undefined)
+      await release.promise
+      return originalCreate(options)
+    }
+
+    const starting = ctx.subagents.startContinuable({ ...startSpec(parent), childId })
+    await entered.promise
+    const contender = new SubagentActivationLeaseStore(leasePath)
+    const successor = contender.acquire(childId, 100, Date.now() + 1_000)
+    release.resolve(undefined)
+
+    await expect(starting).rejects.toMatchObject({ code: 'ACTIVATION_LEASE_LOST' })
+    expect(ctx.agents.get(childId)).toBeUndefined()
+    successor.release()
+    contender.close()
+  })
+
+  it('denies a side-effecting tool that loses its fence while pre-execute policy waits', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'rlh-subagent-tool-fence-'))
+    roots.push(root)
+    const leasePath = join(root, 'leases.sqlite3')
+    const childId = SessionId('tool-fenced-child')
+    const { ctx, parent } = await setup([
+      toolCallResponse('lease-call', 'side_effect', {}),
+      textResponse('must not continue'),
+    ], {
+      subagents: { activationLeasePath: leasePath, activationLeaseMs: 100, activationLeaseRenewMs: 25 },
+    })
+    let invoked = 0
+    ctx.tools.register(defineTool({
+      name: 'side_effect',
+      description: 'test side effect',
+      parameters: {},
+      output: {
+        schema: { type: 'object', additionalProperties: false, properties: {} },
+        render: () => [{ type: 'text', text: 'changed external state' }],
+      },
+      execute: () => {
+        invoked += 1
+        return Promise.resolve({})
+      },
+    }))
+    const entered = Promise.withResolvers<undefined>()
+    const release = Promise.withResolvers<undefined>()
+    ctx.on('tools/pre-execute', async (exec, next) => {
+      if (exec.agent?.id !== childId) return next()
+      entered.resolve(undefined)
+      await release.promise
+      return next()
+    })
+
+    await ctx.subagents.startContinuable({ ...startSpec(parent), childId })
+    await entered.promise
+    const contender = new SubagentActivationLeaseStore(leasePath)
+    const successor = contender.acquire(childId, 100, Date.now() + 1_000)
+    release.resolve(undefined)
+
+    await waitNoActivation(ctx, childId)
+    expect(invoked).toBe(0)
+    successor.release()
+    contender.close()
+  })
+
   it('holds root capacity through Activation quiescence and releases it after disposal', async () => {
     const releaseFirst = Promise.withResolvers<undefined>()
     const adapter = new GatedAdapter([

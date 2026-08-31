@@ -13,6 +13,7 @@ import ToolRuntime, { defineContentToolFixture, TOOL_ABORTED_BEFORE_DISPATCH, TO
 import AgentRegistry, { type Agent } from '@relay-harness/rlh-agent'
 import AgentLoop, {
   DEFAULT_MAX_PARALLEL_TOOL_CALLS,
+  DEFAULT_MAX_PENDING_INBOX_BYTES,
   DEFAULT_MAX_PENDING_INBOX_MESSAGES,
 } from '@relay-harness/rlh-agent-loop'
 import { MockAdapter, textResponse } from './mock-adapter.ts'
@@ -359,12 +360,15 @@ describe('tool-call scheduler: rolling pool honors maxParallelToolCalls', () => 
 
   it('resolves and validates the deployment-owned inbox capacity', () => {
     expect(DEFAULT_MAX_PENDING_INBOX_MESSAGES).toBe(4096)
+    expect(DEFAULT_MAX_PENDING_INBOX_BYTES).toBe(64 * 1024 * 1024)
     expect(() => new AgentLoop(new Context(), { agents: [], maxPendingInboxMessages: 0 }))
       .toThrow('maxPendingInboxMessages must be a positive safe integer')
     expect(() => new AgentLoop(new Context(), {
       agents: [],
       maxPendingInboxMessages: Number.MAX_SAFE_INTEGER + 1,
     })).toThrow('maxPendingInboxMessages must be a positive safe integer')
+    expect(() => new AgentLoop(new Context(), { agents: [], maxPendingInboxBytes: 0 }))
+      .toThrow('maxPendingInboxBytes must be a positive safe integer')
   })
 
   it('defensively rejects invalid caps when direct construction bypasses the config schema', () => {
@@ -385,6 +389,7 @@ describe('tool-call scheduler: rolling pool honors maxParallelToolCalls', () => 
     const loop = new AgentLoop(ctx, { agents: [] })
     expect(loop.config.maxParallelToolCalls).toBe(DEFAULT_MAX_PARALLEL_TOOL_CALLS)
     expect(loop.config.maxPendingInboxMessages).toBe(DEFAULT_MAX_PENDING_INBOX_MESSAGES)
+    expect(loop.config.maxPendingInboxBytes).toBe(DEFAULT_MAX_PENDING_INBOX_BYTES)
     await ctx.fiber.dispose()
   })
 

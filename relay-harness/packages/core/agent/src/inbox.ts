@@ -30,17 +30,34 @@ export class InboxCapacityError extends Error {
   }
 }
 
+/** A live inbox mutation would exceed its configured serialized-byte cap. */
+export class InboxByteCapacityError extends Error {
+  /**
+   * @param bytes - projected serialized bytes across both pending lists.
+   * @param limit - maximum pending serialized bytes.
+   */
+  constructor(readonly bytes: number, readonly limit: number) {
+    super(`agent inbox exceeds ${limit} pending bytes (${bytes})`)
+    this.name = 'InboxByteCapacityError'
+  }
+}
+
 /** A replay-once projection that incrementally consumes later inbox splices. */
 export class Inbox {
   private readonly state: InboxState = { 'next-turn': [], 'next-step': [] }
+  private readonly stateBytes: Record<InboxTarget, number> = { 'next-turn': 0, 'next-step': 0 }
 
   constructor(
     private readonly session: Session,
     private readonly notifications: InboxNotifications,
     private readonly maxPendingMessages = Number.MAX_SAFE_INTEGER,
+    private readonly maxPendingBytes = Number.MAX_SAFE_INTEGER,
   ) {
     if (!Number.isSafeInteger(maxPendingMessages) || maxPendingMessages < 1) {
       throw new TypeError('maxPendingMessages must be a positive safe integer')
+    }
+    if (!Number.isSafeInteger(maxPendingBytes) || maxPendingBytes < 1) {
+      throw new TypeError('maxPendingBytes must be a positive safe integer')
     }
     for (const event of session.events.slice(session.header.seedLength ?? 0)) {
       if (event.type !== 'agent/inbox/spliced') continue
@@ -195,9 +212,10 @@ export class Inbox {
       inserted,
       ...(outcome === undefined ? {} : { outcome }),
     }
-    this.validate(splice, true)
+    const targetBytes = this.validate(splice, true)
     const event = this.session.append('agent/inbox/spliced', splice)
     const removed = inbox.splice(actualStart, actualDeleteCount, ...event.data.inserted)
+    this.stateBytes[target] = targetBytes
     if (discardRemoved) {
       for (const message of removed) this.notifications.discarded(message)
     }
@@ -207,13 +225,15 @@ export class Inbox {
 
   /** Apply one normalized durable splice to the projection. */
   private apply(splice: SessionEventMap['agent/inbox/spliced']): UserMessage[] {
-    this.validate(splice, false)
+    const targetBytes = this.validate(splice, false)
     const inbox = this.state[splice.target]
-    return inbox.splice(splice.start, splice.removedCount ?? 0, ...splice.inserted)
+    const removed = inbox.splice(splice.start, splice.removedCount ?? 0, ...splice.inserted)
+    this.stateBytes[splice.target] = targetBytes
+    return removed
   }
 
-  /** Validate one normalized splice against the current projection. */
-  private validate(splice: SessionEventMap['agent/inbox/spliced'], enforceCapacity: boolean): void {
+  /** Validate one normalized splice and return its target list's projected bytes. */
+  private validate(splice: SessionEventMap['agent/inbox/spliced'], enforceCapacity: boolean): number {
     const inbox = this.state[splice.target]
     const removedCount = splice.removedCount ?? 0
     if (!Number.isSafeInteger(splice.start) || splice.start < 0 || splice.start > inbox.length
@@ -228,6 +248,15 @@ export class Inbox {
     if (enforceCapacity && pendingCount > this.maxPendingMessages) {
       throw new InboxCapacityError(this.maxPendingMessages)
     }
+    const removedBytes = inbox.slice(splice.start, splice.start + removedCount)
+      .reduce((total, message) => total + serializedMessageBytes(message), 0)
+    const insertedBytes = splice.inserted
+      .reduce((total, message) => total + serializedMessageBytes(message), 0)
+    const targetBytes = this.stateBytes[splice.target] - removedBytes + insertedBytes
+    const pendingBytes = targetBytes + this.stateBytes[splice.target === 'next-turn' ? 'next-step' : 'next-turn']
+    if (enforceCapacity && pendingBytes > this.maxPendingBytes) {
+      throw new InboxByteCapacityError(pendingBytes, this.maxPendingBytes)
+    }
     const ids = new Set<string>()
     for (const message of splice.target === 'next-turn'
       ? [...candidate, ...this.nextStep]
@@ -235,5 +264,15 @@ export class Inbox {
       if (ids.has(message.id)) throw new Error(`message "${message.id}" is already pending`)
       ids.add(message.id)
     }
+    return targetBytes
+  }
+}
+
+/** Lossless JSON wire size of one frozen user message. */
+function serializedMessageBytes(message: UserMessage): number {
+  try {
+    return Buffer.byteLength(JSON.stringify(message), 'utf8')
+  } catch (error: unknown) {
+    throw new TypeError('agent inbox message is non-JSON-serializable', { cause: error })
   }
 }

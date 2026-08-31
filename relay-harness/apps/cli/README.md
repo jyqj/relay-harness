@@ -4,6 +4,8 @@ English | [中文](README.zh.md)
 
 The `rlh` command is the product launcher for profiles: ordered stacks of plugin-bundle patch layers under the user's own overrides. [`src/args.ts`](src/args.ts) owns the command grammar, and [`src/bin.ts`](src/bin.ts) loads only the selected runner. Invalid commands, options from another mode, configuration errors, and boot failures exit nonzero.
 
+During profile and config-dump execution the launcher suppresses only Node's exact `SQLite is an experimental feature and might change at any time` `ExperimentalWarning`. Relay exercises the built-in SQLite implementation through its own compatibility and durability gates; every other experimental notice, deprecation, and product warning still reaches stderr.
+
 ## Entry modes
 
 | Command | Purpose |

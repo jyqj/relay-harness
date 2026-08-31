@@ -63,7 +63,9 @@
     "@relay-harness/rlh-typert-protocol": "workspace:^",
     "@relay-harness/cordis": "workspace:^"
   },
-  "dependencies": {},
+  "dependencies": {
+    "zod": "^4.4.3"
+  },
   "devDependencies": {
     "@relay-harness/rlh-agent": "workspace:^",
     "@relay-harness/rlh-attachment": "workspace:^",

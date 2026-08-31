@@ -15,4 +15,11 @@ describe('Vitest jsdom compatibility', () => {
   it('models the unavailable jsdom canvas capability without virtual-console noise', () => {
     expect(document.createElement('canvas').getContext('2d')).toBeNull()
   })
+
+  it('suppresses repeated Node experimental notices in forked test workers', () => {
+    if (process.allowedNodeEnvironmentFlags.has('--disable-warning=ExperimentalWarning')) {
+      expect(process.execArgv.filter(argument => argument === '--disable-warning=ExperimentalWarning'))
+        .toHaveLength(1)
+    }
+  })
 })

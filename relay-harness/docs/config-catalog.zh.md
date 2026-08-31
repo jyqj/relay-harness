@@ -154,6 +154,8 @@ export interface Config {
   maxParallelToolCalls?: number
   /** Aggregate pending next-turn and next-step messages admitted per Agent. */
   maxPendingInboxMessages?: number
+  /** Aggregate lossless-JSON bytes admitted across both pending lists. */
+  maxPendingInboxBytes?: number
   /** Agents created or resumed at plugin startup. */
   agents: (AgentOptions & {
     /** Stable config label used in logs and as the fresh combined-id prefix. */
@@ -245,6 +247,8 @@ export interface Config {
   maxParallelToolCalls?: AgentLoopConfig['maxParallelToolCalls']
   /** Agent-loop aggregate pending-inbox admission cap. */
   maxPendingInboxMessages?: AgentLoopConfig['maxPendingInboxMessages']
+  /** Agent-loop aggregate pending-inbox byte cap. */
+  maxPendingInboxBytes?: AgentLoopConfig['maxPendingInboxBytes']
   /** Whether the system prompt includes the fixed Harness identity (default true). */
   includeHarnessIdentity?: SystemPromptConfig['includeHarnessIdentity']
   /** Whether model history includes dynamic runtime-context snapshots (default true). */
@@ -2732,10 +2736,16 @@ export interface Config {
   maxActivePerParent?: number
   /** Saturation behavior: reject immediately (default) or wait in a root-local queue. */
   overflow?: 'reject' | 'queue'
+  /** Absolute SQLite path enabling cross-process Activation leases; omission keeps process-local ownership. */
+  activationLeasePath?: string
+  /** Lease lifetime before a crashed owner may be taken over. */
+  activationLeaseMs?: number
+  /** Healthy-owner renewal interval; must be shorter than the lease lifetime. */
+  activationLeaseRenewMs?: number
 }
 ```
 
-Source: [`packages/subagent/subagent/src/index.ts:131`](../packages/subagent/subagent/src/index.ts)
+Source: [`packages/subagent/subagent/src/index.ts:144`](../packages/subagent/subagent/src/index.ts)
 
 <a id="relay-harnessrlh-subagent-acp"></a>
 

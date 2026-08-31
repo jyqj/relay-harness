@@ -51,3 +51,5 @@ Zod emitter 对支持的节点和各类 literal 逐类执行成功与失败 pars
 新增生成目标或静态检查可复用同一 TypeGraph，业务类目也可在 PackageModel 上扩展，而无需再次解析 AST。保留计算前类型和独立 face 的代价是模型比打平后的 schema 更复杂，emitter 必须显式声明支持范围并对缺失能力失败。
 
 包级显式 opt-in 使产物发布与 exports 由各包自行管理。仓库编排仍可为每个已 opt-in 的包运行全仓 Host 约定 pass；该 pass 仍由后续 Remote Gateway Agent Note 负责说明。静态 Cordis catalog 可从标准模型复现，同时不把 `tool-cordis` 与运行时注册表状态耦合。`ctx.typert` 只反映当前运行时中已挂载的产物；对于消费方直接导入后仍持有的 Zod 实例，卸载流程无法控制。
+
+生成的 `typert.host.js` 产物会在运行时导入 `zod`。因此，每个 opt-in 包都会把 `zod` 声明为自身 production dependency，而不是依赖 workspace hoisting；built CLI smoke 会在隔离进程中启动随发行版提供的 profile，并捕获任何无法解析该依赖的 contribution 产物。

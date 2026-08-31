@@ -27,6 +27,14 @@ uv run --project python/sdk pytest
 
 `python/sdk/tests/test_bundled_runtime.py` 会运行可用的内置载体；某个载体的产物尚未构建时，会跳过该载体。仓库级测试政策见 [测试](../docs/testing.md)。
 
+构建 host 产物后，请要求 production exe 与开发 node 载体全部存在，而不是接受跳过：
+
+```sh
+pnpm run test:python-carriers
+```
+
+该命令会设置 `RLH_REQUIRE_BUNDLED_CARRIERS=1`；缺失任一载体都会使测试失败。这是本地／发布验证路径，而普通 source-only Python 套件在构建 200+ MB host 产物前仍可运行。
+
 该套件面向的是伪造的运行时对端。`scripts/smoke-python-runtime.py` 面向真实的打包运行时；必需的 `python-runtime` CI 任务会用新构建的可执行文件运行全部场景：
 
 ```sh

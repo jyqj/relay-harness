@@ -32,7 +32,7 @@ import type {
 } from '@relay-harness/rlh-agent'
 import { boundContextSummary, createUserMessage, errorChain } from '@relay-harness/rlh-llm'
 import type { ContentBlock, MessageId, MessageSource } from '@relay-harness/rlh-llm'
-import { SessionId } from '@relay-harness/rlh-session'
+import { installSessionPersistenceFence, SessionId } from '@relay-harness/rlh-session'
 import type { SessionEvent } from '@relay-harness/rlh-session'
 import type { SessionPersistence } from '@relay-harness/rlh-session-persistence'
 import type { ToolRestriction } from '@relay-harness/rlh-tools'
@@ -54,6 +54,8 @@ import type { ActivationObserver, ActivationTerminal } from './lifecycle.ts'
 import { SubagentError } from './error.ts'
 import type SubagentActivationSetupRegistry from './activation-setup-registry.ts'
 import type { SubagentAdmissionLease } from './admission.ts'
+import { SubagentActivationLeaseError } from './activation-lease.ts'
+import type { SubagentActivationLease, SubagentActivationLeaseStore } from './activation-lease.ts'
 import {
   acceptedSubagentDelivery,
   acceptedSubagentReport,
@@ -263,6 +265,12 @@ interface Activation {
   readonly observer: ActivationObserver
   /** Shared root-tree capacity retained until this Activation is quiescent. */
   readonly admission: SubagentAdmissionLease
+  /** Cross-process owner/fence when the deployment configured the SQLite lease Adapter. */
+  readonly lease?: SubagentActivationLease
+  /** Healthy-owner renewal timer, absent in process-local compatibility mode. */
+  leaseTimer: ReturnType<typeof setTimeout> | undefined
+  /** Keeps persistence writes fenced until handle disposal completes. */
+  readonly persistenceFenceDispose?: () => void
   /**
    * The memoized disposal transaction. Presence IS the admission cutoff: it is
    * assigned synchronously when disposal begins, so no delivery can join a
@@ -317,6 +325,12 @@ interface MaterializeInputs {
 interface Materialization {
   readonly lineage: readonly Agent[]
   readonly settled: Promise<void>
+}
+
+interface ContinuationLeaseOptions {
+  readonly leaseStore: SubagentActivationLeaseStore | undefined
+  readonly leaseMs: number
+  readonly leaseRenewMs: number
 }
 
 /**
@@ -416,6 +430,7 @@ export class SubagentContinuationManager {
     private readonly ctx: Context,
     private readonly host: ContinuationHost,
     private readonly setupRegistry: SubagentActivationSetupRegistry,
+    private readonly leaseOptions: ContinuationLeaseOptions,
   ) {
     // Ordinary Cordis owner effects unwind in reverse registration order, which
     // cannot express the dynamic child graph. Register the private scope's
@@ -640,6 +655,7 @@ export class SubagentContinuationManager {
     }
     const activation = this.activations.get(targetSessionId)
     if (activation === undefined) return
+    this.assertLease(activation)
     if (authority.kind === 'user') {
       if (activation.handle.agent.session.header.parentSession !== authority.parentSessionId) {
         throw new SubagentError(
@@ -682,6 +698,7 @@ export class SubagentContinuationManager {
     options.signal.throwIfAborted()
     this.assertAdmitting(child)
     const activation = this.authorizeReporter(child)
+    this.assertLease(activation)
     const parent = this.resolveReportParent(child)
     if (options.idempotencyKey !== undefined
       && (options.idempotencyKey.trim() === '' || Array.from(options.idempotencyKey).length > 256)) {
@@ -1175,7 +1192,41 @@ export class SubagentContinuationManager {
     // `AgentRegistry.enter()` is the authoritative collision boundary for an id
     // some other owner holds — a duplicate would reject there with rollback.
     inputs.signal.throwIfAborted()
+    const observer = this.host.observeActivation(provider, childId, parent)
+    let lease: SubagentActivationLease | undefined
+    try {
+      lease = this.leaseOptions.leaseStore?.acquire(childId, this.leaseOptions.leaseMs)
+    } catch (error: unknown) {
+      if (error instanceof SubagentActivationLeaseError && error.code === 'LEASE_HELD') {
+        throw new SubagentError(error.message, 'ACTIVATION_LEASE_HELD', { cause: error })
+      }
+      throw error
+    }
+    let acquisitionLeaseFailure: Error | undefined
+    let persistenceFenceDispose: (() => void) | undefined
+    const acquisitionTimer = lease === undefined ? undefined : setInterval(() => {
+      try { lease.renew() } catch (error: unknown) {
+        acquisitionLeaseFailure ??= error instanceof Error ? error : new Error(String(error))
+      }
+    }, this.leaseOptions.leaseRenewMs)
+    acquisitionTimer?.unref()
     const setup = (childCtx: Context): AgentSetupCommit => {
+      if (acquisitionLeaseFailure !== undefined) throw acquisitionLeaseFailure
+      lease?.assertCurrent()
+      if (lease !== undefined && persistenceFenceDispose === undefined) {
+        persistenceFenceDispose = installSessionPersistenceFence((childCtx.agent as Agent).session, {
+          token: `${lease.ownerToken}:${lease.fence}`,
+          assertCurrent: () => { lease.assertCurrent() },
+        })
+        childCtx.tools.guard(() => {
+          try {
+            lease.assertCurrent()
+            return undefined
+          } catch {
+            return `subagent "${childId}" lost its cross-process Activation lease before tool execution`
+          }
+        })
+      }
       // Only fresh creation seeds the delegation policy onto the child's own
       // log (after any fork seed, so fresh policy wins stale seed state); a
       // cold resume replays those persisted events instead.
@@ -1183,27 +1234,50 @@ export class SubagentContinuationManager {
         appendDelegatedPolicyOverrides((childCtx.agent as Agent).session, create.delegatedPolicies)
       }
       applyChildComposition(childCtx, parent, inputs.composition)
-      return this.setupRegistry.apply(childCtx)
+      const contribution = this.setupRegistry.apply(childCtx)
+      return {
+        commit: () => {
+          if (acquisitionLeaseFailure !== undefined) throw acquisitionLeaseFailure
+          lease?.assertCurrent()
+          contribution.commit()
+        },
+      }
     }
-    const observer = this.host.observeActivation(provider, childId, parent)
     // Agent creation owns rollback before handle transfer. A rejection leaves
     // no resident Activation and therefore publishes no lifecycle edge.
-    const handle: AgentHandle = create === undefined
-      ? await this.ownerCtx.agents.resume({
-        resumeSessionId: childId,
-        agentOptions: inputs.agentOptions,
-        signal: inputs.signal,
-        setup,
-      })
-      : await this.ownerCtx.agents.create({
-        sessionId: childId,
-        meta: create.meta,
-        seed: create.seed,
-        agentOptions: inputs.agentOptions,
-        signal: inputs.signal,
-        setup,
-      })
-
+    let handle: AgentHandle | undefined
+    try {
+      handle = create === undefined
+        ? await this.ownerCtx.agents.resume({
+          resumeSessionId: childId,
+          agentOptions: inputs.agentOptions,
+          signal: inputs.signal,
+          setup,
+        })
+        : await this.ownerCtx.agents.create({
+          sessionId: childId,
+          meta: create.meta,
+          seed: create.seed,
+          agentOptions: inputs.agentOptions,
+          signal: inputs.signal,
+          setup,
+        })
+      lease?.assertCurrent()
+    } catch (error: unknown) {
+      if (handle !== undefined) await handle.dispose().catch(() => undefined)
+      persistenceFenceDispose?.()
+      try { lease?.release() } catch { /* A takeover already fenced this unpublished owner. */ }
+      if (error instanceof SubagentActivationLeaseError) {
+        throw new SubagentError(
+          `subagent "${childId}" lost its Activation lease during materialization`,
+          'ACTIVATION_LEASE_LOST',
+          { cause: error },
+        )
+      }
+      throw error
+    } finally {
+      clearInterval(acquisitionTimer)
+    }
     const activation: Activation = {
       childId,
       // The durable lineage, not merely the caller: creation stamps this same
@@ -1216,6 +1290,9 @@ export class SubagentContinuationManager {
       ownedChildren: new Set(),
       observer,
       admission: inputs.admission,
+      ...lease === undefined ? {} : { lease },
+      leaseTimer: undefined,
+      ...persistenceFenceDispose === undefined ? {} : { persistenceFenceDispose },
       disposal: undefined,
       accepted: new Set(),
       announced: false,
@@ -1228,6 +1305,10 @@ export class SubagentContinuationManager {
       inputs.signal.throwIfAborted()
       this.assertAdmitting(parent)
       this.acquireOwnership(parent, childId)
+      handle.agent.ctx.on('agent/pre-step', async (_payload, next) => {
+        this.assertLease(activation)
+        return next()
+      })
       // Every accepted id leaves the inbox exactly once, through dequeue or
       // discard. Clearing it there is what lets `stateOf()` distinguish a truly
       // quiet Agent from one whose accepted turn has not been admitted yet.
@@ -1261,6 +1342,7 @@ export class SubagentContinuationManager {
       // Publish the start edge before any turn can run, so observers see this
       // epoch before its first request.
       observer.start(handle.agent)
+      this.armLeaseRenewal(activation)
       const pending = pendingSubagentDeliveries(
         handle.agent.session.events.slice(handle.agent.session.header.seedLength ?? 0),
       )
@@ -1304,6 +1386,8 @@ export class SubagentContinuationManager {
       try {
         await activation.handle.dispose()
       } finally {
+        activation.persistenceFenceDispose?.()
+        this.releaseLease(activation)
         this.activations.delete(activation.childId)
         this.releaseOwnership(activation.childId)
         activation.admission.release()
@@ -1340,6 +1424,50 @@ export class SubagentContinuationManager {
   private wake(activation: Activation): void {
     activation.poke.resolve()
     activation.poke = Promise.withResolvers<void>()
+  }
+
+  /** Refuse work from an expired or superseded cross-process owner. */
+  private assertLease(activation: Activation): void {
+    try {
+      activation.lease?.assertCurrent()
+    } catch (error: unknown) {
+      activation.handle.agent.cancel({ kind: 'disposed' })
+      throw new SubagentError(
+        `subagent "${activation.childId}" lost its cross-process Activation lease`,
+        'ACTIVATION_LEASE_LOST',
+        { cause: error },
+      )
+    }
+  }
+
+  /** Renew a configured lease while this Activation remains resident. */
+  private armLeaseRenewal(activation: Activation): void {
+    if (activation.lease === undefined || activation.disposal !== undefined) return
+    clearTimeout(activation.leaseTimer)
+    activation.leaseTimer = setTimeout(() => {
+      activation.leaseTimer = undefined
+      if (activation.disposal !== undefined) return
+      try {
+        activation.lease?.renew()
+        this.armLeaseRenewal(activation)
+      } catch (error: unknown) {
+        this.ctx.logger.warn(`subagent "${activation.childId}": Activation lease lost: ${String(error)}`)
+        activation.handle.agent.cancel({ kind: 'disposed' })
+        void this.dispose(activation).catch((disposeError: unknown) => {
+          this.ctx.logger.warn(`subagent "${activation.childId}": lease-loss disposal failed: ${String(disposeError)}`)
+        })
+      }
+    }, this.leaseOptions.leaseRenewMs)
+    activation.leaseTimer.unref()
+  }
+
+  /** Stop renewal and release only this exact owner token/fence. */
+  private releaseLease(activation: Activation): void {
+    clearTimeout(activation.leaseTimer)
+    activation.leaseTimer = undefined
+    try { activation.lease?.release() } catch {
+      // A successor fence already proves this owner cannot delete the current lease.
+    }
   }
 
   /**
@@ -1438,6 +1566,7 @@ export class SubagentContinuationManager {
     signal: AbortSignal,
     idempotencyKey: string | undefined,
   ): Promise<MessageId> {
+    this.assertLease(activation)
     signal.throwIfAborted()
     this.assertAdmitting(parent)
     /* v8 ignore next 6 -- only a synchronous re-entrant disposer can change
@@ -1601,6 +1730,8 @@ export class SubagentContinuationManager {
         { cause: error },
       ))
     }
+    activation.persistenceFenceDispose?.()
+    this.releaseLease(activation)
     activation.admission.release()
 
     let failure: SubagentError | undefined

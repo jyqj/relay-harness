@@ -217,7 +217,7 @@ describe('partial Landlock runner-failure classification', () => {
     expect(result.exitCode).toBe(exitCode)
     expect(result.stderr.text).toBe(`${NOTICE}\n${FATAL}\n`)
     expect(result.sandbox).toEqual({ mode: 'read-only', denied: false, enforcement: 'partial' })
-  })
+  }, 10_000) // Real launcher + shell processes need a watchdog above the product's 5s command bound under full-suite contention.
 
   it('reports the fatal line after the notice as SANDBOX_UNAVAILABLE detail', async () => {
     const bash = await setup(LAUNCHER_FAILURE_EXIT)

@@ -39,6 +39,7 @@ The optional `@relay-harness/rlh-agent-loop/invariant` companion registers reque
 interface Config {
   maxParallelToolCalls?: number // default 10; 1 is serial
   maxPendingInboxMessages?: number // default 4096 across both pending lists
+  maxPendingInboxBytes?: number // default 64 MiB of lossless-JSON message data
   agents: Array<{
     id: string                 // required
     provider?: string
@@ -50,7 +51,7 @@ interface Config {
 }
 ```
 
-Configured agents start automatically. A model call requires both `provider` and `model`; `agent/request` may supply a missing pair before dispatch. An optional positive `maxTokens` seeds each conversation request's output cap and is logged in its request header. `maxParallelToolCalls` bounds every agent's rolling pool for parallel-safe calls and defaults to `10`; it is also the whole of the `agent-loop` Settings section, so a user layer over this entry caps the next tool group without a restart, and a value that is not a positive integer is refused at the write rather than at that group. The deployment-owned `maxPendingInboxMessages` defaults to `4096` across `next-turn` and `next-step`; a live insertion above it fails before an event or notification is published, while an older persisted inbox above a newly lowered cap can still resume and drain. `agents` is deliberately absent from the Settings section — it is consumed once when the service starts, so a stored change could only look like it had an effect. `cwd` applies only to fresh sessions, while `resumeSessionId` retains persisted metadata. Configured agents use the deployment persona, and programmatic setup can shadow it per agent. This plugin supplies the per-agent `provider`, `model`, and `cwd` prompt variables; harness identity and deployment persona belong to `rlh-system-prompt`.
+Configured agents start automatically. A model call requires both `provider` and `model`; `agent/request` may supply a missing pair before dispatch. An optional positive `maxTokens` seeds each conversation request's output cap and is logged in its request header. `maxParallelToolCalls` bounds every agent's rolling pool for parallel-safe calls and defaults to `10`; it is also the whole of the `agent-loop` Settings section, so a user layer over this entry caps the next tool group without a restart, and a value that is not a positive integer is refused at the write rather than at that group. The deployment-owned inbox limits default to `4096` messages and 64 MiB of lossless-JSON message data across `next-turn` and `next-step`; a live insertion above either fails before an event or notification is published, while an older persisted inbox above a newly lowered cap can still resume and drain. `agents` is deliberately absent from the Settings section — it is consumed once when the service starts, so a stored change could only look like it had an effect. `cwd` applies only to fresh sessions, while `resumeSessionId` retains persisted metadata. Configured agents use the deployment persona, and programmatic setup can shadow it per agent. This plugin supplies the per-agent `provider`, `model`, and `cwd` prompt variables; harness identity and deployment persona belong to `rlh-system-prompt`.
 
 ### Internal concrete driver
 

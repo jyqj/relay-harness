@@ -6,6 +6,7 @@ adapter loading; initialize and shutdown do not call a model.
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import pytest
@@ -49,6 +50,8 @@ def _launch_args(mode: str) -> tuple[str, ...]:
     try:
         return resolve_bundled_launch_args(mode)
     except FileNotFoundError as exc:
+        if os.environ.get("RLH_REQUIRE_BUNDLED_CARRIERS") == "1":
+            pytest.fail(f"required bundled {mode}-mode runtime is unavailable: {exc}")
         pytest.skip(f"bundled {mode}-mode runtime unavailable on this machine: {exc}")
 
 

@@ -40,6 +40,12 @@ subagent seam 允许一个 agent（智能体）通过具名提供方把工作委
 
 容量跟随资源所有权，而不是结果可见性。一次性 lease 会一直保留到 holder 调用幂等的 `SubagentRun.dispose()`；提供方启动失败会立即释放。可继续 lease 会转交给 Activation，仅在 handle disposal 或回滚达到静默后释放。结果结算、生命周期通知、提供方移除，以及 inbox 接受后的调用方取消，都不会提前释放仍存活 child 的 slot。参见[根会话树准入决策](../../../.agents/notes/implemented/architecture/2026-08-21-root-tree-subagent-admission.md)。
 
+## 跨进程 Activation lease
+
+`activationLeasePath` 会启用 SQLite Activation-lease Adapter；省略时保留供嵌入／测试部署使用的进程内兼容模式。随发行版提供的 base 配置使用 `$RLH_HOME/subagent-activation-leases.sqlite3`、30 秒 lease 与 10 秒续约。获取过程在 `BEGIN IMMEDIATE` 下运行：不存在、已释放或已过期的行会取得随机 owner token 与单调递增 fence；尚未过期的外部 owner 会以 `ACTIVATION_LEASE_HELD` 失败。续约和释放同时比较 child id、owner token 与 fence，因此陈旧 owner 无法续约或清除后继 owner。崩溃进程会留下该行，直到明确过期后，另一个 Harness 才能接管。
+
+管理器会在创建 Agent 前获取 lease，在驻留期间续约，并在 pre-step 及每次 continuation／report／interrupt 准入时检查 fence；续租丢失会取消并 dispose Agent。child 会把同一证明安装为 `SessionPersistenceFence`，使陈旧 owner 无法 append 或 flush child 历史；同时注册单调 tool guard，在授权完成后、工具主体执行前立即检查。lease 丢失会拒绝尚未启动的副作用；已经运行的调用会收到 Agent 取消，而外部系统若在观察到 abort 前已经提交，则继续遵循普通 outcome-unknown 约定。
+
 ## 能力
 
 启动时功能通过 `provider.capabilities` 声明，因为服务必须在创建子 agent 前拒绝不受支持的一次性请求：
@@ -160,6 +166,7 @@ You are a delegated subagent: your permission scope was fixed when you were star
 - **ACP 子 agent 仍为一次性，且无法通过追踪枚举**：ACP 运行在 parent 会话语料中没有本地 child 会话。ACP 的 `prepareContinuable` 需要在提供方专用描述符数据中持久化远端会话 id，以及逐子 agent 的继续执行能力声明，因为 ACP 的 `loadSession` 支持按子 agent 协商，而不是通过方法是否存在来确定。远程提供方还需要一份独立的 Activation 所有权约定，具备等效的经认证控制和子先于父的完全停稳保证，才能支持可继续子 agent。
 - **无 host-user 继续执行**：`followup()` 要求确切在线直接父级。只有 `interrupt()` 接受持久化 parent 地址形式的用户授权，因为停止一个轮次是幂等的且不投递任何内容；未来 host 适配器需要具体的经认证交互，才能让该 seam 获得用户投递能力。
 - **继续执行消息绝不 steering**：parent 到 child 的继续执行消息会排入后续 child 轮次。child 到 parent 的 report 是独立的 next-step 输入，可能延长 parent 已打开的轮次。
-- **驻留 lease 仅限进程内**：已接受的 child 投递具备持久性且可回放，但 Activation 与所有权图仍不会在两个 harness 进程之间协调。并发激活同一 child 需要跨进程 lease；当前持久化 backend 不提供该能力。
+- **随发行版提供的 base 之外，lease 仍是 opt-in**：直接 composition 若省略 `activationLeasePath`，会保留原有进程内 ownership 契约，不得让多个 Harness 进程共享同一 child persistence root。
+- **fencing 无法逆转已经提交的外部 effect**：工具主体前的 guard 会拒绝尚未启动的调用，lease 丢失会取消活跃调用，Session append/write fence 会拒绝陈旧历史。外部系统若在观察到 abort 前已经提交，仍以其状态为准，并遵循普通 outcome-unknown 与 reconciliation 规则。
 - **report 恢复仍需要激活 child**：已接受 report 可跨重启保存，并在 child 下一次物化时回放；没有独立后台 pump 会只为投递 report 而激活冷 child。
 - **生命周期事件只供观察**：影响运行的 `subagent/end` 延续或决策接口仍需等待具体消费方。

@@ -140,12 +140,23 @@ function resolveMaxParallelToolCalls(value: number | undefined): number {
 
 /** Default aggregate pending-message cap for one Agent inbox. */
 export const DEFAULT_MAX_PENDING_INBOX_MESSAGES = 4096
+/** Default aggregate serialized byte cap for one Agent inbox (64 MiB). */
+export const DEFAULT_MAX_PENDING_INBOX_BYTES = 64 * 1024 * 1024
 
 /** Resolve the deployment-owned inbox resource cap. */
 function resolveMaxPendingInboxMessages(value: number | undefined): number {
   const resolved = value ?? DEFAULT_MAX_PENDING_INBOX_MESSAGES
   if (!Number.isSafeInteger(resolved) || resolved < 1) {
     throw new Error('maxPendingInboxMessages must be a positive safe integer')
+  }
+  return resolved
+}
+
+/** Resolve the deployment-owned inbox byte cap. */
+function resolveMaxPendingInboxBytes(value: number | undefined): number {
+  const resolved = value ?? DEFAULT_MAX_PENDING_INBOX_BYTES
+  if (!Number.isSafeInteger(resolved) || resolved < 1) {
+    throw new Error('maxPendingInboxBytes must be a positive safe integer')
   }
   return resolved
 }
@@ -272,6 +283,8 @@ export interface Config {
   maxParallelToolCalls?: number
   /** Aggregate pending next-turn and next-step messages admitted per Agent. */
   maxPendingInboxMessages?: number
+  /** Aggregate lossless-JSON bytes admitted across both pending lists. */
+  maxPendingInboxBytes?: number
   /** Agents created or resumed at plugin startup. */
   agents: (AgentOptions & {
     /** Stable config label used in logs and as the fresh combined-id prefix. */
@@ -286,7 +299,11 @@ export interface Config {
 }
 
 /** Agent-loop configuration after defaults and load-time validation. */
-type ResolvedConfig = Config & { maxParallelToolCalls: number; maxPendingInboxMessages: number }
+type ResolvedConfig = Config & {
+  maxParallelToolCalls: number
+  maxPendingInboxMessages: number
+  maxPendingInboxBytes: number
+}
 
 /** Reject self-contained identity conflicts before any configured agent starts. */
 function validateConfiguredAgents(agents: Config['agents']): void {
@@ -315,6 +332,8 @@ export class AgentLoop extends Service implements AgentFactory {
     maxParallelToolCalls: z.number().step(1).min(1).default(DEFAULT_MAX_PARALLEL_TOOL_CALLS),
     maxPendingInboxMessages: z.number().step(1).min(1).max(Number.MAX_SAFE_INTEGER)
       .default(DEFAULT_MAX_PENDING_INBOX_MESSAGES),
+    maxPendingInboxBytes: z.number().step(1).min(1).max(Number.MAX_SAFE_INTEGER)
+      .default(DEFAULT_MAX_PENDING_INBOX_BYTES),
     agents: z.array(z.object({
       id: z.string().required(),
       sessionId: z.string().min(1),
@@ -342,6 +361,7 @@ export class AgentLoop extends Service implements AgentFactory {
       ...config,
       agents: applyLauncherIdentities(config.agents, ctx.get(CONFIGURED_AGENT_IDENTITIES_KEY)),
       maxPendingInboxMessages: resolveMaxPendingInboxMessages(config.maxPendingInboxMessages),
+      maxPendingInboxBytes: resolveMaxPendingInboxBytes(config.maxPendingInboxBytes),
       // Read through on every scheduler decision: `tool-calls.ts` destructures
       // this at the start of each group, so a committed change caps the next
       // group without disturbing the one in flight.

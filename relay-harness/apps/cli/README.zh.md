@@ -4,6 +4,8 @@
 
 `rlh` 是 Relay Harness 中用于启动 profile 的命令；profile 由多个插件组合包 patch 层按顺序叠加而成，其上再应用用户自己的覆盖配置。[`src/args.ts`](src/args.ts) 负责命令语法，[`src/bin.ts`](src/bin.ts) 只加载选中的运行器。无效命令、来自其他模式的选项、配置错误和启动失败都会以非零状态退出。
 
+执行 profile 与配置 dump 时，启动器只会抑制 Node 内容完全匹配 `SQLite is an experimental feature and might change at any time` 的 `ExperimentalWarning`。Relay 会通过自身兼容性与持久性门禁验证内置 SQLite 实现；其他 experimental notice、deprecation 与产品 warning 仍会写入 stderr。
+
 ## 入口模式
 
 | 命令 | 用途 |

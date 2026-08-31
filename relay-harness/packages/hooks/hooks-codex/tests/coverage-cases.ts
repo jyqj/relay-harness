@@ -26,6 +26,7 @@ afterEach(async () => {
   for (const ctx of contexts.splice(0)) await ctx.fiber.dispose()
   for (const d of dirs.splice(0)) rmSync(d, { recursive: true, force: true })
 })
+function context(): Context { const ctx = new Context(); contexts.push(ctx); return ctx }
 function dir(): string { const d = mkdtempSync(join(tmpdir(), 'rlh-hx-cov-')); dirs.push(d); return d }
 function sh(d: string, name: string, body: string): string {
   const p = join(d, name); writeFileSync(p, body); chmodSync(p, 0o755); return p
@@ -36,8 +37,7 @@ function hooks(d: string, h: unknown): string {
 
 type HarnessOpts = { stderrSummaryMaxChars?: number; sessionRoot?: string }
 async function harness(configPath: string, adapter: MockAdapter, opts: HarnessOpts = {}): Promise<Context> {
-  const ctx = new Context()
-  contexts.push(ctx)
+  const ctx = context()
   await mountAgentLoopTestDependencies(ctx)
   if (opts.sessionRoot !== undefined) await ctx.plugin(JsonlSessionPersistence, { root: opts.sessionRoot })
   await ctx.plugin(AgentLoop, { agents: [] })
@@ -309,7 +309,7 @@ export function defineCoverageCases(groups: CoverageGroup | readonly CoverageGro
       ] }] })
       const warn = vi.fn()
       const adapter = new MockAdapter([textResponse('ok')])
-      const ctx = new Context()
+      const ctx = context()
       await mountAgentLoopTestDependencies(ctx)
       await ctx.plugin(AgentLoop, { agents: [] })
       await ctx.plugin(LocalSubprocessRuntime)
@@ -671,7 +671,7 @@ export function defineCoverageCases(groups: CoverageGroup | readonly CoverageGro
       const marker = join(sessionDir, 'where')
       hooks(serverDir, { PreToolUse: [{ hooks: [{ type: 'command', command: 'pwd > where' }] }] })
       const adapter = new MockAdapter([toolCallResponse('c1', 'Bash', { command: 'x' }), textResponse('done')])
-      const ctx = new Context()
+      const ctx = context()
       await mountAgentLoopTestDependencies(ctx)
       await ctx.plugin(AgentLoop, { agents: [] })
       await ctx.plugin(LocalSubprocessRuntime)

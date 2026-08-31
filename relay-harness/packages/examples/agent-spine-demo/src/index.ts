@@ -96,6 +96,8 @@ export interface Config {
   maxParallelToolCalls?: AgentLoopConfig['maxParallelToolCalls']
   /** Agent-loop aggregate pending-inbox admission cap. */
   maxPendingInboxMessages?: AgentLoopConfig['maxPendingInboxMessages']
+  /** Agent-loop aggregate pending-inbox byte cap. */
+  maxPendingInboxBytes?: AgentLoopConfig['maxPendingInboxBytes']
   /** Whether the system prompt includes the fixed Harness identity (default true). */
   includeHarnessIdentity?: SystemPromptConfig['includeHarnessIdentity']
   /** Whether model history includes dynamic runtime-context snapshots (default true). */
@@ -187,6 +189,7 @@ export function pickSpineConfig(config: Omit<Config, 'agents'>): Omit<Config, 'a
     ...config.maxPendingInboxMessages !== undefined
       ? { maxPendingInboxMessages: config.maxPendingInboxMessages }
       : {},
+    ...config.maxPendingInboxBytes !== undefined ? { maxPendingInboxBytes: config.maxPendingInboxBytes } : {},
     ...config.includeHarnessIdentity !== undefined ? { includeHarnessIdentity: config.includeHarnessIdentity } : {},
     ...config.includeRuntimeContext !== undefined ? { includeRuntimeContext: config.includeRuntimeContext } : {},
     ...config.persona !== undefined ? { persona: config.persona } : {},
@@ -269,5 +272,6 @@ export function apply(ctx: Context, config: Config): void {
     ...config.maxPendingInboxMessages !== undefined
       ? { maxPendingInboxMessages: config.maxPendingInboxMessages }
       : {},
+    ...config.maxPendingInboxBytes !== undefined ? { maxPendingInboxBytes: config.maxPendingInboxBytes } : {},
   })
 }

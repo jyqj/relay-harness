@@ -6,7 +6,15 @@ const decoratorSyntax = /^\s*@[A-Za-z_$][\w$]*/m
  * Worker arguments that keep process-wide Web Storage from shadowing jsdom storage.
  * Node lists the positive spelling in `allowedNodeEnvironmentFlags` for this negatable flag.
  */
-export const vitestExecArgv = process.allowedNodeEnvironmentFlags.has('--webstorage') ? ['--no-webstorage'] : []
+export const vitestExecArgv = [
+  ...process.allowedNodeEnvironmentFlags.has('--webstorage') ? ['--no-webstorage'] : [],
+  // node:sqlite remains runtime-supported but emits one ExperimentalWarning in
+  // every forked worker. Explicit SQLite compatibility and persistence suites
+  // own that signal; repeating the process-level notice obscures real warnings.
+  ...process.allowedNodeEnvironmentFlags.has('--disable-warning=ExperimentalWarning')
+    ? ['--disable-warning=ExperimentalWarning']
+    : [],
+]
 
 /**
  * Transform standard TypeScript decorators before Vite's default parser sees source files.

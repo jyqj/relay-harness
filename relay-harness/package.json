@@ -149,6 +149,7 @@
     "dev:web": "tsx scripts/dev-web.ts --poll",
     "dev:desktop": "pnpm --filter relay-harness-desktop start",
     "test:desktop": "pnpm --filter relay-harness-desktop test",
+    "test:python-carriers": "RLH_REQUIRE_BUNDLED_CARRIERS=1 uv run --project python/sdk pytest python/sdk/tests/test_bundled_runtime.py",
     "pack:desktop": "pnpm --filter relay-harness-desktop run pack",
     "dist:desktop": "pnpm --filter relay-harness-desktop run dist",
     "dist:desktop:mac": "pnpm --filter relay-harness-desktop run dist:mac",

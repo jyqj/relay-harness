@@ -16,13 +16,16 @@ Node 兼容性汇总任务会在每条声明支持的兼容版本线上运行专
 
 共享 setup 还会直接建模 jsdom 不可用的 Canvas 2D 能力：`HTMLCanvasElement.getContext()` 返回 `null`，与 jsdom 报告 “not implemented” 后的返回值相同。验证 canvas 行为的测试会安装自己的精确 context；普通组件测试则验证产品的 null fallback，而不会为每次 terminal 字体探针重复输出同一条 virtual-console 诊断。
 
+当 Node 声明支持对应标志时，分叉的 Vitest worker 还会收到 `--disable-warning=ExperimentalWarning`。仓库会直接验证每条 `node:sqlite` schema、migration、durability 与 lease 路径；在每个短生命周期 worker 中重复 Node 的单条进程级稳定性提示，只会遮蔽可操作 warning，并不会增加覆盖率。该策略只属于测试运行器：打包运行时 smoke 不使用此标志，并证明载体不会向 stderr 输出该 warning。
+
 ## 曾考虑的替代方案
 
 - **在包脚本或 CI 中设置 `NODE_OPTIONS=--no-webstorage`。** 否决：这会将测试运行器策略传播到子进程，也无法覆盖直接调用 `pnpm exec vitest` 的情况。
 - **向 Node 传入 `--localstorage-file`。** 否决：单个进程级持久化存储与每个 jsdom 环境分别创建的浏览器存储具有不同的归属和隔离语义。
 - **在初始化代码中修改 `globalThis.localStorage`，或为每个组件测试增加保护逻辑。** 否决：初始化逻辑会依赖 Vitest 私有的 jsdom 映射细节，而逐测试添加的保护逻辑会掩盖浏览器环境损坏，并在多个测试套件中重复该策略。
 - **将测试固定在 Node 24。** 否决：包的引擎范围声明支持更新的偶数 Node 版本线，而兼容性矩阵正是为了暴露这些版本的运行时变化。
+- **全局设置 `NODE_NO_WARNINGS`。** 否决：这会连同单个已知实验类别一起隐藏 deprecation 与产品 warning。worker 标志只抑制 `ExperimentalWarning`，且仅限 Vitest fork。
 
 ## 后果
 
-同一条 `pnpm test` 命令在有无内置 Web Storage 的 Node 版本上均可运行。测试 worker 被有意禁止使用 Node 的进程级 Web Storage，默认 Canvas 2D 能力也会显式缺席，而不是产生诊断；需要任一能力的测试会提供专用环境或 mock。兼容性通道只增加一个专项 Vitest 进程，无需在每个 Node 版本上重复整套单元测试。
+同一条 `pnpm test` 命令在有无内置 Web Storage 的 Node 版本上均可运行。测试 worker 被有意禁止使用 Node 的进程级 Web Storage，默认 Canvas 2D 能力也会显式缺席而不是产生诊断，重复的 `node:sqlite` 稳定性提示也不再淹没全套测试输出；需要任一能力的测试会提供专用环境或 mock。兼容性通道只增加一个专项 Vitest 进程，无需在每个 Node 版本上重复整套单元测试。

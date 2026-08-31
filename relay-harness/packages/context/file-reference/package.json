@@ -66,5 +66,7 @@
     "@relay-harness/rlh-llm": "workspace:^",
     "@relay-harness/rlh-typert-protocol": "workspace:^"
   },
-  "dependencies": {}
+  "dependencies": {
+    "zod": "^4.4.3"
+  }
 }

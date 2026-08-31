@@ -23,7 +23,16 @@ const testToolSignal = new AbortController().signal
  * fallbacks, contextFrom-empty, and the detached-listener catch handlers. */
 
 const dirs: string[] = []
-afterEach(() => { for (const d of dirs.splice(0)) rmSync(d, { recursive: true, force: true }) })
+const contexts: Context[] = []
+afterEach(async () => {
+  // Quiesce hook subprocesses before deleting their scripts. Coverage shards
+  // create many real-process compositions in one worker; retaining them makes
+  // later event-driven Agent waits spend their outer Vitest budget on old work.
+  for (const ctx of contexts.splice(0)) await ctx.fiber.dispose()
+  for (const d of dirs.splice(0)) rmSync(d, { recursive: true, force: true })
+})
+
+function context(): Context { const ctx = new Context(); contexts.push(ctx); return ctx }
 
 function subagentCarrier(ctx: Context) {
   return scopeTarget(ctx as unknown as SubagentRuntime, undefined)
@@ -39,7 +48,7 @@ function hooks(d: string, h: unknown): string {
 
 type HarnessOpts = { pluginRoot?: string; projectDir?: string; stderrSummaryMaxChars?: number; sessionRoot?: string }
 async function harness(configPath: string, adapter: MockAdapter, opts: HarnessOpts = {}): Promise<Context> {
-  const ctx = new Context()
+  const ctx = context()
   await mountAgentLoopTestDependencies(ctx)
   if (opts.sessionRoot !== undefined) await ctx.plugin(JsonlSessionPersistence, { root: opts.sessionRoot })
   await ctx.plugin(AgentLoop, { agents: [] })
@@ -366,7 +375,7 @@ export function defineCoverageCases(group: CoverageGroup): void {
       const s = sh(d, 'h.sh', `#!/usr/bin/env bash\ntouch "${marker}"\n`)
       hooks(d, { UserPromptSubmit: [{ hooks: [{ type: 'command', command: s }] }] })
       const adapter = new MockAdapter([textResponse('ok')])
-      const ctx = new Context()
+      const ctx = context()
       await mountAgentLoopTestDependencies(ctx)
       await ctx.plugin(AgentLoop, { agents: [] })
       await ctx.plugin(LocalSubprocessRuntime)
@@ -665,7 +674,7 @@ export function defineCoverageCases(group: CoverageGroup): void {
       // The hook is invoked with cwd = session dir, so a relative marker path lands there.
       hooks(serverDir, { PreToolUse: [{ hooks: [{ type: 'command', command: 'pwd > where' }] }] })
       const adapter = new MockAdapter([toolCallResponse('c1', 'echo', {}), textResponse('done')])
-      const ctx = new Context()
+      const ctx = context()
       await mountAgentLoopTestDependencies(ctx)
       await ctx.plugin(AgentLoop, { agents: [] })
       // Executor default cwd = serverDir (deliberately NOT the session cwd).
@@ -694,7 +703,7 @@ export function defineCoverageCases(group: CoverageGroup): void {
       const marker = join(childDir, 'stopwhere')
       const payload = join(childDir, 'stoppayload')
       hooks(serverDir, { SubagentStop: [{ hooks: [{ type: 'command', command: 'cat > stoppayload.tmp; mv stoppayload.tmp stoppayload; pwd > stopwhere' }] }] })
-      const ctx = new Context()
+      const ctx = context()
       await mountAgentLoopTestDependencies(ctx)
       await ctx.plugin(AgentLoop, { agents: [] })
       // Executor default cwd = serverDir (deliberately NOT the child session cwd).

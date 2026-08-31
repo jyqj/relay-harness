@@ -67,4 +67,4 @@ hook 在 agent 的会话工作区中运行，因此相对命令指向用户项�
 
 ## 后果
 
-匹配语义、退出码处理和合并优先级位于 `rlh-hook-protocol`；每个桥接只负责解析配置、构建方言 payload 和映射结果。逐文件覆盖率包含配置分支以及通过真实循环、`rlh-bash-local` 和 shell 脚本的端到端映射，同时一个真实 Loader 冒烟测试守护包的导出形态。原生插件绕过协议格式，直接返回类型化决策。
+匹配语义、退出码处理和合并优先级位于 `rlh-hook-protocol`；每个桥接只负责解析配置、构建方言 payload 和映射结果。逐文件覆盖率包含配置分支以及通过真实循环、`rlh-bash-local` 和 shell 脚本的端到端映射，同时一个真实 Loader 冒烟测试守护包的导出形态。每个真实进程测试都拥有并 dispose 完整 Context，再删除脚本；detached hook 测试等待可观察 marker，只有外层测试 watchdog 为全量争用下的进程 kill／reap 留出余量。原生插件绕过协议格式，直接返回类型化决策。

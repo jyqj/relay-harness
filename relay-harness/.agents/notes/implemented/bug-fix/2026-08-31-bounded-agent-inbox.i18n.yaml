@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/bug-fix/2026-08-31-bounded-agent-inbox.md
-2026-08-31-bounded-agent-inbox.md: b7c891f2abc0c682203b20c640540beb8325bd04
-2026-08-31-bounded-agent-inbox.zh.md: 1e2ce6876fdeb2a45f3fb220b1163050c544de20
+2026-08-31-bounded-agent-inbox.md: 231dfe383f008f27831faa4c5853a56312189bde
+2026-08-31-bounded-agent-inbox.zh.md: 79b7238bb63e3242e127fcf9b0d9d09d258bf3a1

@@ -62,5 +62,7 @@
     "@relay-harness/rlh-invariants": "workspace:^",
     "@relay-harness/cordis": "workspace:^"
   },
-  "dependencies": {}
+  "dependencies": {
+    "zod": "^4.4.3"
+  }
 }

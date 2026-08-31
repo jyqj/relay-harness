@@ -8,6 +8,7 @@
 import { Context } from '@relay-harness/cordis'
 import {
   adoptSessionEvent,
+  assertSessionPersistenceFence,
   interruptedTurnClosers,
   KNOWN_SESSION_EVENT_TYPES,
   SESSION_FORMAT_VERSION,
@@ -1121,6 +1122,7 @@ export class PersistenceCoordinator<TornMarker = unknown> {
 
     // Keep a persistence-owned copy of each frozen event and start its bounded window.
     ctx.on('session/event', (session, event) => {
+      assertSessionPersistenceFence(session)
       const live = this.initFor(session)
       live.writes.enqueue(event)
     })
@@ -1324,6 +1326,7 @@ export class PersistenceCoordinator<TornMarker = unknown> {
   }
 
   private async flush(session: Session): Promise<void> {
+    assertSessionPersistenceFence(session)
     const live = this.initFor(session)
     live.writes.cancelAutomaticWait()
     try {
@@ -1342,7 +1345,9 @@ export class PersistenceCoordinator<TornMarker = unknown> {
     return new SessionWriteBehind({
       maxDelayMs: this.writeBatchMaxDelayMs,
       write: async (batch) => {
+        assertSessionPersistenceFence(session)
         await ready()
+        assertSessionPersistenceFence(session)
         await this.serialize(session.header.id, () => this.appendLiveBatch(session.header.id, batch))
       },
       reportBackgroundFailure: (error) => {

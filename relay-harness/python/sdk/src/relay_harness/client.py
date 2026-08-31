@@ -19,6 +19,8 @@ from .errors import (
     JsonRpcError,
     JsonRpcFrameTooLargeError,
     JsonRpcWriteQueueOverflowError,
+    GlobalNotificationQueueOverflowError,
+    IncomingRequestQueueOverflowError,
     NotificationQueueOverflowError,
     TransportClosedError,
 )
@@ -36,6 +38,8 @@ NotificationFilter: TypeAlias = Callable[[Notification], bool]
 DEFAULT_JSON_RPC_MAX_FRAME_BYTES = 64 * 1024 * 1024
 DEFAULT_JSON_RPC_MAX_QUEUED_WRITE_BYTES = 64 * 1024 * 1024 + 1
 DEFAULT_NOTIFICATION_QUEUE_SIZE = 4096
+DEFAULT_GLOBAL_NOTIFICATION_QUEUE_SIZE = 4096
+DEFAULT_INCOMING_REQUEST_QUEUE_SIZE = 4096
 _READ_CHUNK_BYTES = 64 * 1024
 
 
@@ -60,6 +64,8 @@ class HarnessConfig:
     max_frame_bytes: int = DEFAULT_JSON_RPC_MAX_FRAME_BYTES
     max_queued_write_bytes: int = DEFAULT_JSON_RPC_MAX_QUEUED_WRITE_BYTES
     max_notification_queue_size: int = DEFAULT_NOTIFICATION_QUEUE_SIZE
+    max_global_notification_queue_size: int = DEFAULT_GLOBAL_NOTIFICATION_QUEUE_SIZE
+    max_incoming_request_queue_size: int = DEFAULT_INCOMING_REQUEST_QUEUE_SIZE
 
 
 class HarnessClient:
@@ -74,16 +80,30 @@ class HarnessClient:
         self._max_notification_queue_size = _positive_int(
             self.config.max_notification_queue_size, "max_notification_queue_size"
         )
+        self._max_global_notification_queue_size = _positive_int(
+            self.config.max_global_notification_queue_size,
+            "max_global_notification_queue_size",
+        )
+        self._max_incoming_request_queue_size = _positive_int(
+            self.config.max_incoming_request_queue_size,
+            "max_incoming_request_queue_size",
+        )
         self._proc: subprocess.Popen[bytes] | None = None
         self._lock = threading.Lock()
         self._write_lock = threading.Lock()
         self._write_budget_lock = threading.Lock()
         self._queued_write_bytes = 0
         self._responses: dict[str, queue.Queue[JsonValue | BaseException]] = {}
-        self._notifications: queue.Queue[Notification | BaseException] = queue.Queue()
+        self._notifications: queue.Queue[Notification] = queue.Queue(
+            maxsize=self._max_global_notification_queue_size
+        )
+        self._global_notification_failure: BaseException | None = None
         self._notification_subscribers: dict[str, _NotificationSubscriber] = {}
         self._session_parents: dict[str, str] = {}
-        self._requests: queue.Queue[IncomingRequest | BaseException] = queue.Queue()
+        self._requests: queue.Queue[IncomingRequest] = queue.Queue(
+            maxsize=self._max_incoming_request_queue_size
+        )
+        self._incoming_request_failure: BaseException | None = None
         self._stderr_lines: deque[str] = deque(maxlen=400)
         self._reader_thread: threading.Thread | None = None
         self._stderr_thread: threading.Thread | None = None
@@ -100,6 +120,8 @@ class HarnessClient:
             return
         with self._lock:
             self._session_parents.clear()
+            self._global_notification_failure = None
+            self._incoming_request_failure = None
         args = list(self.config.launch_args_override or self._default_launch_args())
         env = os.environ.copy()
         if self.config.env:
@@ -218,10 +240,14 @@ class HarnessClient:
         self._write_message(message)
 
     def next_notification(self) -> Notification:
-        item = self._notifications.get()
-        if isinstance(item, BaseException):
-            raise item
-        return item
+        while True:
+            if self._global_notification_failure is not None and self._notifications.empty():
+                raise self._global_notification_failure
+            try:
+                return self._notifications.get(timeout=0.05)
+            except queue.Empty:
+                if self._global_notification_failure is not None:
+                    raise self._global_notification_failure
 
     def subscribe_notifications(
         self,
@@ -241,10 +267,14 @@ class HarnessClient:
         return self.subscribe_notifications(self._notification_belongs_to_session_tree(session_id))
 
     def next_request(self) -> IncomingRequest:
-        item = self._requests.get()
-        if isinstance(item, BaseException):
-            raise item
-        return item
+        while True:
+            if self._incoming_request_failure is not None and self._requests.empty():
+                raise self._incoming_request_failure
+            try:
+                return self._requests.get(timeout=0.05)
+            except queue.Empty:
+                if self._incoming_request_failure is not None:
+                    raise self._incoming_request_failure
 
     def respond(self, request_id: str | int, result: JsonValue) -> None:
         self._write_message({"jsonrpc": "2.0", "id": request_id, "result": result})
@@ -428,7 +458,19 @@ class HarnessClient:
         method = message.get("method")
         if isinstance(msg_id, (str, int)) and isinstance(method, str):
             params = message.get("params")
-            self._requests.put(IncomingRequest(id=msg_id, method=method, payload=params if isinstance(params, dict) else {}))
+            request = IncomingRequest(
+                id=msg_id,
+                method=method,
+                payload=params if isinstance(params, dict) else {},
+            )
+            with self._lock:
+                if self._incoming_request_failure is None:
+                    try:
+                        self._requests.put_nowait(request)
+                    except queue.Full:
+                        self._incoming_request_failure = IncomingRequestQueueOverflowError(
+                            self._max_incoming_request_queue_size
+                        )
             return
         if isinstance(msg_id, (str, int)):
             with self._lock:
@@ -455,17 +497,29 @@ class HarnessClient:
                     self._fail_subscription(subscription_id, subscriber, exc)
                     continue
                 if matches:
-                    try:
-                        subscriber.notifications.put_nowait(notification)
-                    except queue.Full:
-                        self._fail_subscription(
-                            subscription_id,
-                            subscriber,
-                            NotificationQueueOverflowError(self._max_notification_queue_size),
-                        )
+                    with self._lock:
+                        current = self._notification_subscribers.get(subscription_id)
+                        if current is not subscriber:
+                            continue
+                        try:
+                            subscriber.notifications.put_nowait(notification)
+                        except queue.Full:
+                            self._notification_subscribers.pop(subscription_id, None)
+                            subscriber.failure = NotificationQueueOverflowError(
+                                self._max_notification_queue_size
+                            )
                     delivered = True
             if not delivered:
-                self._notifications.put(notification)
+                with self._lock:
+                    if self._global_notification_failure is None:
+                        try:
+                            self._notifications.put_nowait(notification)
+                        except queue.Full:
+                            self._global_notification_failure = (
+                                GlobalNotificationQueueOverflowError(
+                                    self._max_global_notification_queue_size
+                                )
+                            )
 
     def _fail_waiters(self, exc: BaseException) -> None:
         with self._lock:
@@ -477,8 +531,10 @@ class HarnessClient:
             waiter.put(exc)
         for subscriber in subscribers:
             subscriber.failure = exc
-        self._notifications.put(exc)
-        self._requests.put(exc)
+        if self._global_notification_failure is None:
+            self._global_notification_failure = exc
+        if self._incoming_request_failure is None:
+            self._incoming_request_failure = exc
 
     def _runtime_closed_error(self, reason: str) -> TransportClosedError:
         diagnostics = self._runtime_diagnostics()
@@ -537,9 +593,21 @@ class HarnessClient:
 
         env["RLH_CORDIS_CONFIG"] = str(bundled_default_config_path())
 
-    def _unsubscribe_notifications(self, subscription_id: str) -> None:
+    def _close_subscription(
+        self,
+        subscription_id: str,
+        subscriber: _NotificationSubscriber,
+    ) -> None:
         with self._lock:
-            self._notification_subscribers.pop(subscription_id, None)
+            current = self._notification_subscribers.get(subscription_id)
+            if current is subscriber:
+                self._notification_subscribers.pop(subscription_id, None)
+            while True:
+                try:
+                    subscriber.notifications.get_nowait()
+                except queue.Empty:
+                    break
+            subscriber.failure = TransportClosedError("notification subscription closed")
 
     def _fail_subscription(
         self,
@@ -623,10 +691,12 @@ class NotificationSubscription:
         if self._closed:
             return
         self._closed = True
-        self._client._unsubscribe_notifications(self._subscription_id)
+        self._client._close_subscription(self._subscription_id, self._state)
 
     def next(self) -> Notification:
         while True:
+            if self._state.failure is not None and self._state.notifications.empty():
+                raise self._state.failure
             try:
                 return self._state.notifications.get(timeout=0.05)
             except queue.Empty:

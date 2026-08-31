@@ -8,6 +8,8 @@ from typing import Any, Callable
 from .client import (
     DEFAULT_JSON_RPC_MAX_FRAME_BYTES,
     DEFAULT_JSON_RPC_MAX_QUEUED_WRITE_BYTES,
+    DEFAULT_GLOBAL_NOTIFICATION_QUEUE_SIZE,
+    DEFAULT_INCOMING_REQUEST_QUEUE_SIZE,
     DEFAULT_NOTIFICATION_QUEUE_SIZE,
     HarnessClient,
     HarnessConfig,
@@ -40,6 +42,8 @@ class RelayHarnessConfig:
     max_frame_bytes: int = DEFAULT_JSON_RPC_MAX_FRAME_BYTES
     max_queued_write_bytes: int = DEFAULT_JSON_RPC_MAX_QUEUED_WRITE_BYTES
     max_notification_queue_size: int = DEFAULT_NOTIFICATION_QUEUE_SIZE
+    max_global_notification_queue_size: int = DEFAULT_GLOBAL_NOTIFICATION_QUEUE_SIZE
+    max_incoming_request_queue_size: int = DEFAULT_INCOMING_REQUEST_QUEUE_SIZE
     base_url: str | None = None
     api_key: str | None = None
 
@@ -93,6 +97,8 @@ class RelayHarness:
                 max_frame_bytes=self.config.max_frame_bytes,
                 max_queued_write_bytes=self.config.max_queued_write_bytes,
                 max_notification_queue_size=self.config.max_notification_queue_size,
+                max_global_notification_queue_size=self.config.max_global_notification_queue_size,
+                max_incoming_request_queue_size=self.config.max_incoming_request_queue_size,
             )
         )
         self._initialized = False

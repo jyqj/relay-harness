@@ -63,6 +63,15 @@ describe('rlh-base bundle', () => {
       candidateLimit: 10,
       maxContextChars: 3200,
     })
+    const subagentConfig = rows.find(row => row.id === 'subagent')?.config
+    expect(subagentConfig).toMatchObject({
+      maxActivePerRoot: 4,
+      overflow: 'reject',
+      activationLeaseMs: 30000,
+      activationLeaseRenewMs: 10000,
+    })
+    expect((subagentConfig?.['activationLeasePath'] as { __jsExpr: string }).__jsExpr)
+      .toBe("ctx.rlhHomePath('subagent-activation-leases.sqlite3')")
     expect(rows.find(row => row.id === 'session-telemetry-otel')?.config?.['mode']).toEqual({
       __jsExpr: "process.env.RLH_TELEMETRY_MODE || 'DISABLED'",
     })

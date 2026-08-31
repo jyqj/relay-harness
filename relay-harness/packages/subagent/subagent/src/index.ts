@@ -70,6 +70,7 @@ import { snapshotSubagentDescriptor } from './descriptor.ts'
 import { subagentIdentityProjectionDefinition, subagentTimingProjectionDefinition } from './projection.ts'
 import { SubagentAdmissionController } from './admission.ts'
 import type { SubagentAdmissionLease, SubagentAdmissionPolicy } from './admission.ts'
+import { SubagentActivationLeaseStore } from './activation-lease.ts'
 
 export * from './out-of-process.ts'
 export { AssistantOutputFold, finalAssistantOutput } from './assistant-output.ts'
@@ -133,6 +134,11 @@ export type {
   SubagentReportAcceptedData,
   SubagentReportDeliveredData,
 } from './delivery.ts'
+export {
+  SubagentActivationLease,
+  SubagentActivationLeaseError,
+  SubagentActivationLeaseStore,
+} from './activation-lease.ts'
 
 /** Deployment capacity shared by every subagent provider and consumer. */
 export interface Config {
@@ -142,6 +148,12 @@ export interface Config {
   maxActivePerParent?: number
   /** Saturation behavior: reject immediately (default) or wait in a root-local queue. */
   overflow?: 'reject' | 'queue'
+  /** Absolute SQLite path enabling cross-process Activation leases; omission keeps process-local ownership. */
+  activationLeasePath?: string
+  /** Lease lifetime before a crashed owner may be taken over. */
+  activationLeaseMs?: number
+  /** Healthy-owner renewal interval; must be shorter than the lease lifetime. */
+  activationLeaseRenewMs?: number
 }
 
 /** Wrap one published run so capacity follows its holder-owned disposal. */
@@ -227,6 +239,9 @@ export class SubagentRuntime extends Service {
     maxActivePerRoot: z.natural().min(1),
     maxActivePerParent: z.natural().min(1),
     overflow: z.union(['reject', 'queue'] as const).default('reject'),
+    activationLeasePath: z.string(),
+    activationLeaseMs: z.natural().min(100).max(Number.MAX_SAFE_INTEGER).default(30_000),
+    activationLeaseRenewMs: z.natural().min(25).max(Number.MAX_SAFE_INTEGER).default(10_000),
   })
 
   private providers = new Map<string, SubagentProvider>()
@@ -250,6 +265,17 @@ export class SubagentRuntime extends Service {
       overflow: config.overflow ?? 'reject',
     }
     this.admission = new SubagentAdmissionController(policy, parent => rootSessionId(this.ctx, parent))
+    const leaseMs = config.activationLeaseMs ?? 30_000
+    const leaseRenewMs = config.activationLeaseRenewMs ?? 10_000
+    if (!Number.isSafeInteger(leaseMs) || leaseMs < 100
+      || !Number.isSafeInteger(leaseRenewMs) || leaseRenewMs < 25) {
+      throw new Error('subagent Activation lease timings must be positive safe integers')
+    }
+    if (leaseRenewMs >= leaseMs) throw new Error('subagent activationLeaseRenewMs must be less than activationLeaseMs')
+    const leaseStore = config.activationLeasePath === undefined
+      ? undefined
+      : new SubagentActivationLeaseStore(config.activationLeasePath)
+    if (leaseStore !== undefined) ctx.effect(() => () => { leaseStore.close() }, 'subagents.activationLeaseStore()')
     ctx.effect(() => () => { this.admission.close() }, 'subagents.admission()')
     this.emitLifecycle = createLifecycleEmitter(this.ctx, parent => scopeTarget(this, parent))
     ctx.inject(['agents'], (childCtx: Context) => {
@@ -257,7 +283,7 @@ export class SubagentRuntime extends Service {
         prepareContinuable: (name, request) => this.prepareContinuable(name, request),
         observeActivation: (provider, childId, parent) => this.observeActivation(provider, childId, parent),
         acquireAdmission: (parent, signal) => this.admission.acquire(parent, signal),
-      }, this.setupRegistry)
+      }, this.setupRegistry, { leaseStore, leaseMs, leaseRenewMs })
       this.continuations = manager
       childCtx.effect(() => () => {
         /* v8 ignore else -- one injected binding owns the slot until its fiber disposes. */

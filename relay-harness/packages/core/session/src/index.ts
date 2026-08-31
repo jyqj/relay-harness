@@ -37,6 +37,41 @@ export type { ToolTranscriptNormalization } from './tool-transcript.ts'
 export { canonicalHeader, foldRequestHeader, headerEquals } from './request-header.ts'
 export { KNOWN_SESSION_EVENT_TYPES } from './known-event-types.ts'
 
+/** Cross-process ownership proof checked immediately before persistence writes. */
+export interface SessionPersistenceFence {
+  /** Stable owner/fence identity for diagnostics. */
+  readonly token: string
+  /** Throw when this owner is expired or superseded. */
+  assertCurrent(): void
+}
+
+const persistenceFences = new WeakMap<Session, SessionPersistenceFence>()
+
+/**
+ * Install one persistence fence for a live Session.
+ * @param session - exclusively owned live Session.
+ * @param fence - cross-process ownership proof.
+ * @returns disposer that removes only this exact fence.
+ */
+export function installSessionPersistenceFence(
+  session: Session,
+  fence: SessionPersistenceFence,
+): () => void {
+  if (persistenceFences.has(session)) throw new Error(`session "${session.id}" already has a persistence fence`)
+  persistenceFences.set(session, fence)
+  return () => {
+    if (persistenceFences.get(session) === fence) persistenceFences.delete(session)
+  }
+}
+
+/**
+ * Assert the live Session's cross-process persistence fence, when installed.
+ * @param session - live Session about to append or enter a persistence write.
+ */
+export function assertSessionPersistenceFence(session: Session): void {
+  persistenceFences.get(session)?.assertCurrent()
+}
+
 declare module '@relay-harness/cordis' {
   interface Context {
     sessions: SessionStore
@@ -609,6 +644,10 @@ export class Session {
     data: SessionEventMap[T],
     ...opts: T extends SurfaceEventType ? [opts: SurfaceIntent] : []
   ): SessionEvent<T> {
+    // A stale cross-process owner must not even grow the in-memory source log:
+    // post-commit observers and write-behind queues are deliberately too late
+    // to make this ownership decision.
+    assertSessionPersistenceFence(this)
     const surfaceOpts: SurfaceIntent | undefined = opts[0]
     const surfaceMetadata = {
       ...surfaceOpts?.sourceEventSeqs === undefined ? {} : { sourceEventSeqs: surfaceOpts.sourceEventSeqs },

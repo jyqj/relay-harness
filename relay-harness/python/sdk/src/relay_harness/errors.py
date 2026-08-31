@@ -39,6 +39,22 @@ class NotificationQueueOverflowError(HarnessError):
         self.limit = limit
 
 
+class GlobalNotificationQueueOverflowError(HarnessError):
+    """Raised after the legacy global notification channel drains its bounded prefix."""
+
+    def __init__(self, limit: int) -> None:
+        super().__init__(f"global notification channel exceeded its {limit}-item queue limit")
+        self.limit = limit
+
+
+class IncomingRequestQueueOverflowError(HarnessError):
+    """Raised after the incoming bridge-request channel drains its bounded prefix."""
+
+    def __init__(self, limit: int) -> None:
+        super().__init__(f"incoming request channel exceeded its {limit}-item queue limit")
+        self.limit = limit
+
+
 class JsonRpcError(HarnessError):
     """Raised when the runtime returns a JSON-RPC error response."""
 

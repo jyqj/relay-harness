@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/bug-fix/2026-08-31-runtime-resource-bounds.md
-2026-08-31-runtime-resource-bounds.md: b88d6a85398599dc44a8eab1b8476bd07a9f5e91
-2026-08-31-runtime-resource-bounds.zh.md: a1588d063aca008c4bd1186c3efc9dca7033cf29
+2026-08-31-runtime-resource-bounds.md: e68ce675402222e5502e3a8b466de93ac0d92ca0
+2026-08-31-runtime-resource-bounds.zh.md: 5c3326c25bdab8bf32b87f8dd3b333ffbb2a694d

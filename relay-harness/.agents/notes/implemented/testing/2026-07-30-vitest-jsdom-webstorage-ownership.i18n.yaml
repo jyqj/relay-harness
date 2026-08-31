@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/testing/2026-07-30-vitest-jsdom-webstorage-ownership.md
-2026-07-30-vitest-jsdom-webstorage-ownership.md: 6af087eebeaefe5f2af3b154952f9d1ccd80de8f
-2026-07-30-vitest-jsdom-webstorage-ownership.zh.md: 715823724357ffdeeb622253c672b2294d0719cb
+2026-07-30-vitest-jsdom-webstorage-ownership.md: 90c9868f8df2ddd1a67b643dce382ba56ab6bf41
+2026-07-30-vitest-jsdom-webstorage-ownership.zh.md: 71faf3ef026b7f535116a6dd69c38d3d88e2e4a3

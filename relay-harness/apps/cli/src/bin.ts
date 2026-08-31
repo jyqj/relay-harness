@@ -26,15 +26,46 @@ function readVersion(): string {
 
 const invocation = parseRlhArgs(process.argv.slice(2), readVersion())
 
+/** Node still labels its supported built-in SQLite module experimental. */
+const SQLITE_EXPERIMENTAL_WARNING = 'SQLite is an experimental feature and might change at any time'
+
+/**
+ * Suppress only Node's process-level SQLite stability notice while a profile is
+ * running. Product warnings, deprecations, and every other experimental notice
+ * continue through the original emitter.
+ */
+async function withoutSqliteExperimentalNotice<T>(operation: () => Promise<T> | T): Promise<T> {
+  // oxlint-disable-next-line typescript/unbound-method -- restored verbatim after the scoped run.
+  const original = process.emitWarning
+  process.emitWarning = ((warning: string | Error, ...args: unknown[]) => {
+    const message = warning instanceof Error ? warning.message : warning
+    const option = args[0]
+    const type = typeof option === 'string'
+      ? option
+      : option !== null && typeof option === 'object' && 'type' in option
+        ? String(option.type)
+        : undefined
+    if (message === SQLITE_EXPERIMENTAL_WARNING && type === 'ExperimentalWarning') return
+    Reflect.apply(original, process, [warning, ...args])
+  })
+  try {
+    return await operation()
+  } finally {
+    process.emitWarning = original
+  }
+}
+
 switch (invocation.mode) {
   case 'profile': {
-    const { runProfile } = await import('./profile-boot.ts')
-    await runProfile({
-      environment: loadLayeredEnv('rlh'),
-      profile: invocation.profile,
-      patchFiles: invocation.patches,
-      args: invocation.args,
-      skipUserPlugins: invocation.skipUserPlugins,
+    await withoutSqliteExperimentalNotice(async () => {
+      const { runProfile } = await import('./profile-boot.ts')
+      await runProfile({
+        environment: loadLayeredEnv('rlh'),
+        profile: invocation.profile,
+        patchFiles: invocation.patches,
+        args: invocation.args,
+        skipUserPlugins: invocation.skipUserPlugins,
+      })
     })
     break
   }
@@ -44,8 +75,10 @@ switch (invocation.mode) {
     break
   }
   case 'dump-config': {
-    const { runDumpConfig } = await import('./dump-config.ts')
-    runDumpConfig(invocation.profile, invocation.defaultOnly, invocation.patches, invocation.skipUserPlugins)
+    await withoutSqliteExperimentalNotice(async () => {
+      const { runDumpConfig } = await import('./dump-config.ts')
+      runDumpConfig(invocation.profile, invocation.defaultOnly, invocation.patches, invocation.skipUserPlugins)
+    })
     break
   }
   default:

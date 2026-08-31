@@ -26,7 +26,13 @@ import { MockAdapter, textResponse, toolCallResponse } from '../../../core/agent
  */
 
 const dirs: string[] = []
-afterEach(() => { for (const d of dirs.splice(0)) rmSync(d, { recursive: true, force: true }) })
+const contexts: Context[] = []
+afterEach(async () => {
+  for (const ctx of contexts.splice(0)) await ctx.fiber.dispose()
+  for (const d of dirs.splice(0)) rmSync(d, { recursive: true, force: true })
+})
+
+function context(): Context { const ctx = new Context(); contexts.push(ctx); return ctx }
 
 function subagentCarrier(ctx: Context) {
   return scopeTarget(ctx as unknown as SubagentRuntime, undefined)
@@ -55,7 +61,7 @@ async function harnessWithFiber(
   adapter: MockAdapter,
   beforeHooks?: (ctx: Context) => void,
 ): Promise<{ ctx: Context; hooks: Fiber }> {
-  const ctx = new Context()
+  const ctx = context()
   await mountAgentLoopTestDependencies(ctx)
   await ctx.plugin(AgentLoop, { agents: [] })
   await ctx.plugin(LocalSubprocessRuntime)
@@ -347,13 +353,13 @@ describe('hooks-claude-code bridge — SubagentStart / SubagentStop (observe)', 
     // The aborted run resolves as a non-blocking error (runHook never rejects),
     // so the drained continuation must NOT have logged a failure.
     expect(warn).not.toHaveBeenCalledWith(expect.stringContaining('SubagentStart hook failed'))
-  })
+  }, 10_000) // Marker-driven readiness is exact; the outer watchdog leaves process kill/reap headroom under full-suite load.
 })
 
 describe('hooks-claude-code bridge — load resilience', () => {
   it('a missing config file registers no hooks and does not crash the loop', async () => {
     const adapter = new MockAdapter([textResponse('fine')])
-    const ctx = new Context()
+    const ctx = context()
     await mountAgentLoopTestDependencies(ctx)
     await ctx.plugin(AgentLoop, { agents: [] })
     await ctx.plugin(LocalSubprocessRuntime)
@@ -413,7 +419,7 @@ describe('hooks-claude-code bridge — load resilience', () => {
     // pass even leaked, so it proved nothing).
     const dir = writeConfig({ UserPromptSubmit: [{ hooks: [{ type: 'command', command: 'exit 2' }] }] })
     const adapter = new MockAdapter([textResponse('ok')])
-    const ctx = new Context()
+    const ctx = context()
     await mountAgentLoopTestDependencies(ctx)
     await ctx.plugin(AgentLoop, { agents: [] })
     await ctx.plugin(LocalSubprocessRuntime)

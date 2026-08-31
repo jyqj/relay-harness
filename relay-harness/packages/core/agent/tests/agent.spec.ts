@@ -76,6 +76,41 @@ describe('Inbox', () => {
     expect(() => new Inbox(session, notifications, 0)).toThrow('positive safe integer')
     expect(() => new Inbox(session, notifications, Number.MAX_SAFE_INTEGER + 1))
       .toThrow('positive safe integer')
+    expect(() => new Inbox(session, notifications, 1, 0)).toThrow('positive safe integer')
+  })
+
+  it('bounds aggregate serialized bytes before committing an insertion', () => {
+    const session = Session.create(SessionId('bounded-inbox-bytes'))
+    const notifications = { inserted: () => {}, discarded: () => {}, claimed: () => {} }
+    const first = createUserMessage({ content: [{ type: 'text', text: 'first' }], source: { kind: 'user' } })
+    const second = createUserMessage({ content: [{ type: 'text', text: '第二条' }], source: { kind: 'user' } })
+    const firstBytes = Buffer.byteLength(JSON.stringify(first), 'utf8')
+    const secondBytes = Buffer.byteLength(JSON.stringify(second), 'utf8')
+    const inbox = new Inbox(session, notifications, 10, firstBytes + secondBytes - 1)
+
+    inbox.append('next-turn', first)
+    const beforeRefusal = session.events.length
+    expect(() => { inbox.append('next-step', second) })
+      .toThrow(`agent inbox exceeds ${firstBytes + secondBytes - 1} pending bytes`)
+    expect(session.events).toHaveLength(beforeRefusal)
+    expect(inbox.nextStep).toEqual([])
+
+    inbox.remove(first.id)
+    inbox.append('next-step', second)
+    expect(inbox.nextStep).toEqual([second])
+
+    const oversizedReplacement = createUserMessage({
+      content: [{ type: 'text', text: 'x'.repeat(firstBytes + secondBytes) }],
+      source: { kind: 'user' },
+    })
+    const beforeReplacement = session.events.length
+    expect(() => { inbox.replace(second.id, oversizedReplacement) }).toThrow('pending bytes')
+    expect(session.events).toHaveLength(beforeReplacement)
+    expect(inbox.nextStep).toEqual([second])
+
+    const restored = new Inbox(session, notifications, 10, 1)
+    expect(restored.nextStep).toEqual([second])
+    expect(restored.remove(second.id)).toBe(true)
   })
 
   it('rejects an invalid durable splice during reconstruction', () => {

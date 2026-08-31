@@ -13,6 +13,8 @@ import pytest
 from relay_harness import (
     HarnessClient,
     HarnessConfig,
+    GlobalNotificationQueueOverflowError,
+    IncomingRequestQueueOverflowError,
     JsonRpcFrameTooLargeError,
     JsonRpcWriteQueueOverflowError,
     Notification,
@@ -667,6 +669,86 @@ def test_notification_overflow_fails_only_the_slow_subscription_after_its_prefix
         assert healthy.next().payload == {"index": 3}
 
 
+def test_global_notification_overflow_preserves_prefix_without_stopping_subscriptions() -> None:
+    client = HarnessClient(HarnessConfig(max_global_notification_queue_size=2))
+    for index in range(3):
+        client._handle_message({
+            "jsonrpc": "2.0",
+            "method": "global",
+            "params": {"index": index},
+        })
+    assert client.next_notification().payload == {"index": 0}
+    assert client.next_notification().payload == {"index": 1}
+    with pytest.raises(GlobalNotificationQueueOverflowError) as excinfo:
+        client.next_notification()
+    assert excinfo.value.limit == 2
+
+    with client.subscribe_notifications(lambda notification: notification.method == "tick") as healthy:
+        client._handle_message({"jsonrpc": "2.0", "method": "tick", "params": {"ok": True}})
+        assert healthy.next().payload == {"ok": True}
+
+
+def test_incoming_request_overflow_preserves_prefix_and_reader_routes_notifications() -> None:
+    client = HarnessClient(HarnessConfig(max_incoming_request_queue_size=2))
+    for index in range(3):
+        client._handle_message({
+            "jsonrpc": "2.0",
+            "id": index,
+            "method": "bridge.request",
+            "params": {"index": index},
+        })
+    assert client.next_request().payload == {"index": 0}
+    assert client.next_request().payload == {"index": 1}
+    with pytest.raises(IncomingRequestQueueOverflowError) as excinfo:
+        client.next_request()
+    assert excinfo.value.limit == 2
+
+    with client.subscribe_notifications() as healthy:
+        client._handle_message({"jsonrpc": "2.0", "method": "tick", "params": {"ok": True}})
+        assert healthy.next().payload == {"ok": True}
+
+
+def test_notification_subscription_close_drops_queue_and_fails_next_and_drain() -> None:
+    from relay_harness.errors import TransportClosedError
+
+    client = HarnessClient()
+    subscription = client.subscribe_notifications()
+    client._handle_message({"jsonrpc": "2.0", "method": "queued", "params": {}})
+    assert subscription._state.notifications.qsize() == 1
+    subscription.close()
+    assert subscription._state.notifications.qsize() == 0
+    with pytest.raises(TransportClosedError, match="subscription closed"):
+        subscription.next()
+    with pytest.raises(TransportClosedError, match="subscription closed"):
+        subscription.drain(lambda _notification: None)
+
+
+def test_notification_subscription_close_races_delivery_without_retaining_items() -> None:
+    from relay_harness.errors import TransportClosedError
+
+    client = HarnessClient()
+    subscription = client.subscribe_notifications()
+    start = threading.Barrier(2)
+
+    def produce() -> None:
+        start.wait()
+        for index in range(100):
+            client._handle_message({
+                "jsonrpc": "2.0",
+                "method": "tick",
+                "params": {"index": index},
+            })
+
+    producer = threading.Thread(target=produce)
+    producer.start()
+    start.wait()
+    subscription.close()
+    producer.join(timeout=1)
+    assert subscription._state.notifications.qsize() == 0
+    with pytest.raises(TransportClosedError, match="subscription closed"):
+        subscription.next()
+
+
 def test_client_rejects_invalid_resource_limits() -> None:
     with pytest.raises(ValueError, match="max_frame_bytes must be a positive integer"):
         HarnessClient(HarnessConfig(max_frame_bytes=0))
@@ -674,6 +756,10 @@ def test_client_rejects_invalid_resource_limits() -> None:
         HarnessClient(HarnessConfig(max_queued_write_bytes=-1))
     with pytest.raises(ValueError, match="max_notification_queue_size must be a positive integer"):
         HarnessClient(HarnessConfig(max_notification_queue_size=True))
+    with pytest.raises(ValueError, match="max_global_notification_queue_size must be a positive integer"):
+        HarnessClient(HarnessConfig(max_global_notification_queue_size=0))
+    with pytest.raises(ValueError, match="max_incoming_request_queue_size must be a positive integer"):
+        HarnessClient(HarnessConfig(max_incoming_request_queue_size=-1))
 
 
 def test_client_rejects_an_oversize_outbound_frame_before_writing() -> None:
@@ -986,6 +1072,8 @@ def test_public_signatures_omit_unsupported_wire_parameters() -> None:
         DEFAULT_JSON_RPC_MAX_FRAME_BYTES,
         DEFAULT_JSON_RPC_MAX_QUEUED_WRITE_BYTES,
         DEFAULT_NOTIFICATION_QUEUE_SIZE,
+        DEFAULT_GLOBAL_NOTIFICATION_QUEUE_SIZE,
+        DEFAULT_INCOMING_REQUEST_QUEUE_SIZE,
         RelayHarnessConfig,
         Session,
     )
@@ -1004,6 +1092,10 @@ def test_public_signatures_omit_unsupported_wire_parameters() -> None:
     assert "max_frame_bytes" in RelayHarnessConfig.__dataclass_fields__
     assert "max_queued_write_bytes" in RelayHarnessConfig.__dataclass_fields__
     assert "max_notification_queue_size" in RelayHarnessConfig.__dataclass_fields__
+    assert "max_global_notification_queue_size" in HarnessConfig.__dataclass_fields__
+    assert "max_incoming_request_queue_size" in HarnessConfig.__dataclass_fields__
+    assert "max_global_notification_queue_size" in RelayHarnessConfig.__dataclass_fields__
+    assert "max_incoming_request_queue_size" in RelayHarnessConfig.__dataclass_fields__
     assert HarnessConfig().max_frame_bytes == DEFAULT_JSON_RPC_MAX_FRAME_BYTES == 64 * 1024 * 1024
     assert (
         HarnessConfig().max_queued_write_bytes
@@ -1011,14 +1103,20 @@ def test_public_signatures_omit_unsupported_wire_parameters() -> None:
         == 64 * 1024 * 1024 + 1
     )
     assert HarnessConfig().max_notification_queue_size == DEFAULT_NOTIFICATION_QUEUE_SIZE == 4096
+    assert HarnessConfig().max_global_notification_queue_size == DEFAULT_GLOBAL_NOTIFICATION_QUEUE_SIZE == 4096
+    assert HarnessConfig().max_incoming_request_queue_size == DEFAULT_INCOMING_REQUEST_QUEUE_SIZE == 4096
     high_level = RelayHarness(RelayHarnessConfig(
         max_frame_bytes=123,
         max_queued_write_bytes=124,
         max_notification_queue_size=5,
+        max_global_notification_queue_size=6,
+        max_incoming_request_queue_size=7,
     ))
     assert high_level.client.config.max_frame_bytes == 123
     assert high_level.client.config.max_queued_write_bytes == 124
     assert high_level.client.config.max_notification_queue_size == 5
+    assert high_level.client.config.max_global_notification_queue_size == 6
+    assert high_level.client.config.max_incoming_request_queue_size == 7
     assert "client_name" not in HarnessConfig.__dataclass_fields__
     assert "client_version" not in HarnessConfig.__dataclass_fields__
 

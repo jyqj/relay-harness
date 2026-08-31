@@ -4,7 +4,7 @@ import { Context } from '@relay-harness/cordis'
 import { appendFile, mkdtemp, mkdir, rm, readFile, writeFile, readdir, stat, symlink } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, isAbsolute, join, relative, resolve } from 'node:path'
-import SessionStore, { SessionId } from '@relay-harness/rlh-session'
+import SessionStore, { installSessionPersistenceFence, SessionId } from '@relay-harness/rlh-session'
 import type { Session, SessionEvent, SessionHeader } from '@relay-harness/rlh-session'
 import JsonlSessionPersistence from '@relay-harness/rlh-session-persistence-jsonl'
 import {
@@ -781,6 +781,35 @@ describe('JsonlSessionPersistence: durability and crash semantics', () => {
 })
 
 describe('JsonlSessionPersistence: write path (session/event → flush)', () => {
+  it('rejects stale fenced writes before they enter the backend queue', async () => {
+    root = await freshRoot()
+    const ctx = new Context()
+    await ctx.plugin(SessionStore)
+    await ctx.plugin(JsonlSessionPersistence, { root, compression: 'none' })
+    const session = ctx.sessions.create(SessionId('fenced-session'))
+    let current = true
+    const removeFence = installSessionPersistenceFence(session, {
+      token: 'owner:7',
+      assertCurrent: () => {
+        if (!current) throw new Error('stale session persistence fence owner:7')
+      },
+    })
+    session.append('turn/start', { turn: 1 })
+    await ctx.sessions.flush(session)
+
+    current = false
+    expect(() => {
+      session.append('turn/end', { turn: 1, reason: { kind: 'completed' } })
+    }).toThrow('stale session persistence fence owner:7')
+    await expect(ctx.sessions.flush(session)).rejects.toThrow('stale session persistence fence owner:7')
+    const storedText = await readFile(rawLogPath(root, undefined, session.id), 'utf8')
+    expect(storedText).toContain('"turn/start"')
+    expect(storedText).not.toContain('"turn/end"')
+
+    removeFence()
+    await ctx.fiber.dispose()
+  })
+
   it('concurrent sessions do not cross buffers', async () => {
     root = await freshRoot()
     const ctx = new Context()

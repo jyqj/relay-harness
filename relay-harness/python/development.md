@@ -27,6 +27,14 @@ uv run --project python/sdk pytest
 
 `python/sdk/tests/test_bundled_runtime.py` exercises available bundled carriers and skips a carrier when its artifact has not been built. For repository-wide test policy, see [Testing](../docs/testing.md).
 
+After building the host artifacts, require both the production exe and development node carriers instead of accepting skips:
+
+```sh
+pnpm run test:python-carriers
+```
+
+This sets `RLH_REQUIRE_BUNDLED_CARRIERS=1`; a missing carrier is then a test failure. It is the local/release verification path, while the ordinary source-only Python suite remains runnable before the 200+ MB host artifact is built.
+
 That suite drives fake runtime peers. `scripts/smoke-python-runtime.py` drives the real packaged runtime instead, and the required `python-runtime` CI job runs every scenario against a freshly built executable:
 
 ```sh

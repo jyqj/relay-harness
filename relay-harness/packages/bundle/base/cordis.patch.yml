@@ -392,6 +392,10 @@
         # Apply that prior-art bound to the complete RLH root subagent tree.
         maxActivePerRoot: 4
         overflow: reject
+        # One durable owner/fence per continuable child across Harness processes.
+        activationLeasePath: !!js ctx.rlhHomePath('subagent-activation-leases.sqlite3')
+        activationLeaseMs: 30000
+        activationLeaseRenewMs: 10000
 
     - id: subagent-spawn-in-process
       name: '@relay-harness/rlh-subagent-spawn-in-process'

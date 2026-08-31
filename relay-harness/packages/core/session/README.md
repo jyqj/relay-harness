@@ -8,12 +8,13 @@ The optional `@relay-harness/rlh-session/invariant` companion registers this pac
 
 ## Service: `SessionStore` (ctx key: `sessions`)
 
-Creates and holds event-sourced `Session` instances. Persistence is intentionally not implemented here — plugins subscribe to `session/event`, flush on `session/flush`, and may mirror the paired `session/created`/`session/disposed` lifecycle.
+Creates and holds event-sourced `Session` instances. Persistence is intentionally not implemented here — plugins subscribe to `session/event`, flush on `session/flush`, and may mirror the paired `session/created`/`session/disposed` lifecycle. A live owner may install one `SessionPersistenceFence`; `Session.append()` checks it before growing the source log, and first-party persistence checks it again before queue admission and each backend write.
 
 ### Public API
 
 - `ctx.sessions.create(id?, { seed?, meta? }?)` validates and detaches durable seed/header data, fills the version and id, defaults `createdAt` to now, publishes the session, and binds it to the calling fiber. Persisted reconstruction supplies its original `createdAt`, `seedLength`, and `delegationDepth`.
 - `ctx.sessions.flush(session)` dispatches the awaited parallel durability checkpoint through the session's captured scope. Every listener starts and the call waits for all to settle before reporting failure; unpublished, detached, and stale objects reject.
+- `installSessionPersistenceFence(session, fence)` attaches one exact cross-process owner proof. A stale proof rejects new appends and persistence drains before they mutate durable state; removing the exact fence restores ordinary single-process behavior.
 - `ctx.sessions.fork(source, boundary?, childSessionId?): Session` — Resolve a live session object or id, select a seed through the inclusive `boundary` event seq (default: current last event), require that prefix to end outside an open turn, and create a live child session with lineage metadata.
 - `ctx.sessions.get(id: SessionId): Session | undefined`
 - `ctx.sessions.list(): Session[]`
