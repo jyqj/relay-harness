@@ -51,7 +51,7 @@ jobs:
     name: repository governance
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -67,7 +67,7 @@ jobs:
       RLH_COVERAGE_MAX_WORKERS: '2'
       RLH_SNAPSHOT_MAX_CONCURRENCY: '4'
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -123,7 +123,7 @@ jobs:
       RLH_GATE_CONCURRENCY: '8'
     steps:
       # Fetch complete history so the archive gate can read the trusted PR base from a reused shallow checkout.
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -174,7 +174,7 @@ jobs:
       RLH_COVERAGE_PARTITIONS: '4'
       RLH_GATE_CONCURRENCY: '3'
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
 
@@ -234,7 +234,7 @@ jobs:
       # Failover halves snapshot concurrency for the shared 64-core VM.
       RLH_SNAPSHOT_MAX_CONCURRENCY: ${{ vars.RLH_CI_FAILOVER_LINUX == 'selfhosted' && github.event.pull_request.user.login != 'dependabot[bot]' && '12' || '32' }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
 
@@ -324,7 +324,7 @@ jobs:
             runner: ubuntu-latest
             gate_concurrency: '1'
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - uses: pnpm/action-setup@v4
         with:
@@ -349,7 +349,7 @@ jobs:
     runs-on: ubuntu-latest
     name: python 3.10 / keyless SDK
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-python@v6.3.0
         with:
@@ -390,7 +390,7 @@ jobs:
     name: windows node 24 / wine blocking
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
 
@@ -517,7 +517,7 @@ jobs:
       RLH_GATE_CONCURRENCY: '4'
       RLH_PUBLINT_CONCURRENCY: '8'
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
 
@@ -569,7 +569,7 @@ jobs:
       # github.event.before, so full history is required: depth 2 would miss it
       # on multi-commit or force pushes; full fetch is cheap here because
       # checkout resolves against the VM's local mirror.
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -613,7 +613,7 @@ jobs:
     name: serial / macos
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - uses: pnpm/action-setup@v4
         with:
@@ -652,7 +652,7 @@ jobs:
     runs-on: [self-hosted, rlh-win-ci, windows]
     timeout-minutes: 120
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Enable Developer Mode (symlink support)
         shell: pwsh
@@ -746,7 +746,7 @@ jobs:
             runner: rlh-windows-2025-96core
             workload: production-site
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - uses: pnpm/action-setup@v4
         with:
@@ -837,7 +837,7 @@ jobs:
             runner: rlh-windows-2025-96core
             workers: '2'
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - uses: pnpm/action-setup@v4
         with:
