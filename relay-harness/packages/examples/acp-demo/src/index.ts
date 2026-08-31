@@ -13,6 +13,7 @@
 
 import type { Context } from '@relay-harness/cordis'
 import { join } from 'node:path'
+import type { Stream } from '@agentclientprotocol/sdk'
 import z from '@relay-harness/schemastery'
 import * as acp from '@relay-harness/rlh-acp'
 import * as agentCore from '@relay-harness/rlh-agent-spine-demo'
@@ -100,6 +101,12 @@ export const Config: z<Config> = z.object({
 })
 /* jscpd:ignore-end */
 
+/** Process-local overrides for direct composition tests; Loader calls omit them. */
+interface ApplyInternals {
+  /** Isolated ACP transport that keeps unit compositions off process stdio. */
+  stream?: Stream
+}
+
 /**
  * Compose the spine with the ACP automation transport. The agent-spine-demo bundle pre-creates
  * NO agents (its `agents` list defaults to `[]`) and carries the deployment
@@ -109,8 +116,12 @@ export const Config: z<Config> = z.object({
  * unloads in reverse order, keeping checkpoint and persistence listeners
  * attached until ACP agents have flushed their closing events. No logger, no
  * `hmr` — stdout stays pure.
+ * @param ctx - Cordis context that owns the complete ACP demo composition.
+ * @param config - Deployment and bundled-capability configuration.
+ * @param internals - Process-local direct-test overrides; Loader calls omit them.
+ * @returns after every composition row is active.
  */
-export async function apply(ctx: Context, config: Config): Promise<void> {
+export async function apply(ctx: Context, config: Config, internals: ApplyInternals = {}): Promise<void> {
   const goals = config.goals ?? {}
   const persistenceRoot = config.persistenceRoot ?? DEFAULT_PERSISTENCE_ROOT
   await ctx.effect(async function* () {
@@ -134,7 +145,11 @@ export async function apply(ctx: Context, config: Config): Promise<void> {
     const query = ctx.plugin(SqliteSessionQueryEngine, { path: join(persistenceRoot, 'session-query.db') })
     await query
     yield query.dispose
-    const transport = ctx.plugin(acp, { provider: config.provider, model: config.model })
+    const transport = ctx.plugin(acp, {
+      provider: config.provider,
+      model: config.model,
+      ...internals.stream === undefined ? {} : { stream: internals.stream },
+    })
     await transport
     yield transport.dispose
   }, 'acp-demo.composition')

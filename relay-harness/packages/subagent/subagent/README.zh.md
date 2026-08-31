@@ -19,7 +19,7 @@ subagent seam 允许一个 agent（智能体）通过具名提供方把工作委
 | `startContinuable(spec)` | 建立一个持久化的可继续子 agent，并投递其初始提示词。服务会在发布到 inbox 前追加 `subagent/delivery-accepted` 并跨过 Session 持久性屏障；因此，返回的 `{ childId, messageId }` 是持久回执，无需等待轮次开始。在此之前发生的任何失败都会使调用被拒绝，不返回任何 id，并完全回滚该子 agent。如果在线注册表或已配置的持久化已经占用调用方预留的 `childId`，则拒绝该身份。要求 `ctx.agents`、会话持久化以及具备 `prepareContinuable` 能力的提供方。 |
 | `followup(parent, childId, content, { source, signal, idempotencyKey? })` | 持久接受来自确切在线直接父级的一条后续消息，再把它作为子 agent 的下一个 FIFO 轮次投递，并返回稳定的 `MessageId` 回执。使用相同 `idempotencyKey` 重试相同内容／来源时返回原回执；冲突复用会被拒绝。驻留 child 在持久提交后由 inbox 接受；不驻留的 child 会冷恢复，并在新消息前回放所有更早的已接受但未领取投递。要求 `ctx.agents` 与会话持久化。 |
 | `interrupt(targetSessionId, authority)` | 凭人类出示的持久化父级地址 `{ kind: 'user', parentSessionId }`，或确切在线的祖先 Agent `{ kind: 'ancestor', agent }` 进行授权，中断一个在线可继续子级的当前轮次。准入判定同步完成，但取消异步生效：该操作发出 `Agent.cancel(cause, { keepInbox: true })` 后立即返回，不等待目标观察到信号。尚未领取的待处理 inbox 工作、Activation 和已发布的后代均会保留；已经领取到被中断轮次中的工作不会重新入队。目标不存在时视为已接受的空操作；错误的父级地址，或陈旧、指向自身、并非祖先的调用方，会以 `UNAUTHORIZED` 被拒绝。 |
-| `reportFrom(child, content, { delivery, signal })` | 从确切在线可继续 child 向其确切在线直接 parent 投递一条选中消息，并返回已接受的稳定 `MessageId`。静默投递会注入不唤醒的 next-step 上下文；next-step 投递会 steering 并唤醒 parent。 |
+| `reportFrom(child, content, { delivery, signal, idempotencyKey? })` | 先持久提交一条选中的 child report，再投递给确切在线直接 parent，并返回稳定的 `MessageId` 回执。相同 key 的相同重试会返回该回执。静默投递只注入不唤醒；next-step 投递会 steering 并唤醒。child 后续冷恢复时，会回放 parent 日志／inbox 中不存在的已接受 report。 |
 | `registerContinuableSetup(contribution)` | 把一项可选部署能力组合到每个可继续 child 尚未发布的作用域中，并支持从驻留 child 立即撤销。 |
 | `drainContinuableDescendants(parents)` | 在由 host 拥有的确切在线父级 Agent 之下关闭准入，只停止这些父级可见的可继续后代；等待已在这些根节点下获准的物化过程完成发布或回滚后，再按子级优先顺序释放所选的各棵树。该截止状态会持续到每个确切父级离开注册表；无关的父级树仍在线，管理器全局准入仍保持开放。 |
 | `drainContinuableChildren(parent, childIds)` | 只释放一个确切在线父级的具名驻留可继续直接子级，并递归保持子级优先顺序。它不关闭准入、不影响同级子级，缺失的 id 视为空操作；若驻留子级属于其他父级，则拒绝。这是拆卸操作，因此与 `interrupt()` 不同，它不会保留待处理的 inbox 工作。 |
@@ -86,6 +86,8 @@ subagent seam 允许一个 agent（智能体）通过具名提供方把工作委
 管理器预留子 agent 身份、解析持久化描述符，通过私有的 activation-owner 作用域调用 `ctx.agents.create()`（冷恢复时为 `ctx.agents.resume()`），把返回的 `AgentHandle` 安装到 Activation 中，建立任何可继续父级所有权，然后提交提示词。冷恢复绝不通过提供方分发，因为持久化会话已持有初始前缀，折叠后的描述符即是全部重建输入。
 
 每条初始提示词与 follow-up 都把 child Session 用作持久 mailbox。`subagent/delivery-accepted` 会在发布到 inbox 前存储完整的、带身份的 `UserMessage` 与幂等 key；服务会先 flush 该事件，再返回其 `MessageId` 回执。同一消息进入 `user/message` 后，`subagent/delivery-claimed` 会确认它。冷物化会折叠 child 自身的后缀，把显式确认或模型可见的 `user/message` 都视为已领取，并在接受调用方的新消息前，按提交顺序将其余已接受条目排入队列。因此，在持久接受与发布到 inbox 之间崩溃会回放消息；在 `user/message` 之后、显式确认之前崩溃则不会产生重复消息。
+
+child-to-parent report 使用相同的 child-owned 恢复原则。`subagent/report-accepted` 会在发布到 parent inbox 前存储完整的已框定 parent 消息、调度策略与幂等 key。parent 中匹配的 `user/message` 会产生 `subagent/report-delivered`；child 冷物化时，parent 日志与 inbox 也作为权威确认，从而关闭该事件之前的崩溃间隙。其余 report 会按接受顺序回放，且保持原 `MessageId`。
 
 ### 结算投递
 
@@ -159,5 +161,5 @@ You are a delegated subagent: your permission scope was fixed when you were star
 - **无 host-user 继续执行**：`followup()` 要求确切在线直接父级。只有 `interrupt()` 接受持久化 parent 地址形式的用户授权，因为停止一个轮次是幂等的且不投递任何内容；未来 host 适配器需要具体的经认证交互，才能让该 seam 获得用户投递能力。
 - **继续执行消息绝不 steering**：parent 到 child 的继续执行消息会排入后续 child 轮次。child 到 parent 的 report 是独立的 next-step 输入，可能延长 parent 已打开的轮次。
 - **驻留 lease 仅限进程内**：已接受的 child 投递具备持久性且可回放，但 Activation 与所有权图仍不会在两个 harness 进程之间协调。并发激活同一 child 需要跨进程 lease；当前持久化 backend 不提供该能力。
-- **没有持久化的上报 mailbox**：上报需要在线直接父级，提供的是接受标识，不保证恰好一次投递，也不提供已读回执。
+- **report 恢复仍需要激活 child**：已接受 report 可跨重启保存，并在 child 下一次物化时回放；没有独立后台 pump 会只为投递 report 而激活冷 child。
 - **生命周期事件只供观察**：影响运行的 `subagent/end` 延续或决策接口仍需等待具体消费方。

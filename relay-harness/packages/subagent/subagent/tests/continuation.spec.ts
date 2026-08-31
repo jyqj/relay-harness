@@ -1710,6 +1710,61 @@ function settlementNotices(agent: Agent): { sender: string; text: string; summar
 }
 
 describe('continuable report delivery', () => {
+  it('retains a durable report when parent inbox capacity rejects publication', async () => {
+    const hold = Promise.withResolvers<undefined>()
+    const adapter = new GatedAdapter([{ chunks: textResponse('child'), gate: hold.promise }])
+    const { ctx, parent } = await setupWith(adapter)
+    const started = await ctx.subagents.startContinuable(startSpec(parent))
+    await vi.waitFor(() => { expect(adapter.requests).toHaveLength(1) })
+    const child = ctx.agents.get(started.childId)!
+    ;(parent.inbox as unknown as { maxPendingMessages: number }).maxPendingMessages = 1
+    parent.inject(createUserMessage({ content: message('occupies capacity'), source: { kind: 'user' } }))
+    const options = { delivery: 'quiet' as const, signal: testSignal, idempotencyKey: 'capacity-report' }
+
+    await expect(ctx.subagents.reportFrom(child, message('survives capacity'), options)).rejects.toThrow(/not delivered/)
+    expect(child.session.events.filter(event => event.type === 'subagent/report-accepted')).toHaveLength(1)
+    expect(child.session.events.filter(event => event.type === 'subagent/report-delivered')).toHaveLength(0)
+
+    parent.inbox.clear()
+    const receipt = await ctx.subagents.reportFrom(child, message('survives capacity'), options)
+    expect([...parent.inbox.nextStep, ...parent.inbox.nextTurn].some(item => item.id === receipt)).toBe(true)
+    const drained = drainManager(ctx)
+    hold.resolve(undefined)
+    await drained
+  })
+
+  it('replays one durable idempotent report after restart without duplicating retries', async () => {
+    const hold = Promise.withResolvers<undefined>()
+    const adapter = new GatedAdapter([{ chunks: textResponse('child'), gate: hold.promise }])
+    const { ctx, parent, root } = await setupWith(adapter)
+    const started = await ctx.subagents.startContinuable(startSpec(parent))
+    await vi.waitFor(() => { expect(adapter.requests).toHaveLength(1) })
+    const child = ctx.agents.get(started.childId)!
+    const options = { delivery: 'quiet' as const, signal: testSignal, idempotencyKey: 'report-1' }
+
+    const first = await ctx.subagents.reportFrom(child, message('durable report'), options)
+    const retry = await ctx.subagents.reportFrom(child, message('durable report'), options)
+    expect(retry).toBe(first)
+    expect(child.session.events.filter(event => event.type === 'subagent/report-accepted')).toHaveLength(1)
+
+    const drained = drainManager(ctx)
+    hold.resolve(undefined)
+    await drained
+    const fresh = new Context()
+    await mountAgentLoopTestDependencies(fresh)
+    await fresh.plugin(JsonlSessionPersistence, { root: root! })
+    await fresh.plugin(AgentLoop, { agents: [] })
+    await fresh.plugin(SubagentRuntime)
+    fresh.llm.registerAdapter(['mock'], new MockAdapter([textResponse('resumed')]))
+    const freshParent = fresh.agentLoop.create(parent.id, parent.options)
+    await followup(fresh, freshParent, started.childId, message('resume child'))
+
+    const reports = [...freshParent.inbox.nextStep, ...freshParent.inbox.nextTurn]
+      .filter(item => item.source.kind === 'subagent-report' && item.id === first)
+    expect(reports).toHaveLength(1)
+    await drainManager(fresh)
+  })
+
   it('wakes an idle parent for a next-step report', async () => {
     const releaseChild = Promise.withResolvers<undefined>()
     const adapter = new GatedAdapter([

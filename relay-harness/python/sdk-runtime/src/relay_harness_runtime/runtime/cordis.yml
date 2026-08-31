@@ -5,6 +5,9 @@
 # Stdio JSON-RPC server entry; without it the agent has no SDK client.
 - id: sdk-jsonrpc-server
   name: '@relay-harness/rlh-sdk-jsonrpc-server'
+  config:
+    maxFrameBytes: 67108864
+    maxQueuedWriteBytes: 67108865
 
 # Agent spine; the SDK server creates agents per sessionId.
 - id: agent-core

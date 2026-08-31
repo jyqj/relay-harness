@@ -1980,6 +1980,10 @@ Report selected content to the agent that started you. Call this once before you
     "output": {
       "type": "string",
       "description": "Actionable content for your parent; summarize conclusions and reference relevant shared paths."
+    },
+    "idempotency_key": {
+      "type": "string",
+      "description": "Stable retry key for this report. Reuse it only when retrying the same output."
     }
   },
   "required": [

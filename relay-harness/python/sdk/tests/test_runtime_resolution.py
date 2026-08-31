@@ -22,6 +22,8 @@ def test_default_config_is_shipped_with_the_package() -> None:
     assert "@relay-harness/rlh-agent-spine-demo" in config
     assert "@relay-harness/rlh-session-persistence-jsonl" in config
     assert "@relay-harness/rlh-session-checkpoint-policy" in config
+    assert "maxFrameBytes: 67108864" in config
+    assert "maxQueuedWriteBytes: 67108865" in config
 
 
 def test_unknown_explicit_mode_fails_loud() -> None:

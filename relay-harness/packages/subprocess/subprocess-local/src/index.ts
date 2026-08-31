@@ -35,6 +35,13 @@ import { LocalTerminalHandle } from './terminal.ts'
  * JavaScript-observable host exit.
  */
 export class LocalSubprocessRuntime extends SubprocessRuntime {
+  /** Active providers reached by the one process-wide synchronous exit hook. */
+  private static hostExitOwners = new Set<LocalSubprocessRuntime>()
+  /** One listener avoids treating valid multi-Context composition as a leak. */
+  private static readonly onHostExit = (): void => {
+    for (const owner of LocalSubprocessRuntime.hostExitOwners) owner.terminateForHostExit()
+  }
+
   /** Live handles retained for normal disposal and synchronous host-exit finalization. */
   private live = new Set<LocalSubprocessHandle>()
   /** Live terminals retained through normal quiescence or host-exit finalization. */
@@ -47,16 +54,25 @@ export class LocalSubprocessRuntime extends SubprocessRuntime {
   constructor(ctx: Context) {
     super(ctx)
     ctx.effect(() => {
-      const onHostExit = (): void => { this.terminateForHostExit() }
-      process.prependListener('exit', onHostExit)
+      LocalSubprocessRuntime.retainHostExitOwner(this)
       return async () => {
         try {
           await this.disposeManagedProcesses()
         } finally {
-          process.off('exit', onHostExit)
+          LocalSubprocessRuntime.releaseHostExitOwner(this)
         }
       }
     }, 'local subprocess teardown')
+  }
+
+  private static retainHostExitOwner(owner: LocalSubprocessRuntime): void {
+    if (this.hostExitOwners.size === 0) process.prependListener('exit', this.onHostExit)
+    this.hostExitOwners.add(owner)
+  }
+
+  private static releaseHostExitOwner(owner: LocalSubprocessRuntime): void {
+    this.hostExitOwners.delete(owner)
+    if (this.hostExitOwners.size === 0) process.off('exit', this.onHostExit)
   }
 
   private terminateForHostExit(): void {

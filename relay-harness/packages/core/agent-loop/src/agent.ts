@@ -147,7 +147,7 @@ export class ReactLoopAgent implements Agent {
       inserted: (message) => { this.dispatch.emit('agent/inbox/inserted', { message }) },
       discarded: (message) => { this.dispatch.emit('agent/inbox/discarded', { message }) },
       claimed: (message, turn) => { this.dispatch.emit('agent/inbox/claimed', { message, turn }) },
-    })
+    }, loopCtx.agentLoop.config.maxPendingInboxMessages)
     const lastTurn = session.events.findLast(event => event.type === 'turn/start')?.data.turn ?? 0
     this.phase = { kind: 'idle', lastTurn }
     this.scope = createScope(loopCtx, this)

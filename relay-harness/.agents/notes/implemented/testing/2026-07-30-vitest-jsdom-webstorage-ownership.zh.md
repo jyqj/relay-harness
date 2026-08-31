@@ -14,6 +14,8 @@ Status: implemented
 
 Node 兼容性汇总任务会在每条声明支持的兼容版本线上运行专用的 jsdom 冒烟测试。该测试同时断言 worker 参数按条件传入且存储可用，因此未来 Node 或 Vitest 的变化不会让主要的 Node 24 测试套件成为唯一检测信号。
 
+共享 setup 还会直接建模 jsdom 不可用的 Canvas 2D 能力：`HTMLCanvasElement.getContext()` 返回 `null`，与 jsdom 报告 “not implemented” 后的返回值相同。验证 canvas 行为的测试会安装自己的精确 context；普通组件测试则验证产品的 null fallback，而不会为每次 terminal 字体探针重复输出同一条 virtual-console 诊断。
+
 ## 曾考虑的替代方案
 
 - **在包脚本或 CI 中设置 `NODE_OPTIONS=--no-webstorage`。** 否决：这会将测试运行器策略传播到子进程，也无法覆盖直接调用 `pnpm exec vitest` 的情况。
@@ -23,4 +25,4 @@ Node 兼容性汇总任务会在每条声明支持的兼容版本线上运行专
 
 ## 后果
 
-同一条 `pnpm test` 命令在有无内置 Web Storage 的 Node 版本上均可运行。测试 worker 被有意禁止使用 Node 的进程级 Web Storage；未来若产品需要该 API，必须使用独立且显式的测试配置，而不能削弱 jsdom 隔离。兼容性通道只增加一个专项 Vitest 进程，无需在每个 Node 版本上重复整套单元测试。
+同一条 `pnpm test` 命令在有无内置 Web Storage 的 Node 版本上均可运行。测试 worker 被有意禁止使用 Node 的进程级 Web Storage，默认 Canvas 2D 能力也会显式缺席，而不是产生诊断；需要任一能力的测试会提供专用环境或 mock。兼容性通道只增加一个专项 Vitest 进程，无需在每个 Node 版本上重复整套单元测试。

@@ -11,4 +11,8 @@ describe('Vitest jsdom compatibility', () => {
     expect(localStorage.getItem('rlh-vitest-storage-probe')).toBe('available')
     localStorage.removeItem('rlh-vitest-storage-probe')
   })
+
+  it('models the unavailable jsdom canvas capability without virtual-console noise', () => {
+    expect(document.createElement('canvas').getContext('2d')).toBeNull()
+  })
 })

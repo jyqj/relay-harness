@@ -1984,6 +1984,10 @@ lsp 工具将提供方选择和语言服务器子进程置于 ctx.lsp 之后，�
     "output": {
       "type": "string",
       "description": "Actionable content for your parent; summarize conclusions and reference relevant shared paths."
+    },
+    "idempotency_key": {
+      "type": "string",
+      "description": "Stable retry key for this report. Reuse it only when retrying the same output."
     }
   },
   "required": [

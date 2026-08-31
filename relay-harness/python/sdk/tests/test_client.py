@@ -1,15 +1,25 @@
 from __future__ import annotations
 
-import json
 import inspect
+import json
 import sys
 import threading
 import time
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
 
-from relay_harness import RelayHarness, HarnessClient, HarnessConfig, Notification, SdkProtocolError
+from relay_harness import (
+    HarnessClient,
+    HarnessConfig,
+    JsonRpcFrameTooLargeError,
+    JsonRpcWriteQueueOverflowError,
+    Notification,
+    NotificationQueueOverflowError,
+    RelayHarness,
+    SdkProtocolError,
+)
 
 
 def test_high_level_sdk_runs_turn_and_collects_final_response(tmp_path: Path) -> None:
@@ -629,6 +639,166 @@ for line in sys.stdin:
             assert healthy.next().payload == {"source": "emit-second"}
 
 
+def test_notification_overflow_fails_only_the_slow_subscription_after_its_prefix() -> None:
+    client = HarnessClient(HarnessConfig(max_notification_queue_size=2))
+    with (
+        client.subscribe_notifications(lambda notification: notification.method == "tick") as slow,
+        client.subscribe_notifications(lambda notification: notification.method == "tick") as healthy,
+    ):
+        for index in range(3):
+            client._handle_message({
+                "jsonrpc": "2.0",
+                "method": "tick",
+                "params": {"index": index},
+            })
+            assert healthy.next().payload == {"index": index}
+
+        assert slow.next().payload == {"index": 0}
+        assert slow.next().payload == {"index": 1}
+        with pytest.raises(NotificationQueueOverflowError) as excinfo:
+            slow.next()
+        assert excinfo.value.limit == 2
+
+        client._handle_message({
+            "jsonrpc": "2.0",
+            "method": "tick",
+            "params": {"index": 3},
+        })
+        assert healthy.next().payload == {"index": 3}
+
+
+def test_client_rejects_invalid_resource_limits() -> None:
+    with pytest.raises(ValueError, match="max_frame_bytes must be a positive integer"):
+        HarnessClient(HarnessConfig(max_frame_bytes=0))
+    with pytest.raises(ValueError, match="max_queued_write_bytes must be a positive integer"):
+        HarnessClient(HarnessConfig(max_queued_write_bytes=-1))
+    with pytest.raises(ValueError, match="max_notification_queue_size must be a positive integer"):
+        HarnessClient(HarnessConfig(max_notification_queue_size=True))
+
+
+def test_client_rejects_an_oversize_outbound_frame_before_writing() -> None:
+    client = HarnessClient(HarnessConfig(max_frame_bytes=32))
+    with pytest.raises(JsonRpcFrameTooLargeError) as excinfo:
+        client.notify("oversize", {"data": "x" * 64})
+    assert excinfo.value.limit == 32
+
+
+def test_client_rejects_an_inbound_partial_frame_before_newline(tmp_path: Path) -> None:
+    script = tmp_path / "oversize_runtime.py"
+    script.write_text(
+        """
+import sys
+import time
+
+sys.stdout.buffer.write(b"x" * 65)
+sys.stdout.buffer.flush()
+time.sleep(60)
+""".strip()
+    )
+    client = HarnessClient(HarnessConfig(
+        launch_args_override=(sys.executable, str(script)),
+        max_frame_bytes=64,
+        request_timeout_seconds=2,
+        shutdown_timeout_seconds=0.05,
+    ))
+    with pytest.raises(JsonRpcFrameTooLargeError) as excinfo:
+        client.initialize(provider="deepseek-official", cwd="/workspace", model="dsagent")
+    assert excinfo.value.limit == 64
+
+
+def test_client_bounds_bytes_waiting_for_the_stdio_writer() -> None:
+    entered = threading.Event()
+    release = threading.Event()
+
+    class BlockingStdin:
+        def write(self, payload: bytes) -> int:
+            entered.set()
+            release.wait(timeout=2)
+            return len(payload)
+
+        def flush(self) -> None:
+            return
+
+    class FakeProcess:
+        stdin = BlockingStdin()
+
+    client = HarnessClient(HarnessConfig(max_frame_bytes=256, max_queued_write_bytes=130))
+    client._proc = FakeProcess()  # type: ignore[assignment]
+    failures: list[Exception] = []
+
+    first = threading.Thread(
+        target=lambda: _capture_failure(failures, lambda: client.notify("first", {"data": "x" * 40}))
+    )
+    first.start()
+    assert entered.wait(timeout=1)
+    try:
+        with pytest.raises(JsonRpcWriteQueueOverflowError) as excinfo:
+            client.notify("second", {"data": "x" * 40})
+        assert excinfo.value.limit == 130
+    finally:
+        release.set()
+        first.join(timeout=1)
+    assert failures == []
+
+
+def test_client_write_all_completes_a_frame_across_partial_raw_writes() -> None:
+    class PartialStdin:
+        def __init__(self) -> None:
+            self.output = bytearray()
+
+        def write(self, payload: bytes | memoryview) -> int:
+            chunk = bytes(payload[:3])
+            self.output.extend(chunk)
+            return len(chunk)
+
+        def flush(self) -> None:
+            return
+
+    class FakeProcess:
+        stdin = PartialStdin()
+
+        def poll(self) -> None:
+            return None
+
+    client = HarnessClient(HarnessConfig(max_frame_bytes=256))
+    process = FakeProcess()
+    client._proc = process  # type: ignore[assignment]
+    client.notify("partial", {"value": "complete"})
+    lines = bytes(process.stdin.output).splitlines()
+    assert len(lines) == 1
+    assert json.loads(lines[0]) == {
+        "jsonrpc": "2.0",
+        "method": "partial",
+        "params": {"value": "complete"},
+    }
+
+
+@pytest.mark.parametrize("result", [0, None])
+def test_client_write_all_fails_closed_when_raw_writer_makes_no_progress(
+    result: int | None,
+) -> None:
+    from relay_harness.errors import TransportClosedError
+
+    class RefusingStdin:
+        def write(self, _payload: bytes | memoryview) -> int | None:
+            return result
+
+        def flush(self) -> None:
+            raise AssertionError("flush must not run after a refused write")
+
+    class FakeProcess:
+        stdin = RefusingStdin()
+
+        def poll(self) -> None:
+            return None
+
+    client = HarnessClient(HarnessConfig(max_frame_bytes=256))
+    client._proc = FakeProcess()  # type: ignore[assignment]
+    with pytest.raises(TransportClosedError, match="Failed to write"):
+        client.notify("refused", {})
+    assert client._queued_write_bytes == 0
+
+
 def test_client_rejects_unaccepted_session_prompt_response(tmp_path: Path) -> None:
     script = tmp_path / "fake_bridge.py"
     script.write_text(
@@ -812,7 +982,13 @@ for line in sys.stdin:
 
 
 def test_public_signatures_omit_unsupported_wire_parameters() -> None:
-    from relay_harness import RelayHarnessConfig, Session
+    from relay_harness import (
+        DEFAULT_JSON_RPC_MAX_FRAME_BYTES,
+        DEFAULT_JSON_RPC_MAX_QUEUED_WRITE_BYTES,
+        DEFAULT_NOTIFICATION_QUEUE_SIZE,
+        RelayHarnessConfig,
+        Session,
+    )
 
     assert "session_root" not in inspect.signature(HarnessClient.initialize).parameters
     assert "system_prompt" not in inspect.signature(HarnessClient.initialize).parameters
@@ -822,6 +998,27 @@ def test_public_signatures_omit_unsupported_wire_parameters() -> None:
     assert "system_prompt" not in RelayHarnessConfig.__dataclass_fields__
     assert "max_tokens" in RelayHarnessConfig.__dataclass_fields__
     assert "max_tokens" in inspect.signature(HarnessClient.initialize).parameters
+    assert "max_frame_bytes" in HarnessConfig.__dataclass_fields__
+    assert "max_queued_write_bytes" in HarnessConfig.__dataclass_fields__
+    assert "max_notification_queue_size" in HarnessConfig.__dataclass_fields__
+    assert "max_frame_bytes" in RelayHarnessConfig.__dataclass_fields__
+    assert "max_queued_write_bytes" in RelayHarnessConfig.__dataclass_fields__
+    assert "max_notification_queue_size" in RelayHarnessConfig.__dataclass_fields__
+    assert HarnessConfig().max_frame_bytes == DEFAULT_JSON_RPC_MAX_FRAME_BYTES == 64 * 1024 * 1024
+    assert (
+        HarnessConfig().max_queued_write_bytes
+        == DEFAULT_JSON_RPC_MAX_QUEUED_WRITE_BYTES
+        == 64 * 1024 * 1024 + 1
+    )
+    assert HarnessConfig().max_notification_queue_size == DEFAULT_NOTIFICATION_QUEUE_SIZE == 4096
+    high_level = RelayHarness(RelayHarnessConfig(
+        max_frame_bytes=123,
+        max_queued_write_bytes=124,
+        max_notification_queue_size=5,
+    ))
+    assert high_level.client.config.max_frame_bytes == 123
+    assert high_level.client.config.max_queued_write_bytes == 124
+    assert high_level.client.config.max_notification_queue_size == 5
     assert "client_name" not in HarnessConfig.__dataclass_fields__
     assert "client_version" not in HarnessConfig.__dataclass_fields__
 
@@ -913,6 +1110,13 @@ with open(os.environ["SEEN"], "w") as seen:
 
     for line in output.read_text().splitlines():
         json.loads(line)
+
+
+def _capture_failure(failures: list[Exception], work: Callable[[], None]) -> None:
+    try:
+        work()
+    except Exception as exc:
+        failures.append(exc)
 
 
 def _install_fake_bundled_runtime(

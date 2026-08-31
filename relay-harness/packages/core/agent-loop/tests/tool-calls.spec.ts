@@ -11,7 +11,10 @@ import SystemPrompt from '@relay-harness/rlh-system-prompt'
 import LlmRuntime from '@relay-harness/rlh-llm'
 import ToolRuntime, { defineContentToolFixture, TOOL_ABORTED_BEFORE_DISPATCH, TOOL_RUNTIME_REQUESTS, type PostToolDecision, type PreToolDecision, type ToolExecutionResult, type ToolRequestSnapshot, type ToolRunContext } from '@relay-harness/rlh-tools'
 import AgentRegistry, { type Agent } from '@relay-harness/rlh-agent'
-import AgentLoop, { DEFAULT_MAX_PARALLEL_TOOL_CALLS } from '@relay-harness/rlh-agent-loop'
+import AgentLoop, {
+  DEFAULT_MAX_PARALLEL_TOOL_CALLS,
+  DEFAULT_MAX_PENDING_INBOX_MESSAGES,
+} from '@relay-harness/rlh-agent-loop'
 import { MockAdapter, textResponse } from './mock-adapter.ts'
 import { CodeRuntime } from '@relay-harness/rlh-code-runtime'
 import type { CodeRunRequest, CodeRunResult } from '@relay-harness/rlh-code-runtime'
@@ -354,6 +357,16 @@ describe('tool-call scheduler: rolling pool honors maxParallelToolCalls', () => 
     await expect(harness(new MockAdapter([]), 1.5)).rejects.toThrow()
   })
 
+  it('resolves and validates the deployment-owned inbox capacity', () => {
+    expect(DEFAULT_MAX_PENDING_INBOX_MESSAGES).toBe(4096)
+    expect(() => new AgentLoop(new Context(), { agents: [], maxPendingInboxMessages: 0 }))
+      .toThrow('maxPendingInboxMessages must be a positive safe integer')
+    expect(() => new AgentLoop(new Context(), {
+      agents: [],
+      maxPendingInboxMessages: Number.MAX_SAFE_INTEGER + 1,
+    })).toThrow('maxPendingInboxMessages must be a positive safe integer')
+  })
+
   it('defensively rejects invalid caps when direct construction bypasses the config schema', () => {
     expect(() => new AgentLoop(new Context(), { agents: [], maxParallelToolCalls: 0 }))
       .toThrow('maxParallelToolCalls must be a positive integer')
@@ -371,6 +384,7 @@ describe('tool-call scheduler: rolling pool honors maxParallelToolCalls', () => 
 
     const loop = new AgentLoop(ctx, { agents: [] })
     expect(loop.config.maxParallelToolCalls).toBe(DEFAULT_MAX_PARALLEL_TOOL_CALLS)
+    expect(loop.config.maxPendingInboxMessages).toBe(DEFAULT_MAX_PENDING_INBOX_MESSAGES)
     await ctx.fiber.dispose()
   })
 

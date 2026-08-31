@@ -29,6 +29,18 @@ function spec(command: string, overrides: Partial<SubprocessSpawnSpec> = {}): Su
 }
 
 describe('LocalSubprocessRuntime', () => {
+  it('shares one host-exit listener across concurrent Context owners', async () => {
+    const before = process.listenerCount('exit')
+    const contexts = Array.from({ length: 12 }, () => new Context())
+    const fibers = await Promise.all(contexts.map(ctx => ctx.plugin(LocalSubprocessRuntime)))
+    try {
+      expect(process.listenerCount('exit')).toBe(before + 1)
+    } finally {
+      await Promise.all(fibers.map(fiber => fiber.dispose()))
+    }
+    expect(process.listenerCount('exit')).toBe(before)
+  })
+
   it('places the host-exit finalizer before listeners that predate the service', async () => {
     const baseline = new Set(process.listeners('exit'))
     const prior = vi.fn()

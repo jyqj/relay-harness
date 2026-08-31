@@ -21,6 +21,15 @@ export interface InboxNotifications {
   claimed(message: UserMessage, turn: number): void
 }
 
+/** A live inbox mutation would exceed its configured aggregate message cap. */
+export class InboxCapacityError extends Error {
+  /** @param limit - maximum pending messages across next-turn and next-step. */
+  constructor(readonly limit: number) {
+    super(`agent inbox exceeds ${limit} pending messages`)
+    this.name = 'InboxCapacityError'
+  }
+}
+
 /** A replay-once projection that incrementally consumes later inbox splices. */
 export class Inbox {
   private readonly state: InboxState = { 'next-turn': [], 'next-step': [] }
@@ -28,7 +37,11 @@ export class Inbox {
   constructor(
     private readonly session: Session,
     private readonly notifications: InboxNotifications,
+    private readonly maxPendingMessages = Number.MAX_SAFE_INTEGER,
   ) {
+    if (!Number.isSafeInteger(maxPendingMessages) || maxPendingMessages < 1) {
+      throw new TypeError('maxPendingMessages must be a positive safe integer')
+    }
     for (const event of session.events.slice(session.header.seedLength ?? 0)) {
       if (event.type !== 'agent/inbox/spliced') continue
       try {
@@ -182,7 +195,7 @@ export class Inbox {
       inserted,
       ...(outcome === undefined ? {} : { outcome }),
     }
-    this.validate(splice)
+    this.validate(splice, true)
     const event = this.session.append('agent/inbox/spliced', splice)
     const removed = inbox.splice(actualStart, actualDeleteCount, ...event.data.inserted)
     if (discardRemoved) {
@@ -194,13 +207,13 @@ export class Inbox {
 
   /** Apply one normalized durable splice to the projection. */
   private apply(splice: SessionEventMap['agent/inbox/spliced']): UserMessage[] {
-    this.validate(splice)
+    this.validate(splice, false)
     const inbox = this.state[splice.target]
     return inbox.splice(splice.start, splice.removedCount ?? 0, ...splice.inserted)
   }
 
   /** Validate one normalized splice against the current projection. */
-  private validate(splice: SessionEventMap['agent/inbox/spliced']): void {
+  private validate(splice: SessionEventMap['agent/inbox/spliced'], enforceCapacity: boolean): void {
     const inbox = this.state[splice.target]
     const removedCount = splice.removedCount ?? 0
     if (!Number.isSafeInteger(splice.start) || splice.start < 0 || splice.start > inbox.length
@@ -209,6 +222,12 @@ export class Inbox {
       throw new Error('invalid inbox splice')
     }
     const candidate = inbox.toSpliced(splice.start, removedCount, ...splice.inserted)
+    const pendingCount = splice.target === 'next-turn'
+      ? candidate.length + this.nextStep.length
+      : this.nextTurn.length + candidate.length
+    if (enforceCapacity && pendingCount > this.maxPendingMessages) {
+      throw new InboxCapacityError(this.maxPendingMessages)
+    }
     const ids = new Set<string>()
     for (const message of splice.target === 'next-turn'
       ? [...candidate, ...this.nextStep]

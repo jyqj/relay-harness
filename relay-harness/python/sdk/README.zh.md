@@ -43,6 +43,8 @@ with RelayHarness(
 
 `HarnessClient` 会在运行时进程的整个生命周期内保留已发现的 subagent 谱系。每次执行 `Session.run()` 时，`RunResult.notifications` 与 `on_notification` 会按协议传输顺序收到根会话及所有已知后代的通知，其中包括嵌套 subagent 的生命周期事件与会话事件。`RunResult.events` 只包含根会话事件，因此后代消息不会覆盖根会话回复。底层 `session_prompt()` 会立即返回已排队消息的 `MessageId`；绕过 `Session.run()` 的调用方必须自行负责后续的活动边界。
 
+Python transport 与 TypeScript SDK 使用相同资源默认值：`max_frame_bytes=64 * 1024 * 1024`、`max_queued_write_bytes=64 * 1024 * 1024 + 1`、`max_notification_queue_size=4096`，并同时暴露在 `RelayHarnessConfig` 与 `HarnessConfig` 上。frame 上限按入站和出站 UTF-8 字节计量，也覆盖运行时一直不发送 `\n` 的 partial frame；等待中与正在执行的写入会持续记账，直到阻塞式 stdio write-all 循环结算。底层 write 返回 `0` 或 `None` 会 fail closed，而不是发出截断 frame。慢 subscription 先保留已准入前缀，随后抛出 `NotificationQueueOverflowError` 并解除注册，不会打断同级 subscription。frame 与写队列失败分别抛出 `JsonRpcFrameTooLargeError` 和 `JsonRpcWriteQueueOverflowError`；三项限制都必须是正整数，部署可显式调低。
+
 也可以通过 `RLH_CORDIS_CONFIG` 为运行时子进程指定配置。注入逻辑位于 `HarnessClient.start()`，因此底层客户端按默认方式启动时也具有该行为：如果启动方式最终解析为内置运行时，且既没有设置 `cordis`，也没有设置非空的 `RLH_CORDIS_CONFIG`（运行时将空值视为未设置，注入检查也是如此），系统就会使用内置默认配置；显式指定 `runtime_bin`、`bridge_bin` 或 `launch_args_override` 时，则会完全禁用该注入。运行时载体（生产用 exe 与仅限开发的 `node` 闭包）及其获取方式见 [sdk-runtime README](https://github.com/jyqj/relay-harness/blob/master/relay-harness/python/sdk-runtime/README.md)。
 
 `cwd` 与 `runtime_cwd` 会在启动子进程、注入环境变量和协议握手前解析为绝对路径。公开 API 只暴露由 SDK 直接应用的选项：部署 persona 和持久化配置应在 `cordis.yml` 中定义；`session_root` 则保留为设置 `RLH_SESSION_ROOT` 的高层便捷参数。

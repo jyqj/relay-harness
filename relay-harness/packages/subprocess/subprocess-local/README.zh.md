@@ -13,7 +13,7 @@
 - **可执行文件查找**：`resolveExecutable` 检查绝对文件，或根据平台可执行文件扩展名在清理后的有效 PATH 中搜索；含分隔符的相对路径在该 seam 处被拒绝，相对 PATH 条目从宿主进程 cwd 解析。
 - **终端进程所有权**：`spawnTerminal` 分配 `node-pty`，桥接 UTF-8 终端文本，检查当前前台进程组并向其发送信号，还会公开一项须等待的终止操作，在终止顶层 shell 前后清理后代进程。每次前台检查都会保留根进程树中的精确身份；Linux 还会在 POSIX 会话 leader 退出后枚举该会话。因此，之前观察到的 macOS 后代以及同会话 Linux 成员在重新设定父进程后仍受围栏保护，pid/start 身份则防止清理跟随 PID 复用。在 Windows 上，基于 koffi 的检查器通过 Toolhelp32 枚举进程表，把 GetProcessTimes 启动身份与进程句柄零时等待结合起来判断存活状态，并把 shell pid 作为伪前台进程组（Windows 没有 POSIX 进程组）。拆卸会验证 shell 已终止，因为被外部 taskkill 的 shell 可能永远不会触发 node-pty 的退出通知。上层 PTY 后端负责提示符就绪、缓冲区与面向模型的操作。
 - **先终止再等待退出的 dispose（资源释放）**：服务保留存活句柄，使自身的 dispose 能对每个仍在运行的进程树执行升级并等待其退出；完全停稳与 spawn 失败的句柄会在整棵进程树或 terminal session 清理完成后离开存活集合。
-- **同步宿主退出最终清理**：服务 effect 仍有效时，Node `exit` listener 会强制终止同一组存活集合中仍存在的每棵普通进程树和可观察 terminal session。这些仅供本地实现使用的操作会向受管 POSIX 进程组发送 SIGKILL、在 Windows 运行 `taskkill /T /F`，并在终止 PTY root 前后同步向已捕获及当前可观察的 terminal 身份发送信号；它们不会创建 Promise 或 timer，不改变宿主退出码与诊断，会分别包含每个目标的失败，也不会声称已经完全停稳。正常 dispose 仍使用上面的须等待温和路径。参见[宿主退出清理决策](../../../.agents/notes/implemented/bug-fix/2026-08-11-synchronous-subprocess-exit-cleanup.md)。
+- **同步宿主退出最终清理**：任一本地 provider effect 仍有效时，一个共享 Node `exit` listener 会遍历有效 provider，并强制终止各自存活集合中仍存在的每棵普通进程树和可观察 terminal session。这些仅供本地实现使用的操作会向受管 POSIX 进程组发送 SIGKILL、在 Windows 运行 `taskkill /T /F`，并在终止 PTY root 前后同步向已捕获及当前可观察的 terminal 身份发送信号；它们不会创建 Promise 或 timer，不改变宿主退出码与诊断，会分别包含每个目标的失败，也不会声称已经完全停稳。正常 dispose 仍使用上面的须等待温和路径。参见[宿主退出清理决策](../../../.agents/notes/implemented/bug-fix/2026-08-11-synchronous-subprocess-exit-cleanup.md)。
 
 ## 模型体验
 

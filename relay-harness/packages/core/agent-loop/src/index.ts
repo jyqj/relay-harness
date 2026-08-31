@@ -138,6 +138,18 @@ function resolveMaxParallelToolCalls(value: number | undefined): number {
   return maxParallelToolCalls
 }
 
+/** Default aggregate pending-message cap for one Agent inbox. */
+export const DEFAULT_MAX_PENDING_INBOX_MESSAGES = 4096
+
+/** Resolve the deployment-owned inbox resource cap. */
+function resolveMaxPendingInboxMessages(value: number | undefined): number {
+  const resolved = value ?? DEFAULT_MAX_PENDING_INBOX_MESSAGES
+  if (!Number.isSafeInteger(resolved) || resolved < 1) {
+    throw new Error('maxPendingInboxMessages must be a positive safe integer')
+  }
+  return resolved
+}
+
 /** Reject an output-token cap that cannot be represented exactly on the request wire. */
 function assertAgentOptions(options: AgentOptions): void {
   if (options.maxTokens !== undefined
@@ -258,6 +270,8 @@ export interface Config {
    * omission defaults to {@link DEFAULT_MAX_PARALLEL_TOOL_CALLS}.
    */
   maxParallelToolCalls?: number
+  /** Aggregate pending next-turn and next-step messages admitted per Agent. */
+  maxPendingInboxMessages?: number
   /** Agents created or resumed at plugin startup. */
   agents: (AgentOptions & {
     /** Stable config label used in logs and as the fresh combined-id prefix. */
@@ -272,7 +286,7 @@ export interface Config {
 }
 
 /** Agent-loop configuration after defaults and load-time validation. */
-type ResolvedConfig = Config & { maxParallelToolCalls: number }
+type ResolvedConfig = Config & { maxParallelToolCalls: number; maxPendingInboxMessages: number }
 
 /** Reject self-contained identity conflicts before any configured agent starts. */
 function validateConfiguredAgents(agents: Config['agents']): void {
@@ -299,6 +313,8 @@ export class AgentLoop extends Service implements AgentFactory {
   /** Runtime schema for declarative agents. */
   static Config = z.object({
     maxParallelToolCalls: z.number().step(1).min(1).default(DEFAULT_MAX_PARALLEL_TOOL_CALLS),
+    maxPendingInboxMessages: z.number().step(1).min(1).max(Number.MAX_SAFE_INTEGER)
+      .default(DEFAULT_MAX_PENDING_INBOX_MESSAGES),
     agents: z.array(z.object({
       id: z.string().required(),
       sessionId: z.string().min(1),
@@ -325,6 +341,7 @@ export class AgentLoop extends Service implements AgentFactory {
     this.config = {
       ...config,
       agents: applyLauncherIdentities(config.agents, ctx.get(CONFIGURED_AGENT_IDENTITIES_KEY)),
+      maxPendingInboxMessages: resolveMaxPendingInboxMessages(config.maxPendingInboxMessages),
       // Read through on every scheduler decision: `tool-calls.ts` destructures
       // this at the start of each group, so a committed change caps the next
       // group without disturbing the one in flight.

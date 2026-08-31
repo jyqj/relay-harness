@@ -3,9 +3,15 @@ from __future__ import annotations
 import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Callable
+from typing import Any, Callable
 
-from .client import HarnessClient, HarnessConfig
+from .client import (
+    DEFAULT_JSON_RPC_MAX_FRAME_BYTES,
+    DEFAULT_JSON_RPC_MAX_QUEUED_WRITE_BYTES,
+    DEFAULT_NOTIFICATION_QUEUE_SIZE,
+    HarnessClient,
+    HarnessConfig,
+)
 from .errors import SdkProtocolError
 from .models import JsonObject, Notification
 
@@ -31,6 +37,9 @@ class RelayHarnessConfig:
     launch_args_override: tuple[str, ...] | None = None
     request_timeout_seconds: float | None = None
     shutdown_timeout_seconds: float | None = 1.0
+    max_frame_bytes: int = DEFAULT_JSON_RPC_MAX_FRAME_BYTES
+    max_queued_write_bytes: int = DEFAULT_JSON_RPC_MAX_QUEUED_WRITE_BYTES
+    max_notification_queue_size: int = DEFAULT_NOTIFICATION_QUEUE_SIZE
     base_url: str | None = None
     api_key: str | None = None
 
@@ -53,7 +62,9 @@ class RelayHarness:
     :meth:`close` explicitly when finished, so the subprocess is always reaped.
     """
 
-    def __init__(self, config: RelayHarnessConfig | None = None, **kwargs: object) -> None:
+    # Keyword construction mirrors the heterogeneous RelayHarnessConfig fields;
+    # the dataclass constructor remains the runtime validator for this convenience face.
+    def __init__(self, config: RelayHarnessConfig | None = None, **kwargs: Any) -> None:
         if config is not None and kwargs:
             raise TypeError("pass either RelayHarnessConfig or keyword options, not both")
         self.config = config or RelayHarnessConfig(**kwargs)
@@ -79,6 +90,9 @@ class RelayHarness:
                 env=env,
                 request_timeout_seconds=self.config.request_timeout_seconds,
                 shutdown_timeout_seconds=self.config.shutdown_timeout_seconds,
+                max_frame_bytes=self.config.max_frame_bytes,
+                max_queued_write_bytes=self.config.max_queued_write_bytes,
+                max_notification_queue_size=self.config.max_notification_queue_size,
             )
         )
         self._initialized = False

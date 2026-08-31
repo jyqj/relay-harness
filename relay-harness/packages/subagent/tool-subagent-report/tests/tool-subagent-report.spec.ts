@@ -169,7 +169,7 @@ describe('rlh-tool-subagent-report', () => {
     const schemas = ctx.tools.schemas(child).filter(schema => schema.name === 'report')
     expect(schemas).toHaveLength(1)
     const properties = (schemas[0]?.parameters as { properties: Record<string, unknown> }).properties
-    expect(Object.keys(properties)).toEqual(['output'])
+    expect(Object.keys(properties)).toEqual(['output', 'idempotency_key'])
   })
 
   it('adds no implicit capability when the package is absent', async () => {

@@ -56,11 +56,18 @@ import type SubagentActivationSetupRegistry from './activation-setup-registry.ts
 import type { SubagentAdmissionLease } from './admission.ts'
 import {
   acceptedSubagentDelivery,
+  acceptedSubagentReport,
   pendingSubagentDeliveries,
+  pendingSubagentReports,
   subagentDeliveryNeedsClaim,
   SUBAGENT_DELIVERY_VERSION,
 } from './delivery.ts'
-import type { SubagentDeliveryAcceptedData, SubagentDeliveryClaimedData } from './delivery.ts'
+import type {
+  SubagentDeliveryAcceptedData,
+  SubagentDeliveryClaimedData,
+  SubagentReportAcceptedData,
+  SubagentReportDeliveredData,
+} from './delivery.ts'
 
 /** Attribution for a model coordinator's follow-up to one of its children. */
 export interface CoordinatorMessageSource {
@@ -111,6 +118,10 @@ declare module '@relay-harness/rlh-session/types' {
     'subagent/delivery-accepted': SubagentDeliveryAcceptedData
     /** Durable acknowledgement after the accepted message enters `user/message`. */
     'subagent/delivery-claimed': SubagentDeliveryClaimedData
+    /** Durable child-to-parent report, committed before parent inbox publication. */
+    'subagent/report-accepted': SubagentReportAcceptedData
+    /** Durable acknowledgement after the report enters the parent `user/message` log. */
+    'subagent/report-delivered': SubagentReportDeliveredData
   }
 }
 
@@ -123,6 +134,8 @@ export interface SubagentReportOptions {
   readonly delivery: SubagentReportDelivery
   /** Caller cancellation, owning authorization and admission until acceptance. */
   readonly signal: AbortSignal
+  /** Stable caller retry key for this report. */
+  readonly idempotencyKey?: string
 }
 
 /** What a caller asks for when starting a continuable background child. */
@@ -419,6 +432,23 @@ export class SubagentContinuationManager {
       yield scope.dispose
       yield () => this.drain()
     }.bind(this), 'subagents.continuations()')
+    ctx.on('session/event', (session, event) => {
+      if (event.type !== 'user/message' || event.data.source.kind !== 'subagent-report') return
+      const activation = this.activations.get(event.data.source.senderSessionId)
+      if (activation === undefined || activation.parentSession !== session.id) return
+      void Promise.resolve().then(() => {
+        const pending = pendingSubagentReports(
+          activation.handle.agent.session.events.slice(activation.handle.agent.session.header.seedLength ?? 0),
+        ).some(report => report.message.id === event.data.id)
+        if (!pending) return
+        activation.handle.agent.session.append('subagent/report-delivered', {
+          version: SUBAGENT_DELIVERY_VERSION,
+          messageId: event.data.id,
+        })
+      }).catch((error: unknown) => {
+        this.ctx.logger.warn(`subagent "${activation.childId}": report acknowledgement failed: ${String(error)}`)
+      })
+    })
   }
 
   /**
@@ -644,7 +674,6 @@ export class SubagentContinuationManager {
    * @throws {SubagentError} when the sender is unauthorized, the parent is not
    *   live, or continuation admission is closing.
    */
-  // oxlint-disable-next-line typescript/require-await -- keep rejection semantics without yielding during admission
   async reportFrom(
     child: Agent,
     content: ContentBlock[],
@@ -654,7 +683,37 @@ export class SubagentContinuationManager {
     this.assertAdmitting(child)
     const activation = this.authorizeReporter(child)
     const parent = this.resolveReportParent(child)
-    return this.deliverReport(activation, parent, content, options.delivery)
+    if (options.idempotencyKey !== undefined
+      && (options.idempotencyKey.trim() === '' || Array.from(options.idempotencyKey).length > 256)) {
+      throw new SubagentError('subagent report idempotencyKey must be 1-256 Unicode code points', 'INVALID_ARGUMENT')
+    }
+    const message = this.reportMessage(activation, content)
+    const key = options.idempotencyKey ?? message.id
+    const ownEvents = child.session.events.slice(child.session.header.seedLength ?? 0)
+    const existing = acceptedSubagentReport(ownEvents, key)
+    if (existing !== undefined) {
+      if (JSON.stringify(existing.message.content) !== JSON.stringify(message.content)
+        || existing.delivery !== options.delivery) {
+        throw new SubagentError(
+          `subagent report idempotency key ${JSON.stringify(key)} was reused with different content`,
+          'DUPLICATE_DELIVERY',
+        )
+      }
+      if (!this.parentHasMessage(parent, existing.message.id)) {
+        this.deliverReport(parent, existing.message, existing.delivery)
+      }
+      return existing.message.id
+    }
+    child.session.append('subagent/report-accepted', {
+      version: SUBAGENT_DELIVERY_VERSION,
+      idempotencyKey: key,
+      delivery: options.delivery,
+      message,
+    })
+    const durable = await this.ctx.get('sessions')?.flush(child.session) ?? false
+    if (!durable) throw new SubagentError('subagent reporting requires durable session persistence', 'CONTINUATION_UNAVAILABLE')
+    if (disposalOf(activation) === undefined) this.deliverReport(parent, message, options.delivery)
+    return message.id
   }
 
   /** Authorize only the exact Agent of one resident Activation. */
@@ -691,14 +750,12 @@ export class SubagentContinuationManager {
     return parent
   }
 
-  /** Deliver one framed report through the selected parent scheduling preset. */
-  private deliverReport(
+  /** Build one stable framed report for durable storage and parent delivery. */
+  private reportMessage(
     activation: Activation,
-    parent: Agent,
     content: ContentBlock[],
-    delivery: SubagentReportDelivery,
-  ): MessageId {
-    const message = createUserMessage({
+  ): ReturnType<typeof createUserMessage> {
+    return createUserMessage({
       content: [
         { type: 'text' as const, text: `Background subagent ${activation.childId} reported:` },
         ...content,
@@ -709,12 +766,27 @@ export class SubagentContinuationManager {
         senderSessionId: activation.childId,
       },
     })
+  }
+
+  /** Deliver one already-framed report through its stored scheduling preset. */
+  private deliverReport(
+    parent: Agent,
+    message: ReturnType<typeof createUserMessage>,
+    delivery: SubagentReportDelivery,
+  ): MessageId {
     if (delivery === 'next-step') {
       this.sendWaking(parent, message, () => { this.sendReport(parent, message, delivery) })
     } else {
       this.sendReport(parent, message, delivery)
     }
     return message.id
+  }
+
+  /** Whether the parent durable surface already contains one report receipt. */
+  private parentHasMessage(parent: Agent, messageId: MessageId): boolean {
+    return parent.session.events.some(event => event.type === 'user/message' && event.data.id === messageId)
+      || parent.inbox.nextStep.some(message => message.id === messageId)
+      || parent.inbox.nextTurn.some(message => message.id === messageId)
   }
 
   /**
@@ -1197,6 +1269,18 @@ export class SubagentContinuationManager {
           handle.agent.followup(delivery.message)
         })
         activation.announced = true
+      }
+      for (const report of pendingSubagentReports(
+        handle.agent.session.events.slice(handle.agent.session.header.seedLength ?? 0),
+      )) {
+        if (this.parentHasMessage(parent, report.message.id)) {
+          handle.agent.session.append('subagent/report-delivered', {
+            version: SUBAGENT_DELIVERY_VERSION,
+            messageId: report.message.id,
+          })
+        } else {
+          this.deliverReport(parent, report.message, report.delivery)
+        }
       }
     } catch (error: unknown) {
       // Listener exceptions are contained by the lifecycle emitter; a start

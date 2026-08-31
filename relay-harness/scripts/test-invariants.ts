@@ -17,6 +17,19 @@ import type {
 } from '@relay-harness/rlh-attachment'
 import InvariantRegistry from '@relay-harness/rlh-invariants'
 
+// jsdom implements canvas as an explicit unavailable capability: its getContext
+// reports to the virtual console and returns null. Install that same observable
+// result directly so a terminal font probe does not emit hundreds of duplicate
+// diagnostics. Canvas-behavior suites replace this method with their own precise
+// context; ordinary jsdom tests continue to exercise the product's null fallback.
+if (typeof HTMLCanvasElement !== 'undefined') {
+  Object.defineProperty(HTMLCanvasElement.prototype, 'getContext', {
+    configurable: true,
+    writable: true,
+    value: () => null,
+  })
+}
+
 declare global {
   interface ImportMeta {
     /** Lazy Vite module-glob expansion used by the Vitest setup file. */

@@ -84,7 +84,7 @@ export interface Config {
 
 Depends on: [`agentCore`](../packages/examples/agent-spine-demo/src/index.ts) · [`JsonlCompression`](../packages/session/session-persistence-jsonl/src/index.ts) · [`ToolsConfig`](#relay-harnessrlh-tools)
 
-Source: [`packages/examples/acp-demo/src/index.ts:39`](../packages/examples/acp-demo/src/index.ts)
+Source: [`packages/examples/acp-demo/src/index.ts:40`](../packages/examples/acp-demo/src/index.ts)
 
 <a id="relay-harnessrlh-agent-default-model"></a>
 
@@ -150,6 +150,8 @@ export interface Config {
    * omission defaults to {@link DEFAULT_MAX_PARALLEL_TOOL_CALLS}.
    */
   maxParallelToolCalls?: number
+  /** Aggregate pending next-turn and next-step messages admitted per Agent. */
+  maxPendingInboxMessages?: number
   /** Agents created or resumed at plugin startup. */
   agents: (AgentOptions & {
     /** Stable config label used in logs and as the fresh combined-id prefix. */
@@ -166,7 +168,7 @@ export interface Config {
 
 Depends on: [`AgentOptions`](subsystems/core.md) · [`SessionId`](subsystems/core.md)
 
-Source: [`packages/core/agent-loop/src/index.ts:255`](../packages/core/agent-loop/src/index.ts)
+Source: [`packages/core/agent-loop/src/index.ts:267`](../packages/core/agent-loop/src/index.ts)
 
 <a id="relay-harnessrlh-agent-presets"></a>
 
@@ -239,6 +241,8 @@ export interface Config {
   agents?: AgentLoopConfig['agents']
   /** Agent-loop concurrency cap; `1` is serial. */
   maxParallelToolCalls?: AgentLoopConfig['maxParallelToolCalls']
+  /** Agent-loop aggregate pending-inbox admission cap. */
+  maxPendingInboxMessages?: AgentLoopConfig['maxPendingInboxMessages']
   /** Whether the system prompt includes the fixed Harness identity (default true). */
   includeHarnessIdentity?: SystemPromptConfig['includeHarnessIdentity']
   /** Whether model history includes dynamic runtime-context snapshots (default true). */
@@ -2729,7 +2733,7 @@ export interface Config {
 }
 ```
 
-Source: [`packages/subagent/subagent/src/index.ts:133`](../packages/subagent/subagent/src/index.ts)
+Source: [`packages/subagent/subagent/src/index.ts:138`](../packages/subagent/subagent/src/index.ts)
 
 <a id="relay-harnessrlh-subagent-acp"></a>
 

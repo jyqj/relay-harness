@@ -39,6 +39,45 @@ function stubAgent(rawId: string, overrides: Partial<Agent> = {}): Agent {
 }
 
 describe('Inbox', () => {
+  it('bounds aggregate pending messages without rejecting grandfathered durable state', () => {
+    const session = Session.create(SessionId('bounded-inbox'))
+    const notifications = { inserted: () => {}, discarded: () => {}, claimed: () => {} }
+    const first = createUserMessage({ content: [{ type: 'text', text: 'first' }], source: { kind: 'user' } })
+    const second = createUserMessage({ content: [{ type: 'text', text: 'second' }], source: { kind: 'user' } })
+    const third = createUserMessage({ content: [{ type: 'text', text: 'third' }], source: { kind: 'user' } })
+    const inbox = new Inbox(session, notifications, 2)
+    inbox.append('next-turn', first)
+    inbox.append('next-step', second)
+    const beforeRefusal = session.events.length
+
+    expect(() => { inbox.append('next-turn', third) })
+      .toThrow('agent inbox exceeds 2 pending messages')
+    expect(session.events).toHaveLength(beforeRefusal)
+    expect(inbox.nextTurn).toEqual([first])
+    expect(inbox.nextStep).toEqual([second])
+
+    inbox.remove(second.id)
+    inbox.append('next-turn', third)
+    expect(inbox.nextTurn).toEqual([first, third])
+
+    // A lower cap after restart must not make historical state unloadable; it
+    // only refuses new insertions while the projection remains above the cap.
+    const restored = new Inbox(session, notifications, 1)
+    expect(restored.nextTurn).toEqual([first, third])
+    expect(() => { restored.append('next-step', second) })
+      .toThrow('agent inbox exceeds 1 pending messages')
+    expect(restored.remove(first.id)).toBe(true)
+    expect(restored.replace(third.id, second)).toBe(true)
+  })
+
+  it('rejects invalid inbox capacities', () => {
+    const session = Session.create(SessionId('invalid-inbox-capacity'))
+    const notifications = { inserted: () => {}, discarded: () => {}, claimed: () => {} }
+    expect(() => new Inbox(session, notifications, 0)).toThrow('positive safe integer')
+    expect(() => new Inbox(session, notifications, Number.MAX_SAFE_INTEGER + 1))
+      .toThrow('positive safe integer')
+  })
+
   it('rejects an invalid durable splice during reconstruction', () => {
     const session = Session.create(SessionId('invalid-inbox-replay'))
     session.append('agent/inbox/spliced', {

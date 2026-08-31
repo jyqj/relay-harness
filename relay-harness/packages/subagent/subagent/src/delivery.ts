@@ -19,6 +19,20 @@ export interface SubagentDeliveryClaimedData {
   readonly messageId: MessageId
 }
 
+/** One child-to-parent report committed before parent inbox publication. */
+export interface SubagentReportAcceptedData {
+  readonly version: typeof SUBAGENT_DELIVERY_VERSION
+  readonly idempotencyKey: string
+  readonly delivery: 'quiet' | 'next-step'
+  readonly message: UserMessage
+}
+
+/** Receipt that the parent model-visible log contains the report message. */
+export interface SubagentReportDeliveredData {
+  readonly version: typeof SUBAGENT_DELIVERY_VERSION
+  readonly messageId: MessageId
+}
+
 /**
  * Fold accepted entries not yet represented by an acknowledgement or user message.
  * @param events - one child's own durable event suffix.
@@ -68,4 +82,32 @@ export function subagentDeliveryNeedsClaim(
     if (event.type === 'subagent/delivery-claimed' && event.data.messageId === messageId) accepted = false
   }
   return accepted
+}
+
+/**
+ * Fold child reports not yet acknowledged in the child log.
+ * @param events - one child's own durable event suffix.
+ * @returns pending reports in acceptance order.
+ */
+export function pendingSubagentReports(events: readonly SessionEvent[]): SubagentReportAcceptedData[] {
+  const accepted = new Map<MessageId, SubagentReportAcceptedData>()
+  for (const event of events) {
+    if (event.type === 'subagent/report-accepted') accepted.set(event.data.message.id, event.data)
+    if (event.type === 'subagent/report-delivered') accepted.delete(event.data.messageId)
+  }
+  return [...accepted.values()]
+}
+
+/**
+ * Find one accepted report by caller retry key.
+ * @param events - one child's own durable event suffix.
+ * @param idempotencyKey - caller retry identity.
+ * @returns the original report, or undefined when unused.
+ */
+export function acceptedSubagentReport(
+  events: readonly SessionEvent[],
+  idempotencyKey: string,
+): SubagentReportAcceptedData | undefined {
+  return events.findLast(event => event.type === 'subagent/report-accepted'
+    && event.data.idempotencyKey === idempotencyKey)?.data as SubagentReportAcceptedData | undefined
 }

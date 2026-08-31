@@ -12,7 +12,7 @@ The public subprocess seam correctly promises awaited quiescence during normal d
 
 ## Decision
 
-`LocalSubprocessRuntime` installs one synchronous Node `exit` listener in its Cordis effect. The same effect removes the listener only after normal disposal settles. Ordinary and terminal handles remain in the service's existing live sets while asynchronous cleanup is pending, so a shorter outer exit bound still sees and force-terminates them. If awaited disposal reports a cleanup failure, the service invokes the same synchronous final operations before clearing the sets and removing the listener.
+`LocalSubprocessRuntime` joins one synchronous Node `exit` listener shared by every active instance in the process. The first owner installs it ahead of existing listeners; the last owner removes it only after normal disposal settles. The listener walks the active providers, whose ordinary and terminal handles remain in their existing live sets while asynchronous cleanup is pending, so a shorter outer exit bound still sees and force-terminates them. If awaited disposal reports a cleanup failure, that provider invokes the same synchronous final operations before clearing its sets and leaving the shared listener.
 
 The listener uses local-only final operations that are absent from the public `SubprocessHandle` and `SubprocessTerminalHandle` interfaces:
 
@@ -32,7 +32,7 @@ Normal disposal remains the [subprocess seam's](../architecture/2026-07-26-subpr
 
 A parent test starts an isolated TypeScript host through the repository source launcher, waits until exact root and descendant process identities are observable, then allows the host to take each fatal path. Direct exit, default uncaught exception, and default unhandled rejection cover ordinary TERM-resistant trees; direct exit also covers a real terminal root and descendant. The parent asserts the original host exit category and waits for every recorded process to disappear, while failure cleanup targets only recorded identities or the recorded Windows tree.
 
-Unit evidence pins synchronous POSIX group and Windows taskkill delivery, terminal scans before and after the PTY root kill, repeated finalization, per-target failure containment, normal TERM-to-KILL disposal, live-set retention during pending disposal, and listener removal after disposal.
+Unit evidence pins synchronous POSIX group and Windows taskkill delivery, terminal scans before and after the PTY root kill, repeated finalization, per-target failure containment, normal TERM-to-KILL disposal, live-set retention during pending disposal, one listener across twelve concurrent Context owners, and listener removal after the last disposal.
 
 ## Alternatives considered
 
@@ -46,6 +46,6 @@ Unit evidence pins synchronous POSIX group and Windows taskkill delivery, termin
 
 ## Consequences
 
-Each active local subprocess service contributes one process-global exit listener, removed with the service effect. Fatal exit gives up grace, output draining, and an in-process quiescence proof in exchange for issuing the strongest available local termination before the host disappears. Normal disposal keeps those guarantees and costs unchanged.
+Active local subprocess services share one process-global exit listener, which fans out over the active providers and is removed with the last service effect. Fatal exit gives up grace, output draining, and an in-process quiescence proof in exchange for issuing the strongest available local termination before the host disappears. Normal disposal keeps those guarantees and costs unchanged.
 
 The listener cannot cover failures that do not execute JavaScript, and it cannot discover a terminal descendant that escaped before the provider ever observed it; that separate ownership gap remains tracked by Issue #1726.

@@ -127,7 +127,12 @@ export type {
 export type { ContinuableSetupContribution } from './activation-setup-registry.ts'
 export type { SubagentDescendantListEntry, SubagentListEntry } from './list-children.ts'
 export { SUBAGENT_DELIVERY_VERSION } from './delivery.ts'
-export type { SubagentDeliveryAcceptedData, SubagentDeliveryClaimedData } from './delivery.ts'
+export type {
+  SubagentDeliveryAcceptedData,
+  SubagentDeliveryClaimedData,
+  SubagentReportAcceptedData,
+  SubagentReportDeliveredData,
+} from './delivery.ts'
 
 /** Deployment capacity shared by every subagent provider and consumer. */
 export interface Config {

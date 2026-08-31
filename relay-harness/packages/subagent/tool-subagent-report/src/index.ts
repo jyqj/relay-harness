@@ -77,6 +77,10 @@ export function installReportTool(
           required: true,
           description: 'Actionable content for your parent; summarize conclusions and reference relevant shared paths.',
         },
+        idempotency_key: {
+          type: 'string',
+          description: 'Stable retry key for this report. Reuse it only when retrying the same output.',
+        },
       },
       output: {
         schema: {
@@ -98,6 +102,7 @@ export function installReportTool(
         const messageId = await ctx.subagents.reportFrom(exec.agent as Agent, content, {
           delivery,
           signal: exec.signal,
+          ...args.idempotency_key === undefined ? {} : { idempotencyKey: args.idempotency_key },
         })
         return { messageId }
       },

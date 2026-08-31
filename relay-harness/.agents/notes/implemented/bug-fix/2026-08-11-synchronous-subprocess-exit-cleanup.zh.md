@@ -12,7 +12,7 @@ Status: implemented
 
 ## Decision
 
-`LocalSubprocessRuntime`在自身 Cordis effect中安装一个同步 Node `exit` listener。只有正常 dispose结算后，同一 effect才移除该 listener。异步清理仍在等待时，普通和 terminal handle继续保留在服务已有的存活集合中，因此更短的外层退出上限仍能看到并强制终止它们。等待中的 dispose报告清理失败时，服务会在清空集合并移除 listener前调用同一组同步最终操作。
+`LocalSubprocessRuntime` 加入由进程内全部有效实例共享的一个同步 Node `exit` listener。第一个 owner 把它安装到既有 listener 之前；最后一个 owner 只在正常 dispose 结算后移除它。该 listener 遍历有效 provider；异步清理仍在等待时，各 provider 的普通和 terminal handle 继续保留在已有存活集合中，因此更短的外层退出上限仍能看到并强制终止它们。等待中的 dispose 报告清理失败时，该 provider 会在清空集合并退出共享 listener 前调用同一组同步最终操作。
 
 该 listener使用本地实现私有的最终操作；公共 `SubprocessHandle`和 `SubprocessTerminalHandle`接口不包含这些操作：
 
@@ -32,7 +32,7 @@ Status: implemented
 
 父测试通过仓库 source launcher启动隔离的 TypeScript宿主，等待精确 root与后代进程身份可观察后，再允许宿主进入各条致命路径。直接退出、默认未捕获异常和默认未处理 rejection覆盖忽略 TERM的普通进程树；直接退出还覆盖真实 terminal root与后代。父测试断言原始宿主退出类别，并等待所有已记录进程消失；失败清理只针对已记录身份或已记录的 Windows进程树。
 
-单元证据固定同步 POSIX进程组与 Windows taskkill投递、PTY root终止前后的 terminal扫描、重复最终清理、逐目标失败包含、正常 TERM到 KILL dispose、dispose等待期间保留存活集合，以及 dispose后移除 listener。
+单元证据固定同步 POSIX 进程组与 Windows taskkill 投递、PTY root 终止前后的 terminal 扫描、重复最终清理、逐目标失败包含、正常 TERM 到 KILL dispose、dispose 等待期间保留存活集合、十二个并发 Context owner 共享一个 listener，以及最后一次 dispose 后移除 listener。
 
 ## Alternatives considered
 
@@ -46,6 +46,6 @@ Status: implemented
 
 ## Consequences
 
-每个有效的本地 subprocess service都会贡献一个进程全局 exit listener，并随服务 effect移除。致命退出放弃宽限、输出排空与进程内停稳证明，以换取宿主消失前发出本地可用的最强终止操作。正常 dispose的保证与成本保持不变。
+有效的本地 subprocess service 共享一个进程全局 exit listener；它遍历有效 provider，并随最后一个 service effect 移除。致命退出放弃宽限、输出排空与进程内停稳证明，以换取宿主消失前发出本地可用的最强终止操作。正常 dispose 的保证与成本保持不变。
 
 listener无法覆盖不执行 JavaScript的故障，也无法发现 provider首次观察前已经逃逸的 terminal后代；该独立所有权缺口仍由 Issue #1726跟踪。

@@ -4,6 +4,7 @@ import { mkdtemp } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { Context } from '@relay-harness/cordis'
+import { ndJsonStream, type Stream } from '@agentclientprotocol/sdk'
 import Loader from '@relay-harness/cordis-plugin-loader'
 import { agentEvents } from '@relay-harness/rlh-agent'
 import { TOOL_ORDER_REST } from '@relay-harness/rlh-system-prompt'
@@ -21,7 +22,14 @@ import * as acpAgent from '../src/index.ts'
  * ACP operations end-to-end) is the keyless bin smoke in `load-path.e2e.ts`;
  * this spec asserts the composition and the persistenceRoot default branch.
  */
-async function mount(config: acpAgent.Config, withBash = false): Promise<Context> {
+function isolatedAcpStream(): Stream {
+  return ndJsonStream(
+    new WritableStream<Uint8Array>(),
+    new ReadableStream<Uint8Array>(),
+  )
+}
+
+async function mount(config: acpAgent.Config, withBash = false, throughPlugin = false): Promise<Context> {
   const ctx = new Context()
   if (withBash) {
     ctx.provide('shell', {
@@ -32,7 +40,8 @@ async function mount(config: acpAgent.Config, withBash = false): Promise<Context
     })
   }
   config.persistenceRoot ??= await mkdtemp(join(tmpdir(), 'rlh-acp-demo-persistence-'))
-  await ctx.plugin(acpAgent, config)
+  if (throughPlugin) await ctx.plugin(acpAgent, config)
+  else await acpAgent.apply(ctx, config, { stream: isolatedAcpStream() })
   return ctx
 }
 
@@ -91,7 +100,7 @@ describe('rlh-acp-demo composition', () => {
       persistenceCompression: 'none',
       skills: await isolatedSkillsConfig(),
       workspaceContext: false,
-    })
+    }, false, true)
     expect(ctx.get('agents')).toBeDefined()
     expect(ctx.get('sessions')).toBeDefined()
     expect(ctx.get('sessionPersistence')).toBeDefined()
@@ -133,7 +142,7 @@ describe('rlh-acp-demo composition', () => {
       model: 'mock',
       skills: await isolatedSkillsConfig(),
       workspaceContext: false,
-    })
+    }, { stream: isolatedAcpStream() })
     expect(ctx.get('sessionPersistence')).toBeDefined()
     await ctx.fiber.dispose()
   })
@@ -154,7 +163,11 @@ describe('rlh-acp-demo composition', () => {
   it('uses default skill config when apply is called directly without skills', async () => {
     await withIsolatedSkillHomes(async () => {
       const ctx = new Context()
-      await acpAgent.apply(ctx, { provider: 'mock', model: 'mock', workspaceContext: false })
+      await acpAgent.apply(
+        ctx,
+        { provider: 'mock', model: 'mock', workspaceContext: false },
+        { stream: isolatedAcpStream() },
+      )
       expect(ctx.skills).toBeDefined()
       expect(await ctx.skills.list()).toEqual([])
       await ctx.fiber.dispose()

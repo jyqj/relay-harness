@@ -8,17 +8,42 @@ import threading
 import time
 import uuid
 from collections import deque
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, TypeAlias, TypeVar
+from typing import TypeAlias, TypeVar
 
 from pydantic import BaseModel
 
-from .errors import JsonRpcError, TransportClosedError
-from .models import IncomingRequest, InitializeResponse, JsonObject, JsonValue, Notification
+from .errors import (
+    JsonRpcError,
+    JsonRpcFrameTooLargeError,
+    JsonRpcWriteQueueOverflowError,
+    NotificationQueueOverflowError,
+    TransportClosedError,
+)
+from .models import (
+    IncomingRequest,
+    InitializeResponse,
+    JsonObject,
+    JsonValue,
+    Notification,
+)
 
 ModelT = TypeVar("ModelT", bound=BaseModel)
 NotificationFilter: TypeAlias = Callable[[Notification], bool]
+
+DEFAULT_JSON_RPC_MAX_FRAME_BYTES = 64 * 1024 * 1024
+DEFAULT_JSON_RPC_MAX_QUEUED_WRITE_BYTES = 64 * 1024 * 1024 + 1
+DEFAULT_NOTIFICATION_QUEUE_SIZE = 4096
+_READ_CHUNK_BYTES = 64 * 1024
+
+
+@dataclass(slots=True)
+class _NotificationSubscriber:
+    notifications: queue.Queue[Notification]
+    predicate: NotificationFilter | None
+    failure: BaseException | None = None
 
 
 @dataclass(slots=True)
@@ -32,6 +57,9 @@ class HarnessConfig:
     env: dict[str, str] | None = None
     request_timeout_seconds: float | None = None
     shutdown_timeout_seconds: float | None = 1.0
+    max_frame_bytes: int = DEFAULT_JSON_RPC_MAX_FRAME_BYTES
+    max_queued_write_bytes: int = DEFAULT_JSON_RPC_MAX_QUEUED_WRITE_BYTES
+    max_notification_queue_size: int = DEFAULT_NOTIFICATION_QUEUE_SIZE
 
 
 class HarnessClient:
@@ -39,14 +67,21 @@ class HarnessClient:
 
     def __init__(self, config: HarnessConfig | None = None) -> None:
         self.config = config or HarnessConfig()
-        self._proc: subprocess.Popen[str] | None = None
+        self._max_frame_bytes = _positive_int(self.config.max_frame_bytes, "max_frame_bytes")
+        self._max_queued_write_bytes = _positive_int(
+            self.config.max_queued_write_bytes, "max_queued_write_bytes"
+        )
+        self._max_notification_queue_size = _positive_int(
+            self.config.max_notification_queue_size, "max_notification_queue_size"
+        )
+        self._proc: subprocess.Popen[bytes] | None = None
         self._lock = threading.Lock()
         self._write_lock = threading.Lock()
+        self._write_budget_lock = threading.Lock()
+        self._queued_write_bytes = 0
         self._responses: dict[str, queue.Queue[JsonValue | BaseException]] = {}
         self._notifications: queue.Queue[Notification | BaseException] = queue.Queue()
-        self._notification_subscribers: dict[
-            str, tuple[queue.Queue[Notification | BaseException], NotificationFilter | None]
-        ] = {}
+        self._notification_subscribers: dict[str, _NotificationSubscriber] = {}
         self._session_parents: dict[str, str] = {}
         self._requests: queue.Queue[IncomingRequest | BaseException] = queue.Queue()
         self._stderr_lines: deque[str] = deque(maxlen=400)
@@ -75,11 +110,10 @@ class HarnessClient:
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            text=True,
-            encoding="utf-8",
+            text=False,
             cwd=None if self.config.cwd is None else str(Path(self.config.cwd).resolve()),
             env=env,
-            bufsize=1,
+            bufsize=0,
         )
         self._start_reader_thread()
         self._start_stderr_thread()
@@ -194,10 +228,13 @@ class HarnessClient:
         notification_filter: NotificationFilter | None = None,
     ) -> "NotificationSubscription":
         subscription_id = str(uuid.uuid4())
-        notifications: queue.Queue[Notification | BaseException] = queue.Queue()
+        state = _NotificationSubscriber(
+            notifications=queue.Queue(maxsize=self._max_notification_queue_size),
+            predicate=notification_filter,
+        )
         with self._lock:
-            self._notification_subscribers[subscription_id] = (notifications, notification_filter)
-        return NotificationSubscription(self, subscription_id, notifications)
+            self._notification_subscribers[subscription_id] = state
+        return NotificationSubscription(self, subscription_id, state)
 
     def subscribe_session_notifications(self, session_id: str) -> "NotificationSubscription":
         """Subscribe to a session and descendants discovered from subagent lifecycle edges."""
@@ -296,16 +333,33 @@ class HarnessClient:
         return item
 
     def _write_message(self, message: JsonObject) -> None:
+        payload = (json.dumps(message, separators=(",", ":")) + "\n").encode("utf-8")
+        frame_bytes = len(payload) - 1
+        if frame_bytes > self._max_frame_bytes:
+            raise JsonRpcFrameTooLargeError(frame_bytes, self._max_frame_bytes)
         proc = self._proc
         if proc is None or proc.stdin is None:
             raise TransportClosedError("Relay Harness runtime is not running")
+        with self._write_budget_lock:
+            retained = self._queued_write_bytes + len(payload)
+            if retained > self._max_queued_write_bytes:
+                raise JsonRpcWriteQueueOverflowError(retained, self._max_queued_write_bytes)
+            self._queued_write_bytes = retained
         try:
-            payload = json.dumps(message, separators=(",", ":")) + "\n"
             with self._write_lock:
-                proc.stdin.write(payload)
+                view = memoryview(payload)
+                offset = 0
+                while offset < len(view):
+                    written = proc.stdin.write(view[offset:])
+                    if written is None or written <= 0:
+                        raise BrokenPipeError("runtime stdin write made no progress")
+                    offset += written
                 proc.stdin.flush()
         except Exception as exc:
             raise self._runtime_closed_error("Failed to write to Relay Harness runtime") from exc
+        finally:
+            with self._write_budget_lock:
+                self._queued_write_bytes -= len(payload)
 
     def _start_reader_thread(self) -> None:
         self._reader_thread = threading.Thread(target=self._reader_loop, name="rlh-runtime-reader", daemon=True)
@@ -319,26 +373,53 @@ class HarnessClient:
         proc = self._proc
         if proc is None or proc.stdout is None:
             return
+        failure: BaseException | None = None
+        buffered = bytearray()
         try:
-            for line in proc.stdout:
-                if not line.strip():
-                    continue
+            while True:
+                chunk = os.read(proc.stdout.fileno(), _READ_CHUNK_BYTES)
+                if not chunk:
+                    break
+                buffered.extend(chunk)
+                while True:
+                    newline = buffered.find(b"\n")
+                    if newline < 0:
+                        break
+                    raw_frame = bytes(buffered[:newline])
+                    del buffered[: newline + 1]
+                    if len(raw_frame) > self._max_frame_bytes:
+                        raise JsonRpcFrameTooLargeError(len(raw_frame), self._max_frame_bytes)
+                    frame = raw_frame.strip()
+                    if not frame:
+                        continue
+                    try:
+                        message = json.loads(frame.decode("utf-8"))
+                    except (UnicodeDecodeError, json.JSONDecodeError):
+                        continue
+                    self._handle_message(message)
+                if len(buffered) > self._max_frame_bytes:
+                    raise JsonRpcFrameTooLargeError(len(buffered), self._max_frame_bytes)
+            tail = bytes(buffered).strip()
+            if len(tail) > self._max_frame_bytes:
+                raise JsonRpcFrameTooLargeError(len(tail), self._max_frame_bytes)
+            if tail:
                 try:
-                    message = json.loads(line)
-                except json.JSONDecodeError:
-                    continue
-                self._handle_message(message)
+                    self._handle_message(json.loads(tail.decode("utf-8")))
+                except (UnicodeDecodeError, json.JSONDecodeError):
+                    pass
         except BaseException as exc:
-            self._fail_waiters(exc)
+            failure = exc
         finally:
-            self._fail_waiters(self._runtime_closed_error("Relay Harness runtime stdout closed"))
+            self._fail_waiters(
+                failure or self._runtime_closed_error("Relay Harness runtime stdout closed")
+            )
 
     def _stderr_loop(self) -> None:
         proc = self._proc
         if proc is None or proc.stderr is None:
             return
         for line in proc.stderr:
-            self._stderr_lines.append(line.rstrip())
+            self._stderr_lines.append(line.decode("utf-8", errors="replace").rstrip())
 
     def _handle_message(self, message: object) -> None:
         if not isinstance(message, dict):
@@ -367,18 +448,21 @@ class HarnessClient:
                 self._record_session_relationship_locked(notification)
                 subscribers = list(self._notification_subscribers.items())
             delivered = False
-            for subscription_id, (subscriber, predicate) in subscribers:
+            for subscription_id, subscriber in subscribers:
                 try:
-                    matches = predicate is None or predicate(notification)
+                    matches = subscriber.predicate is None or subscriber.predicate(notification)
                 except BaseException as exc:
-                    with self._lock:
-                        current = self._notification_subscribers.get(subscription_id)
-                        if current is not None and current[0] is subscriber:
-                            self._notification_subscribers.pop(subscription_id, None)
-                    subscriber.put(exc)
+                    self._fail_subscription(subscription_id, subscriber, exc)
                     continue
                 if matches:
-                    subscriber.put(notification)
+                    try:
+                        subscriber.notifications.put_nowait(notification)
+                    except queue.Full:
+                        self._fail_subscription(
+                            subscription_id,
+                            subscriber,
+                            NotificationQueueOverflowError(self._max_notification_queue_size),
+                        )
                     delivered = True
             if not delivered:
                 self._notifications.put(notification)
@@ -391,8 +475,8 @@ class HarnessClient:
             self._notification_subscribers.clear()
         for waiter in waiters:
             waiter.put(exc)
-        for subscriber, _predicate in subscribers:
-            subscriber.put(exc)
+        for subscriber in subscribers:
+            subscriber.failure = exc
         self._notifications.put(exc)
         self._requests.put(exc)
 
@@ -457,6 +541,19 @@ class HarnessClient:
         with self._lock:
             self._notification_subscribers.pop(subscription_id, None)
 
+    def _fail_subscription(
+        self,
+        subscription_id: str,
+        subscriber: _NotificationSubscriber,
+        failure: BaseException,
+    ) -> None:
+        with self._lock:
+            current = self._notification_subscribers.get(subscription_id)
+            if current is not subscriber:
+                return
+            self._notification_subscribers.pop(subscription_id, None)
+            subscriber.failure = failure
+
     def _record_session_relationship_locked(self, notification: Notification) -> None:
         if notification.method != "subagent.started":
             return
@@ -509,11 +606,11 @@ class NotificationSubscription:
         self,
         client: HarnessClient,
         subscription_id: str,
-        notifications: queue.Queue[Notification | BaseException],
+        state: _NotificationSubscriber,
     ) -> None:
         self._client = client
         self._subscription_id = subscription_id
-        self._notifications = notifications
+        self._state = state
         self._closed = False
 
     def __enter__(self) -> "NotificationSubscription":
@@ -529,19 +626,21 @@ class NotificationSubscription:
         self._client._unsubscribe_notifications(self._subscription_id)
 
     def next(self) -> Notification:
-        item = self._notifications.get()
-        if isinstance(item, BaseException):
-            raise item
-        return item
+        while True:
+            try:
+                return self._state.notifications.get(timeout=0.05)
+            except queue.Empty:
+                if self._state.failure is not None:
+                    raise self._state.failure
 
     def drain(self, on_notification: Callable[[Notification], None]) -> None:
         while True:
             try:
-                item = self._notifications.get_nowait()
+                item = self._state.notifications.get_nowait()
             except queue.Empty:
+                if self._state.failure is not None:
+                    raise self._state.failure
                 return
-            if isinstance(item, BaseException):
-                raise item
             on_notification(item)
 
 
@@ -555,3 +654,9 @@ class _ShutdownResponse(BaseModel):
 
 def _int_or_none(value: object) -> int | None:
     return value if isinstance(value, int) else None
+
+
+def _positive_int(value: object, name: str) -> int:
+    if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
+        raise ValueError(f"{name} must be a positive integer")
+    return value

@@ -746,7 +746,7 @@ Source: [`packages/core/session/src/types.ts:272`](../packages/core/session/src/
 'subagent/delivery-accepted': SubagentDeliveryAcceptedData
 ```
 
-Source: [`packages/subagent/subagent/src/continuation.ts:111`](../packages/subagent/subagent/src/continuation.ts)
+Source: [`packages/subagent/subagent/src/continuation.ts:118`](../packages/subagent/subagent/src/continuation.ts)
 
 <a id="subagentdelivery-claimed--log-only"></a>
 
@@ -757,7 +757,7 @@ Source: [`packages/subagent/subagent/src/continuation.ts:111`](../packages/subag
 'subagent/delivery-claimed': SubagentDeliveryClaimedData
 ```
 
-Source: [`packages/subagent/subagent/src/continuation.ts:113`](../packages/subagent/subagent/src/continuation.ts)
+Source: [`packages/subagent/subagent/src/continuation.ts:120`](../packages/subagent/subagent/src/continuation.ts)
 
 <a id="subagentdescriptor--log-only"></a>
 
@@ -775,6 +775,28 @@ Source: [`packages/subagent/subagent/src/continuation.ts:113`](../packages/subag
 ```
 
 Source: [`packages/subagent/subagent/src/descriptor.ts:37`](../packages/subagent/subagent/src/descriptor.ts)
+
+<a id="subagentreport-accepted--log-only"></a>
+
+#### `subagent/report-accepted` — log-only
+
+```ts persistence-catalog
+/** Durable child-to-parent report, committed before parent inbox publication. */
+'subagent/report-accepted': SubagentReportAcceptedData
+```
+
+Source: [`packages/subagent/subagent/src/continuation.ts:122`](../packages/subagent/subagent/src/continuation.ts)
+
+<a id="subagentreport-delivered--log-only"></a>
+
+#### `subagent/report-delivered` — log-only
+
+```ts persistence-catalog
+/** Durable acknowledgement after the report enters the parent `user/message` log. */
+'subagent/report-delivered': SubagentReportDeliveredData
+```
+
+Source: [`packages/subagent/subagent/src/continuation.ts:124`](../packages/subagent/subagent/src/continuation.ts)
 
 ### `team/*`
 
