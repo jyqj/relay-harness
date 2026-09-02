@@ -1,5 +1,5 @@
 /* Context-occupancy ring beside the send button plus its click-open breakdown
-   panel (menu surface: r12, inverted hairline, shadow-lv3). */
+   panel (menu surface: panel radius, inverted hairline, shadow-lv3). */
 
 .root {
   position: relative;
@@ -46,7 +46,7 @@
   width: 264px;
   padding: 12px;
   border: 1px solid var(--rlw-alias-border-inverted);
-  border-radius: 12px;
+  border-radius: var(--rlw-radius-panel);
   background: var(--rlw-specific-menu);
   box-shadow: var(--rlw-shadow-lv3);
   font-size: 12px;

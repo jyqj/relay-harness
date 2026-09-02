@@ -85,7 +85,7 @@
 }
 
 .root {
-  position: relative; /* sweep-glare overlay anchor */
+  position: relative; /* running-rail overlay anchor */
   overflow: hidden;
   display: flex;
   align-items: center;
@@ -93,27 +93,36 @@
   min-width: 0;
 }
 
-/* Running sweep glare — same shimmer pattern as ToolRow. */
+/* Running rail — the same 1.5px bottom band as ToolRow's running card, on the
+   shared 1.4s linear cycle, so every running tool row reads as one tempo. */
 .root[data-state='running']::after {
   content: '';
   position: absolute;
-  top: 0;
   bottom: 0;
   left: 0;
-  width: 300px;
+  width: 100%;
+  height: 1.5px;
   background: linear-gradient(
     90deg,
     transparent 0%,
-    color-mix(in srgb, var(--rlw-alias-bg-base) 60%, transparent) 55%,
+    color-mix(in srgb, var(--rlw-alias-button-info-fill) 45%, transparent) 35%,
+    var(--rlw-alias-button-info-fill) 50%,
+    color-mix(in srgb, var(--rlw-alias-button-info-fill) 45%, transparent) 65%,
     transparent 100%
   );
-  animation: rlh-bash-row-sweep 2.6s ease-out infinite;
+  animation: rlh-bash-row-track 1.4s linear infinite;
   pointer-events: none;
 }
 
-@keyframes rlh-bash-row-sweep {
-  0% { left: -300px; }
-  90%, 100% { left: 100%; }
+@keyframes rlh-bash-row-track {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(100%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .root[data-state='running']::after {
+    animation: none;
+  }
 }
 
 .leading {

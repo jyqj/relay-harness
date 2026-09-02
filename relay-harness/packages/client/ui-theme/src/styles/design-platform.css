@@ -164,17 +164,22 @@ body {
   --rlw-alias-bg-mask-3: rgba(0, 0, 0, 0.48);
   --rlw-alias-bg-mask-photo: rgba(0, 0, 0, 0.88);
   --rlw-alias-bg-mask-drop: rgba(255, 255, 255, 0.7);
-  --rlw-alias-bg-module-platform: var(--rlw-static-neutral-bluish-60);
-  --rlw-alias-bg-multi-select: var(--rlw-static-neutral-bluish-60);
+  /* Light surfaces hug the background (a tinted page reads cleaner than a
+     grey one); the input surface is the brightest thing on screen. */
+  --rlw-alias-bg-module-platform: var(--rlw-static-neutral-bluish-50);
+  --rlw-alias-bg-multi-select: var(--rlw-static-neutral-bluish-50);
   --rlw-alias-bg-overlay: var(--rlw-static-neutral-bluish-150);
   --rlw-alias-bg-skeleton: rgba(0, 0, 0, 0.04);
+  /* Rules step well clear of the near-white surfaces — a border paler than
+     the surface it divides separates nothing, so light lines run at or above
+     the dark ladder instead of under it. */
   --rlw-alias-border-inverted2: rgba(0, 0, 0, 0);
   --rlw-alias-border-inverted: rgba(0, 0, 0, 0);
-  --rlw-alias-border-l1: rgba(0, 0, 0, 0.04);
+  --rlw-alias-border-l1: rgba(0, 0, 0, 0.07);
   --rlw-alias-border-l2-darkmode-thin: rgba(0, 0, 0, 0.1);
-  --rlw-alias-border-l2: rgba(0, 0, 0, 0.1);
-  --rlw-alias-border-l3: rgba(0, 0, 0, 0.12);
-  --rlw-alias-border-l4: rgba(0, 0, 0, 0.16);
+  --rlw-alias-border-l2: rgba(0, 0, 0, 0.12);
+  --rlw-alias-border-l3: rgba(0, 0, 0, 0.16);
+  --rlw-alias-border-l4: rgba(0, 0, 0, 0.2);
   --rlw-alias-brand-primary-invert: var(--rlw-static-neutral-bluish-1000);
   --rlw-alias-brand-primary-new-colorprimary-new-color: rgb(65, 118, 230);
   --rlw-alias-brand-primary: var(--rlw-static-neutral-bluish-1000);
@@ -198,7 +203,7 @@ body {
   --rlw-alias-interactive-bg-hover-accent: rgba(38, 49, 72, 0.14);
   --rlw-alias-interactive-bg-hover-danger: rgba(236, 19, 19, 0.05);
   --rlw-alias-interactive-bg-hover-solid: var(--rlw-static-neutral-bluish-75);
-  --rlw-alias-interactive-bg-hover: rgba(38, 49, 72, 0.06);
+  --rlw-alias-interactive-bg-hover: rgba(38, 49, 72, 0.05);
   --rlw-alias-label-caption: var(--rlw-static-neutral-bluish-400);
   --rlw-alias-label-dimmed: var(--rlw-static-neutral-bluish-200);
   --rlw-alias-label-primary-bluish: var(--rlw-static-blue-900);
@@ -237,7 +242,7 @@ body {
   --rlw-specific-bubble: var(--rlw-static-relay-50);
   --rlw-alias-glass-opacity: 80%;
   --rlw-specific-input-major: color-mix(in srgb, var(--rlw-static-neutral-bluish-00) var(--rlw-alias-glass-opacity), transparent);
-  --rlw-specific-login-input: var(--rlw-static-neutral-bluish-50);
+  --rlw-specific-login-input: var(--rlw-static-neutral-bluish-00);
   --rlw-specific-menu: color-mix(in srgb, var(--rlw-alias-bg-layer-3) var(--rlw-alias-glass-opacity), transparent);
   --rlw-specific-selector: var(--rlw-static-neutral-bluish-60);
   --rlw-specific-sidebar-fill: var(--rlw-static-neutral-bluish-50);
@@ -245,21 +250,32 @@ body {
   --rlw-specific-sidebar-nav-item-active: var(--rlw-static-neutral-bluish-100);
   --rlw-specific-sidebar-nav-item-hover: var(--rlw-static-neutral-bluish-75);
   --rlw-specific-tip: var(--rlw-static-neutral-bluish-60);
+  /* Composer radii, shared by both themes: panels chamfer gently, the
+     composer reads as one soft object. */
+  --rlw-radius-panel: 12px;
+  --rlw-radius-composer: 18px;
+  /* The composer floats: a tight contact line plus a long soft drop, deepened
+     while focused (see --rlw-shadow-composer-focus). */
+  --rlw-shadow-composer: 0 1px 2px rgb(0 0 0 / 0.04), 0 10px 30px -14px rgb(0 0 0 / 0.16);
+  --rlw-shadow-composer-focus: 0 1px 2px rgb(0 0 0 / 0.05), 0 14px 36px -14px rgb(0 0 0 / 0.22);
 }
 
 body[data-rl-dark-theme] {
   --rlw-alias-bg-base: var(--rlw-static-neutral-bluish-950);
-  --rlw-alias-bg-layer-1: var(--rlw-static-neutral-bluish-875);
-  --rlw-alias-bg-layer-2: var(--rlw-static-neutral-bluish-850);
+  --rlw-alias-bg-layer-1: var(--rlw-static-neutral-bluish-900);
+  --rlw-alias-bg-layer-2: var(--rlw-static-neutral-bluish-875);
   --rlw-alias-terminal-pane: var(--rlw-alias-bg-base);
-  --rlw-alias-bg-layer-3: var(--rlw-static-neutral-bluish-800);
+  --rlw-alias-bg-layer-3: var(--rlw-static-neutral-bluish-850);
   --rlw-alias-bg-mask-1: rgba(0, 0, 0, 0.5);
   --rlw-alias-bg-mask-2: rgba(0, 0, 0, 0.2);
   --rlw-alias-bg-mask-3: rgba(0, 0, 0, 0.48);
   --rlw-alias-bg-mask-photo: rgba(0, 0, 0, 0.88);
   --rlw-alias-bg-mask-drop: rgba(39, 39, 48, 0.7);
-  --rlw-alias-bg-module-platform: var(--rlw-static-neutral-bluish-800);
-  --rlw-alias-bg-multi-select: var(--rlw-static-neutral-850);
+  /* Dark surfaces lift off the page in small even steps toward the
+     foreground (950 base → 900 / 875 / 850), so elevation reads as depth
+     rather than as contrast between neighbouring panels. */
+  --rlw-alias-bg-module-platform: var(--rlw-alias-bg-layer-3);
+  --rlw-alias-bg-multi-select: var(--rlw-alias-bg-layer-2);
   --rlw-alias-bg-overlay: var(--rlw-static-neutral-bluish-700);
   --rlw-alias-bg-skeleton: rgba(255, 255, 255, 0.08);
   --rlw-alias-border-inverted2: rgba(255, 255, 255, 0.08);
@@ -292,7 +308,7 @@ body[data-rl-dark-theme] {
   --rlw-alias-interactive-bg-hover-accent: rgba(255, 255, 255, 0.24);
   --rlw-alias-interactive-bg-hover-danger: rgba(242, 90, 90, 0.15);
   --rlw-alias-interactive-bg-hover-solid: var(--rlw-static-neutral-bluish-800);
-  --rlw-alias-interactive-bg-hover: rgba(255, 255, 255, 0.08);
+  --rlw-alias-interactive-bg-hover: rgba(255, 255, 255, 0.06);
   --rlw-alias-label-caption: var(--rlw-static-neutral-bluish-600);
   --rlw-alias-label-dimmed: var(--rlw-static-neutral-bluish-750);
   --rlw-alias-label-primary-bluish: var(--rlw-static-neutral-bluish-50);
@@ -331,12 +347,18 @@ body[data-rl-dark-theme] {
   --rlw-specific-bubble: var(--rlw-static-neutral-bluish-850);
   --rlw-alias-glass-opacity: 80%;
   --rlw-specific-input-major: color-mix(in srgb, var(--rlw-static-neutral-bluish-850) var(--rlw-alias-glass-opacity), transparent);
-  --rlw-specific-login-input: var(--rlw-static-neutral-bluish-900);
+  --rlw-specific-login-input: var(--rlw-static-neutral-bluish-850);
   --rlw-specific-menu: color-mix(in srgb, var(--rlw-alias-bg-layer-3) var(--rlw-alias-glass-opacity), transparent);
-  --rlw-specific-selector: var(--rlw-static-neutral-bluish-800);
+  --rlw-specific-selector: var(--rlw-alias-bg-layer-3);
   --rlw-specific-sidebar-fill: var(--rlw-static-neutral-bluish-900);
   --rlw-specific-sidebar-nav-item-active-accent: var(--rlw-static-neutral-bluish-800);
   --rlw-specific-sidebar-nav-item-active: var(--rlw-static-neutral-bluish-750);
   --rlw-specific-sidebar-nav-item-hover: var(--rlw-static-neutral-bluish-850);
-  --rlw-specific-tip: var(--rlw-static-neutral-bluish-800);
+  /* Selector and tip float above content, so they ride the top surface rung
+     with the menu rather than a palette step of their own. */
+  --rlw-specific-tip: var(--rlw-alias-bg-layer-3);
+  /* Dark drops carry more of the composer's weight than light ones — a soft
+     shadow on a dark page needs the extra depth to read at all. */
+  --rlw-shadow-composer: 0 1px 2px rgb(0 0 0 / 0.35), 0 14px 34px -16px rgb(0 0 0 / 0.55);
+  --rlw-shadow-composer-focus: 0 1px 2px rgb(0 0 0 / 0.4), 0 18px 40px -16px rgb(0 0 0 / 0.65);
 }

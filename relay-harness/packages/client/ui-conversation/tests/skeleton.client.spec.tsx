@@ -437,6 +437,42 @@ describe('ConversationRoot resident composer', () => {
     expect(b.view.getByText('Selected Folder')).toBeTruthy()
   })
 
+  it('hero suggestion cards fill the composer draft without sending and refocus the textarea', () => {
+    const b = mount(conversationSnapshot({ composerPhase: 'blank', blank: true }))
+    // The pick writes the WHOLE draft (the cards are alternatives), so the
+    // seeded persisted draft is replaced, mirrored to the chat store, and the
+    // caret's box regains focus — but nothing is sent.
+    const card = b.view.getByRole('button', { name: '总结当前进展' })
+    fireEvent.click(card)
+    const draft = '总结当前工作区的进展：最近的改动、未完成的事项，以及建议的下一步。'
+    const box = b.view.getByRole('textbox') as HTMLTextAreaElement
+    expect(b.sink).not.toHaveBeenCalled()
+    expect(box.value).toBe(draft)
+    expect(b.chat.store.getSnapshot().draft).toBe(draft)
+    expect(document.activeElement).toBe(box)
+  })
+
+  it('cold-start hero renders no suggestion cards (no machine faces to fill)', () => {
+    const b = mount(
+      conversationSnapshot({ composerPhase: 'blank', blank: true }),
+      undefined,
+      undefined,
+      { noSession: true },
+    )
+    expect(b.view.getByText('探索未至之境')).toBeTruthy()
+    expect(b.view.queryByRole('button', { name: '总结当前进展' })).toBeNull()
+  })
+
+  it('a blocked blank hero renders no suggestion cards', () => {
+    const b = mount(
+      conversationSnapshot({ composerPhase: 'blank', blank: true }),
+      undefined,
+      undefined,
+      { composerBlock: { reason: 'select a model first' } },
+    )
+    expect(b.view.queryByRole('button', { name: '总结当前进展' })).toBeNull()
+  })
+
   it('settling phase: a summary that does not prove the session blank hides the composer while it opens', () => {
     const b = mount(conversationSnapshot({ composerPhase: 'blank', blank: true, openState: 'loading' }))
     const root = b.view.container.querySelector('[data-phase]')

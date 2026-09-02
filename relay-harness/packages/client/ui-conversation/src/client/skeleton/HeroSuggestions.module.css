@@ -1,0 +1,100 @@
+/* Hero suggestion cards (the Lyra EmptyState mechanism): a quiet 4-column
+   grid under the headline; a pick fills the composer draft and never sends.
+   The column count keys off THIS container, not the window — the sidebar and
+   panels take their share of the same width budget, so a window query would
+   hand four cards a column each exactly when the labels start wrapping four
+   lines deep. Anonymous container on purpose: CSS modules hash
+   container-names per module, so a name declared here can never match a query
+   in another module's sheet. */
+
+.host {
+  container-type: inline-size;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+/* Below ~4×120px the cards go two by two, which keeps the 2×2 symmetry. */
+@container (max-width: 510px) {
+  .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Quiet card: transparent over the hero surface, a hairline that deepens on
+   hover, a shallow lift, and a thin veil of the base surface. Stacked from
+   the top — a one-line label sits at the same height under its glyph as a
+   two-line one. */
+.card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  min-height: 72px;
+  padding: 12px;
+  border: 1px solid var(--rlw-alias-border-l2);
+  border-radius: var(--rlw-radius-panel);
+  outline: none;
+  background: transparent;
+  color: var(--rlw-alias-label-primary);
+  font-family: var(--rlw-font-family);
+  font-size: var(--rlw-text-label);
+  line-height: 1.4;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color var(--rlw-motion-quick) var(--rlw-ease-out-quart),
+    background-color var(--rlw-motion-quick) var(--rlw-ease-out-quart),
+    transform var(--rlw-motion-quick) var(--rlw-ease-out-quart);
+}
+
+@media (hover: hover) {
+  .card:hover {
+    border-color: var(--rlw-alias-border-l3);
+    background: var(--rlw-alias-interactive-bg-hover);
+    transform: translateY(-2px);
+  }
+}
+
+/* The lift answers hover only; pressing settles the card back down. */
+.card:active {
+  transform: translateY(0);
+}
+
+.card:focus-visible {
+  border-color: var(--rlw-alias-state-business-primary);
+}
+
+.icon {
+  flex: none;
+  color: var(--rlw-alias-label-tertiary);
+}
+
+.label {
+  display: block;
+  color: inherit;
+}
+
+/* Arrival: the grid rises into place once per hero mount. The motion tokens
+   already collapse to 0s under prefers-reduced-motion; the media query also
+   keeps the initial keyframe state from painting at all. */
+@media (prefers-reduced-motion: no-preference) {
+  .host {
+    animation: hero-suggestions-in var(--rlw-motion-slow) var(--rlw-ease-out-quart) backwards;
+  }
+}
+
+@keyframes hero-suggestions-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

@@ -21,9 +21,12 @@
   width: 100%;
   max-width: var(--rlh-chat-content-width);
   border: 1px solid var(--rlw-alias-state-warn-secondary);
-  border-radius: 20px;
-  background: var(--rlw-specific-input-major);
-  box-shadow: var(--rlw-shadow-lv2);
+  border-radius: var(--rlw-radius-composer);
+  background: var(--rlw-alias-bg-layer-3);
+  box-shadow: var(--rlw-shadow-composer);
+  transition:
+    border-color var(--rlw-motion-base) var(--rlw-ease-out-quart),
+    box-shadow var(--rlw-motion-base) var(--rlw-ease-out-quart);
   /* Elevated surface in dark, same as the menus: `.body` inside scrolls once
      the justification or command passes the cap, so the thumb takes the l2
      pair. Declared on the card because the elevation belongs to the surface,
@@ -33,16 +36,24 @@
   --rlh-scrollbar-thumb-hover: var(--rlw-alias-scrollbar-hover-l2);
 }
 
-/* Tinted full-width header band. */
+/* Focus lifts the float one notch, same as the InputBar card. The stroke stays
+   on the warn pair: the amber hairline is the takeover's state signal, so only
+   the drop deepens here. */
+.card:focus-within {
+  box-shadow: var(--rlw-shadow-composer-focus);
+}
+
+/* Tinted full-width header band. One notch inside the card radius so the band
+   follows the composer corners without overpainting the stroke. */
 .strip {
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 10px 16px;
-  border-radius: 19px 19px 0 0;
+  border-radius: calc(var(--rlw-radius-composer) - 1px) calc(var(--rlw-radius-composer) - 1px) 0 0;
   background: var(--rlw-alias-state-warn-tertiary);
   color: var(--rlw-alias-state-warn-primary);
-  font-size: 13px;
+  font-size: var(--rlw-text-label);
   line-height: 18px;
 }
 
@@ -82,7 +93,9 @@
 /* The model's justification is the panel's message, not a footnote. */
 .headline {
   color: var(--rlw-alias-label-primary);
-  font-size: 15px;
+  /* The justification is the panel's message, so it rides the same body size
+     as the composer draft (15px had no type-scale rung). */
+  font-size: var(--rlw-text-body);
   font-weight: 500;
   line-height: 24px;
 }
@@ -90,7 +103,7 @@
 .command {
   color: var(--rlw-alias-label-tertiary);
   font-family: var(--rl-font-family-code);
-  font-size: 13px;
+  font-size: var(--rlw-text-label);
   line-height: 20px;
   word-break: break-all;
 }

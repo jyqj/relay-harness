@@ -73,14 +73,24 @@
   padding-top: 10px;
   /* Input stroke: black/0.10 light, white/0.06 dark (figma darkmode note says
      the input border is one notch weaker than buttons) — exactly the
-     l2-darkmode-thin pair. Fill: the input surface token (elevated in dark). */
+     l2-darkmode-thin pair. Fill: the brightest surface alias (the elevated
+     layer in dark), so the composer floats as one soft object over the base.
+     Shadow: the composer pair — a tight contact line plus a long soft drop,
+     deepened while the card holds focus (Lyra ComposerShell's resting /
+     focus-within double shadow). */
   border: 1px solid var(--rlw-alias-border-l2-darkmode-thin);
-  border-radius: 22px;
-  background: var(--rlw-specific-input-major);
+  border-radius: var(--rlw-radius-composer);
+  background: var(--rlw-alias-bg-layer-3);
   font-family: var(--rlw-font-family-composer, var(--rlw-font-family));
-  box-shadow: var(--rlw-shadow-lv2);
-  font-size: 16px;
-  line-height: 24px;
+  box-shadow: var(--rlw-shadow-composer);
+  /* Textarea typography rides the card: the mirror and backdrop inherit both
+     declarations, which is what keeps the three text layers metric-identical
+     (see .input below). */
+  font-size: var(--rlw-text-body);
+  line-height: var(--rlw-leading-relaxed);
+  transition:
+    border-color var(--rlw-motion-base) var(--rlw-ease-out-quart),
+    box-shadow var(--rlw-motion-base) var(--rlw-ease-out-quart);
   /* Elevated surface in dark, same as the menus: the draft scrollport inside
      scrolls once the composer hits its height cap, so the thumb takes the l2
      pair. Declared on the card because the elevation belongs to the surface,
@@ -88,6 +98,14 @@
      (see ui-theme styles/scrollbar.css for the rebinding contract). */
   --rlh-scrollbar-thumb: var(--rlw-alias-scrollbar-bg-l2);
   --rlh-scrollbar-thumb-hover: var(--rlw-alias-scrollbar-hover-l2);
+}
+
+/* Focus lifts the float one notch: the drop deepens (the focus shadow pair)
+   and the hairline brightens (l2-darkmode-thin → l2, a visible step in dark,
+   a gentle one in light). */
+.card:focus-within {
+  border-color: var(--rlw-alias-border-l2);
+  box-shadow: var(--rlw-shadow-composer-focus);
 }
 
 /* Border beam (Beam / jakubantalik): a traveling colorful filament on the
@@ -145,7 +163,7 @@
       rgb(240, 50, 180),
       rgb(255, 50, 100)
     );
-  clip-path: inset(0 round 22px);
+  clip-path: inset(0 round var(--rlw-radius-composer));
   -webkit-mask:
     conic-gradient(
       from var(--rlh-composer-beam-angle),
@@ -190,7 +208,7 @@
     radial-gradient(ellipse 60px 35px at 12% 0%, rgba(40, 140, 255, 0.4), transparent),
     radial-gradient(ellipse 70px 40px at 33% 0%, rgba(255, 50, 100, 0.36), transparent);
   box-shadow: inset 0 0 9px 1px rgba(255, 255, 255, 0.22);
-  clip-path: inset(0 round 22px);
+  clip-path: inset(0 round var(--rlw-radius-composer));
   -webkit-mask-image: conic-gradient(
     from var(--rlh-composer-beam-angle),
     transparent 0%,
@@ -234,7 +252,7 @@
     transparent 82%,
     transparent 100%
   );
-  clip-path: inset(0 round 22px);
+  clip-path: inset(0 round var(--rlw-radius-composer));
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
   mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
@@ -290,7 +308,7 @@
    business blue to invite the click. Native `dashed` has a fixed browser
    pattern, so the stroke is an ::after overlay: theme-token background masked
    by an SVG dash ring (stroke-width 2 centered on the box edge = 1px visible
-   inside), which keeps the 22px radius and both themes. */
+   inside), which keeps the composer radius and both themes. */
 .cardWorkspaceTrigger {
   border-color: transparent;
   cursor: pointer;
@@ -300,11 +318,11 @@
   content: '';
   position: absolute;
   inset: -1px;
-  border-radius: 22px;
+  border-radius: var(--rlw-radius-composer);
   background: var(--rlw-alias-border-l4);
   transition: background-color 100ms ease;
-  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='100%25' height='100%25' fill='none' rx='22' ry='22' stroke='black' stroke-width='2' stroke-dasharray='4 4'/%3E%3C/svg%3E");
-  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='100%25' height='100%25' fill='none' rx='22' ry='22' stroke='black' stroke-width='2' stroke-dasharray='4 4'/%3E%3C/svg%3E");
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='100%25' height='100%25' fill='none' rx='18' ry='18' stroke='black' stroke-width='2' stroke-dasharray='4 4'/%3E%3C/svg%3E");
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='100%25' height='100%25' fill='none' rx='18' ry='18' stroke='black' stroke-width='2' stroke-dasharray='4 4'/%3E%3C/svg%3E");
   pointer-events: none;
 }
 
@@ -534,7 +552,10 @@
 }
 
 .trailing {
-  flex: none;
+  /* Both sides shrink: the trailing group can give width back when the card
+     runs out of row width (its chips collapse first, and the send circle is
+     flex: none so the primary action never compresses). */
+  flex: 0 1 auto;
   /* Wrap keeps the left mode chips and the right controls apart when the card
      runs out of row width: the trailing group (model + send) moves to its own
      line instead of the left group shrinking until its chip overlaps the

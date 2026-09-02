@@ -45,9 +45,40 @@
 }
 
 /* Settled-flow identity boundary. It is neutral today and becomes the natural
-   measurement/mount unit for a virtualizer without changing the column gap. */
+   measurement/mount unit for a virtualizer without changing the column gap.
+   `style` containment is the ceiling here: rows host fixed-position Tooltip
+   bubbles cloned inline, and both `layout` and `paint` containment would make
+   each row the containing block for those fixed descendants — the bubbles are
+   placed from viewport coordinates (getBoundingClientRect), so that hijack
+   misplaces them by the row's own viewport offset. Rect-based anchor
+   measurement ([data-chat-anchor-key]) reads getBoundingClientRect and is
+   untouched. */
 .flowItem {
   min-width: 0;
+  contain: style;
+}
+
+/* Row entrance: fade-up over the quick token. `animation` fires only when the
+   rule first matches an element, so the stable keyed list never replays it on
+   re-render. The match window is the column's trailing children (rows plus the
+   steering/status slots after them): newly appended rows animate, while the
+   wholesale mount on open or after a prepend plays on at most the tail instead
+   of the page-lurch of dozens of rows fading at once. A row can only leave
+   that window (prepends raise its index), never re-enter, so no replay. */
+@keyframes rlh-chat-row-enter {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.flowItem:nth-last-child(-n + 12) {
+  animation: rlh-chat-row-enter var(--rlw-motion-quick) var(--rlw-ease-out-quart);
 }
 
 /* A keyed renderer may intentionally decline its row after dispatch (the
@@ -123,6 +154,10 @@
   .turnStatus {
     background-position: 0 0;
     background-size: 100% 100%;
+    animation: none;
+  }
+
+  .flowItem:nth-last-child(-n + 12) {
     animation: none;
   }
 }

@@ -1,13 +1,85 @@
 /* Base variables referenced by the token sheets and component CSS — the root
- * font and motion values of the rlh web design language (docs/web-styling.md),
- * supplied here so the composite --rlw-font-* variables resolve and motion
- * rides one shared curve. Code font stack deliberately omits a bare
- * `monospace` tail (Windows CJK falls back to SimSun otherwise). */
+ * font, type scale and motion values of the rlh web design language
+ * (docs/web-styling.md), supplied here so the composite --rlw-font-*
+ * variables resolve and motion rides one shared curve. Code font stack
+ * deliberately omits a bare `monospace` tail (Windows CJK falls back to
+ * SimSun otherwise). */
+
+/*
+ * Chinese, scaled to match the latin beside it. PingFang fills about 4% less
+ * of the em box than the latin faces in the stacks below, so at one
+ * `font-size` CJK in a mixed line lands visibly smaller. `size-adjust`
+ * fixes that at the face; the CJK-only `unicode-range` means no latin glyph
+ * is ever touched, so the face is safe to lead both stacks.
+ *
+ * The fallbacks are separate faces rather than one `local()` list: a missing
+ * family inside `local()` invalidates the whole rule, so Windows would lose
+ * the adjustment entirely.
+ */
+@font-face {
+  font-family: 'Relay CJK';
+  font-style: normal;
+  font-weight: 100 900;
+  src: local('PingFang SC');
+  size-adjust: 104%;
+  unicode-range: U+2E80-2EFF, U+3000-303F, U+3040-30FF, U+3200-4DBF, U+4E00-9FFF, U+F900-FAFF,
+    U+FE30-FE4F, U+FF00-FFEF, U+20000-2A6DF;
+}
+
+/* Some environments register the face under its PostScript name only; without
+   this twin the unadjusted font would win there. */
+@font-face {
+  font-family: 'Relay CJK';
+  font-style: normal;
+  font-weight: 100 900;
+  src: local('PingFangSC-Regular');
+  size-adjust: 104%;
+  unicode-range: U+2E80-2EFF, U+3000-303F, U+3040-30FF, U+3200-4DBF, U+4E00-9FFF, U+F900-FAFF,
+    U+FE30-FE4F, U+FF00-FFEF, U+20000-2A6DF;
+}
+
+@font-face {
+  font-family: 'Relay CJK';
+  font-style: normal;
+  font-weight: 100 900;
+  src: local('Microsoft YaHei'), local('Noto Sans SC'), local('Source Han Sans SC');
+  size-adjust: 100%;
+  unicode-range: U+2E80-2EFF, U+3000-303F, U+3040-30FF, U+3200-4DBF, U+4E00-9FFF, U+F900-FAFF,
+    U+FE30-FE4F, U+FF00-FFEF, U+20000-2A6DF;
+}
+
 :root {
-  --rlw-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC',
+  /* 「Relay CJK」在栈首：它只在 CJK unicode-range 上被选中，拉丁字符落到
+     后面的平台字体；放在更后会被恰好带少量 CJK 字形的西文字体抢先。 */
+  --rlw-font-family: 'Relay CJK', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC',
     'Hiragino Sans GB', 'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial, sans-serif;
-  --rl-font-family-code: 'SF Mono', 'JetBrains Mono', 'Fira Code', Consolas,
+  --rl-font-family-code: 'Relay CJK', 'SF Mono', 'JetBrains Mono', 'Fira Code', Consolas,
     'Liberation Mono', Menlo, Courier, 'PingFang SC', 'Microsoft YaHei';
+
+  /*
+   * Type scale, in rem so the whole ladder tracks the user-set root size
+   * (appearance-apply writes root font-size 12–22px; 1rem = 16px at the
+   * default). Steps are spaced so adjacent levels read as hierarchy, not
+   * drift. Deliberately no weight here — components pair weight with size.
+   */
+  --rlw-text-caption: 0.6875rem; /* 11px @ 16px root */
+  --rlw-text-detail: 0.75rem; /* 12px */
+  --rlw-text-label: 0.8125rem; /* 13px — the working size */
+  --rlw-text-body: 0.875rem; /* 14px */
+  --rlw-text-title: 1rem; /* 16px */
+  --rlw-text-heading: 1.25rem; /* 20px */
+  --rlw-text-display: 1.625rem; /* 26px */
+
+  --rlw-leading-tight: 1.3;
+  --rlw-leading-normal: 1.5;
+  --rlw-leading-relaxed: 1.7;
+
+  /* Titles tighten as they grow — letterfit that reads right at 13px sits
+     loose at 20px+. Body sizes stay near zero. */
+  --rlw-text-title-tracking: -0.01em;
+  --rlw-text-heading-tracking: -0.015em;
+  --rlw-text-display-tracking: -0.022em;
+
   --rl-ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
   --rl-transition-duration: 0.2s;
   --rl-transition-duration-fast: 0.1s;
@@ -20,6 +92,22 @@
   --rl-motion-distance-overlay: 8px;
   --rl-motion-distance-popover: 4px;
   --rl-motion-scale-overlay: 0.96;
+
+  /*
+   * Tempo for component transitions, scaled by what is moving rather than by
+   * importance: a state change (hover, press, a colour shift) uses quick —
+   * long enough to read as a transition, short enough to feel immediate;
+   * something moving or resizing uses base; something arriving that was not
+   * there (a section unfolding) uses slow. The curves carry direction:
+   * ease-out-quart decelerates into place so an arrival settles, ease-in-cubic
+   * hands the leaving to the eye fast. Leaving is quicker than entering and
+   * neither overshoots.
+   */
+  --rlw-motion-quick: 150ms;
+  --rlw-motion-base: 220ms;
+  --rlw-motion-slow: 340ms;
+  --rlw-ease-out-quart: cubic-bezier(0.22, 1, 0.36, 1);
+  --rlw-ease-in-cubic: cubic-bezier(0.55, 0, 1, 0.45);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -32,5 +120,8 @@
     --rl-motion-duration-popover: 0s;
     --rl-motion-duration-swap: 0s;
     --rl-motion-duration-flip: 0s;
+    --rlw-motion-quick: 0s;
+    --rlw-motion-base: 0s;
+    --rlw-motion-slow: 0s;
   }
 }

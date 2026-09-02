@@ -1,17 +1,20 @@
 // Hero chrome for the blank-draft phase of ConversationRoot: brand-mark headline,
-// glow backdrop, and the workspace row. Pure presentation — the resident
-// composer is NOT rendered here (it keeps its own stable tree position in
-// ConversationRoot so the textarea survives the hero → composer flip); CSS
-// positions it over this shell's glow area during the hero phase.
+// glow backdrop, the suggestion-card grid, and the workspace row. Pure
+// presentation — the resident composer is NOT rendered here (it keeps its own
+// stable tree position in ConversationRoot so the textarea survives the
+// hero → composer flip); CSS positions it over this shell's glow area during
+// the hero phase.
 
 import { useId } from 'react'
-import type { ReactNode, RefObject } from 'react'
+import type { ComponentType, ReactNode, RefObject } from 'react'
 import {
-  RelayMark, IconChevronDownOutline14, IconFolderClose16, IconFolderOpen16,
+  RelayMark, IconChevronDownOutline14, IconCodeOutline16, IconFolderClose16, IconFolderOpen16,
+  IconBranchOutline16, IconListPenOutline16, IconPlayOutline16,
 } from '@relay-harness/rlh-client-ui-primitives'
 import { workspaceTitleOf } from '@relay-harness/rlh-client-runtime/client'
 import type { ConversationSlotProps } from '../contract/slots.ts'
 import css from './HeroShell.module.css'
+import suggestionsCss from './HeroSuggestions.module.css'
 
 /** The owner's locale seat type, passed to hero chrome as a plain prop. */
 type HeroTranslate = ConversationSlotProps['t']
@@ -108,6 +111,63 @@ export interface HeroShellProps {
   renderSlot: ConversationSlotProps['renderSlot']
   /** Overlay content after the stack (modals). */
   children?: ReactNode
+}
+
+/** One suggestion card: visible label plus the draft text its pick writes. */
+interface HeroSuggestionCard {
+  /** Shared primitives glyph drawn above the label (17px, single tone). */
+  icon: ComponentType<{ size?: number | undefined; className?: string | undefined }>
+  /** Locale key of the visible label. */
+  labelKey: 'hero.suggest.resume' | 'hero.suggest.build' | 'hero.suggest.summarize' | 'hero.suggest.review'
+}
+
+/** The four shipped suggestions, Chat/Work semantics; copy rides the locale seat. */
+const SUGGESTION_CARDS: readonly HeroSuggestionCard[] = [
+  { icon: IconPlayOutline16, labelKey: 'hero.suggest.resume' },
+  { icon: IconCodeOutline16, labelKey: 'hero.suggest.build' },
+  { icon: IconListPenOutline16, labelKey: 'hero.suggest.summarize' },
+  { icon: IconBranchOutline16, labelKey: 'hero.suggest.review' },
+]
+
+/**
+ * The suggestion-card grid under the hero headline. A pick FILLS THE DRAFT —
+ * never a send: the cards read as suggestions and sit in the cursor's path to
+ * the composer, and an unrequested turn costs a request plus whatever the
+ * agent does before it can be stopped (the Lyra EmptyState decision). The
+ * pick replaces the whole draft: the cards are alternatives, not stacking
+ * prompts. Withholding `onPick` (cold start, blocked) renders nothing —
+ * a card over a composer that cannot take a draft is a dead control.
+ * @param props.t - the owner's locale seat.
+ * @param props.onPick - draft write + refocus performed by the owner; absent → no grid.
+ * @returns the grid element, or null while picks cannot land.
+ */
+export function HeroSuggestions({ t, onPick }: {
+  t: HeroTranslate
+  onPick: ((draft: string) => void) | undefined
+}) {
+  if (onPick === undefined) return null
+  return (
+    <nav className={suggestionsCss.host} aria-label={t('hero.suggest.aria')}>
+      <div className={suggestionsCss.grid}>
+        {SUGGESTION_CARDS.map((card) => {
+          const label = t(card.labelKey)
+          const Icon = card.icon
+          return (
+            <button
+              key={card.labelKey}
+              type="button"
+              className={suggestionsCss.card}
+              data-hero-suggestion={card.labelKey}
+              onClick={() => { onPick(t(`${card.labelKey}.draft`)) }}
+            >
+              <Icon size={17} className={suggestionsCss.icon} />
+              <span className={suggestionsCss.label}>{label}</span>
+            </button>
+          )
+        })}
+      </div>
+    </nav>
+  )
 }
 
 /**

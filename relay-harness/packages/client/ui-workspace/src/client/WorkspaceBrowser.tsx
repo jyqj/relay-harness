@@ -481,7 +481,7 @@ function SessionTree({
     <div className={clsx(css.treeBody, css.wide)}>
       {workspaceDropAtListStart && <span className={css.listTopDropIndicator} aria-hidden="true" />}
       <div
-        className={clsx(css.list, workspaceDropAtListStart && css.listTopDropActive)}
+        className={clsx(css.list, 'rlh-fade-y', workspaceDropAtListStart && css.listTopDropActive)}
         role="tree"
         aria-label={t('section.sessions')}
       >
@@ -630,7 +630,6 @@ function SessionTree({
           </div>
         )}
       </div>
-      <span className={css.fade} />
     </div>
   )
 }
@@ -709,7 +708,7 @@ function FlatList({
   const now = Date.now()
   return (
     <div className={clsx(css.treeBody, css.wide)}>
-      <div className={clsx(css.list, css.flatList)} role="tree" aria-label={t('section.sessions')}>
+      <div className={clsx(css.list, css.flatList, 'rlh-fade-y')} role="tree" aria-label={t('section.sessions')}>
         {rows.length === 0 && (
           <div className={css.empty}>{t('empty.none')}</div>
         )}
@@ -750,7 +749,6 @@ function FlatList({
           )
         })}
       </div>
-      <span className={css.fade} />
     </div>
   )
 }
@@ -792,7 +790,7 @@ function SearchResults({
 
   return (
     <div className={clsx(css.treeBody, css.wide)}>
-      <div className={css.list}>
+      <div className={clsx(css.list, 'rlh-fade-y')}>
         <div className={css.searchTree} role="tree" aria-label={t('search.results.aria')}>
           {results.items.map(result => (
             <SearchResultItem
@@ -821,7 +819,6 @@ function SearchResults({
           </div>
         )}
       </div>
-      <span className={css.fade} />
     </div>
   )
 }

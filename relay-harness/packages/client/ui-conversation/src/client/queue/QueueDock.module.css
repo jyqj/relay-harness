@@ -30,8 +30,11 @@
   overflow: hidden;
   width: 100%;
   padding: 2px 0;
-  border-radius: 12px 12px 0 0;
-  background: var(--rlw-specific-tip);
+  /* Dock row: the light end of the composer family — brightest surface, panel
+     radius, no heavy shadow (the input card carries the float for the stack). */
+  border-radius: var(--rlw-radius-panel) var(--rlw-radius-panel) 0 0;
+  background: var(--rlw-alias-bg-layer-3);
+  transition: border-color var(--rlw-motion-base) var(--rlw-ease-out-quart);
   --rlh-scrollbar-thumb: var(--rlw-alias-scrollbar-bg-l2);
   --rlh-scrollbar-thumb-hover: var(--rlw-alias-scrollbar-hover-l2);
 }
@@ -39,8 +42,9 @@
 .panel::after {
   position: absolute;
   inset: 0;
-  border: 1px solid var(--rlw-alias-border-l1);
-  /* The input card's own top border closes the shape below. */
+  /* Resting hairline = the InputBar card's resting pair (l2-darkmode-thin);
+     the input card's own top border closes the shape below. */
+  border: 1px solid var(--rlw-alias-border-l2-darkmode-thin);
   border-bottom: none;
   border-radius: inherit;
   content: '';
@@ -85,9 +89,10 @@
   flex: 1 1 auto;
   min-width: 0;
   font-family: Inter, var(--rlw-font-family);
-  font-size: 13px;
+  font-size: var(--rlw-text-label);
   font-weight: 500;
   line-height: 24px;
+  font-variant-numeric: tabular-nums;
 }
 
 .chevron {
@@ -126,7 +131,8 @@
 .editor {
   flex: 1 1 auto;
   min-width: 0;
-  font: var(--rlw-font-xs-13);
+  font-size: var(--rlw-text-label);
+  line-height: 20px;
   font-family: Inter, var(--rlw-font-family);
 }
 

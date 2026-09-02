@@ -51,7 +51,6 @@ describe('WorkspaceBrowser.module.css list', () => {
     expect(listArea?.get('margin-left')).toBe('-4px')
     expect(listArea?.get('padding-left')).toBe('4px')
     expect(listArea?.get('margin-right')).toBe('calc(-1 * var(--rlh-session-list-edge-inset))')
-    expect(declarations('.fade')?.get('right')).toBe('var(--rlh-session-list-edge-inset)')
     expect(list?.get('margin-right')).toBe('var(--rlh-session-list-scrollbar-offset)')
     expect(list?.get('margin-left')).toBe('-4px')
     expect(list?.get('padding-left')).toBe('4px')
@@ -69,11 +68,11 @@ describe('WorkspaceBrowser.module.css list', () => {
     expect(list!.get('scrollbar-gutter')).toBe('stable')
   })
 
-  it('keeps 2px between rows and 4px between workspace groups', () => {
-    expect(declarations('.flatList > * + *')?.get('margin-top')).toBe('2px')
-    expect(declarations(".searchTree > [role='treeitem'] + [role='treeitem']")?.get('margin-top')).toBe('2px')
-    expect(declarations('.groupSection > * + *')?.get('margin-top')).toBe('2px')
-    expect(rowDeclarations('.sessionRunInner > * + *')?.get('margin-top')).toBe('2px')
+  it('keeps 4px between rows and 4px between workspace groups', () => {
+    expect(declarations('.flatList > * + *')?.get('margin-top')).toBe('4px')
+    expect(declarations(".searchTree > [role='treeitem'] + [role='treeitem']")?.get('margin-top')).toBe('4px')
+    expect(declarations('.groupSection > * + *')?.get('margin-top')).toBe('4px')
+    expect(rowDeclarations('.sessionRunInner > * + *')?.get('margin-top')).toBe('4px')
     expect(rowDeclarations('.sessionRun')?.get('display')).toBe('grid')
     expect(rowDeclarations('.sessionRun')?.get('grid-template-rows')).toBe('1fr')
     expect(rowDeclarations(".sessionRun[data-state='closed']")?.get('grid-template-rows')).toBe('0fr')
@@ -100,12 +99,32 @@ describe('WorkspaceBrowser.module.css list', () => {
     }
   })
 
-  it('keeps the compact fade, overflow control, search field, and row heights', () => {
-    expect(declarations('.fade')?.get('height')).toBe('24px')
+  it('fades the list through the shared mask utility at constant depths', () => {
+    // Bottom-edge only: the region owns no scroll listener, so the depths are
+    // constants (`rlh-fade-y` is applied in WorkspaceBrowser.tsx), and the
+    // two-class scope must beat the global utility's own defaults.
+    const mask = declarations('.treeBody .list')
+    expect(mask?.get('--rlh-fade-top')).toBe('0px')
+    expect(mask?.get('--rlh-fade-bottom')).toBe('var(--rlh-fade-bottom-depth)')
+    expect(declarations('.fade')).toBeUndefined()
+  })
+
+  it('pins each group header at the rail through the section box alone', () => {
+    // CSS-only sticky: the header is the section's existing first child, the
+    // fill is the sidebar fill (the header's resting color), and z-index
+    // clears the drag markers.
+    const pinned = declarations('.groupSection > :first-child')
+    expect(pinned?.get('position')).toBe('sticky')
+    expect(pinned?.get('top')).toBe('0')
+    expect(pinned?.get('z-index')).toBe('2')
+    expect(pinned?.get('background')).toBe('var(--rlw-specific-sidebar-fill)')
+  })
+
+  it('keeps the overflow control, search field, and row heights', () => {
     expect(declarations('.sessionOverflowButton')?.get('height')).toBe('28px')
     expect(declarations('.searchExpanded')?.get('height')).toBe('30px')
-    expect(rowDeclarations('.projectRow')?.get('height')).toBe('34px')
-    expect(rowDeclarations('.sessionRow')?.get('height')).toBe('32px')
+    expect(rowDeclarations('.projectRow')?.get('height')).toBe('31px')
+    expect(rowDeclarations('.sessionRow')?.get('height')).toBe('28px')
     expect(rowDeclarations('.flatSessionRowWithoutStatus .title')?.get('margin-left')).toBe('0')
     expect(rowDeclarations('.searchResultRow')?.get('min-height')).toBe('48px')
     expect(rowDeclarations('.sessionRow.selected')?.get('background'))

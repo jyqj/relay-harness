@@ -16,7 +16,7 @@
   box-sizing: border-box;
   background: var(--rlw-specific-sidebar-fill);
   color: var(--rlw-alias-label-primary);
-  font-size: 14px;
+  font-size: var(--rlw-text-body);
   /* The sidebar is elevated above the conversation surface, so a revealed
      scrollbar uses the l2 pair. .quietBars hides it without changing layout. */
   --rlh-scrollbar-thumb: var(--rlw-alias-scrollbar-bg-l2);
@@ -44,15 +44,16 @@
 }
 
 /* Collapse phase 1: the whole frozen-width content fades out in place over
-   150ms; at settle the children unmount/snap to the rail layout. */
+   the quick token (150ms — SidebarRoot.tsx unmounts wide content at the same
+   150ms settle); at settle the children unmount/snap to the rail layout. */
 .fading > * {
   opacity: 0;
-  transition: opacity 150ms var(--rl-ease-in-out);
+  transition: opacity var(--rlw-motion-quick) var(--rlw-ease-in-cubic);
 }
 
 /* Wide-only content fades back in on expand remount. */
 .wide {
-  animation: wide-in 200ms var(--rl-ease-in-out);
+  animation: wide-in var(--rlw-motion-base) var(--rlw-ease-out-quart);
 }
 
 @keyframes wide-in {
@@ -68,11 +69,11 @@
 .railIn .newSession,
 .railIn .tabList,
 .railIn .regionArea {
-  animation: rail-in 150ms var(--rl-ease-in-out) backwards;
+  animation: rail-in var(--rlw-motion-quick) var(--rlw-ease-out-quart) backwards;
 }
 
 .railIn .footArea {
-  animation: rail-fade-in 150ms var(--rl-ease-in-out) backwards;
+  animation: rail-fade-in var(--rlw-motion-quick) var(--rlw-ease-out-quart) backwards;
 }
 
 @keyframes rail-in {
@@ -180,6 +181,12 @@
   -webkit-app-region: no-drag;
 }
 
+.iconButton {
+  transition:
+    background-color var(--rlw-motion-quick) var(--rlw-ease-out-quart),
+    color var(--rlw-motion-quick) var(--rlw-ease-out-quart);
+}
+
 .iconButton:hover {
   background: var(--rlw-alias-interactive-bg-hover);
 }
@@ -230,8 +237,9 @@
   line-height: 16px;
 }
 
-/* New Session: 38px bar, 12px radius (figma 133:7634 geometry, squared-off
-   corners); collapsed it renders as the rail's plain icon control. */
+/* New Session: 38px bar, panel radius (figma 133:7634 geometry, squared-off
+   corners); label rides the 13px working size; collapsed it renders as the
+   rail's plain icon control. */
 .newSession {
   flex: none;
   display: flex;
@@ -243,14 +251,17 @@
   margin: 0 2px 8px;
   box-sizing: border-box;
   border: 1px solid var(--rlw-alias-border-l2);
-  border-radius: 12px;
+  border-radius: var(--rlw-radius-panel);
   background: var(--rlw-alias-button-elevated-fill);
   color: var(--rlw-alias-label-primary);
-  font-size: 14px;
+  font-size: var(--rlw-text-label);
   font-weight: 500;
-  line-height: 22px;
+  line-height: 20px;
   cursor: pointer;
   overflow: hidden;
+  transition:
+    background-color var(--rlw-motion-quick) var(--rlw-ease-out-quart),
+    border-color var(--rlw-motion-quick) var(--rlw-ease-out-quart);
 }
 
 .newSession:hover {
@@ -310,10 +321,13 @@
   background: transparent;
   color: var(--rlw-alias-label-secondary);
   cursor: pointer;
-  font-size: 13px;
+  font-size: var(--rlw-text-label);
   font-weight: 500;
   line-height: 20px;
   -webkit-app-region: no-drag;
+  transition:
+    background-color var(--rlw-motion-quick) var(--rlw-ease-out-quart),
+    color var(--rlw-motion-quick) var(--rlw-ease-out-quart);
 }
 
 .tab:hover {

@@ -7,14 +7,18 @@
   min-height: 54px;
   padding: 10px 16px;
   border: 1px solid var(--rlw-alias-border-l2);
-  border-radius: 14px;
+  border-radius: var(--rlw-radius-panel);
+  /* layer-1, not the dock cards' layer-3: this frame lives inside the subagent
+     page surface, one step above it, not floating over the conversation. */
   background: var(--rlw-alias-bg-layer-1);
   color: var(--rlw-alias-label-tertiary);
-  font-size: 13px;
+  font-size: var(--rlw-text-label);
   line-height: 20px;
 }
 
 .frame strong {
   color: var(--rlw-alias-label-primary);
-  font-weight: 510;
+  /* Non-variable webfonts snap intermediate weights; 510 lands on 500
+     everywhere (see ui-theme design-platform.css). */
+  font-weight: 500;
 }

@@ -20,9 +20,9 @@
   max-height: min(60vh, 520px);
   padding: 0 0 10px;
   border: 1px solid var(--rlw-alias-border-l2-darkmode-thin);
-  border-radius: 20px;
-  background: var(--rlw-specific-input-major);
-  box-shadow: var(--rlw-shadow-lv2);
+  border-radius: var(--rlw-radius-composer);
+  background: var(--rlw-alias-bg-layer-3);
+  box-shadow: var(--rlw-shadow-composer);
   color: var(--rlw-alias-label-primary);
   overflow: hidden;
   /* Elevated surface in dark, same as the menus: the body inside scrolls
@@ -32,6 +32,10 @@
      for the rebinding contract). */
   --rlh-scrollbar-thumb: var(--rlw-alias-scrollbar-bg-l2);
   --rlh-scrollbar-thumb-hover: var(--rlw-alias-scrollbar-hover-l2);
+}
+
+.card:focus-within {
+  box-shadow: var(--rlw-shadow-composer-focus);
 }
 
 .card,
@@ -80,13 +84,13 @@
   /* Eyebrow-to-title gap widened from the figma 2px (user-tuned). */
   margin-bottom: 5px;
   color: var(--rlw-alias-label-tertiary);
-  font-size: 11px;
+  font-size: var(--rlw-text-caption);
   line-height: 16px;
 }
 
 .title {
   margin: 0;
-  font-size: 16px;
+  font-size: var(--rlw-text-title);
   line-height: 22px;
   font-weight: 500;
 }
@@ -112,9 +116,10 @@
 .progress {
   padding: 0 4px;
   color: var(--rlw-alias-label-secondary);
-  font-size: 14px;
+  font-size: var(--rlw-text-body);
   line-height: 24px;
   font-weight: 500;
+  font-variant-numeric: tabular-nums;
   white-space: nowrap;
   /* Narrow the plain spaces around the slash without touching glyph tracking. */
   word-spacing: -2px;
@@ -177,12 +182,14 @@
   flex-shrink: 0;
   padding: 8px 12px 8px 8px;
   border: 1px solid transparent;
-  border-radius: 12px;
+  border-radius: var(--rlw-radius-panel);
   background: transparent;
   color: inherit;
   text-align: left;
   cursor: pointer;
-  transition: background-color 120ms ease, border-color 120ms ease;
+  transition:
+    background-color var(--rlw-motion-quick) var(--rlw-ease-out-quart),
+    border-color var(--rlw-motion-quick) var(--rlw-ease-out-quart);
 }
 
 .option:hover:not(:disabled),
@@ -213,8 +220,9 @@
   border-radius: 6px;
   background: var(--rlw-alias-bg-overlay);
   color: var(--rlw-alias-label-secondary);
-  font-size: 12px;
+  font-size: var(--rlw-text-detail);
   font-weight: 500;
+  font-variant-numeric: tabular-nums;
   line-height: 18px;
 }
 
@@ -238,7 +246,9 @@
   height: 14px;
   border: 1px solid var(--rlw-alias-border-l4);
   border-radius: 4px;
-  transition: background-color 120ms ease, border-color 120ms ease;
+  transition:
+    background-color var(--rlw-motion-quick) var(--rlw-ease-out-quart),
+    border-color var(--rlw-motion-quick) var(--rlw-ease-out-quart);
 }
 
 .checkbox > svg {
@@ -269,7 +279,7 @@
 }
 
 .optionLabel {
-  font-size: 14px;
+  font-size: var(--rlw-text-body);
   line-height: 24px;
   font-weight: 500;
 }
@@ -279,14 +289,14 @@
   border-radius: 6px;
   background: var(--rlw-specific-sidebar-nav-item-active-accent);
   color: var(--rlw-alias-button-info-fill);
-  font-size: 11px;
+  font-size: var(--rlw-text-caption);
   line-height: 18px;
   font-weight: 600;
 }
 
 .description {
   color: var(--rlw-alias-label-tertiary);
-  font-size: 14px;
+  font-size: var(--rlw-text-body);
   line-height: 24px;
   font-weight: 400;
 }
@@ -306,8 +316,10 @@
   flex-shrink: 0;
   padding: 8px 12px 8px 8px;
   border: 1px solid transparent;
-  border-radius: 12px;
-  transition: background-color 120ms ease, border-color 120ms ease;
+  border-radius: var(--rlw-radius-panel);
+  transition:
+    background-color var(--rlw-motion-quick) var(--rlw-ease-out-quart),
+    border-color var(--rlw-motion-quick) var(--rlw-ease-out-quart);
 }
 
 .customRow:hover,
@@ -331,7 +343,7 @@
   color: var(--rlw-alias-label-primary);
   caret-color: var(--rlw-alias-state-business-primary);
   font: inherit;
-  font-size: 14px;
+  font-size: var(--rlw-text-body);
   line-height: 24px;
 }
 
@@ -357,7 +369,7 @@
   color: var(--rlw-alias-label-primary);
   caret-color: var(--rlw-alias-state-business-primary);
   font: inherit;
-  font-size: 14px;
+  font-size: var(--rlw-text-body);
   line-height: 24px;
 }
 
@@ -383,7 +395,7 @@
   flex: 1;
   min-height: 16px;
   color: var(--rlw-alias-state-error-primary);
-  font-size: 11px;
+  font-size: var(--rlw-text-caption);
   line-height: 16px;
   text-align: right;
 }
@@ -423,7 +435,8 @@
 
 @media (prefers-reduced-motion: reduce) {
   .option,
-  .customRow {
+  .customRow,
+  .checkbox::before {
     transition: none;
   }
 }

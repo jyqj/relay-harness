@@ -26,9 +26,9 @@
   height: 36px;
   margin: 0 auto;
   padding: 4px 5px 4px 12px;
-  border: 1px solid var(--rlw-alias-border-l1);
-  border-radius: 12px;
-  background: var(--rlw-specific-tip);
+  border: 1px solid var(--rlw-alias-border-l2-darkmode-thin);
+  border-radius: var(--rlw-radius-panel);
+  background: var(--rlw-alias-bg-layer-3);
 }
 
 .goalGlyph {
@@ -41,7 +41,7 @@
    composer-stack cards read as one family. */
 .label {
   flex: none;
-  font-size: 13px;
+  font-size: var(--rlw-text-label);
   line-height: 24px;
   font-weight: 500;
   color: var(--rlw-alias-label-primary);
@@ -51,7 +51,7 @@
   flex: 1;
   min-width: 0;
   overflow: hidden;
-  font-size: 13px;
+  font-size: var(--rlw-text-label);
   line-height: 20px;
   color: var(--rlw-alias-label-primary-dimmed);
   text-overflow: ellipsis;
@@ -63,7 +63,7 @@
   min-width: 0;
   overflow: hidden;
   color: var(--rlw-alias-state-error-primary);
-  font-size: 12px;
+  font-size: var(--rlw-text-detail);
   line-height: 20px;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -79,7 +79,7 @@
   border: 1px solid var(--rlw-alias-border-l2);
   border-radius: 6px;
   background: var(--rlw-alias-bg-base);
-  font-size: 13px;
+  font-size: var(--rlw-text-label);
   line-height: 20px;
   color: var(--rlw-alias-label-primary);
   outline: none;

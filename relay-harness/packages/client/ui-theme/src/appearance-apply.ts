@@ -6,8 +6,13 @@ import {
 } from './theme-family.ts'
 import { applyWallpaperLayer } from './wallpaper.ts'
 
-const DEFAULT_SANS_STACK = "-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial, sans-serif"
-const DEFAULT_CODE_STACK = "'SF Mono', 'JetBrains Mono', 'Fira Code', Consolas, 'Liberation Mono', Menlo, Courier, 'PingFang SC', 'Microsoft YaHei'"
+// 'Relay CJK' must stay first in both stacks: it is a CJK-only face (unicode-range
+// limited, size-adjust 104% for PingFang, 100% for the Windows/Noto fallback) so
+// latin text falls through to the next family while CJK glyphs get the adjusted
+// metrics. Without it the system picks an unadjusted PingFang and CJK punctuation
+// floats at half height next to latin text.
+const DEFAULT_SANS_STACK = "'Relay CJK', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial, sans-serif"
+const DEFAULT_CODE_STACK = "'Relay CJK', 'SF Mono', 'JetBrains Mono', 'Fira Code', Consolas, 'Liberation Mono', Menlo, Courier, 'PingFang SC', 'Microsoft YaHei'"
 
 /**
  * Quote a user-entered family name when it is not a bare CSS ident.

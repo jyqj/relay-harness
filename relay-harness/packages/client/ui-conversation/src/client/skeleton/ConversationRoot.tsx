@@ -6,14 +6,14 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import clsx from 'clsx'
 import type { WorkspaceId } from '@relay-harness/rlh-client-runtime/client'
 import type { ConversationSlotProps, InputZone } from '../contract/slots.ts'
-import { HeroGlow, HeroShell, WorkspaceChip, workspaceLabel } from './EmptyHero.tsx'
+import { HeroGlow, HeroShell, HeroSuggestions, WorkspaceChip, workspaceLabel } from './EmptyHero.tsx'
 import css from './ConversationRoot.module.css'
 
 /** Full props composed from the slot contract. */
 export type ConversationRootProps = ConversationSlotProps
 
 export function ConversationRoot({
-  sessionId, useSession, useSessions, useWorkspaces, useInput, useComposerBlock,
+  sessionId, useSession, useSessions, useWorkspaces, useInput, inputActions, useComposerBlock,
   renderSlot, renderSlotChain, selectWorkspace, selectNoDirectory, t,
 }: ConversationRootProps) {
   const openState = useSession(s => s.openState)
@@ -39,7 +39,11 @@ export function ConversationRoot({
   // it grows. Callback ref, not an effect; stable identity prevents observer
   // churn while the first blank session fills the resident body outlet.
   const seatObserver = useRef<ResizeObserver | null>(null)
+  // Plain element echo of the seat for lookups that must cross the hero ↔
+  // composer sibling boundary (the suggestion cards' refocus below).
+  const seatElRef = useRef<HTMLDivElement | null>(null)
   const seatResizeRef = useCallback((seat: HTMLDivElement | null): void => {
+    seatElRef.current = seat
     seatObserver.current?.disconnect()
     seatObserver.current = null
     const scroller = seat?.parentElement ?? null
@@ -159,6 +163,23 @@ export function ConversationRoot({
   // one disabled textarea, never a second tree. The no-workspace state wins
   // when both hold — picking a workspace is the earlier prerequisite.
   const blocked = !inert && composerBlock !== undefined
+
+  // A suggestion pick writes the WHOLE draft through the machine's public
+  // setDraft (Lyra: the cards are alternatives — a second pick means "that
+  // one instead") and hands focus back to the caret's box: the click moved
+  // focus onto the card, and a draft landed without focus leaves the user
+  // clicking into the textarea before they can change a word. `preventScroll`
+  // per the composer's own focus convention; the bar's reveal effect brings
+  // the caret's end into view once the draft lands. The lookup scopes to the
+  // resident composer card, so an elected takeover (which hides the fallback)
+  // simply finds no live textarea and skips the refocus.
+  const fillSuggestionDraft = useCallback((draft: string): void => {
+    /* v8 ignore next 4 -- defensive: onPick is withheld while the machine faces are absent, so setDraft is always live here */
+    if (inputActions === undefined) return
+    inputActions.setDraft(draft)
+    seatElRef.current?.querySelector<HTMLTextAreaElement>('[data-composer-card] textarea')
+      ?.focus({ preventScroll: true })
+  }, [inputActions])
   const inputBar = renderSlot('conversation.composer.bar', {
     variant: hero ? 'hero' : 'composer',
     ...(inert
@@ -186,6 +207,15 @@ export function ConversationRoot({
     <div className={clsx(css.composerStack, hero && css.composerHero)}>
       {hero && <HeroGlow className={css.heroGlow} />}
       {hero && <HeroShell t={t} renderSlot={renderSlot} />}
+      {/* Withheld while the composer cannot take a draft (cold start,
+          workspace still resolving, a raised block): a card over a dead
+          composer is a dead control. */}
+      {hero && (
+        <HeroSuggestions
+          t={t}
+          onPick={inert || blocked ? undefined : fillSuggestionDraft}
+        />
+      )}
       {hero && heroWorkspaceRow}
       {zone !== undefined && renderSlot('conversation.input.dock', zone)}
       {inputBar}

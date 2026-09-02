@@ -1,7 +1,7 @@
-/* Todo strip in the composer context stack (Figma 1236:32276): tip surface,
-   status icons + secondary item labels. Its visible card aligns with the
-   GoalBar and the Queue panel inside their shared dock column: 12px radius,
-   36px collapsed row, 12px side padding, 14px tertiary leading glyph. */
+/* Todo strip in the composer context stack (Figma 1236:32276): solid dock
+   surface, status icons + secondary item labels. Its visible card aligns with
+   the GoalBar and the Queue panel inside their shared dock column: panel
+   radius, 36px collapsed row, 12px side padding, 14px tertiary leading glyph. */
 
 .root {
   box-sizing: border-box;
@@ -24,12 +24,16 @@
     var(--rlh-composer-dock-inset) -
     var(--rlh-composer-dock-inset)
   );
-  border: 1px solid var(--rlw-alias-border-l1);
-  border-radius: 12px;
-  background: var(--rlw-specific-tip);
-  /* Elevated surface: `--rlw-specific-tip` is the same dark rung as the menu
-     surface, and `.list` scrolls inside this card, so the thumb takes the l2
-     elevation tokens. Declared here because the elevation belongs to the
+  /* Dock row, light end of the composer family: brightest surface, panel
+     radius, resting hairline = the InputBar card's resting pair (no heavy
+     shadow — the input card carries the float for the stack). */
+  border: 1px solid var(--rlw-alias-border-l2-darkmode-thin);
+  border-radius: var(--rlw-radius-panel);
+  background: var(--rlw-alias-bg-layer-3);
+  transition: border-color var(--rlw-motion-base) var(--rlw-ease-out-quart);
+  /* Elevated surface: `--rlw-alias-bg-layer-3` is the same dark rung as the
+     menu surface, and `.list` scrolls inside this card, so the thumb takes the
+     l2 elevation tokens. Declared here because the elevation belongs to the
      surface, and the custom properties inherit down to `.list` (see ui-theme
      styles/scrollbar.css for the rebinding contract). */
   --rlh-scrollbar-thumb: var(--rlw-alias-scrollbar-bg-l2);
@@ -64,7 +68,7 @@
 
 .title {
   flex: none;
-  font-size: 13px;
+  font-size: var(--rlw-text-label);
   line-height: 24px;
   font-weight: 500;
   color: var(--rlw-alias-label-primary);
@@ -74,12 +78,13 @@
   flex: 1 1 auto;
   min-width: 0;
   overflow: hidden;
-  font-size: 13px;
+  font-size: var(--rlw-text-label);
   line-height: 20px;
   font-weight: 400;
   color: var(--rlw-alias-label-tertiary);
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
 
 .chevron {
@@ -105,7 +110,7 @@
   align-items: center;
   gap: 10px;
   min-width: 0;
-  font-size: 13px;
+  font-size: var(--rlw-text-label);
   line-height: 20px;
   color: var(--rlw-alias-label-secondary);
 }
@@ -134,6 +139,12 @@
 @keyframes todo-progress-spin {
   to {
     transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .glyphProgress {
+    animation: none;
   }
 }
 

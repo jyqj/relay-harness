@@ -1,4 +1,4 @@
-/* Tree rows: project 34px, session 32px, radius 8, indent step 22px
+/* Tree rows: project 31px, session 28px, radius 8, indent step 22px
    (16px slot + 6px gap). Hover swaps
    are pure CSS: project folder -> chevron + action buttons; session time ->
    ellipsis button. */
@@ -13,6 +13,9 @@
   cursor: pointer;
   user-select: none;
   color: var(--rlw-alias-label-primary);
+  transition:
+    background-color var(--rlw-motion-quick) var(--rlw-ease-out-quart),
+    color var(--rlw-motion-quick) var(--rlw-ease-out-quart);
 }
 
 .projectRow:hover,
@@ -95,7 +98,7 @@
 
 /* Compact one-line Workspace row after removing the session-count subtitle. */
 .projectRow {
-  height: 34px;
+  height: 31px;
   align-items: center;
   box-sizing: border-box;
 }
@@ -106,7 +109,7 @@
 
 /* Session cell (figma): pad 8, a 16px status slot, then a 4px title gap. */
 .sessionRow {
-  height: 32px;
+  height: 28px;
   gap: 0;
   /* Flat-list / first-mount fade. Grouped rows skip this: GroupSessionRun
      owns enter/exit through the shared fade recipe. */
@@ -162,7 +165,7 @@
 }
 
 .tasksSection .title {
-  font-size: 12px;
+  font-size: var(--rlw-text-detail);
   line-height: 18px;
   font-weight: 500;
   color: var(--rlw-alias-label-tertiary);
@@ -195,7 +198,7 @@
 }
 
 .sessionRunInner > * + * {
-  margin-top: 2px;
+  margin-top: 4px;
 }
 
 .sessionRunInner .sessionRow {
@@ -219,8 +222,8 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 14px;
-  line-height: 20px;
+  font-size: var(--rlw-text-label);
+  line-height: 18px;
 }
 
 .renameInput {
@@ -243,14 +246,14 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 12px;
+  font-size: var(--rlw-text-detail);
   line-height: 20px;
   color: var(--rlw-alias-label-tertiary);
 }
 
 .time {
   flex: none;
-  font-size: 12px;
+  font-size: var(--rlw-text-detail);
   line-height: 20px;
   color: var(--rlw-alias-label-tertiary);
 }

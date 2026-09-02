@@ -27,7 +27,7 @@
 
 .emptyTitle {
   margin: 0;
-  font-size: 14px;
+  font-size: var(--rlw-text-body);
   line-height: 22px;
   font-weight: 500;
   color: var(--rlw-alias-label-primary);
@@ -36,7 +36,7 @@
 .emptyBody {
   margin: 4px 0 0;
   max-width: 220px;
-  font-size: 12px;
+  font-size: var(--rlw-text-detail);
   line-height: 18px;
   color: var(--rlw-alias-label-tertiary);
 }
@@ -83,7 +83,7 @@
   flex: 1;
   min-width: 0;
   overflow: hidden;
-  font-size: 14px;
+  font-size: var(--rlw-text-body);
   line-height: 22px;
   color: var(--rlw-alias-label-primary);
   text-overflow: ellipsis;
@@ -92,7 +92,7 @@
 
 .meta {
   flex-shrink: 0;
-  font-size: 12px;
+  font-size: var(--rlw-text-detail);
   line-height: 18px;
   color: var(--rlw-alias-label-tertiary);
 }
@@ -103,7 +103,7 @@
 
 .jobsTitle {
   margin: 0 0 8px;
-  font-size: 12px;
+  font-size: var(--rlw-text-detail);
   line-height: 18px;
   font-weight: 500;
   color: var(--rlw-alias-label-secondary);

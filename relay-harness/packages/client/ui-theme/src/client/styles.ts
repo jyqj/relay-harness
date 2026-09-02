@@ -6,12 +6,14 @@ import wallpaper from '../styles/wallpaper.css?inline'
 import scrollbar from '../styles/scrollbar.css?inline'
 import gradientShadowText from '../styles/gradient-shadow-text.css?inline'
 import shiki from '../styles/shiki.css?inline'
+import fadeMask from '../styles/fade-mask.css?inline'
 
 const PLUGIN_ID = '@relay-harness/rlh-client-ui-theme'
 
 // motion.css follows base.css (it reads that sheet's duration and easing
 // tokens); wallpaper.css follows the token sheets so chrome can mix those
-// fills; scrollbar.css follows design-platform.css (it reads its tokens).
+// fills; scrollbar.css follows design-platform.css (it reads its tokens);
+// fade-mask.css is self-contained and reads base.css's motion tempo tokens.
 const STYLES = [
   ['base.css', base],
   ['motion.css', motion],
@@ -20,6 +22,7 @@ const STYLES = [
   ['scrollbar.css', scrollbar],
   ['gradient-shadow-text.css', gradientShadowText],
   ['shiki.css', shiki],
+  ['fade-mask.css', fadeMask],
 ] as const
 
 /**

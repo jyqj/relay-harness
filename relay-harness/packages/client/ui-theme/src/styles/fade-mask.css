@@ -1,0 +1,118 @@
+/* Scroll fade masks: softens content into a scrolling region's top and
+ * bottom edges so overflowing rows dissolve instead of being clipped by an
+ * invisible line. A container opts in with `.rlh-fade-y`; the mask itself is
+ * driven by three registered lengths, so appearing is the length
+ * interpolating rather than a second layer fading in over the first:
+ *
+ *   --rlh-fade-top      depth of the softening at the top edge (0 = off)
+ *   --rlh-fade-bottom   depth at the bottom edge (0 = off)
+ *   --rlh-fade-inset    length held at full strength before the top fade
+ *                       starts — the band sticky rows occupy, which must not
+ *                       be softened by the mask they sit inside
+ *
+ * A scroller drives the two depths (0px at the rail, the depth defaults when
+ * content overflows past that edge) and reads back the interpolating mask for
+ * free. `--rlh-fade-inset` never transitions: it tracks rows the browser is
+ * placing, and a transition would put the fade a frame behind the row it is
+ * supposed to start under.
+ *
+ * The stops trace an ease-out curve rather than a straight ramp — the eye is
+ * far more sensitive at the sparse end of alpha, so a linear ramp appears to
+ * hold and then stop, and where it stops reads as a faint rule somebody drew.
+ *
+ * The `-webkit-mask-image` duplicate is load-bearing, not defensive: engines
+ * that only take the prefixed form ignore the unparsed standard property, and
+ * a missing mask leaves the raw clip edge visible.
+ *
+ * Constraint for content inside a `.rlh-fade-y` scroller: the mask applies to
+ * every descendant the scroller paints, so a fixed-position bubble (menu,
+ * tooltip, hover card) anchored to an in-list row is softened wherever it
+ * overlaps the fade band. Such bubbles must render through a portal outside
+ * the scroller — the list rows in this repo already do.
+ */
+
+@property --rlh-fade-top {
+  syntax: '<length>';
+  inherits: true;
+  initial-value: 0px;
+}
+
+@property --rlh-fade-bottom {
+  syntax: '<length>';
+  inherits: true;
+  initial-value: 0px;
+}
+
+@property --rlh-fade-inset {
+  syntax: '<length>';
+  inherits: true;
+  initial-value: 0px;
+}
+
+.rlh-fade-y {
+  --rlh-fade-top-depth: 36px;
+  --rlh-fade-bottom-depth: 48px;
+  /* Default to both edges faded; a scroller overrides the two depths with 0px
+     when content sits at the rail. */
+  --rlh-fade-top: var(--rlh-fade-top-depth);
+  --rlh-fade-bottom: var(--rlh-fade-bottom-depth);
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    rgb(0 0 0 / 0.06) calc(var(--rlh-fade-top) * 0.12),
+    rgb(0 0 0 / 0.19) calc(var(--rlh-fade-top) * 0.26),
+    rgb(0 0 0 / 0.38) calc(var(--rlh-fade-top) * 0.41),
+    rgb(0 0 0 / 0.6) calc(var(--rlh-fade-top) * 0.57),
+    rgb(0 0 0 / 0.8) calc(var(--rlh-fade-top) * 0.72),
+    rgb(0 0 0 / 0.94) calc(var(--rlh-fade-top) * 0.86),
+    #000 var(--rlh-fade-top),
+    #000 var(--rlh-fade-inset),
+    transparent var(--rlh-fade-inset),
+    rgb(0 0 0 / 0.06) calc(var(--rlh-fade-inset) + var(--rlh-fade-top) * 0.12),
+    rgb(0 0 0 / 0.19) calc(var(--rlh-fade-inset) + var(--rlh-fade-top) * 0.26),
+    rgb(0 0 0 / 0.38) calc(var(--rlh-fade-inset) + var(--rlh-fade-top) * 0.41),
+    rgb(0 0 0 / 0.6) calc(var(--rlh-fade-inset) + var(--rlh-fade-top) * 0.57),
+    rgb(0 0 0 / 0.8) calc(var(--rlh-fade-inset) + var(--rlh-fade-top) * 0.72),
+    rgb(0 0 0 / 0.94) calc(var(--rlh-fade-inset) + var(--rlh-fade-top) * 0.86),
+    #000 calc(var(--rlh-fade-inset) + var(--rlh-fade-top)),
+    #000 calc(100% - var(--rlh-fade-bottom)),
+    rgb(0 0 0 / 0.94) calc(100% - var(--rlh-fade-bottom) * 0.86),
+    rgb(0 0 0 / 0.8) calc(100% - var(--rlh-fade-bottom) * 0.72),
+    rgb(0 0 0 / 0.6) calc(100% - var(--rlh-fade-bottom) * 0.57),
+    rgb(0 0 0 / 0.38) calc(100% - var(--rlh-fade-bottom) * 0.41),
+    rgb(0 0 0 / 0.19) calc(100% - var(--rlh-fade-bottom) * 0.26),
+    rgb(0 0 0 / 0.06) calc(100% - var(--rlh-fade-bottom) * 0.12),
+    transparent 100%
+  );
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0,
+    rgb(0 0 0 / 0.06) calc(var(--rlh-fade-top) * 0.12),
+    rgb(0 0 0 / 0.19) calc(var(--rlh-fade-top) * 0.26),
+    rgb(0 0 0 / 0.38) calc(var(--rlh-fade-top) * 0.41),
+    rgb(0 0 0 / 0.6) calc(var(--rlh-fade-top) * 0.57),
+    rgb(0 0 0 / 0.8) calc(var(--rlh-fade-top) * 0.72),
+    rgb(0 0 0 / 0.94) calc(var(--rlh-fade-top) * 0.86),
+    #000 var(--rlh-fade-top),
+    #000 var(--rlh-fade-inset),
+    transparent var(--rlh-fade-inset),
+    rgb(0 0 0 / 0.06) calc(var(--rlh-fade-inset) + var(--rlh-fade-top) * 0.12),
+    rgb(0 0 0 / 0.19) calc(var(--rlh-fade-inset) + var(--rlh-fade-top) * 0.26),
+    rgb(0 0 0 / 0.38) calc(var(--rlh-fade-inset) + var(--rlh-fade-top) * 0.41),
+    rgb(0 0 0 / 0.6) calc(var(--rlh-fade-inset) + var(--rlh-fade-top) * 0.57),
+    rgb(0 0 0 / 0.8) calc(var(--rlh-fade-inset) + var(--rlh-fade-top) * 0.72),
+    rgb(0 0 0 / 0.94) calc(var(--rlh-fade-inset) + var(--rlh-fade-top) * 0.86),
+    #000 calc(var(--rlh-fade-inset) + var(--rlh-fade-top)),
+    #000 calc(100% - var(--rlh-fade-bottom)),
+    rgb(0 0 0 / 0.94) calc(100% - var(--rlh-fade-bottom) * 0.86),
+    rgb(0 0 0 / 0.8) calc(100% - var(--rlh-fade-bottom) * 0.72),
+    rgb(0 0 0 / 0.6) calc(100% - var(--rlh-fade-bottom) * 0.57),
+    rgb(0 0 0 / 0.38) calc(100% - var(--rlh-fade-bottom) * 0.41),
+    rgb(0 0 0 / 0.19) calc(100% - var(--rlh-fade-bottom) * 0.26),
+    rgb(0 0 0 / 0.06) calc(100% - var(--rlh-fade-bottom) * 0.12),
+    transparent 100%
+  );
+  transition:
+    --rlh-fade-top var(--rlw-motion-quick) var(--rlw-ease-out-quart),
+    --rlh-fade-bottom var(--rlw-motion-quick) var(--rlw-ease-out-quart);
+}

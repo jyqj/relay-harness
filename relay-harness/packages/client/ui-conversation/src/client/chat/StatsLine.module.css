@@ -11,8 +11,11 @@
   margin: 0 auto;
   box-sizing: border-box;
   padding: 4px calc(var(--rlh-composer-side-clearance) + 16px) 0px;
-  font-size: 12px;
+  font-size: var(--rlw-text-detail);
   line-height: 20px;
+  /* The line is counts and durations; fixed-width digits keep it from
+     re-wrapping the ellipsis as values tick. */
+  font-variant-numeric: tabular-nums;
   color: var(--rlw-alias-label-tertiary);
   white-space: nowrap;
   overflow: hidden;

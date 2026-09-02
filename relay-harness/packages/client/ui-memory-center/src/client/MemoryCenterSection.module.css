@@ -2,7 +2,7 @@
 .heading { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
 .title { margin: 0; color: var(--rlw-text-primary); font-size: 20px; }
 .intro, .scope, .notice, .count, .hint { margin: 4px 0 0; color: var(--rlw-text-secondary); font-size: 13px; line-height: 1.5; }
-.scope { font-family: var(--rlw-font-mono); }
+.scope { font-family: var(--rl-font-family-code); }
 .filters { display: grid; grid-template-columns: minmax(220px, 1fr) 180px; gap: 10px; }
 .select, .editor input, .editor textarea { border: 1px solid var(--rlw-border); border-radius: 8px; background: var(--rlw-bg-secondary); color: var(--rlw-text-primary); padding: 8px 10px; font: inherit; }
 .rows { display: flex; flex-direction: column; gap: 8px; padding: 0; margin: 0; list-style: none; }

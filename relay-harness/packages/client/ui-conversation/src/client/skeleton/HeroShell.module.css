@@ -23,17 +23,19 @@
   overflow: visible;
 }
 
-/* figma 34:10411: mark + title, gap 10, centered; 26/32 wt500. The preview
-   badge is a product addition outside that source: a mono superscript pill
-   riding the title's top-right. */
+/* figma 34:10411: mark + title, gap 10, centered; 26/32 wt500 — the display
+   tier of the type scale (26px), tracking tightened for the large size. The
+   preview badge is a product addition outside that source: a mono superscript
+   pill riding the title's top-right. */
 .headline {
   display: grid;
   grid-template-columns: 34px auto auto;
   column-gap: 10px;
   align-items: center;
   justify-content: center;
-  font-size: 26px;
-  line-height: 32px;
+  font-size: var(--rlw-text-display);
+  line-height: var(--rlw-leading-tight);
+  letter-spacing: var(--rlw-text-display-tracking);
   font-weight: 500;
   color: var(--rlw-alias-label-primary);
 }
