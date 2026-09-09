@@ -37,7 +37,7 @@ class StagedAdapter extends LlmAdapter {
       this.calls += 1
       yield { type: 'block-start', index: 0, blockType: 'text' }
       yield { type: 'text-delta', index: 0, text: 'The background job can now be delegated.' }
-      yield { type: 'block-end', index: 0 }
+      yield { type: 'block-end', index: 0, block: { type: 'text', text: 'The background job can now be delegated.' } }
       yield { type: 'finish', reason: { kind: 'stop' } }
       return
     }

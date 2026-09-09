@@ -5582,11 +5582,19 @@
   },
   "githubProgressCheckpoint": {
     "requestedByUser": true,
-    "status": "preparing ordinary commit and push",
+    "status": "main checkpoint cd0ce9e11e pushed; publishing validated stream-fixture correction",
     "branch": "feat/relay-focus-frontend",
     "remote": "relay (jyqj/relay-harness)",
     "boundary": "Work in progress, not completion or full green. Latest full Web evidence remains244passed48failed18skipped with focused repairs since; coverage and independent audit outstanding.",
     "lastInterruptedEdit": "Sidebar staged adapter corrected to block-start/text-delta/block-end protocol; focused real Web scenario passed /tmp/relay-checkpoint-sidebar.log",
-    "excluded": "scripts/__pycache__/ generated Python cache; no forced hook bypass"
+    "excluded": "scripts/__pycache__/ generated Python cache; no forced hook bypass",
+    "mainCommit": "cd0ce9e11e68105df43f1997e0eccf2f823296eb",
+    "hookFinding": "Root Git hooks cannot locate nested lefthook config. No bypass flags used; hooks did not validate. Manual project-directory checks below substitute for this checkpoint, hook path debt remains.",
+    "manualTypecheck": "PASS /tmp/relay-checkpoint-typecheck-fixed.log (full pnpm run typecheck)",
+    "manualLint": "PASS /tmp/relay-checkpoint-lint.log (full lint:contracts-ready)",
+    "focusedTest": "PASS /tmp/relay-checkpoint-sidebar-fixed.log",
+    "correction": "block-end now carries required final text block; initial manual typecheck caught omission after main checkpoint push",
+    "remotePR": "No open PR found for current branch; branch push only",
+    "fullGoal": "Still incomplete; no claim of full Web/coverage/independent audit completion"
   }
 }
