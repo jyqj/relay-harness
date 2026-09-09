@@ -14,7 +14,7 @@ Relay Harness（`rlh`）是一个面向普通用户的开源通用 agent harness
 - **Prompt Enhancement：**用户可以根据当前上下文优化未提交草稿，审阅差异与来源，接受或撤销建议，并始终控制是否提交。
 - **本地治理：**权限、记忆、上下文证据、检查点与验证都保持显式且可审计。
 
-当前功能的 shipped、partial 与 planned 状态只由机器可读的[功能状态](docs/feature-status.json)定义；其验证器会核对默认 composition、Remote/API、UI、e2e 与文档证据。
+机器可读的[功能状态](docs/feature-status.json)索引实现范围与证据引用。其验证器检查路径与标记，而非执行结果；验证结论另以当前测试、构建、平台运行与提供方运行结果为依据。
 
 ## 开发者预览
 

@@ -57,7 +57,7 @@ async function ensureSeedOpen(page: Page): Promise<void> {
     await welcome.getByRole('button').click()
     await welcome.waitFor({ state: 'detached', timeout: 15_000 })
   }
-  const chat = page.getByRole('tab', { name: 'Chat', exact: true })
+  const chat = page.getByRole('banner').getByRole('tab', { name: 'Chat', exact: true })
   // Search is a collapsed header action; expand it so the input is actionable.
   const searchButton = page.getByRole('button', { name: 'Search sessions' })
   if (await searchButton.getAttribute('aria-expanded') !== 'true') await searchButton.click()
@@ -99,6 +99,8 @@ describe('web e2e: navigation & panes over a rich seeded session', () => {
         .toEqual([PROMPT_TURN1, PROMPT_TURN2])
       await seedSession(scaffold, raw, SEED_ID)
     }
+    // This scenario exercises advanced surfaces hidden by Simple Mode.
+    await scaffold.ctx.productMode.set({ mode: 'developer' })
     browser = await chromium.launch()
   }, 120_000)
 
@@ -226,7 +228,7 @@ describe('web e2e: navigation & panes over a rich seeded session', () => {
   it.skipIf(MODE === 'record')('renders the trajectory ledger and opens its local record inspector', async () => {
     onTestFailed(() => saveFailureShot(page, 'web-e2e-navigation-trajectory'))
     await ensureSeedOpen(page)
-    await page.getByRole('tab', { name: 'Trajectory' }).click()
+    await page.getByRole('banner').getByRole('tab', { name: 'Trajectory' }).click()
     await page.waitForTimeout(100)
     const overlayLayout = await page.getByRole('table').evaluate((table) => {
       const host = table.closest('[data-conversation-scroll]')
@@ -390,7 +392,7 @@ describe('web e2e: navigation & panes over a rich seeded session', () => {
   it.skipIf(MODE === 'record')('focuses the ledger by dragging an overview interval', async () => {
     onTestFailed(() => saveFailureShot(page, 'web-e2e-navigation-timeline'))
     await ensureSeedOpen(page)
-    await page.getByRole('tab', { name: 'Trajectory' }).click()
+    await page.getByRole('banner').getByRole('tab', { name: 'Trajectory' }).click()
     const plot = page.getByLabel('Timeline overview; drag horizontally to focus events')
     await plot.waitFor({ timeout: 15_000 })
     const before = await page.locator('tr[data-kind]').count()

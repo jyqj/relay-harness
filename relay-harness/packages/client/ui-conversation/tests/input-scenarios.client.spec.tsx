@@ -21,8 +21,10 @@ import type {
 import { FakeApiClient, fakeRemote, ok } from '../../runtime/tests/fake-api.client.ts'
 import { makeTranslate } from '@relay-harness/rlh-client-test-runtime'
 import { zh as commonZh } from '@relay-harness/rlh-client-locale/src/locales/zh.ts'
-import type { DraftAttachmentId } from '../src/client/input/contract.ts'
+import type { DraftAttachmentId } from '../src/client/contract/input.ts'
+import { ComposerBlockRegistry } from '../src/client/input/blocks.ts'
 import { SessionInputShell } from '../src/client/input/facade.ts'
+import { InputHub } from '../src/client/input/hub.ts'
 import { InputBar } from '../src/client/skeleton/InputBar.tsx'
 import type { InputBarProps } from '../src/client/skeleton/InputBar.tsx'
 import { zh } from '../src/client/locales.ts'
@@ -415,5 +417,82 @@ describe('scenario I: unknown /xyz + enter', () => {
     // Never a silent downgrade: draft retained, sink untouched.
     expect(b.textarea.value).toBe('/plan 上线')
     expect(b.sink).not.toHaveBeenCalled()
+  })
+})
+
+/** Hub bench: real InputHub.shellFor over one listed session + a fake conversation face carrying a real block registry. */
+async function hubBench() {
+  const ctx = new Context()
+  const api = new FakeApiClient()
+  api.onWorkspaceList = () => Promise.resolve(ok({ items: [] }))
+  const sessionId = 'scenario-hub' as Parameters<SessionRuntime['open']>[0]
+  api.onList = () => Promise.resolve(ok({
+    items: [{ sessionId, updatedAt: 1, running: false, blank: false, cwd: '/w/a' }],
+  }) as never)
+  const sessions = new SessionRuntime(ctx, api, fakeRemote()) // provides 'sessions' itself
+  await sessions.refresh()
+  await Promise.resolve() // manager notifier flush
+  const registry = new ComposerBlockRegistry()
+  ctx.provide('conversation', {
+    sendSession: () => Promise.resolve<SubmitOutcome>({ kind: 'success' }),
+    serializeDraftImages: async (ids: readonly DraftAttachmentId[]) => ids.map(() => PNG),
+    releaseDraftImage: () => {},
+    blocks: registry,
+  } as never)
+  const hub = new InputHub(ctx, makeTranslate(zh, {}))
+  const binding = sessions.binding(sessionId)!
+  const shell = hub.shellFor(binding)
+  return { api, sessions, sessionId, hub, shell, registry }
+}
+
+describe('input shell lifecycle: dispose abort + composer-block teardown', () => {
+  it('dispose mid-flight aborts the image-only direct send and drops its settlement silently', async () => {
+    const b = await scopedBench()
+    const seen: AbortSignal[] = []
+    let settle!: (outcome: SubmitOutcome) => void
+    b.sink.mockImplementation(((...args: unknown[]) => {
+      seen.push(args[3] as AbortSignal)
+      return new Promise<SubmitOutcome>((resolve) => { settle = () =>{  resolve({ kind: 'success' }) } })
+    }))
+    act(() => { b.shell.addImages(['img-1' as DraftAttachmentId]) })
+    b.shell.submit()
+    expect(b.sink).toHaveBeenCalledOnce()
+    expect(seen[0]!.aborted).toBe(false)
+    // Shell teardown (session scope disposer) cancels the in-flight Host send.
+    b.shell.dispose()
+    expect(seen[0]!.aborted).toBe(true)
+    // The late settlement surfaces nothing: no error notice, no resurrected send.
+    settle({ kind: 'success' })
+    await Promise.resolve()
+    await Promise.resolve()
+    expect(b.shell.notices.getSnapshot()).toBeNull()
+    // A disposed shell starts no new send.
+    b.shell.submit()
+    expect(b.sink).toHaveBeenCalledOnce()
+  })
+
+  it('the scope teardown forgets the session composer-block store', async () => {
+    const b = await hubBench()
+    const store = b.registry.storeFor(b.sessionId)
+    b.registry.set(b.sessionId, { reason: '未选择工作区' })
+    expect(store.getSnapshot()?.reason).toBe('未选择工作区')
+    // The session leaves the host list: pruneScopes disposes the scope fiber,
+    // whose teardown effect forgets the block store.
+    b.api.onList = () => Promise.resolve(ok({ items: [] }) as never)
+    await b.sessions.refresh()
+    await vi.waitFor(() => {
+      expect(b.registry.storeFor(b.sessionId)).not.toBe(store)
+    })
+    expect(b.registry.storeFor(b.sessionId).getSnapshot()).toBeUndefined()
+  })
+
+  it('repeat shellFor calls and repeated forgets stay idempotent (HMR-safe teardown)', async () => {
+    const b = await hubBench()
+    expect(b.hub.shellFor(b.sessions.binding(b.sessionId)!)).toBe(b.shell)
+    const forget = vi.spyOn(b.registry, 'forget')
+    b.api.onList = () => Promise.resolve(ok({ items: [] }) as never)
+    await b.sessions.refresh()
+    await vi.waitFor(() => { expect(forget).toHaveBeenCalledOnce() })
+    expect(() =>{  b.registry.forget(b.sessionId) }).not.toThrow()
   })
 })

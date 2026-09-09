@@ -110,10 +110,14 @@ export class McpServersFile extends Service {
   private readonly children = new Map<string, { fingerprint: string; handle: ChildHandle }>()
   private operations: Promise<void> = Promise.resolve()
   private mounter: McpClientMounter = defaultMounter
-  private authorizeHttp: (url: string) => Promise<McpOAuthTokens> = url => authorizeMcpHttp(url, defaultOAuthRuntime())
+  private authorizeHttp: (url: string, signal: AbortSignal) => Promise<McpOAuthTokens> =
+    (url, signal) => authorizeMcpHttp(url, defaultOAuthRuntime(), signal)
+  private readonly authorizationLifetime = new AbortController()
+  private readonly authorizations = new Set<Promise<McpOAuthTokens>>()
   private watcher: FSWatcher | undefined
   private closed = false
-  private selfWrite: string | undefined
+  private started = false
+  private shutdown: Promise<void> | undefined
   private ready: Promise<void> = Promise.resolve()
   /** Resolved document path and watch policy for this instance. */
   readonly spec: ResolvedSpec
@@ -139,20 +143,38 @@ export class McpServersFile extends Service {
    * Replace HTTP OAuth. Tests call this before {@link authorize}.
    * @param authorizeHttp - returns tokens for one MCP endpoint URL.
    */
-  useAuthorizeHttp(authorizeHttp: (url: string) => Promise<McpOAuthTokens>): void {
+  useAuthorizeHttp(authorizeHttp: (url: string, signal: AbortSignal) => Promise<McpOAuthTokens>): void {
     this.authorizeHttp = authorizeHttp
   }
 
   /**
    * Load the document, mount enabled servers, and optionally watch.
-   * @returns disposer that closes the watcher and child fibers.
+   * @returns idempotent disposer that closes admission and awaits queued work, watcher, and child fibers.
    */
-  start(): () => void {
+  start(): () => Promise<void> {
+    if (this.isClosed()) throw new Error('mcp-servers-file: service is closed')
+    if (this.started) throw new Error('mcp-servers-file: service already started')
+    this.started = true
     this.ready = this.boot()
+    // Startup is intentionally background work; observe failure even if no
+    // mutation or disposer has yet awaited ready. Those callers still receive
+    // the original rejection rather than a manufactured successful startup.
+    void this.ready.catch(() => {
+      this.ctx.logger.warn('mcp-servers-file: startup failed')
+    })
     return () => {
+      if (this.shutdown !== undefined) return this.shutdown
       this.closed = true
-      void this.watcher?.close()
-      void this.disposeChildren()
+      this.shutdown = Promise.resolve().then(async () => {
+        await Promise.allSettled([...this.authorizations])
+        const settled = await Promise.allSettled([this.ready, this.operations])
+        const failures: unknown[] = settled.flatMap(result => result.status === 'rejected' ? [result.reason as unknown] : [])
+        try { await this.watcher?.close() } catch (error: unknown) { failures.push(error) }
+        try { await this.disposeChildren() } catch (error: unknown) { failures.push(error) }
+        if (failures.length > 0) throw new AggregateError(failures, 'mcp-servers-file: shutdown failed')
+      })
+      this.authorizationLifetime.abort(new Error('mcp-servers-file: service is closed'))
+      return this.shutdown
     }
   }
 
@@ -169,7 +191,7 @@ export class McpServersFile extends Service {
    * @returns the managed records with secret values intact.
    */
   listManagedRaw(): readonly McpServerRecord[] {
-    return this.document.servers
+    return structuredClone(this.document.servers)
   }
 
   /**
@@ -244,7 +266,7 @@ export class McpServersFile extends Service {
         await child.handle.dispose()
         this.children.delete(id)
       }
-      if (!record.enabled) return
+      if (!record.enabled || this.isClosed()) return
       const handle = this.mounter(this.ctx, toClientConfig(record))
       this.children.set(id, { fingerprint: fingerprintOf(record), handle })
     })
@@ -256,7 +278,9 @@ export class McpServersFile extends Service {
    * @returns after the bearer is stored and the child is remounted.
    */
   async authorize(id: string): Promise<void> {
+    if (this.isClosed()) throw new Error('mcp-servers-file: service is closed')
     await this.ready
+    if (this.isClosed()) throw new Error('mcp-servers-file: service is closed')
     const record = this.document.servers.find(server => server.id === id)
     if (record === undefined) {
       throw new Error(`mcp-servers-file: server "${id}" is not in the managed document`)
@@ -264,22 +288,33 @@ export class McpServersFile extends Service {
     if (record.transport !== 'streamable-http') {
       throw new Error('mcp-servers-file: OAuth login is only for HTTP servers')
     }
-    const tokens = await this.authorizeHttp(record.url)
-    const current = this.document.servers.find(server => server.id === id)
-    if (current === undefined || current.transport !== 'streamable-http') {
-      throw new Error(`mcp-servers-file: server "${id}" is not in the managed document`)
-    }
-    await this.upsert({
-      ...current,
-      headers: { ...current.headers, Authorization: `Bearer ${tokens.access_token}` },
+    const authorizing = this.authorizeHttp(record.url, this.authorizationLifetime.signal)
+    this.authorizations.add(authorizing)
+    let tokens: McpOAuthTokens
+    try { tokens = await authorizing } finally { this.authorizations.delete(authorizing) }
+    // Validate the token's resource at the durable mutation boundary, against
+    // the document read under the cross-process file lock, not a cached row.
+    await this.mutate((document) => {
+      const current = document.servers.find(server => server.id === id)
+      if (current === undefined || current.transport !== 'streamable-http') {
+        throw new Error(`mcp-servers-file: server "${id}" is not in the managed document`)
+      }
+      if (current.url !== record.url) {
+        throw new Error(`mcp-servers-file: server "${id}" changed during OAuth; start login again`)
+      }
+      return upsertRecord(document, {
+        ...current,
+        headers: { ...current.headers, Authorization: `Bearer ${tokens.access_token}` },
+      })
     })
   }
 
   private async boot(): Promise<void> {
     this.document = await this.readDocument()
     await this.reconcile()
-    if (!this.spec.watch || this.closed) return
+    if (!this.spec.watch || this.isClosed()) return
     const target = await canonicalizeWatchPath(this.spec.filename)
+    if (this.isClosed()) return
     this.watcher = chokidarWatch(target, {
       ignoreInitial: true,
       awaitWriteFinish: {
@@ -287,8 +322,15 @@ export class McpServersFile extends Service {
         pollInterval: Math.max(1, Math.min(this.spec.debounceMs, 10)),
       },
     })
-    this.watcher.on('all', () => {
+    const refresh = (): void => {
       if (!this.closed) void this.enqueue(() => this.refreshFromDisk())
+    }
+    this.watcher.on('all', refresh)
+    // The first snapshot predates subscription; ignoreInitial otherwise loses
+    // edits completed before chokidar finishes its initial scan.
+    this.watcher.once('ready', refresh)
+    this.watcher.on('error', () => {
+      if (!this.closed) this.ctx.logger.warn('mcp-servers-file: watcher error; keeping current configuration')
     })
   }
 
@@ -297,11 +339,10 @@ export class McpServersFile extends Service {
       await this.ready
       await mkdir(dirname(this.spec.filename), { recursive: true, mode: 0o700 })
       await withFileLock(this.spec.filename, async () => {
-        const current = await this.readDocument()
+        const current = await this.readDocument(true)
         const document = next(current)
         const output = serializeDocument(document)
         await writeFileAtomic(this.spec.filename, output, { mode: 0o600, dirMode: 0o700 })
-        this.selfWrite = output
         this.document = document
       })
       await this.reconcile()
@@ -311,23 +352,27 @@ export class McpServersFile extends Service {
   private async refreshFromDisk(): Promise<void> {
     const document = await this.readDocument()
     const serialized = serializeDocument(document)
-    if (serialized === this.selfWrite) return
+    // Deduplicate against current state, not a historical self-write: an
+    // external edit may legitimately restore any earlier document.
+    if (serialized === serializeDocument(this.document)) return
     this.document = document
     await this.reconcile()
   }
 
-  private async readDocument(): Promise<McpServersDocument> {
+  private async readDocument(strict = false): Promise<McpServersDocument> {
     try {
       const text = await readFile(this.spec.filename, 'utf8')
       return parseDocument(text)
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') return EMPTY_DOCUMENT
-      this.ctx.logger.warn(`mcp-servers-file: keeping the last good document: ${errorMessage(error)}`)
+      if (strict) throw new Error('mcp-servers-file: refusing to modify an unreadable document')
+      this.ctx.logger.warn('mcp-servers-file: keeping the last good document; file could not be read or parsed')
       return this.document
     }
   }
 
   private async reconcile(): Promise<void> {
+    if (this.isClosed()) return
     const wanted = new Map<string, McpServerRecord>()
     for (const record of this.document.servers) {
       if (record.enabled) wanted.set(record.id, record)
@@ -340,6 +385,7 @@ export class McpServersFile extends Service {
       this.children.delete(id)
     }
     for (const [id, record] of wanted) {
+      if (this.isClosed()) return
       if (this.children.has(id)) continue
       const handle = this.mounter(this.ctx, toClientConfig(record))
       this.children.set(id, { fingerprint: fingerprintOf(record), handle })
@@ -347,11 +393,17 @@ export class McpServersFile extends Service {
   }
 
   private async disposeChildren(): Promise<void> {
-    await Promise.all([...this.children.values()].map(async child => child.handle.dispose()))
+    const settled = await Promise.allSettled([...this.children.values()].map(async child => child.handle.dispose()))
     this.children.clear()
+    const failures: unknown[] = settled.flatMap(result => result.status === 'rejected' ? [result.reason as unknown] : [])
+    if (failures.length > 0) throw new AggregateError(failures, 'mcp-servers-file: child disposal failed')
   }
 
+  /** Re-read lifecycle state across awaits and re-entrant mounter callbacks. */
+  private isClosed(): boolean { return this.closed }
+
   private enqueue(operation: () => Promise<void>): Promise<void> {
+    if (this.isClosed()) return Promise.reject(new Error('mcp-servers-file: service is closed'))
     const task = this.operations.then(operation, operation)
     this.operations = task.then(() => undefined, () => undefined)
     return task
@@ -360,8 +412,4 @@ export class McpServersFile extends Service {
 
 function fingerprintOf(record: McpServerRecord): string {
   return JSON.stringify(toClientConfig(record))
-}
-
-function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error)
 }

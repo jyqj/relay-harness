@@ -7,9 +7,9 @@
  * dispose with the fiber.
  */
 import { Context } from '@relay-harness/cordis'
-import { describe, expect, it } from 'vitest'
 import type { SessionId } from '@relay-harness/rlh-api-remotes/client'
-import { createScope, scopeOf } from '../src/client/agents/scope.ts'
+import { describe,expect,it } from 'vitest'
+import { createScope,scopeOf } from '../src/client/scope.ts'
 
 const sid = (k: string): SessionId => k as SessionId
 

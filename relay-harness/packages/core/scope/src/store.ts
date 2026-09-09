@@ -179,7 +179,8 @@ export class ScopedLayers<L extends ScopeLayer> {
    */
   peek(scope: ScopeKey | undefined): L | undefined {
     if (scope === undefined) return undefined
-    return this.scoped.get(scope)
+    const exact = scopeChainOf(scope)[0]
+    return exact === undefined ? undefined : this.scoped.get(exact)
   }
 
   /**

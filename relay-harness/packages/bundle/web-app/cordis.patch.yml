@@ -272,6 +272,9 @@
       name: '@relay-harness/rlh-client-ui-sidebar'
 
     # Shared Simple/Developer state plus Chat / Work / Library product navigation.
+    - id: work-results
+      name: '@relay-harness/rlh-host-work-results'
+
     - id: ui-product-shell
       name: '@relay-harness/rlh-client-ui-product-shell'
 

@@ -4,6 +4,8 @@
 
 JSONL 持久会话存储后端：`SessionPersistence` 的一个具体实现（`rlh-session-persistence` seam）。每个会话有一个仅追加的逻辑 JSONL 日志，默认存储为 `.jsonl.zstd`；禁用压缩时使用原始 `.jsonl`。
 
+`prepare(id, signal?, fence?)` 上可选的所有权证明会在活动 setup 前保护冷恢复。共享协调器使 `runExclusive` 区间覆盖完整文件变更和 fsync，而不只是异步文件 I/O 之前；只有断言或缺失的证明不会增加跨进程写入排他性。
+
 ## 磁盘布局
 
 ```

@@ -1,0 +1,100 @@
+{
+  "name": "@relay-harness/rlh-host-work-results",
+  "description": "Session-log user acceptance and paginated cross-session deliverable queries",
+  "version": "0.1.0-rc.8",
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jyqj/relay-harness.git",
+    "directory": "relay-harness/packages/host/work-results"
+  },
+  "type": "module",
+  "main": "lib/index.js",
+  "types": "lib/types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./lib/types/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./invariant": {
+      "types": "./lib/types/invariant.d.ts",
+      "default": "./lib/invariant.js"
+    },
+    "./typert": {
+      "types": "./lib/typert.host.d.ts",
+      "default": "./lib/typert.host.js"
+    },
+    "./remote": {
+      "types": "./lib/typert.remote-client.d.ts",
+      "default": "./lib/typert.remote-client.js"
+    },
+    "./package.json": "./package.json",
+    "./src/*": "./src/*",
+    "./types": {
+      "types": "./lib/types/types.d.ts",
+      "default": "./lib/types/types.js"
+    }
+  },
+  "files": [
+    "lib/index.js",
+    "lib/invariant.js",
+    "lib/projection-*.js",
+    "lib/types/**/*.js",
+    "lib/types/**/*.d.ts",
+    "lib/typert.host.js",
+    "lib/typert.host.d.ts",
+    "lib/typert.remote-client.js",
+    "lib/typert.remote-client.d.ts"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "@relay-harness/schemastery": "workspace:^",
+    "zod": "^4.4.3"
+  },
+  "peerDependencies": {
+    "@relay-harness/cordis": "workspace:^",
+    "@relay-harness/rlh-invariants": "workspace:^",
+    "@relay-harness/rlh-typert-protocol": "workspace:^",
+    "@relay-harness/rlh-api-gateway": "workspace:^",
+    "@relay-harness/rlh-agent": "workspace:^",
+    "@relay-harness/rlh-session": "workspace:^",
+    "@relay-harness/rlh-session-persistence": "workspace:^",
+    "@relay-harness/rlh-session-projection": "workspace:^",
+    "@relay-harness/rlh-session-query": "workspace:^",
+    "@relay-harness/rlh-jobs": "workspace:^",
+    "@relay-harness/rlh-host-apiproxy": "workspace:^",
+    "@relay-harness/rlh-brand": "workspace:^"
+  },
+  "devDependencies": {
+    "@relay-harness/cordis": "workspace:^",
+    "@relay-harness/rlh-invariants": "workspace:^",
+    "@relay-harness/rlh-typert-protocol": "workspace:^",
+    "@relay-harness/rlh-api-gateway": "workspace:^",
+    "@relay-harness/rlh-agent": "workspace:^",
+    "@relay-harness/rlh-session": "workspace:^",
+    "@relay-harness/rlh-session-persistence": "workspace:^",
+    "@relay-harness/rlh-session-projection": "workspace:^",
+    "@relay-harness/rlh-session-query": "workspace:^",
+    "@relay-harness/rlh-jobs": "workspace:^",
+    "@relay-harness/rlh-host-apiproxy": "workspace:^",
+    "@relay-harness/rlh-brand": "workspace:^",
+    "@relay-harness/rlh-app-boot": "workspace:^",
+    "@relay-harness/rlh-agent-loop": "workspace:^",
+    "@relay-harness/rlh-llm": "workspace:^",
+    "@relay-harness/rlh-system-prompt": "workspace:^",
+    "@relay-harness/rlh-tools": "workspace:^",
+    "@relay-harness/rlh-session-persistence-jsonl": "workspace:^",
+    "@relay-harness/rlh-session-query-sqlite": "workspace:^",
+    "@relay-harness/rlh-jobs-local": "workspace:^",
+    "@relay-harness/rlh-user-questions": "workspace:^",
+    "@relay-harness/rlh-user-approval": "workspace:^",
+    "@relay-harness/rlh-typert-registry": "workspace:^",
+    "@relay-harness/rlh-client-connection": "workspace:^",
+    "@relay-harness/rlh-host-webserver": "workspace:^",
+    "@relay-harness/rlh-client-ui-deliverables": "workspace:^",
+    "@relay-harness/rlh-sdk-jsonrpc-server": "workspace:^",
+    "@relay-harness/rlh-sdk-protocol": "workspace:^"
+  }
+}

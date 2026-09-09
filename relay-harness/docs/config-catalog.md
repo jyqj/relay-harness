@@ -705,10 +705,14 @@ export interface Config {
   readonly maxContributorTokens?: number
   /** Wall-clock allowance for one provider before its late result is ignored. */
   readonly contributorTimeoutMs?: number
+  /** Complete preparation allowance, including time waiting for a provider slot. */
+  readonly prepareTimeoutMs?: number
+  /** Maximum concurrent provider reads in one preparation. */
+  readonly maxConcurrentContributors?: number
 }
 ```
 
-Source: [`packages/context/context-engine/src/index.ts:89`](../packages/context/context-engine/src/index.ts)
+Source: [`packages/context/context-engine/src/index.ts:110`](../packages/context/context-engine/src/index.ts)
 
 <a id="relay-harnessrlh-cordis-host-runner"></a>
 
@@ -1002,10 +1006,17 @@ export interface Config {
    * @default 1024
    */
   coldBlankProbeMaxBytes?: number
+  /**
+   * Serialized-byte ceiling on one SSE subscriber's buffered event frames.
+   * A consumer whose queue passes it is disconnected; shipped clients
+   * reconnect and the mux reopens replay the full baseline.
+   * @default 8388608
+   */
+  muxStreamBufferBytes?: number
 }
 ```
 
-Source: [`packages/host/apiproxy/src/index.ts:42`](../packages/host/apiproxy/src/index.ts)
+Source: [`packages/host/apiproxy/src/index.ts:44`](../packages/host/apiproxy/src/index.ts)
 
 <a id="relay-harnessrlh-host-directory-picker-browse"></a>
 
@@ -1071,7 +1082,27 @@ export interface Config {
 }
 ```
 
-Source: [`packages/host/webserver/src/index.ts:45`](../packages/host/webserver/src/index.ts)
+Source: [`packages/host/webserver/src/index.ts:46`](../packages/host/webserver/src/index.ts)
+
+<a id="relay-harnessrlh-host-work-results"></a>
+
+## `@relay-harness/rlh-host-work-results`
+
+Requires: `agents` · `sessions` · `sessionPersistence` · `sessionQuery` · `sessionProjections` · `jobs` · `typertGateway` · `apiProxy` · `hostInteractions`
+
+```ts config-catalog
+/** Deployment bounds for one Library request. */
+export interface Config {
+  /** Maximum existing Session logs inspected per page. */
+  readonly scanSessionsPerPage?: number
+  /** Maximum output rows a caller may request. */
+  readonly maxResultsPerPage?: number
+  /** Row limit used when the request omits one. */
+  readonly defaultResultsPerPage?: number
+}
+```
+
+Source: [`packages/host/work-results/src/index.ts:27`](../packages/host/work-results/src/index.ts)
 
 <a id="relay-harnessrlh-invariants"></a>
 
@@ -1167,10 +1198,21 @@ export interface Config {
    * omission defaults to 10.
    */
   maxConcurrentJobsPerOwner?: number
+  /**
+   * Grace period in milliseconds between a terminal record becoming reported
+   * (its completion notice deliverable) and its prunability; omission
+   * defaults to 60_000.
+   */
+  terminalRetentionMs?: number
+  /**
+   * Maximum retained terminal records per owner bucket; the retention sweep
+   * drops the oldest-finished beyond it. Omission defaults to 100.
+   */
+  maxTerminalRecords?: number
 }
 ```
 
-Source: [`packages/jobs/jobs-local/src/index.ts:31`](../packages/jobs/jobs-local/src/index.ts)
+Source: [`packages/jobs/jobs-local/src/index.ts:37`](../packages/jobs/jobs-local/src/index.ts)
 
 <a id="relay-harnessrlh-llm-circuit-breaker"></a>
 
@@ -1573,7 +1615,7 @@ export interface ReplayModelConfig {
 
 Depends on: [`ModelModality`](../packages/llm/llm/src/index.ts) · [`RetryPolicyConfig`](../packages/llm/llm/src/index.ts)
 
-Source: [`packages/test-support/llm-replay/src/index.ts:776`](../packages/test-support/llm-replay/src/index.ts)
+Source: [`packages/test-support/llm-replay/src/index.ts:798`](../packages/test-support/llm-replay/src/index.ts)
 
 <a id="relay-harnessrlh-llm-retry"></a>
 
@@ -2299,7 +2341,7 @@ export interface Config {
 export type JsonlCompression = 'zstd' | 'none'
 ```
 
-Source: [`packages/session/session-persistence-jsonl/src/index.ts:60`](../packages/session/session-persistence-jsonl/src/index.ts)
+Source: [`packages/session/session-persistence-jsonl/src/index.ts:61`](../packages/session/session-persistence-jsonl/src/index.ts)
 
 <a id="relay-harnessrlh-session-persistence-sqlite"></a>
 
@@ -2326,7 +2368,7 @@ export interface Config {
 export type JournalMode = 'wal' | 'delete' | 'truncate' | 'persist'
 ```
 
-Source: [`packages/session/session-persistence-sqlite/src/index.ts:36`](../packages/session/session-persistence-sqlite/src/index.ts)
+Source: [`packages/session/session-persistence-sqlite/src/index.ts:37`](../packages/session/session-persistence-sqlite/src/index.ts)
 
 <a id="relay-harnessrlh-session-projection-cache"></a>
 
@@ -2612,10 +2654,18 @@ export interface Config {
    * a local deployment. Set it to keep spill files under a known location.
    */
   root?: string
+  /**
+   * Age in milliseconds at which a spill root left by an earlier process
+   * becomes reclaimable by the one-shot startup sweep. The sweep watches the
+   * OS temp dir for `rlh-spill-*` roots and never removes the current
+   * process's own root.
+   * @default 604800000
+   */
+  orphanRetentionMs?: number
 }
 ```
 
-Source: [`packages/spill/spill-local/src/index.ts:22`](../packages/spill/spill-local/src/index.ts)
+Source: [`packages/spill/spill-local/src/index.ts:29`](../packages/spill/spill-local/src/index.ts)
 
 <a id="relay-harnessrlh-spill-policy"></a>
 
@@ -3602,7 +3652,7 @@ export interface Config {
 }
 ```
 
-Source: [`packages/workflow/tool-workflow/src/index.ts:34`](../packages/workflow/tool-workflow/src/index.ts)
+Source: [`packages/workflow/tool-workflow/src/index.ts:36`](../packages/workflow/tool-workflow/src/index.ts)
 
 <a id="relay-harnessrlh-tools"></a>
 
@@ -3638,7 +3688,7 @@ export interface Config {
 export type ToolPresentationMode = 'native' | 'code' | 'both'
 ```
 
-Source: [`packages/core/tools/src/index.ts:723`](../packages/core/tools/src/index.ts)
+Source: [`packages/core/tools/src/index.ts:726`](../packages/core/tools/src/index.ts)
 
 <a id="relay-harnessrlh-tracker-linear"></a>
 
@@ -3899,7 +3949,7 @@ export interface Config {
 }
 ```
 
-Source: [`packages/workflow/workflow-worker-thread/src/index.ts:38`](../packages/workflow/workflow-worker-thread/src/index.ts)
+Source: [`packages/workflow/workflow-worker-thread/src/index.ts:39`](../packages/workflow/workflow-worker-thread/src/index.ts)
 
 ## Loadable plugins with no config
 
@@ -4065,6 +4115,7 @@ Imported as libraries by other packages; a `cordis.yml` cannot load them.
 - `@relay-harness/rlh-sdk-protocol` ([`packages/sdk/protocol/src/index.ts`](../packages/sdk/protocol/src/index.ts))
 - `@relay-harness/rlh-session-telemetry` ([`packages/session/session-telemetry/src/index.ts`](../packages/session/session-telemetry/src/index.ts))
 - `@relay-harness/rlh-session-title-llm` ([`packages/session/session-title-llm/src/index.ts`](../packages/session/session-title-llm/src/index.ts))
+- `@relay-harness/rlh-sqlite-runtime` ([`packages/util/sqlite-runtime/src/index.ts`](../packages/util/sqlite-runtime/src/index.ts))
 - `@relay-harness/rlh-subagent-in-process-driver` ([`packages/subagent/subagent-in-process-driver/src/index.ts`](../packages/subagent/subagent-in-process-driver/src/index.ts))
 - `@relay-harness/rlh-timeout` ([`packages/util/timeout/src/index.ts`](../packages/util/timeout/src/index.ts))
 - `@relay-harness/rlh-typert-generator` ([`packages/typert/generator/src/index.ts`](../packages/typert/generator/src/index.ts))

@@ -96,6 +96,23 @@ class GoalService extends Service {
   }
 }
 
+class RequestWitnessService extends Service {
+  static inject = ['typertGateway']
+  readonly typertRemote = bindTypertRemote(this, 'requestWitness')
+  lateRead: (() => string | undefined) | undefined
+  readonly release = Promise.withResolvers<undefined>()
+  lateResult: Promise<string | undefined> | undefined
+
+  constructor(ctx: Context) { super(ctx, 'requestWitness') }
+
+  @Remote
+  inspect(): string | null {
+    this.lateRead = () => this.ctx.typertGateway.currentTrustedRequest()?.endpoint
+    this.lateResult = this.release.promise.then(() => this.ctx.typertGateway.currentTrustedRequest()?.endpoint)
+    return this.lateRead() ?? null
+  }
+}
+
 type FakeRpcResult =
   | { readonly ok: true; readonly value: unknown }
   | { readonly ok: false; readonly error: { readonly code: string; readonly message: string; readonly details: object } }
@@ -951,6 +968,27 @@ describe('TypertGatewayService', () => {
       method: 'absent',
       args: {},
     }), 'invocation-unavailable')
+  })
+
+  it('attributes only the active Connection request and clears escaped callbacks after settlement', async () => {
+    const ctx = new Context()
+    await ctx.plugin(TypertRegistry)
+    await ctx.plugin(FakeConnectionService)
+    await ctx.plugin(TypertGatewayService)
+    await ctx.plugin(RequestWitnessService)
+    try {
+      expect(ctx.typertGateway.currentTrustedRequest()).toBeUndefined()
+      expect(await ctx.typertGateway.invoke({ namespace: 'requestWitness', method: 'inspect', args: {} })).toBeNull()
+      const handler = rawConnection(ctx).handler
+      if (handler === undefined) throw new Error('missing fixture Connection handler')
+      expect(await handler('requestWitness/inspect', { args: {} }, new AbortController().signal))
+        .toEqual({ ok: true, value: 'requestWitness/inspect' })
+      const witness = ctx.get('requestWitness') as RequestWitnessService
+      expect(witness.lateRead?.()).toBeUndefined()
+      witness.release.resolve(undefined)
+      expect(await witness.lateResult).toBeUndefined()
+      expect(ctx.typertGateway.currentTrustedRequest()).toBeUndefined()
+    } finally { await ctx.fiber.dispose() }
   })
 
   it('mounts a shared /api interceptor through an optional Connection and returns existing RPC results', async () => {

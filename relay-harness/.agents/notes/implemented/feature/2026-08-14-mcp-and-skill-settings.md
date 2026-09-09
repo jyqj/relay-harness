@@ -18,6 +18,8 @@ Skill enablement stays the existing SKILL.md frontmatter pair `disable-model-inv
 
 `@relay-harness/rlh-client-ui-settings-mcp` and `@relay-harness/rlh-client-ui-settings-skills` register the Settings pages. They share a compact management language: search, one source or enablement filter, result counts, hairline rows, source `Pill`s, the native-semantic shared `Switch`, contextual errors, and icon actions. MCP splits managed rows from read-only composition rows and keeps configured enablement distinct from Host `fiberPhase`; a row with no observed phase is neutral rather than warning-colored. The MCP editor Modal switches between a form and a JSON object. Skills rows show a model-invocation `Switch` and open the existing editor; read-only rows omit delete.
 
+The managed MCP watcher reconciles once after its initial scan because the startup read and watch subscription are not atomic. Ignoring initial file events cannot justify retaining a snapshot that predates subscription. The reread shares the mutation queue rather than introducing a second configuration owner.
+
 ## Alternatives considered
 
 **Write MCP rows into the user's `cordis.patch.yml`.** Rejected because that file may contain `!!js` and other hand-authored composition, and Settings must not become a YAML editor.

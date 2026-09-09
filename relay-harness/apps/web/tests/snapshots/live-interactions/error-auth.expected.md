@@ -1,33 +1,29 @@
 - banner:
   - navigation "Session hierarchy":
     - button "Reply with a one-sentence description" [disabled]
-  - img
-  - text: Standard mode
-  - tablist:
-    - tab "Chat" [selected]
-    - tab "Trajectory"
+  - button "Session Tree"
+  - button "Inspect context used for this session": Context 1
 - text: Reply with a one-sentence description of event sourcing, then stop. {{clock}}
 - button "Copy":
   - img
 - button "Edit":
   - img
+- button "Context injection code-index":
+  - img
+  - img
+  - text: Context injection code-index
 - button "Context injection @relay-harness/rlh-system-prompt":
   - img
   - img
   - text: Context injection @relay-harness/rlh-system-prompt
-- button "Context injection skill-catalog":
-  - img
-  - img
-  - text: Context injection skill-catalog
 - status:
   - text: This turn failedAPI key is invalid
   - code: AUTH
 - textbox "Message the agent"
 - button "Commands":
   - img
-- 'button "Access mode, current: Workspace Write"': Workspace Write
-- button "Select model, current DeepSeek-V4-Flash":
-  - text: DeepSeek-V4-Flash
+- 'button "Access mode, current: Standard"': Standard
+- button "Enhance prompt" [disabled]:
   - img
 - button "Send message" [disabled]
 - text: 1 turns · 1 steps

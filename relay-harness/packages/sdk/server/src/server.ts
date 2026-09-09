@@ -7,7 +7,7 @@
 
 import type { Context } from '@relay-harness/cordis'
 import { resolve } from 'node:path'
-import type { Agent, AgentHandle } from '@relay-harness/rlh-agent'
+import type { Agent, AgentHandle, AgentOptions } from '@relay-harness/rlh-agent'
 import { createUserMessage } from '@relay-harness/rlh-llm'
 import { carrierKeyOf, type Scoped } from '@relay-harness/rlh-scope'
 import { SessionId } from '@relay-harness/rlh-session'
@@ -18,6 +18,7 @@ import type {
   InitializeParams,
   InitializeResult,
   JsonRpcTransportPeer,
+  SessionCloseParams,
   SessionEventNotification,
   SessionPromptParams,
   SessionPromptResult,
@@ -27,6 +28,11 @@ import type {
 
 interface SessionRecord {
   handle: AgentHandle
+  /**
+   * Set once closeSession began disposing this record. The id stays mapped
+   * until the disposal settles, and re-creation chains onto this promise.
+   */
+  disposeCompletion?: Promise<void>
 }
 
 /** Recover the delegating parent from the service-owned scoped carrier. */
@@ -34,7 +40,7 @@ function subagentParentOf(carrier: Scoped<SubagentRuntime>): Agent {
   return carrierKeyOf(carrier) as Agent
 }
 
-/** Deployment-specific status mapping for SDK turn and subagent outcomes. */
+/** Deployment-specific status mapping for subagent.finished outcomes; root-session prompts carry no prompt-level status. */
 export interface HarnessSdkJsonRpcServerOptions {
   /** Report max-token termination as an accepted result instead of an infrastructure error. */
   maxTokensAsSuccess?: boolean
@@ -125,7 +131,9 @@ export class HarnessSdkJsonRpcServer {
   }
 
   /**
-   * Queue one identified prompt without assigning later activity to it.
+   * Queue one identified prompt without assigning later activity to it. An
+   * unknown id creates the session — resuming its durable log when one exists
+   * (a released id's history), freshly otherwise.
    * @param params - target session and user content.
    * @returns the durable message identity.
    */
@@ -140,6 +148,33 @@ export class HarnessSdkJsonRpcServer {
     const message = createUserMessage({ content: params.contentBlocks, source: { kind: 'user' } })
     rec.handle.agent.followup(message)
     return { messageId: message.id }
+  }
+
+  /**
+   * Dispose one SDK session's agent to quiescence, then stop attributing the
+   * id to this server. A prompt that arrives while the disposal runs waits for
+   * it and reattaches the id; a later prompt for the id does too, resuming the
+   * id's durable log when one exists and creating a fresh session otherwise.
+   * @param params - the session id to reclaim.
+   * @returns empty JSON-RPC result.
+   */
+  async closeSession(params: SessionCloseParams): Promise<Record<string, never>> {
+    const rec = this.sessions.get(params.sessionId)
+    // The caller only ever saw ids it created through this server; an unknown
+    // id is a caller bug and must not read as success.
+    if (rec === undefined) throw new Error(`unknown session: ${params.sessionId}`)
+    if (rec.disposeCompletion === undefined) {
+      rec.disposeCompletion = Promise.resolve().then(() => rec.handle.dispose())
+      // Unregister only after the disposal settles: a pipelined prompt for the
+      // id routes onto the completion instead of racing the old agent's
+      // unregister in the registry.
+      void rec.disposeCompletion.then(
+        () => { if (this.sessions.get(params.sessionId) === rec) this.sessions.delete(params.sessionId) },
+        () => { if (this.sessions.get(params.sessionId) === rec) this.sessions.delete(params.sessionId) },
+      )
+    }
+    await rec.disposeCompletion
+    return {}
   }
 
   /**
@@ -168,7 +203,9 @@ export class HarnessSdkJsonRpcServer {
       }
     }
     const teardownResults = await Promise.allSettled([
-      ...records.map(rec => Promise.resolve().then(() => rec.handle.dispose())),
+      // A record already mid-disposal (in-flight session/close) owns its
+      // dispose call; awaiting the existing completion avoids a second dispose.
+      ...records.map(rec => Promise.resolve().then(() => rec.disposeCompletion ?? rec.handle.dispose())),
       ...(this.llmFiber === undefined ? [] : [Promise.resolve().then(() => this.llmFiber?.dispose())]),
     ])
     this.llmFiber = undefined
@@ -193,6 +230,8 @@ export class HarnessSdkJsonRpcServer {
         return this.initialize(params as unknown as InitializeParams)
       case 'session/prompt':
         return this.prompt(params as unknown as SessionPromptParams)
+      case 'session/close':
+        return this.closeSession(params as unknown as SessionCloseParams)
       case 'shutdown':
         return this.shutdown()
       default:
@@ -203,7 +242,13 @@ export class HarnessSdkJsonRpcServer {
   private async getOrCreateSession(sessionId: string): Promise<SessionRecord> {
     if (this.shuttingDown) throw new Error('SDK server is shutting down')
     const existing = this.sessions.get(sessionId)
-    if (existing) return existing
+    if (existing) {
+      if (existing.disposeCompletion === undefined) return existing
+      // Chain onto the in-flight close so the fresh session is created after
+      // the old agent is unregistered; the id is unmapped by then.
+      await existing.disposeCompletion
+      return this.getOrCreateSession(sessionId)
+    }
     const pending = this.sessionCreations.get(sessionId)
     if (pending) return pending
     const creation = this.createSession(sessionId)
@@ -220,18 +265,43 @@ export class HarnessSdkJsonRpcServer {
     // rows in the host plane, so this agent reads them from the global layer. A
     // deployment that configures a roster has to join one here first
     // (@relay-harness/rlh-agent-presets README, "Composing a child agent").
-    const handle = await this.ctx.agents.create({
-      sessionId: SessionId(sessionId),
-      meta: { cwd: this.cwd },
-      agentOptions: {
-        provider: this.provider,
-        model: this.model,
-        ...this.maxTokens === undefined ? {} : { maxTokens: this.maxTokens },
-      },
-    })
+    const agentOptions: AgentOptions = {
+      provider: this.provider,
+      model: this.model,
+      ...this.maxTokens === undefined ? {} : { maxTokens: this.maxTokens },
+    }
+    const handle = await this.resumeOrCreate(sessionId, agentOptions)
     const rec: SessionRecord = { handle }
     this.sessions.set(sessionId, rec)
     return rec
+  }
+
+  /**
+   * Publish the session under `sessionId`, resuming its durable log when one
+   * exists. The session id is the persistence identity, so re-prompting a
+   * released id must reattach that log — creating a second fresh session under
+   * it collides with the stored log and the turn would die unpersisted. Resume
+   * refuses when the identity has no durable log (first use, or a lifecycle
+   * closed before its first append); those fall back to a fresh session, and
+   * genuine load failures resurface through that create attempt's own
+   * persistence probe.
+   */
+  private async resumeOrCreate(sessionId: string, agentOptions: AgentOptions): Promise<AgentHandle> {
+    try {
+      return await this.ctx.agents.resume({
+        resumeSessionId: SessionId(sessionId),
+        agentOptions,
+      })
+    } catch {
+      // Swallowed: the identity had no durable log to resume (or persistence is
+      // not configured at all), which is exactly the fresh-create case below. A
+      // real load failure fails the create path's own persistence probe.
+      return this.ctx.agents.create({
+        sessionId: SessionId(sessionId),
+        meta: { cwd: this.cwd },
+        agentOptions,
+      })
+    }
   }
 
   private hasAdapterFor(provider: string): boolean {

@@ -1,9 +1,9 @@
 /** Assistant block classifier (moved here with sessions/conversation.ts). */
 
-import { describe, expect, it } from 'vitest'
-import { AttachmentId } from '@relay-harness/rlh-attachment'
 import type { ContentBlock } from '@relay-harness/rlh-api-remotes/client'
-import { toAssistantBlock, toAssistantBlocks } from '../src/client/sessions/conversation.ts'
+import { AttachmentId } from '@relay-harness/rlh-attachment'
+import { describe,expect,it } from 'vitest'
+import { toAssistantBlock,toAssistantBlocks } from '../src/client/contract/session-snapshot.ts'
 
 describe('toAssistantBlock', () => {
   it('classifies the four block shapes', () => {

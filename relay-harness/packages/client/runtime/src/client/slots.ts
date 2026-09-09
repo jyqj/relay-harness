@@ -434,7 +434,7 @@ export class SlotRegistry extends Service {
     this._host = {
       subscribe: (key, fn) => this._core.subscribe(key, fn),
       getVersion: key => this._core.getVersion(key),
-      entriesOf: key => this._core.entries(key),
+      entriesOf: key => this._core.renderCandidates(key),
       entriesOfSlot: key => this._core.entriesOfSlot(key),
       reportEntryError: (key, entry, error, info) => { this._core.reportEntryError(key, entry, error, info) },
       specOf: key => this._core.specDynamic(key),

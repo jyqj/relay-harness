@@ -2019,6 +2019,66 @@
       "doc": "docs/subsystems/workspace.md",
       "symbol": "WorkspaceId",
       "source": "packages/workspace/workspace/src/types.ts"
+    },
+    {
+      "doc": "docs/subsystems/work-results.md",
+      "symbol": "DeliverablesProjection",
+      "source": "packages/host/work-results/src/types.ts"
+    },
+    {
+      "doc": "docs/subsystems/work-results.md",
+      "symbol": "WorkAcceptanceProjection",
+      "source": "packages/host/work-results/src/types.ts"
+    },
+    {
+      "doc": "docs/subsystems/work-results.md",
+      "symbol": "WorkVerifiedReview",
+      "source": "packages/host/work-results/src/types.ts"
+    },
+    {
+      "doc": "docs/subsystems/work-results.md",
+      "symbol": "WorkAcceptRequest",
+      "source": "packages/host/work-results/src/types.ts"
+    },
+    {
+      "doc": "docs/subsystems/work-results.md",
+      "symbol": "WorkAcceptReceipt",
+      "source": "packages/host/work-results/src/types.ts"
+    },
+    {
+      "doc": "docs/subsystems/work-results.md",
+      "symbol": "WorkLibraryRevision",
+      "source": "packages/host/work-results/src/types.ts"
+    },
+    {
+      "doc": "docs/subsystems/work-results.md",
+      "symbol": "WorkLibraryRequest",
+      "source": "packages/host/work-results/src/types.ts"
+    },
+    {
+      "doc": "docs/subsystems/work-results.md",
+      "symbol": "WorkLibraryEntry",
+      "source": "packages/host/work-results/src/types.ts"
+    },
+    {
+      "doc": "docs/subsystems/work-results.md",
+      "symbol": "WorkLibraryPage",
+      "source": "packages/host/work-results/src/types.ts"
+    },
+    {
+      "doc": "docs/subsystems/work-results.md",
+      "symbol": "WorkOpenRequest",
+      "source": "packages/host/work-results/src/types.ts"
+    },
+    {
+      "doc": "docs/subsystems/core.md",
+      "symbol": "PresetScopeLease",
+      "source": "packages/preset/agent-presets/src/index.ts"
+    },
+    {
+      "doc": "docs/subsystems/persistence.md",
+      "symbol": "SessionPersistenceFence",
+      "source": "packages/core/session/src/index.ts"
     }
   ]
 }

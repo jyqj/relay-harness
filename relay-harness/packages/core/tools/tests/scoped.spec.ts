@@ -332,6 +332,22 @@ describe('scoped execution dispatch', () => {
     expect(bodyCalls).toBe(0)
   })
 
+  it('refuses a guard revoked by around-dispatch before the tool body starts', async () => {
+    const ctx = await mount()
+    let allowed = true
+    const body = vi.fn(() => Promise.resolve('ran:t'))
+    ctx.tools.register({ ...tool('t'), execute: body })
+    ctx.tools.guard(() => allowed ? undefined : 'lease lost')
+    ctx.on('tools/execute', async (_exec, next) => {
+      allowed = false
+      await Promise.resolve()
+      return next()
+    })
+
+    expect(await run(ctx, 't')).toBe('Error: lease lost')
+    expect(body).not.toHaveBeenCalled()
+  })
+
   it('live-iterates a guard registered by an earlier guard', async () => {
     const ctx = await mount()
     const calls: string[] = []
@@ -353,7 +369,7 @@ describe('scoped execution dispatch', () => {
     expect(calls).toEqual(['first', 'late'])
   })
 
-  it('defers a scoped guard that replaces the last guard in its generation', async () => {
+  it('rechecks a scoped guard replacement at final body admission', async () => {
     const ctx = await mount()
     const { scope, key } = await mintAgentScope(ctx, 'a')
     const calls: string[] = []
@@ -369,10 +385,10 @@ describe('scoped execution dispatch', () => {
       return undefined
     })
 
-    expect(await run(ctx, 't', key)).toBe('ran:t')
-    expect(calls).toEqual(['first'])
     expect(await run(ctx, 't', key)).toBe('Error: replacement denial')
     expect(calls).toEqual(['first', 'replacement'])
+    expect(await run(ctx, 't', key)).toBe('Error: replacement denial')
+    expect(calls).toEqual(['first', 'replacement', 'replacement'])
   })
 
   it('shares one token and materialized argument value across the pipeline', async () => {
@@ -668,6 +684,7 @@ describe('scoped execution dispatch', () => {
 
     expect(reads).toBe(1)
     expect(result).toEqual({
+      producedFiles: [],
       content: [{ type: 'text', text: 'ran:t' }],
       isError: false,
       value: 'ran:t',

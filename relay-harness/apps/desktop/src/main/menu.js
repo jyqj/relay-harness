@@ -1,3 +1,4 @@
+// @ts-check
 const { Menu, shell, app } = require('electron');
 const { openHarnessSettings, openMarketplace } = require('./window');
 const { loadConfig } = require('./config');

@@ -774,6 +774,15 @@ function ignoreFailure(promise) {
   });
 }
 
+let smokeBootPhase = 'entry';
+if (process.env.RLH_SMOKE === '1') {
+  app.on('will-quit', () => {
+    const resultPath = path.join(app.getPath('userData'), 'rlhd-smoke.json');
+    if (!fs.existsSync(resultPath)) {
+      fs.writeFileSync(resultPath, JSON.stringify({ ok: false, phase: smokeBootPhase, error: 'Application quit before smoke completed' }));
+    }
+  });
+}
 const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) {
   console.error('Relay-Harness-Desktop is already running. Quit the installed app before npm start (same appId single-instance lock).');
@@ -787,10 +796,14 @@ if (!gotLock) {
   app.setAppUserModelId('com.relayharness.desktop');
 
   app.whenReady().then(async () => {
+    smokeBootPhase = 'ready';
     const config = loadConfig();
     fs.mkdirSync(config.workspace, { recursive: true });
     saveConfig({ workspace: config.workspace });
-    app.setLoginItemSettings({ openAtLogin: Boolean(config.openAtLogin) });
+    // A smoke uses an isolated profile but shares the application's OS login-item identity.
+    if (process.env.RLH_SMOKE !== '1') {
+      app.setLoginItemSettings({ openAtLogin: Boolean(config.openAtLogin) });
+    }
 
     startDesktopInstallControl({
       installPlugin: (spec, options) => installPlugin(spec, {
@@ -843,12 +856,20 @@ if (!gotLock) {
     });
 
     try {
+      smokeBootPhase = 'starting-harness';
       await harness.start();
+      smokeBootPhase = 'harness-ready';
       if (process.env.RLH_SMOKE === '1') {
         void runSmoke(getMainWindow());
       }
-    } catch {
+    } catch (error) {
       // boot page already shows the error
+      if (process.env.RLH_SMOKE === '1') {
+        fs.writeFileSync(path.join(app.getPath('userData'), 'rlhd-smoke.json'), JSON.stringify({
+          ok: false, phase: smokeBootPhase, error: error instanceof Error ? error.message : String(error),
+        }));
+        quitApp();
+      }
     }
   });
 

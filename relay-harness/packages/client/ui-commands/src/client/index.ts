@@ -66,7 +66,19 @@ export function apply(ctx: ClientContext): void {
       inject: (sessionId): PopupSelectInjected => {
         const actx = sessions.scope(sessionId)
         if (actx === undefined) throw new Error(`ui-commands: session "${String(sessionId)}" resolved no scope`)
-        return { popup: command.popupFor(actx) }
+        const popup = command.popupFor(actx)
+        return {
+          hooks: { popup: popup.state },
+          dismiss: (options) => { popup.dismiss(options) },
+          move: (direction) => { popup.move(direction) },
+          select: index => popup.select(index),
+          setSearch: (query) => { popup.setSearch(query) },
+          retry: () => { popup.retry() },
+          highlight: (index) => { popup.highlight(index) },
+          acknowledge: (value) => { popup.acknowledge(value) },
+          cancelConfirmation: () => { popup.cancelConfirmation() },
+          confirm: () => popup.confirm(),
+        }
       },
     }, PopupSelectView))
   })

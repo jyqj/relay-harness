@@ -1,3 +1,4 @@
+// @ts-check
 const { BrowserView, BrowserWindow, shell, nativeImage } = require('electron');
 const { rendererFile, assetFile, preloadFile } = require('./paths');
 const { windowChrome, attachIntegratedChrome, hideNativeMenu, prepareHarnessChrome, syncHarnessChrome, currentTheme } = require('./chrome');
@@ -35,8 +36,7 @@ let pluginBootWatch = null;
 let pendingMarketplaceJump = false;
 
 function pluginBootCancelled(message = 'Web UI 插件加载已取消') {
-  const error = new Error(message);
-  error.code = 'HARNESS_OPERATION_CANCELLED';
+  const error = Object.assign(new Error(message), { code: 'HARNESS_OPERATION_CANCELLED' });
   return error;
 }
 

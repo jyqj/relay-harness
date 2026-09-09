@@ -1,0 +1,6 @@
+# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
+# side as of the last confirmed-consistent state. Both languages carry equal authority;
+# after editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write .agents/notes/implemented/bug-fix/2026-09-05-failed-compiler-face-no-emission.md
+2026-09-05-failed-compiler-face-no-emission.md: 5b57f90169cab56ceb241f2f64f68012642290cb
+2026-09-05-failed-compiler-face-no-emission.zh.md: 74ddcb4e666b9f3244d4e98323117c27d0ab2e88

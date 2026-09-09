@@ -2,13 +2,22 @@
  * Wire-protocol coverage over the isomorphic point: InProcessApiClient →
  * toFetchHandler(scripted impl) runs the real envelope wrap/unwrap, zod
  * two-level parse, rpcId discipline, and SSE framing with no network and no
- * browser. Each case scripts its own minimal ApiProxy.
+ * browser. Each case scripts its own minimal ApiProxy. The closing block is
+ * the exception: it boots the real gateway to pin session.prompt admission
+ * semantics (verbatim '/', pre-commit cancellation, rpcId idempotency) that
+ * a scripted impl cannot witness.
  */
 
 import { describe, expect, it, vi } from 'vitest'
+import { Context } from '@relay-harness/cordis'
+import SessionStore from '@relay-harness/rlh-session'
 import type { SessionId } from '@relay-harness/rlh-session'
+import AgentRegistry from '@relay-harness/rlh-agent'
+import type { Agent } from '@relay-harness/rlh-agent'
+import type { UserMessage } from '@relay-harness/rlh-llm'
+import UserQuestionService from '@relay-harness/rlh-user-questions'
 import type { ApiProxy, GoalRef, HostFrame, MuxFrame, RpcMessage, RpcRequest, RpcResponse } from '@relay-harness/rlh-host-apiproxy'
-import { InProcessApiClient, RpcId, toFetchHandler } from '@relay-harness/rlh-host-apiproxy'
+import { createApiProxy, InProcessApiClient, RpcId, toFetchHandler } from '@relay-harness/rlh-host-apiproxy'
 
 const sid = (id: string): SessionId => id as SessionId
 
@@ -838,5 +847,150 @@ describe('config unary surface', () => {
     expect(response.result.ok).toBe(false)
     if (response.result.ok) throw new Error('unreachable')
     expect(response.result.error.code).toBe('bad-request')
+  })
+})
+
+// ---- Real-gateway session.prompt admission ----
+
+/** One-shot deferred for deterministic interleaving of two slot participants. */
+function deferred(): { promise: Promise<void>; resolve: () => void } {
+  let resolve!: () => void
+  const promise = new Promise<void>((resolveIt) => { resolve = resolveIt })
+  return { promise, resolve }
+}
+
+describe('real-gateway session.prompt admission', () => {
+  let nextRpc = 1
+  function request<P>(payload: P): RpcRequest<P> {
+    return { rpcId: RpcId(`prompt-${String(nextRpc++)}`), payload }
+  }
+
+  function promptRequest(sessionId: SessionId, rpcId: RpcId, text: string): RpcRequest<{
+    sessionId: SessionId
+    mode: 'queue'
+    content: { type: 'text'; text: string }[]
+  }> {
+    return { rpcId, payload: { sessionId, mode: 'queue', content: [{ type: 'text', text }] } }
+  }
+
+  /**
+   * Boot the real proxy over one live session whose agent records delivery
+   * verbs. The composition mounts no llm adapter and no attachment store;
+   * cases that need them provide minimal stubs.
+   */
+  async function admittingHarness(sessionName: string): Promise<{
+    ctx: Context
+    api: ApiProxy
+    followup: ReturnType<typeof vi.fn>
+    sessionId: SessionId
+  }> {
+    const ctx = new Context()
+    await ctx.plugin(SessionStore)
+    await ctx.plugin(AgentRegistry)
+    await ctx.plugin(UserQuestionService)
+    const session = ctx.sessions.create(sid(sessionName), { meta: { cwd: '/proj' } })
+    const followup = vi.fn()
+    ctx.agents.register({ id: session.id, session, status: 'idle', ctx, followup } as unknown as Agent)
+    const api = createApiProxy(ctx, { defaultModelSelection: () => ({ provider: 'p', model: 'm' }), cwd: '/tmp' })
+    return { ctx, api, followup, sessionId: session.id }
+  }
+
+  it('admits a leading-slash prompt verbatim with no host-side command dispatch', async () => {
+    const { api, followup, sessionId } = await admittingHarness('prompt-slash-verbatim')
+    const response = await api.sessions.prompt(request({
+      sessionId, mode: 'queue' as const, content: [{ type: 'text' as const, text: '/help me understand' }],
+    }))
+    expect(response.result).toEqual({ ok: true, value: { accepted: true } })
+    // The '/' line is model-visible inbox content, byte for byte — the host
+    // command registry is not consulted on this route.
+    expect(followup).toHaveBeenCalledOnce()
+    expect((followup.mock.calls[0]?.[0] as UserMessage).content).toEqual([
+      { type: 'text', text: '/help me understand' },
+    ])
+  })
+
+  it('answers a repeated same-rpcId admission idempotently within one session and admits across sessions', async () => {
+    const { ctx, api, followup, sessionId } = await admittingHarness('prompt-dedup-a')
+    const sessionB = ctx.sessions.create(sid('prompt-dedup-b'), { meta: { cwd: '/proj' } })
+    const followupB = vi.fn()
+    ctx.agents.register({ id: sessionB.id, session: sessionB, status: 'idle', ctx, followup: followupB } as unknown as Agent)
+
+    const shared = RpcId('retry-me')
+    const first = await api.sessions.prompt(promptRequest(sessionId, shared, 'once'))
+    const second = await api.sessions.prompt(promptRequest(sessionId, shared, 'once'))
+    expect(first.result).toEqual({ ok: true, value: { accepted: true } })
+    // The retry of a delivered prompt is an accepted no-op: one delivery, ever.
+    expect(second.result).toEqual({ ok: true, value: { accepted: true } })
+    expect(followup).toHaveBeenCalledOnce()
+
+    // Dedup is per session: the same rpcId on another session admits normally.
+    const other = await api.sessions.prompt(promptRequest(sessionB.id, shared, 'once'))
+    expect(other.result).toEqual({ ok: true, value: { accepted: true } })
+    expect(followupB).toHaveBeenCalledOnce()
+  })
+
+  it('cancels a prompt aborted while queued behind the session slot without touching the inbox', async () => {
+    const { ctx, api, followup, sessionId } = await admittingHarness('prompt-cancel-queued')
+    const entered = deferred()
+    const gate = deferred()
+    ctx.provide('llm', {
+      listProviders: () => [{ id: 'p' }],
+      resolveModelInfo: async () => ({}),
+      // The slot occupier: a model selection whose resolution stalls on the gate.
+      resolveCallConfig: async () => {
+        entered.resolve()
+        await gate.promise
+        return { provider: 'p', model: 'm' }
+      },
+    } as never)
+
+    const swap = api.sessions.selectModel(request({ sessionId, provider: 'p', model: 'm' }))
+    await entered.promise
+    const controller = new AbortController()
+    const queued = api.sessions.prompt(promptRequest(sessionId, RpcId('queued-1'), 'queued work'), controller.signal)
+    // Give the prompt its turnAgentFor awaits so it parks in the slot behind the swap.
+    await new Promise(resolve => setTimeout(resolve, 0))
+    controller.abort()
+    gate.resolve()
+    await swap
+    const response = await queued
+    expect(response.result).toMatchObject({ ok: false, error: { code: 'cancelled' } })
+    expect(followup).not.toHaveBeenCalled()
+  })
+
+  it('keeps the admission when the abort lands after durable content intake started', async () => {
+    const { ctx, api, followup, sessionId } = await admittingHarness('prompt-cancel-late')
+    const started = deferred()
+    const release = deferred()
+    ctx.provide('llm', {
+      listProviders: () => [{ id: 'p' }],
+      resolveModelInfo: async () => ({}),
+    } as never)
+    ctx.provide('attachments', {
+      saveImages: async () => {
+        started.resolve()
+        await release.promise
+        return [{ attachmentId: 'att-late', mediaType: 'image/png', bytes: 1, width: 1, height: 1 }]
+      },
+    } as never)
+
+    const controller = new AbortController()
+    const pending = api.sessions.prompt(request({
+      sessionId,
+      mode: 'queue' as const,
+      content: [{ type: 'image' as const, mediaType: 'image/png' as const, data: 'AQ==' }],
+    }), controller.signal)
+    await started.promise
+    // Past the commit point the abort no longer reaches the admission: the
+    // message is durable-bound and the caller that stopped waiting may have
+    // delivered it.
+    controller.abort()
+    release.resolve()
+    const response = await pending
+    expect(response.result).toEqual({ ok: true, value: { accepted: true } })
+    expect(followup).toHaveBeenCalledOnce()
+    expect((followup.mock.calls[0]?.[0] as UserMessage).content).toEqual([
+      { type: 'image', attachment: { attachmentId: 'att-late', mediaType: 'image/png', bytes: 1, width: 1, height: 1 } },
+    ])
   })
 })

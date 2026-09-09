@@ -181,6 +181,8 @@ describe('web e2e: agent-preset selection', () => {
     const seededId = await seedSession(scaffold, seedLog(), SEED_ID, 'minimal')
     await seedSubagent(scaffold, seededId)
     await seedWorkspaceSkill(scaffold.workspaceCwd)
+    // This scenario exercises advanced surfaces hidden by Simple Mode.
+    await scaffold.ctx.productMode.set({ mode: 'developer' })
     browser = await chromium.launch()
     page = await newEnglishPage(browser)
     tripwire = watchConsole(page)

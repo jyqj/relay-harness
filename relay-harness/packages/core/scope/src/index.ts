@@ -38,6 +38,28 @@ const carrierKeys = new WeakMap<object, ScopeKey | undefined>()
  */
 const scopeParents = new WeakMap<ScopeKey, ScopeKey>()
 
+declare const ScopeReadViewBrand: unique symbol
+/** Opaque immutable ancestry for registry reads; it preserves the original registration identities, not their mutable values. */
+export type ScopeReadView = object & { readonly [ScopeReadViewBrand]: true }
+const readChains = new WeakMap<ScopeReadView, readonly ScopeKey[]>()
+
+/**
+ * Capture the current ancestry for an asynchronous registry read without cloning any registration key.
+ * @param key - viewing scope, or undefined for the global registry view.
+ * @returns a read-only view unaffected by later parent rebindings; owners must separately retain required resources.
+ */
+export function captureScopeReadView(key: ScopeKey | undefined): ScopeReadView {
+  const view = Object.freeze({}) as ScopeReadView
+  readChains.set(view, Object.freeze(scopeChainOf(key)))
+  return view
+}
+
+/** Prevent a read view from becoming a mutable registration or dispatch identity. */
+function assertWritableScope(key: ScopeKey | undefined): void {
+  if (key !== undefined && readChains.has(key as ScopeReadView)) throw new Error('rlh-scope: a read view cannot own registrations, ancestry, or dispatch')
+}
+
+
 /** The privileged handle to move one scope key's parent link. */
 export interface ScopeParentBinding {
   /**
@@ -52,6 +74,8 @@ export interface ScopeParentBinding {
 
 /** Cycle-checked write shared by the bind and every rebind. */
 function linkScopeParent(key: ScopeKey, parent: ScopeKey): void {
+  assertWritableScope(key)
+  assertWritableScope(parent)
   for (let cursor: ScopeKey | undefined = parent; cursor !== undefined; cursor = scopeParents.get(cursor)) {
     if (cursor === key) throw new Error('rlh-scope: scope parent link would form a cycle')
   }
@@ -87,7 +111,7 @@ export function bindScopeParent(key: ScopeKey, parent: ScopeKey): ScopeParentBin
  * @returns its parent key, or `undefined` for a root scope.
  */
 export function scopeParentOf(key: ScopeKey): ScopeKey | undefined {
-  return scopeParents.get(key)
+  return readChains.get(key as ScopeReadView)?.[1] ?? scopeParents.get(key)
 }
 
 /**
@@ -96,6 +120,8 @@ export function scopeParentOf(key: ScopeKey): ScopeKey | undefined {
  * @returns keys nearest-first: `[key, parent, grandparent, …]`.
  */
 export function scopeChainOf(key: ScopeKey | undefined): ScopeKey[] {
+  const captured = key === undefined ? undefined : readChains.get(key as ScopeReadView)
+  if (captured !== undefined) return [...captured]
   const chain: ScopeKey[] = []
   for (let cursor = key; cursor !== undefined; cursor = scopeParents.get(cursor)) chain.push(cursor)
   return chain
@@ -135,6 +161,7 @@ export interface CreateScopeOptions {
  * @returns the scoped context and exact/shared disposal boundaries.
  */
 export function createScope(ctx: Context, key: ScopeKey, options?: CreateScopeOptions): Scope {
+  assertWritableScope(key)
   if (options?.parent !== undefined) bindScopeParent(key, options.parent)
   const fiber = ctx.plugin(scope)
   const scoped: Context = fiber.ctx.extend({ [kScope]: key })
@@ -168,6 +195,7 @@ export function scopeOf(ctx: Context): ScopeKey | undefined {
  * @returns a carrier whose subject remains available only through event arguments.
  */
 export function scopeTarget<T extends object>(base: T, key: ScopeKey | undefined): Scoped<T> {
+  assertWritableScope(key)
   const baseFilter = (base as { [CordisContext.filter]?: (ctx: Context) => boolean })[CordisContext.filter]
   const carrier = {
     [CordisContext.filter](ctx: Context): boolean {

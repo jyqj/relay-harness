@@ -7,6 +7,12 @@
 [`scaffold.ts`](scaffold.ts) 和
 [浏览器 e2e Agent Note](../../../.agents/notes/implemented/testing/2026-07-24-web-gui-browser-e2e-lane.md)中。
 
+[Settings 目录场景](settings-catalog-pages.e2e.ts)通过构建后的浏览器和真实治理 Remote，在隔离临时存储中验证 Memory Center 校验。它固定非法草稿提示，确认空白置信度不改变持久化值，并确认显式零值保存一个修订。
+
+[录制媒体测试](browser-recording.e2e.ts)是较低层的例外：它将无依赖的录制源码转译到真实 Chromium 页面，不启动 Host，也不加载构建产物。真实 canvas 捕获、MediaRecorder 和视频解码验证尺寸、非黑帧像素及已结束轨道；仅帧源与保存传输由测试提供。它不证明 Electron IPC 或打包录制。
+
+[产品壳场景](product-shell-prompt-context.e2e.ts)通过构建后的 Settings UI 切换 Developer Mode，检查真实 Host 持久化模式，并用内联 ARIA 快照固定开关两种状态，再验证 Prompt Enhancement。
+
 ## 这些是 Host 面的测试
 
 它们在根 `tsconfig.host.json` 中做类型检查，而不在 Client aggregate 中，因为它们直接读取

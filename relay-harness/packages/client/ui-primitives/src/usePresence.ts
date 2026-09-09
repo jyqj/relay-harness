@@ -6,7 +6,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 
-/** Exit hold in milliseconds; matches `--rl-motion-duration-overlay` (200ms). */
+/** Exit hold in milliseconds; matches the overlay recipe in ui-theme motion.css (200ms enter, 100ms exit). */
 export const PRESENCE_EXIT_MS = 200
 
 /** Visibility written onto `data-state` for the shared motion recipes. */

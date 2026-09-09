@@ -7,7 +7,7 @@
  * (HMR safety), and the service satisfies the frozen CommandUiContract.
  */
 import { Context } from '@relay-harness/cordis'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { createScope, scopeOf, SlotRegistry } from '@relay-harness/rlh-client-runtime/client'
 import type { SessionId } from '@relay-harness/rlh-client-runtime/client'
 import type { InputTriggerSource } from '@relay-harness/rlh-client-ui-input-trigger/client'
@@ -78,7 +78,33 @@ describe('apply', () => {
     const scope = mint('s1')
     const entry = slots.entries('conversation.input.overlay')[0]!
     const injectEntry = entry.inject as unknown as (sessionId: SessionId) => PopupSelectInjected
-    expect(injectEntry(sid('s1')).popup).toBe(command.popupFor(scope.ctx))
+    const popup = command.popupFor(scope.ctx)
+    const face = injectEntry(sid('s1'))
+    expect(face.hooks.popup).toBe(popup.state)
+    expect(Object.keys(face).sort()).toEqual(['acknowledge', 'cancelConfirmation', 'confirm', 'dismiss', 'highlight', 'hooks', 'move', 'retry', 'select', 'setSearch'])
+    const dismiss = vi.spyOn(popup, 'dismiss')
+    const move = vi.spyOn(popup, 'move')
+    const select = vi.spyOn(popup, 'select')
+    const setSearch = vi.spyOn(popup, 'setSearch')
+    const retry = vi.spyOn(popup, 'retry')
+    const highlight = vi.spyOn(popup, 'highlight')
+    const acknowledge = vi.spyOn(popup, 'acknowledge')
+    const cancel = vi.spyOn(popup, 'cancelConfirmation')
+    const confirm = vi.spyOn(popup, 'confirm')
+    face.dismiss({ focusComposer: false }); face.move(-1)
+    await face.select(2)
+    face.setSearch('needle'); face.retry(); face.highlight(3)
+    face.acknowledge(true); face.cancelConfirmation()
+    await face.confirm()
+    expect(dismiss).toHaveBeenCalledWith({ focusComposer: false })
+    expect(move).toHaveBeenCalledWith(-1)
+    expect(select).toHaveBeenCalledWith(2)
+    expect(setSearch).toHaveBeenCalledWith('needle')
+    expect(retry).toHaveBeenCalledTimes(1)
+    expect(highlight).toHaveBeenCalledWith(3)
+    expect(acknowledge).toHaveBeenCalledWith(true)
+    expect(cancel).toHaveBeenCalledTimes(1)
+    expect(confirm).toHaveBeenCalledTimes(1)
     expect(() => injectEntry(sid('ghost'))).toThrow(/resolved no scope/)
   })
 })

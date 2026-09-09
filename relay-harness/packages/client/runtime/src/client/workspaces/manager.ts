@@ -1,14 +1,12 @@
+import type { WorkspaceListPhase } from '../contract/workspaces.ts'
 /** Workspace baseline, incremental-frame, and unary-action owner. */
 
 import type {
-  HostFrame, IApiClient, RpcError, RpcRequest, RpcResult, SessionId, WorkspaceId, WorkspaceView,
+  HostFrame,IApiClient,RpcError,RpcRequest,RpcResult,SessionId,WorkspaceId,WorkspaceView,
 } from '@relay-harness/rlh-api-remotes/client'
 import { transportError } from '@relay-harness/rlh-host-apiproxy/api'
-import { Notifier } from '../sessions/notifier.ts'
-import { Workspace, type WorkspaceCreateInput } from './workspace.ts'
-
-/** Monotone workspace-list arrival lifecycle. */
-export type WorkspaceListPhase = 'pending' | 'ready'
+import { Notifier } from '../notifier.ts'
+import { Workspace,type WorkspaceCreateInput } from './workspace.ts'
 
 /** Immutable workspace-list snapshot. */
 export interface WorkspaceListSnapshot {

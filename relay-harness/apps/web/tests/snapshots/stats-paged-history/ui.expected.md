@@ -1,10 +1,10 @@
 - banner:
   - navigation "Session hierarchy":
     - button "{{workspace}}" [disabled]
-  - tablist:
-    - tab "Chat" [selected]
-    - tab "Trajectory"
-- text: m1 7/25 {{clock}}
+  - button "Session Tree"
+  - button "Inspect context used for this session": Context 0
+- button "Return to windowed history"
+- text: Find covers loaded history only; load earlier to include more. m1 7/25 {{clock}}
 - button "Copy":
   - img
 - paragraph: r1
@@ -348,9 +348,8 @@
 - textbox "Message the agent"
 - button "Commands":
   - img
-- 'button "Access mode, current: Workspace Write"': Workspace Write
-- button "Select model, current DeepSeek-V4-Flash":
-  - text: DeepSeek-V4-Flash
+- 'button "Access mode, current: Standard"': Standard
+- button "Enhance prompt" [disabled]:
   - img
 - button "Send message" [disabled]
 - text: 28 turns · 28 steps LLM {{duration}}

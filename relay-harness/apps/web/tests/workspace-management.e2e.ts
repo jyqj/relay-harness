@@ -13,7 +13,7 @@
 // seeded-history seed reused verbatim — no new recording).
 import { mkdir, readFile, stat, writeFile } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
-import { basename, dirname, join, sep } from 'node:path'
+import { basename, dirname, join, parse, sep } from 'node:path'
 import type { Browser, Locator, Page } from 'playwright'
 import { chromium } from 'playwright'
 import { afterAll, beforeAll, describe, expect, it, onTestFailed } from 'vitest'
@@ -70,6 +70,10 @@ describe('web e2e: workspace management (create / rename / flat view / hover aff
       // be matched in its rendered spelling.
       const rendered = label.replace(/\\/g, '\\\\')
       scrubbed = scrubbed.split(`button "${rendered}"`).join('button "{{ancestry}}"')
+      // Plain scalar labels (notably POSIX /) are unquoted by current ARIA serialization.
+      scrubbed = scrubbed.split('\n').map(line => line.trim() === `- button ${rendered}`
+        ? line.replace(`button ${rendered}`, 'button "{{ancestry}}"')
+        : line).join('\n')
     }
     return scrubbed
   }
@@ -103,9 +107,21 @@ describe('web e2e: workspace management (create / rename / flat view / hover aff
     await dialog.getByRole('button', { name: 'Open', exact: true }).click()
     await dialog.waitFor({ state: 'hidden', timeout: 10_000 })
     await expect.poll(
-      () => scaffold.ctx.workspaceRegistry.resolveByPath(join(parent, name)),
+      async () => (await scaffold.ctx.workspaceRegistry.resolveByPath(join(parent, name)))?.sessionIds.length ?? 0,
       { timeout: 10_000 },
-    ).not.toBeUndefined()
+    ).toBeGreaterThan(0)
+    const row = page.getByRole('treeitem').filter({ hasText: name }).first()
+    const section = row.locator('xpath=ancestor::*[contains(@class, "groupSection")][1]')
+    await expect.poll(() => section.locator('[role="treeitem"][aria-selected="true"]').count(), { timeout: 10_000 }).toBe(1)
+    // Presence first mounts closed and starts its transition two frames later.
+    await section.locator('[data-rlh-motion="fade"][data-state="open"]').first()
+      .waitFor({ state: 'attached', timeout: 10_000 })
+    // Registration precedes Session attachment; finish its expansion before hovering a following row.
+    await section.evaluate(async (element) => {
+      await Promise.all(element.getAnimations({ subtree: true })
+        .filter(animation => animation instanceof CSSTransition && animation.transitionProperty === 'grid-template-rows')
+        .map(animation => animation.finished))
+    })
   }
 
   /**
@@ -163,6 +179,15 @@ describe('web e2e: workspace management (create / rename / flat view / hover aff
   afterAll(async () => {
     await browser?.close()
     await scaffold?.close()
+  })
+
+  it('scrubs exact quoted and plain root crumbs without changing child labels or other roles', () => {
+    const root = parse(scaffold.workspaceCwd).root.replace(/\\/g, '\\\\')
+    const child = `${root}not-an-ancestor`
+    const lines = [`  - button "${root}"`, `  - button ${root}`, `  - button "${child}"`, `  - paragraph: ${root}`]
+    expect(scrubAncestry(lines.join('\n'), scaffold.workspaceCwd).split('\n')).toEqual([
+      '  - button "{{ancestry}}"', '  - button "{{ancestry}}"', `  - button "${child}"`, `  - paragraph: ${root}`,
+    ])
   })
 
   it('adds two workspaces through the dialog, each on a folder it created', async () => {

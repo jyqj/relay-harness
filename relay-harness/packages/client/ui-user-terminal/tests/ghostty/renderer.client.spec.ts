@@ -1,13 +1,8 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from 'vitest'
+import { describe,expect,it } from 'vitest'
 
-import { GHOSTTY_CELL_WIDE, type GhosttyCell, type GhosttySnapshot } from '../../src/client/ghostty/core.ts'
-import {
-  ghosttyTextRunEnd,
-  measureGhosttyCell,
-  renderGhosttySnapshot,
-  terminalGridSize,
-} from '../../src/client/ghostty/renderer.ts'
+import { GHOSTTY_CELL_WIDE,type GhosttyCell,type GhosttySnapshot } from '../../src/client/terminal/ghostty/core.ts'
+import { ghosttyTextRunEnd,measureGhosttyCell,renderGhosttySnapshot,terminalGridSize } from '../../src/client/terminal/ghostty/renderer.ts'
 
 const cell = (text: string, wide = 0): GhosttyCell => ({
   text,

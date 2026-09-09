@@ -13,7 +13,7 @@ import type { KvFacet, KvUnit, KvUnitDescriptor, StorageBackend } from '@relay-h
 import { openDatabase, recordTableName, type JournalMode } from './schema.ts'
 import { SqliteKvUnit } from './unit.ts'
 
-export { STORAGE_SQLITE_SCHEMA_VERSION, type JournalMode } from './schema.ts'
+export { STORAGE_SQLITE_APPLICATION_ID, STORAGE_SQLITE_SCHEMA_VERSION, type JournalMode } from './schema.ts'
 
 /** Cordis plugin name. */
 export const name = 'storage-sqlite'

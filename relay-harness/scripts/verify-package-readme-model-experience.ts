@@ -186,6 +186,7 @@ const SENTENCE_MODEL_EXPERIENCE: Readonly<Record<string, SentenceContract>> = {
   'packages/util/timeout': { kind: 'indirect', reason: 'Only timeout consumers render timeout outcomes.' },
   'packages/util/output-retention': { kind: 'indirect', reason: 'Only retention consumers render retained content and omission metadata.' },
   'packages/util/native-command': { kind: 'none', reason: 'The host-side subprocess runner registers nothing model-facing.' },
+  'packages/util/sqlite-runtime': { kind: 'none', reason: 'Only loads a Node builtin; storage and tool consumers own all model-visible output.' },
   'packages/web/web': { kind: 'indirect', reason: 'The provider registry delegates model rendering to rlh-tool-web.' },
   'packages/web/web-fetch-http': { kind: 'indirect', reason: 'The provider backend delegates model rendering to rlh-tool-web.' },
   'packages/web/web-search-exa': { kind: 'indirect', reason: 'The provider backend delegates model rendering to rlh-tool-web.' },

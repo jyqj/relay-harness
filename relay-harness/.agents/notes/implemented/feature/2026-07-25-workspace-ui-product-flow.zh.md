@@ -120,3 +120,9 @@ Sidebar 与 conversation empty hero 通过 slot 获得标准化动作：`startSe
 - 页面刷新会丢弃未 materialize 的 Workspace/Session Intent 和尚未被 Host 接受的输入，这是 page-local 约定。
 - 显式 Create Workspace 立即落盘，用户不发送就离开也会留下空 Workspace。
 - Host Session 在首个事件前仍遵循现有懒持久化语义；前端 Intent 不改变 Host 重启后的空 Session 行为。
+
+## 悬停操作前的浏览器就绪条件
+
+工作区注册并非创建流程的终点：空白 Session 随后附着，其分组通过 Presence 入场。浏览器夹具现在等待 Host Session 归属、被选中的子行、分组的 `data-state="open"`，以及真实的 grid-template-rows 过渡完成，再开始后续行操作。仅在行出现后查询动画并不够：`usePresence` 有意先挂载关闭状态，再隔两个动画帧打开，因此此前查询时过渡尚不存在。
+
+有界指针和几何诊断捕获了重命名失败：指针停在 y=256.5，目标行却从 y=241 移到 y=269，使指针落在 New Session 上并隐藏原行操作。定位原因后已移除诊断。修复等待既有产品生命周期，不强制点击、不重试修改操作、不禁用动画，也不按猜测时长休眠。目录祖先归一化还同时匹配精确的无引号根标签和带引号 ARIA 标签，保留面包屑数量，不改动子目录标签及其他角色。

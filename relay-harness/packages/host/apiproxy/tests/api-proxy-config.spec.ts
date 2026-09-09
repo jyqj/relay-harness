@@ -24,6 +24,8 @@ import type { RpcRequest, RpcResponse } from '../src/api/rpc.ts'
 import { RpcId } from '../src/api/rpc.ts'
 import { AGENT_DEFAULT_MODEL_SETTINGS_NAMESPACE } from '@relay-harness/rlh-agent-default-model'
 import { createApiProxy } from '../src/api-proxy.ts'
+import { ApiProxyService } from '../src/index.ts'
+import { DEFAULT_MUX_STREAM_BUFFER_BYTES } from '../src/frame-queue.ts'
 
 const DEFAULTS = { defaultModelSelection: () => ({ provider: 'p', model: 'm' }), cwd: '/tmp' }
 
@@ -574,6 +576,18 @@ describe('settings domain', () => {
     const error = expectErr(await api.settings.update(request({ ns: 'llm-deepseek', patch: {} })))
     expect(error.code).toBe('settings-rejected')
     expect(error.message).toContain('read-only')
+  })
+})
+
+describe('gateway plugin config', () => {
+  it('defaults the mux subscriber buffer budget', () => {
+    expect(ApiProxyService.Config({}, undefined).muxStreamBufferBytes)
+      .toBe(DEFAULT_MUX_STREAM_BUFFER_BYTES)
+  })
+
+  it('rejects an invalid mux subscriber buffer budget at load', () => {
+    expect(() => ApiProxyService.Config({ muxStreamBufferBytes: -1 }, undefined)).toThrow()
+    expect(() => ApiProxyService.Config({ muxStreamBufferBytes: 1.5 }, undefined)).toThrow()
   })
 })
 

@@ -19,9 +19,15 @@
     - button "技能":
       - img
       - text: 技能
+    - button "记忆":
+      - img
+      - text: 记忆
     - button "MCP":
       - img
       - text: MCP
+    - button "代码索引":
+      - img
+      - text: 代码索引
     - button "Agent 预设":
       - img
       - text: Agent 预设
@@ -37,8 +43,6 @@
   - text: 识图模型
   - combobox "识图模型":
     - option "不启用" [selected]
-    - option "DeepSeek / DeepSeek-V4-Flash"
-    - option "DeepSeek / DeepSeek-V4-Pro"
   - paragraph: 主模型不支持图片时，先由该模型识别图片内容，再把描述交给主模型处理。请选择一个支持图片输入的模型。
   - list:
     - listitem:

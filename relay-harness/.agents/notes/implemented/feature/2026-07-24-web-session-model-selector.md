@@ -41,3 +41,9 @@ Any Host-backed Web conversation, including a blank session, can switch among dy
 ## Testing
 
 Host tests pin grouped discovery, catalog and exact-metadata failure isolation, logged effort restoration without stale-row injection, advisory unlisted selection, unsupported effort rejection, default materialization, and next-assembly switching. Client tests pin the shared directory, reconnect restoration, and complete-selection submission. Component tests pin dynamic effort labels, descriptions, provider-default exposure, effort submission, and the `Select model` fallback for an absent row. The keyless built-app fixture loads the production model plugin, selects OpenAI's GPT-5 and its Max effort, sends a turn, and verifies that the next generated response reports both ids; the DeepSeek configuration fixture omits the active catalog row and pins the fallback before choosing a replacement.
+
+## Renderer-owned model directory subscription
+
+The composer seat passes its existing per-Session directory store through the inject `hooks.modelDirectory` compartment. `InjectFace<ModelSelectInjected>` derives `useModelDirectory`; the component no longer creates a subscription or receives the store object. Both the seat and `/model` still resolve the same ModelDirectory, with different Sessions isolated.
+
+Selection completion still needs the latest error after its asynchronous acknowledgement, not the earlier render's snapshot. The inject face therefore exposes a narrow `selectionError` callback alongside unchanged load/select verbs. Tests retain the failed-selection toast, dynamic effort metadata and complete-selection assertions, and add a single-subscription/update/unmount regression through the shared test-runtime binder. Fresh assembled browser replay remains separately required.

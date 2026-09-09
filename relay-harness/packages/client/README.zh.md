@@ -19,11 +19,27 @@ rlh web GUI 的浏览器侧：shell 启动、浏览器与宿主通信、共享 U
 | [`ui-primitives/`](ui-primitives/README.md) | 提供共享 React 控件、图标和内容渲染器。 |
 | [`ui-attachment/`](ui-attachment/README.md) | 注册输入框与消息图片的附件呈现。 |
 | [`ui-layout/`](ui-layout/README.md) | 排列应用的主要区域。 |
+| [`ui-surfaces/`](ui-surfaces/README.md) | 拥有右侧面板 surface 外壳、它的标签条，以及按会话键控的 surfaces 存储。 |
+| [`ui-user-terminal/`](ui-user-terminal/README.md) | 在对话抽屉和 Terminal surface 中运行用户 PTY 终端。 |
+| [`ui-preview/`](ui-preview/README.md) | 在仅桌面端可用的 Browser surface 中预览 http(s) 文档。 |
+| [`ui-files/`](ui-files/README.md) | 提供工作区文件树和单文件预览 surface。 |
+| [`ui-diff/`](ui-diff/README.md) | 在 Diff surface 中展示工作区变更和 unified 差异块。 |
+| [`ui-agents-panel/`](ui-agents-panel/README.md) | 在 Agents surface 中列出当前会话的 subagent（子 agent）和后台任务。 |
 | [`ui-sidebar/`](ui-sidebar/README.md) | 展示工作区与会话导航。 |
 | [`ui-product-shell/`](ui-product-shell/README.md) | 组合 Chat、Work、Library 导航与持久 Simple/Developer mode。 |
 | [`ui-brand-official/`](ui-brand-official/README.md) | 使用官方名称和标记填充通用浏览器品牌 slot。 |
+| [`ui-titlebar/`](ui-titlebar/README.md) | 从标题栏切换终端抽屉和 surfaces 列。 |
+| [`ui-git/`](ui-git/README.md) | 向标题栏添加 commit、push 和变更请求操作。 |
+| [`ui-issue-orchestration/`](ui-issue-orchestration/README.md) | 以标题栏徽标和操作卡片呈现 Remote issue 编排快照。 |
 | [`ui-workspace/`](ui-workspace/README.md) | 提供工作区选择与创建界面。 |
+| [`ui-session-tree/`](ui-session-tree/README.md) | 将工作区的 session 分叉谱系渲染为画布树形覆盖层。 |
+| [`ui-directory-picker-native/`](ui-directory-picker-native/README.md) | 通过本地宿主的 OS 选择器响应工作区目录选择。 |
+| [`ui-directory-picker-browse/`](ui-directory-picker-browse/README.md) | 用应用内目录浏览对话框填充 ui-workspace 的目录流程插槽。 |
 | [`ui-conversation/`](ui-conversation/README.md) | 展示当前对话及其输入界面。 |
+| [`ui-context-inspector/`](ui-context-inspector/README.md) | 打开基于 Context Inspector 会话投影的对话头部抽屉。 |
+| [`ui-message-edit/`](ui-message-edit/README.md) | 把最新一条用户消息变为编辑态，分叉子会话并重发。 |
+| [`ui-message-feedback/`](ui-message-feedback/README.md) | 为已定稿的 assistant 消息添加赞/踩评分和备注。 |
+| [`ui-deliverables/`](ui-deliverables/README.md) | 注册结束回合尾部的产物文件行和内联文件引用。 |
 | [`ui-tool/`](ui-tool/README.md) | 编排工具调用树和按工具键控的视图。 |
 | [`ui-workflow-run/`](ui-workflow-run/README.md) | 把持久工作流运行回放为 Chat 嵌套折叠项，并只为实时子 Session 提供导航。 |
 | [`ui-goal/`](ui-goal/README.md) | 展示和管理当前目标。 |
@@ -35,7 +51,7 @@ rlh web GUI 的浏览器侧：shell 启动、浏览器与宿主通信、共享 U
 | [`ui-subagent/`](ui-subagent/README.md) | 提供 subagent（子 agent）导航、子级 transcript（文本记录）的状态和内联引用。 |
 | [`ui-jobs/`](ui-jobs/README.md) | 在会话标题栏列出当前会话的后台任务。 |
 | [`ui-model-selection/`](ui-model-selection/README.md) | 在对话界面中提供模型选择。 |
-| [`ui-permission/`](ui-permission-presets/README.md) | 配置默认权限并切换当前会话的访问模式。 |
+| [`ui-permission-presets/`](ui-permission-presets/README.md) | 配置默认权限并切换当前会话的访问模式。 |
 | [`ui-plan/`](ui-plan/README.md) | 展示生效中的 plan mode 状态及其退出控件。 |
 | [`ui-prompt-enhancement/`](ui-prompt-enhancement/README.md) | 通过 Host Remote 增强未提交草稿，但不发送。 |
 | [`ui-settings-plugins/`](ui-settings-plugins/README.md) | 拥有“插件”设置分区、它的标签页扩展点，以及可配置的宿主平面插件卡片。 |
@@ -44,6 +60,10 @@ rlh web GUI 的浏览器侧：shell 启动、浏览器与宿主通信、共享 U
 | [`ui-settings/`](ui-settings/README.md) | 承载设置界面及其扩展区域。 |
 | [`ui-settings-general/`](ui-settings-general/README.md) | 提供常规设置分区。 |
 | [`ui-settings-models/`](ui-settings-models/README.md) | 提供模型提供方配置与 DeepSeek 配置引导。 |
+| [`ui-settings-mcp/`](ui-settings-mcp/README.md) | 提供 MCP 服务器设置分区。 |
+| [`ui-settings-skills/`](ui-settings-skills/README.md) | 基于当前 Agent 的分层 skill（技能）目录提供 skills 设置分区。 |
+| [`ui-code-index-center/`](ui-code-index-center/README.md) | 提供展示当前工作区索引健康度的 Code Index 设置页。 |
+| [`ui-memory-center/`](ui-memory-center/README.md) | 提供用于记忆治理与评审的 Memory 设置页。 |
 | [`ui-settings-plugin-inventory/`](ui-settings-plugin-inventory/README.md) | 向“插件”设置贡献只读的 Host Loader 清单标签页。 |
 | [`ui-settings-remote/`](ui-settings-remote/README.md) | 在设置旁边贡献仅桌面端出现的手机远程弹窗。 |
 

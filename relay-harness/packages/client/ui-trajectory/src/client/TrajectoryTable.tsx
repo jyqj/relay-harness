@@ -1727,6 +1727,13 @@ export function TrajectoryTable({
   const tablePaneRef = useRef<HTMLDivElement>(null)
   const followsTableTail = useRef(false)
   const tableScrollInitialized = useRef(false)
+  const pendingTailFrame = useRef<number | null>(null)
+  const latestTailScroll = useRef<(() => void) | null>(null)
+  useEffect(() => () => {
+    if (pendingTailFrame.current !== null) cancelAnimationFrame(pendingTailFrame.current)
+    pendingTailFrame.current = null
+    latestTailScroll.current = null
+  }, [])
   const [tableScrollReady, setTableScrollReady] = useState(false)
   const pendingScrollRecordId = useRef<string | null>(null)
   const loadingOlder = useRef(false)
@@ -2178,8 +2185,17 @@ export function TrajectoryTable({
       return
     }
     if (!followsTableTail.current) return
-    if (virtualizationEnabled) rowVirtualizer.scrollToEnd({ behavior: 'auto' })
-    else pane.scrollTop = pane.scrollHeight
+    latestTailScroll.current = () => {
+      if (!followsTableTail.current) return
+      if (virtualizationEnabled) rowVirtualizer.scrollToEnd({ behavior: 'auto' })
+      else pane.scrollTop = pane.scrollHeight
+    }
+    if (pendingTailFrame.current === null) {
+      pendingTailFrame.current = requestAnimationFrame(() => {
+        pendingTailFrame.current = null
+        latestTailScroll.current?.()
+      })
+    }
   }, [
     historyLoading,
     historyStartSeq,

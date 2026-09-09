@@ -10,6 +10,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
+const { readPluginLock, lockedPackages, installedPackagesAt } = require('../scripts/vendor-lock');
 
 const vendorDir = __dirname;
 const manifest = JSON.parse(fs.readFileSync(path.join(vendorDir, 'plugins.json'), 'utf8'));
@@ -57,16 +58,10 @@ function absenceReason(name, subtree) {
  * what `npm ci --omit=dev` writes and what the installer must therefore carry.
  *
  * @param {string} name Vendored plugin directory name.
- * @returns {string[]} Sorted `name@version` pairs, empty without a lockfile.
+ * @returns {string[]} Sorted `name@version` pairs; missing or incomplete locks fail.
  */
 function lockedProductionInstall(name) {
-  const lockPath = path.join(vendorDir, name, 'package-lock.json');
-  if (!fs.existsSync(lockPath)) return [];
-  const lock = JSON.parse(fs.readFileSync(lockPath, 'utf8'));
-  return Object.entries(lock.packages)
-    .filter(([key, entry]) => key.startsWith('node_modules/') && !entry.dev && !entry.devOptional)
-    .map(([key, entry]) => `${key.slice('node_modules/'.length)}@${entry.version}`)
-    .sort();
+  return lockedPackages(path.join(vendorDir, name));
 }
 
 /**
@@ -78,21 +73,15 @@ function lockedProductionInstall(name) {
  * @returns {string[]} Sorted `name@version` pairs, empty without the directory.
  */
 function installedPackages(name) {
-  const root = path.join(vendorDir, name, 'node_modules');
-  if (!fs.existsSync(root)) return [];
-  const directories = fs.readdirSync(root, { withFileTypes: true })
-    .filter(entry => entry.isDirectory() && !entry.name.startsWith('.'))
-    .flatMap(entry => entry.name.startsWith('@')
-      ? fs.readdirSync(path.join(root, entry.name)).map(scoped => `${entry.name}/${scoped}`)
-      : [entry.name]);
-  return directories
-    .map(directory => `${directory}@${JSON.parse(fs.readFileSync(path.join(root, directory, 'package.json'), 'utf8')).version}`)
-    .sort();
+  return installedPackagesAt(path.join(vendorDir, name));
 }
 
-/** Vendored plugins whose production dependencies come from a lockfile. */
+/** Complete vendored plugins; all manifests require locks, but an explicitly absent Host tree stays unmountable. */
 function installablePlugins() {
-  return Object.keys(manifest).filter(name => fs.existsSync(path.join(vendorDir, name, 'package-lock.json')));
+  return Object.keys(manifest).filter((name) => {
+    readPluginLock(path.join(vendorDir, name));
+    return missingSubtrees(name).length === 0;
+  });
 }
 
 module.exports = {

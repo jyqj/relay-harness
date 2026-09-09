@@ -577,6 +577,10 @@
             "type": "object",
             "description": "Optional JSON input exposed to the script as the `args` global (wrap a bare list as a field, e.g. {\"files\": [...]}).",
             "additionalProperties": true
+          },
+          "resumeRunId": {
+            "type": "string",
+            "description": "Optional prior workflow run id to resume by deterministic journal replay. Requires an engine configured with journalRoot; use the exact same script, meta, args, provider, and limits."
           }
         },
         "required": [

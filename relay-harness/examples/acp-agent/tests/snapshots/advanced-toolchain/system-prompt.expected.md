@@ -369,6 +369,8 @@ interface ToolArgsMap {
     } & Record<string, JsonValue>;
     /** Optional JSON input exposed to the script as the `args` global (wrap a bare list as a field, e.g. {"files": [...]}). */
     args?: Record<string, JsonValue>;
+    /** Optional prior workflow run id to resume by deterministic journal replay. Requires an engine configured with journalRoot; use the exact same script, meta, args, provider, and limits. */
+    resumeRunId?: string;
   } & Record<string, JsonValue>;
   /** Create or fully replace a UTF-8 text file. */
   write: {

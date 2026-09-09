@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { spawn, spawnSync } from 'node:child_process'
+import { runSmokeProcess } from './smoke-process.mjs'
 import { existsSync, readFileSync, rmSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -26,49 +26,12 @@ function electronExecutable() {
   return found
 }
 
-function stopProcessTree(child) {
-  if (!child || child.exitCode !== null) return
-  if (process.platform === 'win32') {
-    spawnSync('taskkill', ['/pid', String(child.pid), '/t', '/f'], { stdio: 'ignore', windowsHide: true })
-    return
-  }
-  try {
-    process.kill(-child.pid, 'SIGTERM')
-  } catch {
-    child.kill('SIGTERM')
-  }
-}
-
 function run(executable, args, env) {
-  return new Promise((resolve, reject) => {
-    const child = spawn(executable, args, {
-      cwd: root,
-      detached: process.platform !== 'win32',
-      env,
-      stdio: ['ignore', 'pipe', 'pipe'],
-      windowsHide: true,
-    })
-    const timer = setTimeout(() => {
-      stopProcessTree(child)
-      reject(new Error(`Source smoke timed out after ${timeoutMs}ms.`))
-    }, timeoutMs)
-
-    child.stdout.on('data', (chunk) => process.stdout.write(chunk))
-    child.stderr.on('data', (chunk) => process.stderr.write(chunk))
-    child.once('error', (error) => {
-      clearTimeout(timer)
-      reject(error)
-    })
-
-    child.once('exit', (code, signal) => {
-      clearTimeout(timer)
-      resolve({ code, signal })
-    })
-  })
+  return runSmokeProcess(executable, args, { cwd: root, env, timeoutMs, label: 'Source smoke' })
 }
 
 const dirs = createSmokeDirs('rlh-source-smoke-')
-const keepArtifacts = process.env.RLH_SMOKE_KEEP === '1'
+let keepArtifacts = process.env.RLH_SMOKE_KEEP === '1'
 
 try {
   const executable = electronExecutable()
@@ -90,6 +53,7 @@ try {
   assertSmokeResult(outcome, result)
   console.log(`Source smoke passed on port ${port}; UI, titlebar hits, and PTY probes are healthy.`)
 } catch (error) {
+  if (error.quiescent === false) keepArtifacts = true
   console.error(error instanceof Error ? error.message : String(error))
   process.exitCode = 1
 } finally {

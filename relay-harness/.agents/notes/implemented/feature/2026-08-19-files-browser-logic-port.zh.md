@@ -16,6 +16,8 @@ guest BrowserView 为 `contextIsolation: true`、`sandbox: true`、`nodeIntegrat
 
 rlhd 额外能力保留：未保存 Tab 的继续编辑／放弃／保存、`error.changed`、占用隐藏（`overlayOpen || pipOpen`），以及带 token 前缀的工作区文件服务。到达 guest 的预览 IPC 只经 harness 授权。录制是宿主渲染进程的 `MediaRecorder`；成品落在 `userData/preview-recordings/`。
 
+首帧启动屏障观察已完成的绘制，避免编码器从尚未绘制的画布启动。启动完成以录制实例身份校验，而非仅检查预览 id，因为启动超时后 id 可以被复用。录制实例同时拥有编码器与 canvas 捕获流。停止编码器会完成产物编码，但不会释放源轨道，因此录制清理会显式停止这些轨道，即使构造、编码、Host 停止或产物保存失败。
+
 ## 考虑过的替代
 
 **原样导入 Effect。** 否决：本桌面主进程是 Promise 与 `webContents`，不是 Effect；为一个 occupant 保留外来运行时等于拥有第二套异步模型。
@@ -36,7 +38,7 @@ guest、主窗口与 PiP 都把页面世界和 preload 权限隔离。guest 面�
 
 ## 测试
 
-`src/main/workspace-fs.test.js` 钉 1 MiB 上限与穿越。`src/main/preview.test.js` 钉公网 https 访客页、选取、PiP 隔离，以及对着 fake 的自动化方法接线。`src/main/preview-session.test.js` 钉已隔离的 guest webPreferences 与残留 UA token 剥离。`preview-guest-protocol.test.js` 钉精确的冻结 bridge key 及其三项出站消息；`preview-guest-preload.test.js` 拒绝原始 `ipcRenderer` global。`src/preload/shell-api.test.js` 钉已授权的预览 IPC。`ui-files` 钉无上限搜索、提及拖放、revealLine、添加到对话。`ui-preview` 钉含 PiP 的 More 占用隐藏、设备工具栏 `setBounds`、选取 markdown，以及用假 recorder 的宿主 MediaRecorder。未证明 live Electron MediaRecorder 和真实 guest 上的 live CDP。
+`src/main/workspace-fs.test.js` 钉 1 MiB 上限与穿越。`src/main/preview.test.js` 钉公网 https 访客页、选取、PiP 隔离、录制替换后的晚到截图抑制，以及对着 fake 的自动化方法接线。`src/main/preview-session.test.js` 钉已隔离的 guest webPreferences 与残留 UA token 剥离。`preview-guest-protocol.test.js` 钉精确的冻结 bridge key 及其三项出站消息；`preview-guest-preload.test.js` 拒绝原始 `ipcRenderer` global。`src/preload/shell-api.test.js` 钉已授权的预览 IPC。`ui-files` 钉无上限搜索、提及拖放、revealLine、添加到对话。`ui-preview` 钉含 PiP 的 More 占用隐藏、设备工具栏 `setBounds`、选取 markdown，以及用假 recorder 的宿主 MediaRecorder。未证明 live Electron MediaRecorder 和真实 guest 上的 live CDP。
 
 ## 相关
 

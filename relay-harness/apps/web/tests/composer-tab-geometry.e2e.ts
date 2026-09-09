@@ -190,7 +190,7 @@ function measureTab(page: Page): Promise<TabMetrics> {
  * @param tab - the tab to show.
  */
 async function showTab(page: Page, tab: 'Chat' | 'Trajectory'): Promise<void> {
-  await page.getByRole('tab', { name: tab, exact: true }).click()
+  await page.getByRole('banner').getByRole('tab', { name: tab, exact: true }).click()
   if (tab === 'Trajectory') await page.getByLabel('Trajectory timeline').waitFor({ timeout: 30_000 })
   else await page.locator('[data-conversation-scroll] [data-chat-anchor-key]').first().waitFor({ timeout: 30_000 })
   // Both measurements are taken after a paint, so a rectangle read mid-transition
@@ -308,13 +308,15 @@ describe('web e2e: input card position across view tabs', () => {
     await seedSession(scaffold, FIXTURE.log, SEED_ID)
     // Scrollbars must take layout space here or the scenario proves nothing;
     // see the file header for the measurement behind dropping this argument.
+    // Geometry assertions compare the advanced Chat and Trajectory surfaces.
+    await scaffold.ctx.productMode.set({ mode: 'developer' })
     browser = await chromium.launch({ ignoreDefaultArgs: ['--hide-scrollbars'] })
     page = await newEnglishPage(browser, WIDE_VIEWPORT.height)
     tripwire = watchConsole(page)
     await page.goto(scaffold.baseUrl, { waitUntil: 'load' })
     await page.waitForSelector('[class*="frame"]', { timeout: 30_000 })
     await openSeededSession(page)
-    await page.getByRole('tab', { name: 'Chat', exact: true }).waitFor({ timeout: 30_000 })
+    await page.getByRole('banner').getByRole('tab', { name: 'Chat', exact: true }).waitFor({ timeout: 30_000 })
     await page.getByText(FIXTURE.markers.assistant(FIXTURE.turns), { exact: false }).last()
       .waitFor({ timeout: 30_000 })
   }, 180_000)

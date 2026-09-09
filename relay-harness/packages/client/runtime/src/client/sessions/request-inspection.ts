@@ -1,11 +1,7 @@
-import type { ContentBlock, ToolSchema } from '@relay-harness/rlh-llm/types'
-import type {
-  AssistantProvenanceView, AssistantRequestConfig,
-} from './conversation.ts'
+import type { ContentBlock,ToolSchema } from '@relay-harness/rlh-llm/types'
+import type { AssistantProvenanceView,AssistantRequestConfig } from '../contract/session-snapshot.ts'
 
-export type {
-  AssistantProvenanceView, AssistantRequestConfig,
-} from './conversation.ts'
+export type { AssistantProvenanceView,AssistantRequestConfig } from '../contract/session-snapshot.ts'
 
 /** Complete model-visible request header in force for an ordinary generation. */
 export interface ConversationPromptSnapshot {

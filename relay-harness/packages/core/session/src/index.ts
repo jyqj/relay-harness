@@ -43,24 +43,37 @@ export interface SessionPersistenceFence {
   readonly token: string
   /** Throw when this owner is expired or superseded. */
   assertCurrent(): void
+  /**
+   * Optionally exclude lease release/takeover through a complete storage commit.
+   * @param operation - mutation that remains inside the owner's exclusion interval.
+   * @returns the mutation result after its full durability barrier settles.
+   */
+  runExclusive?<T>(operation: () => Promise<T>): Promise<T>
 }
 
-const persistenceFences = new WeakMap<Session, SessionPersistenceFence>()
+interface SessionPersistenceOwnership {
+  readonly fence: SessionPersistenceFence
+  retired: boolean
+}
+
+const persistenceFences = new WeakMap<Session, SessionPersistenceOwnership>()
 
 /**
  * Install one persistence fence for a live Session.
  * @param session - exclusively owned live Session.
  * @param fence - cross-process ownership proof.
- * @returns disposer that removes only this exact fence.
+ * @returns disposer that retires this exact registration and closes source-log
+ * append admission; accepted persistence work retains the proof through drain.
  */
 export function installSessionPersistenceFence(
   session: Session,
   fence: SessionPersistenceFence,
 ): () => void {
   if (persistenceFences.has(session)) throw new Error(`session "${session.id}" already has a persistence fence`)
-  persistenceFences.set(session, fence)
+  const ownership: SessionPersistenceOwnership = { fence, retired: false }
+  persistenceFences.set(session, ownership)
   return () => {
-    if (persistenceFences.get(session) === fence) persistenceFences.delete(session)
+    ownership.retired = true
   }
 }
 
@@ -69,7 +82,20 @@ export function installSessionPersistenceFence(
  * @param session - live Session about to append or enter a persistence write.
  */
 export function assertSessionPersistenceFence(session: Session): void {
-  persistenceFences.get(session)?.assertCurrent()
+  const ownership = persistenceFences.get(session)
+  if (ownership?.retired) throw new Error(`session "${session.id}" persistence ownership is retired`)
+  ownership?.fence.assertCurrent()
+}
+
+/**
+ * Capture the exact current ownership proof for deferred persistence work.
+ * Retiring its registration closes new source appends but does not revoke
+ * accepted writes' proof or turn their later checks into no-ops.
+ * @param session - live Session whose storage work retains this ownership.
+ * @returns the Session's lifetime fence, or undefined for an unfenced Session.
+ */
+export function captureSessionPersistenceFence(session: Session): SessionPersistenceFence | undefined {
+  return persistenceFences.get(session)?.fence
 }
 
 declare module '@relay-harness/cordis' {
@@ -383,6 +409,12 @@ function assertMessageEventShape(event: Record<string, unknown>, subject: string
     || (block as Record<string, unknown>)['type'] !== 'tool-result'
     || !Array.isArray((block as Record<string, unknown>)['content'])) {
     throw new Error(`${subject} message must contain one tool-result block`)
+  }
+  const producedFiles = record?.['producedFiles']
+  if (producedFiles !== undefined && (!Array.isArray(producedFiles)
+    || producedFiles.some(path => typeof path !== 'string')
+    || (block as Record<string, unknown>)['isError'] === true)) {
+    throw new Error(`${subject} producedFiles must be string paths on a successful tool result`)
   }
   if ((block as Record<string, unknown>)['toolCallId'] !== sourceRecord['callId']) {
     throw new Error(`${subject} message has mismatched tool call ids`)

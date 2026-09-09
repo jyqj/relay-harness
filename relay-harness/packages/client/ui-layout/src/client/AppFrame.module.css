@@ -7,11 +7,11 @@
   height: 100%;
   overflow: hidden;
   background: var(--rlw-alias-bg-base);
-  /* Collapse/expand animates the tracks on the shared sider curve
-     (--rl-ease-in-out / --rl-transition-duration-slow, ui-theme base.css). */
+  /* Collapse/expand animates the tracks on the shared 300ms collapse curve
+     (--rlw-ease-standard). */
   transition:
-    grid-template-columns var(--rl-transition-duration-slow) var(--rl-ease-in-out),
-    grid-template-rows var(--rl-transition-duration-slow) var(--rl-ease-in-out);
+    grid-template-columns 300ms var(--rlw-ease-standard),
+    grid-template-rows 300ms var(--rlw-ease-standard);
 }
 
 /* Dragging writes widths at pointer cadence; easing them would detach the
@@ -103,7 +103,7 @@
   -webkit-app-region: no-drag;
   /* Rides the same curve as the tracks so the pill stays on the moving
      border during collapse/expand; paused while dragging (frame rule). */
-  transition: left var(--rl-transition-duration-slow) var(--rl-ease-in-out);
+  transition: left 300ms var(--rlw-ease-standard);
 }
 
 .frame[data-dragging] .handle {
@@ -133,8 +133,8 @@
      column, the strip itself, or a drag. */
   opacity: 0;
   transition:
-    opacity var(--rl-transition-duration-slow) var(--rl-ease-in-out),
-    background var(--rl-transition-duration-slow) var(--rl-ease-in-out);
+    opacity 300ms var(--rlw-ease-standard),
+    background 300ms var(--rlw-ease-standard);
 }
 
 .detailsCol:hover ~ .handle[data-side='details']::after,
@@ -152,6 +152,13 @@
 .handle[data-side='surfaces'][data-dragging='true']::after {
   background: var(--rlw-alias-button-floating-hover);
   border-color: var(--rlw-alias-border-l3);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .handle[data-side='details']::after,
+  .handle[data-side='surfaces']::after {
+    transition: none;
+  }
 }
 
 /* First grid child so column paint order keeps this band behind Session log,
@@ -296,7 +303,7 @@
   width: min(320px, calc(100% - 48px));
   pointer-events: none;
   transform: translateX(-100%);
-  transition: transform var(--rl-transition-duration-slow) var(--rl-ease-in-out);
+  transition: transform 300ms var(--rlw-ease-standard);
   padding-top: env(safe-area-inset-top, 0px);
   /* Opaque canvas under sidebar-fill: wallpaper glass must mix with the
      drawer, not with the dimmed conversation showing through. */
@@ -324,7 +331,7 @@
   pointer-events: none;
   background: var(--rlw-alias-bg-base);
   transform: translateX(100%);
-  transition: transform var(--rl-transition-duration-slow) var(--rl-ease-in-out);
+  transition: transform 300ms var(--rlw-ease-standard);
   padding-top: env(safe-area-inset-top, 0px);
 }
 

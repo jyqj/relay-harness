@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest'
-import { formatTerminalDraft, normalizeSelection } from '../src/client/selection.ts'
+import { describe,expect,it } from 'vitest'
+import { formatTerminalDraft,normalizeSelection } from '../src/client/terminal/selection.ts'
 
 describe('formatTerminalDraft', () => {
   it('wraps normalized text in a terminal fence', () => {

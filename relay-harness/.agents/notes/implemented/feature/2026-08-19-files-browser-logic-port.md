@@ -16,6 +16,8 @@ The guest BrowserView is `contextIsolation: true`, `sandbox: true`, and `nodeInt
 
 rlhd extras stay: dirty-tab Keep/Discard/Save, `error.changed`, occupancy hide (`overlayOpen || pipOpen`), and the token-prefixed workspace file server. Preview IPC that reaches the guest is harness-authorized only. Recording is host-renderer `MediaRecorder`; artifacts land under `userData/preview-recordings/`.
 
+The first-frame startup barrier observes a completed draw so the encoder never starts from an unpainted canvas. Startup completion is fenced by recording-instance identity, not preview id alone: the id can be reused after a startup timeout. The recording owns both the encoder and the canvas capture stream. Stopping the encoder finalizes the artifact but does not release the source tracks, so recording cleanup explicitly stops those tracks even when construction, encoding, Host stop, or artifact saving fails.
+
 ## Alternatives considered
 
 **Import Effect as-is.** Rejected: this desktop's main process is Promises and `webContents`, not Effect; keeping the foreign runtime would own a second async model for one occupant.
@@ -36,7 +38,7 @@ Guest, main, and PiP all isolate their page world from preload privileges. The g
 
 ## Testing
 
-`src/main/workspace-fs.test.js` pins the 1 MiB caps and traversal. `src/main/preview.test.js` pins public https guests, pick, PiP isolation, and automation method wiring against fakes. `src/main/preview-session.test.js` pins isolated guest webPreferences and leftover UA-token strip. `preview-guest-protocol.test.js` pins the exact frozen bridge keys and their three outbound messages; `preview-guest-preload.test.js` rejects a raw `ipcRenderer` global. `src/preload/shell-api.test.js` pins authorized preview IPC. `ui-files` pins uncapped search, mention drag, revealLine, and Add to chat. `ui-preview` pins More occupancy hide including PiP, device-toolbar `setBounds`, pick markdown, and host MediaRecorder with a fake recorder. Live Electron MediaRecorder and live CDP on a real guest are not proven.
+`src/main/workspace-fs.test.js` pins the 1 MiB caps and traversal. `src/main/preview.test.js` pins public https guests, pick, PiP isolation, late capture suppression after recording replacement, and automation method wiring against fakes. `src/main/preview-session.test.js` pins isolated guest webPreferences and leftover UA-token strip. `preview-guest-protocol.test.js` pins the exact frozen bridge keys and their three outbound messages; `preview-guest-preload.test.js` rejects a raw `ipcRenderer` global. `src/preload/shell-api.test.js` pins authorized preview IPC. `ui-files` pins uncapped search, mention drag, revealLine, and Add to chat. `ui-preview` pins More occupancy hide including PiP, device-toolbar `setBounds`, pick markdown, and host MediaRecorder with a fake recorder. Live Electron MediaRecorder and live CDP on a real guest are not proven.
 
 ## Related
 

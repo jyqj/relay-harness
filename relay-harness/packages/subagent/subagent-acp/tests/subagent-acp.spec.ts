@@ -385,6 +385,33 @@ describe('cwd resolution', () => {
 })
 
 describe('rlh-subagent-acp', () => {
+  it('shares direct backend disposal through real child EOF quiescence', async () => {
+    const tmp = mkdtempSync(join(tmpdir(), 'acp-direct-dispose-'))
+    const flushed = join(tmp, 'flushed')
+    let run: Awaited<ReturnType<typeof startAcpRun>> | undefined
+    try {
+      run = await startAcpRun(request(), {
+        command: process.execPath,
+        args: [mockServer],
+        cwd: process.cwd(),
+        permission: 'reject',
+        env: { MOCK_TEXT: 'completed', MOCK_FLUSH_ON_EOF: flushed, MOCK_FLUSH_DELAY_MS: '20' },
+        disposeEofGraceMs: 1000,
+        disposeGraceMs: 100,
+        spawn: spawnSubprocess,
+      })
+      expect((await run.result).stopReason).toBe('completed')
+      const disposal = run.dispose()
+      expect(run.dispose()).toBe(disposal)
+      await disposal
+      expect(existsSync(flushed)).toBe(true)
+      expect(run.dispose()).toBe(disposal)
+    } finally {
+      await run?.dispose()
+      rmSync(tmp, { recursive: true, force: true })
+    }
+  })
+
   it('drives child processes with parent-unique run ids and returns streamed output', async () => {
     const ctx = await setup({ MOCK_TEXT: 'hello from acp child', MOCK_STOP: 'end_turn', MOCK_SESSION_ID: 'acp-child-session' })
     const run = await ctx.subagents.start('acp', request('do X'))

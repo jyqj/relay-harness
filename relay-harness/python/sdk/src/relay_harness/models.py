@@ -24,9 +24,13 @@ class IncomingRequest:
 
 
 class ServerInfo(BaseModel):
-    name: str | None = None
-    version: str | None = None
+    """Wire identity the runtime must report during the initialize handshake."""
+
+    name: str
+    version: str
 
 
 class InitializeResponse(BaseModel):
-    serverInfo: ServerInfo | None = None
+    """Initialize handshake result; the runtime must identify itself."""
+
+    serverInfo: ServerInfo

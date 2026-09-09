@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// @ts-check
 const http = require('http');
 const https = require('https');
 const fs = require('fs');
@@ -62,7 +63,9 @@ class RelayServer {
       server.on('error', reject);
       server.listen(port, host, () => {
         this.server = server;
-        resolve(server.address().port);
+        const address = server.address();
+        if (!address || typeof address === 'string') { reject(new Error('relay server did not bind a TCP port')); return; }
+        resolve(address.port);
       });
     });
   }

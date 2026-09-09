@@ -6,6 +6,7 @@
  * @module @relay-harness/rlh-session-persistence-jsonl
  */
 
+import type { SessionPersistenceFence } from '@relay-harness/rlh-session'
 import { Context } from '@relay-harness/cordis'
 import z from '@relay-harness/schemastery'
 import { readdirSync } from 'node:fs'
@@ -181,8 +182,8 @@ export class JsonlSessionPersistence extends SessionPersistence implements Persi
     return this.coordinator.append(id, events)
   }
 
-  override prepare(id: SessionId, signal?: AbortSignal): Promise<SessionPreparation> {
-    return this.coordinator.prepare(id, signal)
+  override prepare(id: SessionId, signal?: AbortSignal, fence?: SessionPersistenceFence): Promise<SessionPreparation> {
+    return this.coordinator.prepare(id, signal, fence)
   }
 
   load(id: SessionId): Promise<SessionInspection> {

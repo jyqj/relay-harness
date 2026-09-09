@@ -333,14 +333,6 @@ export interface SessionsApi {
   Promise<RpcResponse<{ title: string; seq: number }>>
 
   /**
-   * Sends a message. content is core's ContentBlock[] verbatim; mode maps 1:1 — queue→send, steer→steer.
-   * A prompt whose content is exactly one text block starting with '/' is a slash command: the host
-   * executes it through the command registry (mode-agnostic) and it is never sent to the model. A
-   * successful command returns ok with the command slot (its success text, when the command produced
-   * one — carried for future rendering; the state change is the feedback). A usage/state error is an
-   * RPC error with code command-error; an unrecognized name is an RPC error with code unknown-command.
-   */
-  /**
    * Forks a new session from a prefix of the source. `atSeq` anchors a
    * completed-turn cut: the boundary is the first `turn/end` at or after it
    * (a message's fork button passes the message seq, so the fork includes
@@ -371,19 +363,31 @@ export interface SessionsApi {
   Promise<RpcResponse<{ sessionId: SessionId; blank: boolean }>>
 
   /**
-   * Sends text and temporary image bytes to an ordinary session Agent after durable host admission.
-   * Browser callers attach their current IANA zone;
-   * the Host validates, canonicalizes, and records it on that exact user message. Omission remains
-   * valid for non-browser callers. Session-backed subagents reject with `agent-busy` and use
-   * `subagent.prompt`.
+   * Admits content verbatim into the ordinary session's inbox after durable host
+   * admission: mode maps 1:1 — queue→followup, steer→steer. The host dispatches no
+   * slash command on this route: a leading-'/' line reaches the model as literal
+   * text. Command execution lives on the client-side commands channel or the
+   * host-side `command.execute` RPC, never here. Browser callers attach their
+   * current IANA zone; the Host validates, canonicalizes, and records it on that
+   * exact user message. Omission remains valid for non-browser callers.
+   * Session-backed subagents reject with `agent-busy` and use `subagent.prompt`.
+   *
+   * `signal` cancels only the pre-commit phase of the admission: while it waits on
+   * the session's serialized operation slot, or before durable content intake
+   * starts. A cancelled admission answers `cancelled` and never reaches the inbox.
+   * Once intake starts the prompt is admitted regardless, so a caller that stopped
+   * waiting (transport deadline, dispose abort) may still have delivered the
+   * message; re-sending the same rpcId to one session is an idempotent `accepted`
+   * no-op without a second delivery. The dedup guard is per session, so the same
+   * rpcId on another session (fork/resume lineage) admits normally.
    */
   prompt(request: RpcRequest<{
     sessionId: SessionId
     mode: 'queue' | 'steer'
     content: PromptContentPart[]
     clientTimeZone?: string
-  }>):
-  Promise<RpcResponse<{ accepted: true; command?: { kind: 'success'; text?: string } }>>
+  }>, signal?: AbortSignal):
+  Promise<RpcResponse<{ accepted: true }>>
 
   /** Reads one durable image after proving that this session's log references its id. */
   attachment(request: RpcRequest<{ sessionId: SessionId; attachmentId: AttachmentIdType }>):

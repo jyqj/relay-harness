@@ -4,6 +4,8 @@
 
 为 Host 与 Client 两侧的 Cordis 环境提供 Typert RPC endpoint。Host 入口提供 `ctx.typertGateway`，`@relay-harness/rlh-api-gateway/client` 则提供 `ctx.remote`；两者使用同一份生成的 `InvocationDescriptor` 约定，并将业务选择交给 API Remotes，将传输、请求关联、信任和响应封装交给 Connection。
 
+仅 Host 可用的 `currentTrustedRequest()` 只在活动的可信 Connection 分发中观察原始端点和 signal。直接 `invoke()` 不创建这种来源；嵌套调用保留原始端点，结束时会使逃逸的异步回调失效。返回快照不是凭据：敏感消费方在最终准入时重新读取，并检查自己预期的端点。它继承 Connection 信任，不证明物理人的交互。
+
 ## Host 服务：`TypertGatewayService`（ctx key：`typertGateway`）
 
 每次调用时，`ctx.typertGateway.invoke()` 都会解析当前的描述符和 Cordis 服务，校验具名参数是否完全匹配，解析已注册的对象或 Context 身份标识，调用公开的业务方法，并校验其结果。业务服务继承 [`rlh-typert-protocol`](../../typert/protocol/README.md) 的 `TypertRemoteService`，并用 `@Remote` 或 `@RemoteScope` 标记方法；已有其他基类时仍可改用 `bindTypertRemote()`。

@@ -179,7 +179,8 @@ export function apply(ctx: Context, config: Config): void {
     // would break the advertised cap. (A within-cap replacement is always
     // smaller than the original, which is > cap by the entry condition, so this
     // one check subsumes "not smaller than the original" too. The spill file
-    // already written is a harmless orphan; cleanup is deferred.)
+    // already written is unreferenced, not lost: the backend reclaims it at
+    // the owning session's disposal, or at the next start's orphan sweep.)
     if (Buffer.byteLength(replacedText, 'utf8') > cap) {
       ctx.logger.warn(`spill-policy: spill notice for ${toolName} exceeds maxInlineBytes; keeping the inline content`)
       return undefined

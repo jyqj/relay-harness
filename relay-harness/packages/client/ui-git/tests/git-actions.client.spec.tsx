@@ -78,6 +78,7 @@ function filesTree(files: Array<{ path: string; insertions: number; deletions: n
 }
 
 function mount(opts: {
+  useSessions?: GitActionsProps['useSessions']
   cwd?: string | undefined
   git?: VcsStatus | null
   gitStatus?: GitActionsProps['gitStatus']
@@ -93,6 +94,7 @@ function mount(opts: {
   gitSwitchBranch?: GitActionsProps['gitSwitchBranch']
   gitCreateBranch?: GitActionsProps['gitCreateBranch']
   openWorkspacePath?: GitActionsProps['openWorkspacePath']
+  openExternal?: GitActionsProps['openExternal']
   onGitProgress?: GitActionsProps['onGitProgress']
   density?: GitActionsProps['density']
   titlebarGit?: boolean
@@ -115,13 +117,13 @@ function mount(opts: {
   const gitCreateBranch = opts.gitCreateBranch ?? vi.fn(async () => ({ ok: true }))
   const openWorkspacePath = opts.openWorkspacePath ?? vi.fn(async () => ({ ok: true }))
   const onGitProgress = opts.onGitProgress ?? vi.fn(() => () => {})
-  const openExternal = vi.fn(async () => true)
+  const openExternal = opts.openExternal ?? vi.fn(async () => true)
   const view = render(
     <GitActionsControl
       surfaces={0}
       terminalDrawer={0}
       {...(opts.density === undefined ? {} : { density: opts.density })}
-      useSessions={useSessionsStub(sessionList(opts.cwd))}
+      useSessions={opts.useSessions ?? useSessionsStub(sessionList(opts.cwd))}
       useWorkspaces={neverWorkspaces}
       gitStatus={gitStatus}
       gitFetchForStatus={gitFetchForStatus}
@@ -929,5 +931,270 @@ describe('GitActionsControl', () => {
     act(() => { titlebarGit.set(false) })
     expect(screen.queryByRole('button', { name: 'Git actions' })).toBeNull()
     expect(screen.getByRole('dialog', { name: 'Commit changes' })).toBeTruthy()
+  })
+})
+
+describe('Git transport rejection handling', () => {
+  it('settles initial transport rejection into unavailable rather than permanent loading', async () => {
+    mount({ cwd: '/work', gitStatus: vi.fn(async () => { throw new Error('fixture disconnected') }) })
+    const button = await screen.findByRole<HTMLButtonElement>('button', { name: 'Commit' })
+    fireEvent.focus(button)
+    expect(await screen.findByText('Git status is unavailable.')).toBeTruthy()
+    expect(button.disabled).toBe(true)
+  })
+
+  it('preserves local commit availability when background status enrichment rejects', async () => {
+    const b = mount({
+      cwd: '/work', git: status({ hasWorkingTreeChanges: true, refName: 'main', isDefaultRef: true }),
+      gitFetchForStatus: vi.fn(async () => { throw new Error('fixture fetch unavailable') }),
+      gitReadPullRequest: vi.fn(async () => { throw new Error('fixture PR unavailable') }),
+    })
+    const button = await screen.findByRole<HTMLButtonElement>('button', { name: 'Commit & push' })
+    expect(button.disabled).toBe(false)
+    expect(b.gitCommit).not.toHaveBeenCalled()
+  })
+
+  it('shows rejected action transport on the existing failure surface and clears busy state', async () => {
+    const gitPush = vi.fn(async () => { throw new Error('fixture push transport lost') })
+    mount({ cwd: '/work', git: status({ aheadCount: 2, isDefaultRef: true, refName: 'main' }), gitPush })
+    fireEvent.click(await screen.findByRole('button', { name: 'Push' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Push to main' }))
+    expect(await screen.findByRole('status', { name: 'Action failed' })).toBeTruthy()
+    expect(screen.getByText('fixture push transport lost')).toBeTruthy()
+    await waitFor(() => { expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Push' }).disabled).toBe(false) })
+    expect(gitPush).toHaveBeenCalledTimes(1)
+  })
+})
+
+
+it('keeps successful mutation feedback when post-action status refresh rejects', async () => {
+  let pushed = false
+  const known = status({ aheadCount: 2, isDefaultRef: true, refName: 'main' })
+  const b = mount({
+    cwd: '/work',
+    gitStatus: vi.fn(async () => { if (pushed) throw new Error('fixture status unavailable'); return known }),
+    gitFetchForStatus: vi.fn(async () => { if (pushed) throw new Error('fixture fetch unavailable'); return known }),
+    gitReadPullRequest: vi.fn(async () => { if (pushed) throw new Error('fixture PR unavailable'); return { ok: true, pr: null } }),
+    gitPush: vi.fn(async () => { pushed = true; return { ok: true, status: 'pushed' as const, branch: 'main' } }),
+  })
+  fireEvent.click(await screen.findByRole('button', { name: 'Push' }))
+  fireEvent.click(await screen.findByRole('button', { name: 'Push to main' }))
+  expect(await screen.findByRole('status', { name: 'Pushed to main' })).toBeTruthy()
+  expect(screen.queryByRole('status', { name: 'Action failed' })).toBeNull()
+  expect(b.gitPush).toHaveBeenCalledTimes(1)
+  await waitFor(() => { expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Commit' }).disabled).toBe(true) })
+})
+
+
+describe('Git workspace ownership', () => {
+  function changingSessions() {
+    const sessions = createSnapshotStore(sessionList('/a'))
+    const useSessions: GitActionsProps['useSessions'] = selector =>
+      // oxlint-disable-next-line typescript/unbound-method -- snapshot store methods do not read this
+      useSyncExternalStore(sessions.subscribe, () => selector(sessions.getSnapshot()))
+    return { sessions, useSessions }
+  }
+
+  it('does not let completion in the old workspace overwrite the selected workspace status', async () => {
+    const { sessions, useSessions } = changingSessions()
+    const held = Promise.withResolvers<{ ok: true; status: 'pushed'; branch: string }>()
+    const a = status({ refName: 'main', isDefaultRef: true, aheadCount: 2 })
+    const b = status({ refName: 'release', isDefaultRef: true })
+    const read = vi.fn(async (cwd: string) => cwd === '/a' ? a : b)
+    const bench = mount({ useSessions, gitStatus: read, gitFetchForStatus: read, gitPush: vi.fn(() => held.promise) })
+    fireEvent.click(await screen.findByRole('button', { name: 'Push' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Push to main' }))
+    await waitFor(() => { expect(bench.gitPush).toHaveBeenCalledTimes(1) })
+    act(() => { sessions.set(sessionList('/b')) })
+    expect(await screen.findByText('release')).toBeTruthy()
+    await act(async () => { held.resolve({ ok: true, status: 'pushed', branch: 'main' }); await held.promise })
+    await waitFor(() => { expect(screen.getByRole('status', { name: 'Pushed to main' })).toBeTruthy() })
+    expect(screen.getByText('release')).toBeTruthy()
+    expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Commit' }).disabled).toBe(true)
+    expect(bench.gitPush).toHaveBeenCalledWith('/a', expect.any(Number))
+  })
+
+  it('closes a pending default-branch confirmation when the workspace changes', async () => {
+    const { sessions, useSessions } = changingSessions()
+    const read = vi.fn(async (cwd: string) => status({ refName: cwd === '/a' ? 'main' : 'release', isDefaultRef: true, aheadCount: 2 }))
+    const bench = mount({ useSessions, gitStatus: read, gitFetchForStatus: read })
+    fireEvent.click(await screen.findByRole('button', { name: 'Push' }))
+    expect(await screen.findByRole('dialog', { name: 'Push to default ref?' })).toBeTruthy()
+    act(() => { sessions.set(sessionList('/b')) })
+    expect(await screen.findByText('release')).toBeTruthy()
+    expect(screen.queryByRole('dialog', { name: 'Push to default ref?' })).toBeNull()
+    expect(bench.gitPush).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Push' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Push to release' }))
+    await waitFor(() => { expect(bench.gitPush).toHaveBeenCalledWith('/b', expect.any(Number)) })
+  })
+})
+
+it('does not publish an old workspace follow-up action after navigation', async () => {
+  const sessions = createSnapshotStore(sessionList('/a'))
+  const held = Promise.withResolvers<{ ok: true; status: 'pushed'; branch: string }>()
+  const a = status({ refName: 'feature/old', aheadCount: 2 })
+  const b = status({ refName: 'main', isDefaultRef: true })
+  const read = vi.fn(async (cwd: string) => cwd === '/a' ? a : b)
+  const bench = mount({
+    // oxlint-disable-next-line typescript/unbound-method -- snapshot store methods do not read this
+    useSessions: selector => useSyncExternalStore(sessions.subscribe, () => selector(sessions.getSnapshot())),
+    gitStatus: read, gitFetchForStatus: read, gitPush: vi.fn(() => held.promise),
+  })
+  fireEvent.click(await screen.findByRole('button', { name: 'Git actions' }))
+  fireEvent.click(await screen.findByRole('menuitem', { name: 'Push' }))
+  await waitFor(() => { expect(bench.gitPush).toHaveBeenCalledTimes(1) })
+  act(() => { sessions.set(sessionList('/b')) })
+  expect(await screen.findByText('main')).toBeTruthy()
+  await act(async () => { held.resolve({ ok: true, status: 'pushed', branch: 'feature/old' }); await held.promise })
+  expect(await screen.findByRole('status', { name: 'Pushed to feature/old' })).toBeTruthy()
+  expect(screen.queryByRole('button', { name: 'Create PR' })).toBeNull()
+  expect(bench.gitCreateChangeRequest).not.toHaveBeenCalled()
+})
+
+describe('Git auxiliary transport rejection', () => {
+  it.each([
+    { kind: 'init', mode: 'sync' }, { kind: 'init', mode: 'async' },
+    { kind: 'pull', mode: 'sync' }, { kind: 'pull', mode: 'async' },
+    { kind: 'publish', mode: 'sync' }, { kind: 'publish', mode: 'async' },
+  ] as const)('reports a $mode rejected $kind and releases busy state', async ({ kind, mode }) => {
+    const reject = vi.fn(() => {
+      const error = new Error(`fixture ${kind} unavailable`)
+      if (mode === 'async') return Promise.reject(error)
+      throw error
+    })
+    const options = kind === 'init'
+      ? { git: status({ isRepo: false }), gitInit: reject }
+      : kind === 'pull'
+        ? { git: status({ behindCount: 1 }), gitPull: reject }
+        : { git: status({ hasPrimaryRemote: false, hasUpstream: false }), gitPublishRepository: reject }
+    mount({ cwd: '/work', ...options })
+    const label = kind === 'init' ? 'Initialize Git' : kind === 'pull' ? 'Pull' : 'Publish repository'
+    fireEvent.click(await screen.findByRole('button', { name: label }))
+    if (kind === 'publish') fireEvent.click(await screen.findByRole('button', { name: 'Publish' }))
+    expect(await screen.findByRole('status', { name: 'Action failed' })).toBeTruthy()
+    expect(screen.getByText(`fixture ${kind} unavailable`)).toBeTruthy()
+    await waitFor(() => { expect(screen.getByRole<HTMLButtonElement>('button', { name: label, hidden: true }).disabled).toBe(false) })
+    expect(reject).toHaveBeenCalledTimes(1)
+    if (kind === 'publish') expect(screen.getByRole('dialog', { name: 'Publish repository' })).toBeTruthy()
+  })
+
+  it('reports a rejected file-open request without leaving an unhandled promise', async () => {
+    mount({
+      cwd: '/work',
+      git: status({ hasWorkingTreeChanges: true, workingTree: filesTree([{ path: 'only.ts', insertions: 1, deletions: 0 }]) }),
+      openWorkspacePath: vi.fn(async () => { throw new Error('fixture opener unavailable') }),
+    })
+    fireEvent.click(await screen.findByRole('button', { name: 'Git actions' }))
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Commit' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'only.ts' }))
+    expect(await screen.findByRole('status', { name: 'Unable to open file' })).toBeTruthy()
+    expect(screen.getByText('fixture opener unavailable')).toBeTruthy()
+  })
+})
+
+
+it.each(['false', 'sync', 'async'] as const)('reports external link opener failure %s', async (kind) => {
+  const openExternal = vi.fn(() => {
+    if (kind === 'false') return Promise.resolve(false)
+    const error = new Error('fixture external opener failed')
+    if (kind === 'async') return Promise.reject(error)
+    throw error
+  })
+  mount({
+    cwd: '/work', openExternal,
+    git: status({ pr: { number: 1, title: 'fixture', url: 'https://example.test/pr/1', baseRef: 'main', headRef: 'feature/test', state: 'open' } }),
+  })
+  fireEvent.click(await screen.findByRole('button', { name: 'View PR' }))
+  expect(await screen.findByRole('status', { name: 'Action failed' })).toBeTruthy()
+  expect(screen.getByText(kind === 'false' ? 'Unable to open link.' : 'fixture external opener failed')).toBeTruthy()
+  expect(openExternal).toHaveBeenCalledWith('https://example.test/pr/1')
+})
+
+
+it.each(['file', 'link'] as const)('ignores late %s opener errors after workspace navigation', async (kind) => {
+  const sessions = createSnapshotStore(sessionList('/a'))
+  const held = Promise.withResolvers<never>()
+  const opener = vi.fn(() => held.promise)
+  const a = kind === 'file'
+    ? status({ refName: 'old', hasWorkingTreeChanges: true, workingTree: filesTree([{ path: 'only.ts', insertions: 1, deletions: 0 }]) })
+    : status({ refName: 'old', pr: { number: 1, title: 'fixture', url: 'https://example.test/pr/1', baseRef: 'main', headRef: 'old', state: 'open' } })
+  const read = vi.fn(async (cwd: string) => cwd === '/a' ? a : status({ refName: 'new', isDefaultRef: true }))
+  mount({
+    // oxlint-disable-next-line typescript/unbound-method -- snapshot store methods do not read this
+    useSessions: selector => useSyncExternalStore(sessions.subscribe, () => selector(sessions.getSnapshot())),
+    gitStatus: read, gitFetchForStatus: read,
+    gitReadPullRequest: vi.fn(async (cwd: string) => ({ ok: true, pr: cwd === '/a' ? a.pr : null })),
+    ...(kind === 'file' ? { openWorkspacePath: opener } : { openExternal: opener }),
+  })
+  if (kind === 'file') {
+    fireEvent.click(await screen.findByRole('button', { name: 'Git actions' }))
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Commit' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'only.ts' }))
+  } else fireEvent.click(await screen.findByRole('button', { name: 'View PR' }))
+  expect(opener).toHaveBeenCalledTimes(1)
+  act(() => { sessions.set(sessionList('/b')) })
+  expect(await screen.findByText('new')).toBeTruthy()
+  await act(async () => { held.reject(new Error('fixture late opener failure')); await Promise.resolve() })
+  expect(screen.queryByText('fixture late opener failure')).toBeNull()
+  expect(screen.getByText('new')).toBeTruthy()
+})
+
+it.each([true, false])('publishes normalized draft fields and exposes only an available repository link: %s', async (withUrl) => {
+  const url = 'https://example.test/team/project'
+  const publish = vi.fn(async () => ({ ok: true, ...(withUrl ? { url } : {}) }))
+  const b = mount({ cwd: '/work', git: status({ hasPrimaryRemote: false, hasUpstream: false }), gitPublishRepository: publish })
+  fireEvent.click(await screen.findByRole('button', { name: 'Publish repository' }))
+  fireEvent.change(screen.getByRole('textbox', { name: 'Repository name' }), { target: { value: '  project  ' } })
+  fireEvent.change(screen.getByRole('textbox', { name: 'Remote URL (optional)' }), { target: { value: '  https://example.test/team/project.git  ' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Public' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Publish' }))
+  expect(await screen.findByRole('status', { name: 'Publish repository' })).toBeTruthy()
+  expect(publish).toHaveBeenCalledWith('/work', {
+    name: 'project', visibility: 'public', remoteUrl: 'https://example.test/team/project.git',
+  }, expect.any(Number))
+  expect(screen.queryByRole('dialog', { name: 'Publish repository' })).toBeNull()
+  if (withUrl) {
+    fireEvent.click(screen.getByRole('button', { name: 'Open repository' }))
+    await waitFor(() => { expect(b.openExternal).toHaveBeenCalledWith(url) })
+  } else expect(screen.queryByRole('button', { name: 'Open repository' })).toBeNull()
+})
+
+describe('Git branch intent binding', () => {
+  it('stops before mutation if preflight discovers a different branch', async () => {
+    let current = status({ refName: 'feature/old', aheadCount: 2 })
+    let changeOnNextFetch = false
+    const read = vi.fn(async () => current)
+    const fetchStatus = vi.fn(async () => {
+      if (changeOnNextFetch) {
+        changeOnNextFetch = false
+        current = status({ refName: 'main', isDefaultRef: true, aheadCount: 2 })
+      }
+      return current
+    })
+    const b = mount({ cwd: '/work', gitStatus: read, gitFetchForStatus: fetchStatus })
+    await waitFor(() => { expect(fetchStatus).toHaveBeenCalledTimes(1) })
+    fireEvent.click(await screen.findByRole('button', { name: 'Git actions' }))
+    await waitFor(() => { expect(fetchStatus).toHaveBeenCalledTimes(2) })
+    changeOnNextFetch = true
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Push' }))
+    expect(await screen.findByRole('status', { name: 'Action failed' })).toBeTruthy()
+    expect(screen.getByText('Branch changed while preparing the action. Review the current branch and try again.')).toBeTruthy()
+    expect(b.gitPush).not.toHaveBeenCalled()
+    expect(screen.getByText('main')).toBeTruthy()
+  })
+
+  it('does not reinterpret confirmation for one branch as confirmation for another', async () => {
+    let current = status({ refName: 'main', isDefaultRef: true, aheadCount: 2 })
+    const read = vi.fn(async () => current)
+    const b = mount({ cwd: '/work', gitStatus: read, gitFetchForStatus: read })
+    fireEvent.click(await screen.findByRole('button', { name: 'Push' }))
+    expect(await screen.findByRole('button', { name: 'Push to main' })).toBeTruthy()
+    current = status({ refName: 'release', isDefaultRef: true, aheadCount: 2 })
+    fireEvent(window, new Event('focus'))
+    expect(await screen.findByText('release')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Push to main' }))
+    expect(await screen.findByRole('status', { name: 'Action failed' })).toBeTruthy()
+    expect(b.gitPush).not.toHaveBeenCalled()
   })
 })

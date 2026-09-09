@@ -43,6 +43,8 @@ describe('web e2e: Models settings page configures a dormant provider', () => {
 
   beforeAll(async () => {
     scaffold = await launchWebScaffold({})
+    // This scenario exercises advanced surfaces hidden by Simple Mode.
+    await scaffold.ctx.productMode.set({ mode: 'developer' })
     browser = await chromium.launch()
     // The scenario asserts the shipped Chinese copy, so the browser asks for it.
     page = await browser.newPage({ viewport: { width: 1680, height: 1000 }, locale: ZH_BROWSER_LOCALE })
@@ -77,8 +79,12 @@ describe('web e2e: Models settings page configures a dormant provider', () => {
     expect(options).toContain('anthropic')
     expect(options).toContain('minimax-cn')
     await pick.selectOption('minimax-cn')
+    // The route-only fixture advertises no image modality; do not invent a vision-capable default.
+    expect(await dialog.getByRole('combobox', { name: '识图模型' }).locator('option').allTextContents()).toEqual(['不启用'])
     await dialog.getByRole('textbox', { name: 'API 密钥', exact: true }).waitFor({ timeout: 10_000 })
     const snapshot = await captureStableAria(page, '[role="dialog"]', scaffold.workspaceCwd)
+    expect(await dialog.locator('details').count()).toBe(1)
+    expect(await dialog.locator('details').getAttribute('open')).toBeNull()
     await compareOrRefreshGolden(EMPTY_EXPECTED, snapshot, MODE)
   }, 60_000)
 

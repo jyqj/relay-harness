@@ -1,0 +1,1787 @@
+{
+ "audits": [
+  {
+   "findings": [
+    {
+     "category": "design",
+     "detail": "HarnessSdkJsonRpcServer.sessions 只在 performShutdown 清空，getOrCreateSession 创建的 agent 从不 dispose；协议 HarnessSdkRequestMap 只有 initialize/session/prompt/shutdown，没有 session 关闭方法。而两个 SDK 的高层 API 在不传 sessionId 时每次 run() 都铸造新 uuid（api.ts:89 `session-${randomUUID()}`、api.py:135 `f\"session-{uuid.uuid4().hex}\"`）。长驻的 RelayHarness 每 run 一次就在 runtime 进程里永久多一个 agent+session（含持久化句柄与内存），且这些 per-run 会话的 session log 也持续累积。这是\"队列有界\"原则漏掉的对象生命周期界。",
+     "files": [
+      "packages/sdk/server/src/server.ts:59",
+      "packages/sdk/server/src/server.ts:203-235",
+      "packages/sdk/protocol/src/types.ts:100-105",
+      "packages/sdk/client/src/api.ts:88-100",
+      "python/sdk/src/relay_harness/api.py:133-144"
+     ],
+     "severity": "high",
+     "suggested_fix": "在协议上加 session/close（或 session/dispose）请求，服务端实现为 dispose 对应 agent 并从 sessions 移除；短期可先在 server 侧按 idle 后的 TTL/LRU 淘汰 SDK 创建的 agent，并在两个 SDK 的 run() 结束后复用同一 session 或显式关闭。同步更新 packages/sdk/protocol/src/types.ts、两 SDK expected-output（examples/jsonrpc-agent/tests/snapshots/ 与 scripts/snapshots/python-sdk-single-exe/advanced/）。",
+     "title": "SDK runtime 会话无回收：每次 run() 泄漏一个 agent，直到 shutdown",
+     "effort": "M"
+    },
+    {
+     "category": "bug",
+     "detail": "`if self._proc is not None: return` 在 self._lock 之外，`self._proc = subprocess.Popen(...)` 也在锁外；锁内只清了 session_parents 和 failure 标记。两个线程同时调用 start()（或并发调用 RelayHarness.run 触发的隐式 start）会各 spawn 一个 runtime 子进程，其中一个的 _proc 被覆盖，其 reader/stderr 线程仍在读一个孤儿进程，直到进程退出才失败——资源泄漏且通知被吞。TS 侧 start() 在单线程事件循环里天然安全，这是 Python 独有的生命周期竞态，违反 repo 的 defensive-patterns 意图。",
+     "files": [
+      "python/sdk/src/relay_harness/client.py:118-141"
+     ],
+     "severity": "high",
+     "suggested_fix": "把 spawn 整体放进 self._lock 内（锁内先复查 _proc is None 再 Popen 并启动线程），或将 _proc 的写入也纳入锁；在 python/sdk/tests/test_client.py 增加并发 start() 只产生一个子进程的断言。",
+     "title": "Python HarnessClient.start() 存在双重 spawn 竞态（检查与赋值都在锁外）",
+     "effort": "S"
+    },
+    {
+     "category": "bug",
+     "detail": "TS HarnessClient.close() → performClose 在 `child === undefined` 时直接 return，不执行 failSubscriptions；而 subscribe() 只在 closeTask/exitCode/spawnError 已存在时才 born-failed。于是 `new HarnessClient(o); const sub = client.subscribe(); await client.close(); await sub.next()` 永不 resolve。Python 同构：close() 在 `proc is None` 时早退，不调用 _fail_waiters，NotificationSubscription.next() 每 50ms 空转永远不抛。契约说\"after close, rejects immediately\"，该路径违背契约。",
+     "files": [
+      "packages/sdk/client/src/client.ts:418-420",
+      "packages/sdk/client/src/client.ts:369-385",
+      "python/sdk/src/relay_harness/client.py:143-146",
+      "python/sdk/src/relay_harness/client.py:696-704"
+     ],
+     "severity": "medium",
+     "suggested_fix": "TS：performClose 开头无条件 `this.failSubscriptions(this.closedError('Relay Harness runtime closed'))`；Python：close() 把 `self._proc = None` 与 `_fail_waiters(...)` 提到早退之前（或 proc 为 None 时也 fail waiters）。在 packages/sdk/client/tests/sdk-client.spec.ts 与 python/sdk/tests/test_client.py 各补一条 close-without-start 场景。",
+     "title": "start 之前创建的订阅在 close() 后永远挂起（TS 永久 pending，Python 死循环轮询）",
+     "effort": "S"
+    },
+    {
+     "category": "bug",
+     "detail": "TS initialize() 强制 `serverInfo.name`/`version` 为字符串，否则抛 SdkProtocolError（protocol violation 显式化）；Python 的 `InitializeResponse.serverInfo: ServerInfo | None = None` 且 ServerInfo 两个字段都可 None，pydantic 会对 `{}` 甚至 `null` 静默通过。同一个不守协议的 runtime 在 TS 下响亮失败、在 Python 下返回 name=None 继续运行，违反两 SDK 行为对齐的 repo 约定（AGENTS.md: Both SDKs project the loop），也属于 wire 边界校验缺口。",
+     "files": [
+      "python/sdk/src/relay_harness/models.py:26-32",
+      "packages/sdk/client/src/client.ts:295-302"
+     ],
+     "severity": "medium",
+     "suggested_fix": "Python 的 InitializeResponse 改为必填并在客户端校验 name/version 为非空字符串，失败时抛 SdkProtocolError（errors.py 已有该类型），与 TS 消息对齐；test_client.py 补一条 malformed initialize result 断言（TS 侧已有对应用例 sdk-client.spec.ts:228）。",
+     "title": "initialize 协议校验不对齐：Python 接受缺失/残缺的 serverInfo，TS 抛 SdkProtocolError",
+     "effort": "S"
+    },
+    {
+     "category": "design",
+     "detail": "client.ts:7 声明 Python HarnessClient 是 design twin，但投影面已漂移：(1) Python RunResult 暴露 finish_reason 并在最后一个 turn/end 缺 string reason.kind 时抛 SdkProtocolError（api.py:245-262），TS RunResult 无 finishReason、不读 turn/end；(2) Python final_response 在 data.message 缺失时回退读 data.content（api.py:233 content_owner 回退），TS 只读 data.message.content；(3) TS 快照 result.expected.json 只有 sessionId/finalResponse，Python 快照含 events/notifications/session_root，两套 expected-output 记录的投影字段不同，SessionEventMap 变更时无法用同一标准对齐。",
+     "files": [
+      "python/sdk/src/relay_harness/api.py:51-58",
+      "python/sdk/src/relay_harness/api.py:225-262",
+      "packages/sdk/client/src/types.ts:68-77",
+      "packages/sdk/client/src/api.ts:236-246",
+      "python/sdk/src/relay_harness/client.py:6-7"
+     ],
+     "severity": "medium",
+     "suggested_fix": "定一个方向（建议 TS 补 finishReason + 与 Python 相同的 data.content 回退，或 Python 删掉超集），一处实现一处引用；同时统一两套快照的 result 字段集。改 agent-loop 可见面需同 PR 更新 examples/jsonrpc-agent/tests/snapshots/ 与 scripts/snapshots/python-sdk-single-exe/。",
+     "title": "RunResult 投影不对称：Python 有 finish_reason 且校验 turn/end，TS 完全没有；final_response 读取路径也不一致",
+     "effort": "M"
+    },
+    {
+     "category": "bug",
+     "detail": "对同一个坏 runtime：TS run() 在 collect 里调用 validatedSessionEvent，非 dict envelope 或 assistant/message 内容畸形直接抛 SdkProtocolError（注释明确写了这是 wire-boundary 校验）；Python collect 用 `if isinstance(event, dict)` 静默跳过，final_response 对缺 message/content 的 assistant 事件 `continue`。结果 Python 会返回 final_response='' 的\"成功\" RunResult，错误被吞，违反 repo 的错误传播期望（不吞边界错误），也使 parity 断言不可能成立。",
+     "files": [
+      "packages/sdk/client/src/api.ts:155-167",
+      "packages/sdk/client/src/api.ts:207-222",
+      "python/sdk/src/relay_harness/api.py:162-172",
+      "python/sdk/src/relay_harness/api.py:226-242"
+     ],
+     "severity": "medium",
+     "suggested_fix": "Python 在 collect 路径加与 TS 等价的校验（envelope 必须是含字符串 type 的 dict；assistant/message 的 content 必须是 block 列表），失败抛 SdkProtocolError；在 python/sdk/tests/test_client.py 补对应的 malformed-event 用例（镜像 sdk-client.spec.ts:503-519）。",
+     "title": "畸形 session.event 的错误传播相反：TS 抛 SdkProtocolError，Python 静默丢弃",
+     "effort": "S"
+    },
+    {
+     "category": "bug",
+     "detail": "`private model = 'deepseek-official'` 与 provider 默认值相同，几乎肯定是 `deepseek-v4-flash` 的笔误（两个 SDK 客户端默认均为 'deepseek-v4-flash'）。handleRequest 对 prompt 不检查是否已完成 initialize：在 initialize 之前 session/prompt 会用 provider='deepseek-official' + model='deepseek-official' 创建 agent——错误模型名直到首次模型请求才失败，不符合 \"Misconfiguration fails loud ... at the earliest resolvable point\"。",
+     "files": [
+      "packages/sdk/server/src/server.ts:55-56",
+      "packages/sdk/server/src/server.ts:203-216"
+     ],
+     "severity": "low",
+     "suggested_fix": "默认 model 改为 'deepseek-v4-flash'，并在 getOrCreateSession（或 prompt）对未 initialize 的调用直接抛错（fail loud）；在 packages/sdk/server/tests/server.spec.ts 补 prompt-before-initialize 拒绝用例。",
+     "title": "服务端默认 model 是 'deepseek-official'（与 provider 默认同值，疑似复制粘贴），且 initialize 前可 prompt",
+     "effort": "S"
+    },
+    {
+     "category": "design",
+     "detail": "TS HarnessClient.close() 后 start() 抛 TransportClosedError（client.ts:222），RelayHarness.close 文档写明 terminal；Python close() 置 `_proc = None`、RelayHarness.close 重置 `_initialized`，随后 start() 会静默 spawn 新 runtime。另外 teardown 阶梯不同：TS 是 stdin-EOF 后 6s quiesce 宽限再 SIGTERM(3s)→SIGKILL（disposeEofGraceMs/disposeGraceMs 可配），Python 在 EOF 后仅等 shutdown_timeout_seconds（默认 1s）就 terminate→kill，无 EOF quiesce 窗口且不可配。同一消费代码在两个 SDK 上看到不同的关闭/重启行为与不同的优雅退出成功率。",
+     "files": [
+      "python/sdk/src/relay_harness/client.py:143-171",
+      "python/sdk/src/relay_harness/api.py:129-131",
+      "packages/sdk/client/src/client.ts:222",
+      "packages/sdk/client/src/client.ts:418-434",
+      "packages/sdk/client/src/types.ts:45-51"
+     ],
+     "severity": "low",
+     "suggested_fix": "二选一对齐：要么 Python 也把 close 定为 terminal（置 closed 标志，start() 抛错），要么 TS 放开 restart 并改文档；给 Python 增加 eof_grace_seconds 配置并与 TS 默认值对齐，README 两侧同步。",
+     "title": "close/restart 生命周期语义不对称：Python close() 可重启，TS 永久关闭；teardown 宽限也差 6 倍",
+     "effort": "M"
+    },
+    {
+     "category": "design",
+     "detail": "Python HarnessClient 维护 `_requests` 队列与 next_request()/respond()/respond_error()（bridge 部署需要，且有测试 test_client_routes_bridge_requests_and_sends_responses）；TS 设计孪生从未安装 transport.onRequest，JsonRpcLineTransport 对带 id+method 的入站帧自动回 -32601 method not found（transport.ts:322-324）。Python README 把这些称为 \"Python-only low-level channels\"，即已文档化的不对称——但代价是 TS SDK 完全不能接 bridge 形态的 runtime，且 HarnessSdkRequestMap（protocol/types.ts）没有 server→client 方向的声明，协议类型没有完整投影 wire。",
+     "files": [
+      "packages/sdk/protocol/src/transport.ts:320-324",
+      "packages/sdk/client/src/client.ts:285",
+      "python/sdk/src/relay_harness/client.py:103-105",
+      "python/sdk/src/relay_harness/client.py:269-293",
+      "python/sdk/README.md:49"
+     ],
+     "severity": "low",
+     "suggested_fix": "若 bridge 部署是当前需求，给 TS client 加 onRequest 订阅面（事件回调或 async iterator）并在 HarnessSdkRequestMap 补 server→client 方法映射；若明确不支持，在 packages/sdk/client README 与 protocol types 里写明 TS 侧对入站请求一律 -32601 的契约，避免被当成 bug 排查。",
+     "title": "TS SDK 无法消费 server→client 请求：transport 无 onRequest，一律回 -32601；Python 有完整 next_request/respond 面",
+     "effort": "M"
+    },
+    {
+     "category": "test-gap",
+     "detail": "对应上面 2/3/4 号发现：(a) 无并发 start() 只 spawn 一个子进程的测试；(b) 无 subscribe-before-start + close 的挂起/失败断言；(c) Python 无 malformed initialize result 用例（TS 有 sdk-client.spec.ts:228）。另外快照面：TS 侧 notifications.expected.jsonl 逐场景钉住通知流，Python 侧仅 advanced/result.json（CI python-runtime job 独跑）包含 notifications，minimal 场景只钉 model-visible——只改通知 payload 的 SessionEventMap 变更在本地 Python 快照里不可见。",
+     "files": [
+      "packages/sdk/client/tests/sdk-client.spec.ts",
+      "python/sdk/tests/test_client.py",
+      "scripts/snapshots/python-sdk-single-exe/advanced/result.json"
+     ],
+     "severity": "medium",
+     "suggested_fix": "在 python/sdk/tests/test_client.py 增加 test_concurrent_start_spawns_single_runtime、test_subscribe_before_start_then_close_fails_subscription、test_initialize_rejects_missing_server_info；TS 侧补 subscribe-before-start 用例到 packages/sdk/client/tests/sdk-client.spec.ts；AGENTS.md 的\"Both SDKs project the loop\"检查项中把 advanced/result.json 明确列为通知流的 Python 对应物。",
+     "title": "测试缺口：并发 start、close-without-start 订阅、initialize 协议校验的 Python 侧均无用例",
+     "effort": "M"
+    }
+   ],
+   "slice": "sdk-api-python",
+   "summary": "两个 SDK（packages/sdk 的 TS 客户端与 python/sdk）确实是同一 wire 协议（newline-delimited JSON-RPC）的投影，队列有界（订阅队列、全局队列、incoming-request 队列、写队列、帧上限、stderr tail 均有界并在溢出时响亮失败），测试覆盖面大。但\"design twin\"已出现多处行为漂移：initialize 协议校验（Python 静默接受缺失 serverInfo，TS 抛 SdkProtocolError）、RunResult 投影（Python 有 finish_reason 且校验 turn/end，TS 没有；final_response 读取路径不同）、畸形 session.event 的错误传播（TS 抛错，Python 静默吞掉）、close/restart 生命周期语义（TS 永久关闭，Python 可重启）。Python 侧还有一个真实的 spawn 竞态（start() 的检查与 Popen 都在锁外）。共同的设计债是：server 端 sessions Map 无回收、协议无 session 关闭方法，而两个 SDK 的高层 run() 默认每次铸造新 session uuid，长驻 harness 会无限累积 agent。快照方面 TS 侧 4 个场景钉住 notifications.expected.jsonl，Python 侧仅 advanced 场景（CI-only）记录通知，minimal 只钉 model-visible 请求，parity 保护偏弱。"
+  },
+  {
+   "findings": [
+    {
+     "category": "bug",
+     "detail": "start() builds `pending = Promise.resolve().then(dispose).then(ok..., () => { forceExitOnce(code) })`. The rejection handler exits the process without writing the error anywhere (stderr, rlh log, or a distinct exit code). Consequence: when a headless one-shot's `ctx.fiber.dispose()` rejects, `shutdown.shutdown(0)` still completes naturally with exit 0 (and a SIGTERM-triggered shutdown force-exits 0), so a failed teardown is indistinguishable from a clean one. This also violates the repo rule that an empty catch names what it swallows — here the rejection is dropped with no name and no log.",
+     "effort": "S",
+     "files": [
+      "apps/cli/src/process-shutdown.ts:55-61"
+     ],
+     "severity": "medium",
+     "suggested_fix": "In the rejection handler, write `process-shutdown: disposal failed: <message>` to stderr (or a logger parameter) before forceExitOnce, and consider exit code 1 on that path so callers can distinguish failed teardown.",
+     "title": "createProcessShutdown silently swallows disposal errors and still exits 0"
+    },
+    {
+     "category": "bug",
+     "detail": "handleHttp does `this.pending.set(id, {res})` and only deletes the entry when the desktop host sends an `http-end` frame or on host detach. There is (a) no timeout for a desktop that accepts the frame but never answers, and (b) no `res.on('close')` cleanup when the HTTP client aborts. On a long-running public relay (standalone shebang entry, `--cert/--key` deployment) each such request pins a pending entry and an open socket indefinitely; clients can accumulate unbounded entries (memory + FDs). Existing tests (src/main/remote.test.js) cover close() but not the hang/abort paths.",
+     "effort": "M",
+     "files": [
+      "apps/desktop/src/relay/server.js:188-201",
+      "apps/desktop/src/relay/server.js:89-101"
+     ],
+     "severity": "medium",
+     "suggested_fix": "Add a per-request timeout that 504s and deletes the pending entry, and delete the entry on `res` close; cover both paths in apps/desktop/src/main/remote.test.js or a new apps/desktop/src/relay/server.test.js (colocated *.test.js convention, picked up by `pnpm run test:desktop`).",
+     "title": "RelayServer.pending grows without bound — no per-request timeout or client-disconnect cleanup"
+    },
+    {
+     "category": "design",
+     "detail": "ensureOwnedPort calls killOwnedListeners whenever the wanted port answers HTTP, and RlhManager._doStop calls it on every stop. A listener is considered killable only if its image name matches /^(node|rlh)(\\.exe)?$/ and it is not this Electron process — that is not proof the desktop owns it. A user's unrelated Node dev server (or another agent harness) on the default port 3080 is terminated via `taskkill /T /F` or process-group SIGTERM, destroying unrelated processes with no confirmation. The pid file narrows the first path but not the httpReady fallback. The non-Windows `process.kill(-pid)` also silently no-ops for non-group-leader children (falls back to single-pid kill), so the group-kill intent is only partly real.",
+     "effort": "M",
+     "files": [
+      "apps/desktop/src/main/rlh.js:284-298",
+      "apps/desktop/src/main/rlh.js:397-411",
+      "apps/desktop/src/main/rlh.js:908"
+     ],
+     "severity": "medium",
+     "suggested_fix": "Only kill listeners proven owned: the pid file, a child spawned this session, or a marker match on the HTTP response (e.g. the rlh web banner); otherwise hop to findFreePort. Add a test pinning that a foreign HTTP listener is NOT killed.",
+     "title": "Desktop kills arbitrary node/rlh processes listening on its configured port"
+    },
+    {
+     "category": "design",
+     "detail": "workspace-authority.js documents that the allowlist exists so 'a third-party plugin installed through the marketplace must not be able to drive shell.gitPush or shell.readFile against an arbitrary directory using the user's credentials'. But marketplace client plugins execute in the same privileged harness BrowserView (apps/web/vite.config.ts comment: plugins 'arrive as runtime bundles through the client module system') where window.shell also exposes ptyCreate (interactive shell — full filesystem/credential access from any authorized cwd) and previewAutomationEvaluate (arbitrary JS in a page). The fs/git allowlist therefore provides no containment against the adversary the doc names.",
+     "effort": "L",
+     "files": [
+      "apps/desktop/src/main/workspace-authority.js:1-15",
+      "apps/desktop/src/main/pty.js:22-30",
+      "apps/desktop/src/preload/index.js:108-146"
+     ],
+     "severity": "medium",
+     "suggested_fix": "Either restate the trust model honestly (harness renderer plugins are trusted with shell-equivalent power; the authority only guards path-handling bugs and non-plugin pages) in workspace-authority.js and the desktop README, or gate shell-capable channels (ptyCreate, previewAutomation*) behind a separate capability client plugins do not receive.",
+     "title": "Workspace-authority threat model is defeated by the same surface's shell-capable channels"
+    },
+    {
+     "category": "bug",
+     "detail": "readJson catches every parse/read failure and returns `{ ...fallback }` with no comment naming the swallow (violating the AGENTS.md empty-catch rule) and no loud failure. A corrupted config.json silently resets workspace/theme/restart policy; the next saveConfig persists those defaults, permanently destroying the user's settings. The same path applies to credentials.json (apiKey/githubToken). The tmp+rename writer makes corruption unlikely but not impossible (disk full, crash mid-rename, manual edit).",
+     "effort": "S",
+     "files": [
+      "apps/desktop/src/main/config.js:180-186",
+      "apps/desktop/src/main/config.js:238-265"
+     ],
+     "severity": "medium",
+     "suggested_fix": "On JSON.parse failure of an existing file, log via rlh.log or a dialog and quarantine the bad file (e.g. config.json.corrupt-<ts>) instead of silently regenerating; per AGENTS.md 'misconfiguration fails loud', and the empty catch must at minimum name what it swallows.",
+     "title": "Corrupt config.json/credentials.json silently resets to defaults and the loss is then persisted"
+    },
+    {
+     "category": "design",
+     "detail": "globalShortcut.register('CommandOrControl+Shift+I', ... toggleDevTools) intercepts the combo across the entire OS — even when the app is unfocused — and is armed unconditionally in packaged builds. It steals the shortcut from every other application and provides a system-wide toggle into DevTools of a privileged view. Every other window-level behavior in this app is correctly scoped (setWindowOpenHandler, will-navigate guards), so this global hook is an outlier on the Electron security/UX surface.",
+     "effort": "S",
+     "files": [
+      "apps/desktop/src/main/index.js:839-843"
+     ],
+     "severity": "medium",
+     "suggested_fix": "Replace with a window-scoped mechanism: a local menu accelerator, `webContents.on('before-input-event')`, or a focus-scoped shortcut, so the binding only applies while a Relay window is focused.",
+     "title": "OS-wide global shortcut registers a system-wide DevTools toggle in packaged builds"
+    },
+    {
+     "category": "design",
+     "detail": "`shell:restart` and `shell:cancel-restart` are BOOT_ONLY, but `shell:retry-full-plugins` is ALL_SURFACES and its handler calls harness.retryFullPlugins() — i.e. clearPluginRecovery() + restart(). The launch smoke (index.js:539-543) asserts `harnessShellApiIsScoped: typeof api.restart === 'undefined'`, presenting surface scoping as a security property, while the harness preload's retryFullPlugins reaches the same operation. The asymmetry is unexplained (AGENTS.md: unexplained asymmetry signals a missed extraction).",
+     "effort": "S",
+     "files": [
+      "apps/desktop/src/main/ipc.js:153-161",
+      "apps/desktop/src/main/index.js:539-543"
+     ],
+     "severity": "low",
+     "suggested_fix": "Pick one policy: move retry-full-plugins to BOOT_ONLY (harness surface shows a 'restart required' state like the boot page), or document why restart is safe from the harness surface, and align the smoke's scoping assertion with the real boundary.",
+     "title": "Harness surface can restart via retry-full-plugins while the smoke advertises 'no restart on harness'"
+    },
+    {
+     "category": "design",
+     "detail": "composeProfile/prepareProfile (parse profile layers, the user cordis.patch.yml, --patch overlays) run at profile-boot.ts:226 before installFailLoud is installed at line 241. A malformed user patch file — exactly the 'misconfiguration fails loud at load' class fail-loud exists for — surfaces as Node's raw unhandled-rejection dump instead of the `rlh: fatal load failure:` formatter with its release hook, inconsistent with failures after boot() starts.",
+     "effort": "S",
+     "files": [
+      "apps/cli/src/profile-boot.ts:226-243",
+      "packages/boot/app-boot/src/index.ts:619-657"
+     ],
+     "severity": "low",
+     "suggested_fix": "Install installFailLoud (or apply the same stderr formatting) before composeProfile runs in runProfile, so the entire startup window reports through one channel.",
+     "title": "installFailLoud installed after composeProfile — load-time misconfigurations bypass fail-loud formatting"
+    },
+    {
+     "category": "doc-gap",
+     "detail": "RlhManager.buildLaunch composes `web --skip-user-plugins --patch ... --host --port --no-open` as bare strings. The consumer lives in a different package/process (packages/bundle/web-app/src/startup.ts), and each side is tested only against its own copy of the literal (apps/desktop/src/main/rlh.test.js:495-517 pins the producer; web-app tests pin the consumer). No single contract pins both: renaming a flag in web-app's startup parser leaves the desktop spawning a process whose flag is silently ignored, failing only via the 180s readiness timeout with a generic message.",
+     "effort": "M",
+     "files": [
+      "apps/desktop/src/main/rlh.js:555-622",
+      "packages/bundle/web-app/src/startup.ts",
+      "apps/cli/composition.md"
+     ],
+     "severity": "low",
+     "suggested_fix": "Document the desktop→`rlh web` flag contract in apps/cli/composition.md (or export the flag names from rlh-app-boot) and add one cross-app assertion (a web-app test importing the shared names, or a desktop test grepping the web-app startup source) so a rename fails a gate instead of a boot.",
+     "title": "Desktop→`rlh web` flag contract is stringly-typed with only producer-side pins"
+    },
+    {
+     "category": "test-gap",
+     "detail": "The self-hosted relay's forwarding is tested for the happy path and close(), but nothing exercises the two leak paths identified in the audit: (a) host accepts an http frame and never replies — the pending entry and client socket are held forever; (b) the HTTP client aborts before http-end — the pending entry should be reclaimed. Following the repo's colocated convention this belongs in apps/desktop/src/main/remote.test.js (which already constructs RelayServer) or a new apps/desktop/src/relay/server.test.js; `pnpm run test:desktop` already globs src/**/*.test.js.",
+     "effort": "S",
+     "files": [
+      "apps/desktop/src/relay/server.js:174-202",
+      "apps/desktop/src/main/remote.test.js"
+     ],
+     "severity": "low",
+     "suggested_fix": "Add two node:test cases: a fake host that swallows an http frame → assert a bounded-timeout 504 and pending cleanup (after the fix); and a client socket destroyed mid-request → assert `pending.size === 0`.",
+     "title": "Test gap: relay pending-request timeout and client-disconnect reclamation"
+    }
+   ],
+   "slice": "apps",
+   "summary": "The three entry apps are deliberately thin and unusually well hardened. apps/cli is a ~1k-line launcher (args, profile-boot, plugin, dump-config) that delegates all composition to rlh-app-boot and has strong colocated test coverage; apps/web is a 10-line Vite bootstrap over @relay-harness/rlh-client-web with a careful chunking/dedupe build config; apps/desktop is the real mass — 124 main-process modules composing an Electron shell that spawns `rlh web` as a child, mounts the UI in a sandboxed, contextIsolated BrowserView, and guards IPC by sender role, loopback-origin allowlists, workspace-root authority, renderer-writable config field validation, and sanitized download paths. Cross-app duplication is minimal (each app owns exactly one seam: CLI composes, web renders, desktop launches and embeds), and the desktop's pid/generation fencing around the child process is carefully done. The remaining issues sit at the edges: a silent error swallow plus exit-0 masking in the shared process-shutdown controller, unbounded pending-request growth in the standalone relay server, an unowned-process kill path on port conflicts, a system-wide DevTools shortcut, a corrupt-config silent-reset data-loss path, and a workspace-authority threat model that its own PTY channel defeats."
+  },
+  {
+   "findings": [
+    {
+     "category": "design",
+     "detail": "LocalJobRegistry.store (packages/jobs/jobs-local/src/index.ts:102) only removes records in disposeOwned (line 471, fired when the owner Agent's scope disposes) and disposeAll (line 494, service teardown). There is no prune of terminal records: a completed/failed/killed job owned by a long-lived agent stays in the store for the agent's lifetime, and a job started with owner undefined (JobStart.owner is optional, packages/jobs/jobs/src/types.ts:62) has NO deletion path at all — disposeOwned filters `job.owner === owner`, so unowned rows survive even owner disposal. In the long-lived Host this grows without bound, and `list()` (line 192, the model-facing job list surface) keeps returning every historical snapshot, inflating model-visible output forever. The existing test only pins bounded retention of wait resolvers while a job is live (packages/jobs/jobs-local/tests/jobs.spec.ts:105), not store growth.",
+     "effort": "M",
+     "files": [
+      "packages/jobs/jobs-local/src/index.ts:102",
+      "packages/jobs/jobs-local/src/index.ts:192",
+      "packages/jobs/jobs-local/src/index.ts:467-475",
+      "packages/jobs/jobs/src/types.ts:62"
+     ],
+     "severity": "high",
+     "suggested_fix": "Add a retention policy for terminal records: delete (or stop listing) a job once it is terminal and reported, e.g. drop on the next list()/start() sweep after `reported && finishedAt + graceMs`, with a bounded completed-records cap per owner. Add packages/jobs/jobs-local/tests/jobs-retention.spec.ts covering: completed unowned job removed, completed owned job removed while owner still live, and job_output of a pruned id failing loud.",
+     "title": "jobs-local never prunes terminal job records; unowned jobs leak for the process lifetime",
+     "verified": "yes"
+    },
+    {
+     "category": "design",
+     "detail": "ctx.on('agent/turn-stopping') (packages/hooks/hooks-claude-code/src/index.ts:270-277) steers a continuation message whenever the merged Stop-hook outcome is deny, with no counter and no signal that the previous continuation was itself hook-forced. A hook that always answers {decision:'deny'} (or is misconfigured to) makes the machine run model steps forever — each iteration spends a provider request. The file acknowledges this at line 269 (TODO(stop-loop-guard)) and hooks-codex carries the same gap (packages/hooks/hooks-codex/src/index.ts:254). For a hook bridge whose whole point is running untrusted user scripts, 'hooks must self-limit meanwhile' is not an enforcement: the enforcement happens in the operation that makes the decision (packages/AGENTS.md).",
+     "effort": "M",
+     "files": [
+      "packages/hooks/hooks-claude-code/src/index.ts:269-277",
+      "packages/hooks/hooks-codex/src/index.ts:254"
+     ],
+     "severity": "high",
+     "suggested_fix": "Cap consecutive hook-forced continuations per turn (a Config field, e.g. maxForcedContinuations, failing loud or converting to a normal stop with a model-visible notice when exhausted). Mirror in hooks-codex, and add a test that a deny-looping Stop hook terminates after the cap in packages/hooks/hooks-claude-code/tests/.",
+     "title": "Blocking Stop hooks force unbounded continuations with no loop guard (per-hook scripts can burn unbounded model spend)",
+     "verified": "yes"
+    },
+    {
+     "category": "design",
+     "detail": "With a crash (or kill -9) between writeFile(lockPath) and the finally rm (packages/util/atomic-write/src/index.ts:112-129), `<file>.lock` persists. Every subsequent writer then retries for LOCK_TIMEOUT_MS (2s) and throws 'timed out waiting for the writer lock' — forever. The lock file contains the owner pid (line 114) but isLockContention never consults it. For LocalCredentialProvider this is the write path for every credential (packages/credentials/credentials-local/src/index.ts:394): one crashed writer permanently bricks credential set/unset until the user manually deletes the lock. The code comments name orphan recovery as an operator action, but the pid is sitting in the file and a same-host liveness check (process.kill(pid, 0)) would self-heal the overwhelmingly common case (same machine, dead writer) without weakening the cross-process protocol.",
+     "effort": "S",
+     "files": [
+      "packages/util/atomic-write/src/index.ts:105-130",
+      "packages/credentials/credentials-local/src/index.ts:394"
+     ],
+     "severity": "medium",
+     "suggested_fix": "On EEXIST/EPERM-contention, read the pid from the lock; when the pid is not alive (ESRCH from process.kill(pid,0)) and the lock is on the same host boot, remove the stale lock and retry. Keep failing loud for foreign-host or unreadable locks. Add a packages/util/atomic-write/tests test for stale-lock recovery.",
+     "title": "Orphaned writer lock in rlh-atomic-write permanently bricks credentials/settings writes until manual operator action",
+     "verified": "yes"
+    },
+    {
+     "category": "bug",
+     "detail": "apply() fills sessions only in newSession (packages/acp/acp/src/index.ts:326) and clears it only in quiesce (lines 454-455, on connection close). The implemented Agent surface (initialize/authenticate/newSession/prompt/cancel) has no per-session unload, and the bridge registers none. Each record pins a live Agent plus its in-memory session log for the connection's lifetime, so a long-lived automation client that creates a session per task accumulates agents, session state, and durable-output work indefinitely while the connection stays open. Same map also has no cap, so a buggy client can create unbounded sessions.",
+     "effort": "M",
+     "files": [
+      "packages/acp/acp/src/index.ts:126",
+      "packages/acp/acp/src/index.ts:308-333",
+      "packages/acp/acp/src/index.ts:450-455"
+     ],
+     "severity": "medium",
+     "suggested_fix": "Either implement the ACP session-unload/setSessionMode family to dispose the record (dispose the handle and delete from the map), or add a Config-bounded max live sessions per connection (reject newSession loudly when exceeded, per 'misconfiguration fails loud'). Add an acp tests case that a disposed/unloaded session is removed from the map.",
+     "title": "ACP bridge keeps every created session (live Agent + in-memory log) until the whole connection closes",
+     "verified": "yes"
+    },
+    {
+     "category": "bug",
+     "detail": "In 'half-open', record() (packages/guard/llm-circuit-breaker/src/breaker.ts:81-85) unconditionally `probes.shift()`s and, on success, close()s the breaker. But probes only contain slots claimed via check() after the state transitioned; requests admitted while the breaker was closed (check() passes immediately, no probe recorded) can settle after the trip and reach record() in half-open. A stale in-flight success therefore consumes a probe slot and closes the breaker before any real probe outcome lands, and a stale failure trips on a slot it never claimed. Wired per provider in packages/guard/llm-circuit-breaker/src/index.ts:110-116, so every provider request is exposed. Separately, closed-state samples (line 74) are evicted only by age (windowMs default 60s), with no count cap, so a high request rate accumulates the whole window's outcomes in memory.",
+     "effort": "S",
+     "files": [
+      "packages/guard/llm-circuit-breaker/src/breaker.ts:71-86",
+      "packages/guard/llm-circuit-breaker/src/breaker.ts:112-118",
+      "packages/guard/llm-circuit-breaker/src/index.ts:97-116"
+     ],
+     "severity": "medium",
+     "suggested_fix": "Track in-flight requests admitted in closed state (or stamp each request with the state at check() time) and route record() by that stamp: non-probe outcomes recorded in half-open should update samples or be ignored, never shift a probe slot. Add a max-samples cap (drop-oldest beyond N) to bound memory. Extend packages/guard/llm-circuit-breaker/tests with a trip-while-in-flight case.",
+     "title": "CircuitBreaker half-open accounting lets stale closed-state outcomes consume probe slots and close early; samples uncapped within window",
+     "verified": "yes"
+    },
+    {
+     "category": "bug",
+     "detail": "listDirectory (packages/fs/fs-local/src/fsio.ts:282-321) awaits, per child, resolveListedChildTarget → resolveLocalTarget → realpath (line 151) and then probe → stat bigint (line 307), strictly sequentially (`for … await`). A directory with a few thousand entries costs 2n sequential syscalls plus n promise ticks before the tool can render anything. Entries are also fully resolved (each child's own realpath) even though callers only need names/types/sizes for listing — the deep resolution only matters for identity keys that the caller may never use.",
+     "effort": "M",
+     "files": [
+      "packages/fs/fs-local/src/fsio.ts:282-321",
+      "packages/fs/fs-local/src/fsio.ts:146-194"
+     ],
+     "severity": "medium",
+     "suggested_fix": "Either resolve children concurrently with a small bounded pool, or make the deep child resolution lazy (resolve the identity key only when the consumer asks for a child target) and build listing rows from the Dirent plus one lstat. Keep abort checks per batch.",
+     "title": "fs-local listDirectory does two sequential syscalls (realpath + bigint stat) per child on the model-facing list path",
+     "verified": "true"
+    },
+    {
+     "category": "performance",
+     "detail": "privateSpillDir() (packages/subprocess/subprocess-local/src/spawn.ts:89-92) creates one 0700 tmpdir per process and never removes it; OutputCollector spill logs (rlh-subprocess-<pid>-<n>-<rand>-<label>.log, up to maxSpillBytes each — bash-local defaults to 64MB per stream, packages/shell/bash-local/src/index.ts:38) are only unlinked in the discardSpill overflow path (line 176). On normal settlement the file is deliberately kept (it is advertised as spillPath), and nothing removes it at service teardown or process exit. Repeated overflowing commands (e.g. `cat` of a huge file through the bash tool) leave tens of MB per run in /tmp across many sessions.",
+     "effort": "S",
+     "files": [
+      "packages/subprocess/subprocess-local/src/spawn.ts:84-92",
+      "packages/subprocess/subprocess-local/src/spawn.ts:176-197",
+      "packages/shell/bash-local/src/index.ts:38"
+     ],
+     "severity": "low",
+     "suggested_fix": "Track created spill paths per process and remove them at composition teardown (the owning service already has a host-exit hook: terminateForHostExit), or age-prune the rlh-subprocess-* directory on the next process start using the same retention helper other packages use.",
+     "title": "subprocess spill files are never cleaned up after the process exits",
+     "verified": "yes"
+    },
+    {
+     "category": "performance",
+     "readFrom": "packages/subprocess/subprocess-local/src/spawn.ts:207-218",
+     "files": [
+      "packages/subprocess/subprocess-local/src/spawn.ts:207-218",
+      "packages/shell/bash-local/src/index.ts:289-309"
+     ],
+     "severity": "low",
+     "suggested_fix": "Keep a rolling decoded-string tail with a byte cursor, or cache the concatenated Buffer keyed by total and invalidate on push, so repeated polls between chunks are O(1).",
+     "title": "OutputCollector.readFrom re-concatenates the whole retained tail on every read",
+     "verified": "yes",
+     "detail": "readFrom does `Buffer.concat(this.chunks)` then a UTF-8 decode of the slice on each call. bash-local's background readOutput (packages/shell/bash-local/src/index.ts:289-309) calls it for both streams on every job_output poll while a job runs, so continuous polling of a chatty job is O(tail) copy+decode per poll, per stream. The in-memory cap is config (maxOutputBytes), so raising it from the 64KB default multiplies the cost linearly."
+    },
+    {
+     "category": "performance",
+     "detail": "createExecutor calls assertToolResultSize(result, …) (packages/mcp/mcp-client/src/tools.ts:345, 389-400) which JSON.stringify's the entire untrusted result purely to measure it, before extractText/projects it (which serializes or walks the same data again). A server returning a result just under maxToolResultBytes (default 4MB) pays an extra full serialization plus a transient string of the same size on every call; an oversized result pays full serialization before rejection. The JSON-RPC transport has already buffered the raw response, so this is a doubling, not the first copy.",
+     "effort": "S",
+     "files": [
+      "packages/mcp/mcp-client/src/tools.ts:344-346",
+      "packages/mcp/mcp-client/src/tools.ts:389-400"
+     ],
+     "severity": "low",
+     "suggested_fix": "Measure size without materializing the full string (e.g. a counting JSON serializer that aborts once the budget is exceeded, or size the raw transport frame when available) and only stringify once for the error message on the rejection path.",
+     "title": "MCP tool bridge serializes every untrusted result twice: once to measure, once to use",
+     "verified": "yes"
+    },
+    {
+     "category": "dead-code",
+     "detail": "The `title` parameter of Workspace.create survives only for a deleted gateway branch, with an in-code TODO (packages/workspace/workspace/src/index.ts:168-172) to drop the parameter, its @param clause, and the README lines. Until removed, every caller can pass a title that is silently ignored for existing workspaces and only used on first creation — an API surface the code does not enforce a meaning for.",
+     "effort": "S",
+     "files": [
+      "packages/workspace/workspace/src/index.ts:168-179"
+     ],
+     "severity": "low",
+     "suggested_fix": "Execute the recorded TODO: drop `title` from create() and update the package README pair in the same commit (pre-release stance allows the breaking rename).",
+     "title": "workspace.create(title?) is a documented dead parameter kept on a public service signature",
+     "verified": "yes"
+    },
+    {
+     "category": "doc-gap",
+     "detail": "writeFileAtomic documents 'Crash durability (fsync) is out of scope' (packages/util/atomic-write/src/index.ts:44) with TODO(settings-atomic-durability) at line 54. LocalCredentialProvider relies on it for its authoritative secret store (packages/credentials/credentials-local/src/index.ts:404, 489): a crash or power loss after the rename but before writeback can leave .credentials.yaml empty or stale while the in-process notifyUpdated already reported success to listeners. The seam's contract docs promise durability semantics ('durably store one value', packages/credentials/credentials/src/index.ts:83) without qualifying the fsync gap.",
+     "effort": "S",
+     "files": [
+      "packages/util/atomic-write/src/index.ts:44-54",
+      "packages/credentials/credentials-local/src/index.ts:404",
+      "packages/credentials/credentials/src/index.ts:83-91"
+     ],
+     "severity": "low",
+     "suggested_fix": "Either fsync file (and parent dir on POSIX) in the shared primitive before rename, or qualify the rlh-credentials Service Definition JSDoc and credentials-local README with the crash-window so consumers know the stored value is not crash-durable.",
+     "title": "Credentials and settings durability depends on an unfixed no-fsync atomic write",
+     "verified": "yes"
+    },
+    {
+     "category": "test-gap",
+     "detail": "Every deep-audited package (fs-local, bash-local, subprocess-local, mcp-client, acp, credentials-local) carries behavior specs, but three verified failure paths have no home: (a) LocalBashExecutor.startArgv's spawn-failure note surfacing exactly once through readOutput and status='killed' (packages/shell/bash-local/src/index.ts:262-288); (b) mcp syncTools phase-2 foreign-namespace conflict rollback leaving zero tools registered and the next sync recovering (packages/mcp/mcp-client/src/tools.ts:203-215) — connection.ts's give-up disposal depends on this; (c) credentials-local STABLE_READ_ATTEMPTS exhaustion ('document kept changing while reading') propagating as a write failure while a reload only warns (packages/credentials/credentials-local/src/index.ts:558-578). These are the paths where a regression silently breaks live tool bridges and secret writes.",
+     "effort": "M",
+     "files": [
+      "packages/shell/bash-local/tests",
+      "packages/mcp/mcp-client/tests",
+      "packages/credentials/credentials-local/tests"
+     ],
+     "severity": "low",
+     "suggested_fix": "Add packages/shell/bash-local/tests/bash-background-spawn-failure.spec.ts, packages/mcp/mcp-client/tests/sync-conflict-rollback.spec.ts, and a moving-file case in packages/credentials/credentials-local/tests covering both the write (throws) and reload (warns, keeps last good) policies.",
+     "title": "Bounded-spill and lossy-read behavior of long-running background shells lacks failure-path specs (test gap)",
+     "verified": "yes"
+    }
+   ],
+   "slice": "infra-tools",
+   "summary": "The infra/tooling slice is unusually disciplined: credentials-local, fs-local/fs-sandbox, subprocess-local, and mcp-client all document their race windows, fail loud on misconfiguration, and bound untrusted output (spill caps, catalog caps, byte limits). The real defects cluster in lifecycle retention rather than protocol logic: jobs-local never prunes terminal job records (unowned jobs leak for the process lifetime), the ACP bridge keeps every created session until the whole connection closes, and hooks-claude-code/codex turn a deny-looping Stop hook into unbounded forced continuations. Two durability/availability edges sit in util/atomic-write, which both credentials and settings depend on: an orphaned `.lock` file permanently bricks writes, and there is no fsync behind the \"durable\" credential store. Remaining findings are hot-path costs (per-read tail re-concatenation, double serialization of MCP results, two sequential syscalls per child in listDirectory)."
+  },
+  {
+   "findings": [
+    {
+     "category": "bug",
+     "detail": "packages/core/agent-loop/src/agent.ts:377-383: 当 phase.step === 0 且 pre-step waterfall 把 decision 重写为 {kind:'enter', messages: []} 时，turn() 直接 `return false`，跳过了其他所有出口都执行的尾部逻辑（agent.ts:437-442 的 `if (!this.inbox.hasPending) return false; ... return true`）。Inbox.claim(target='next-turn') 只消费 1 条 next-turn 消息加全部 next-step（packages/core/agent/src/inbox.ts:101-108），且运行中驱动的 wake 不设 wakeRequested 锁存（agent.ts:231-241 'Live drivers claim queued work themselves'）。因此：send('a'); send('b') 后监听器返回空 enter，turn 1 认领 'a' 并以 completed 关闭，'b' 仍留在 inbox 里但驱动已退出、无锁存、无重唤——消息被静默搁置直到下一次外部 wakeup。对比兄弟分支 `if (turnEnds && decision.messages.length === 0) break`（第 377 行）走 break 后会经过尾部 hasPending 检查，两条路径行为不对称。现有测试 contract-regressions.spec.ts:190 'closes an empty admitted batch as a turn without a step' 只覆盖单条消息场景（断言 nextTurn 为空恰因唯一消息已被认领），未覆盖残留排队输入。",
+     "effort": "S",
+     "files": [
+      "packages/core/agent-loop/src/agent.ts:377-383",
+      "packages/core/agent-loop/src/agent.ts:437-442",
+      "packages/core/agent/src/inbox.ts:101-108"
+     ],
+     "severity": "medium",
+     "suggested_fix": "把 `return false` 改为与兄弟分支一致地落到尾部收尾（例如先设 turnEnds 再 break，或在 return 前复用 `if (!this.inbox.hasPending) return false` + 置新 AbortController/重置 step 的续转逻辑），使空 enter 与其他 turn 出口共享同一个 hasPending 重查/续转路径。补回归测试到 packages/core/agent-loop/tests/contract-regressions.spec.ts（紧邻既有 empty-batch 用例）：两条 followup + 空 enter 监听器，断言第二条消息开新 turn。",
+     "title": "空 enter 决策使已排队的 inbox 输入永久搁置（跳过 hasPending 重查与续转）"
+    },
+    {
+     "category": "design",
+     "detail": "同一段「解析 listener 快照 → 逐个调用 → 同步 throw 用 logger.warn 吞掉 → 返回的 Promise reject 也用 logger.warn 吞掉」的模式至少有 6 份手写实现：agent/dispatch.ts:120-137（emit，并自称是唯一拼法）、agent/index.ts:528-540（emitDisposed）与 562-571（announce）、session/index.ts:419-437（invokeContainedSessionObservers）、session/index.ts:1044-1057（announce）、agent-loop/index.ts:430-441（reportConfiguredStartupFailure，因事件非 agent-subject 而绕开 dispatch.ts 重新手写）、tools/index.ts:1944-1964（notifyResult）。六份实现行为一致但注释、日志格式和错误字符串化方式（String(error) vs errorChain）各自漂移；agent-loop 里那份正是因为没有一个可复用的非 agent-subject 包含式 emit 才重复的。",
+     "effort": "M",
+     "files": [
+      "packages/core/agent/src/dispatch.ts:120-137",
+      "packages/core/agent/src/index.ts:528-540",
+      "packages/core/agent/src/index.ts:562-571",
+      "packages/core/session/src/index.ts:419-437",
+      "packages/core/session/src/index.ts:1044-1057",
+      "packages/core/agent-loop/src/index.ts:430-441",
+      "packages/core/tools/src/index.ts:1944-1964"
+     ],
+     "severity": "medium",
+     "suggested_fix": "在一个低层包（rlh-scope 或 rlh-llm 旁的 util 面）导出一个 `emitContained(ctx, thisArg, name, args, warn: (msg) => void)` 帮助函数，六处调用点收敛到它；session/flush 的「抛出而非包含」变体保留在 SessionStore.flush（语义不同，有注释说明）。这与 AGENTS.md 'Prefer symmetry for parallel values; unexplained asymmetry usually signals a missed extraction' 直接对应。",
+     "title": "「包含式 emit」模式在 core 内重复实现约 6 处，语义各自漂移"
+    },
+    {
+     "category": "performance",
+     "detail": "agent.ts:102-111 从 session.events 末尾向前线性扫描寻找 'agent-preset/selected'；找不到时（绝大多数会话）每次 preStep 都完整遍历整个事件日志——包括每个 assistant/chunk。事件数随会话无界增长，单步 O(n)、全会话 O(n²)。同文件的 requestHeader()/deriveMessages() 都已用「增量 fold 到已见位置」的模式（session/index.ts:712-741），此处是未解释的不对称。",
+     "effort": "S",
+     "files": [
+      "packages/core/agent-loop/src/agent.ts:102-111",
+      "packages/core/agent-loop/src/agent.ts:291"
+     ],
+     "severity": "low",
+     "suggested_fix": "仿照 requestHeader 的增量 fold：ReactLoopAgent 持有一个 lastPresetScanSeq/lastPreset 游标，每步只扫描新增事件并保留最新 selected 值（事件只追加，前向 fold 即可得到与反向扫描等价的结果），构造时一次性从尾部扫到当前长度作为初值。",
+     "title": "currentAgentPreset 每个模型步全量回扫事件日志，长会话 O(n²)"
+    },
+    {
+     "category": "performance",
+     "detail": "inbox.ts:236-268 每次拼接都执行：`inbox.toSpliced`（整表复制）、跨两个 pending 列表重建消息 id Set（O(pending)，上限 4096）、并对所有 removed 消息重新 JSON.stringify 计算字节数。claim()（每次模型步的步前边界）也走同一 validate，意味着每个 step 都要把本步认领的全部输入（可能是几十 KB 的 prompt）重新序列化一遍，只为维持字节账目——而 inserted 的字节数在插入时已经算过，removed 的字节数是完全可缓存的。突发写入时每条消息成本 O(已排队量)，4096 条排队下一次突发为 O(n²)。",
+     "effort": "M",
+     "files": [
+      "packages/core/agent/src/inbox.ts:236-268",
+      "packages/core/agent/src/inbox.ts:101-108",
+      "packages/core/agent/src/inbox.ts:272-278"
+     ],
+     "severity": "low",
+     "suggested_fix": "为每条 pending 消息在插入时用 WeakMap 缓存 serializedMessageBytes 结果，removed 字节直接查缓存；id 唯一性可改为随 splice 增量维护的两个 Set（插入/删除同步增删），去掉每次的 toSpliced 全表复制。容量语义不变，仅消除重复计算。",
+     "title": "Inbox.validate 每次拼接 O(pending) 重建 Set + 整表复制，且 claim 每步重新 JSON 序列化已认领消息"
+    },
+    {
+     "category": "design",
+     "detail": "同一个持久错误码 TOOL_OUTCOME_UNKNOWN 有两种模型可见文本：(1) session/src/repair.ts:19 的 TOOL_OUTCOME_UNKNOWN_TEXT（长版，含「仅在只读/幂等时重试、先验证外部状态」的完整指导），被崩溃恢复 closers（repair.ts:109）和 tool-transcript.ts:147-162 的派生期合成结果使用；(2) agent-loop/src/tool-calls.ts:373-385 的 appendOutcomeUnknown 在调度器终态失败路径写入一段自带的短文本（'...verify external state before retrying'），错误码相同但指导措辞不同。模型在同一会话内可能先后通过两条路径看到同一代码的两种说法；tool-calls.ts 完全可以引用 rlh-session 已导出的常量（该包已依赖 TOOL_NOT_STARTED/TOOL_OUTCOME_UNKNOWN 码）。",
+     "effort": "S",
+     "files": [
+      "packages/core/agent-loop/src/tool-calls.ts:373-385",
+      "packages/core/session/src/repair.ts:19",
+      "packages/core/session/src/tool-transcript.ts:147-162"
+     ],
+     "severity": "low",
+     "suggested_fix": "tool-calls.ts 的 appendOutcomeUnknown 改用 rlh-session 导出的 TOOL_OUTCOME_UNKNOWN_TEXT（export 已存在，repair.ts:30），使同一恢复码在崩溃恢复、派生合成、调度器失败三条路径上产生逐字节相同的模型可见文本；快照面若受影响按 testing 政策同步更新。",
+     "title": "TOOL_OUTCOME_UNKNOWN 的模型可见文本在三条恢复路径上不一致"
+    },
+    {
+     "category": "test-gap",
+     "detail": "contract-regressions.spec.ts:190-207 现有 'closes an empty admitted batch as a turn without a step' 只发送单条消息且被 claim 消费，断言 nextTurn 为空——这恰因没有残留输入而通过。它没有覆盖：空 enter 决策落下时 inbox 中仍有 next-turn/next-step 残留（监听器返回空期间 followup/steer 到达，或排队第二条 turn 消息）。这是上面 bug 发现的直接验证缺口；该 spec 文件正是此类空 enter 回归的既定家。",
+     "effort": "S",
+     "files": [
+      "packages/core/agent-loop/tests/contract-regressions.spec.ts:190-207"
+     ],
+     "severity": "low",
+     "suggested_fix": "在 packages/core/agent-loop/tests/contract-regressions.spec.ts 增加一个用例：预置两条 followup（或空 enter 决策挂起期间 followup），断言驱动收敛后第二条消息在自己的 turn 中被认领并产生 step/start（修复后应通过，修复前失败），沿用现有 harness/send/waitForIdle 工具函数。",
+     "title": "空 enter 决策 + 排队残留输入的组合无回归测试覆盖"
+    }
+   ],
+   "slice": "core-runtime",
+   "summary": "packages/core（agent-loop / agent / session / tools / system-prompt / scope / agent-default-model / agent-tool-presentation，约 49k 行）整体工程质量很高：生命周期用单一可 memoize 的反向 teardown、fused AbortController 和「先注册后发布」的事务边界覆盖了竞态；Session 的 append/surface/deriveMessages 增量 fold 与 model-visible⟺logged 不变量在代码和 JSDoc 中贯彻得很一致；tool 调度器的 abort/scheduler-failure 配对保证转录始终 provider-valid（interruptedBlocks 确实剔除 tool-call 块，与事件文档一致）。审计发现的实际问题集中在两处边界：agent-loop 的空 enter 决策提前 return 绕过了所有其他 turn 出口共有的 inbox.hasPending 重查，可在文档化的 pre-step 扩展点下静默搁置已入队消息；此外是若干热路径的 O(n) 重复扫描/序列化和一处跨包复制的「包含式 emit」模式。未发现无界增长、错误吞没或 id branding 违规。"
+  },
+  {
+   "findings": [
+    {
+     "category": "performance",
+     "detail": "connection/src/client/index.ts:9 statically imports FixtureApiClient from ./fixture.ts (3,335 lines embedding a 74-turn hand-built history script plus rlh-session/llm folding helpers). The import is gated only at runtime by a `?fixture` query-param check (index.ts:88-91), so the entire fixture — and the tree of value imports it pulls (rlh-llm/message folding, rlh-session/surface folding) — lands in every production client bundle even though production always takes the WebApiClient path. Verified: the import is unconditional and the tsdown config has no fixture split.",
+     "effort": "S",
+     "files": [
+      "packages/client/connection/src/client/index.ts:9",
+      "packages/client/connection/src/client/index.ts:88-91",
+      "packages/client/connection/src/client/fixture.ts:1-3335"
+     ],
+     "severity": "high",
+     "suggested_fix": "Make the fixture branch a dynamic import: `const fixtureClient = fixture ? await (await import('./fixture.ts')).FixtureApiClient : undefined` inside an async plugin body (or a lazy subpath export like `@relay-harness/rlh-client-connection/fixture` imported only when the query param is present). The apply body is already allowed to be async-adjacent via ctx.effect; alternatively decide the transport one level up in web/boot where an await is free.",
+     "title": "3,300-line dev FixtureApiClient is statically imported into the production browser bundle"
+    },
+    {
+     "category": "performance",
+     "detail": "Session keeps `events: SessionEvent[]` and `views: (ToolEventView|undefined)[]` (session.ts:67-70) and appends to both on every live frame (session.ts:675-676, acceptLiveEvent→appendLive); ConversationNodeAssembler keeps `inputs: Map<number, ConversationEventInput>` and `contextsBySeq: Map<number, Set>` (conversation-assembler.ts:140-141) with one entry per seq forever. The arrays/maps are only reset on replaceWindow (open/resync/gap-repair/loadOlder prepend), never trimmed during ordinary live streaming. For a long-running session (token-delta events stream one per chunk), a tab left open overnight accumulates the entire session tail in memory — this is the only unbounded-growth path in an otherwise carefully bounded slice (pendingBuffers compact by identity, entryCache/prevRunning are pruned, removedIds is tombstone-bounded).",
+     "effort": "L",
+     "files": [
+      "packages/client/runtime/src/client/sessions/session.ts:67-70",
+      "packages/client/runtime/src/client/sessions/session.ts:402-406",
+      "packages/client/runtime/src/client/sessions/session.ts:675-676",
+      "packages/client/runtime/src/client/sessions/conversation-assembler.ts:140-141"
+     ],
+     "severity": "medium",
+     "suggested_fix": "Introduce a client-side window cap (e.g. N most-recent events, mirroring the host tail-page model): when appending pushes past the cap, drop the oldest prefix, bump baseSeq/hasMore, and clear the corresponding assembler inputs/contextsBySeq entries plus retired contexts. Contexts whose dependencies fall outside the window already degrade via the `windowGap` dependency flag (conversation-assembler.ts:599), so the reader contract has a seam for this; document the chosen cap as a Config field per the no-hardcoded-tunables rule.",
+     "title": "Session event window grows without bound during a long-lived stream"
+    },
+    {
+     "category": "design",
+     "detail": "SessionManager.questionInteractionStatus (manager.ts:91-103) re-implements ui-user-questions's binary plan-review classification (single question + intent.kind==='plan-review' + non-multiSelect + <=2 options including the approve label) to decide the sidebar's 'plan-review' amber-dot status. The manager comment explicitly says it must 'Match ui-user-questions's binary plan-review routing at the wire boundary' — i.e. correctness rests on a human keeping two copies in sync across two packages with no shared type or test linking them. If the composer's shape rule changes (e.g. multi-select plan reviews become plan-review cards), the sidebar keeps classifying them as plain questions.",
+     "effort": "S",
+     "files": [
+      "packages/client/runtime/src/client/sessions/manager.ts:91-103",
+      "packages/client/ui-user-questions/src/client/index.ts:1-13",
+      "packages/client/ui-user-questions/src/client/contract/slots.ts"
+     ],
+     "severity": "medium",
+     "suggested_fix": "Move the classifier to one pure function — `planReviewStatusOf(questions): PendingInteractionStatus` in runtime's sessions/pending.ts (where PendingInteractionStatus already lives) — and have ui-user-questions's composer shape selection consume the same predicate from `@relay-harness/rlh-client-runtime/client` (a type-safe existing dependency edge: ui-user-questions already type-imports the runtime). Add a shared unit test in runtime/tests/pending.client.spec.ts pinning both consumers' agreement.",
+     "title": "plan-review vs question routing rule duplicated between runtime manager and ui-user-questions composer"
+    },
+    {
+     "category": "test-gap",
+     "detail": "WebApiClient.readWebSocket (web-api-client.ts:45-101) is the browser's only wire parser: it JSON-parses every server frame against serverRequestSchema + frame schemas, drops malformed frames with console.error and continues, drains a wake-based inbox queue, handles abort during CONNECTING/OPEN, and closes the socket in its finally. None of this is under test — connection/tests has host-side websocket-downlink.host.spec.ts and http-bridge.host.spec.ts, but no client-side spec. The malformed-frame drop-and-continue path and the `if (signal.aborted) handleAbort()` pre-connect arm are exactly the kind of wire-boundary behavior AGENTS.md says to prove with an invalid-case rejection.",
+     "effort": "M",
+     "files": [
+      "packages/client/connection/src/client/web-api-client.ts:45-101",
+      "packages/client/connection/tests/"
+     ],
+     "severity": "medium",
+     "suggested_fix": "Add packages/client/connection/tests/web-api-client.client.spec.ts with a stubbed global WebSocket (message/close/open event targets) covering: malformed JSON rejected without ending the stream; schema-invalid payload dropped while a following valid frame still yields; abort during CONNECTING closes and ends the generator; abort during OPEN closes the socket; close-before-open ends the iterator. Follow the existing vi.stubGlobal pattern used in runtime/tests/notifier.client.spec.ts.",
+     "title": "No test covers the client WebSocket frame pump (WebApiClient.readWebSocket)"
+    },
+    {
+     "category": "bug",
+     "detail": "The readiness timeout (streamOpenTimeoutMs, connection.ts:185-187) only bounds the wait for onOpen; after it fires the loop still does `await failed` (connection.ts:189), which resolves only when both pumpStream generators end. A WebSocket that accepts TCP but never completes the WS handshake fires neither open nor close, so its generator sits in `await new Promise(resolve => { wake = resolve })` (web-api-client.ts:92) and `failed` never settles — no reconnect, no state change, frames dead. Browsers usually fire close on failed upgrades, but a half-open relay/proxy can park this for the OS TCP timeout (minutes). Related: the unary `host.describe({})` at connection.ts:142 takes no AbortSignal, so stop() cannot cancel an in-flight handshake and a stopped controller lingers until it settles.",
+     "effort": "S",
+     "files": [
+      "packages/client/connection/src/client/connection.ts:176-189",
+      "packages/client/connection/src/client/web-api-client.ts:76-84"
+     ],
+     "severity": "low",
+     "suggested_fix": "Race `failed` against a second sleep (e.g. a generous connectionSettleTimeoutMs derived from streamOpenTimeoutMs) after the streamsOpen race, treating timeout as generation failure (`ac.abort()` → recover). Pass `ac.signal` into `host.describe` so stop()/failure paths cancel the unary handshake too.",
+     "title": "Reconnect loop can park indefinitely in `await failed` when a WebSocket never fires close"
+    },
+    {
+     "category": "bug",
+     "detail": "ConnectionHandle.start() stops the previous loop then starts a new controller immediately (client/index.ts:117-149). stop() aborts the old AbortController, but the old readWebSocket generators may already hold parsed frames in their `inbox` and the old pumpStream may be mid-`callSink`; those frames are delivered to the shared sinks after the new generation's describe/streams are underway, with no ordering guarantee against the new generation's replayed baseline frames (e.g. an old `session/queue` snapshot landing after the new `session/subscribed` reset). The effect is bounded (old sockets close on abort) but the window is real and the frame types involved are exactly the generation-scoped ones handleDisconnected/reset exist to police.",
+     "effort": "M",
+     "files": [
+      "packages/client/connection/src/client/index.ts:117-149",
+      "packages/client/connection/src/client/connection.ts:91-95",
+      "packages/client/connection/src/client/connection.ts:211-225"
+     ],
+     "severity": "low",
+     "suggested_fix": "Make stop() drain: have ConnectionController.stop() capture the pumps' settlement (the `failed` promise or per-pump onEnd) and let ConnectionHandle.start() await the previous controller's drain before controller.start() of the replacement — or stamp each sink invocation with the controller instance and drop frames from a non-active controller in the client/index.ts sink wrappers.",
+     "title": "Old connection generation's buffered frames can still reach sinks after start() replacement"
+    },
+    {
+     "category": "doc-gap",
+     "detail": "The `selection` field JSDoc (service.ts:252-258) states the projection 'validates it against the live list instead of destructively pruning, so a selection survives transient list states (reconnect re-pull) and resurfaces when its session returns'. projectList (service.ts:737-741) actually wipes the persisted cell via `this.selection.set({})` whenever `current === undefined` — which is exactly the masked-gap state — leaving only the in-memory `manager.selected` alive; a reload during that window lands on the empty state. The clear() doc (service.ts:420-423) describes the wipe as intended for user-initiated clear, but the same path fires for any masked current. Either the survival promise is overstated or the wipe is too eager; the two comments assert different contracts for the same cell.",
+     "effort": "S",
+     "files": [
+      "packages/client/runtime/src/client/sessions/service.ts:252-258",
+      "packages/client/runtime/src/client/sessions/service.ts:737-741"
+     ],
+     "severity": "low",
+     "suggested_fix": "Pick one contract and document it in both places. If the wipe is intended only for durable removal/user clear, gate it on the manager reporting the session as gone (e.g. only wipe when the id is absent from `items` after a `phase === 'ready'` pull with no list error), and keep the masked-gap case persisted; otherwise soften the `selection` JSDoc to 'the in-memory selection survives transient gaps; the persisted cell does not'.",
+     "title": "SessionRuntime.selection JSDoc contradicts the persisted-cell wipe in projectList"
+    },
+    {
+     "category": "design",
+     "detail": "hmr/src/client/index.ts:83-91 copies isLoopbackHostname (connection/src/loopback-hostname.ts:12-18) verbatim, documented as deliberate to avoid an immediately-tier plugin importing another client plugin. But the predicate is a pure zero-dep function and packages/util is the repo's designated zero-dependency shared home; as-is, a future loopback-rule change (e.g. IPv6 `::1` unbracketed, or 127/8 handling) must be made in two places or the HMR gate and the trust fence diverge silently.",
+     "effort": "S",
+     "files": [
+      "packages/client/hmr/src/client/index.ts:83-91",
+      "packages/client/connection/src/loopback-hostname.ts:12-18"
+     ],
+     "severity": "low",
+     "suggested_fix": "Relocate the predicate to `@relay-harness/rlh-util` (or a client-shared pure module both packages already depend on) and re-export from connection; both halves import the single definition. Update the hmr comment that currently documents the duplication.",
+     "title": "Loopback predicate duplicated verbatim between hmr and connection"
+    },
+    {
+     "category": "design",
+     "detail": "claimStyles (system.ts:34-44) tags every `style:not([data-plugin])` element on the page with the materializing plugin's id, and HMR later removes owned tags by that id (hmr/src/client/index.ts:102-106). Anything else that injects an untagged inline <style> (a dev tool panel, a third-party widget, a future non-plugin stylesheet) between two plugin materializations is silently adopted by whichever plugin materializes next — then deleted wholesale when that plugin hot-reloads. The claim window is the synchronous materialize() call, so the practical exposure is styles injected by earlier non-materializing code paths, but the ownership rule is 'untagged at that instant' rather than 'injected by this factory'.",
+     "effort": "M",
+     "files": [
+      "packages/client/modules/src/client/system.ts:34-44",
+      "packages/client/hmr/src/client/index.ts:102-106"
+     ],
+     "severity": "low",
+     "suggested_fix": "Narrow the claim: have the css injection convention pre-tag every plugin-emitted style (the comment says preset-emitted tags already arrive tagged) and treat untagged tags as an error logged loudly (fail-loud per AGENTS.md) instead of adopting them — or snapshot `document.querySelectorAll('style')` immediately before factory execution and claim only the diff, which is exactly the factory's own emission set.",
+     "title": "Module system claims every untagged <style> tag for the materializing plugin"
+    }
+   ],
+   "slice": "client-web-core",
+   "summary": "The web frontend core (connection controller, runtime object layer, module system, HMR, locale) is unusually disciplined: reconnect/resume is handled through generation-scoped state resets (manager.handleDisconnected → handleConnected → per-session resync with openGeneration invalidation, seq-guarded projection stores, queue-mirror re-baselining on session/subscribed), snapshots are identity-stable for useSyncExternalStore, and registries dispose through ctx.effect. The strongest issues found are bundle-weight (a 3,300-line dev fixture statically imported into the production entry), an unbounded per-session event window that grows for the tab's lifetime during long-running streams, a knowingly duplicated plan-review classification rule shared with ui-user-questions, and a complete absence of tests for the client-side WebSocket frame pump. No lifecycle leak or listener-disposal bug survived verification: listener sets, caches, and maps in this slice all have documented prune paths."
+  },
+  {
+   "findings": [
+    {
+     "category": "lyra-alignment",
+     "detail": "Lyra's files tab is a real editor: CodeMirror 6 with per-language packages, search, wrap toggle, and overlay scrollbars (Lyra packages/desktop/package.json lines 27-55; README 面板 section '编辑器：语法高亮、自动换行开关、横竖两条滚动条'). relay-harness's counterpart renders file content in a bare <textarea> — packages/client/ui-files/src/client/FilePreview.tsx line 224 (`const textareaRef = useRef<HTMLTextAreaElement>(null)`), with reveal logic scrolling 'the source textarea' (lines 176-177). For a repo whose tool outputs are code, the Files panel is the main read surface for user-authored files; no highlighting and no wrap control is a visible capability gap against the Lyra bar. relay already ships shiki + @shikijs/langs in ui-primitives, so a highlighted read path needs no new heavy dependency.",
+     "effort": "M",
+     "files": [
+      "packages/client/ui-files/src/client/FilePreview.tsx:224",
+      "packages/client/ui-files/src/client/FilePreview.tsx:176-177",
+      "/Users/jin/Desktop/Relay/Lyra/packages/desktop/package.json:27-55"
+     ],
+     "suggested_fix": "Phase 1: replace the read-only textarea body in FilePreview.tsx with a shiki-highlighted <pre> layer (shiki is already a ui-primitives dependency) keeping the existing revealLine/revealRequestId scroll contract. Phase 2 only if editing is a real use case: adopt @codemirror/state+view (as Lyra does) for the edit surface. Add tests/ui-files FilePreview spec asserting reveal still scrolls to the requested line after the swap.",
+     "severity": "medium",
+     "title": "Files panel has no syntax-highlighted editor — plain textarea vs Lyra's CodeMirror 6 file editor"
+    },
+    {
+     "category": "test-gap",
+     "detail": "Lyra AGENTS.md lines 27-52 codify, with four concrete past failures, that green lint/typecheck/unit tests do not prove user-visible behavior: a zoom animation that measured its own transformed box (scale computed as 1), tooltips wired via data-ly-tip but read as dataset.dwTip, a transition mounted on an element React unmounts, and icons broken by img-src — all invisible to static checks. The mandated remedy is measuring the running app: width sampling, pixel hashes, getComputedStyle, motion probes (Lyra desktop/e2e contains capture-motion-probe.ts, light-theme-probe.ts, scrollbar.test.ts, tab-flicker-probe.ts, transcript-perf.ts). relay-harness's gates are 100% per-file unit coverage plus DOM-structural e2e; apps/web/tests/complex-history.perf.ts lines 1-3 explicitly 'reports measurements without timing assertions', and nothing asserts the *visual* output of the new Relay Focus visual system (ui-theme derive.ts declares contrast floors NAV_ITEM_ACTIVE_MIN_CONTRAST=1.25 / NAV_ITEM_ACTIVE_ACCENT_MIN_CONTRAST=1.4 at lines 23-28 that no test verifies against the rendered cascade).",
+     "effort": "M",
+     "files": [
+      "/Users/jin/Desktop/Relay/Lyra/AGENTS.md:27-52",
+      "/Users/jin/Desktop/Relay/Lyra/packages/desktop/e2e/",
+      "apps/web/tests/complex-history.perf.ts:1-3",
+      "packages/client/ui-theme/src/derive.ts:23-28"
+     ],
+     "suggested_fix": "Add two probe-style e2e files following the existing apps/web/tests naming: (1) appearance-derived-tokens.e2e.ts — seed a custom theme family, read computed --rlw-* tokens off :root via getComputedStyle, assert the nav-active contrasts meet the derive.ts floors in both light and dark halves; (2) motion-reduced-motion.e2e.ts — emulate prefers-reduced-motion, assert transition durations on a [data-rlh-motion] popover are the zeroed tokens. Both fit the existing launchWebScaffold harness (apps/web/tests/scaffold.ts) and stay keyless.",
+     "severity": "medium",
+     "title": "No 'measure the rendered app' probe suite: visual regressions pass all gates (Lyra's core testing lesson)"
+    },
+    {
+     "category": "lyra-alignment",
+     "detail": "Both codebases zero motion under the OS preference, but only Lyra surfaces it as a setting: 外观 offers 减少动态效果 (system / on / off) and enforces it app-wide (README 外观 section; packages/desktop/src/motion-freeze.ts). relay-harness honors only the media query — packages/client/ui-theme/src/styles/base.css line 113 `@media (prefers-reduced-motion: reduce)` zeros the duration tokens, and THEME_SETTINGS fields (ui-theme/src/theme-settings.ts lines 23-62) contain no motion key. relay's token architecture (--rl-motion-duration-* consumed by motion.css) makes the override nearly free, yet a user on a system without the OS flag — or one who wants motion suppressed only in this app — has no recourse. This matters disproportionately because the web GUI runs in whatever browser the user has.",
+     "effort": "S",
+     "files": [
+      "packages/client/ui-theme/src/styles/base.css:113",
+      "packages/client/ui-theme/src/theme-settings.ts:23-62",
+      "/Users/jin/Desktop/Relay/Lyra/packages/desktop/src/motion-freeze.ts",
+      "/Users/jin/Desktop/Relay/Lyra/README.md:106-112"
+     ],
+     "suggested_fix": "Add a 'reduceMotion' field (system/on/off) to THEME_SETTINGS in ui-theme/src/theme-settings.ts, and in appearance-apply.ts force the reduced duration tokens onto the root element when 'on' (mirroring what base.css's media query does), 'system' doing nothing beyond the existing media query. Cover with a ui-theme unit test in packages/client/ui-theme/tests/ asserting the applied token values per setting.",
+     "severity": "low",
+     "title": "prefers-reduced-motion is media-query-only; no user-facing reduce-motion override in Appearance"
+    },
+    {
+     "category": "lyra-alignment",
+     "detail": "Lyra bundles Inter and JetBrains Mono latin variable subsets with unicode-range and a documented rationale (styles.css lines 21-56, ~86KB): system stacks 'render differently on every machine', which for a browser-served GUI is the normal case, not the edge case. relay-harness's type stack (packages/client/ui-theme/src/styles/base.css lines 54-57) resolves latin text from -apple-system / Segoe UI / Helvetica and code from SF Mono / Consolas / Menlo; the only shipped faces are local()-based 'Relay CJK' size-adjust aliases (base.css lines 19-51), which help CJK metrics but leave latin rendering platform-dependent. A user on Linux with none of those fonts gets a materially different chat UI than the one the Relay Focus design was drawn against. Lyra also ships Fira Code / Source Code Pro / IBM Plex Mono as selectable code faces (styles.css lines 66-105); relay's code stack is fixed.",
+     "effort": "S",
+     "files": [
+      "packages/client/ui-theme/src/styles/base.css:54-57",
+      "packages/client/ui-theme/src/styles/base.css:19-51",
+      "/Users/jin/Desktop/Relay/Lyra/packages/desktop/src/styles.css:21-105"
+     ],
+     "suggested_fix": "Vendor the two latin variable woff2 files (Inter, JetBrains Mono via @fontsource-variable, same as Lyra) into ui-theme/src/assets, declared with font-display:swap and the latin unicode-range in base.css ahead of the system stack. Keep the existing 'Relay CJK' local() faces untouched — they solve a different (CJK metric) problem. Verify total added size stays near Lyra's ~86KB and that apps/web vendor chunking (vite.config.ts VENDOR_PACKAGES rule: font assets ride CSS) still caches well.",
+     "severity": "low",
+     "title": "Latin UI/code typefaces ride platform font stacks; Lyra self-hosts variable latin subsets"
+    },
+    {
+     "category": "lyra-alignment",
+     "detail": "Lyra runs React 19.2.8, zustand 5.0.14, Vite 8.2.1 (Lyra packages/desktop/package.json devDependencies); relay-harness client pins react ^18.2.0 (ui-renderer, ui-primitives), zustand ~4.4.7 + immer ^10 (packages/client/runtime/package.json dependencies), vite ^6 (apps/web/package.json). The gap is real but already owned: .agents/notes/proposed/process/2026-08-23-staged-dependency-upgrades.md wave 3 sequences react+react-dom+types+plugin-react together with zustand 4→5 and use-sync-external-store removal (line 47), and line 78 warns that client code written during the staging period 'is written against the older API and may need revisiting'. Concretely still-18-shaped code that the wave will touch: ui-renderer's hand-rolled shim typings for use-sync-external-store/with-selector (packages/client/ui-renderer/src/client/use-sync-external-store.d.ts) and its useSyncExternalStoreWithSelector bridge (bind.ts line 7), both removable once React 19 is in; and contract/store.ts's zustand/middleware + zustand/shallow imports whose import paths shift on zustand 5.",
+     "effort": "L",
+     "files": [
+      "packages/client/runtime/package.json",
+      "packages/client/ui-renderer/src/client/use-sync-external-store.d.ts",
+      "packages/client/ui-renderer/src/client/bind.ts:7",
+      ".agents/notes/proposed/process/2026-08-23-staged-dependency-upgrades.md:47-78"
+     ],
+     "suggested_fix": "Treat this as execution of the existing proposed note rather than a new migration: (1) promote the wave-3 PR out of proposed/ before more Relay Focus client work lands; (2) in the same React 19 PR, delete use-sync-external-store.d.ts and switch bind.ts to the React-native store bridge, and fold contract/store.ts's zustand 4→5 import-path changes in (the note already couples them); (3) add the note's own acceptance criterion — the React PR updates both SDK expected outputs in the same PR per repo testing policy.",
+     "severity": "low",
+     "title": "Frontend stack majors (React 18 / zustand 4 / Vite 6) trail Lyra's (React 19 / zustand 5 / Vite 8) — planned, but migration debt accrues meanwhile"
+    }
+   ],
+   "slice": "lyra-alignment",
+   "summary": "relay-harness's packages/client is already at or above Lyra's level on most axes Lyra is known for: seed-color theme derivation with contrast control (ui-theme derive.ts vs Lyra theme.ts), a motion token system honoring prefers-reduced-motion (ui-theme motion.css/base.css vs Lyra styles.css), frame-batched streaming publication (Notifier.markFrameDirty + PartialAccumulator vs Lyra coalesce.ts, including out-of-order flush protection via notifyNow), a projection-driven context-occupancy ring with per-segment breakdown (ContextMeter.tsx vs Lyra's context ring), and a large keyless Playwright e2e/snapshot suite in apps/web/tests. The remaining material gaps are capability- and process-shaped, not architecture-shaped: Lyra ships a CodeMirror-based syntax-highlighted file editor where relay renders a plain textarea, exposes a user-facing reduce-motion override and self-hosted latin variable fonts that relay lacks, and institutionalizes \"measure the rendered app\" verification (pixel hashes, computed-style probes) that relay's 100%-coverage + DOM-structural e2e gates do not replicate. Stack majors (React 19 / zustand 5 / Vite 8) trail but are already sequenced in a proposed dependency-upgrade note, so the actionable item is executing it before more React-18-shaped client code accrues."
+  },
+  {
+   "findings": [
+    {
+     "effort": "M",
+     "files": [
+      "tsconfig.host.json:26-99",
+      "apps/web/tsconfig.json:16-110",
+      "scripts/run-web-snapshots.ts:4-7",
+      "vitest.web.config.ts:26-29"
+     ],
+     "suggested_fix": "Add a scripts gate (following existing convention: scripts/web-test-face.spec.ts) that asserts apps/web/tsconfig.json's exclude list is exactly the complement of tsconfig.host.json's apps/web/tests include entries and that the union covers every file in apps/web/tests/**; better, derive both lists from a single manifest (like scripts/doc-budgets.manifest.json) and dedupe chat-scroll-fixture.ts.",
+     "detail": "Whether an apps/web test file is checked in the host or client tsc program is decided by two hand-maintained lists: tsconfig.host.json includes each apps/web/tests file individually (lines 12-91, no glob), while apps/web/tsconfig.json excludes the same files one-by-one from its `include: [\"src\", \"tests\"]` glob (lines 24-110). A new web e2e test added to the vitest.web.config.ts glob (which runs it in CI) but not added to both lists either (a) silently lands in the CLIENT program via apps/web's `tests` glob — the wrong compiler face for host-plane Context merges — or (b) escapes typecheck entirely. There is no gate syncing the lists, and drift is already present: `apps/web/tests/chat-scroll-fixture.ts` appears twice in tsconfig.host.json (lines 26 and 82) and twice in apps/web/tsconfig.json's exclude. scripts/run-web-snapshots.ts:4-7 keeps a third parallel file list (serial owners) with the same failure mode.",
+     "severity": "high",
+     "title": "apps/web 测试文件由三份手工维护清单把关，新测试会进错编译面或完全逃过 typecheck",
+     "category": "design"
+    },
+    {
+     "effort": "S",
+     "files": [
+      "knip.json:246-254"
+     ],
+     "suggested_fix": "Widen the fallback workspace config to entry: tests/**/*.spec.{ts,tsx}, tests/**/*.e2e.ts, tests/**/*.snapshot.ts and project: src/**/*.{ts,tsx}, tests/**/*.{ts,tsx}, then delete the now-redundant per-package overrides. knip --treat-config-hints-as-errors keeps this fails-loud.",
+     "detail": "The wildcard workspace `packages/*/*` declares entry [tests/**/*.spec.ts] and project [src/**/*.ts, tests/**/*.ts] (knip.json:246-254). All .tsx globs exist only in ~30 explicit per-package overrides; client packages without an override — verified missing: ui-user-questions (src/client/QuestionComposer.tsx), ui-session-tree (SessionTreeCanvas.tsx etc.), ui-titlebar, ui-git, ui-agents-panel, ui-surfaces, ui-files, ui-diff, ui-preview, ui-theme, ui-attachment, ui-reference, ui-brand-official, ui-memory-center, ui-sidebar — have their entire .tsx source and .tsx/.e2e/.snapshot test files invisible to knip: no unused-file, unused-export, or unused-dependency detection. New client packages silently get the same hole unless someone remembers a knip.json entry.",
+     "severity": "high",
+     "title": "knip 回退 workspace 配置不含 .tsx 与 e2e/snapshot 入口，15+ client 包的 .tsx 源码完全逃过 knip 检测",
+     "category": "design"
+    },
+    {
+     "effort": "S",
+     "files": [
+      "package.json:41",
+      "scripts/ci-workflow.spec.ts:7-12",
+      "scripts/ci-workflow.spec.ts:422",
+      ".github (../.github/workflows/ci.yml 等)"
+     ],
+     "suggested_fix": "Either vendor the workflow definitions into this repo, or add a fails-loud presence check at the top of ci-workflow.spec.ts and the issue-management script that names the missing sibling checkout and which gates depend on it.",
+     "detail": "`pnpm run test:issue-management` executes `node ../.github/issue-management/policy.test.mjs` (package.json:41), and scripts/ci-workflow.spec.ts:7 hardcodes `resolve(root, '..')` to read `.github/workflows/*.yml`. The spec runs in the default unit lane (vitest.config.ts testIncludes includes `scripts/**/*.spec.ts`), and the gate is in ciSharedStaticGates/check-all (scripts/run-gates.ts:288,259), so a clean clone of relay-harness without the sibling checkout makes `pnpm run test`, `check:ci:static` and `check:all` fail with an opaque ENOENT. AGENTS.md never mentions this cross-repo requirement.",
+     "severity": "medium",
+     "title": "CI 定义与 issue-management 门禁依赖仓库外的 ../.github 目录，独立 clone 会失败",
+     "category": "design"
+    },
+    {
+     "effort": "S",
+     "files": [
+      "package.json:152",
+      "pytest.ini:1-5",
+      "../.github/workflows/ci.yml:363"
+     ],
+     "suggested_fix": "Add a run-gates leaf (e.g. in ci-consumers after the exe build, or a dedicated aggregate) invoking test:python-carriers, or wire it into the python release/exe workflow where carriers are produced.",
+     "detail": "`RLH_REQUIRE_BUNDLED_CARRIERS=1` appears only in python/sdk/tests/test_bundled_runtime.py and python/development*.md; grep over ../.github finds no invocation of test:python-carriers, and ci.yml:363 runs plain `uv run ... pytest` without the flag. The bundled carriers are what the Python SDK distributes, so a rebuild that ships stale carriers passes CI; the check exists only as a documented manual command and in no run-gates aggregate.",
+     "severity": "medium",
+     "title": "test:python-carriers（bundled carriers 校验）没有被任何 run-gates 聚合或 workflow 执行，CI 对 Python 载体漂移不设防",
+     "category": "test-gap"
+    },
+    {
+     "effort": "S",
+     "files": [
+      "vitest.config.ts:83-88"
+     ],
+     "suggested_fix": "Compute the exclusions lazily/only when coverage instrumentation is active (e.g. key off the argv containing --coverage or an explicit env), and memoize; the probe's own comment already requires it to match the suites' hasPwsh resolution, so reuse the same resolve.ts path but gate the spawn.",
+     "detail": "`const pwshCoverageExclusions = spawnSync(resolvePwshPath(), ['-NoLogo', ...], ...)` is a top-level const consumed only by coverage.exclude, but vitest evaluates the whole config for `pnpm run test` too. On hosts with pwsh installed this launches a real PowerShell process (~100-500ms, serial) before any test starts; on pwsh-less hosts it pays a failed-spawn probe. It also couples the default test config to packages/shell/pwsh-local source at load time.",
+     "severity": "medium",
+     "title": "vitest.config.ts 在每次配置加载时同步 spawn pwsh 探针，普通 `pnpm test` 也为 coverage-only 的排除清单买单",
+     "category": "performance"
+    },
+    {
+     "effort": "S",
+     "files": [
+      "vitest.web.config.ts:24-35",
+      "vitest.web-stress.config.ts:6-15",
+      "vitest.web.perf.config.ts:6-15",
+      "vitest.config.ts:131,147,162",
+      "vitest.shared.ts:23-50"
+     ],
+     "suggested_fix": "Extract a shared web-lane factory into vitest.shared.ts (test block + plugin list) that all three web configs consume, mirroring how vitestExecArgv/standardDecoratorPlugin are already shared.",
+     "detail": "vitest.config.ts, vitest.e2e.config.ts and vitest.snapshot.config.ts all set `setupFiles: ['./scripts/test-invariants.ts']` and pass `standardDecoratorPlugin()`; vitest.web.config.ts and vitest.web.perf.config.ts (via spread) set neither, and vitest.web-stress.config.ts also omits standardDecoratorPlugin (the only config without it). Consequences: the jsdom canvas stub (test-invariants.ts:25-31) and the RegistryService invariant-companion patch apply to every lane except the web lanes, so real compositions booted by web e2e/snapshot tests run without the package invariant assertions the repo treats as mandatory; and any decorator-bearing .tsx imported by a stress test would transpile everywhere except the stress lane. perf/stress also inherit the web config's .env load even though their comment says they are outside the CI gate.",
+     "severity": "medium",
+     "title": "web 三条 vitest lane 漂移：缺 test-invariants setupFile，web-stress 还缺 standardDecoratorPlugin",
+     "category": "design"
+    },
+    {
+     "effort": "M",
+     "files": [
+      "vitest.config.ts:266-267",
+      "vitest.config.ts:186-296"
+     ],
+     "suggested_fix": "Split the exemption: keep server-side extensions (tool-cordis, cordis-host-runner, cordis-client-runner) under the per-file gate and narrow the client-UI exemption to packages/extensions/ui-cordis/src/client/**, or record the group in the same GUI-debt manifest as the client exemptions so it can be tracked to zero.",
+     "detail": "The exclude list contains `packages/extensions/*/src/**/*.ts` and `**/*.tsx` (vitest.config.ts:266-267), so tool-cordis, cordis-host-runner, cordis-client-runner and ui-cordis have no per-file 100% enforcement at all, unlike every other non-client group. Unlike the adjacent client-file exemptions, this one is not annotated with a TODO(gui) or reason comment. AGENTS.md's 'test:coverage, not test, is the CI coverage gate' makes this a silent policy carve-out for a whole package group.",
+     "severity": "medium",
+     "title": "packages/extensions/*/src 整组被排除在 per-file 100% 覆盖率门禁之外",
+     "category": "design"
+    },
+    {
+     "effort": "S",
+     "files": [
+      ".oxlintrc.staged.json:1-21",
+      ".oxlintrc.json:12-38"
+     ],
+     "suggested_fix": "Delete the redundant ignorePatterns/options duplication from .oxlintrc.staged.json (keep only extends + the intentional typeAware:false delta), or add a scripts spec pinning the staged config's effective ignores to a documented subset.",
+     "detail": ".oxlintrc.staged.json `extends` .oxlintrc.json, so the parent's ignorePatterns already apply; the child re-lists a subset and has already dropped `.claude/**`, `**/.oxlint-contract-*/**`, the ghostty adapter and the typert type-model fixture entries. If oxlint's extends merges ignores (current behavior), the whole block is dead weight that invites copy-edit drift; if it were ever treated as overriding, the omissions would silently widen the pre-commit lint (with --fix --stage_fixed, i.e. auto-rewriting staged files the full lint ignores).",
+     "severity": "low",
+     "title": ".oxlintrc.staged.json 手工复制主配置的 ignorePatterns，语义要么冗余要么已漂移",
+     "category": "design"
+    },
+    {
+     "effort": "S",
+     "files": [
+      "vitest.e2e.config.ts:18-27",
+      "vitest.snapshot.config.ts:8-17",
+      "scripts/run-gates.ts:162-170",
+      "scripts/run-gates.ts:645-653",
+      "scripts/coverage-partitions.ts:59-66",
+      "scripts/run-web-snapshots.ts:8-12"
+     ],
+     "suggested_fix": "Move one shared positiveIntFromEnv(name, fallback) into vitest.shared.ts (or scripts/), and have run-gates/coverage-partitions/run-web-snapshots consume it; keep the per-call-site error message naming the variable.",
+     "detail": "The same parse-strict-positive-int-or-throw logic exists as positiveIntFromEnv in vitest.e2e.config.ts and vitest.snapshot.config.ts (identical bodies), concurrencyFromEnv and positiveIntArg in scripts/run-gates.ts, parseCoveragePartitionCount/coverageTestTimeoutArgs in scripts/coverage-partitions.ts, and an inline copy in scripts/run-web-snapshots.ts. Error messages and strictness (e.g. `String(parsed) === raw` vs Number.isInteger) already diverge subtly between copies, which is exactly the asymmetry the repo's duplication gate is meant to catch.",
+     "severity": "low",
+     "title": "正整数环境变量解析逻辑在 5+ 处复制，行为约定开始分叉",
+     "category": "design"
+    },
+    {
+     "effort": "S",
+     "files": [
+      "lefthook.yml:46-49",
+      ".github/workflows（../.github，gen-third-party-notices 的 manifest 输入未全量匹配）"
+     ],
+     "suggested_fix": "Extend the lefthook glob with patches/**, scripts/types/** and any other manifest-declared inputs, and add a scripts spec that asserts the glob covers gen-third-party-notices.ts's declared inputs.",
+     "detail": "The pre-commit job's glob covers package.json/pnpm-workspace.yaml/pnpm-lock.yaml/vendor/README.md/python pyproject/generator sources, but its own comment admits the deleted-manifest case 'falls through to the freshness assertion in the test lane'. Inputs outside the glob (e.g. patches/* added via pnpm-workspace patchedDependencies, or scripts/types/client-build-environment/index.d.ts referenced from knip entries) regenerate only when the test lane runs, which the AGENTS.md pre-push policy says should NOT default to the full suite — so a touched input can reach CI stale with no local signal.",
+     "severity": "low",
+     "title": "lefthook third-party-notices 触发 glob 与生成器实际读取的输入面不完全一致（自述缺口仅覆盖删除场景）",
+     "category": "doc-gap"
+    }
+   ],
+   "slice": "build-tests-config",
+   "summary": "仓库级构建/测试配置整体设计水平很高：run-gates.ts 的依赖图调度（validate → needs/after → skip 传播 → allowFailure）自洽且边界校验完整；coverage 门禁（per-file 100% + 分片 + 豁免重套件并行）与 vitest 六个配置的 source-plane 解析约定（tsconfig.base.json paths facade）一致。主要问题集中在三类：(1) 三份手工维护的文件清单（tsconfig.host.json 的 apps/web include、apps/web/tsconfig.json 的 exclude、run-web-snapshots 的 serialFiles）没有任何同步门禁，新增 web 测试会静默进错编译面或逃过 typecheck，且 chat-scroll-fixture 重复条目证明漂移已发生；(2) knip 回退 workspace 配置缺 .tsx/.e2e/.snapshot glob，使十余个 client 包的 tsx 源码完全脱离 knip 检测；(3) `test:python-carriers` 与 `../.github` 外部依赖分别构成未接线的门禁与移植性地雷。另有 web lane 间 setupFiles/装饰器插件的配置漂移，以及每次 `pnpm test` 都要付一次 pwsh spawnSync 探针的小额热路径成本。"
+  },
+  {
+   "findings": [
+    {
+     "category": "performance",
+     "detail": "Every searchSessions/searchEvents call runs _reconcile → _observeStable, which for EVERY live session calls observeLive → observeSession (src/index.ts:535, 856-870): structuredClone(header + all events), JSON.stringify of the complete log, then sha256. Nothing is cached between calls — even a fully unchanged corpus pays O(total live log bytes) clone+serialize per search request. For an active session with a multi-MB log this makes every search (e.g. a UI keystroke) re-serialize every live transcript. The structuredClone is pure waste here: the fingerprint only needs serialized bytes (JSON.stringify on the frozen originals would do), and the clone is discarded after buildSessionEventSearchDocuments consumes it.",
+     "effort": "M",
+     "files": [
+      "packages/session-query/session-query-sqlite/src/index.ts:483-548",
+      "packages/session-query/session-query-sqlite/src/index.ts:856-870"
+     ],
+     "severity": "high",
+     "suggested_fix": "Derive the fingerprint from cheap change markers instead of log bytes (e.g. session.seq + header + a per-session mutation counter exposed by Session), or cache the observation keyed by (sessionId, seq, header) and only re-serialize when the watermark moves; drop the structuredClone in observeSession since the input is already immutable.",
+     "title": "SQLite session-query re-fingerprints every live session's full log on every search"
+    },
+    {
+     "category": "performance",
+     "detail": "corpus.ts:98 resolves one session by calling listPersisted(persistence) — a full backend list — and only then inspectPersisted. Every readSession/readEvent/listEvents/readTitle/filterEvents/readSurface on a persisted session therefore pays a whole-root walk. On the JSONL backend list() = listArtifacts (src/index.ts:472-509), which per session directory does 2 open()-based exists() probes, a first-line read (zstd: frame scan + decompress) plus assertStoredIdentity with two realpath calls (src/index.ts:808-848). Reading one log against a store with thousands of sessions costs thousands of file operations; findLog(id) (src/index.ts:774-795) already implements the direct O(project dirs) resolution, and inspect() alone distinguishes not-found.",
+     "effort": "M",
+     "files": [
+      "packages/session-query/session-query/src/corpus.ts:88-116",
+      "packages/session/session-persistence-jsonl/src/index.ts:472-509",
+      "packages/session/session-persistence-jsonl/src/index.ts:774-795"
+     ],
+     "severity": "medium",
+     "suggested_fix": "In SessionCorpus.load, drop the listing: call inspectPersisted directly and map its not-found error to SESSION_QUERY_SESSION_NOT_FOUND (the live re-check after inspect already exists); or add an id-addressed existence hook to the persistence seam for the pre-check.",
+     "title": "SessionCorpus.load lists the entire persisted corpus to resolve a single session id"
+    },
+    {
+     "category": "design",
+     "detail": "session-persistence-sqlite (schema.ts:121-133) and session-query-sqlite (schema.ts:55-67) both refuse a database they do not own (application_id check, unversioned-with-objects check, recognized-table check). storage-sqlite has neither: configureDatabase only compares user_version, then CREATE TABLE IF NOT EXISTS units/unit_globals and stamps user_version = 1 when it was 0 (schema.ts:82-107). Consequences: (a) pointing the configured path at an arbitrary foreign SQLite file with user_version=0 silently adopts it, creates its tables alongside unknown ones, and stamps it as a Relay storage DB; (b) a foreign file that happens to have user_version=1 is accepted with no validation at all, and failures surface only later as per-statement errors. This contradicts AGENTS.md 'Misconfiguration fails loud' and the sibling backends' explicit ownership protocol.",
+     "effort": "S",
+     "files": [
+      "packages/storage/storage-sqlite/src/schema.ts:77-108",
+      "packages/session/session-persistence-sqlite/src/schema.ts:116-150",
+      "packages/session-query/session-query-sqlite/src/schema.ts:46-78"
+     ],
+     "severity": "medium",
+     "suggested_fix": "Mirror the sibling protocol: stamp a STORAGE_SQLITE_APPLICATION_ID via PRAGMA application_id, reject application_id≠0∧≠ours and application_id=0 with existing user tables at open, and validate the expected object set before stamping.",
+     "title": "storage-sqlite silently adopts foreign SQLite databases (no application_id, no ownership rejection)"
+    },
+    {
+     "category": "performance",
+     "detail": "The shipped json backend persists session_projcache beside workspace.json. The cache service checkpoints on every turn/end of every session (src/index.ts:205-209); each write structuredClones all projection states and puts one record. JsonKvUnit.putRecord publishes by rewriting the COMPLETE unit file (serialize all tables + fsync + directory fsync, storage-json/src/unit.ts:133-140, atomic.ts:24-40). With S sessions in the cache, every turn end in any session rewrites O(total cache bytes), and one session's growth makes every other session's checkpoint more expensive — quadratic write amplification on a per-turn hot path, with projection states serialized twice per write (checkpoint() clone + snapshotJsonValue in put()).",
+     "effort": "M",
+     "files": [
+      "packages/session/session-projection-cache/src/index.ts:140-152",
+      "packages/session/session-projection-cache/src/index.ts:201-239",
+      "packages/storage/storage-json/src/unit.ts:133-140"
+     ],
+     "severity": "medium",
+     "suggested_fix": "Ship session_projcache on the sqlite backend by default (the JSON unit cannot amortize per-record writes), and skip the intermediate structuredClone in checkpoint() by making snapshotJsonValue the single serialization pass.",
+     "title": "Projection-cache checkpoint on JSON backend rewrites the whole store on every turn/end"
+    },
+    {
+     "category": "design",
+     "detail": "session-persistence-sqlite/src/sql.ts:39 and schema.ts:210 hard-code a per-version statement resource set-user-version-17 alongside the SCHEMA_VERSION=17 constant (schema.ts:19). Bumping SCHEMA_VERSION without adding a matching set-user-version-NN resource makes initializeDatabase stamp the OLD version, so every fresh database is created unopenable (the next open refuses its own stamp). Nothing mechanically ties the resource name, the SQL_RESOURCES list entry, and the constant together; the existing sql-resource-boundary test checks only the closed resource list, not version agreement.",
+     "effort": "S",
+     "files": [
+      "packages/session/session-persistence-sqlite/src/schema.ts:19",
+      "packages/session/session-persistence-sqlite/src/schema.ts:206-211",
+      "packages/session/session-persistence-sqlite/src/sql.ts:9-44"
+     ],
+     "severity": "low",
+     "suggested_fix": "Replace the per-version resource with a build-owned interpolated statement (`PRAGMA user_version = ' + SCHEMA_VERSION` from the single constant — safe since it is a compile-time integer), or add a gate asserting the resource name suffix equals SCHEMA_VERSION.",
+     "title": "SCHEMA_VERSION bump touches three unsynchronized places and can self-stamp a stale version"
+    },
+    {
+     "category": "doc-gap",
+     "detail": "schema.ts:31-35 says the open sequence 'deliberately mirrors the session-persistence-sqlite / session-query-sqlite open sequence', but the shared pieces stop at mkdir/createDatabaseFile/journal_mode: the sibling sequences' ownership validation, trusted_schema=0, mmap_size=0, and synchronous=FULL checks are all absent. A reader (and the duplication gate) is told the sequences agree when they diverge exactly on the safety-critical parts; this is also what allowed finding 3 to ship.",
+     "effort": "S",
+     "files": [
+      "packages/storage/storage-sqlite/src/schema.ts:31-35"
+     ],
+     "severity": "low",
+     "suggested_fix": "Either complete the mirror (preferred — fixes finding 3) or rewrite the comment to name exactly which steps are shared and list the omitted hardening as a deliberate difference with its reason.",
+     "title": "storage-sqlite jscpd comment claims to 'deliberately mirror' the sibling open sequences it omits"
+    },
+    {
+     "category": "bug",
+     "detail": "The SQLite packed-row path bounds decompression (decodeData passes maxOutputLength = MAX_PACKED_DATA_BYTES, compression.ts:108-114), but the JSONL backend decompresses without any output bound: decompressZstdFrame (zstd.ts:120-122), decompressZstdPrefix (zstd.ts:154-156), and the multi-frame decoder's plaintexts are all fed straight from on-disk bytes. A corrupted or tampered log (a durable/file boundary that AGENTS.md says must be validated) can declare an arbitrarily large frame content size and force Node's zstdDecompress to allocate it during load/list — readFirstZstdLine (src/index.ts:758) and readPrefix both exercise this on corruption-controlled input.",
+     "effort": "S",
+     "files": [
+      "packages/session/session-persistence-jsonl/src/zstd.ts:120-122",
+      "packages/session/session-persistence-jsonl/src/zstd.ts:154-156",
+      "packages/session/session-persistence-jsonl/src/index.ts:737-771"
+     ],
+     "severity": "low",
+     "suggested_fix": "Pass a sane maxOutputLength (e.g. the packed-row 1 MiB bound for event frames, a header-sized bound in readFirstZstdLine) so oversized expansions fail as a corrupt session log instead of allocating.",
+     "title": "JSONL zstd read paths decompress with no maxOutputLength bound"
+    },
+    {
+     "category": "design",
+     "detail": "The dispose effect drains via `while (this.chains.size > 0) await Promise.allSettled([...this.chains.values()])` with no timeout. SQLiteSessionPersistence accepts busyTimeoutMs up to MAX_BUSY_TIMEOUT_MS = 2_147_483_647 (session-persistence-sqlite/src/index.ts:33,61), so a contended database can keep an appendBatch in begin-immediate retry for weeks while app teardown waits on the drain loop, with no diagnostic naming the stuck session/operation. The same shape applies to a hung fsync on the JSONL side.",
+     "effort": "M",
+     "files": [
+      "packages/session/session-persistence/src/coordinator.ts:1093-1116",
+      "packages/session/session-persistence-sqlite/src/index.ts:31-33"
+     ],
+     "severity": "low",
+     "suggested_fix": "Bound the drain with a configured (or at least logged) deadline that names which session id's chain never settled, so teardown fails loud instead of hanging; keep durability by rethrowing rather than silently abandoning buffered events.",
+     "title": "PersistenceCoordinator dispose drain loop has no deadline against a stalled backend write"
+    },
+    {
+     "category": "design",
+     "detail": "listArtifacts parses headers via parseHeaderMeta (format.ts:404-413), which runs isHeaderLine/fromHeaderLine but never refuseForeignFormatVersion — the guard the read path deliberately applies BEFORE shape validation (format.ts:240-247) so users see 'upgrade the harness'. A session written by a newer harness at a version that still satisfies today's header shape (or an older retired version) is returned by list()/listSnapshots() and surfaces in pickers and the session-query corpus with no marker; the refusal (with the upgrade text and raw-log path) appears only later at open time. The two read paths of the same format-version invariant are asymmetric.",
+     "effort": "S",
+     "files": [
+      "packages/session/session-persistence-jsonl/src/format.ts:240-247",
+      "packages/session/session-persistence-jsonl/src/format.ts:404-413",
+      "packages/session/session-persistence-jsonl/src/index.ts:472-509"
+     ],
+     "severity": "low",
+     "suggested_fix": "Give parseHeaderMeta the same pre-shape version check (returning a typed 'unsupported version' marker instead of a header), and let list()/SessionCorpus expose it so pickers can show the upgrade hint instead of a silently unopenable row.",
+     "title": "list()/parseHeaderMeta skips the format-version refusal, so pickers surface sessions this build cannot open"
+    },
+    {
+     "category": "test-gap",
+     "detail": "storage-sqlite tests only cover version-mismatch rejection (tests/sqlite-backend.spec.ts:78,143). Nothing proves the open path rejects an unrelated SQLite file — the failure mode findings 3/6 describe, and the property both sibling backends test for. Once ownership validation is added, the acceptance path must prove each invalid case is rejected per AGENTS.md's mechanically-checkable-invariant rule. New cases belong in packages/storage/storage-sqlite/tests/sqlite-backend.spec.ts following the existing <name>.spec.ts convention.",
+     "effort": "S",
+     "files": [
+      "packages/storage/storage-sqlite/tests/sqlite-backend.spec.ts"
+     ],
+     "severity": "low",
+     "suggested_fix": "Add cases to packages/storage/storage-sqlite/tests/sqlite-backend.spec.ts: a foreign database with foreign tables and user_version=0, a foreign application_id, and (after the fix) a same-application_id/wrong-object-set database — each asserted to reject with the ownership error before any table is created.",
+     "title": "No test that storage-sqlite rejects a foreign/unrelated database"
+    },
+    {
+     "category": "test-gap",
+     "detail": "_observeStable materializes documents for every non-shadowed persisted session whose revision differs from the index and rewrites all rows in one transaction (src/index.ts:497-516, 439-474). After a backend swap (JSONL → SQLite) or first index creation against a large store, a single search blocks on re-indexing the entire corpus with no bound, and the persistenceBinding change also bumps the epoch so all persisted cursors go stale. The behavior is arguably correct (the index must be complete before ranking) but nothing pins it, so a future incremental-index change could silently serve partial results. The spec belongs in packages/session-query/session-query-sqlite/tests/sqlite.spec.ts next to the existing reconcile coverage.",
+     "effort": "M",
+     "files": [
+      "packages/session-query/session-query-sqlite/tests/sqlite.spec.ts"
+     ],
+     "severity": "medium",
+     "suggested_fix": "Add a spec asserting that after mounting the engine against a pre-populated store the first search returns hits from ALL sessions (full reconciliation before the first page), and that a second search over an unchanged corpus performs no persisted inspect() calls (spy on persistence.inspect) — the regression guard for the finding-1 optimization work.",
+     "title": "session-query-sqlite: no test pins reconciliation behavior when the persistence backend identity changes"
+    }
+   ],
+   "slice": "session-storage",
+   "summary": "The session/storage/spill slice is unusually well-engineered: the persistence coordinator's per-id serialization, revision-gated preparation cache, write-behind batching, and crash-repair sequencing (torn-tail truncation, synthetic closers, seq-gap semantics) are correct and thoroughly tested, and the SQLite session backend's schema-ownership protocol (application_id, SCHEMA_VERSION revalidation, synchronous=FULL) matches the documented invariants. The verified defects cluster in three places: (1) hot-path efficiency — the SQLite session-query engine re-fingerprints every live session's entire log on every search, SessionCorpus.load walks the whole persisted corpus to read one session, and the projection-cache on the JSON storage backend rewrites the entire unit file per turn/end; (2) an asymmetry where storage-sqlite lacks the ownership validation its two sibling SQLite backends implement, silently adopting foreign databases; (3) maintenance friction around SCHEMA_VERSION pinned in three unsynchronized places. No data-loss or replay-correctness bug was found in the audited recovery paths."
+  },
+  {
+   "findings": [
+    {
+     "category": "bug",
+     "detail": "frame-queue.ts:13-27 的 FrameQueue.push 无任何上限，也没有水位/丢帧/断开策略；api-proxy.ts:620-624 的 broadcast 把每个 session/event（含高频 assistant 增量、tool 事件）无条件 push 到每个 mux 订阅者的队列，sseResponse（fetch/handler.ts:203-236）的 enqueue 也不读 desiredSize。一个已连接但停读的 SSE 消费者（TCP 零窗口、被挂起的代理链路）会让该订阅者 buffer 无限增长；muxQueues 中的死队列也不会被清理。另外 drain 用 buffer.shift()（frame-queue.ts:47），大 buffer 下是 O(n²)。最近的 \"bound sdk queues\" 提交收敛了 SDK 方向，这是 host→浏览器方向剩下的最后一个无界队列，且 apiproxy README 的 Known Limitations 未提及。",
+     "effort": "M",
+     "files": [
+      "packages/host/apiproxy/src/frame-queue.ts:14",
+      "packages/host/apiproxy/src/frame-queue.ts:23-27",
+      "packages/host/apiproxy/src/frame-queue.ts:47",
+      "packages/host/apiproxy/src/api-proxy.ts:620-624",
+      "packages/host/apiproxy/src/api-proxy.ts:2879-2897",
+      "packages/host/apiproxy/src/fetch/handler.ts:203-236"
+     ],
+     "severity": "high",
+     "suggested_fix": "给 FrameQueue 加帧数或字节上限并定义慢消费者策略（超限即 end() 断开该订阅者，客户端已有重连+baseline 重放路径，语义安全）；drain 改用头指针代替 shift()；把上限写进 README Known Limitations 或做成 Config 字段。",
+     "title": "FrameQueue 每个 SSE 订阅者的缓冲完全无界，慢消费者可拖垮 host 内存"
+    },
+    {
+     "category": "bug",
+     "detail": "api-proxy.ts:1142-1153 对每批 16 个 cold session 用 Promise.allSettled，但只要任意一个 reject 就 throw 第一个 failure，整个 session.list 以 500 失败。一个损坏或半写的历史 artifact（掉电、后端 bug）会让浏览器的会话列表永久打不开，直到手工删除该 session。这与同文件对 projection 的取向相反：listProjectionsFor（api-proxy.ts:293-303）明确 fail-soft \"a listing without projections is degraded, never broken\"；README Known Limitations 也声明冷路径 \"degrade only toward visibility\"。逐行丢弃+计一条 warning 更符合已声明的失败方向。",
+     "effort": "S",
+     "files": [
+      "packages/host/apiproxy/src/api-proxy.ts:1142-1153",
+      "packages/host/apiproxy/src/api-proxy.ts:293-303"
+     ],
+     "severity": "medium",
+     "suggested_fix": "改为对该行降级（跳过并在 ctx.logger.warn 记录 sessionId 与原因），或至少聚合全部失败后按行降级、仅在全部失败时抛错；若坚持 fail-loud，在 README Known Limitations 写明该方向。",
+     "title": "session.list 冷摘要批次一票否决：单个坏冷日志让整个列表 500"
+    },
+    {
+     "category": "performance",
+     "detail": "usageView（memory-center/src/index.ts:441-489）对 workspace 内每个 persisted session 调 sessionQuery.readSession 拉全量事件数组并遍历 context/prepared 事件聚合 why-used；它被 list 的两个分支（:109、:124）和 read（:179）调用，即 Memory Center 每翻一页、每打开一条详情都做一次 O(全语料日志字节) 的扫描与解析。已有 SQLite 全文/事件索引的 session-query 包存在，却没有按 memory id 的定点查询路径。包内有 usageConcurrency=4 的并发限制，但总代价仍是全语料线性。",
+     "effort": "L",
+     "files": [
+      "packages/host/memory-center/src/index.ts:441-489",
+      "packages/host/memory-center/src/index.ts:109",
+      "packages/host/memory-center/src/index.ts:124",
+      "packages/host/memory-center/src/index.ts:179"
+     ],
+     "severity": "medium",
+     "suggested_fix": "在 session-query 增加按 evidence/evidenceId 的定点检索（索引 context/prepared contributions），usageView 只查命中的 session；短期先把扫描成本与语料规模的关系写进 memory-center README 的 Known Limitations。",
+     "title": "memory-center usageView 每次 list/read 全语料扫描所有 session 日志"
+    },
+    {
+     "category": "doc-gap",
+     "detail": "README.md:78 写 \"the table in `src/api-proxy.ts` handles questions only and has no approval entries\"，但代码已有 pendingApprovals 注册表：api-proxy.ts:478（声明）、754-836（approval/request 监听、abort 竞态处理、replay baseline）、3103-3113（respond 分发）。README 甚至在同段说 wire 是 POST /api/respond + RpcReceipt——正是 approval 的应答通道。该行是 approval 通道落地前的旧文。",
+     "effort": "S",
+     "files": [
+      "packages/host/apiproxy/README.md:78",
+      "packages/host/apiproxy/src/api-proxy.ts:478",
+      "packages/host/apiproxy/src/api-proxy.ts:754-836",
+      "packages/host/apiproxy/src/api-proxy.ts:3103-3113"
+     ],
+     "severity": "medium",
+     "suggested_fix": "改写该条为：questions 与 approvals 共享 /api/respond 的 rpcId 路由，pending 表在断连重连时以稳定 rpcId 重放 requested 帧；删除 \"handles questions only\" 的过时断言。",
+     "title": "apiproxy README Known Limitations 声称无 approval 表，与实现相悖（stale doc）"
+    },
+    {
+     "category": "test-gap",
+     "detail": "events.mux 每个订阅者安装 1 个广播 queue + 4-6 个 ctx.on/jobs 监听（api-proxy.ts:2877-2935），events.host 同样（:2949-3039），cleanup 依赖 queue.iterate 的 finally。现有测试（fetch-carrier.spec.ts、client-handler.spec.ts 等）验证帧内容，但没有任何测试验证：客户端 abort 后 generator 收尾、muxQueues 移除、session/event 监听器被 dispose。按 AGENTS.md \"Registry contributions prove disposal\"（HMR-safety 纪律），这个每客户端一段监听器的注册是最需要证明清理的路径之一；一旦 cleanup 失效，每个断开的标签页都会让所有后续 session 事件多推送一份并常驻内存。",
+     "effort": "M",
+     "files": [
+      "packages/host/apiproxy/src/api-proxy.ts:2833-2939",
+      "packages/host/apiproxy/src/api-proxy.ts:2938-3039",
+      "packages/host/apiproxy/tests/fetch-carrier.spec.ts"
+     ],
+     "severity": "medium",
+     "suggested_fix": "新增 packages/host/apiproxy/tests/api-proxy-mux.spec.ts：用真实 createApiProxy（非 fakeApi）开 mux 流，abort req.signal，断言 1) 生成器结束、2) 之后 append 的 session 事件不再产生帧、3) 反复开关 N 个流后监听器数量不增长（可通过再开一个流观察事件只收到一份来旁证）。",
+     "title": "mux/host 流订阅者清理（disposer 释放）无直接测试"
+    },
+    {
+     "category": "bug",
+     "detail": "prompt 的 admit() 把非 AttachmentError 的一切异常映射为 code:'agent-busy', message:'prompt rejected', details:{reason:String(error)}（api-proxy.ts:1903-1915）。carrier 层的约定是 \"impl never throws business errors; reaching here means the implementation itself crashed\"（fetch/handler.ts:186-191，返回 500），而这里把实现崩溃降级成一个暗示\"稍后重试\"的业务码，且 String(error) 可把内部堆栈/路径文本放进 wire details——与同文件其他域（如 subagentPromptError 统一返回 'internal' + 固定文案，api-proxy.ts:374）的做法不一致。",
+     "effort": "S",
+     "files": [
+      "packages/host/apiproxy/src/api-proxy.ts:1903-1916",
+      "packages/host/apiproxy/src/fetch/handler.ts:186-191",
+      "packages/host/apiproxy/src/api-proxy.ts:374"
+     ],
+     "suggested_fix": "收窄 catch：只有 steer/followup 的已知拒绝（inbox 满等，若存在类型化错误）映射 agent-busy；durablePromptContent 的 AttachmentError 保持现状；其余抛回 carrier 层让它走 500，或统一映射 code:'internal' 且不带原始错误文本。",
+     "severity": "low",
+     "title": "session.prompt 把所有内部异常吞成 agent-busy 并把原始错误串放进 wire details"
+    },
+    {
+     "category": "design",
+     "detail": "mcp-servers/src/index.ts:209-248 在 host 侧手写解析 mcp-client 的 config（serverName/transport/command/args/env/cwd/url/headers/startupTimeoutMs），判断依据是 moduleName === 常量 || endsWith('mcp-client')（:210-211）。mcp-client 插件若新增配置字段或更名，Center 的组合来源行会静默少显示或误判来源（endsWith 启发式会把任何 *mcp-client 包都当 MCP 客户端行读）。这是同一配置格式的第二个解析点，违反 \"one home per fact\"。",
+     "effort": "M",
+     "files": [
+      "packages/host/mcp-servers/src/index.ts:209-248"
+     ],
+     "suggested_fix": "由 rlh-mcp-client 导出其 Config 的 zod schema 与 spec 投影函数（或 isMcpClientModule 判定），host 侧复用；至少把 endsWith 启发式换成 mcp-client 导出的显式判定。",
+     "severity": "low",
+     "title": "mcp-servers 网关手写复刻 mcp-client 配置投影与宽松命名启发式"
+    },
+    {
+     "category": "design",
+     "detail": "updateQueue 对 action.kind==='steer' 强制 target==='next-turn' 且 agent.status==='running'，否则返回 steer-unavailable（api-proxy.ts:2005-2011）；而 prompt 的 mode:'steer' 路径（:1901，直调 agent.steer → agent-loop agent.ts:185-187 入 next-step 队列）不检查运行状态：对空闲 session 发 steer 会静默变成下轮的 next-step 上下文（queueItems 里仍渲染为 'steering' 气泡）。同一\"steering 只属于进行中的 turn\"决策被两个入口执行，一个拒绝、一个降级，客户端无法获得一致反馈。",
+     "effort": "S",
+     "files": [
+      "packages/host/apiproxy/src/api-proxy.ts:1901",
+      "packages/host/apiproxy/src/api-proxy.ts:2005-2011",
+      "packages/core/agent-loop/src/agent.ts:185-187"
+     ],
+     "suggested_fix": "在 prompt 的 steer 分支加与 updateQueue 相同的检查（agent.status !== 'running' 时返回 steer-unavailable），或反之让 updateQueue 也接受降级语义；二选一并写进两侧 JSDoc。",
+     "severity": "low",
+     "title": "session.prompt 的 mode:'steer' 不强制 updateQueue 同款 running-turn 检查"
+    },
+    {
+     "category": "bug",
+     "detail": "hostOpenPathRequestSchema 只要求 path 非空（api/host.schema.ts:68-71），实现注释明确 \"caller owns resolution\"（native-path-opener.ts:177）。同组 browse 后端为同一类 wire 路径值专门建了 fullyQualified 栅栏，理由写在 JSDoc：\"a wire value must never resolve against the host cwd\"（directory-picker/src/index.ts:82-84、directory-picker-browse/src/index.ts:113-117、316）。openPath 是同一 wire 上的同构值，却允许 '\\\\foo'、'foo/bar' 之类值在 host 进程 cwd（或 Windows 当前盘）语境下被 xdg-open/open/PowerShell 消费。",
+     "effort": "S",
+     "files": [
+      "packages/host/apiproxy/src/api/host.schema.ts:68-71",
+      "packages/host/apiproxy/src/native-path-opener.ts:177",
+      "packages/host/directory-picker-browse/src/index.ts:113-117",
+      "packages/host/directory-picker-browse/src/index.ts:316"
+     ],
+     "suggested_fix": "在 host.openPath/openDocument 的 schema 或 api-proxy 入口复用 fullyQualified 检查（拒绝非完全限定路径并返回 bad-request），与 browse/list、createDirectory 的既有栅栏对齐。",
+     "severity": "low",
+     "title": "host.openPath 的 wire schema 接受任意非空字符串，相对路径会落到 host 进程 cwd"
+    },
+    {
+     "category": "design",
+     "detail": "viewFor 在 presenter 抛错或参数不可解析时用 console.error（history-views.ts:68），而同包的 listProjectionsFor/subagentHistoryProjections 都走 ctx.logger.warn（api-proxy.ts:300、332）。该路径在每个 mux 订阅者的每条 session/event 上运行，一处坏 presenter 会在高吞吐事件流上向 stdout 刷屏，绕过 Host 日志的级别/汇聚管线；webserver 包甚至明确立规 \"This package never prints\"。fetch/client.ts:286、401 的 console 在浏览器侧可接受，但 history-views 拿得到 ctx，没有理由。",
+     "effort": "S",
+     "files": [
+      "packages/host/apiproxy/src/history-views.ts:68",
+      "packages/host/apiproxy/src/fetch/client.ts:286",
+      "packages/host/apiproxy/src/fetch/client.ts:401"
+     ],
+     "suggested_fix": "viewFor 已持有 ctx，改用 ctx.logger.warn 并保留 \"falling back to generic\" 语义；可加每会话去重避免事件风暴下刷屏。",
+     "severity": "low",
+     "title": "history-views 用 console.error 输出 presenter 失败，绕过 ctx.logger"
+    }
+   ],
+   "slice": "host",
+   "summary": "host 组（packages/host，~12.6k 行 src）以 apiproxy（8.9k 行）为核心：fetch/SSE carrier、zod 双层解析、approval/question 待答表、session 生命周期去重链（sessionCreations/presetSwitches/workspaceCreationChain）和导出 ZIP 的 durability barrier 都实现严谨，进程/worker 边界（win32 dialog 子进程、native-command 无 shell 调用、skill ZIP 导入的压缩炸弹/路径栅栏）校验完整。最近两次提交覆盖的 sdk 队列与 fencing 没有明显遗漏，但 host→浏览器方向的 FrameQueue 仍是完全无界队列（唯一的高优先级问题），另有 memory-center 每次读都全语料扫描 session 日志的性能问题、一条与代码相悖的 stale README，以及若干 enforcement 不对称。webserver 的 DNS-rebinding 栅栏实际位于 client/connection 节点半（trustedHosts，403），host 侧 415 JSON fence 与之配合，无缺口。"
+  },
+  {
+   "findings": [
+    {
+     "category": "design",
+     "detail": "The authoritative `window.shell` Electron preload API is re-declared as a partial local interface in 10 packages, each naming it differently and each with its own null-safe accessor: ui-settings-general/src/client/desktop-shell.ts:85-112 (DesktopShell + desktopShell() + canPersistCloseBehavior), ui-settings-remote/src/client/desktop-shell.ts:41-83 (a second DesktopShell with different members + desktopShell() + hasRemoteApi), ui-surfaces/src/client/apply.ts:87-109 (third DesktopShell + readWindowShell()), ui-product-shell/src/client/mode.ts:12-24 (DesktopModeShell), ui-preview/src/client/shell.ts:265 (PreviewShell), ui-files/src/client/shell.ts:101 and FilePreview.tsx:109 (FilesShell / DesktopPreviewShell), ui-user-terminal/src/client/shell.ts:43 and apply.ts:74 (PtyShell / inline openExternal), ui-diff/src/client/shell.ts:96 (DiffShell), ui-git/src/client/apply.ts:68 (GitShell). Two packages even use the same exported name `DesktopShell` for disjoint member sets. Any rename or signature change in the Electron preload silently desyncs each copy; there is no single place that states what `window.shell` is.",
+     "files": [
+      "packages/client/ui-settings-general/src/client/desktop-shell.ts",
+      "packages/client/ui-settings-remote/src/client/desktop-shell.ts",
+      "packages/client/ui-surfaces/src/client/apply.ts",
+      "packages/client/ui-product-shell/src/client/mode.ts",
+      "packages/client/ui-preview/src/client/shell.ts",
+      "packages/client/ui-files/src/client/shell.ts",
+      "packages/client/ui-user-terminal/src/client/shell.ts",
+      "packages/client/ui-diff/src/client/shell.ts",
+      "packages/client/ui-git/src/client/apply.ts"
+     ],
+     "severity": "high",
+     "suggested_fix": "Declare one canonical `DesktopShellBridge` contract (all optional IPC members) plus one `desktopShell()` accessor in rlh-client-runtime (React-free, so it fits the object layer and the client bundle purity gate), and have each package narrow to the subset it uses via `Pick<...>`. Update the Electron preload to satisfy that interface so drift becomes a compile error.",
+     "title": "Electron `window.shell` bridge hand-declared 11 times across 10 client packages",
+     "effort": "M"
+    },
+    {
+     "category": "bug",
+     "detail": "ui-agent-preset/src/client/settings-store.ts:38-49 persists the default preset via `api.settings.update({ ns, patch: { default: id } })` with no `expectedRevision`, even though the wire field exists (packages/host/apiproxy/src/api/settings.schema.ts:48-52) and every sibling settings writer fences on it: SettingsScopeController.write (ui-settings/src/client/settings-scope.ts:124-151), PermissionPresetSettingsController.select (ui-permission-presets/src/client/settings-store.ts:142-152), and the Models editors (ui-settings-models/src/client/ProviderEditor.tsx:307, CustomProviderCard.tsx:146-152, VisionModelPicker.tsx:139 — the latter even carries a user-facing conflict string in locales). Two concurrent writers (two windows, or the General row racing the management section) can silently last-write-win the default preset. The response view is also dropped instead of folded via `describeFace.acceptView`, leaving the shared mirror stale until the next `settings/document-updated` push.",
+     "files": [
+      "packages/client/ui-agent-preset/src/client/settings-store.ts",
+      "packages/client/ui-permission-presets/src/client/settings-store.ts",
+      "packages/client/ui-settings/src/client/settings-scope.ts"
+     ],
+     "severity": "high",
+     "suggested_fix": "Read the agent-presets namespace revision from the shared mirror (like PermissionPresetSettingsController does), pass `expectedRevision`, and fold the returned namespace view back with `describeFace.acceptView` so a conflict surfaces as a retriable error instead of a silent overwrite.",
+     "title": "Agent-preset default write bypasses settings revision fencing used by every other settings writer",
+     "effort": "S"
+    },
+    {
+     "category": "performance",
+     "detail": "connection/src/client/index.ts:9 statically imports `./fixture.ts` (3,335 lines, ~150KB source of mock transcripts/API data) and only branches on it at runtime (`const fixture = ... URLSearchParams(...).has('fixture')`, line 88-90). Because the branch is a runtime condition, no bundler can drop `FixtureApiClient` or its data from the production web bundle; the entire fixture dataset ships to every browser solely to support a dev query param.",
+     "files": [
+      "packages/client/connection/src/client/index.ts",
+      "packages/client/connection/src/client/fixture.ts"
+     ],
+     "severity": "medium",
+     "suggested_fix": "Gate the fixture transport behind a dynamic `await import('./fixture.ts')` resolved only when the query param is present (boot is already async-friendly via the top-level plugin apply), or move FixtureApiClient behind the existing `__RLH_BOOT_GATE__` dev seam so tsdown tree-shakes it out of the product bundle.",
+     "title": "Test fixture transport (3,335 lines / ~150KB) statically imported into the production client bundle",
+     "effort": "S"
+    },
+    {
+     "category": "bug",
+     "detail": "connection/src/index.ts:151 runs the capacity assertion only `if (ctx.get('apiProxy') !== undefined)`, and the deferred re-check inside `ctx.inject(['apiProxy'], ...)` (line 184) reads `ctx.get('attachments')` at that moment; neither re-runs when the attachments plugin registers later. If the composition loads client-connection before rlh-attachment (or attachments is absent at that phase), a `maxRequestBodyBytes` below the required image envelope is silently accepted and the failure only appears later as runtime 413s on aggregate image sends — the exact 'silently skip a missing referent' AGENTS.md forbids.",
+     "files": [
+      "packages/client/connection/src/index.ts"
+     ],
+     "severity": "medium",
+     "suggested_fix": "Register a deferred assertion that re-runs when `attachments` appears (e.g. `ctx.inject(['attachments'], ...)` alongside the apiProxy injection), or make the capacity check unconditional by declaring the minimum required envelope independently of the optional service and validating config against that constant.",
+     "title": "client-connection body-capacity assertion silently skipped when attachments registers late",
+     "effort": "S"
+    },
+    {
+     "category": "bug",
+     "detail": "ContextInspectorAction.tsx renders `Context {count}` as the visible button text (line 18), `truncated` as a Pill (line 46), and `context/prepared #{trace.seq}` (line 32) as literals, while the same component registers zh/en dictionaries and consumes `t('open')`, `t('title')` etc. The Chinese UI therefore shows untranslated English in the header action. The local `format()` helper (lines 9-11) also re-implements the `{name}` template interpolation the locale translate seat already provides, so two interpolation implementations coexist in one file.",
+     "files": [
+      "packages/client/ui-context-inspector/src/client/ContextInspectorAction.tsx"
+     ],
+     "severity": "medium",
+     "suggested_fix": "Add keys (e.g. `badge`, `truncated`, `trace.source`) to both dictionaries in locales.ts, render through `t(...)`, and drop the local `format()` in favor of `t(key, params)`.",
+     "title": "Context Inspector renders hardcoded English labels outside the locale system it registers",
+     "effort": "S"
+    },
+    {
+     "category": "dead-code",
+     "detail": "Client AGENTS.md export-discipline rule 1 says implementation components, constants, and controllers stay internal, and rule 2 says same-package tests import `../src/client/...` directly ('never widen the public API to make a test compile'). Verified consumers show these /client value exports are used only by their own package's tests: ContextInspectorAction (ui-context-inspector/src/client/index.ts:9), CodeIndexCenterSection + CodeIndexCenterStore (ui-code-index-center/src/client/index.ts:11-12), MessageEditAction (ui-message-edit/src/client/index.ts:20), MemoryCenterStore (ui-memory-center/src/client/index.ts:13), writeDefaultPreset + AGENT_PRESET_SETTINGS_NS (ui-agent-preset/src/client/index.ts:46), ModelDirectory + ModelDirectoryResolver (ui-model-selection/src/client/index.ts:29-31), GoalBar + GoalDock (ui-goal/src/client/index.ts:26), CommandDirectory + CommandUiRuntime (ui-commands/src/client/index.ts:20-21), SettingsDocumentStore (ui-settings-general/src/client/index.ts:51). knip does not flag entrypoint exports, so this drift persists.",
+     "files": [
+      "packages/client/ui-context-inspector/src/client/index.ts",
+      "packages/client/ui-code-index-center/src/client/index.ts",
+      "packages/client/ui-message-edit/src/client/index.ts",
+      "packages/client/ui-memory-center/src/client/index.ts",
+      "packages/client/ui-agent-preset/src/client/index.ts",
+      "packages/client/ui-model-selection/src/client/index.ts",
+      "packages/client/ui-goal/src/client/index.ts",
+      "packages/client/ui-commands/src/client/index.ts"
+     ],
+     "severity": "medium",
+     "suggested_fix": "Drop the value exports (keep type exports) from the /client entries and switch the corresponding specs to direct `../src/client/*.ts` imports, per the stated rule; consider a `verify-client-packages` check that any `/client` value export has a consumer outside its own package.",
+     "title": "ui-* /client entrypoints value-export implementation components and controllers with zero external consumers",
+     "effort": "M"
+    },
+    {
+     "category": "design",
+     "detail": "mode.ts:53 and :73 obtain the generated productMode Remote via `(this.ctx.remote as unknown as { productMode: ProductModeRemote }).productMode`, where ProductModeRemote is a local hand-typed `{ get(); set(request) }` interface (lines 12-17). The host-generated face for the same remote already exists in api-remotes (ProductMode is imported from there at line 4); the double cast hides any wire-shape change from the compiler at exactly the boundary (browser↔host RPC) where the repo mandates typed contracts.",
+     "files": [
+      "packages/client/ui-product-shell/src/client/mode.ts"
+     ],
+     "severity": "medium",
+     "suggested_fix": "Type the remote against the generated api-remotes client face for productMode (the same pattern ui-memory-center/store.ts uses with `ctx.remote.memoryCenter`), deleting the local ProductModeRemote interface and both `as unknown as` casts.",
+     "title": "ui-product-shell re-declares the productMode remote interface behind a double cast",
+     "effort": "S"
+    },
+    {
+     "category": "design",
+     "detail": "ui-jobs/src/client/locales.ts owns the `job` namespace status strings ('status.running', 'status.stopping', ...). ui-agents-panel/src/client/locales.ts re-declares the same five concepts as its own `jobs.status.*` keys (AgentsPanel.tsx:20-24 maps them) so the same host states have two copy sources that must be edited in lockstep in both languages. Separately, the exact `messageOf` helper is duplicated verbatim in ui-settings-models/src/client/store.ts:59-61 and ui-agent-preset/src/client/settings-store.ts:20-25, and the inline `error instanceof Error ? e.message : String(e)` pattern appears in ~28 files across the slice — a shared coercion util in rlh-client-runtime would delete all of them.",
+     "files": [
+      "packages/client/ui-jobs/src/client/locales.ts",
+      "packages/client/ui-agents-panel/src/client/locales.ts",
+      "packages/client/ui-settings-models/src/client/store.ts",
+      "packages/client/ui-agent-preset/src/client/settings-store.ts"
+     ],
+     "severity": "low",
+     "suggested_fix": "Move the five job-status keys into the shared `common` vocabulary (or have the agents panel render entries through the `job` namespace it already can bind), and add `messageOf(error)` to rlh-client-runtime for the settings/model consumers.",
+     "title": "Duplicated job-status copy and error-message coercion across settings-adjacent packages",
+     "effort": "S"
+    },
+    {
+     "category": "performance",
+     "detail": "store.ts:11-12 keeps `pages: Map<string, MemoryCenterSnapshot>` and `details: Map<string, MemoryCenterDetail>` as plugin-lifetime state (the store is constructed once in apply, ui-memory-center/src/client/index.ts:27). Keys are full request JSON (line 24) including free-text search queries, so each distinct search term or filter combination permanently retains a full snapshot page until a governance write or `connection/reset` clears it (invalidate, line 117-122). A long browsing/search-heavy session grows without bound in the browser tab.",
+     "files": [
+      "packages/client/ui-memory-center/src/client/store.ts"
+     ],
+     "severity": "low",
+     "suggested_fix": "Bound the cache (small LRU, e.g. last N pages/details) or drop entries by workspace/session when the selection changes; the existing generation guard already keeps correctness intact while trimming.",
+     "title": "MemoryCenterStore caches are unbounded for the whole browser session",
+     "effort": "S"
+    },
+    {
+     "category": "doc-gap",
+     "description": "Group package table is stale: 20 shipped ui-* plugins are unlisted and one row points at a directory that does not exist",
+     "detail": "Comparing the package table against the directory listing: 20 shipped packages are absent (ui-agents-panel, ui-code-index-center, ui-context-inspector, ui-deliverables, ui-diff, ui-directory-picker-browse, ui-directory-picker-native, ui-files, ui-git, ui-issue-orchestration, ui-memory-center, ui-message-edit, ui-message-feedback, ui-preview, ui-session-tree, ui-settings-mcp, ui-settings-skills, ui-surfaces, ui-titlebar, ui-user-terminal), and the table row `ui-permission/` links to `ui-permission-presets/README.md` — the directory is `ui-permission-presets`, so the label/anchor pair is misleading (README.md line 38, README.zh.md line 38). All 20 missing packages do have their own READMEs; only the group index is stale.",
+     "files": [
+      "packages/client/README.md",
+      "packages/client/README.zh.md"
+     ],
+     "severity": "low",
+     "suggested_fix": "Add the 20 rows to both language tables and rename the row anchor to `ui-permission-presets/`; consider a gate script comparing the client table against directory listings (the repo already freshness-gates generated docs elsewhere).",
+     "title": "packages/client README table missing 20 ui-* packages and links to non-existent ui-permission/",
+     "effort": "S"
+    },
+    {
+     "category": "lyra-alignment",
+     "detail": "connection/src/client/connection.ts:3-4 states 'Reconnect/backoff tunables (deployment-varying — no hardcoded tunables; these become the future ctx.connection plugin's Config)' with CONNECTION_DEFAULTS (lines 18-23: 500ms base, x2 factor, 10s cap, 3s stream-open timeout). The providing plugin (connection/src/client/index.ts:86-153) takes no Config at all, so the values are fixed constants reachable only programmatically through `start(sinks, config)` — the exact 'DEFAULT_* constant is not configurability' shape AGENTS.md prohibits for deployment-varying choices.",
+     "files": [
+      "packages/client/connection/src/client/connection.ts",
+      "packages/client/connection/src/client/index.ts"
+     ],
+     "severity": "low",
+     "suggested_fix": "Add a validated `ConnectionConfig` (schemastery, mirroring ConnectionConfig fields) to the client connection plugin and thread its resolved defaults into `start()` when the runtime does not override them; then remove the deferral comment.",
+     "title": "Connection reconnect/backoff tunables are constructor options, not a validated plugin Config",
+     "effort": "S"
+    },
+    {
+     "category": "performance",
+     "detail": "history.ts:14-41 loops `sessions.history` in 100-message pages, `pages.unshift(page.events)` per round, and returns `pages.flat()` — the complete session log is materialized in the browser with no byte/message ceiling and no early stop. For a long-lived session (tens of thousands of entries, tool payloads included) this is a large one-shot allocation and wire transfer triggered by opening the tree, and it re-runs from seq 0 on every open since nothing caches or caps the read.",
+     "files": [
+      "packages/client/ui-session-tree/src/client/history.ts"
+     ],
+     "severity": "low",
+     "suggested_fix": "Cap the tree read at the newest K pages with an explicit 'older history not loaded' marker (the canvas only needs the lineage head), or stream pages into the model incrementally so cancelation via the existing `signal` can stop mid-read without discarding work.",
+     "title": "Session tree reads the complete session log into memory with no cap",
+     "effort": "M"
+    }
+   ],
+   "slice": "client-ui-settings-family",
+   "summary": "The audited client slice (ui-settings family, ~40 small ui-* packages, and packages/client/connection) is generally high quality: stores use generation guards, single-flight mirrors, and revision-fenced writes consistently, and JSDoc contracts are unusually thorough. The dominant problem is cross-package duplication of hand-rolled boundary contracts — most notably 11 separate partial declarations of the Electron `window.shell` preload bridge across 10 packages, plus duplicated locale copy and error-coercion helpers — which is exactly the \"unexplained asymmetry / missed extraction\" smell AGENTS.md flags and which blocks the frontend↔backend wiring goal by making the desktop IPC surface unverifiable in one place. Two correctness issues stand out: ui-agent-preset writes the settings document without the revision fencing every sibling writer uses, and the production client bundle statically ships a 150KB test-fixture transport. Doc drift in the group README (20 unlisted packages, one broken directory reference) is the main doc gap; test coverage is dense (CI gates 100% per-file) so no material test gaps were verified."
+  },
+  {
+   "findings": [
+    {
+     "category": "dead-code",
+     "detail": "InputMachine implements `set-invalid` (machine.ts:176, onSetInvalid at :366-376), InputEvent declares it (input/contract.ts:260), Occurrence carries `invalid` (input/contract.ts:176), and decorations render the bit (input/decorations.ts:29,125) — but nothing can ever produce it. Repo-wide grep shows the only references are the contract, the machine, and tests/input-machine.client.spec.ts. InputHub wires exactly four scoped listeners (input/hub.ts:100-110: begin-command, insert-reference, consume-token, insert-text) and SessionInputShell exposes no setInvalid verb, so a reference whose owner fails to resolve can never render invalid and the documented 'Owner-resolution result' behavior is unreachable.",
+     "effort": "S",
+     "files": [
+      "packages/client/ui-conversation/src/client/input/machine.ts:176",
+      "packages/client/ui-conversation/src/client/input/machine.ts:366",
+      "packages/client/ui-conversation/src/client/input/contract.ts:260",
+      "packages/client/ui-conversation/src/client/input/decorations.ts:125",
+      "packages/client/ui-conversation/src/client/input/hub.ts:100"
+     ],
+     "suggested_fix": "Either wire the path (a scoped `slash/input-set-invalid`-style listener plus a shell verb) or delete the event, handler, `Occurrence.invalid`, and the decoration branch together, updating input/contract.ts JSDoc — the pre-release stance allows removing unowned paths outright.",
+     "severity": "medium",
+     "title": "InputEvent 'set-invalid' and the Occurrence.invalid styling bit are unreachable in production"
+    },
+    {
+     "category": "design",
+     "detail": "InputHub routes `slash/input-consume-token` to shell.consumeToken (hub.ts:106), which re-implements the guard-and-splice itself via setDraft (facade.ts:340-351) instead of dispatching the machine's `consume-token` event. The machine handler (machine.ts:333-359) is therefore exercised only by tests/input-machine.client.spec.ts. The two implementations already diverge: the machine's span branch runs casOk (draftRev AND bounds sanity, machine.ts:280-283), while facade.consumeToken checks only `span.draftRev !== snapshot.draftRev` before splicing. Both clear `paste` and push an undo unit today, so the parity is equivalent — but any future edit to one copy silently desynchronizes the undo/paste/claim side effects, and the duplication itself is what AGENTS.md's 'unexplained asymmetry' rule flags.",
+     "effort": "M",
+     "files": [
+      "packages/client/ui-conversation/src/client/input/facade.ts:340",
+      "packages/client/ui-conversation/src/client/input/machine.ts:333",
+      "packages/client/ui-conversation/src/client/input/hub.ts:106"
+     ],
+     "suggested_fix": "Make the facade dispatch the machine's `consume-token` event and read the draftRev advance for its boolean return (the machine JSDoc already defines this contract), or delete onConsumeToken from the machine and move its JSDoc contract onto the facade copy — one owner, not two.",
+     "severity": "medium",
+     "title": "Machine 'consume-token' handler is test-only; facade re-implements the same CAS splice over setDraft (two drifting implementations)"
+    },
+    {
+     "category": "bug",
+     "detail": "ComposerBlocks.forget is documented as 'The session scope's disposer calls this' (input/blocks.ts:46-49), but repo-wide grep finds zero callers (only unrelated longTermMemory.forget hits). apply.ts constructs the registry but never hooks a session-scope effect to drop stores. Consequences: (1) `stores` grows one SnapshotStore per session ever materialized for the app lifetime — the unbounded-growth class the audit priorities call out; (2) if a session id is re-materialized after teardown, the composer silently inherits the old session's block. The composer-bar inject (apply.ts:287) creates stores on first read, so the map is populated for every session the user visits.",
+     "effort": "S",
+     "files": [
+      "packages/client/ui-conversation/src/client/input/blocks.ts:46",
+      "packages/client/ui-conversation/src/client/input/blocks.ts:54",
+      "packages/client/ui-conversation/src/client/apply.ts:233"
+     ],
+     "suggested_fix": "Register the teardown in InputHub.shellFor's existing scope effect (hub.ts:100-119 already runs at scope disposal): call composerBlocks.forget(id) there, and add a HMR-safety test asserting the store is dropped after scope disposal.",
+     "severity": "medium",
+     "title": "ComposerBlockRegistry.forget is never called; per-session block stores accumulate for the app lifetime"
+    },
+    {
+     "category": "bug",
+     "detail": "When the draft is empty but images are attached, facade.submit sends outside the machine: `void this.deps.defaultSink('', imageIds, mode, new AbortController().signal)` (facade.ts:214). The controller is not retained, so dispose()/release (which aborts machine inflight attempts, machine.ts:593-603) cannot cancel this send — a session teardown (hub.ts:111-118) leaves the Host admission running to completion; only the local commitSend/notice is suppressed by the `this.disposed` check. The machine JSDoc states the intended discipline ('constructs one AbortController per SubmitAttempt at enter time and aborts it itself on release'), and this plane skips it. It also keeps a second submit-plane flag (`imageSendInFlight`) that the machine's phase does not reflect, so guardOf reports 'plain' during the flight.",
+     "effort": "M",
+     "files": [
+      "packages/client/ui-conversation/src/client/input/facade.ts:104",
+      "packages/client/ui-conversation/src/client/input/facade.ts:210",
+      "packages/client/ui-conversation/src/client/input/facade.ts:214"
+     ],
+     "suggested_fix": "Route the image-only send through the machine attempt plane (mint an attempt so release aborts it and dead() guards settlement), or at minimum retain the controller on the shell and abort it in dispose(). Add a case to packages/client/ui-conversation/tests/input-reference-submit.client.spec.ts: dispose during an in-flight image-only send and assert the sink signal aborts.",
+     "severity": "medium",
+     "title": "Image-only submit plane bypasses the machine attempt lifecycle: untracked AbortController, dispose cannot cancel the in-flight Host send"
+    },
+    {
+     "category": "performance",
+     "detail": "MessageEditAction subscribes each armed row to the whole session snapshot with `snapshot.nodes.findLast(node => node.kind === 'user')?.seq === seq` (MessageEditAction.tsx:21). The selector returns a boolean so React does not re-render, but the selector itself runs on every snapshot emission for every mounted user-message row: with k user messages and n finalized nodes that is O(k*n) scans per streaming event, all recomputing the same single 'latest user seq' value. The chat builder already maintains per-node projections where this could be derived once.",
+     "effort": "S",
+     "files": [
+      "packages/client/ui-message-edit/src/client/MessageEditAction.tsx:21"
+     ],
+     "suggested_fix": "Compute the latest user seq once per snapshot (memoize on `snapshot.nodes` identity in a shared hook, or project it in the chat snapshot builder's legacy slice) and have the per-row selector compare against that scalar.",
+     "severity": "low",
+     "title": "MessageEditAction scans the full node list per row on every session snapshot emission"
+    },
+    {
+     "category": "doc-gap",
+     "detail": "ChatView's turn status renders `Deep diving...` as a literal (ChatView.tsx:144, aria-live role=\"status\"), and ToolRow renders the inspect pill as `Inspect` (ToolRow.tsx:300) — while every neighboring string in both components goes through `t()`, and ui-conversation/ui-tool both ship zh+en dictionaries. ui-plan deliberately documents its English choices ('Plan' wordmark, error-surface policy — PlanModeControl.tsx:61-68); these two carry no such comment and are ordinary UI copy, so a zh-locale user gets mixed-language chrome. The existing tests pin the English output (chat-view.client.spec.tsx:924,1018), locking the gap in.",
+     "effort": "S",
+     "files": [
+      "packages/client/ui-conversation/src/client/chat/ChatView.tsx:144",
+      "packages/client/ui-tool/src/client/tool/components/ToolRow.tsx:300"
+     ],
+     "suggested_fix": "Add `chat.turnStatus` / `row.inspect` keys to the conversation dictionaries (ui-conversation/src/client/locales.ts owns both namespaces — ui-tool already uses TranslateNS<'conversation'>) and route both literals through t(); update the two pinning tests.",
+     "severity": "low",
+     "title": "Hardcoded English copy bypasses the locale dictionaries: 'Deep diving...' (ChatView) and 'Inspect' (ToolRow)"
+    },
+    {
+     "category": "design",
+     "detail": "SessionInputShell.lexicon resolves the trigger controller at subscribe time only: `subscribe: fn => this.deps.inputTriggers?.()?.lexicon.subscribe(fn) ?? (() => {})` (facade.ts:304-307). The slash/popup deps were deliberately made thunks because 'the shell is created inside the sessions provide materialization ... where slash.sessionOf cannot resolve yet' (facade.ts:27-32) — but a subscribe that lands while the controller is still absent returns a permanent noop and never re-subscribes when the controller materializes, leaving a mounted composer with an empty decoration lexicon for the session's life. The JSDoc documents the no-pipeline case but not this materialization race.",
+     "effort": "M",
+     "files": [
+      "packages/client/ui-conversation/src/client/input/facade.ts:304",
+      "packages/client/ui-conversation/src/client/input/hub.ts:77"
+     ],
+     "suggested_fix": "Make lexicon a live facade: keep a listener Set on the shell and re-bind to the controller's lexicon whenever deps.inputTriggers() first resolves (e.g. on the next track()/arbitrate() call), or document and assert the ordering guarantee that composer mounts never precede controller materialization.",
+     "severity": "low",
+     "title": "Shell lexicon observable permanently no-ops if subscribed before the input-trigger controller materializes"
+    },
+    {
+     "category": "test-gap",
+     "detail": "The audit priorities ask for state-machine coverage gaps: two remain. (1) Nothing exercises dispose() during an in-flight image-only send — the exact path finding 4 shows cannot be cancelled; tests/input-reference-submit.client.spec.ts covers image-only success/rejection but not teardown. (2) The facade's consumeToken/insertText splice path and the machine's `consume-token`/`insert-ref` event paths are tested separately (input-scenarios.client.spec.tsx:129 vs input-machine.client.spec.ts:394) with no parity case, so the duplication drift described above is invisible to the suite.",
+     "effort": "S",
+     "files": [
+      "packages/client/ui-conversation/tests/input-reference-submit.client.spec.ts",
+      "packages/client/ui-conversation/tests/input-machine.client.spec.ts",
+      "packages/client/ui-conversation/tests/input-scenarios.client.spec.tsx"
+     ],
+     "suggested_fix": "Extend tests/input-reference-submit.client.spec.ts with a dispose-mid-flight case asserting the sink AbortSignal fires and no settle reaches the machine; add a parity block to input-machine.client.spec.ts asserting the shell's slash/input-consume-token listener and the machine's `consume-token` event produce identical draft, occurrences, undo-log, and paste states — or delete the machine event per the dead-code finding above.",
+     "severity": "low",
+     "title": "No test pins dispose-during-send behavior of the image-only plane, nor facade/machine consume-token parity"
+    },
+    {
+     "category": "design",
+     "detail": "carryDraft (apply.ts:253-268) moves `snapshot.draft` (the display string containing `@label` reference markers) and image ids to the next session, but not `snapshot.occurrences`, so carried reference chips demote to plain `@label` text in the new composer and will not be serialized to their model form on send — the silent downgrade the sink path otherwise refuses ('never a silent downgrade to the clipboard text', facade.ts sinkSerialized JSDoc). If chip-carrying is intentionally out of scope, the source shell is still left with draft text whose markers no longer match any table entry.",
+     "effort": "M",
+     "files": [
+      "packages/client/ui-conversation/src/client/apply.ts:253"
+     ],
+     "suggested_fix": "Either carry the occurrence table too (rebase offsets to 0 on the target shell via a dedicated verb), or carry the clipboard projection from projectClipboard instead of the display draft so the new session holds honest plain text.",
+     "severity": "low",
+     "title": "carryDraft moves reference chips as plain display text while dropping their occurrence identity"
+    }
+   ],
+   "slice": "client-ui-conversation",
+   "summary": "The chat-surface packages are in strong shape: the pure InputMachine, the ChatSnapshotBuilder's incremental folding (store/location index/legacy slice/reference-label projector), and the tool-node dispatch folding are carefully built, well JSDoc'd, and heavily tested (conversation-node-definitions covers streaming, prepend replay, interruption synthesis, and recall association). CSS modules consistently use `--rlw-*` theme tokens; the only raw-color literals (InputBar beam gradients, ContextMeter violet) are documented design exceptions. The real debt concentrates in the input wiring: two machine events (`consume-token`, `set-invalid`) have no production dispatch site — the facade re-implements consume/insert splices over setDraft and the invalid-chip feature is entirely unreachable — plus an image-only submit plane that bypasses the machine's abort lifecycle, and a ComposerBlockRegistry teardown verb that nothing ever calls. Remaining items are a hot-path selector scan in ui-message-edit and hardcoded English strings that bypass the locale dictionaries."
+  }
+ ],
+ "synthesis": {
+  "backlog": [
+   {
+    "category": "bug",
+    "detail": "ctx.on('agent/turn-stopping') in hooks-claude-code (src/index.ts:269-277, TODO(stop-loop-guard)) steers a continuation whenever the merged Stop-hook outcome is deny, with no counter. A deny-looping or misconfigured hook (the whole point is running untrusted scripts) makes the machine run model steps forever, each iteration spending a provider request. hooks-codex/src/index.ts:254 has the same gap. Fix: cap consecutive hook-forced continuations per turn via a Config field (convert to a normal stop with a model-visible notice when exhausted), mirror in codex, add a deny-loop-terminates test to packages/hooks/hooks-claude-code/tests/.",
+    "files": [
+     "packages/hooks/hooks-claude-code/src/index.ts",
+     "packages/hooks/hooks-codex/src/index.ts"
+    ],
+    "rank": 1,
+    "rounds": [
+     "R5"
+    ],
+    "severity": "high",
+    "title": "Stop hooks force unbounded model continuations with no loop guard"
+   },
+   {
+    "category": "design",
+    "detail": "HarnessSdkJsonRpcServer.sessions is only cleared on performShutdown (packages/sdk/server/src/server.ts:59, 203-235); the protocol has no session/close. Both SDK clients mint a fresh uuid per run() when no sessionId is given (packages/sdk/client/src/api.ts:89, python/sdk/src/relay_harness/api.py:135), so a long-lived harness accumulates one live agent + session (persistence handles, session log) per call. Fix: add session/close to HarnessSdkRequestMap and dispose server-side; short term add idle TTL/LRU eviction for SDK-created agents and have run() reuse or explicitly close its session; update both SDKs' expected-output snapshots in the same PR.",
+    "files": [
+     "packages/sdk/server/src/server.ts",
+     "packages/sdk/protocol/src/types.ts",
+     "packages/sdk/client/src/api.ts",
+     "python/sdk/src/relay_harness/api.py"
+    ],
+    "rank": 2,
+    "rounds": [
+     "R5",
+     "R7"
+    ],
+    "severity": "high",
+    "title": "SDK runtime sessions are never reclaimed: every run() leaks one agent until shutdown"
+   },
+   {
+    "category": "bug",
+    "detail": "FrameQueue.push (packages/host/apiproxy/src/frame-queue.ts:13-27) has no cap and no slow-consumer policy; api-proxy.ts:620-624 pushes every session/event (high-frequency assistant deltas included) to every mux subscriber, and sseResponse enqueue never reads desiredSize. One connected-but-stalled SSE consumer (TCP zero window) grows its buffer without bound; dead queues are never removed from muxQueues; drain uses buffer.shift() (O(n^2) on large buffers). The recent 'bound sdk queues' commit covered the SDK direction — this is the last unbounded host->browser queue. Fix: cap frames or bytes, end() the subscriber on overflow (client already has reconnect + baseline replay), switch drain to a head pointer, document the bound in README/Config.",
+    "files": [
+     "packages/host/apiproxy/src/frame-queue.ts",
+     "packages/host/apiproxy/src/api-proxy.ts",
+     "packages/host/apiproxy/src/fetch/handler.ts"
+    ],
+    "rank": 3,
+    "rounds": [
+     "R5"
+    ],
+    "severity": "high",
+    "title": "FrameQueue buffers per SSE subscriber are fully unbounded; a stalled consumer can exhaust host memory"
+   },
+   {
+    "category": "performance",
+    "detail": "connection/src/client/index.ts:9 statically imports ./fixture.ts (3,335 lines of mock transcripts plus rlh-llm/rlh-session folding helpers), gated only by a runtime '?fixture' query-param check (index.ts:88-91), so no bundler can drop it from the production web bundle. Flagged identically by two independent slices. Fix: dynamic `await import('./fixture.ts')` inside the async plugin apply (or a lazy subpath export), or route it behind the __RLH_BOOT_GATE__ dev seam so tsdown tree-shakes it out.",
+    "files": [
+     "packages/client/connection/src/client/index.ts",
+     "packages/client/connection/src/client/fixture.ts"
+    ],
+    "rank": 4,
+    "rounds": [
+     "R3"
+    ],
+    "severity": "high",
+    "title": "3,335-line dev FixtureApiClient (~150KB) is statically imported into the production browser bundle"
+   },
+   {
+    "category": "bug",
+    "detail": "ui-agent-preset/src/client/settings-store.ts:38-49 calls api.settings.update({ns, patch:{default:id}}) with no expectedRevision, while the wire field exists (packages/host/apiproxy/src/api/settings.schema.ts:48-52) and every sibling writer fences on it (ui-settings settings-scope.ts:124-151, ui-permission-presets settings-store.ts:142-152, ui-settings-models editors). Two concurrent writers can silently last-write-win the default preset; the response view is also dropped instead of folded via describeFace.acceptView, leaving the mirror stale until the next push. Fix: read the namespace revision from the shared mirror, pass expectedRevision, fold the returned view back so conflicts surface as retriable errors.",
+    "files": [
+     "packages/client/ui-agent-preset/src/client/settings-store.ts",
+     "packages/client/ui-permission-presets/src/client/settings-store.ts",
+     "packages/client/ui-settings/src/client/settings-scope.ts"
+    ],
+    "rank": 5,
+    "rounds": [
+     "R7"
+    ],
+    "severity": "high",
+    "title": "Agent-preset default write bypasses the settings revision fencing every sibling writer uses"
+   },
+   {
+    "category": "design",
+    "detail": "LocalJobRegistry.store (packages/jobs/jobs-local/src/index.ts:102) removes records only in disposeOwned/disposeAll; terminal records owned by a long-lived agent stay forever, and jobs started with owner undefined (JobStart.owner optional, packages/jobs/jobs/src/types.ts:62) have no deletion path at all. list() (line 192, the model-facing surface) keeps returning every historical snapshot, inflating model-visible output indefinitely. Fix: prune terminal-and-reported records (finishedAt + grace sweep, bounded completed-cap per owner); add jobs-retention.spec.ts covering unowned/owned removal and loud failure on output of a pruned id.",
+    "files": [
+     "packages/jobs/jobs-local/src/index.ts",
+     "packages/jobs/jobs/src/types.ts"
+    ],
+    "rank": 6,
+    "rounds": [
+     "R5"
+    ],
+    "severity": "high",
+    "title": "jobs-local never prunes terminal job records; unowned jobs leak for the process lifetime and inflate the model-facing list"
+   },
+   {
+    "category": "performance",
+    "detail": "Every searchSessions/searchEvents runs _reconcile -> _observeStable, which for every live session calls observeLive -> observeSession (src/index.ts:535, 856-870): structuredClone of header + all events, full JSON.stringify, sha256 — nothing cached, so even a fully unchanged corpus pays O(total live log bytes) per keystroke-driven search; the clone is pure waste (input already immutable). Fix: derive the fingerprint from cheap change markers (seq + header + mutation counter) or cache by (sessionId, seq, header); drop the structuredClone. Pin the behavior first with the reconciliation spec (R8): first search after a backend swap reconciles everything, second search over an unchanged corpus performs zero inspect() calls.",
+    "files": [
+     "packages/session-query/session-query-sqlite/src/index.ts"
+    ],
+    "rank": 7,
+    "rounds": [
+     "R5",
+     "R8"
+    ],
+    "severity": "high",
+    "title": "SQLite session-query re-fingerprints every live session's entire log on every search"
+   },
+   {
+    "category": "bug",
+    "detail": "python/sdk/src/relay_harness/client.py:118-141 checks `if self._proc is not None` and assigns `self._proc = subprocess.Popen(...)` both outside self._lock; two concurrent start() calls (or concurrent RelayHarness.run) each spawn a runtime, one handle is overwritten, and the orphan's reader/stderr threads keep reading until the process exits. TS is safe by event-loop single-threading — Python-only race. Fix: move the check + Popen + thread startup inside the lock with a re-check; add a concurrent-start-spawns-one-runtime test to python/sdk/tests/test_client.py.",
+    "files": [
+     "python/sdk/src/relay_harness/client.py"
+    ],
+    "rank": 8,
+    "rounds": [
+     "R5"
+    ],
+    "severity": "high",
+    "title": "Python HarnessClient.start() double-spawn race: check and Popen are both outside the lock"
+   },
+   {
+    "category": "design",
+    "detail": "The authoritative window.shell preload API is re-declared as partial local interfaces in 10 client packages (ui-settings-general, ui-settings-remote — two disjoint DesktopShell sets, ui-surfaces, ui-product-shell, ui-preview, ui-files, ui-user-terminal, ui-diff, ui-git), each with its own null-safe accessor. Any preload rename or signature change silently desyncs every copy; there is no single place stating what window.shell is. Fix: one canonical DesktopShellBridge contract + desktopShell() accessor in rlh-client-runtime (React-free), each package narrowing via Pick<...>, Electron preload satisfying the interface so drift becomes a compile error.",
+    "files": [
+     "packages/client/ui-settings-general/src/client/desktop-shell.ts",
+     "packages/client/ui-settings-remote/src/client/desktop-shell.ts",
+     "packages/client/ui-surfaces/src/client/apply.ts",
+     "packages/client/ui-product-shell/src/client/mode.ts",
+     "packages/client/ui-files/src/client/shell.ts"
+    ],
+    "rank": 9,
+    "rounds": [
+     "R7"
+    ],
+    "severity": "high",
+    "title": "Electron window.shell bridge hand-declared 11 times across 10 client packages"
+   },
+   {
+    "category": "design",
+    "detail": "tsconfig.host.json includes each apps/web/tests file individually while apps/web/tsconfig.json excludes the same files one-by-one from its tests glob, and scripts/run-web-snapshots.ts keeps a third serial-owners list — no gate syncs them. A new web e2e test added to the vitest.web glob but not both lists either lands in the wrong compiler face (client tsc for host-plane Context merges) or escapes typecheck entirely; drift already exists (chat-scroll-fixture.ts listed twice in both configs). Fix: a scripts gate asserting the exclude list is exactly the complement of the include list over apps/web/tests/**, or derive both from a single manifest.",
+    "files": [
+     "tsconfig.host.json",
+     "apps/web/tsconfig.json",
+     "scripts/run-web-snapshots.ts",
+     "vitest.web.config.ts"
+    ],
+    "rank": 10,
+    "rounds": [
+     "R8"
+    ],
+    "severity": "high",
+    "title": "apps/web test files are gated by three hand-maintained lists; new tests land in the wrong compile face or escape typecheck"
+   },
+   {
+    "category": "design",
+    "detail": "The packages/*/* fallback workspace declares entry [tests/**/*.spec.ts] and project [src/**/*.ts, tests/**/*.ts] (knip.json:246-254); .tsx globs exist only in ~30 explicit overrides. Verified missing: ui-user-questions, ui-session-tree, ui-titlebar, ui-git, ui-agents-panel, ui-surfaces, ui-files, ui-diff, ui-preview, ui-theme, ui-attachment, ui-reference, ui-brand-official, ui-memory-center, ui-sidebar — their .tsx source and .e2e/.snapshot tests are invisible to unused-file/export/dependency detection, and new client packages inherit the hole silently. Fix: widen the fallback to *.tsx/*.e2e.ts/*.snapshot.ts and delete the now-redundant overrides; knip --treat-config-hints-as-errors keeps it fails-loud.",
+    "files": [
+     "knip.json"
+    ],
+    "rank": 11,
+    "rounds": [
+     "R8"
+    ],
+    "severity": "high",
+    "title": "knip fallback workspace config lacks .tsx/e2e/snapshot globs — 15+ client packages' tsx source escapes all knip checks"
+   },
+   {
+    "category": "bug",
+    "detail": "agent.ts:377-383 returns false directly when phase.step===0 and the pre-step waterfall rewrites the decision to {kind:'enter', messages:[]}, skipping the tail logic every other exit runs (agent.ts:437-442 hasPending re-check + continuation). Inbox.claim('next-turn') consumes only one next-turn message, and live-driver wakes set no wakeRequested latch, so send('a'); send('b') with an empty-enter listener completes turn 1 and leaves 'b' in the inbox with no driver and no wakeup — silent shelve until the next external wakeup. The sibling `turnEnds && messages.length===0` break path behaves asymmetrically. Fix: route the empty-enter exit through the same tail (set turnEnds, break, or re-check hasPending before returning); the paired regression test in contract-regressions.spec.ts (two followups + empty enter, second message starts its own turn) is the R8 backfill.",
+    "files": [
+     "packages/core/agent-loop/src/agent.ts",
+     "packages/core/agent/src/inbox.ts",
+     "packages/core/agent-loop/tests/contract-regressions.spec.ts"
+    ],
+    "rank": 12,
+    "rounds": [
+     "R5",
+     "R8"
+    ],
+    "severity": "medium",
+    "title": "Empty enter decision permanently shelves queued inbox input (skips the hasPending re-check all other turn exits run)"
+   },
+   {
+    "category": "bug",
+    "detail": "apps/desktop/src/main/config.js:180-186 readJson catches every parse/read failure and returns fallback with no naming comment and no log; the next saveConfig persists those defaults, permanently destroying workspace/theme/restart settings — same for credentials.json (apiKey/githubToken). Violates 'misconfiguration fails loud'. Fix: on parse failure of an existing file, log via rlh.log/dialog and quarantine (config.json.corrupt-<ts>) instead of silently regenerating; at minimum name the swallow.",
+    "files": [
+     "apps/desktop/src/main/config.js"
+    ],
+    "rank": 13,
+    "rounds": [
+     "R5"
+    ],
+    "severity": "medium",
+    "title": "Corrupt config.json/credentials.json silently resets to defaults and the loss is then persisted"
+   },
+   {
+    "category": "bug",
+    "detail": "A crash between writeFile(lockPath) and the finally rm (packages/util/atomic-write/src/index.ts:112-129) leaves <file>.lock; every later writer retries 2s and throws 'timed out waiting for the writer lock' forever. LocalCredentialProvider's every credential write goes through this (packages/credentials/credentials-local/src/index.ts:394); the lock contains the owner pid but isLockContention never reads it. Fix: on contention, read the pid and self-heal when process.kill(pid,0) reports it dead (same host), keep failing loud for foreign-host/unreadable locks; add a stale-lock recovery test in packages/util/atomic-write/tests.",
+    "files": [
+     "packages/util/atomic-write/src/index.ts",
+     "packages/credentials/credentials-local/src/index.ts"
+    ],
+    "rank": 14,
+    "rounds": [
+     "R5"
+    ],
+    "severity": "medium",
+    "title": "Orphaned atomic-write .lock permanently bricks credential/settings writes until manual deletion"
+   },
+   {
+    "category": "bug",
+    "detail": "TS performClose returns early when child===undefined without failSubscriptions (client.ts:418-420), and subscribe() only born-fails if closeTask/exitCode/spawnError already exist — so subscribe-then-close-then-next() never resolves. Python mirrors it (client.py:143-146 early-return before _fail_waiters), so NotificationSubscription.next() polls forever. Contract says subscriptions reject immediately after close. Fix: fail subscriptions unconditionally at the top of both close paths; add close-without-start cases to sdk-client.spec.ts and test_client.py.",
+    "files": [
+     "packages/sdk/client/src/client.ts",
+     "python/sdk/src/relay_harness/client.py"
+    ],
+    "rank": 15,
+    "rounds": [
+     "R5"
+    ],
+    "severity": "medium",
+    "title": "Subscriptions created before start() hang forever after close() (TS pending forever, Python 50ms polling loop)"
+   },
+   {
+    "category": "bug",
+    "detail": "packages/guard/llm-circuit-breaker/src/breaker.ts:81-85: requests admitted while closed (check() passes, no probe slot) can settle after a trip; in half-open, record() unconditionally shift()s a probe and a stale success closes the breaker before any real probe outcome, a stale failure trips on a slot it never claimed. Wired per provider (index.ts:110-116) so every request is exposed. Closed-state samples also evict by age only, no count cap. Fix: stamp each request with the state at check() and route record() by the stamp; cap samples drop-oldest; add a trip-while-in-flight test.",
+    "files": [
+     "packages/guard/llm-circuit-breaker/src/breaker.ts",
+     "packages/guard/llm-circuit-breaker/src/index.ts"
+    ],
+    "rank": 16,
+    "rounds": [
+     "R5"
+    ],
+    "severity": "medium",
+    "title": "CircuitBreaker half-open accounting lets stale closed-state outcomes consume probe slots and close the breaker early"
+   },
+   {
+    "category": "bug",
+    "detail": "session-persistence-sqlite and session-query-sqlite both enforce application_id + unversioned-with-objects + recognized-table ownership checks; storage-sqlite (packages/storage/storage-sqlite/src/schema.ts:77-108) only compares user_version then CREATE TABLE IF NOT EXISTS and stamps user_version=1 — pointing the config at any foreign SQLite file silently adopts it, and a foreign file already at user_version=1 is accepted with zero validation, surfacing later as per-statement errors. Its schema comment also claims to 'deliberately mirror' the sibling sequences while omitting exactly the ownership/hardening steps (R9 doc fix folded in here). Fix: stamp and validate a STORAGE_SQLITE_APPLICATION_ID per the sibling protocol; add foreign-db rejection cases to sqlite-backend.spec.ts (currently only version-mismatch is tested) and correct or complete the mirror comment.",
+    "files": [
+     "packages/storage/storage-sqlite/src/schema.ts",
+     "packages/storage/storage-sqlite/tests/sqlite-backend.spec.ts"
+    ],
+    "rank": 17,
+    "rounds": [
+     "R5",
+     "R8",
+     "R9"
+    ],
+    "severity": "medium",
+    "title": "storage-sqlite silently adopts foreign SQLite databases — no application_id or ownership rejection like its two sibling backends"
+   },
+   {
+    "category": "bug",
+    "detail": "api-proxy.ts:1142-1153 uses Promise.allSettled over each batch of 16 cold sessions but throws the first failure, so one corrupted or half-written historical artifact makes session.list 500 until the session is manually deleted — inverting the file's own declared direction (listProjectionsFor at :293-303 is fail-soft 'degraded, never broken', and the README promises cold paths 'degrade only toward visibility'). Fix: skip-and-warn per row with sessionId + reason, aggregating errors; only fail when everything fails, or document the fail-loud choice in Known Limitations.",
+    "files": [
+     "packages/host/apiproxy/src/api-proxy.ts"
+    ],
+    "rank": 18,
+    "rounds": [
+     "R5"
+    ],
+    "severity": "medium",
+    "title": "session.list cold-summary batch is all-or-nothing: one bad cold log 500s the entire browser session list"
+   },
+   {
+    "category": "doc-gap",
+    "detail": "README.md:78 says the api-proxy.ts route table 'handles questions only and has no approval entries', but the pendingApprovals registry exists (api-proxy.ts:478 declaration, 754-836 approval/request handling with abort races and replay baseline, 3103-3113 respond dispatch) — answered over the same POST /api/respond the README describes in the adjacent sentence. Pre-approval stale text. Fix: rewrite to state questions and approvals share the /api/respond rpcId route with stable-rpcId replay on reconnect; while in that file, also document the FrameQueue bound from backlog #3.",
+    "files": [
+     "packages/host/apiproxy/README.md",
+     "packages/host/apiproxy/src/api-proxy.ts"
+    ],
+    "rank": 19,
+    "rounds": [
+     "R9"
+    ],
+    "severity": "medium",
+    "title": "apiproxy README Known Limitations claims there is no approval table — contradicted by the shipped approval channel"
+   },
+   {
+    "category": "bug",
+    "detail": "Two verified lifecycle gaps in the input wiring. (1) Empty-draft image-only submit calls defaultSink with `new AbortController().signal` and retains nothing (facade.ts:214): dispose()/release cannot cancel the in-flight Host admission, guardOf reports 'plain' during the flight, and the machine JSDoc's per-attempt abort discipline is bypassed. (2) ComposerBlocks.forget is documented as 'the session scope's disposer calls this' (input/blocks.ts:46-49) but has zero callers — one SnapshotStore per ever-visited session accumulates for the app lifetime, and a re-materialized session id inherits the old block. Fix: route the image-only send through the machine attempt plane (or retain and abort the controller on dispose), and register composerBlocks.forget(id) in InputHub.shellFor's existing scope effect; add dispose-mid-flight and HMR-disposal tests (R8 component).",
+    "files": [
+     "packages/client/ui-conversation/src/client/input/facade.ts",
+     "packages/client/ui-conversation/src/client/input/blocks.ts",
+     "packages/client/ui-conversation/src/client/apply.ts"
+    ],
+    "rank": 20,
+    "rounds": [
+     "R3",
+     "R8"
+    ],
+    "severity": "medium",
+    "title": "Input facade bypasses the machine lifecycle: image-only send is unabortable and ComposerBlockRegistry stores leak for the app lifetime"
+   },
+   {
+    "category": "bug",
+    "detail": "connection/src/index.ts:151 runs the maxRequestBodyBytes-vs-image-envelope assertion only if apiProxy already exists, and the deferred re-check inside ctx.inject(['apiProxy']) reads ctx.get('attachments') at that moment without re-running when attachments registers later. Loading client-connection before rlh-attachment accepts a cap below the required image envelope; the failure surfaces only as runtime 413s on aggregate image sends — the 'silently skip a missing referent' pattern AGENTS.md forbids. Fix: also defer on ctx.inject(['attachments']), or validate against an independently declared minimum envelope constant.",
+    "files": [
+     "packages/client/connection/src/index.ts"
+    ],
+    "rank": 21,
+    "rounds": [
+     "R7"
+    ],
+    "severity": "medium",
+    "title": "client-connection body-capacity assertion silently skipped when the attachments plugin registers later"
+   },
+   {
+    "category": "doc-gap",
+    "detail": "ChatView renders 'Deep diving...' as a literal (ChatView.tsx:144), ToolRow renders 'Inspect' (ToolRow.tsx:300), and ContextInspectorAction renders 'Context {count}', 'truncated', and 'context/prepared #seq' as literals (ContextInspectorAction.tsx:18/32/46, plus a local format() duplicating the t() interpolation) — all in components that register zh/en dictionaries and route neighboring strings through t(), so zh-locale users get mixed-language chrome; existing tests pin the English output. Fix: add the keys to the conversation dictionaries (ui-conversation/src/client/locales.ts owns both namespaces) and route through t(); update the pinning tests.",
+    "files": [
+     "packages/client/ui-conversation/src/client/chat/ChatView.tsx",
+     "packages/client/ui-tool/src/client/tool/components/ToolRow.tsx",
+     "packages/client/ui-context-inspector/src/client/ContextInspectorAction.tsx"
+    ],
+    "rank": 22,
+    "rounds": [
+     "R3",
+     "R9"
+    ],
+    "severity": "medium",
+    "title": "Hardcoded English copy bypasses the locale dictionaries: 'Deep diving...', 'Inspect', and Context Inspector labels"
+   },
+   {
+    "category": "bug",
+    "detail": "ensureOwnedPort calls killOwnedListeners whenever the wanted port answers HTTP, and RlhManager._doStop does too (apps/desktop/src/main/rlh.js:284-298, 397-411); the killable test is only image-name /^(node|rlh)(\\.exe)?$/ and not-this-process — a user's unrelated Node dev server (or another agent harness) on default port 3080 is terminated via taskkill /T /F or process-group SIGTERM with no confirmation. The pid file narrows one path but not the httpReady fallback; the non-Windows group-kill also silently no-ops for non-group-leader children. Fix: kill only proven-owned listeners (pid file, own child, marker match on the HTTP banner), otherwise hop ports; pin with a foreign-listener-not-killed test.",
+    "files": [
+     "apps/desktop/src/main/rlh.js"
+    ],
+    "rank": 23,
+    "rounds": [
+     "R5"
+    ],
+    "severity": "medium",
+    "title": "Desktop kills arbitrary node/rlh processes listening on its configured port"
+   },
+   {
+    "category": "design",
+    "detail": "The Python client is declared a design twin of the TS client but four behaviors have drifted: (1) initialize — TS throws SdkProtocolError on missing/malformed serverInfo (client.ts:295-302), Python's pydantic model accepts None fields (models.py:26-32); (2) malformed session.event — TS validates and throws (api.ts:155-167), Python silently skips (api.py:162-172), returning final_response='' as success; (3) RunResult — Python exposes finish_reason and validates turn/end, TS has neither and reads only data.message.content where Python falls back to data.content; (4) close semantics — TS close is terminal, Python allows restart, and teardown grace differs 6x (TS 6s EOF quiesce vs Python 1s). Fix: pick a direction per item (recommended: Python matches TS validation; TS adds finishReason + content fallback), unify the two snapshot field sets, and back each with mirrored tests (test_client.py lacks concurrent-start, subscribe-before-start, and malformed-initialize cases TS already has).",
+    "files": [
+     "python/sdk/src/relay_harness/api.py",
+     "python/sdk/src/relay_harness/models.py",
+     "python/sdk/src/relay_harness/client.py",
+     "packages/sdk/client/src/api.ts",
+     "packages/sdk/client/src/client.ts"
+    ],
+    "rank": 24,
+    "rounds": [
+     "R5",
+     "R8"
+    ],
+    "severity": "medium",
+    "title": "SDK design-twin drift bundle: initialize validation, malformed-event error propagation, RunResult projection, and close/restart semantics all differ between TS and Python"
+   },
+   {
+    "category": "test-gap",
+    "detail": "WebApiClient.readWebSocket (packages/client/connection/src/client/web-api-client.ts:45-101) is the browser's only wire parser — JSON-parses every frame against serverRequestSchema, drops malformed frames with console.error and continues, drains a wake-based inbox, arms abort during CONNECTING/OPEN, closes in finally — and none of it is under test (connection/tests only has host-side specs). The malformed-frame drop-and-continue path and the pre-connect abort arm are exactly the wire-boundary behaviors AGENTS.md says to prove. Fix: add web-api-client.client.spec.ts with a stubbed global WebSocket covering malformed JSON survives, schema-invalid frame dropped while the next valid frame yields, abort during CONNECTING and during OPEN, and close-before-open.",
+    "files": [
+     "packages/client/connection/src/client/web-api-client.ts",
+     "packages/client/connection/tests/"
+    ],
+    "rank": 25,
+    "rounds": [
+     "R8"
+    ],
+    "severity": "medium",
+    "title": "No test covers the client WebSocket frame pump (WebApiClient.readWebSocket) — the browser's only wire parser"
+   }
+  ],
+  "health_summary": "Round-1 audit of relay-harness (11 slices) found a codebase with unusually strong fundamentals — transactional lifecycle, revision-fenced stores, bounded queues in the SDK layer, and dense CI gating — but three dominant themes. (1) Unbounded retention/lifecycle leaks are the single biggest defect class: the host FrameQueue per SSE subscriber, SDK runtime sessions that leak one agent per run(), jobs-local terminal records (and unowned jobs with no deletion path at all), ACP sessions held for the connection lifetime, client-side session event windows, and desktop relay pending-request entries all grow without bound in long-lived processes. (2) Contract duplication and enforcement asymmetry: the Electron window.shell bridge is hand-declared 11 times, the TS/Python SDK \"design twins\" have drifted on validation, projection, and close semantics, the agent-preset writer alone skips settings revision fencing, and core's contained-emit pattern is copied six ways. (3) Hot-path O(n) rescans and gate holes: SQLite session-query re-fingerprints the whole corpus per search, memory-center rescans all session logs per list/read, currentAgentPreset rescans the event log each step, while knip misses all .tsx in 15+ client packages and apps/web test files sit behind three unsynced hand-maintained lists that let new tests escape typecheck. Near-misses that did not make the top 25 but are worth tracking: CircuitBreaker half-open accounting, subprocess spill-file cleanup, persistence dispose-drain deadline, JSONL zstd unbounded decompression, the Lyra-aligned frontend gaps (Files-panel syntax highlighting, render-the-app probe suite), and packages/client README missing 20 packages."
+ }
+}

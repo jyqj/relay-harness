@@ -9,12 +9,11 @@ import {
   closeSync,
   existsSync,
   fsyncSync,
+  ftruncateSync,
   lstatSync,
   mkdirSync,
   openSync,
   readFileSync,
-  truncateSync,
-  writeFileSync,
   writeSync,
 } from 'node:fs'
 import { dirname } from 'node:path'
@@ -24,7 +23,7 @@ import type { WorkflowRunId } from '@relay-harness/rlh-workflow'
 import type { ChildResult, ChildStartRequest } from './types.ts'
 
 /** On-disk journal format version. */
-export const WORKFLOW_JOURNAL_VERSION = 1
+export const WORKFLOW_JOURNAL_VERSION = 2
 /** Restore and append cap imported from the Grok workflow journal. */
 export const MAX_WORKFLOW_JOURNAL_BYTES = 64 * 1024 * 1024
 
@@ -49,10 +48,19 @@ interface WorkflowJournalEntry {
   readonly outcome: WorkflowJournalOutcome
 }
 
+interface WorkflowJournalIntent {
+  readonly type: 'intent'
+  readonly seq: number
+  readonly kind: 'agent'
+  readonly requestHash: string
+}
+
+type WorkflowJournalRecord = WorkflowJournalIntent | WorkflowJournalEntry
+
 /** Typed journal load, append, capacity, and replay failure. */
 export class WorkflowJournalError extends Error {
   /** Stable machine code for engine mapping and tests. */
-  readonly code: 'JOURNAL_INVALID' | 'JOURNAL_DIVERGENCE' | 'JOURNAL_FULL' | 'JOURNAL_IO'
+  readonly code: 'JOURNAL_INVALID' | 'JOURNAL_DIVERGENCE' | 'JOURNAL_FULL' | 'JOURNAL_IO' | 'JOURNAL_OUTCOME_UNKNOWN' | 'JOURNAL_BUSY'
 
   constructor(
     message: string,
@@ -65,14 +73,14 @@ export class WorkflowJournalError extends Error {
   }
 }
 
-/** Canonicalize object keys recursively while preserving array order. */
+/** Canonicalize keys by locale-independent code-unit order while preserving arrays. */
 function canonicalJson(value: JsonValue): JsonValue {
   if (Array.isArray(value)) return value.map(canonicalJson)
   if (typeof value !== 'object' || value === null) return value
   const record = value as Record<string, JsonValue>
   return Object.fromEntries(
     Object.entries(record)
-      .sort(([left], [right]) => left.localeCompare(right))
+      .sort(([left], [right]) => Number(left > right) - Number(left < right))
       .map(([key, child]) => [key, canonicalJson(child)]),
   )
 }
@@ -110,11 +118,15 @@ function readHeader(value: unknown): WorkflowJournalHeader {
 }
 
 /** Validate a parsed record as one child-call entry. */
-function readEntry(value: unknown): WorkflowJournalEntry {
+function readEntry(value: unknown): WorkflowJournalRecord {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) {
     throw new WorkflowJournalError('workflow journal call entry must be an object', 'JOURNAL_INVALID')
   }
   const entry = value as Record<string, unknown>
+  if (entry.type === 'intent' && Number.isSafeInteger(entry.seq) && (entry.seq as number) >= 1
+    && entry.kind === 'agent' && typeof entry.requestHash === 'string') {
+    return entry as unknown as WorkflowJournalIntent
+  }
   if (entry.type !== 'call' || !Number.isSafeInteger(entry.seq) || (entry.seq as number) < 1
     || entry.kind !== 'agent' || typeof entry.requestHash !== 'string'
     || typeof entry.outcome !== 'object' || entry.outcome === null) {
@@ -126,15 +138,29 @@ function readEntry(value: unknown): WorkflowJournalEntry {
     : outcome.kind === 'failed'
       ? typeof outcome.childId === 'string' && typeof outcome.rendered === 'string'
       : outcome.kind === 'settled'
-        ? typeof outcome.childId === 'string' && typeof outcome.result === 'object' && outcome.result !== null
+        ? typeof outcome.childId === 'string' && validChildResult(outcome.result)
         : false
-  if (!valid) throw new WorkflowJournalError('workflow journal call outcome is malformed', 'JOURNAL_INVALID')
+  if (!valid || snapshotJsonValue(value) === undefined) {
+    throw new WorkflowJournalError('workflow journal call outcome is malformed', 'JOURNAL_INVALID')
+  }
   return entry as unknown as WorkflowJournalEntry
+}
+
+/** Validate exactly the child-result fields consumed by the workflow runtime; other block kinds remain extensible. */
+function validChildResult(value: unknown): boolean {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return false
+  const result = value as Record<string, unknown>
+  if (typeof result.stopReason !== 'string' || !Array.isArray(result.output)) return false
+  return result.output.every((block: unknown) => {
+    if (typeof block !== 'object' || block === null || Array.isArray(block)) return false
+    const content = block as Record<string, unknown>
+    return typeof content.type === 'string' && (content.type !== 'text' || typeof content.text === 'string')
+  })
 }
 
 /** One bounded durable workflow journal. */
 export class WorkflowJournal {
-  private readonly entries = new Map<number, WorkflowJournalEntry>()
+  private readonly entries = new Map<number, WorkflowJournalRecord>()
   private bytes: number
 
   private constructor(
@@ -191,15 +217,14 @@ export class WorkflowJournal {
       const content = readFileSync(path)
       const newlineTerminated = content.length === 0 || content.at(-1) === 0x0a
       const rows = content.toString('utf8').split('\n')
+      let truncateAt: number | undefined
       if (rows.at(-1) === '') rows.pop()
       if (!newlineTerminated && rows.length > 0) {
         const last = rows.at(-1) as string
         try {
           JSON.parse(last)
-          writeFileSync(path, '\n', { flag: 'a' })
         } catch {
-          const lastStart = content.lastIndexOf(0x0a) + 1
-          truncateSync(path, lastStart)
+          truncateAt = content.lastIndexOf(0x0a) + 1
           rows.pop()
         }
       }
@@ -217,10 +242,34 @@ export class WorkflowJournal {
           throw new WorkflowJournalError(`workflow journal parse failed at line ${index + 2}`, 'JOURNAL_INVALID', { cause: error })
         }
         const entry = readEntry(parsed)
-        if (journal.entries.has(entry.seq)) {
+        const prior = journal.entries.get(entry.seq)
+        if (prior !== undefined && (prior.type !== 'intent' || entry.type !== 'call')) {
           throw new WorkflowJournalError(`workflow journal repeats call sequence ${entry.seq}`, 'JOURNAL_INVALID')
         }
+        if (entry.type === 'call' && (prior === undefined || prior.requestHash !== entry.requestHash)) {
+          throw new WorkflowJournalError(`workflow journal outcome lacks matching intent at call ${entry.seq}`, 'JOURNAL_INVALID')
+        }
         journal.entries.set(entry.seq, entry)
+      }
+      let maxSeq = 0
+      for (const seq of journal.entries.keys()) maxSeq = Math.max(maxSeq, seq)
+      if (maxSeq !== journal.entries.size) {
+        throw new WorkflowJournalError('workflow journal has a missing call sequence', 'JOURNAL_INVALID')
+      }
+      if (!newlineTerminated) {
+        const repairedBytes = truncateAt ?? content.length + 1
+        if (repairedBytes > MAX_WORKFLOW_JOURNAL_BYTES) {
+          throw new WorkflowJournalError('workflow journal repair exceeds its byte bound', 'JOURNAL_FULL')
+        }
+        const fd = openSync(path, 'r+')
+        try {
+          if (truncateAt !== undefined) ftruncateSync(fd, truncateAt)
+          else writeSync(fd, '\n', content.length)
+          fsyncSync(fd)
+        } finally {
+          closeSync(fd)
+        }
+        journal.bytes = repairedBytes
       }
       return journal
     } catch (error: unknown) {
@@ -237,7 +286,12 @@ export class WorkflowJournal {
    */
   replay(seq: number, request: ChildStartRequest): WorkflowJournalOutcome | undefined {
     const entry = this.entries.get(seq)
-    if (entry === undefined) return undefined
+    if (entry === undefined) {
+      if ([...this.entries.keys()].some(recorded => recorded > seq)) {
+        throw new WorkflowJournalError('workflow replay cannot restart a missing earlier call', 'JOURNAL_INVALID')
+      }
+      return undefined
+    }
     const requestHash = workflowRequestHash('agent', request)
     if (entry.requestHash !== requestHash) {
       throw new WorkflowJournalError(
@@ -245,7 +299,25 @@ export class WorkflowJournal {
         'JOURNAL_DIVERGENCE',
       )
     }
+    if (entry.type === 'intent') {
+      throw new WorkflowJournalError(
+        `workflow call ${seq} has an unknown outcome; reconcile its side effects before starting a new run`,
+        'JOURNAL_OUTCOME_UNKNOWN',
+      )
+    }
     return structuredClone(entry.outcome)
+  }
+
+  /**
+   * Durably reserve one host call before any provider startup or side effect.
+   * @param seq - deterministic one-based host-call sequence.
+   * @param request - exact child request whose identity is reserved.
+   */
+  begin(seq: number, request: ChildStartRequest): void {
+    if (this.entries.has(seq)) {
+      throw new WorkflowJournalError(`workflow journal already contains call ${seq}`, 'JOURNAL_INVALID')
+    }
+    this.appendRecord({ type: 'intent', seq, kind: 'agent', requestHash: workflowRequestHash('agent', request) })
   }
 
   /**
@@ -255,7 +327,8 @@ export class WorkflowJournal {
    * @param outcome - detached terminal host outcome.
    */
   record(seq: number, request: ChildStartRequest, outcome: WorkflowJournalOutcome): void {
-    if (this.entries.has(seq)) {
+    const prior = this.entries.get(seq)
+    if (prior?.type === 'call') {
       throw new WorkflowJournalError(`workflow journal already contains call ${seq}`, 'JOURNAL_INVALID')
     }
     const entry: WorkflowJournalEntry = {
@@ -267,7 +340,15 @@ export class WorkflowJournal {
     }
     const snapshot = snapshotJsonValue(entry)
     if (snapshot === undefined) throw new WorkflowJournalError('workflow journal outcome is not JSON data', 'JOURNAL_INVALID')
-    const line = `${JSON.stringify(snapshot)}\n`
+    if (prior !== undefined && prior.requestHash !== entry.requestHash) {
+      throw new WorkflowJournalError(`workflow journal outcome diverges at call ${seq}`, 'JOURNAL_DIVERGENCE')
+    }
+    if (prior === undefined) this.begin(seq, request)
+    this.appendRecord(snapshot)
+  }
+
+  private appendRecord(entry: WorkflowJournalRecord): void {
+    const line = `${JSON.stringify(entry)}\n`
     const bytes = Buffer.byteLength(line)
     if (this.bytes + bytes > MAX_WORKFLOW_JOURNAL_BYTES) {
       throw new WorkflowJournalError('workflow journal byte limit exceeded', 'JOURNAL_FULL')
@@ -283,7 +364,7 @@ export class WorkflowJournal {
       if (fd !== undefined) closeSync(fd)
     }
     this.bytes += bytes
-    this.entries.set(seq, entry)
+    this.entries.set(entry.seq, entry)
   }
 }
 

@@ -14,9 +14,9 @@ Status: implemented
 
 [ci.yml](../../../../../.github/workflows/ci.yml) 中必需的 `windows` 作业仍是在 `ubuntu-latest` 上运行的 `windows node 24 / wine blocking`。它保留经过校验和验证的 Windows Node、Wine apt 与 pnpm 缓存、仅限工作区快照的 hoisted 安装，以及运行工作区构建与生产网站的[共享 Wine 门禁脚本](../../../../scripts/wine-windows-gates.sh)。Node 分发文件传输采用有界重试；nodejs.org 的大文件传输停滞时，由支持范围请求的传输镜像续传相同字节，但版本和 SHA-256 权威仍属于 nodejs.org，归档通过该校验前绝不会投入使用。稳定的 `windows` 作业 ID 仍是 `all checks passed` 的依赖项。[已归档的 Wine 实验](../../archived/process/2026-07-27-wine-windows-gates-experiment.md)保留其实测取舍，而本文负责当前双通道拓扑。
 
-每个拉取请求还会在组织自有的 `rlh-windows-2025-16core` 运行器上启动一个常规且独立的 `windows-native` 作业，名称为 `windows node 24 / native complete`。该作业为工作区符号链接启用开发人员模式，通过 `pnpm/action-setup` 提供仓库固定版本的 pnpm，在不传输 store 归档的情况下执行不可变安装，并在原生 PowerShell 下运行 `pnpm run check:ci:windows-complete`。门禁卡住时，120 分钟超时会为其设定上限，同时不把实测性能目标当作正确性截止时间。
+每个拉取请求还会在可移植托管的 `windows-2025` 运行器上启动一个常规且必需的 `windows-native` 作业，名称为 `windows node 24 / native complete`。该作业为工作区符号链接启用开发人员模式，通过 `pnpm/action-setup` 提供仓库固定版本的 pnpm，在不传输 store 归档的情况下执行不可变安装，并在原生 PowerShell 下运行 `pnpm run check:ci:windows-complete`。门禁卡住时，120 分钟超时会为其设定上限，同时不把实测性能目标当作正确性截止时间。
 
-原生作业被刻意排除在 `all-checks-passed.needs` 之外，且不使用 `continue-on-error`：聚合流程既不等待它，也不会因它改变结论；该作业则保留自身未被掩盖的结果。工作区构建、生产网站和逐文件 100% 覆盖率检查失败会使原生作业失败。静态检查、文档、包、构建产物、lint 与快照清单在同一作业内作为观测性门禁运行；其失败保持可见，但不会改变原生聚合结果，因为这些检查的阻断性判定由 Linux 负责。
+原生 Windows 作业参与 `all-checks-passed.needs`，不使用 `continue-on-error`。失败、取消或跳过的原生结果会阻止聚合检查通过。Linux 继续拥有完整静态与消费者验证清单；Windows 补充 Wine 无法提供的原生 runtime、文件系统、进程与 addon 证据。
 
 16 核通道最多同时运行 4 道外层门禁。工作区构建、生产网站验证与插桩覆盖率会立即启动。豁免重型覆盖率等待构建通过后再启动，使其临时 Oxlint 约定探针不会与源码编译竞态。每道观测性门禁只等待两道覆盖率门禁以任意结果结算后再进入可用槽位；各门禁自身的 `needs` 边仍要求前置门禁通过。这也使随后创建临时约定文件的静态门禁不会与任一覆盖率扫描竞态。[job 内分区覆盖率](2026-08-18-in-job-partitioned-coverage.md)使用 8 个单 worker 分片，豁免重型门禁则从 `RLH_COVERAGE_MAX_WORKERS=6` 获得 2 个 worker。因此初始阶段约有 10 个活动执行单元；构建结束并启动豁免重型门禁后，如果网站与插桩覆盖率仍在运行，峰值约为 11 个。观测性清单启动时，`publint` 最多使用 8 个 worker。每个 Vitest 项目都使用 fork worker，因为 Node 24 的 CJS lexer 致命故障可在 Windows 与 POSIX 的共享 worker 中复现。两项覆盖率门禁都将 Vitest 默认的单测试和轮询时间预算设为 30 秒，因为在完整通道并发的 Windows 插桩下，多个互不相关的进程、Git、SQLite、watcher、语法和静态门禁 fixture（测试前置数据）可能超过 15 秒。translation-pairing 合并套件只导入 `scripts/` 源码和子进程，因此放入豁免重型套件门禁；V8 插桩不会为它贡献任何阈值覆盖率，却会放大 Git 进程延迟。Lefthook 并发 fixture 保留原有结果，采用 30 秒单用例预算与 10 秒进程就绪探测；安装器则允许被抢占的 lock 持有者在独占创建后用 5 秒发布记录。directory-picker 组合为防抖配置写入提供显式的 15 秒轮询预算；workspace-context 组合 fixture 使用测试自有、没有无关 1 秒截止时间的信号。这些只属于该通道的预算保留了原有断言结果，120 分钟的 job 截止时间仍会约束卡死的运行。LSP 源码与 ACL 沙箱源码仍计入 Windows 分母：基于 stub 的失败路径套件把每个进程内 ACL 沙箱文件都带到 100%，只有 runner 入口保持排除——它只作为 spawn 出的子进程在插桩运行之外执行，其行为由 runner 套件端到端钉住。窄范围且带注释的 V8 ignore 只覆盖不可达分支（另一平台专属分支、生命周期内不可达的防御守卫），其行为测试仍保留在所属平台。
 
@@ -36,21 +36,21 @@ Shiki 会禁用 TextMate 正则的延迟编译，并在用户内容进入保持�
 
 ## 曾考虑的替代方案
 
-**让原生 Windows 成为 `all checks passed` 的依赖项。** 这会为聚合流程提供保真度最高的 Windows 判定，但也会让每次合并等待最慢的托管作业与 Windows 容量。独立结果能让该信号保持自动产生，而不改变现有必需路径。
+**把原生 Windows 留在聚合检查之外。** 不予采用，因为 Wine 兼容构建通过无法证明受支持的 NT 内核、NTFS、进程与 addon 行为。等待原生运行器容量是受支持平台验收成本的一部分。
 
 **只在拉取请求上运行 Wine。** Wine 能快速触达阻断性 win32 工具链分支，但即使真实 NT、NTFS、PowerShell、进程或原生插件约定已经损坏，也可能报告绿灯。
 
-**将原生作业标记为 `continue-on-error`。** 门禁失败后，该设置会让其检查显示为成功。保留常规独立作业可维持诊断结论；仅从聚合流程的 `needs` 中省略它，才是不阻断的机制。
+**为原生作业设置 `continue-on-error`。** 不予采用，因为这会掩盖失败。聚合检查要求常规原生作业成功。
 
 **排除看似不受支持的文件或削弱 Windows fixture。** 不予采纳，因为受影响的 LSP、watcher、持久化、客户端与进程行为均受支持。仅适用于另一平台的分支采用窄范围标注；可移植结果继续计入分母，并通过符合真实宿主行为的 fixture 验证。
 
-**保留 GitHub 标准的 `windows-2025` 运行器。** 该可移植双核镜像能可靠完成这份完整清单，但其 32 分钟的串行结果使自动原生信号的实用性远低于所选的 16 核运行器。
+**要求组织自有的大型 Windows 运行器。** 必需路径不采用，因为平台验收必须无需仓库外部的运行器配置即可运行。大型运行器测量结果用于优化，而非决定正确性。
 
 **使用 32 核或更大的运行器。** 32 核对比仅比 16 核将聚合门禁时间缩短 1.47 秒，且仍因 Node 的 CJS lexer 失败；先前高并发的 32 核和 64 核试验也以同类故障失败。因此，增加容量只会提高资源分配成本，却不能带来稳定的端到端收益。
 
 ## 后果
 
-Wine 保留必需聚合流程现有的关键路径和作业身份。`all checks passed` 变绿时，原生 Windows 仍可能处于待处理或红灯状态，因此分支保护采用 Wine 结果，而评审者和后续自动化采用独立的原生结果。
+Wine 与原生 Windows 保留独立作业，均参与必需判定。真实内核 Sandbox 与源码／打包 Desktop smoke 也通过可复用 workflow 加入该判定；缺失或跳过的证据会阻止聚合检查成功。
 
 尽管如此，每个拉取请求都会获得真实 NT 内核、NTFS、PowerShell、Windows 进程、原生插件和受支持源码覆盖率信号。原生作业会重复设置流程与两项阻断构建，在标准镜像上明显更慢；但它也会暴露兼容性通道掩盖的路径、watcher、生命周期与 fixture 缺陷。
 

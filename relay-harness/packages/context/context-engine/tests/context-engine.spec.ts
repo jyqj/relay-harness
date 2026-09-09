@@ -4,6 +4,7 @@ import { createUserMessage } from '@relay-harness/rlh-llm'
 import { SessionId } from '@relay-harness/rlh-session'
 import ContextEngine, {
   ContextEngineError,
+  ContextProviderError,
   EvidenceId,
   SourceId,
   type ContributedStepContext,
@@ -258,7 +259,9 @@ describe('ContextEngine prepareStep', () => {
 
     const prepared = await engine.prepareStep(input())
 
-    expect(seenBudget).toMatchObject({ maxChars: 4, maxTokens: 100, timeoutMs: 25 })
+    expect(seenBudget).toMatchObject({ maxChars: 4, maxTokens: 100 })
+    expect(seenBudget?.timeoutMs).toBeGreaterThan(0)
+    expect(seenBudget?.timeoutMs).toBeLessThanOrEqual(25)
     expect(seenBudget?.deadlineAt).toBeGreaterThan(0)
     expect(prepared?.messages).toEqual([])
     expect(prepared?.decisions).toContainEqual(expect.objectContaining({
@@ -320,8 +323,12 @@ describe('ContextEngine prepareStep', () => {
     expect(a.seen[0]?.messages).toBe(step.messages)
     expect(a.seen[0]?.caller).toBe(step.caller)
     expect(a.seen[0]?.signal).not.toBe(step.signal)
-    expect(a.seen[0]?.budget).toMatchObject({ maxChars: 64_000, maxTokens: 16_000, timeoutMs: 5_000 })
-    expect(b.seen[0]?.budget).toMatchObject({ maxChars: 64_000, maxTokens: 16_000, timeoutMs: 5_000 })
+    expect(a.seen[0]?.budget).toMatchObject({ maxChars: 64_000, maxTokens: 16_000 })
+    expect(a.seen[0]?.budget.timeoutMs).toBeGreaterThan(0)
+    expect(a.seen[0]?.budget.timeoutMs).toBeLessThanOrEqual(5_000)
+    expect(b.seen[0]?.budget).toMatchObject({ maxChars: 64_000, maxTokens: 16_000 })
+    expect(b.seen[0]?.budget.timeoutMs).toBeGreaterThan(0)
+    expect(b.seen[0]?.budget.timeoutMs).toBeLessThanOrEqual(5_000)
   })
 
   it('stops before later contributors and publishes nothing after cancellation', async () => {
@@ -395,4 +402,165 @@ describe('ContextEngine prepareStep', () => {
       code: 'CONTEXT_ENGINE_INVALID_CONTRIBUTION',
     })
   })
+})
+
+describe('bounded preparation execution', () => {
+  it('caps concurrent reads and packs in registration order despite reverse completion', async () => {
+    const { engine } = await mountEngine({ maxConcurrentContributors: 2 })
+    const releases: (() => void)[] = []
+    let active = 0
+    let peak = 0
+    for (const id of ['first', 'second', 'third']) engine.registerContributor({
+      id,
+      async contribute() {
+        active += 1
+        peak = Math.max(peak, active)
+        await new Promise<void>((resolve) => { releases.push(resolve) })
+        active -= 1
+        return contributed(id)
+      },
+    })
+    const pending = engine.prepareStep(input())
+    await new Promise(resolve => setTimeout(resolve, 0))
+    expect(releases).toHaveLength(2)
+    releases[1]!()
+    await new Promise(resolve => setTimeout(resolve, 0))
+    expect(releases).toHaveLength(3)
+    releases[2]!()
+    releases[0]!()
+    const prepared = await pending
+    expect(peak).toBe(2)
+    expect(prepared?.contributions.map(value => value.contributorId)).toEqual(['first', 'second', 'third'])
+  })
+
+  it('expires the whole preparation including queued reads and ignores late rejection', async () => {
+    const { engine } = await mountEngine({ maxConcurrentContributors: 1, prepareTimeoutMs: 10, contributorTimeoutMs: 1000 })
+    let rejectLate!: (error: Error) => void
+    let signal!: AbortSignal
+    let queuedCalls = 0
+    engine.registerContributor({ id: 'slow', contribute(received) {
+      signal = received.signal
+      return new Promise((_resolve, reject) => { rejectLate = reject })
+    } })
+    engine.registerContributor({ id: 'queued', async contribute() { queuedCalls += 1; return contributed('queued') } })
+    const prepared = await engine.prepareStep(input())
+    expect(queuedCalls).toBe(0)
+    expect(signal.aborted).toBe(true)
+    expect(prepared?.decisions).toEqual(['slow', 'queued'].map(contributorId => ({ contributorId, outcome: 'rejected', reasons: ['deadline'] })))
+    rejectLate(new Error('late secret'))
+    await Promise.resolve()
+    expect(prepared?.messages).toEqual([])
+  })
+
+  it('disposal immediately aborts an uncooperative generation and releases the slot', async () => {
+    const { engine } = await mountEngine({ maxConcurrentContributors: 1 })
+    let signal!: AbortSignal
+    const dispose = engine.registerContributor({ id: 'old', contribute(received) {
+      signal = received.signal
+      return new Promise(() => {})
+    } })
+    engine.registerContributor(makeContributor('next', contributed('next')))
+    const pending = engine.prepareStep(input())
+    await Promise.resolve()
+    dispose()
+    const prepared = await pending
+    expect(signal.aborted).toBe(true)
+    expect(prepared?.contributions.map(value => value.contributorId)).toEqual(['next'])
+    expect(prepared?.decisions[0]?.reasons).toEqual(['disposed'])
+  })
+
+  it('engine unload rejects pending preparation and never starts queued providers', async () => {
+    const { ctx, engine } = await mountEngine({ maxConcurrentContributors: 1 })
+    let calls = 0
+    engine.registerContributor({ id: 'slow', contribute: () => new Promise(() => {}) })
+    engine.registerContributor({ id: 'queued', async contribute() { calls += 1; return undefined } })
+    const pending = engine.prepareStep(input())
+    const rejected = expect(pending).rejects.toThrow('context engine disposed')
+    await Promise.resolve()
+    await ctx.fiber.dispose()
+    await rejected
+    expect(calls).toBe(0)
+  })
+
+  it('records unknown provider failures with a stable code and no raw error text', async () => {
+    const { engine } = await mountEngine()
+    engine.registerContributor({ id: 'broken', async contribute() { throw new Error('private user query') } })
+    const prepared = await engine.prepareStep(input())
+    expect(prepared?.decisions).toEqual([{ contributorId: 'broken', outcome: 'rejected', reasons: ['error', 'provider_failed'] }])
+    expect(JSON.stringify(prepared)).not.toContain('private user query')
+  })
+})
+
+
+describe('preparation cancellation and explicit rejection', () => {
+  it('parent cancellation aborts active reads without starting queued providers', async () => {
+    const { engine } = await mountEngine({ maxConcurrentContributors: 1 })
+    const controller = new AbortController()
+    let local!: AbortSignal
+    let calls = 0
+    engine.registerContributor({ id: 'active', contribute(received) {
+      local = received.signal
+      return new Promise(() => {})
+    } })
+    engine.registerContributor({ id: 'queued', async contribute() { calls += 1; return undefined } })
+    const preparing = engine.prepareStep({ ...input(), signal: controller.signal })
+    await Promise.resolve()
+    controller.abort(new Error('parent cancelled'))
+    await expect(preparing).rejects.toThrow('parent cancelled')
+    expect(local.aborted).toBe(true)
+    expect(calls).toBe(0)
+  })
+
+  it('retains an explicit decline as trace rather than losing it or calling it timeout', async () => {
+    const { engine } = await mountEngine()
+    engine.registerContributor({ id: 'bounded', async contribute() {
+      throw new ContextProviderError('declined', 'budget_exhausted')
+    } })
+    expect((await engine.prepareStep(input()))?.decisions).toEqual([
+      { contributorId: 'bounded', outcome: 'rejected', reasons: ['declined', 'budget_exhausted'] },
+    ])
+  })
+
+  it('never starts a registration removed while waiting for a provider slot', async () => {
+    const { engine } = await mountEngine({ maxConcurrentContributors: 1 })
+    let release!: () => void
+    let calls = 0
+    engine.registerContributor({ id: 'first', async contribute() {
+      await new Promise<void>((resolve) => { release = resolve })
+      return contributed('first')
+    } })
+    const dispose = engine.registerContributor({ id: 'queued', async contribute() { calls += 1; return undefined } })
+    const preparing = engine.prepareStep(input())
+    await Promise.resolve()
+    dispose()
+    release()
+    const prepared = await preparing
+    expect(calls).toBe(0)
+    expect(prepared?.decisions).toContainEqual({ contributorId: 'queued', outcome: 'rejected', reasons: ['disposed'] })
+  })
+
+  it('detaches a completed provider result before another provider mutates its retained value', async () => {
+    const { engine } = await mountEngine({ maxConcurrentContributors: 1 })
+    const retained = { ...contributed('first'), evidence: [] as Evidence[] }
+    engine.registerContributor(makeContributor('first', retained))
+    engine.registerContributor({ id: 'second', async contribute() { retained.evidence.push(evidence); return undefined } })
+    expect((await engine.prepareStep(input()))?.evidence).toEqual([])
+  })
+})
+
+it('rejects a completed candidate whose registration is disposed while another provider is pending', async () => {
+  const { engine } = await mountEngine({ maxConcurrentContributors: 2 })
+  const dispose = engine.registerContributor(makeContributor('completed', contributed('stale')))
+  let release!: () => void
+  engine.registerContributor({ id: 'pending', async contribute() {
+    await new Promise<void>((resolve) => { release = resolve })
+    return contributed('current')
+  } })
+  const preparing = engine.prepareStep(input())
+  await new Promise(resolve => setTimeout(resolve, 0))
+  dispose()
+  release()
+  const prepared = await preparing
+  expect(prepared?.contributions.map(value => value.contributorId)).toEqual(['pending'])
+  expect(prepared?.decisions).toContainEqual({ contributorId: 'completed', outcome: 'rejected', reasons: ['disposed'] })
 })

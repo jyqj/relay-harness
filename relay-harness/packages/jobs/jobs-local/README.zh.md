@@ -20,6 +20,8 @@
 
 控制器与监听器按注册方所在的 scope 分层，形状与 tools 注册表一致：一次注册归档到其注册上下文的 scope，一次读取则把全局层与所有者的 scope 链求并集。因此一个进程级注册表能逐所有者地回答逐所有者的问题——对自身组合未附加任何控制器的所有者，无论其他组合附加了多少，`start()` 都会拒绝并抛出 `background jobs unavailable: no job controller serves this agent (load @relay-harness/rlh-tool-jobs in its composition)`；一次结算也只会抵达其所有者所属组合注册的监听器。
 
+终止记录不会永久保留。一条记录在变为已报告（完成通知可送达）之后再经过 `terminalRetentionMs`（默认 `60000`）的宽限期才可回收，且每个 owner 桶最多保留 `maxTerminalRecords` 条终止记录（默认 `100`），超出时丢弃最早结算者。回收扫描只在 `start()` 与 `list()` 时运行，从不依赖定时器；未报告的终止记录永不被回收，因此完成通知保持至少一次送达。已回收的 id 在 `get`、`read`、`kill`、`wait` 中读作 `unknown job <id>`。
+
 ## 模型体验
 
 通过生产方插件和 [`rlh-tool-jobs`](../tool-jobs/README.md) 间接影响；它们会呈现 job id、输出、状态、取消和完成通知。

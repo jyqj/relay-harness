@@ -525,6 +525,15 @@ async function retainedBrowserState(
   cdp: CDPSession,
   page: Page,
 ): Promise<RetainedBrowserState> {
+  const windowState = await page.evaluate(() => {
+    const chat = document.querySelector<HTMLElement>('[data-chat-window-mode]')
+    return {
+      mode: chat?.dataset.chatWindowMode,
+      mounted: chat?.querySelectorAll('[data-chat-flow-key]').length ?? 0,
+      pins: Number(chat?.dataset.chatPinnedCount ?? 0),
+    }
+  })
+  if (windowState.mode === 'virtual') expect(windowState.mounted).toBeLessThanOrEqual(120 + windowState.pins)
   await cdp.send('HeapProfiler.collectGarbage')
   const metrics = await chromiumMetrics(cdp)
   return {
@@ -797,11 +806,8 @@ async function stableCount(
 }
 
 async function conversationTurns(page: Page): Promise<number> {
-  // Loaded-window turn count: one mounted turn-tail footer per settled turn in
-  // the window (context keys are `${kind.length}:${kind}${id}`). The stats
-  // strip cannot serve as this probe: its counts ride the whole-log
-  // sessionStats projection and stay fixed across paging by design.
-  return stableCount(page.locator('[data-chat-flow-key^="9:turn-tail"]'), count => count > 0)
+  // Full loaded-window count, independent of viewport recycling and the whole-log stats projection.
+  return Number(await page.locator('[data-chat-loaded-turn-count]').getAttribute('data-chat-loaded-turn-count'))
 }
 
 function retainedDelta(

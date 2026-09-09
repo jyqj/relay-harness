@@ -15,7 +15,7 @@ import type {
 import type {
   DraftAttachmentId, EditRange, EditSelection, InputActions, InputEffect, InputNotice, InputState,
   PasteComponent, QueuedMessage, SessionInput, SubmitAttempt,
-} from './contract.ts'
+} from '../contract/input.ts'
 import type { InputSubmitMode } from '../contract/composer-submission.ts'
 import { InputMachine, projectClipboard } from './machine.ts'
 
@@ -85,7 +85,12 @@ export class SessionInputShell implements SessionInput {
   readonly state: SnapshotStore<InputState>
   /** Latest surfaced notice (null after clear); the bar renders errors as banners and information inline. */
   readonly notices: SnapshotStore<InputNotice | null> = createSnapshotStore<InputNotice | null>(null)
-  /** The public provide-channel action face (one stable identity per session). */
+  /**
+   * The public provide-channel action face (one stable identity per session).
+   * `setDraft` is unguarded by phase: a write landing while an attempt is
+   * adjudicating/submitting feeds the NEXT send — the in-flight attempt
+   * froze its draft and occurrence table at enter time.
+   */
   readonly actions: InputActions = {
     setDraft: (text) => { this.setDraft(text) },
     addImages: ids => this.addImages(ids),
@@ -102,6 +107,8 @@ export class SessionInputShell implements SessionInput {
   private imageIds: readonly DraftAttachmentId[] = []
   /** One image-only send at a time: Enter during the Host round-trip is a no-op. */
   private imageSendInFlight = false
+  /** Cancellation of the in-flight image-only direct send (aborted at dispose; undefined while settled). */
+  private imageSendAbort: AbortController | undefined
   private disposed = false
   /** Draft persistence mirror (chat store write; receives the clipboard projection, never display-only ranges). */
   private mirrorFn: ((text: string) => void) | undefined
@@ -208,16 +215,26 @@ export class SessionInputShell implements SessionInput {
    */
   submit(mode: InputSubmitMode = 'queue'): void {
     if (this.snapshot.draft.trim() === '' && this.imageIds.length > 0) {
-      if (this.snapshot.phase === 'plain' && !this.imageSendInFlight) {
+      if (this.snapshot.phase === 'plain' && !this.imageSendInFlight && !this.disposed) {
         const imageIds = [...this.imageIds]
+        // The signal is held, not dropped: shell dispose stops WAITING on the
+        // Host admission instead of orphaning the wait past the session
+        // teardown. The host honours the abort only before its admission
+        // commit — a late dispose can still have delivered the send, so the
+        // user-visible failure reads as "may not have arrived", never as
+        // "cancelled".
+        const controller = new AbortController()
+        this.imageSendAbort = controller
         this.imageSendInFlight = true
-        void this.deps.defaultSink('', imageIds, mode, new AbortController().signal).then((outcome) => {
+        void this.deps.defaultSink('', imageIds, mode, controller.signal).then((outcome) => {
           this.imageSendInFlight = false
+          this.imageSendAbort = undefined
           if (this.disposed) return
           if (outcome.kind === 'success') this.commitSend(imageIds)
           else if (outcome.text !== undefined) this.notify('error', outcome.text)
         }, (error: unknown) => {
           this.imageSendInFlight = false
+          this.imageSendAbort = undefined
           if (!this.disposed) this.notify('error', error instanceof Error ? error.message : String(error))
         })
       }
@@ -389,9 +406,11 @@ export class SessionInputShell implements SessionInput {
 
   // ---- wiring-layer extras (not on the frozen SessionInput face) ----
 
-  /** Teardown: abort any in-flight attempt and stop accepting async settlements. */
+  /** Teardown: abort any in-flight attempt (the image-only direct send included) and stop accepting async settlements. */
   dispose(): void {
     this.disposed = true
+    this.imageSendAbort?.abort()
+    this.imageSendAbort = undefined
     this.run(this.core.dispatch({ type: 'release' }))
   }
 
@@ -451,11 +470,14 @@ export class SessionInputShell implements SessionInput {
    * inline reference range to its owner's model form via the session controller's
    * codec routing. Owner missing / serialize failure / disposal blocks the
    * send — notice + draft and chips retained, never a silent downgrade to
-   * the clipboard text. Chip-free drafts skip the async detour.
+   * the clipboard text. Chip-free drafts skip the async detour. Both the
+   * draft and the occurrence table come from the attempt's enter-time
+   * snapshot, so a busy-period draft edit (live table shifted, draft grown)
+   * cannot misplace the splice.
    */
   private sinkSerialized(attempt: SubmitAttempt, draft: string, mode: InputSubmitMode): void {
     const imageIds = [...this.imageIds]
-    const occurrences = this.core.state.occurrences
+    const occurrences = attempt.occurrences
     if (occurrences.length === 0) {
       this.settleSubmit(attempt, this.deps.defaultSink(draft.trim(), imageIds, mode, attempt.signal), imageIds)
       return

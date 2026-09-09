@@ -16,3 +16,12 @@
 .modeRow p { margin: 4px 0 0; color: var(--rlw-alias-label-secondary); font-size: 12px; }
 .modeTitle { color: var(--rlw-alias-label-primary); font-size: 13px; font-weight: 500; }
 .switch input { width: 34px; height: 20px; }
+.openError { display: flex; flex-wrap: wrap; gap: 8px; padding: 8px; border: 1px solid var(--rlw-alias-border-l2); border-radius: 8px; }
+.openError p { flex-basis: 100%; overflow-wrap: anywhere; }
+.openError button { border: 1px solid var(--rlw-alias-border-l2); border-radius: 6px; background: var(--rlw-alias-bg-module-platform); color: var(--rlw-alias-label-primary); cursor: pointer; }
+.deliverables button:disabled { cursor: progress; opacity: .5; }
+.librarySearch { display: flex; gap: 8px; }
+.librarySearch input { flex: 1; min-width: 0; border: 1px solid var(--rlw-alias-border-l2); border-radius: 8px; padding: 8px; background: var(--rlw-alias-bg-module-platform); color: var(--rlw-alias-label-primary); font: inherit; }
+.librarySearch button { border: 1px solid var(--rlw-alias-border-l2); border-radius: 8px; background: var(--rlw-alias-bg-module-platform); color: var(--rlw-alias-label-primary); cursor: pointer; }
+.deliverables small { display: block; padding: 0 7px 5px; overflow-wrap: anywhere; color: var(--rlw-alias-label-secondary); font-size: 10px; }
+.filesButton:disabled { cursor: default; opacity: .5; }

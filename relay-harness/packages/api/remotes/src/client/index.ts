@@ -12,6 +12,7 @@ import skillInventoryRemote from '@relay-harness/rlh-host-skill-inventory/remote
 import memoryCenterRemote from '@relay-harness/rlh-host-memory-center/remote'
 import codeIndexCenterRemote from '@relay-harness/rlh-host-code-index-center/remote'
 import productModeRemote from '@relay-harness/rlh-host-product-mode/remote'
+import workResultsRemote from '@relay-harness/rlh-host-work-results/remote'
 import messageFeedbackRemote from '@relay-harness/rlh-message-feedback/remote'
 import promptEnhancementRemote from '@relay-harness/rlh-prompt-enhancement/remote'
 import sessionReferencesRemote from '@relay-harness/rlh-session-reference/remote'
@@ -51,6 +52,7 @@ export type {} from '@relay-harness/rlh-host-mcp-servers/remote'
 export type {} from '@relay-harness/rlh-host-skill-inventory/remote'
 export type {} from '@relay-harness/rlh-host-memory-center/remote'
 export type {} from '@relay-harness/rlh-host-code-index-center/remote'
+export type {} from '@relay-harness/rlh-host-work-results/remote'
 export type {} from '@relay-harness/rlh-message-feedback/remote'
 export type {} from '@relay-harness/rlh-prompt-enhancement/remote'
 export type {} from '@relay-harness/rlh-session-reference/remote'
@@ -179,7 +181,8 @@ export async function apply(ctx: Context): Promise<() => Promise<void>> {
     for (const contribution of [
       commandsRemote, goalsRemote, issueOrchestrationRemote, dynamicRemote, fileReferencesRemote,
       pluginInventoryRemote, mcpServersRemote, skillInventoryRemote, messageFeedbackRemote,
-      memoryCenterRemote, codeIndexCenterRemote, productModeRemote, promptEnhancementRemote, sessionReferencesRemote,
+      memoryCenterRemote, codeIndexCenterRemote, productModeRemote,
+      workResultsRemote, promptEnhancementRemote, sessionReferencesRemote,
     ]) {
       disposers.push(await ctx.remote.$mount(contribution))
     }

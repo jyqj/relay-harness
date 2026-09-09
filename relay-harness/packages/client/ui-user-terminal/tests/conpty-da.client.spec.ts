@@ -1,11 +1,6 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi } from 'vitest'
-import {
-  CONPTY_DA1_RESPONSE,
-  attachConptyDeviceAttributes,
-  forgetConptyDeviceAttributes,
-  isPrimaryDeviceAttributesRequest,
-} from '../src/client/conpty-da.ts'
+import { afterEach,describe,expect,it,vi } from 'vitest'
+import { CONPTY_DA1_RESPONSE,attachConptyDeviceAttributes,forgetConptyDeviceAttributes,isPrimaryDeviceAttributesRequest } from '../src/client/terminal/conpty-da.ts'
 
 afterEach(() => {
   forgetConptyDeviceAttributes('pty-1')

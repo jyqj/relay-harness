@@ -146,6 +146,7 @@ export class WorkerRun implements WorkflowRun {
     private readonly journal: WorkflowJournal | undefined,
     private readonly observer: ExecutionObserver,
     signal: AbortSignal | undefined,
+    private readonly releaseJournal?: () => void,
   ) {
     this.result = new Promise<WorkflowResult>((resolve) => { this.settleResolve = resolve })
     // workerData rides the structured clone: args are plain JSON by the seam
@@ -160,6 +161,11 @@ export class WorkerRun implements WorkflowRun {
     this.worker.on('exit', (code) => {
       this.workerGone = true
       this.onWorkerDeath(`workflow worker exited before the run settled (exit code ${code})`, true)
+      // A bounded dispose may abandon a slow child, but its pending effects
+      // still exclude a successor writer until they actually quiesce.
+      void this.childQuiescence().then(() => { this.releaseJournal?.() }).catch((error: unknown) => {
+        this.ctx.logger.warn(`workflow journal release failed: ${renderThrown(error)}`)
+      })
     })
     // Startup scheduling is not protocol silence. The watchdog arms on the
     // first accepted worker message (`Ready`) through onMessage(), so a busy
@@ -356,6 +362,7 @@ export class WorkerRun implements WorkflowRun {
       let replayed: WorkflowJournalOutcome | undefined
       try {
         replayed = this.journal.replay(callId, request)
+        if (replayed === undefined) this.journal.begin(callId, request)
       } catch (error: unknown) {
         this.post(HostToWorkerType.ChildStartError, { callId, rendered: renderThrown(error) })
         return
@@ -467,7 +474,7 @@ export class WorkerRun implements WorkflowRun {
             /* v8 ignore next 3 -- cancellation normally resolves the provider as
              * an ordinary aborted result; an uncloneable result winning first is
              * a backend contract violation converging on the same no-record rule. */
-            if (this.cancelReason !== undefined) {
+            if (this.controller.signal.aborted) {
               this.post(HostToWorkerType.ChildSettled, { callId, result: snapshot })
               return
             }
@@ -488,7 +495,7 @@ export class WorkerRun implements WorkflowRun {
             /* v8 ignore next 3 -- cancellation normally resolves an ordinary
              * aborted result; an uncloneable result winning first converges on
              * this same no-record rule. */
-            if (this.cancelReason !== undefined) {
+            if (this.controller.signal.aborted) {
               this.post(HostToWorkerType.ChildFailed, { callId, rendered })
               return
             }
@@ -508,7 +515,7 @@ export class WorkerRun implements WorkflowRun {
         return () => {
           /* v8 ignore next 3 -- current providers resolve aborted on cancellation;
            * a simultaneous infrastructure rejection converges on this no-record rule. */
-          if (this.cancelReason !== undefined) {
+          if (this.controller.signal.aborted) {
             this.post(HostToWorkerType.ChildFailed, { callId, rendered })
             return
           }

@@ -1,10 +1,10 @@
 /** The shell plugin's card: the limits every command the agent runs is bound by. */
 
-import type { InjectFace, PropsLocale, PropsRuntime } from '@relay-harness/rlh-client-ui-slots'
+import type { InjectFace,PropsLocale,PropsRuntime } from '@relay-harness/rlh-client-ui-slots'
+import type { BashCardFace } from './bash-card-controller.ts'
 import { ValueField } from './fields.tsx'
 import { PluginCard } from './PluginCard.tsx'
-import type { BashCardFace } from './bash-card-controller.ts'
-import type {} from './slot-contract.ts'
+
 
 /** Props the renderer binds for the shell card. */
 export type BashCardProps =

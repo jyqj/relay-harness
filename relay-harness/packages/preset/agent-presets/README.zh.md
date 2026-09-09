@@ -17,7 +17,8 @@
 - `ctx.agentPresets.composeFrom(agentCtx, parentCtx): string | undefined` 让一个 agent 加入另一个 agent 已在运行的常驻组装，返回所加入的 preset id——父方未加入任何 preset 时返回 `undefined`，那是无 roster 的部署，不是错误。这是认父而非挂载，因此同步、且自身没有组装失败模式；调用方用错（上下文无 scope、agent 已加入过）仍会拒绝。
 - `ctx.agentPresets.composedPreset(agentCtx): string | undefined` 某个**活着的** agent 正在运行的 preset，从其 scope 链读取而不是从其会话读取——对于持久化 header 尚在构建中的 agent，这是唯一能拿到的答案。
 - `ctx.agentPresets.recompose(agentCtx, id): Promise<AgentPreset>` 把一个 agent 重链到另一个 preset 的常驻组装。仅在该 agent 尚无任何产出时合法——**由调用方负责该检查**；新挂载在链移动之前确保完成，失败时 agent 原封不动。与 `mount()` 一样拒绝损坏的 preset。
-- `ctx.agentPresets.standingKeyFor(id?): Promise<ScopeKey>` 没有 agent 的宿主读取方（冷读记录）解析 preset 注册所用的常驻 scope key；确保挂载而不启动任何 agent、会话或轮次。与 `mount()` 一样拒绝损坏的 preset。
+- `ctx.agentPresets.acquireAgentScope(agentCtx): PresetScopeLease | undefined` 同步持有已加入的确切代际，捕获包括 Agent 自有层在内的不可变注册表祖先链。在 `finally` 中释放；重新组装不能把读取中的请求转向替代 preset。尚未加入的 Agent 返回 undefined。注册表内容仍遵循 revision 规则；Agent 自有 effect 被释放也不会使读取转向继任者。
+- `ctx.agentPresets.acquireStandingScope(id?): Promise<PresetScopeLease>` 冷读取方持有的句柄，包含 `key` 与幂等异步 `release()`。在所有异步注册表读取期间保留句柄，并在 `finally` 释放；不启动 agent、会话或轮次，与 `mount()` 一样拒绝损坏的 preset。
 - `ctx.agentPresets.roots: readonly PresetRoot[]` 本 roster 实际扫描的根目录——全部已配置根目录按序在前，随后是推导出的 harness home 根目录。它不是 `config.roots`：判断「是否已组装 roster」应读它，从而由同一处推导决定。
 - `ctx.agentPresets.authorable: boolean` 上述根目录中是否有任一具备 `user` 信任级别，因而 preset 是否可创建。
 - `ctx.agentPresets.read(id): Promise<string>` 某个 preset 的组装文本，与存储内容逐字一致。
@@ -28,7 +29,9 @@
 
 ### 应在何处调用 `mount()`
 
-agent 工厂的 `setup(agentCtx)` 钩子是唯一受支持的调用点。只有在那里，认父是在 agent 尚未发布时完成的，因此组装被拒绝会让整次创建回滚，而不会留下一个组装到一半的会话。常驻子树归 roster 服务自己的 fiber 所有——刻意用其未追踪的上下文，因为从被追踪的 `this.ctx` 派生的子树会经调用方的 shadow fiber 解析一切服务、无视各 entry 自己的 inject store——所以它比任何 agent 都活得久，只随整棵树卸载。每个代际记录其组装文件的 stamp（mtime 与大小）：发现 stamp 过期的会话会开启下一个代际，而所有已加入的会话保持各自正在运行的那个——正在运行的会话所加入的组装在其文件被修改或删除后继续存活；文件是唯一的组装编辑器，stamp 正是把编辑送达后续会话的机制。
+agent 工厂的 `setup(agentCtx)` 钩子是唯一受支持的调用点。只有在那里，认父是在 agent 尚未发布时完成的，因此组装被拒绝会让整次创建回滚，而不会留下一个组装到一半的会话。常驻子树归 roster 服务自己的 fiber 所有——刻意用其未追踪的上下文，因为从被追踪的 `this.ctx` 派生的子树会经调用方的 shadow fiber 解析一切服务、无视各 entry 自己的 inject store——因此生命周期不依赖某一个 agent。每个已加入的 agent 与冷读取方持有其精确代际；被替代代际在最后一个持有方释放后销毁，每个 preset 只保留一个当前缓存代际。每个代际记录其组装文件的 stamp（mtime 与大小）：发现 stamp 过期的会话会开启下一个代际，而所有已加入的会话保持各自正在运行的那个——正在运行的会话所加入的组装在其文件被修改或删除后继续存活；文件是唯一的组装编辑器，stamp 正是把编辑送达后续会话的机制。
+
+Agent 通过自己的 Cordis effect 在退出时释放持有。`composeFrom()` 保留父 agent 的精确代际，即使该代际已被替代；`recompose()` 先获取替代代际，再重新绑定并释放旧持有。文件编辑、删除和复制使缓存失效，但不会卸载仍有持有方的代际。退役子树的释放等待异步清理完成，包括 watcher 关闭；清理失败会被报告，但不会回滚已经提交的重新绑定或编写操作。
 
 ### 组装子 agent
 
@@ -147,7 +150,6 @@ Indirectly, through the plugins a standing composition registers, which own ever
 - **位于可写根目录之外的 preset 可被发现却无法删除** —— `remove()` 拒绝任何不在**第一个** `user` 根目录下的 preset，因此一个既配置了自有可写根、又保留 `includeUserRoot` 的部署，会列出并挂载 harness home 下的 preset，却对每次删除回答「它不在可写 preset 根目录之下」。roster 按设计只有一个可写根；只想要自有根的部署应设置 `includeUserRoot: false`。
 - **会话一旦产出内容便无法更换 preset** —— `recompose` 把**空白**会话的父作用域重链到另一个常驻挂载，且仅限空白会话：切换已运行过的组装会抽走模型已调用的工具。更改默认值只影响此后创建的会话。
 - **代际只以组装文件为键** —— stamp 检查只察觉 `agent.cordis.yml` 的变化，察觉不到旁边 skill 文件或资产的编辑；那些编辑要等组装文件本身变动或进程重启才达到新会话。
-- **被替代的代际永不回收** —— 已加入的会话保持其运行所在的代际，而名单没有加入计数可以判断最后一个何时离开，因此整棵子树一直挂到进程结束。代价按代际计而非按会话计，但并非为零：`rlh-skill-filesystem` 默认监听自己的根目录，因此每一轮「编辑后建会话」都会新增一套活的 watcher。上限取决于组装被编辑的频率——而设置页的编写流程把这件事从「每次部署」变成了「每次保存」。要回收就需要给常驻挂载加上已加入 agent 的计数；见 `ensureStanding` 处的 `TODO`。
 - **副本从不被实际挂载以校验** —— 它与来源逐字节相同，因此磁盘上已坏的来源会产出与来源同样损坏的副本；发现过程的健康检查会在下一次读取名单时把两行都标出来，而不是把失败推迟到会话启动。
 - **健康是形状检查，不是挂载** —— 发现过程只证明组装能以加载器方言解析、由具名行组成，不证明每一行的模块都能解析并激活；引用不存在的包的行仍在第一个会话处失败，并回滚该会话的创建。
 - **副本是会漂移的快照** —— 升级部署不会更新随附 preset 的副本，本层也没有表达「standard 加一处改动」的 patch 语义（那是 bundle 层 `cordis.patch.yml` 的能力）；随附集合自己也接受同样的代价——`cordis` 与 `code` 就是 `standard` 的完整副本——换来整份组装在一个文件里可读。

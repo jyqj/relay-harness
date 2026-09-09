@@ -8,6 +8,8 @@ Guest documents may be any `http(s)` URL; the harness main window stays on loopb
 
 The `/client` exports are the plugin body (`apply`/`inject`) plus the contract types only; PreviewPanel remains package-internal behind the slot registration.
 
+Recording failures identify the failed operation; an unavailable desktop recording bridge is reported as a refused Host start. A start during the same preview’s pending startup or stop reports a conflict, while starting an already-recording preview is idempotent. Recording starts only after the first JPEG has decoded and been drawn, not merely after its dimensions arrive. After waiting for startup, the renderer verifies that the same recording still owns the preview before creating an encoder or stopping a screencast. A late result for an abandoned startup cannot revive its encoder or stop a replacement recording with the same preview id. If startup waiting times out, stop requests Host capture cancellation before releasing the recording slot; failure of that cancellation retains both errors in the reported cause. A rejected Host stop result (`ok: false`) fails the stop operation like a rejected IPC call; the renderer does not save or report success and still releases its local media resources. Each recording owns its canvas capture stream independently of the MediaRecorder. Clearing a recording stops every captured media track, including after encoder initialization/start failure or stop/save failure; repeated stop does not retain the stream or frame subscription.
+
 ## Model Experience
 
 None, as the Browser surface only previews an http(s) URL; nothing here reaches a model request.

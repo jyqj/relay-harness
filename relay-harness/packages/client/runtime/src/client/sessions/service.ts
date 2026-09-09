@@ -1,3 +1,4 @@
+import type { SessionBinding,SessionListState,SessionProvideDescriptor,SessionSummary } from '../contract/sessions.ts'
 /**
  * SessionRuntime: root sessions service — list snapshot store (manager
  * projection; carries `current`, the persisted selection every
@@ -14,90 +15,27 @@
  * tears its scope down immediately unless it is the staged one, whose scope
  * survives frozen (read-only view) until the stage moves on.
  */
-import type { Context, Fiber } from '@relay-harness/cordis'
+import type { Context,Fiber } from '@relay-harness/cordis'
 import type {
-  IApiClient, RpcError, RpcResult, SessionId, SubagentAddress, JobView, WorkspaceId,
+  IApiClient,RpcError,RpcResult,SessionId,SubagentAddress,
+  WorkspaceId,
 } from '@relay-harness/rlh-api-remotes/client'
 // Value import from the inline-safe wire layer (not the connection plugin):
 // plugin-to-plugin value imports are a bundle purity error.
-import { SESSION_SEARCH_RESULT_LIMIT } from '@relay-harness/rlh-host-apiproxy/api'
 import type {
-  HostObservable, SessionMaybeProvideInfo, SessionProvideInfo,
+  HostObservable,SessionMaybeProvideInfo,SessionProvideInfo,
 } from '@relay-harness/rlh-client-ui-slots'
-import type { SessionProjectionMap } from '@relay-harness/rlh-session-projection/types'
+import { SESSION_SEARCH_RESULT_LIMIT } from '@relay-harness/rlh-host-apiproxy/api'
+import type { SessionFace } from '../contract/session.ts'
+import type { AgentContext,ISessions,SessionSearchResultItem } from '../contract/sessions.ts'
 import type { SnapshotStore } from '../contract/store.ts'
 import { createSnapshotStore } from '../contract/store.ts'
-import type { SessionFace } from '../contract/session.ts'
-import type { AgentContext, ISessions } from '../contract/sessions.ts'
-import { createScope, scopeOf as scopeTagOf } from '../agents/scope.ts'
+import { createScope,scopeOf as scopeTagOf } from '../scope.ts'
 import type { ConversationRuntime } from './conversation-assembler.ts'
 import { SessionManager } from './manager.ts'
-import type { SessionRemotes } from './remotes.ts'
-import type { SessionListPhase, SessionSearchResultItem, SubagentCatalogSnapshot } from './manager.ts'
-import type { PendingInteractionStatus } from './pending.ts'
 import { SessionProvideChannel } from './provide.ts'
+import type { SessionRemotes } from './remotes.ts'
 import type { Session } from './session.ts'
-
-/** Session list row projected from the host list RPC plus live stream increments. */
-export interface SessionSummary {
-  id: SessionId
-  /** Latest durable log-backed title, absent until the host projects one. */
-  title?: string
-  /** Human-facing label: durable title, project basename, then session id. */
-  displayTitle: string
-  cwd?: string
-  /**
-   * Agent preset this session's agent was composed from; absent when the
-   * deployment composes no presets. The session header labels what the
-   * session actually runs rather than the deployment's current default.
-   */
-  agentPreset?: string
-  parentId?: SessionId
-  /** Number of source events inherited by a fork child. */
-  seedLength?: number
-  /** Coarse durable origin for navigation filtering; not a continuation capability. */
-  origin?: 'subagent' | 'rlhbot'
-  running: boolean
-  /** User interaction currently blocking this session (sidebar amber-dot state). */
-  pendingInteraction?: PendingInteractionStatus
-  /** Finished while not selected and not yet opened — the sidebar's green "done" reminder. Absent = false. */
-  completed?: boolean
-  /**
-   * Empty-log bit (host summary derivation mirror). New Session reuses a blank
-   * one targeting the same workspace. Filtering stays with the consumer: the
-   * store carries every row, while the Workspace browser shows only the
-   * selected blank entry.
-   */
-  blank: boolean
-  updatedAt: number
-  /** Current host-computed projection values retained by the object layer. */
-  projectionValues?: Readonly<Partial<SessionProjectionMap>>
-}
-
-/**
- * Session list store shape. `current` rides the same snapshot (arbitrated:
- * the single useSessions standard hook reads list and selection together —
- * sidebar highlighting and SessionProvider share one fact source).
- */
-export interface SessionListState {
-  /** Host-list order; addressed breadcrumb-only rows are excluded. */
-  ids: SessionId[]
-  /** Host rows plus the current addressed subagent route used by navigation. */
-  byId: Record<SessionId, SessionSummary>
-  current: SessionId | undefined
-  /** Arrival lifecycle projected 1:1 from the manager snapshot (see SessionListPhase): empty-with-ready means "truly no sessions". */
-  phase: SessionListPhase
-  /** Direct durable catalogs keyed by their selected parent address. */
-  subagentsByParent: Readonly<Record<SessionId, SubagentCatalogSnapshot>>
-  /**
-   * Background jobs each session can see, mirrored last-wins from
-   * `session/jobs`. A missing key is an empty set — the Host sends no baseline
-   * for a session without tasks — so consumers read absence, never a sentinel.
-   */
-  jobsBySession: Readonly<Record<SessionId, readonly JobView[]>>
-  /** Current session's catalog-derived address, absent on ordinary navigation. */
-  currentAddress: SubagentAddress | undefined
-}
 
 /** Persisted navigation cell: address survives refresh for correct history routing. */
 interface SessionSelection {
@@ -137,18 +75,10 @@ export class SessionForkError extends Error {
   }
 }
 
-/** Session assembly handle for SessionProvider/inject factories (identity-stable per session). */
-export interface SessionBinding {
-  readonly sessionId: SessionId
-  /** The outward session face only — feature code never sees the concrete class. */
-  readonly session: SessionFace
-  readonly ctx: AgentContext
-}
-
 // Scope primitives live in ../agents/scope.ts (the client mirror of host
 // rlh-scope, keyed by Agent identity); re-exported here so existing
 // consumers keep their import site.
-export { scopeOf } from '../agents/scope.ts'
+export { scopeOf } from '../scope.ts'
 
 /**
  * Workspace display title of a session cwd: the path's last non-empty
@@ -178,6 +108,61 @@ function displayTitleOf(title: string | undefined, cwd: string | undefined, id: 
 }
 
 /**
+ * Field-for-field equality for one projected row (id equal by construction —
+ * rows are keyed lookups): every scalar plus the reference-stable
+ * `projectionValues` map must match before the previous object is reused.
+ * @param prev - the row the store already holds.
+ * @param candidate - the freshly projected row.
+ * @returns whether every field matches.
+ */
+function rowUnchanged(prev: SessionSummary, candidate: SessionSummary): boolean {
+  return prev.title === candidate.title
+    && prev.displayTitle === candidate.displayTitle
+    && prev.cwd === candidate.cwd
+    && prev.agentPreset === candidate.agentPreset
+    && prev.parentId === candidate.parentId
+    && prev.seedLength === candidate.seedLength
+    && prev.origin === candidate.origin
+    && prev.running === candidate.running
+    && prev.pendingInteraction === candidate.pendingInteraction
+    && prev.completed === candidate.completed
+    && prev.blank === candidate.blank
+    && prev.updatedAt === candidate.updatedAt
+    && prev.projectionValues === candidate.projectionValues
+}
+
+/**
+ * Per-key reference equality over manager-projected containers: the manager's
+ * map values keep their identity between writes, so equal key sets with equal
+ * value references mean the wholesale `Object.fromEntries` copy changed
+ * nothing.
+ * @param next - the freshly copied container.
+ * @param prev - the container the store already holds.
+ * @returns whether both containers hold the same value references.
+ */
+function projectedRecordUnchanged<V>(
+  next: Readonly<Record<SessionId, V>>, prev: Readonly<Record<SessionId, V>>): boolean {
+  const keys = Object.keys(next) as SessionId[]
+  if (keys.length !== Object.keys(prev).length) return false
+  return keys.every(key => prev[key] === next[key])
+}
+
+/**
+ * Value equality for the breadcrumb address (wire frames mint fresh objects per envelope).
+ * @param next - the freshly read address.
+ * @param prev - the address the store already holds.
+ * @returns whether both addresses name the same route.
+ */
+function addressUnchanged(
+  next: SubagentAddress | undefined, prev: SubagentAddress | undefined): boolean {
+  if (next === prev) return true
+  return next !== undefined && prev !== undefined
+    && next.childSessionId === prev.childSessionId
+    && next.parentSessionId === prev.parentSessionId
+    && next.mode === prev.mode
+}
+
+/**
  * Increment a trailing fork number while preserving its half-width or
  * full-width parentheses; an unnumbered title starts with ` (1)`.
  * @param title - source session's durable title.
@@ -203,28 +188,6 @@ interface ScopeRecord {
   session: Session
   /** Render-layer standard-props bundle (identity-stable per scope; the renderer's per-info caches key off it). */
   provideInfo: SessionProvideInfo
-}
-
-/** One plugin's per-session standard-props contribution (see {@link SessionRuntime.provide}). */
-export interface SessionProvideContribution {
-  /** Bare observable sources, keyed by hook base name ('input' → useInput). */
-  hooks?: Record<string, HostObservable<unknown>>
-  /** Stable plain members (action callbacks etc.), spread into standard props verbatim. */
-  props?: Record<string, unknown>
-}
-
-/**
- * Static declaration plus per-session resolver for one standard-kit
- * contribution. The declared names let the renderer construct the same hook
- * and prop surface while no session is current.
- */
-export interface SessionProvideDescriptor {
-  /** Hook base names (`input` becomes `useInput`). */
-  hooks?: readonly string[]
-  /** Plain standard-prop names. */
-  props?: readonly string[]
-  /** Resolve every declared member for one definite session. */
-  resolve(binding: SessionBinding): SessionProvideContribution
 }
 
 /** Root sessions service: list store, current selection, object-layer manager, scope tree, bindings, and breadcrumb routes. */
@@ -675,16 +638,23 @@ export class SessionRuntime implements ISessions {
     return current === id || ids.includes(id)
   }
 
-  /** Project the manager's list snapshot into the store (title derivation is display-only). */
+  /**
+   * Project the manager's list snapshot into the store (title derivation is
+   * display-only). Identity guard: an unchanged row keeps its previous object,
+   * and a projection that changed nothing skips `list.set` entirely — a new
+   * object is a new identity, so every full-state selector in the window would
+   * rerun for it even when no value moved.
+   */
   private projectList(): void {
     const {
       items, current, phase, subagentsByParent, jobsBySession, currentAddress,
     } = this.manager.getListSnapshot()
+    const prev = this.list.getSnapshot()
     const ids: SessionId[] = []
     const byId: Record<SessionId, SessionSummary> = {}
     for (const entry of items) {
       ids.push(entry.sessionId)
-      byId[entry.sessionId] = {
+      byId[entry.sessionId] = this.stableRow(prev.byId[entry.sessionId], {
         id: entry.sessionId,
         displayTitle: displayTitleOf(entry.title, entry.cwd, entry.sessionId),
         running: entry.running,
@@ -703,7 +673,7 @@ export class SessionRuntime implements ISessions {
         ...(entry.seedLength !== undefined ? { seedLength: entry.seedLength } : {}),
         ...(entry.origin !== undefined ? { origin: entry.origin } : {}),
         ...(entry.agentPreset !== undefined ? { agentPreset: entry.agentPreset } : {}),
-      }
+      })
     }
     if (current !== undefined && currentAddress !== undefined) {
       const seen = new Set<SessionId>()
@@ -717,7 +687,7 @@ export class SessionRuntime implements ISessions {
         const displayTitle = child.label ?? childId
         const summary = byId[childId]
         if (summary === undefined) {
-          byId[childId] = {
+          byId[childId] = this.stableRow(prev.byId[childId], {
             id: childId,
             displayTitle,
             parentId: address.parentSessionId,
@@ -725,9 +695,9 @@ export class SessionRuntime implements ISessions {
             running: child.activity === 'running',
             blank: false,
             updatedAt: 0,
-          }
+          })
         } else if (summary.displayTitle !== displayTitle) {
-          byId[childId] = { ...summary, displayTitle }
+          byId[childId] = this.stableRow(prev.byId[childId], { ...summary, displayTitle })
         }
         const parent = byId[address.parentSessionId]
         if (parent !== undefined && parent.origin !== 'subagent') break
@@ -749,8 +719,37 @@ export class SessionRuntime implements ISessions {
         ...(currentAddress === undefined ? {} : { subagentAddress: currentAddress }),
       })
     }
-    this.list.set({ ids, byId, current, phase, subagentsByParent, jobsBySession, currentAddress })
+    const idsUnchanged = ids.length === prev.ids.length
+      && ids.every((id, i) => id === prev.ids[i])
+    const rowsUnchanged = projectedRecordUnchanged(byId, prev.byId)
+    const catalogsUnchanged = projectedRecordUnchanged(subagentsByParent, prev.subagentsByParent)
+    const jobsUnchanged = projectedRecordUnchanged(jobsBySession, prev.jobsBySession)
+    if (idsUnchanged && rowsUnchanged && catalogsUnchanged && jobsUnchanged
+      && current === prev.current && phase === prev.phase
+      && addressUnchanged(currentAddress, prev.currentAddress)) {
+      this.pruneScopes()
+      return
+    }
+    this.list.set({
+      ids: idsUnchanged ? prev.ids : ids,
+      byId: rowsUnchanged ? prev.byId : byId,
+      current,
+      phase,
+      subagentsByParent: catalogsUnchanged ? prev.subagentsByParent : subagentsByParent,
+      jobsBySession: jobsUnchanged ? prev.jobsBySession : jobsBySession,
+      currentAddress,
+    })
     this.pruneScopes()
+  }
+
+  /**
+   * The store's previous row when the candidate matches it field-for-field; the candidate otherwise.
+   * @param prev - the row the store already holds, if any.
+   * @param candidate - the freshly projected row.
+   * @returns the identity-stable row for this projection.
+   */
+  private stableRow(prev: SessionSummary | undefined, candidate: SessionSummary): SessionSummary {
+    return prev !== undefined && rowUnchanged(prev, candidate) ? prev : candidate
   }
 
   /** Tear down scope + instance for no-longer-eligible sessions off stage; the staged one defers until the stage moves. */

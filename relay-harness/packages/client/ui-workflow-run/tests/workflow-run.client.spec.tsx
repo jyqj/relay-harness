@@ -1,27 +1,27 @@
 // @vitest-environment jsdom
-import { Context, Service } from '@relay-harness/cordis'
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { afterEach, describe, expect, it, vi } from 'vitest'
-import {
-  ConversationEventRegistry, ConversationNodeAssembler, SlotRegistry,
-} from '@relay-harness/rlh-client-runtime/client'
+import { Context,Service } from '@relay-harness/cordis'
+import { apply as applyLocale,inject as localeInject } from '@relay-harness/rlh-client-locale/client'
 import type {
-  ChatConversationViewNode, ConversationEventInput, ConversationMatch, ConversationNodeDefinition,
-  ConversationViewDefinition, SessionId, SessionListState,
+  ChatConversationViewNode,ConversationEventInput,ConversationMatch,ConversationNodeDefinition,
+  ConversationViewDefinition,SessionId,SessionListState,
 } from '@relay-harness/rlh-client-runtime/client'
-import { apply as applyLocale, inject as localeInject } from '@relay-harness/rlh-client-locale/client'
-import { makeTranslate, stubSettingsScope } from '@relay-harness/rlh-client-test-runtime'
 import {
-  WorkflowRunPanel, type WorkflowRunInjected, type WorkflowRunPanelProps,
+  ConversationEventRegistry,ConversationNodeAssembler,SlotRegistry,
+} from '@relay-harness/rlh-client-runtime/client'
+import { makeTranslate,stubSettingsScope } from '@relay-harness/rlh-client-test-runtime'
+import { cleanup,fireEvent,render,screen,waitFor } from '@testing-library/react'
+import { afterEach,describe,expect,it,vi } from 'vitest'
+import {
+  WorkflowRunPanel,type WorkflowRunInjected,type WorkflowRunPanelProps,
 } from '../src/client/WorkflowRunPanel.tsx'
-import { apply, inject } from '../src/client/index.ts'
+import { apply,inject } from '../src/client/index.ts'
 import { zh } from '../src/client/locales.ts'
 import {
-  workflowRunDefinition, type WorkflowRunChatData,
+  workflowRunDefinition,type WorkflowRunChatData,
 } from '../src/client/workflow-definition.ts'
 import { apply as applyNode } from '../src/index.ts'
 import { apply as applyInvariant } from '../src/invariant.ts'
-import type {} from '../src/client/index.ts'
+
 
 afterEach(cleanup)
 

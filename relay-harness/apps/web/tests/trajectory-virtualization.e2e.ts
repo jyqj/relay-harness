@@ -193,6 +193,8 @@ describe('web e2e: Trajectory virtualization over tail-paged history', () => {
       replayOverride,
     })
     await seedSession(scaffold, FIXTURE.log, SESSION_ID)
+    // This scenario exercises advanced surfaces hidden by Simple Mode.
+    await scaffold.ctx.productMode.set({ mode: 'developer' })
     browser = await chromium.launch()
     page = await newEnglishPage(browser, 900)
     tripwire = watchConsole(page)
@@ -311,11 +313,16 @@ describe('web e2e: Trajectory virtualization over tail-paged history', () => {
 
       const trajectoryScroll = page.locator('[data-trajectory-scroll]')
       await trajectoryScroll.evaluate((host) => {
-        const measuredWindow = window as Window & { __trajectoryScrollCalls?: number }
+        const measuredWindow = window as Window & { __trajectoryScrollCalls?: number; __trajectoryScrollTrace?: unknown[] }
         measuredWindow.__trajectoryScrollCalls = 0
+        measuredWindow.__trajectoryScrollTrace = []
         const original = host.scrollTo.bind(host)
         const trackedScrollTo = (...args: [ScrollToOptions?] | [number, number]) => {
           measuredWindow.__trajectoryScrollCalls = (measuredWindow.__trajectoryScrollCalls ?? 0) + 1
+          measuredWindow.__trajectoryScrollTrace?.push({
+            target: typeof args[0] === 'number' ? args[1] : args[0]?.top,
+            current: host.scrollTop, height: host.scrollHeight, viewport: host.clientHeight,
+          })
           Reflect.apply(original, host, args)
         }
         host.scrollTo = trackedScrollTo as typeof host.scrollTo
@@ -331,7 +338,9 @@ describe('web e2e: Trajectory virtualization over tail-paged history', () => {
         return (window as Window & { __trajectoryScrollCalls?: number })
           .__trajectoryScrollCalls ?? 0
       })
-      expect(streamingScrollCalls).toBeLessThanOrEqual(5)
+      const scrollTrace = await trajectoryScroll.evaluate(() =>
+        (window as Window & { __trajectoryScrollTrace?: unknown[] }).__trajectoryScrollTrace)
+      expect(streamingScrollCalls, JSON.stringify(scrollTrace)).toBeLessThanOrEqual(5)
       expect(await mountedRows(page)).toBeLessThanOrEqual(MAX_MOUNTED_ROWS)
       expect({
         pageErrors: tripwire.pageErrors,

@@ -41,3 +41,9 @@ Web Host 为每个新建或恢复的 Agent 安装 `ModelSelection`。如果会�
 ## 测试
 
 Host 测试固定分组发现、目录与精确元数据失败隔离、已记录推理强度恢复且不注入陈旧行、不受目录约束的未列出模型选择、不支持的推理强度拒绝、默认值具体化，以及切换仅影响下一次组装。客户端测试固定共享目录、重连恢复与完整选择提交。组件测试固定动态推理强度标签、说明、提供方默认值展示、推理强度提交，以及缺席模型行的 `Select model` 回退。无密钥 built-app fixture（测试前置数据）加载生产模型插件，选择 OpenAI 的 GPT-5 及其 Max 推理强度，发起一个轮次，并验证下一条生成的响应会报告两个 ID；DeepSeek 配置 fixture 会省略活动目录行，在选择替代模型之前固定该回退。
+
+## 渲染器拥有的模型目录订阅
+
+组合器席位通过 inject 的 `hooks.modelDirectory` 分区传递现有 Session 级目录 store。`InjectFace<ModelSelectInjected>` 推导 `useModelDirectory`；组件不再创建订阅，也不接收 store 对象。席位和 `/model` 仍解析到同一个 ModelDirectory，不同 Session 保持隔离。
+
+选择完成时需要异步确认后的最新错误，而非之前渲染的快照，因此 inject face 在不改变 load/select 操作的同时提供专用 `selectionError` 回调。测试保留选择失败 toast、动态推理等级元数据及完整选择参数断言，并通过共享 test-runtime 绑定器新增单次订阅、更新和卸载回归。仍需单独执行最新组装浏览器回放。

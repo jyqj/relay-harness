@@ -19,9 +19,15 @@
     - button "技能":
       - img
       - text: 技能
+    - button "记忆":
+      - img
+      - text: 记忆
     - button "MCP":
       - img
       - text: MCP
+    - button "代码索引":
+      - img
+      - text: 代码索引
     - button "Agent 预设":
       - img
       - text: Agent 预设

@@ -26,6 +26,8 @@ import type {
 } from './types.ts'
 // Declaration merge only: makes ctx.systemPrompt visible for the section registration.
 import type {} from '@relay-harness/rlh-system-prompt'
+// Keep durable event declarations in the built public type closure.
+export type {} from './types.ts'
 
 export const name = 'tool-workflow'
 export const inject = ['tools', 'workflowEngine', 'systemPrompt']

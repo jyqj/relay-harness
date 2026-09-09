@@ -123,6 +123,10 @@ export function apply(ctx: Context, config: Config): void {
   // handle unregisters the agent. Every retained entry relies on that paired
   // end; a producer that can omit it must provide another release edge.
   const subagentChildren = new Map<SubagentRunId, Agent>()
+  // Claude Code's stop_hook_active protocol: the turn number of the bridge's
+  // most recent forced Stop continuation, so the repeat check in that turn
+  // reports stop_hook_active=true instead of force-continuing again.
+  const stopHookTurns = new WeakMap<Agent, number>()
   ctx.effect(() => () => detached.drain(), 'hooks-claude-code: drain detached hook runs')
 
   /**
@@ -264,14 +268,21 @@ export function apply(ctx: Context, config: Config): void {
     }
   })
 
-  // A blocking Stop hook steers at the stopping boundary, which makes the
-  // machine observe pending input and run another step.
-  // TODO(stop-loop-guard): cap consecutive forced continuations; hooks must self-limit meanwhile.
+  // A blocking Stop hook steers at the stopping boundary once per turn, which
+  // makes the machine observe pending input and run another step. The repeat
+  // check in the same turn reports stop_hook_active=true; a hook that still
+  // blocks closes the turn instead of forcing an unbounded continuation loop.
   ctx.on('agent/turn-stopping', async ({ agent, turn, signal }): Promise<void> => {
-    const merged = await runPoint('Stop', '', stopPayload(ctx, agent), { agent, turn, signal })
+    const stopHookActive = stopHookTurns.get(agent) === turn
+    const merged = await runPoint('Stop', '', stopPayload(ctx, agent, stopHookActive), { agent, turn, signal })
     if (merged.decision === 'deny') {
+      if (stopHookActive) {
+        ctx.logger.warn(`hooks-claude-code: Stop hook remained blocking after its continuation in turn ${turn}; closing the turn`)
+        return
+      }
       // A blocking Stop hook forces continuation.
       const text = merged.reason ?? 'continue: blocked by Stop hook'
+      stopHookTurns.set(agent, turn)
       agent.steer(createUserMessage({ content: [{ type: 'text', text }], source: PLUGIN_SOURCE }))
     }
   })
@@ -342,8 +353,8 @@ function preToolPayload(ctx: Context, exec: ToolExecution): Record<string, unkno
 function postToolPayload(ctx: Context, exec: ToolExecution, result: ToolExecutionResult): Record<string, unknown> {
   return { ...base(ctx, exec.agent, 'PostToolUse'), tool_name: exec.name, tool_input: exec.arguments, tool_use_id: exec.callId, tool_response: blocksToText(result.content) }
 }
-function stopPayload(ctx: Context, agent: Agent): Record<string, unknown> {
-  return { ...base(ctx, agent, 'Stop'), stop_hook_active: false }
+function stopPayload(ctx: Context, agent: Agent, stopHookActive: boolean): Record<string, unknown> {
+  return { ...base(ctx, agent, 'Stop'), stop_hook_active: stopHookActive }
 }
 /**
  * Build a SubagentStart/SubagentStop payload from the CC base (the child's

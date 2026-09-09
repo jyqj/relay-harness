@@ -31,7 +31,9 @@ describe('web e2e: goal bar clear convergence', () => {
     page = await newEnglishPage(browser)
     tripwire = watchConsole(page)
     await page.goto(`${scaffold.baseUrl}?fixture`, { waitUntil: 'load' })
-    await page.waitForSelector('[class*="frame"]', { timeout: 30_000 })
+    try { await page.waitForSelector('[class*="frame"]', { timeout: 30_000 }) } catch (error) {
+      throw new Error(`Goal fixture boot: ${JSON.stringify({ aria: await page.locator('body').ariaSnapshot(), errors: tripwire.pageErrors, warnings: tripwire.warnings })}`, { cause: error })
+    }
   }, 120_000)
 
   afterAll(async () => {

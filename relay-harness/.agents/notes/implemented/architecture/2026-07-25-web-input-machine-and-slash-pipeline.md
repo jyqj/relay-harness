@@ -133,3 +133,9 @@ The state machine's entire behavior is covered by pure-JS unit tests (event sequ
 - The input surface's zero knowledge of commands plus optional dependencies: pure input works without the command packages; `@` references and skill references get free reuse of the same menu/pick pipeline. The cost is that space/enter adjudication is a per-source polling protocol whose answer semantics (sync/async, the meaning of undefined) are a frozen contract.
 - Transactionalized submission (attempt seq + the drift guard) makes the three defect classes — stale-result backwash, session switching, concurrent replay — structurally impossible, pinned by the matrix tests.
 - Known gaps: chip fidelity across refresh (paste matching is reusable for it) has no workstream yet; the subagent reference's model representation awaits its business workstream.
+
+## Renderer-owned menu subscription
+
+The slash overlay registration passes the existing per-Session controller menu through `hooks.menu`. `InjectFace<MenuViewInjected>` derives the component's `useMenu` seat, so MenuView no longer calls `useSyncExternalStore` or receives a raw observable. This uses the standing renderer binding machinery, without a new service, duplicate store, or custom production hook. The controller still owns menu generations, grouping, highlighting and pick/dismiss actions; local exit-presence state is unchanged.
+
+Registration tests verify that the injected source is the actual selected Session controller's menu. Component tests use the shared test-runtime selector binder, exercising reactive opening, highlight changes, pointer/focus behavior and exactly one subscription through rerenders followed by one release on unmount. Assembled browser validation remains a separate required surface.

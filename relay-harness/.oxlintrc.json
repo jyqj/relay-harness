@@ -26,9 +26,10 @@
     "native/**", // The imported landlock-run subtree has its own gates; see native/README.md.
     "**/*.js",
     "**/*.mjs",
+    "apps/desktop/src/**/*.d.ts", // Standalone desktop compiler face owns these declarations via typecheck:desktop.
     "**/*.config.ts", // Tool and app configs are outside the repository TypeScript programs.
     "packages/client/tsdown.client.ts", // Shared client build preset, also outside a TypeScript program.
-    "packages/client/ui-user-terminal/src/client/ghostty/**"
+    "packages/client/ui-user-terminal/src/client/terminal/ghostty/**"
   ],
   "overrides": [
     {

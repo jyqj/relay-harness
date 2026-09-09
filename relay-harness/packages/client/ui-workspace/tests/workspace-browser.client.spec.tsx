@@ -1,17 +1,16 @@
 // @vitest-environment jsdom
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { act, cleanup, createEvent, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { bindSnapshotSelector } from '@relay-harness/rlh-client-test-runtime'
-import type {
-  SessionId, SessionListState, SessionSummary, WorkspaceId, WorkspaceListState, WorkspaceView,
-} from '@relay-harness/rlh-client-runtime/client'
-import { makeTranslate } from '@relay-harness/rlh-client-test-runtime'
 import { zh as commonZh } from '@relay-harness/rlh-client-locale/src/locales/zh.ts'
+import type {
+  SessionId,SessionListState,SessionSummary,WorkspaceId,WorkspaceListState,WorkspaceView,
+} from '@relay-harness/rlh-client-runtime/client'
+import { bindSnapshotSelector,makeTranslate } from '@relay-harness/rlh-client-test-runtime'
+import { act,cleanup,createEvent,fireEvent,render,screen,waitFor } from '@testing-library/react'
+import { afterEach,beforeEach,describe,expect,it,vi } from 'vitest'
+import { WorkspaceBrowser } from '../src/client/browser/WorkspaceBrowser.tsx'
 import type { WorkspaceBrowserProps } from '../src/client/contract/slots.ts'
-import { createWorkspaceViewStore, FLAT_SESSION_ORDER_KEY } from '../src/client/stores.ts'
-import { UNGROUPED_KEY } from '../src/client/tree.ts'
-import { WorkspaceBrowser } from '../src/client/WorkspaceBrowser.tsx'
 import { zh } from '../src/client/locales.ts'
+import { createWorkspaceViewStore,FLAT_SESSION_ORDER_KEY } from '../src/client/stores.ts'
+import { UNGROUPED_KEY } from '../src/client/tree.ts'
 
 afterEach(cleanup)
 beforeEach(() => { localStorage.clear(); createWorkspaceViewStore().create().actions.setOrderBy('manual') })

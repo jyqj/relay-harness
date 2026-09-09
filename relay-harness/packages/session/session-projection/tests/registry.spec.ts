@@ -60,6 +60,20 @@ const mark = (session: Session, marks: string[]): SessionEvent =>
   session.append('test/mark', { marks })
 
 describe('SessionProjectionRegistry drive', () => {
+  it('stops an explicitly disposed change subscription without removing its projection', async () => {
+    const { ctx, session } = await harness()
+    ctx.sessionProjections.register(marksUnit())
+    const seen: number[] = []
+    const dispose = ctx.sessionProjections.onChanged((_session, _key, _value, seq) => { seen.push(seq) })
+    const first = mark(session, ['before'])
+    expect(seen).toEqual([first.seq])
+    dispose()
+    dispose()
+    mark(session, ['after'])
+    expect(seen).toEqual([first.seq])
+    expect(ctx.sessionProjections.snapshot(session).values['test/marks']).toEqual({ marks: ['after'] })
+  })
+
   it('drives a registered unit over committed events and snapshots the current value', async () => {
     const { ctx, session } = await harness()
     ctx.sessionProjections.register(marksUnit())

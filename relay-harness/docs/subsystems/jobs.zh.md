@@ -175,6 +175,7 @@ Implementations must honor these semantics:
 - Registrations outlive producer and controller fibers. Owner and service disposal cancel live work and await compliant producers; a throwing teardown cancel force-fails only the record. Teardown cancellation also marks the record reported, because a record its owner is being destroyed for has no reader left.
 - Owned-job access is fenced by the owner's session id. Ids are predictable, so authorization — not secrecy — is the boundary.
 - Settlement is first-wins: one terminal record, released waiters, and one round of contained listener notification, even against a late producer outcome. Completion is announced last, after the record is committed and every other observer of the settlement has seen it, because a reporter may open a model turn synchronously.
+- Terminal records are retained only until they are reported — their completion notice deliverable — plus an implementation-configured grace window, subject to a per-owner cap. Implementations prune at registry entry points, never drop an unreported terminal record (completion notices are at-least-once), and a pruned id reads as an unknown job.
 - start refuses work while no attached job controller serves the spec's owner, so a producer cannot start work that owner cannot collect or stop. One registry serves every composition in the process, so this question — and completion-listener delivery — is owner-relative rather than process-wide: registrations made from an unscoped context serve every owner, and registrations made under an agent composition's scope serve exactly the agents composed under it.
 
 ```ts cordis-catalog
@@ -286,5 +287,5 @@ abstract attachController(name: string): () => void
 
 Types: [Agent](core.md)
 
-Source: [`packages/jobs/jobs/src/index.ts:62`](../../packages/jobs/jobs/src/index.ts)
+Source: [`packages/jobs/jobs/src/index.ts:67`](../../packages/jobs/jobs/src/index.ts)
 <!-- END GENERATED cordis-surface -->

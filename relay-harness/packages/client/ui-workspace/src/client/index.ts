@@ -9,19 +9,19 @@
  * packages/client/AGENTS.md.
  */
 import type { ConnectionHandle } from '@relay-harness/rlh-client-connection/client'
-import type { HostObservable } from '@relay-harness/rlh-client-ui-slots'
 import type { ClientContext } from '@relay-harness/rlh-client-runtime/client'
+import type { HostObservable } from '@relay-harness/rlh-client-ui-slots'
 // Type-only: pulls the locale plugin's Context merge (ctx.locale).
-import type {} from '@relay-harness/rlh-client-locale/client'
-import type { WorkspaceBrowserInjected, WorkspacePickerInjected } from './contract/slots.ts'
+import type { } from '@relay-harness/rlh-client-locale/client'
+import { WorkspaceBrowser } from './browser/WorkspaceBrowser.tsx'
+import { WorkspacePicker } from './browser/WorkspacePicker.tsx'
+import type { WorkspaceBrowserInjected,WorkspacePickerInjected } from './contract/slots.ts'
+import { en,zh,type WorkspaceKey } from './locales.ts'
 import { createWorkspaceViewStore } from './stores.ts'
-import { WorkspaceBrowser } from './WorkspaceBrowser.tsx'
-import { WorkspacePicker } from './WorkspacePicker.tsx'
-import { en, zh, type WorkspaceKey } from './locales.ts'
 
 export type {
-  DirectoryFlowOwnerProps, DirectoryFlowSlotName, DirectoryPickingHooks, DirectoryPickingInjected,
-  WorkspaceBrowserInjected, WorkspaceBrowserProps, WorkspacePickerInjected, WorkspacePickerProps,
+  DirectoryFlowOwnerProps,DirectoryFlowSlotName,DirectoryPickingHooks,DirectoryPickingInjected,
+  WorkspaceBrowserInjected,WorkspaceBrowserProps,WorkspacePickerInjected,WorkspacePickerProps,
 } from './contract/slots.ts'
 export type { WorkspaceKey } from './locales.ts'
 

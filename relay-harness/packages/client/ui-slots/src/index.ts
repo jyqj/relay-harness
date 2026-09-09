@@ -928,6 +928,24 @@ export class SlotCore {
   }
 
   /**
+   * Read policy-eligible registrations, retaining abdicated entries for crash-face detection.
+   * Raw inspection and disposal authority remain on {@link SlotCore.entries}.
+   * @param key - slot key to project for the renderer.
+   * @returns unsuppressed candidates; chain keys are unchanged.
+   */
+  renderCandidates(key: string): readonly StoredEntry[] {
+    const rec = this.records.get(key)
+    if (!rec?.spec) return NO_ENTRIES
+    const kind = rec.spec.kind
+    const suppressed = this.suppressed.get(key)
+    if (kind === 'chain' || suppressed === undefined) return rec.entries
+    return rec.entries.filter((entry) => {
+      const cell = kind === 'keyed' ? entry.options.key : kind === 'list' ? entry.options.id : undefined
+      return (suppressed.get(cell) ?? 0) === 0
+    })
+  }
+
+  /**
    * Project a key's entries to its shadowing winners: the first live
    * (non-abdicated) entry of each cell in priority order — single: the slot
    * is one cell; keyed: one cell per `key`; list: one cell per `id` (winners
@@ -946,12 +964,10 @@ export class SlotCore {
     if (kind === 'chain') return rec.entries
     const heads: StoredEntry[] = []
     const seenCells = new Set<string | undefined>()
-    const suppressed = this.suppressed.get(key)
-    for (const entry of rec.entries) {
+    for (const entry of this.renderCandidates(key)) {
       if (this.abdicated.has(entry)) continue
       // Single-kind entries all share the one undefined cell.
       const cell = kind === 'keyed' ? entry.options.key : kind === 'list' ? entry.options.id : undefined
-      if ((suppressed?.get(cell) ?? 0) > 0) continue
       if (seenCells.has(cell)) continue
       seenCells.add(cell)
       heads.push(entry)

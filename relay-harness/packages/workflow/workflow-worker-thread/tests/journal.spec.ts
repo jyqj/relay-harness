@@ -1,6 +1,8 @@
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, truncateSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { spawnSync } from 'node:child_process'
+import { fileURLToPath } from 'node:url'
 import { afterEach, describe, expect, it } from 'vitest'
 import { WorkflowRunId } from '@relay-harness/rlh-workflow'
 import {
@@ -27,6 +29,53 @@ const request = { prompt: 'inspect', provider: 'p', model: 'm' }
 const result = { output: [{ type: 'text' as const, text: 'done' }], stopReason: 'completed' }
 
 describe('WorkflowJournal', () => {
+  it('uses the same Unicode request fingerprint across host locales', { timeout: 30_000 }, () => {
+    const root = fileURLToPath(new URL('../../../../', import.meta.url))
+    const module = new URL('../src/journal.ts', import.meta.url).href
+    const code = `import { workflowRequestHash } from ${JSON.stringify(module)};
+      process.stdout.write(workflowRequestHash('locale', { I: 1, i: 2, '\u0131': 3, '\u0130': 4 }));`
+    const hashes = ['en_US.UTF-8', 'tr_TR.UTF-8'].map((locale) => {
+      const result = spawnSync(process.execPath, ['--import', 'tsx/esm', '--input-type=module', '-e', code], {
+        cwd: root,
+        env: { PATH: process.env.PATH, TSX_TSCONFIG_PATH: join(root, 'tsconfig.host.json'), LANG: locale, LC_ALL: locale },
+        encoding: 'utf8',
+        timeout: 10_000,
+      })
+      expect(result.status, result.stderr).toBe(0)
+      return result.stdout
+    })
+    expect(hashes[0]).toMatch(/^[a-f0-9]{32}$/)
+    expect(hashes[1]).toBe(hashes[0])
+  })
+
+  it('durably reserves a call before dispatch and refuses to replay its unknown outcome', () => {
+    const journalPath = path()
+    const journal = WorkflowJournal.create(journalPath, runId, fingerprint)
+    journal.begin(1, request)
+    const recovered = WorkflowJournal.load(journalPath, runId, fingerprint)
+    expect(() => recovered.replay(1, request)).toThrow(expect.objectContaining({
+      code: 'JOURNAL_OUTCOME_UNKNOWN',
+    }))
+    expect(() => recovered.replay(1, { prompt: 'changed' })).toThrow(/divergence/)
+    expect(() => { recovered.begin(1, request) }).toThrow(/already contains/)
+    expect(() => { journal.record(1, { prompt: 'changed' }, { kind: 'start-error', rendered: 'bad' }) })
+      .toThrow(expect.objectContaining({ code: 'JOURNAL_DIVERGENCE' }))
+    journal.record(1, request, { kind: 'settled', childId: 'child-1', result })
+    expect(WorkflowJournal.load(journalPath, runId, fingerprint).replay(1, request))
+      .toEqual({ kind: 'settled', childId: 'child-1', result })
+  })
+
+  it('keeps an unresolved intent when a terminal outcome is torn during a crash', () => {
+    const journalPath = path()
+    const journal = WorkflowJournal.create(journalPath, runId, fingerprint)
+    journal.begin(1, request)
+    writeFileSync(journalPath, '{"type":"call"', { flag: 'a' })
+    const recovered = WorkflowJournal.load(journalPath, runId, fingerprint)
+    expect(() => recovered.replay(1, request)).toThrow(expect.objectContaining({
+      code: 'JOURNAL_OUTCOME_UNKNOWN',
+    }))
+  })
+
   it('hashes canonical JSON independently of object key insertion order', () => {
     expect(workflowRequestHash('kind', { b: 2, a: [{ z: true, y: null }] }))
       .toBe(workflowRequestHash('kind', { a: [{ y: null, z: true }], b: 2 }))
@@ -110,13 +159,18 @@ describe('WorkflowJournal', () => {
     expect(() => WorkflowJournal.load(unknownOutcome, runId, fingerprint)).toThrow(/call outcome is malformed/)
 
     const duplicate = path()
-    WorkflowJournal.create(duplicate, runId, fingerprint)
+    WorkflowJournal.create(duplicate, runId, fingerprint).begin(1, request)
     const entry = JSON.stringify({
       type: 'call', seq: 1, kind: 'agent', requestHash: workflowRequestHash('agent', request),
       outcome: { kind: 'start-error', rendered: 'x' },
     })
     writeFileSync(duplicate, `${entry}\n${entry}\n`, { flag: 'a' })
     expect(() => WorkflowJournal.load(duplicate, runId, fingerprint)).toThrow(/repeats call sequence/)
+
+    const missingIntent = path()
+    WorkflowJournal.create(missingIntent, runId, fingerprint)
+    writeFileSync(missingIntent, `${entry}\n`, { flag: 'a' })
+    expect(() => WorkflowJournal.load(missingIntent, runId, fingerprint)).toThrow(/lacks matching intent/)
 
     const full = WorkflowJournal.create(path(), runId, fingerprint) as unknown as { bytes: number; record: WorkflowJournal['record'] }
     full.bytes = MAX_WORKFLOW_JOURNAL_BYTES
@@ -148,4 +202,57 @@ describe('WorkflowJournal', () => {
     truncateSync(oversized, MAX_WORKFLOW_JOURNAL_BYTES + 1)
     expect(() => WorkflowJournal.load(oversized, runId, fingerprint)).toThrow(/bounded regular file/)
   })
+})
+
+describe('journal recovery validation before mutation', () => {
+  it.each(['{"type":"call"', ' '])('does not repair a journal belonging to a divergent request (tail %s)', (tail) => {
+    const journalPath = path()
+    WorkflowJournal.create(journalPath, runId, fingerprint)
+    writeFileSync(journalPath, tail, { flag: 'a' })
+    const before = readFileSync(journalPath)
+    expect(() => WorkflowJournal.load(journalPath, WorkflowRunId('wrong-run'), fingerprint)).toThrow()
+    expect(readFileSync(journalPath)).toEqual(before)
+  })
+
+  it.each([[], {}, { stopReason: 'completed', output: null }, { stopReason: 'completed', output: [null] },
+    { stopReason: 'completed', output: [{ type: 'text', text: 7 }] }, { stopReason: 1, output: [] },
+  ])('rejects malformed durable child result %# before replay', (malformed) => {
+    const journalPath = path()
+    WorkflowJournal.create(journalPath, runId, fingerprint).begin(1, request)
+    writeFileSync(journalPath, JSON.stringify({
+      type: 'call', seq: 1, kind: 'agent', requestHash: workflowRequestHash('agent', request),
+      outcome: { kind: 'settled', childId: 'child', result: malformed },
+    }) + '\n', { flag: 'a' })
+    expect(() => WorkflowJournal.load(journalPath, runId, fingerprint)).toThrow(expect.objectContaining({ code: 'JOURNAL_INVALID' }))
+  })
+
+  it('rejects a non-finite value parsed from durable JSON instead of returning it to the script', () => {
+    const journalPath = path()
+    WorkflowJournal.create(journalPath, runId, fingerprint).begin(1, request)
+    const line = JSON.stringify({
+      type: 'call', seq: 1, kind: 'agent', requestHash: workflowRequestHash('agent', request),
+      outcome: { kind: 'settled', childId: 'child', result: { ...result, structured: 'NONFINITE' } },
+    }).replace('"NONFINITE"', '1e999')
+    writeFileSync(journalPath, `${line}\n`, { flag: 'a' })
+    expect(() => WorkflowJournal.load(journalPath, runId, fingerprint)).toThrow(expect.objectContaining({ code: 'JOURNAL_INVALID' }))
+  })
+
+  it('refuses a missing earlier call instead of treating it as a live suffix', () => {
+    const journalPath = path()
+    const journal = WorkflowJournal.create(journalPath, runId, fingerprint)
+    journal.begin(2, request)
+    expect(() => journal.replay(1, request)).toThrow(expect.objectContaining({ code: 'JOURNAL_INVALID' }))
+    expect(() => WorkflowJournal.load(journalPath, runId, fingerprint)).toThrow(expect.objectContaining({ code: 'JOURNAL_INVALID' }))
+  })
+})
+
+it('refuses a newline repair that would exceed the complete journal byte bound', () => {
+  const journalPath = path()
+  WorkflowJournal.create(journalPath, runId, fingerprint)
+  const header = readFileSync(journalPath, 'utf8').trimEnd()
+  writeFileSync(journalPath, header + ' '.repeat(MAX_WORKFLOW_JOURNAL_BYTES - Buffer.byteLength(header)))
+  expect(() => WorkflowJournal.load(journalPath, runId, fingerprint)).toThrow(expect.objectContaining({ code: 'JOURNAL_FULL' }))
+  const retained = readFileSync(journalPath)
+  expect(retained.length).toBe(MAX_WORKFLOW_JOURNAL_BYTES)
+  expect(retained.at(-1)).toBe(0x20)
 })

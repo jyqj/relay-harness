@@ -333,13 +333,13 @@ useMounter(mounter: McpClientMounter): void
  * Replace HTTP OAuth. Tests call this before {@link authorize}.
  * @param authorizeHttp - returns tokens for one MCP endpoint URL.
  */
-useAuthorizeHttp(authorizeHttp: (url: string) => Promise<McpOAuthTokens>): void
+useAuthorizeHttp(authorizeHttp: (url: string, signal: AbortSignal) => Promise<McpOAuthTokens>): void
 
 /**
  * Load the document, mount enabled servers, and optionally watch.
- * @returns disposer that closes the watcher and child fibers.
+ * @returns idempotent disposer that closes admission and awaits queued work, watcher, and child fibers.
  */
-start(): () => void
+start(): () => Promise<void>
 
 /**
  * Current managed records with secrets masked.

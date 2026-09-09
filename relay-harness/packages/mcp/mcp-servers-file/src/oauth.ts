@@ -5,7 +5,7 @@
 
 import { createHash, randomBytes } from 'node:crypto'
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http'
-import { spawn } from 'node:child_process'
+import { runNativeCommand, type NativeCommandRunner } from '@relay-harness/rlh-native-command'
 
 /** Tokens returned by the authorization-code exchange. */
 export interface McpOAuthTokens {
@@ -20,20 +20,21 @@ export interface McpOAuthListener {
   /** Exact redirect URI registered with the authorization server. */
   readonly redirectUri: string
   /**
-   * Wait for one callback carrying `code` and matching `state`.
+   * Wait for one callback carrying `code` and matching `state`; only one
+   * waiter may be active. Unauthenticated callbacks do not consume it.
    * @param state - CSRF token placed on the authorize URL.
    * @param timeoutMs - how long to wait for the browser redirect.
    * @returns the authorization code.
    */
   waitForCode: (state: string, timeoutMs: number) => Promise<string>
-  /** Stop listening. */
+  /** Stop listening and reject any pending wait; repeated calls share completion. */
   close: () => Promise<void>
 }
 
-/** Injected I/O so tests never open a browser or bind a port. */
+/** Injected I/O so authorization-flow tests can avoid browsers and real ports. */
 export interface McpOAuthRuntime {
   readonly fetch: typeof fetch
-  readonly openBrowser: (url: string) => void
+  readonly openBrowser: (url: string, signal?: AbortSignal) => void | Promise<void>
   readonly createListener: () => Promise<McpOAuthListener>
 }
 
@@ -45,28 +46,49 @@ const SCOPE = 'mcp:use'
  * for an access token. Opens the system browser for the user to sign in.
  * @param resource - MCP Streamable HTTP endpoint URL.
  * @param runtime - fetch, browser, and localhost callback.
+ * @param signal - optional owner cancellation propagated through requests and browser hand-off.
  * @returns the token response.
  */
-export async function authorizeMcpHttp(resource: string, runtime: McpOAuthRuntime): Promise<McpOAuthTokens> {
-  const metadataUrl = await discoverResourceMetadataUrl(resource, runtime.fetch)
-  const protectedResource = await getJson(runtime.fetch, metadataUrl)
-  const issuer = firstString(protectedResource.authorization_servers)
+export async function authorizeMcpHttp(resource: string, runtime: McpOAuthRuntime, signal?: AbortSignal): Promise<McpOAuthTokens> {
+  signal?.throwIfAborted()
+  const resourceUrl = resourceTransportUrl(resource)
+  const fetchImpl: typeof fetch = (input, init) => {
+    signal?.throwIfAborted()
+    const signals = [AbortSignal.timeout(30_000)]
+    if (signal !== undefined) signals.push(signal)
+    return runtime.fetch(input, { ...init, signal: AbortSignal.any(signals), redirect: 'error' })
+  }
+  const metadataUrl = await discoverResourceMetadataUrl(resource, fetchImpl)
+  validateMetadataTransport(metadataUrl, resourceUrl)
+  const protectedResource = await getJson(fetchImpl, metadataUrl)
+  if (protectedResource.resource !== resource) throw new Error('mcp-servers-file: OAuth resource metadata mismatch')
+  const issuer = firstString(protectedResource.authorization_servers, 'authorization_servers')
   if (issuer === undefined) {
     throw new Error('mcp-servers-file: OAuth metadata is missing authorization_servers')
   }
-  const asMeta = await getJson(runtime.fetch, new URL('/.well-known/oauth-authorization-server', issuer).href)
+  const asMeta = await getJson(fetchImpl, issuerMetadataUrl(issuer))
+  if (asMeta.issuer !== issuer) throw new Error('mcp-servers-file: OAuth issuer metadata mismatch')
   const methods = asMeta.code_challenge_methods_supported
   if (!Array.isArray(methods) || !methods.includes('S256')) {
     throw new Error('mcp-servers-file: authorization server does not advertise PKCE S256')
   }
-  const authorizationEndpoint = requiredString(asMeta.authorization_endpoint, 'authorization_endpoint')
-  const tokenEndpoint = requiredString(asMeta.token_endpoint, 'token_endpoint')
-  const registrationEndpoint = requiredString(asMeta.registration_endpoint, 'registration_endpoint')
-  const scope = firstString(protectedResource.scopes_supported) ?? SCOPE
+  const authorizationEndpoint = endpointUrl(asMeta.authorization_endpoint, 'authorization_endpoint')
+  const tokenEndpoint = endpointUrl(asMeta.token_endpoint, 'token_endpoint')
+  const registrationEndpoint = endpointUrl(asMeta.registration_endpoint, 'registration_endpoint')
+  const scope = firstString(protectedResource.scopes_supported, 'scopes_supported') ?? SCOPE
 
+  signal?.throwIfAborted()
   const listener = await runtime.createListener()
+  let onAbort: (() => void) | undefined
   try {
-    const clientId = await registerClient(runtime.fetch, registrationEndpoint, listener.redirectUri, scope)
+    signal?.throwIfAborted()
+    const cancelled = new Promise<never>((_resolve, reject) => {
+      onAbort = () => { reject(new Error('mcp-servers-file: OAuth login cancelled')) }
+      signal?.addEventListener('abort', onAbort, { once: true })
+    })
+    void cancelled.catch(() => undefined)
+    const clientId = await registerClient(fetchImpl, registrationEndpoint, listener.redirectUri, scope)
+    signal?.throwIfAborted()
     const { verifier, challenge } = pkce()
     const state = b64url(randomBytes(16))
     const authorize = new URL(authorizationEndpoint)
@@ -79,9 +101,12 @@ export async function authorizeMcpHttp(resource: string, runtime: McpOAuthRuntim
     authorize.searchParams.set('resource', resource)
     authorize.searchParams.set('state', state)
     const codePromise = listener.waitForCode(state, AUTH_TIMEOUT_MS)
-    runtime.openBrowser(authorize.href)
-    const code = await codePromise
-    return await exchangeCode(runtime.fetch, {
+    // Browser launch may throw before the await; close still rejects this waiter.
+    void codePromise.catch(() => undefined)
+    await runtime.openBrowser(authorize.href, signal)
+    signal?.throwIfAborted()
+    const code = await Promise.race([codePromise, cancelled])
+    return await exchangeCode(fetchImpl, {
       tokenEndpoint,
       clientId,
       code,
@@ -90,6 +115,7 @@ export async function authorizeMcpHttp(resource: string, runtime: McpOAuthRuntim
       resource,
     })
   } finally {
+    if (onAbort !== undefined) signal?.removeEventListener('abort', onAbort)
     await listener.close()
   }
 }
@@ -101,8 +127,35 @@ export async function authorizeMcpHttp(resource: string, runtime: McpOAuthRuntim
 export function defaultOAuthRuntime(): McpOAuthRuntime {
   return {
     fetch,
-    openBrowser,
+    openBrowser: (url, signal) => openBrowser(url, { ...signal === undefined ? {} : { signal } }),
     createListener,
+  }
+}
+
+/** Parse transport locations without reflecting supplied URLs in diagnostics. */
+function transportUrl(value: string, field: string): URL {
+  let url: URL
+  try { url = new URL(value) } catch { throw new Error(`mcp-servers-file: invalid OAuth ${field} URL`) }
+  if (!['http:', 'https:'].includes(url.protocol) || url.username !== '' || url.password !== '' || value.includes('#')) {
+    throw new Error(`mcp-servers-file: invalid OAuth ${field} URL`)
+  }
+  return url
+}
+
+/** Plain HTTP is limited to the explicit local-development resource origins. */
+function resourceTransportUrl(resource: string): URL {
+  const url = transportUrl(resource, 'resource')
+  if (url.protocol === 'http:' && !['127.0.0.1', 'localhost', '[::1]'].includes(url.hostname)) {
+    throw new Error('mcp-servers-file: invalid OAuth resource URL')
+  }
+  return url
+}
+
+/** Metadata may delegate over HTTPS, never to a different plaintext origin. */
+function validateMetadataTransport(metadata: string, resource: URL): void {
+  const url = transportUrl(metadata, 'resource metadata')
+  if (url.protocol === 'http:' && url.origin !== resource.origin) {
+    throw new Error('mcp-servers-file: invalid OAuth resource metadata URL')
   }
 }
 
@@ -115,12 +168,16 @@ async function discoverResourceMetadataUrl(resource: string, fetchImpl: typeof f
     },
     body: '{}',
   })
-  if (probe.status !== 401 && probe.status !== 403) {
-    throw new Error('mcp-servers-file: MCP server did not request OAuth')
+  try {
+    if (probe.status !== 401 && probe.status !== 403) {
+      throw new Error('mcp-servers-file: MCP server did not request OAuth')
+    }
+    const challenge = probe.headers.get('www-authenticate')
+    const fromHeader = parseResourceMetadata(challenge)
+    return fromHeader ?? wellKnownProtectedResource(resource)
+  } finally {
+    await probe.body?.cancel().catch(() => undefined)
   }
-  const challenge = probe.headers.get('www-authenticate')
-  const fromHeader = parseResourceMetadata(challenge)
-  return fromHeader ?? wellKnownProtectedResource(resource)
 }
 
 function parseResourceMetadata(header: string | null): string | undefined {
@@ -131,10 +188,20 @@ function parseResourceMetadata(header: string | null): string | undefined {
   return bare?.[1]
 }
 
+/** RFC 8414: insert the well-known suffix before the issuer path. */
+function issuerMetadataUrl(issuer: string): string {
+  let url: URL
+  try { url = new URL(issuer) } catch { throw new Error('mcp-servers-file: invalid OAuth issuer URL') }
+  if (url.protocol !== 'https:' || url.username !== '' || url.password !== '' || issuer.includes('?') || issuer.includes('#')) {
+    throw new Error('mcp-servers-file: invalid OAuth issuer URL')
+  }
+  return `${url.origin}/.well-known/oauth-authorization-server${url.pathname.replace(/\/$/, '')}`
+}
+
 function wellKnownProtectedResource(resource: string): string {
   const url = new URL(resource)
-  const path = url.pathname === '/' ? '' : url.pathname.replace(/\/$/, '')
-  return `${url.origin}/.well-known/oauth-protected-resource${path}`
+  const path = url.pathname === '/' ? '' : url.pathname
+  return `${url.origin}/.well-known/oauth-protected-resource${path}${url.search}`
 }
 
 async function registerClient(
@@ -200,8 +267,40 @@ async function getJson(fetchImpl: typeof fetch, url: string): Promise<Record<str
   return readJson(response)
 }
 
+const MAX_OAUTH_RESPONSE_BYTES = 1024 * 1024
+
+/** Consume at most one MiB of decoded response bytes; never trust Content-Length alone. */
+async function readOAuthBody(response: Response): Promise<string> {
+  const tooLarge = (): Error => new Error(`mcp-servers-file: OAuth response exceeds ${MAX_OAUTH_RESPONSE_BYTES} bytes`)
+  if (Number(response.headers.get('content-length')) > MAX_OAUTH_RESPONSE_BYTES) {
+    await response.body?.cancel().catch(() => undefined)
+    throw tooLarge()
+  }
+  if (response.body === null) return ''
+  const reader = response.body.getReader()
+  const chunks: Uint8Array[] = []
+  let total = 0
+  try {
+    for (;;) {
+      const { done, value } = await reader.read()
+      if (done) break
+      total += value.byteLength
+      if (total > MAX_OAUTH_RESPONSE_BYTES) throw tooLarge()
+      chunks.push(value)
+    }
+  } finally {
+    await reader.cancel().catch(() => undefined)
+    reader.releaseLock()
+  }
+  return Buffer.concat(chunks, total).toString('utf8')
+}
+
 async function readJson(response: Response): Promise<Record<string, unknown>> {
-  const text = await response.text()
+  if (!response.ok) {
+    await response.body?.cancel().catch(() => undefined)
+    throw new Error(`mcp-servers-file: OAuth HTTP request failed (${String(response.status)})`)
+  }
+  const text = await readOAuthBody(response)
   try {
     const parsed: unknown = JSON.parse(text)
     if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
@@ -214,10 +313,23 @@ async function readJson(response: Response): Promise<Record<string, unknown>> {
   }
 }
 
-function firstString(value: unknown): string | undefined {
-  if (typeof value === 'string' && value.length > 0) return value
-  if (Array.isArray(value) && typeof value[0] === 'string' && value[0].length > 0) return value[0]
-  return undefined
+function firstString(value: unknown, field: string): string | undefined {
+  if (value === undefined) return undefined
+  if (!Array.isArray(value) || !value.every((entry: unknown): entry is string => typeof entry === 'string' && entry.length > 0)) {
+    throw new Error(`mcp-servers-file: OAuth metadata ${field} must be an array of non-empty strings`)
+  }
+  return value[0]
+}
+
+/** Admit authorization endpoints before any listener, registration, or browser effects. */
+function endpointUrl(value: unknown, field: string): string {
+  const endpoint = requiredString(value, field)
+  let url: URL
+  try { url = new URL(endpoint) } catch { throw new Error(`mcp-servers-file: invalid OAuth ${field} URL`) }
+  if (url.protocol !== 'https:' || url.username !== '' || url.password !== '' || endpoint.includes('#')) {
+    throw new Error(`mcp-servers-file: invalid OAuth ${field} URL`)
+  }
+  return endpoint
 }
 
 function requiredString(value: unknown, field: string): string {
@@ -237,17 +349,49 @@ function pkce(): { verifier: string; challenge: string } {
   return { verifier, challenge }
 }
 
-function openBrowser(url: string): void {
-  const command = process.platform === 'win32' ? 'cmd' : process.platform === 'darwin' ? 'open' : 'xdg-open'
-  const args = process.platform === 'win32' ? ['/c', 'start', '', url] : [url]
-  spawn(command, args, { detached: true, stdio: 'ignore' }).unref()
+/**
+ * Open one HTTP(S) authorization URL through the shared native runner with a cancellation deadline.
+ * @param url - authorization URL, never a shell command or local file.
+ * @param internals - platform and runner overrides for offline command-boundary tests.
+ * @returns when the OS hand-off command exits successfully.
+ */
+export async function openBrowser(
+  url: string,
+  internals: { platform?: NodeJS.Platform; run?: NativeCommandRunner; signal?: AbortSignal } = {},
+): Promise<void> {
+  internals.signal?.throwIfAborted()
+  let target: URL
+  try { target = new URL(url) } catch { throw new Error('mcp-servers-file: invalid OAuth browser URL') }
+  if (!['http:', 'https:'].includes(target.protocol) || target.username !== '' || target.password !== '' || target.hash !== '') {
+    throw new Error('mcp-servers-file: invalid OAuth browser URL')
+  }
+  const platform = internals.platform ?? process.platform
+  const command = platform === 'win32' ? 'powershell.exe' : platform === 'darwin' ? 'open' : 'xdg-open'
+  const args = platform === 'win32'
+    ? ['-NoProfile', '-NonInteractive', '-Command', `Start-Process -FilePath '${target.href.replace(/'/g, "''")}'`]
+    : [target.href]
+  try {
+    const timeout = AbortSignal.timeout(10_000)
+    const signal = internals.signal === undefined ? timeout : AbortSignal.any([timeout, internals.signal])
+    await (internals.run ?? runNativeCommand)(command, args, signal)
+  } catch {
+    // Native errors include argv and sometimes stderr; neither may expose an
+    // authorization URL's transient state or provider-controlled diagnostics.
+    throw new Error('mcp-servers-file: could not open OAuth browser')
+  }
 }
 
 function createListener(): Promise<McpOAuthListener> {
   return new Promise((resolve, reject) => {
     let pending: { state: string; resolve: (code: string) => void; reject: (error: Error) => void } | undefined
+    let closing: Promise<void> | undefined
+    let closed = false
     const server = createServer((req: IncomingMessage, res: ServerResponse) => {
-      const url = new URL(req.url ?? '/', 'http://127.0.0.1')
+      let url: URL
+      try { url = new URL(req.url ?? '/', 'http://127.0.0.1') } catch {
+        res.writeHead(400, { 'content-type': 'text/plain; charset=utf-8' }).end('Invalid callback')
+        return
+      }
       if (url.pathname !== '/callback') {
         res.writeHead(404).end()
         return
@@ -255,15 +399,15 @@ function createListener(): Promise<McpOAuthListener> {
       const error = url.searchParams.get('error')
       const code = url.searchParams.get('code')
       const returnedState = url.searchParams.get('state')
-      if (error !== null) {
-        res.writeHead(400, { 'content-type': 'text/plain; charset=utf-8' }).end(error)
-        pending?.reject(new Error(`mcp-servers-file: OAuth error: ${error}`))
-        pending = undefined
+      // Unauthenticated traffic cannot consume the active transaction, even
+      // when it contains an OAuth error. Never reflect callback-controlled text.
+      if (req.method !== 'GET' || pending === undefined || returnedState !== pending.state) {
+        res.writeHead(400, { 'content-type': 'text/plain; charset=utf-8' }).end('Invalid callback')
         return
       }
-      if (code === null || pending === undefined || returnedState !== pending.state) {
-        res.writeHead(400, { 'content-type': 'text/plain; charset=utf-8' }).end('Invalid callback')
-        pending?.reject(new Error('mcp-servers-file: OAuth callback is missing code or state'))
+      if (error !== null || code === null || code.length === 0) {
+        res.writeHead(400, { 'content-type': 'text/plain; charset=utf-8' }).end('OAuth authorization failed')
+        pending.reject(new Error('mcp-servers-file: OAuth authorization failed'))
         pending = undefined
         return
       }
@@ -275,12 +419,20 @@ function createListener(): Promise<McpOAuthListener> {
     server.listen(0, '127.0.0.1', () => {
       const address = server.address()
       if (address === null || typeof address === 'string') {
-        reject(new Error('mcp-servers-file: OAuth listener did not bind a TCP port'))
+        const failure = new Error('mcp-servers-file: OAuth listener did not bind a TCP port')
+        server.close(() => { reject(failure) })
+        server.closeAllConnections()
         return
       }
       resolve({
         redirectUri: `http://127.0.0.1:${String(address.port)}/callback`,
         waitForCode: (state, timeoutMs) => new Promise((codeResolve, codeReject) => {
+          if (closed) { codeReject(new Error('mcp-servers-file: OAuth listener closed')); return }
+          if (pending !== undefined) { codeReject(new Error('mcp-servers-file: OAuth listener already waiting')); return }
+          if (state.length === 0 || !Number.isSafeInteger(timeoutMs) || timeoutMs <= 0 || timeoutMs > 2_147_483_647) {
+            codeReject(new Error('mcp-servers-file: invalid OAuth listener state or timeout'))
+            return
+          }
           const timer = setTimeout(() => {
             pending = undefined
             codeReject(new Error('mcp-servers-file: OAuth login timed out'))
@@ -297,12 +449,22 @@ function createListener(): Promise<McpOAuthListener> {
             },
           }
         }),
-        close: () => new Promise((closeResolve, closeReject) => {
-          server.close((error) => {
-            if (error !== undefined) closeReject(error)
-            else closeResolve()
+        close: () => {
+          if (closing !== undefined) return closing
+          closed = true
+          pending?.reject(new Error('mcp-servers-file: OAuth listener closed'))
+          pending = undefined
+          closing = new Promise((closeResolve, closeReject) => {
+            server.close((error) => {
+              if (error !== undefined) closeReject(error)
+              else closeResolve()
+            })
+            // Only this transaction's sockets: incomplete request bodies must
+            // not retain the OAuth listener after owner cancellation.
+            server.closeAllConnections()
           })
-        }),
+          return closing
+        },
       })
     })
   })

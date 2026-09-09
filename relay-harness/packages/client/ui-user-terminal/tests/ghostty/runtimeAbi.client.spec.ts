@@ -1,14 +1,14 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { describe, expect, it } from 'vitest'
+import { describe,expect,it } from 'vitest'
 
-import { ghosttyKeyForCode } from '../../src/client/ghostty/keyCodes.ts'
+import { ghosttyKeyForCode } from '../../src/client/terminal/ghostty/keyCodes.ts'
 
-const ghosttyDir = fileURLToPath(new URL('../../src/client/ghostty/', import.meta.url))
+const ghosttyDir = fileURLToPath(new URL('../../src/client/terminal/ghostty/', import.meta.url))
 const wasmDataUrl = `data:application/wasm;base64,${readFileSync(join(ghosttyDir, 'vendor/ghostty-vt.wasm')).toString('base64')}`
 const writePtyWasmDataUrl = `data:application/wasm;base64,${readFileSync(join(ghosttyDir, 'vendor/ghostty-write-pty.wasm')).toString('base64')}`
-const pinnedVersion = readFileSync(join(ghosttyDir, '../../../native/libghostty-vt/VERSION'), 'utf8')
+const pinnedVersion = readFileSync(join(process.cwd(), 'packages/client/ui-user-terminal/native/libghostty-vt/VERSION'), 'utf8')
 
 type WasmFunction = (...args: number[]) => number
 

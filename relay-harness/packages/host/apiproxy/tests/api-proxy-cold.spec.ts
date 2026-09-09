@@ -133,6 +133,41 @@ describe('sessions.list cold merge', () => {
     ]))
   })
 
+  it('re-checks attachment after the size gate and skips the probe read for an attached session', async () => {
+    const ctx = new Context()
+    await ctx.plugin(SessionStore)
+    await ctx.plugin(UserQuestionService)
+    await ctx.plugin(AgentRegistry)
+    const meta = header('attached-before-read', 100)
+    const root = mkdtempSync(join(tmpdir(), 'rlh-cold-attached-'))
+    const path = join(root, 'small.log')
+    writeFileSync(path, 'x')
+    const readFrom = vi.fn(async () => ({
+      meta,
+      events: [{ type: 'session/end-seed', seq: 0, time: 110, data: {} }] as SessionEvent[],
+    }))
+    ctx.provide('sessionPersistence', {
+      list: () => Promise.resolve([meta]),
+      locate: (m: SessionHeader) => {
+        // The attach lands between the listing snapshot and the probe's read —
+        // the growth window the stat gate cannot close.
+        const session = ctx.sessions.create(m.id, { meta: { cwd: m.cwd!, createdAt: m.createdAt } })
+        ctx.agents.register({ id: session.id, session, status: 'running', ctx } as Agent)
+        return { kind: 'jsonl' as const, path }
+      },
+      readFrom,
+    } as never)
+    const api = createApiProxy(ctx, { defaultModelSelection: () => ({ provider: 'p', model: 'm' }), cwd: '/tmp' })
+
+    const response = await api.sessions.list(request({}))
+    if (!response.result.ok) throw new Error('unreachable')
+    // The attached Session owns its log again: the probe never reads the artifact.
+    expect(readFrom).not.toHaveBeenCalled()
+    expect(response.result.value.items).toEqual([
+      expect.objectContaining({ sessionId: meta.id, running: true }),
+    ])
+  })
+
   it('can disable bounded blank probes without hiding cold Sessions', async () => {
     const ctx = new Context()
     await ctx.plugin(SessionStore)

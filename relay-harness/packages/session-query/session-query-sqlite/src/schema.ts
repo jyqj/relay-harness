@@ -1,3 +1,4 @@
+import { loadNodeSqlite } from '@relay-harness/rlh-sqlite-runtime'
 /** SQLite schema for the disposable session full-text read model. */
 
 import type { DatabaseSync } from 'node:sqlite'
@@ -49,7 +50,7 @@ export async function openSearchDatabase(path: string, journalMode: JournalMode)
     await mkdir(dirname(actual), { recursive: true, mode: 0o700 })
     await createDatabaseFile(actual)
   }
-  const { DatabaseSync } = await import('node:sqlite')
+  const { DatabaseSync } = loadNodeSqlite()
   const db = new DatabaseSync(actual)
   try {
     const { application_id: applicationId } = db.prepare('PRAGMA application_id').get() as { application_id: number }

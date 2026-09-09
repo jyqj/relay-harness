@@ -5,7 +5,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import type {
   AssistantMessageNode, CommandNode, CompactionSummaryNode, ConversationNode, ConversationSnapshot,
   ModelRetryNode, RunningToolCall, SessionId, SessionListState, ToolCallBlock, ToolResultNode, TurnErrorNode,
@@ -37,6 +37,8 @@ import { chatSnapshotFixture } from './chat-snapshot-fixture.client.ts'
 afterEach(() => {
   cleanup()
   vi.unstubAllGlobals()
+  vi.restoreAllMocks()
+  Reflect.deleteProperty(HTMLElement.prototype, 'scrollTo')
 })
 // Keyless create() persists under the bare declared key; clear between cases
 // so one harness's selection cannot rehydrate into the next.
@@ -318,6 +320,29 @@ function makeHarness(init?: Partial<ConversationSnapshot>, sessionRow?: { agentP
     set, ChatView, props, openDetails, openFile, loadOlder, inspectCall,
     chatScroll, forkAt, setSelection, toolOwners,
   }
+}
+
+/** jsdom supplies no layout; preserve the real virtualizer with a measured viewport and native-scroll stand-in. */
+function virtualViewport(): void {
+  vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockReturnValue(600)
+  vi.spyOn(HTMLElement.prototype, 'offsetWidth', 'get').mockReturnValue(800)
+  vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+    const scroll = this.closest<HTMLElement>('[class*="scroll"]')
+    const isScroll = this === scroll
+    const top = isScroll ? 0 : (Number.parseFloat(this.style.top) || 0) - (scroll?.scrollTop ?? 0)
+    const height = isScroll ? 600 : this.dataset.chatFlowKey === undefined ? 0 : 96
+    return { x: 0, y: top, top, bottom: top + height, left: 0, right: 800, width: 800, height, toJSON: () => ({}) }
+  })
+  vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockReturnValue(600)
+  vi.spyOn(HTMLElement.prototype, 'scrollHeight', 'get').mockImplementation(function (this: HTMLElement) {
+    return Number.parseFloat(this.querySelector<HTMLElement>('[class*="virtualRows"]')?.style.height ?? '100800')
+  })
+  Object.defineProperty(HTMLElement.prototype, 'scrollTo', {
+    configurable: true,
+    value(this: HTMLElement, options: ScrollToOptions) {
+      this.scrollTop = options.top ?? this.scrollTop
+    },
+  })
 }
 
 /** Simulate reader input (any device): a delivered position that deviates
@@ -921,10 +946,10 @@ describe('ChatView', () => {
     const view = render(<h.ChatView {...h.props} />)
     expect(view.getByTestId('tool-seat-r1')).toBeTruthy()
     expect(h.toolOwners[0]?.block).toMatchObject({ callId: 'r1', argsRaw: '{"command":"cmd-r1"}' })
-    expect(view.getByRole('status').textContent).toBe('Deep diving...')
+    expect(view.getByRole('status').textContent).toBe(zh['chat.turnStatus.working'])
   })
 
-  it('skips Deep diving status in a rlhbot-room session', () => {
+  it('skips the working turn status in a rlhbot-room session', () => {
     const h = makeHarness({ runningCalls: [runningCall('r1')], running: true }, { agentPreset: 'rlhbot-room' })
     const view = render(<h.ChatView {...h.props} />)
     expect(view.queryByRole('status')).toBeNull()
@@ -1015,7 +1040,7 @@ describe('ChatView', () => {
     const view = render(<h.ChatView {...h.props} />)
     // Freshly mounted (as after a reload) yet already past the 15s gate.
     const status = view.getByRole('status')
-    expect(status.textContent).toMatch(/^Deep diving\.\.\.2分0\d秒$/)
+    expect(status.textContent).toMatch(new RegExp(`^${zh['chat.turnStatus.working']}2分0\\d秒$`))
     expect(status.querySelector('[aria-hidden="true"]')).not.toBeNull()
     act(() => {
       h.set({ queue: [{
@@ -1027,7 +1052,7 @@ describe('ChatView', () => {
         text: 'also',
       }] })
     })
-    expect(status.textContent).toMatch(/^Deep diving\.\.\.2分0\d秒$/)
+    expect(status.textContent).toMatch(new RegExp(`^${zh['chat.turnStatus.working']}2分0\\d秒$`))
   })
 
   it('hands each ordered root call to the keyed business-node slot', () => {
@@ -1278,6 +1303,35 @@ describe('ChatView', () => {
     expect(observe).toHaveBeenCalledTimes(1)
   })
 
+  it('treats an explicit tool disclosure as reader ownership even when initially at the tail', () => {
+    let notify: (() => void) | undefined
+    class ResizeObserverStub {
+      constructor(callback: ResizeObserverCallback) {
+        notify = () => { callback([], this as unknown as ResizeObserver) }
+      }
+      observe = vi.fn()
+      disconnect = vi.fn()
+    }
+    vi.stubGlobal('ResizeObserver', ResizeObserverStub)
+    const h = makeHarness({ nodes: [user(1, 'q'), toolResult(2, 'result')] })
+    const view = render(<h.ChatView {...h.props} />)
+    const scroller = view.container.querySelector('[class*="scroll"]') as HTMLDivElement
+    Object.defineProperty(scroller, 'scrollHeight', { value: 1_000, writable: true })
+    Object.defineProperty(scroller, 'clientHeight', { value: 300, writable: true })
+    scroller.scrollTop = 700
+    fireEvent.scroll(scroller)
+    const row = view.container.querySelector('[data-chat-anchor-key^="call:"]') as HTMLElement
+    const button = document.createElement('button')
+    button.setAttribute('aria-expanded', 'false')
+    row.appendChild(button)
+    fireEvent.click(button)
+    Object.defineProperty(scroller, 'scrollHeight', { value: 1_323, writable: true })
+    act(() => { notify?.() })
+    expect(scroller.scrollTop).toBe(700)
+    expect(h.props.chatScroll.read()?.anchorKey).toBe(row.dataset.chatAnchorKey)
+    expect(view.getByLabelText('回到底部')).toBeTruthy()
+  })
+
   it('entering the at-bottom threshold does not snap the remaining scroll distance', () => {
     const h = makeHarness({ nodes: [user(1, 'q'), assistant(2, 'a')] })
     const view = render(<h.ChatView {...h.props} />)
@@ -1411,6 +1465,123 @@ describe('ChatView', () => {
     expect(h.loadOlder).toHaveBeenCalledTimes(1)
     act(() => { h.set({ loadingOlder: true }) })
     expect(view.getByText('加载中…')).toBeTruthy()
+  })
+
+  it('recycles loaded rows in both directions and exposes full-history find mode', async () => {
+    virtualViewport()
+    const nodes = Array.from({ length: 1_000 }, (_, index) => user(index + 1, `row ${index + 1}`))
+    const h = makeHarness({ nodes })
+    const view = render(<h.ChatView {...h.props} />)
+    const scroller = view.container.querySelector('[class*="scroll"]') as HTMLDivElement
+    act(() => { scroller.scrollTop = 0; fireEvent.scroll(scroller) })
+    await waitFor(() => { expect(view.getByText('row 1')).toBeTruthy() })
+    expect(view.container.querySelectorAll('[data-chat-flow-key]').length).toBeLessThanOrEqual(80)
+    act(() => { scroller.scrollTop = 111_400; fireEvent.scroll(scroller) })
+    await waitFor(() => { expect(view.getByText('row 1000')).toBeTruthy() })
+    expect(view.queryByText('row 1')).toBeNull()
+    expect(view.container.querySelectorAll('[data-chat-flow-key]').length).toBeLessThanOrEqual(80)
+    fireEvent.keyDown(document, { key: 'f', ctrlKey: true })
+    expect(view.container.querySelectorAll('[data-chat-flow-key]')).toHaveLength(1_000)
+    expect(view.getByText('查找仅覆盖已加载历史；可继续加载更早内容。')).toBeTruthy()
+    fireEvent.click(view.getByText('返回窗口模式'))
+    await waitFor(() => { expect(view.container.querySelectorAll('[data-chat-flow-key]').length).toBeLessThanOrEqual(80) })
+  })
+
+  it('retains an explicitly expanded tool while recycling other rows, then releases it on collapse', async () => {
+    virtualViewport()
+    const h = makeHarness({ nodes: [toolResult(0, 'pinned'), ...Array.from({ length: 300 }, (_, i) => user(i + 1, `row ${i + 1}`))] })
+    const original = h.props.renderSlot
+    function ExpandableTool() {
+      const [open, setOpen] = useState(false)
+      return <div><button type="button" aria-expanded={open} onClick={() => { setOpen(!open) }}>Toggle tool</button>{open && <div>Expanded output</div>}</div>
+    }
+    h.props.renderSlot = ((key: string, owner: RoutedChatNodeOwner, options: unknown) => key === 'conversation.chat.node' && owner.node.kind === 'tool-call'
+      ? <ExpandableTool />
+      : original(key as never, owner as never, options as never)) as ChatViewSlotProps['renderSlot']
+    const view = render(<h.ChatView {...h.props} />)
+    const scroller = view.container.querySelector('[class*="scroll"]') as HTMLDivElement
+    act(() => { scroller.scrollTop = 0; fireEvent.scroll(scroller) })
+    fireEvent.click(await view.findByText('Toggle tool'))
+    await waitFor(() => { expect(view.container.querySelector('[data-chat-pinned-count]')?.getAttribute('data-chat-pinned-count')).toBe('1') })
+    act(() => { scroller.scrollTop = 33_000; fireEvent.scroll(scroller) })
+    expect(view.getByText('Expanded output')).toBeTruthy()
+    expect(view.container.querySelectorAll('[data-chat-flow-key]').length).toBeLessThanOrEqual(81)
+    fireEvent.click(view.getByText('Toggle tool'))
+    await waitFor(() => { expect(view.queryByText('Toggle tool')).toBeNull() })
+  })
+
+  it('keeps selected text mounted until the selection is cleared', async () => {
+    virtualViewport()
+    const h = makeHarness({ nodes: Array.from({ length: 300 }, (_, i) => user(i + 1, `selectable row ${i + 1}`)) })
+    const view = render(<h.ChatView {...h.props} />)
+    const scroller = view.container.querySelector('[class*="scroll"]') as HTMLDivElement
+    act(() => { scroller.scrollTop = 0; fireEvent.scroll(scroller) })
+    const first = await view.findByText('selectable row 1')
+    const range = document.createRange()
+    range.selectNodeContents(first)
+    const selection = document.getSelection()!
+    selection.removeAllRanges()
+    selection.addRange(range)
+    fireEvent(document, new Event('selectionchange'))
+    act(() => { scroller.scrollTop = 33_000; fireEvent.scroll(scroller) })
+    expect(selection.toString()).toBe('selectable row 1')
+    expect(view.getByText('selectable row 1')).toBeTruthy()
+    selection.removeAllRanges()
+    fireEvent(document, new Event('selectionchange'))
+    await waitFor(() => { expect(view.queryByText('selectable row 1')).toBeNull() })
+  })
+
+  it('resets explicit full-history mode when retargeted to another session', () => {
+    virtualViewport()
+    const h = makeHarness({ nodes: Array.from({ length: 90 }, (_, index) => user(index + 1, `row ${index + 1}`)) })
+    const view = render(<h.ChatView {...h.props} />)
+    fireEvent.click(view.getByText('完整已加载历史（查找／选择）'))
+    expect(view.container.querySelectorAll('[data-chat-flow-key]')).toHaveLength(90)
+    view.rerender(<h.ChatView {...h.props} sessionId={'s2' as SessionId} />)
+    expect(view.queryByText('返回窗口模式')).toBeNull()
+    expect(view.container.querySelector('[data-chat-window-mode]')?.getAttribute('data-chat-window-mode')).toBe('virtual')
+  })
+
+  it('keeps one semantic reader anchor when a virtual page prepends and its measured range settles', async () => {
+    virtualViewport()
+    const nodes = Array.from({ length: 150 }, (_, index) => user(index + 100, `anchor row ${index + 100}`))
+    const h = makeHarness({ nodes, hasMore: true })
+    const view = render(<h.ChatView {...h.props} />)
+    const scroller = view.container.querySelector('[class*="scroll"]') as HTMLDivElement
+    act(() => { readerScroll(scroller, 1_200) })
+    const before = h.chatScroll.read()!
+    expect(before).not.toBeNull()
+    fireEvent.click(view.getByText('加载更早'))
+    act(() => { h.set({ loadingOlder: true }) })
+    act(() => { h.set({ nodes: [...Array.from({ length: 100 }, (_, index) => user(index, `older ${index}`)), ...nodes], loadingOlder: false, hasMore: false }) })
+    await waitFor(() => {
+      const row = [...view.container.querySelectorAll<HTMLElement>('[data-chat-anchor-key]')].find(element => element.dataset.chatAnchorKey === before.anchorKey)
+      expect(row).toBeDefined()
+      expect(Math.abs(row!.getBoundingClientRect().top - before.anchorTop)).toBeLessThanOrEqual(2)
+    })
+    expect(view.container.querySelectorAll('[data-chat-flow-key]').length).toBeLessThanOrEqual(81)
+  })
+
+  it('keeps older server pages accessible without growing the virtual DOM budget', async () => {
+    virtualViewport()
+    const nodes = Array.from({ length: 90 }, (_, index) => user(index + 1, `row ${index + 1}`))
+    const h = makeHarness({ nodes, hasMore: true })
+    const view = render(<h.ChatView {...h.props} />)
+    fireEvent.click(view.getByText('加载更早'))
+    expect(h.loadOlder).toHaveBeenCalledOnce()
+    act(() => { h.set({ nodes: [assistant(0.5, 'page head'), ...nodes], hasMore: false }) })
+    const scroller = view.container.querySelector('[class*="scroll"]') as HTMLDivElement
+    act(() => { scroller.scrollTop = 0; fireEvent.scroll(scroller) })
+    await waitFor(() => { expect(view.getByText('page head')).toBeTruthy() })
+    expect(view.container.querySelectorAll('[data-chat-flow-key]').length).toBeLessThanOrEqual(80)
+    expect(view.queryByText('加载更早')).toBeNull()
+  })
+
+  it('renders an order shorter than the window fully with no widen control', () => {
+    const h = makeHarness({ nodes: [user(1, 'only'), assistant(2, 'answer')] })
+    const view = render(<h.ChatView {...h.props} />)
+    expect(view.container.querySelectorAll('[data-chat-flow-key]')).toHaveLength(2)
+    expect(view.queryByText(/显示更早/)).toBeNull()
   })
 
   it('shows open error and loading states', () => {

@@ -37,11 +37,12 @@
   ],
   "license": "MIT",
   "peerDependencies": {
+    "@relay-harness/cordis": "workspace:^",
     "@relay-harness/rlh-atomic-write": "workspace:^",
     "@relay-harness/rlh-home-paths": "workspace:^",
     "@relay-harness/rlh-invariants": "workspace:^",
     "@relay-harness/rlh-mcp-client": "workspace:^",
-    "@relay-harness/cordis": "workspace:^"
+    "@relay-harness/rlh-native-command": "workspace:^"
   },
   "dependencies": {
     "@relay-harness/schemastery": "workspace:^",
@@ -49,10 +50,11 @@
     "yaml": "^2.9.0"
   },
   "devDependencies": {
+    "@relay-harness/cordis": "workspace:^",
     "@relay-harness/rlh-atomic-write": "workspace:^",
     "@relay-harness/rlh-home-paths": "workspace:^",
     "@relay-harness/rlh-invariants": "workspace:^",
     "@relay-harness/rlh-mcp-client": "workspace:^",
-    "@relay-harness/cordis": "workspace:^"
+    "@relay-harness/rlh-native-command": "workspace:^"
   }
 }

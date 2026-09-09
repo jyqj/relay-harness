@@ -1,11 +1,11 @@
 import { Context } from '@relay-harness/cordis'
-import { describe, expect, it, vi } from 'vitest'
-import { SlotRegistry } from '@relay-harness/rlh-client-runtime/client'
 import { LocaleRuntime } from '@relay-harness/rlh-client-locale/client'
-import { apply, inject } from '@relay-harness/rlh-client-ui-workspace/client'
-import type { WorkspaceBrowserInjected, WorkspacePickerInjected } from '@relay-harness/rlh-client-ui-workspace/client'
-import { WorkspaceBrowser } from '../src/client/WorkspaceBrowser.tsx'
-import { WorkspacePicker } from '../src/client/WorkspacePicker.tsx'
+import { SlotRegistry } from '@relay-harness/rlh-client-runtime/client'
+import type { WorkspaceBrowserInjected,WorkspacePickerInjected } from '@relay-harness/rlh-client-ui-workspace/client'
+import { apply,inject } from '@relay-harness/rlh-client-ui-workspace/client'
+import { describe,expect,it,vi } from 'vitest'
+import { WorkspaceBrowser } from '../src/client/browser/WorkspaceBrowser.tsx'
+import { WorkspacePicker } from '../src/client/browser/WorkspacePicker.tsx'
 
 async function bench() {
   const ctx = new Context()

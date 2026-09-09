@@ -1,0 +1,52 @@
+name: Desktop release-shaped smoke
+
+on:
+  workflow_call: {}
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: desktop-smoke-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: relay-harness
+
+env:
+  RLH_TELEMETRY_DISABLED: '1'
+  CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+
+jobs:
+  desktop-smoke:
+    name: Desktop source and packaged smoke (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-2025]
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+        with:
+          dest: ${{ runner.temp }}/setup-pnpm
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - name: Install immutable workspace
+        run: pnpm install --frozen-lockfile
+      - name: Install the pinned Electron runtime
+        run: node apps/desktop/node_modules/electron/install.js
+      - name: Build the official runtime
+        run: pnpm run build:official
+      - name: Exercise the source desktop application
+        run: pnpm --dir apps/desktop run smoke:source
+      - name: Assemble an unpacked desktop distribution
+        run: pnpm --dir apps/desktop run pack
+      - name: Exercise the packaged desktop application
+        run: pnpm --dir apps/desktop run smoke:packaged

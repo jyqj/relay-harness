@@ -1,3 +1,4 @@
+// @ts-check
 'use strict';
 
 const path = require('path');
@@ -26,6 +27,14 @@ function bootLogFilename(now = new Date()) {
   return `rlhd-boot-${stamp}.log`;
 }
 
+/**
+ * @param {{version?: unknown, savedAt?: unknown, snapshot?: {
+ * state?: unknown, error?: unknown,
+ * failure?: {phase?: unknown, message?: unknown, code?: unknown, signal?: unknown, occurredAt?: unknown},
+ * recovery?: {status?: unknown, attempt?: unknown, maxAttempts?: unknown},
+ * pluginRecovery?: {skipUserPlugins?: unknown}
+ * }, logs?: readonly unknown[]}} [input] Values rendered without interpreting diagnostic content.
+ */
 function formatBootLogDump({ version, savedAt, snapshot = {}, logs = [] } = {}) {
   const failure = snapshot.failure || {};
   const lines = [
@@ -60,6 +69,12 @@ function formatBootLogDump({ version, savedAt, snapshot = {}, logs = [] } = {}) 
   return `${[...lines, ...logLines].join('\n')}\n`;
 }
 
+/**
+ * @param {{dialog: Pick<typeof import('electron').dialog, 'showSaveDialog'>,
+ * browserWindow?: import('electron').BrowserWindow, dump: string,
+ * writeFile: typeof import('node:fs/promises').writeFile,
+ * defaultDirectory?: string, now?: Date}} options Caller-owned dialog and file writer.
+ */
 async function saveBootLog({
   dialog,
   browserWindow,
@@ -67,7 +82,7 @@ async function saveBootLog({
   writeFile,
   defaultDirectory,
   now,
-} = {}) {
+}) {
   const defaultPath = path.join(String(defaultDirectory || ''), bootLogFilename(now));
   const result = await dialog.showSaveDialog(browserWindow || undefined, {
     title: '保存错误日志',

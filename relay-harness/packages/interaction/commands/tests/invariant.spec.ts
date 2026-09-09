@@ -24,6 +24,19 @@ function appendRun(session: Session, id: string): void {
 }
 
 describe('command lifecycle invariants', () => {
+  it('rejects duplicate command starts in one session', async () => {
+    const { session } = await mount()
+    appendRun(session, 'duplicate')
+    expect(() => { appendRun(session, 'duplicate') }).toThrow(/repeats commandId/)
+  })
+
+  it('rejects a completion without a preceding command start', async () => {
+    const { session } = await mount()
+    expect(() => {
+      session.append('command/done', { commandId: CommandId('orphan'), kind: 'success' })
+    }).toThrow(/pairs no prior command\/run/)
+  })
+
   it('accepts a success outcome linked to an earlier non-command domain event', async () => {
     const { session } = await mount()
     const source = session.append('turn/start', { turn: 1 })

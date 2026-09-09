@@ -19,9 +19,15 @@
     - button "技能":
       - img
       - text: 技能
+    - button "记忆":
+      - img
+      - text: 记忆
     - button "MCP":
       - img
       - text: MCP
+    - button "代码索引":
+      - img
+      - text: 代码索引
     - button "Agent 预设":
       - img
       - text: Agent 预设
@@ -37,7 +43,6 @@
   - text: 识图模型
   - combobox "识图模型":
     - option "不启用" [selected]
-    - option "DeepSeek / DeepSeek-V4-Flash"
   - paragraph: 主模型不支持图片时，先由该模型识别图片内容，再把描述交给主模型处理。请选择一个支持图片输入的模型。
   - list:
     - listitem:
@@ -66,6 +71,12 @@
           - option "openai-completions" [selected]
           - option "openai-responses"
           - option "anthropic-messages"
+        - text: 默认输入类型
+        - checkbox "文本"
+        - text: 文本
+        - checkbox "图像"
+        - text: 图像
+        - paragraph: 应用于本路由下未声明的模型。任何受支持协议都必然接受文本。
         - region "模型目录":
           - text: 模型目录 已自定义模型目录
           - button "恢复默认模型"
@@ -77,22 +88,22 @@
             - /placeholder: 显示名称
           - button "容量 1"
           - button "删除模型 1"
-          - group "思考强度":
-            - text: 思考强度
-            - checkbox "关闭 1"
-            - text: 关闭
-            - checkbox "极低 1"
-            - text: 极低
-            - checkbox "低 1"
-            - text: 低
-            - checkbox "中 1"
-            - text: 中
-            - checkbox "高 1"
-            - text: 高
-            - checkbox "很高 1"
-            - text: 很高
-            - checkbox "最大 1"
-            - text: 最大
+          - group "Supported thinking intensity":
+            - text: Supported thinking intensity
+            - checkbox "Off 1"
+            - text: "Off"
+            - checkbox "Minimal 1"
+            - text: Minimal
+            - checkbox "Low 1"
+            - text: Low
+            - checkbox "Medium 1"
+            - text: Medium
+            - checkbox "High 1"
+            - text: High
+            - checkbox "Extra High 1"
+            - text: Extra High
+            - checkbox "Max 1"
+            - text: Max
           - button "添加模型"
       - button "取消"
       - button "保存"

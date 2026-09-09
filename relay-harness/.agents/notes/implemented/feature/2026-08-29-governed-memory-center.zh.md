@@ -14,7 +14,11 @@ provider-neutral Memory seam 新增了 canonical current-entry view 上的分页
 
 Web Host 挂载 `memoryCenter`；每次 list/search/read 都要求已连接 Session，并先用其权威 cwd-or-global Scope 校验 Client workspace，再绑定配置的 user/agent identity。治理 mutation 还携带页面展示的 revision，追加 `memory/governance-requested`，要求 Session durability barrier 参与，并在 Provider 写入前重新检查 revision，再把同一个 compare-and-set guard 传入 Provider。Approve 只把 candidate/disputed memory 提升为 active user-stated fact；reject/delete 追加 tombstone；revise 保留既有 Evidence，并追加用户的精确治理事实。详情读取暴露来源 Evidence、`validUntil` freshness、显式 supersession 链，以及仅在已准入 `context/prepared` contribution 携带该 Memory Evidence 时成立的 why-used occurrence；每次 occurrence 会标识 current、historical 或 unknown revision。
 
-Web Settings Memory Center 新增 exact-scope list/detail cache、status/search filter、分页、Evidence 与 why-used 视图、candidate 审核、revision 和必须填写原因的 tombstone。connection reset 与每次 mutation 都会推进 cache generation，因此更早的在途读取不能重新写入失效状态。没有虚构 retention/deletion policy：过期 row 仍可见，delete 始终是 可审计 tombstone。
+Web Settings Memory Center 新增 exact-scope list/detail cache、status/search filter、分页、Evidence 与 why-used 视图、candidate 审核、revision 和必须填写原因的 tombstone。connection reset 与成功的治理 mutation 都会清空缓存值，并使待处理读取失去写入资格，因此更早的在途读取不能重新写入失效状态。没有虚构 retention/deletion policy：过期 row 仍可见，delete 始终是 可审计 tombstone。
+
+详情选择与列表查询分别拥有响应代次：关闭读取中的弹窗不能被晚到响应重新打开，切换筛选也不能混入旧页面。分页失败保留可用条目并提供明确重试入口，而非静默呈现为已加载完成。治理操作在确认前不可关闭，非法编辑输入只在本地显示错误。[Memory Center 包](../../../../packages/client/ui-memory-center/README.md)定义这些交互细节。
+
+缓存读取保留返回给自身调用方的结果，但只有仍为该键最新请求时才能写入缓存。列表与详情缓存共用该机制，避免慢响应覆盖已完成的刷新结果，同时不清除无关页面。
 
 ## 考虑过的替代方案
 

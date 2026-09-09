@@ -19,7 +19,7 @@ import SubagentRuntime, {
   type SubagentRunEndInfo,
   type SubagentStartRequest,
 } from '@relay-harness/rlh-subagent'
-import { SessionId, type SessionEvent } from '@relay-harness/rlh-session'
+import Sessions, { SessionId, type SessionEvent } from '@relay-harness/rlh-session'
 
 function fakeParent(id = 'parent-1'): Agent {
   return { id: SessionId(id) } as unknown as Agent
@@ -77,6 +77,34 @@ async function service(config: Config = {}): Promise<{ ctx: Context; subagents: 
 }
 
 describe('SubagentRuntime', () => {
+  it('supports omitted constructor policy defaults in an owned plugin scope', async () => {
+    const ctx = new Context()
+    try {
+      await ctx.plugin((scope: Context) => { new SubagentRuntime(scope) })
+      const provider = new StubProvider('embedded')
+      const owner = await ctx.plugin(Object.assign((scope: Context) => {
+        scope.subagents.registerProvider(provider)
+      }, { inject: ['subagents'] }))
+      const run = await ctx.subagents.start('embedded', baseRequest())
+      await expect(run.result).resolves.toMatchObject({ stopReason: 'completed' })
+      await run.dispose()
+      await owner.dispose()
+      expect(ctx.subagents.list()).toEqual([])
+    } finally { await ctx.fiber.dispose() }
+  })
+
+  it.each([
+    { activationLeaseMs: 0 }, { activationLeaseMs: 100.5 },
+    { activationLeaseRenewMs: 0 }, { activationLeaseRenewMs: NaN },
+    { activationLeaseMs: 100, activationLeaseRenewMs: 100 },
+  ])('rolls back a service constructed with invalid lease timing %j', async (config) => {
+    const ctx = new Context()
+    try {
+      await expect(ctx.plugin((scope: Context) => { new SubagentRuntime(scope, config) })).rejects.toThrow(/lease timings|must be less/)
+      expect(ctx.get('subagents')).toBeUndefined()
+    } finally { await ctx.fiber.dispose() }
+  })
+
   it('registers, lists, looks up, starts, and removes providers', async () => {
     const { ctx, subagents } = await service()
     const added: string[] = []
@@ -255,8 +283,13 @@ describe('SubagentRuntime', () => {
     expect(lifecycle).not.toHaveBeenCalled()
   })
 
-  it('shares configured root capacity across parents and releases it only through run disposal', async () => {
-    const { subagents } = await service({ maxActivePerRoot: 1, overflow: 'reject' })
+  it.each([false, true])('shares root capacity across parents with live ancestry=%s until run disposal', async (liveAncestry) => {
+    const { ctx, subagents } = await service({ maxActivePerRoot: 1, overflow: 'reject' })
+    await ctx.plugin(Sessions)
+    if (liveAncestry) {
+      ctx.sessions.create(SessionId('shared-root'))
+      ctx.sessions.create(SessionId('middle'), { meta: { parentSession: SessionId('shared-root') } })
+    }
     let disposeCount = 0
     subagents.registerProvider({
       name: 'bounded',
@@ -272,7 +305,7 @@ describe('SubagentRuntime', () => {
       },
     })
     const first = await subagents.start('bounded', baseRequest({
-      parent: fakeDescendant('parent-a', 'shared-root'),
+      parent: fakeDescendant('parent-a', liveAncestry ? 'middle' : 'shared-root'),
     }))
     await expect(subagents.start('bounded', baseRequest({
       parent: fakeDescendant('parent-b', 'shared-root'),
@@ -288,6 +321,23 @@ describe('SubagentRuntime', () => {
     }))
     await replacement.dispose()
     expect(disposeCount).toBe(2)
+    await ctx.fiber.dispose()
+  })
+
+  it('enforces the configured per-parent limit without blocking another parent in the same tree', async () => {
+    const { ctx, subagents } = await service({ maxActivePerRoot: 2, maxActivePerParent: 1 })
+    try {
+      const provider = new StubProvider('parent-bounded')
+      subagents.registerProvider(provider)
+      const first = await subagents.start(provider.name, baseRequest({ parent: fakeDescendant('a', 'tree') }))
+      await expect(subagents.start(provider.name, baseRequest({ parent: fakeDescendant('a', 'tree') })))
+        .rejects.toMatchObject({ code: 'CAPACITY_EXCEEDED' })
+      expect(provider.startCount).toBe(1)
+      const sibling = await subagents.start(provider.name, baseRequest({ parent: fakeDescendant('b', 'tree') }))
+      expect(provider.startCount).toBe(2)
+      await first.dispose()
+      await sibling.dispose()
+    } finally { await ctx.fiber.dispose() }
   })
 
   it('releases admission when provider startup rejects', async () => {

@@ -11,7 +11,7 @@ const HARNESS_URL = 'https://github.com/jyqj/relay-harness'
 const REPO_URL = 'https://github.com/jyqj/relay-harness'
 const RELEASES_URL = `${REPO_URL}/releases`
 
-type UpdateStatus = 'idle' | 'checking' | 'none' | 'current' | 'available' | 'error' | 'download' | 'install'
+type UpdateStatus = 'idle' | 'checking' | 'none' | 'current' | 'available' | 'unavailable' | 'error' | 'download' | 'install'
 
 /** Props the Settings renderer binds for this section. */
 export type AboutSectionProps = PropsRuntime<'settings.section'> & PropsLocale<'settings'>
@@ -29,6 +29,7 @@ function statusCopy(
   if (status === 'none') return t('about.updateNone')
   if (status === 'current') return t('about.updateCurrent', { latest: info?.latest || info?.current || '' })
   if (status === 'available') return t('about.updateAvailable', { latest: info?.latest || '' })
+  if (status === 'unavailable') return t('about.updateUnavailable', { message: info?.message || '' })
   if (status === 'error') return t('about.updateError', { message: info?.message || '' })
   return ''
 }
@@ -46,7 +47,7 @@ export function AboutSection({ t }: AboutSectionProps): ReactNode {
     setInfo(next)
     if (next.current) setVersion(next.current)
     const nextStatus = next.status
-    if (nextStatus === 'none' || nextStatus === 'current' || nextStatus === 'available' || nextStatus === 'error') {
+    if (nextStatus === 'none' || nextStatus === 'current' || nextStatus === 'available' || nextStatus === 'unavailable' || nextStatus === 'error') {
       setStatus(nextStatus)
     }
   }, [])
@@ -103,9 +104,7 @@ export function AboutSection({ t }: AboutSectionProps): ReactNode {
     }
   }, [check, shell])
 
-  const canInstall = Boolean(shell?.installUpdate) && !busy && (
-    Boolean(info?.assetUrl) || status === 'none' || status === 'available' || status === 'current'
-  )
+  const canInstall = Boolean(shell?.installUpdate) && !busy && status === 'available'
   const message = statusCopy(t, status, info, percent)
 
   return (

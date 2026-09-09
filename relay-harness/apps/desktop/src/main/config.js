@@ -177,10 +177,26 @@ function credentialsPath() {
   return path.join(app.getPath('userData'), 'credentials.json');
 }
 
+/**
+ * A missing file falls back to `fallback` silently; an existing but unreadable
+ * file fails loud to stderr and is quarantined beside its original path so the
+ * next save cannot destroy the original bytes.
+ */
 function readJson(file, fallback) {
   try {
     return { ...fallback, ...JSON.parse(fs.readFileSync(file, 'utf8')) };
-  } catch {
+  } catch (error) {
+    if (error.code === 'ENOENT') {
+      // First launch, no stored file yet — nothing to preserve.
+      return { ...fallback };
+    }
+    const quarantine = `${file}.corrupt-${Date.now()}`;
+    try {
+      fs.renameSync(file, quarantine);
+    } catch (renameError) {
+      console.error(`config: could not quarantine ${path.basename(file)}: ${renameError.message}`);
+    }
+    console.error(`config: ${path.basename(file)} is unreadable (${error.message}); quarantined to ${quarantine}; continuing with defaults`);
     return { ...fallback };
   }
 }

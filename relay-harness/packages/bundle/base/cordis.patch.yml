@@ -38,6 +38,8 @@
         maxContributorChars: 64000
         maxContributorTokens: 16000
         contributorTimeoutMs: 5000
+        prepareTimeoutMs: 5000
+        maxConcurrentContributors: 4
 
     # One protocol-native registry for MCP Resources and Prompts. Individual
     # mcp-client rows publish generations here; Resources enter ContextEngine,

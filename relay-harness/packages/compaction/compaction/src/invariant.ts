@@ -1,13 +1,13 @@
 /** Package-owned compaction log-stream invariants. @module @relay-harness/rlh-compaction/invariant */
 
 import type { Context } from '@relay-harness/cordis'
+import type { InvariantFailure,InvariantInstaller } from '@relay-harness/rlh-invariants'
+import type { Session,SessionEvent } from '@relay-harness/rlh-session'
 import { isReplacementSurfaceEvent } from '@relay-harness/rlh-session'
-import type { Session, SessionEvent } from '@relay-harness/rlh-session'
-import type { InvariantFailure, InvariantInstaller } from '@relay-harness/rlh-invariants'
 import type { CompactionId } from './brand.ts'
-import { isCompactCheckpointSource } from './checkpoint.ts'
 import type { CompactionCheckpointSource } from './checkpoint.ts'
-import type {} from './types.ts'
+import { isCompactCheckpointSource } from './checkpoint.ts'
+
 
 const PACKAGE_NAME = '@relay-harness/rlh-compaction'
 

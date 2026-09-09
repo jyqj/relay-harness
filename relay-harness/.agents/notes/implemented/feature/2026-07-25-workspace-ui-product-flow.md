@@ -120,3 +120,9 @@ The Sidebar and conversation empty hero receive standardized actions through slo
 - Refreshing the page discards unmaterialized Workspace and Session Intents and input not yet accepted by the Host; this is the page-local contract.
 - Explicit Create Workspace writes to disk immediately, so leaving without sending still leaves an empty Workspace.
 - Before its first event, a Host Session retains the existing lazy-persistence semantics; frontend Intents do not change empty-Session behavior after a Host restart.
+
+## Browser readiness before hover actions
+
+Workspace registration is not the end of the create flow: the blank Session attaches afterward and its group enters through Presence. The browser fixture now waits for Host Session membership, the selected descendant row, the group's `data-state="open"`, and the actual grid-template-rows transition before starting a later row action. Querying animations immediately after a row appears was insufficient: `usePresence` intentionally mounts closed, then opens after two animation frames, so no transition existed at that earlier query.
+
+A bounded pointer/geometry diagnostic captured the rename failure: the pointer stayed at y=256.5 while the target row moved from y=241 to y=269, leaving the pointer over New Session and hiding the original row action. The diagnostic was removed after locating the cause. The fix waits for the existing product lifecycle; it does not force clicks, retry mutations, disable motion, or sleep for a guessed duration. Directory ancestry normalization also matches exact plain root labels as well as quoted ARIA labels, retaining crumb counts and leaving child labels and other roles untouched.

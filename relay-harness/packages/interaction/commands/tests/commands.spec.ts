@@ -3,7 +3,7 @@ import { Context } from '@relay-harness/cordis'
 import { createScope } from '@relay-harness/rlh-scope'
 import type { Scope } from '@relay-harness/rlh-scope'
 import type { Agent } from '@relay-harness/rlh-agent'
-import SessionStore, { SessionId } from '@relay-harness/rlh-session'
+import SessionStore, { SessionId, installSessionPersistenceFence } from '@relay-harness/rlh-session'
 import CommandRuntime, { parseCommand, type CommandDefinition } from '@relay-harness/rlh-commands'
 import { AttachmentStore } from '@relay-harness/rlh-attachment'
 
@@ -399,6 +399,25 @@ describe('CommandRuntime', () => {
     ])
   })
 
+  it('preserves a handler failure when ownership loss prevents its error settlement append', async () => {
+    const ctx = await mount()
+    const { agent } = await mintAgentScope(ctx, 'lost-command-owner')
+    ctx.commands.register({
+      name: 'lose-owner',
+      description: 'Fail after ownership loss',
+      handler: () => {
+        installSessionPersistenceFence(agent.session, {
+          token: 'lost-command-owner',
+          assertCurrent: () => { throw new Error('owner lost') },
+        })
+        throw new Error('original command failure')
+      },
+    })
+    await expect(ctx.commands.execute(agent, '/lose-owner', [], new AbortController().signal))
+      .rejects.toThrow('original command failure')
+    expect(lifecycleOf(agent).map(event => event.type)).toEqual(['command/run'])
+  })
+
   it('logs command/done kind error when the signal aborts a hanging handler', async () => {
     const ctx = await mount()
     const { agent } = await mintAgentScope(ctx, 'a')
@@ -601,16 +620,16 @@ describe('image attachments', () => {
     })
   })
 
-  it('logs and rethrows a non-attachment admission failure', async () => {
+  it.each([new Error('disk gone'), 'disk gone'])('logs and rethrows a non-attachment admission failure %s', async (failure) => {
     const ctx = await mount()
     const store = storeOf()
-    store.saveImage.mockRejectedValueOnce(new Error('disk gone'))
+    store.saveImage.mockRejectedValueOnce(failure)
     ctx.provide('attachments', store)
     const { agent } = await mintAgentScope(ctx, 'a')
     ctx.commands.register(accepting(() => ({ kind: 'success' })))
     await expect(ctx.commands.execute(
       agent, '/vision x', [{ mediaType: 'image/png', data: PNG }], new AbortController().signal,
-    )).rejects.toThrow('disk gone')
+    )).rejects.toBe(failure)
     expect(lifecycleOf(agent).at(-1)).toMatchObject({
       type: 'command/done',
       data: { kind: 'error', text: 'disk gone' },

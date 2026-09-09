@@ -1,0 +1,6 @@
+# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
+# side as of the last confirmed-consistent state. Both languages carry equal authority;
+# after editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write .agents/notes/implemented/testing/2026-09-03-web-api-client-read-websocket-coverage.md
+2026-09-03-web-api-client-read-websocket-coverage.md: acb78b399067957cb2a86c67ab53b03bb0b64a1a
+2026-09-03-web-api-client-read-websocket-coverage.zh.md: b4bacade7df53a16d9fe2863c4a4790009281de6

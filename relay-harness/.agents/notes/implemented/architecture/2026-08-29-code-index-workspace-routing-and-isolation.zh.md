@@ -16,6 +16,8 @@ Code Index seam 新增 `forWorkspace(workspaceRoot)`，返回不可变的 Worksp
 
 Code Context 以 `StepContextInput.cwd` 绑定一次，并用同一 face 完成候选搜索和 hydration。每个 code-index 模型工具以 `exec.agent.session.header.cwd` 绑定；刷新 busy set 按 Workspace key 分区。Code Index Center Remote 接收 `sessionId`，解析 Host 已附着 Session 及其 durable cwd，绝不接受 Client 文件系统路径。Client 状态 cache 按 Session 分区，Settings 页面订阅 Session 选择变化。
 
+唯一注册的 Cordis effect 负责抑制重复清理；路由器的 disposed 标志用于关闭操作准入，而不是第二个清理 owner。工作区清理失败彼此独立：一个 disposer 失败不能导致其他 SQLite 句柄和 watcher 留存。关闭在全部选中条目结算后汇总失败。获取条目与保留 lease 之间存在异步恢复点。因此路由器在保留时校验已发布实例和关闭状态，并在并发淘汰后重试获取。更早找到条目并不允许在其离开路由表后继续使用。
+
 ## Alternatives considered
 
 - **在每个 search/status/refresh payload 中增加 `workspaceRoot`**——拒绝，因为这会在全部词汇中复制 scope，并允许浏览器 Client 提交文件系统根目录；单一不可变绑定 face 也更难发生跨调用 hydration 漂移。

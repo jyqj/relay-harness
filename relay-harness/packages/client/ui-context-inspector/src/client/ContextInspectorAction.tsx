@@ -16,7 +16,7 @@ export function ContextInspectorAction({ useProjection, t }: ContextInspectorAct
   return (
     <>
       <button className={styles.button} type="button" onClick={() => { setOpen(true) }} aria-label={t('open')} title={t('open')}>
-        Context {count}
+        {format(t('badge'), { count })}
       </button>
       <Modal open={open} onClose={() => { setOpen(false) }} title={t('title')} closeLabel={t('close')}
         footer={<Button onClick={() => { setOpen(false) }}>{t('close')}</Button>}>
@@ -27,7 +27,7 @@ export function ContextInspectorAction({ useProjection, t }: ContextInspectorAct
             : null}
           {[...(projection?.traces ?? [])].reverse().map(trace => (
             <section className={styles.trace} key={trace.seq} data-context-trace={trace.seq}>
-              <div className={styles.traceHead}><strong>{format(t('step'), { turn: trace.turn, step: trace.step })}</strong><span className={styles.muted}>context/prepared #{trace.seq}</span></div>
+              <div className={styles.traceHead}><strong>{format(t('step'), { turn: trace.turn, step: trace.step })}</strong><span className={styles.muted}>{format(t('tracePrepared'), { seq: trace.seq })}</span></div>
               <p className={styles.muted}>{format(t('summary'), { contributors: trace.contributions.length, evidence: trace.evidenceCount, rejected: trace.rejectedContributions })}</p>
               {trace.contributions.map(contribution => (
                 <article className={styles.contribution} key={`${trace.seq}:${contribution.contributorId}`}>
@@ -41,7 +41,7 @@ export function ContextInspectorAction({ useProjection, t }: ContextInspectorAct
                         <Pill>{String(evidence.resource.sourceId)}</Pill>
                         <Pill>{evidence.freshness}</Pill>
                         <Pill>{evidence.verification}</Pill>
-                        {evidence.truncated ? <Pill>truncated</Pill> : null}
+                        {evidence.truncated ? <Pill>{t('truncated')}</Pill> : null}
                       </div>
                       <div className={styles.code}>{evidence.path ?? evidence.resource.key}{evidence.resource.revision === undefined ? '' : ` @ ${evidence.resource.revision}`}</div>
                       <p className={styles.why}><strong>{t('why')}:</strong> {evidence.whyUsed.join(' · ')}</p>

@@ -8,7 +8,12 @@ import Storage, { storageBackendServiceKey } from '@relay-harness/rlh-storage'
 import type { KvUnitDescriptor } from '@relay-harness/rlh-storage'
 import { runKvBackendContract } from '../../storage/tests/contract.ts'
 import * as StorageSqlite from '../src/index.ts'
-import { Config, SqliteStorageBackend, STORAGE_SQLITE_SCHEMA_VERSION } from '../src/index.ts'
+import {
+  Config,
+  SqliteStorageBackend,
+  STORAGE_SQLITE_APPLICATION_ID,
+  STORAGE_SQLITE_SCHEMA_VERSION,
+} from '../src/index.ts'
 
 /** Mirror the loader: resolve schemastery defaults before construction. */
 function backendAt(path: string): SqliteStorageBackend {
@@ -72,6 +77,75 @@ describe('sqlite backend specifics', () => {
     }
   })
 
+  it('rejects a foreign database with unrelated tables and an unstamped version', async () => {
+    const path = await freshDbPath()
+    const foreign = new DatabaseSync(path)
+    foreign.exec('CREATE TABLE alien (x TEXT)')
+    foreign.close()
+
+    const backend = backendAt(path)
+    await expect(backend.kv.open(DESCRIPTOR)).rejects.toMatchObject({
+      name: 'StorageError',
+      code: 'foreign-medium',
+    })
+    await backend.close()
+
+    // The refusal happens before any write: the foreign table survives and
+    // the medium stays unstamped.
+    const after = new DatabaseSync(path)
+    expect(after.prepare(
+      "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT GLOB 'sqlite_*'",
+    ).all()).toEqual([{ name: 'alien' }])
+    expect((after.prepare('PRAGMA user_version').get() as { user_version: number }).user_version).toBe(0)
+    after.close()
+
+    // Clearing the foreign content makes the medium adoptable from scratch.
+    const repair = new DatabaseSync(path)
+    repair.exec('DROP TABLE alien')
+    repair.close()
+    const recovered = backendAt(path)
+    const unit = await recovered.kv.open(DESCRIPTOR)
+    await unit.putRecord('records', 'k', { n: 1 })
+    await recovered.close()
+  })
+
+  it('rejects a database stamped with another application identity', async () => {
+    const path = await freshDbPath()
+    const other = new DatabaseSync(path)
+    other.exec('PRAGMA application_id = 1146308689')
+    other.close()
+
+    const backend = backendAt(path)
+    await expect(backend.kv.open(DESCRIPTOR)).rejects.toMatchObject({
+      name: 'StorageError',
+      code: 'foreign-medium',
+    })
+    await backend.close()
+
+    const after = new DatabaseSync(path)
+    expect(after.prepare("SELECT count(*) AS n FROM sqlite_master WHERE type = 'table'").get())
+      .toEqual({ n: 0 })
+    after.close()
+  })
+
+  it('rejects a stamped database missing the expected unit tables', async () => {
+    const path = await freshDbPath()
+    const stamped = new DatabaseSync(path)
+    stamped.exec(`PRAGMA application_id = ${STORAGE_SQLITE_APPLICATION_ID}`)
+    stamped.close()
+
+    const backend = backendAt(path)
+    await expect(backend.kv.open(DESCRIPTOR)).rejects.toMatchObject({
+      name: 'StorageError',
+      code: 'foreign-medium',
+    })
+    await backend.close()
+
+    const after = new DatabaseSync(path)
+    expect((after.prepare('PRAGMA user_version').get() as { user_version: number }).user_version).toBe(0)
+    after.close()
+  })
+
   it('rejects a mismatched database schema version', async () => {
     const path = await freshDbPath()
     const db = new DatabaseSync(path)
@@ -121,32 +195,6 @@ describe('sqlite backend specifics', () => {
     expect(records['__proto__']).toEqual({ evil: true })
     expect(records['constructor']).toEqual({ n: 1 })
     expect(Object.getPrototypeOf({})).not.toHaveProperty('evil')
-    await backend.close()
-  })
-
-  it('leaves a failed materialization unstamped so a repaired medium reopens', async () => {
-    const path = await freshDbPath()
-    // Obstruct table creation: an index squatting on the unit_globals name
-    // makes CREATE TABLE IF NOT EXISTS throw AFTER the units table exists.
-    const setup = new DatabaseSync(path)
-    setup.exec('CREATE TABLE squatter (x TEXT)')
-    setup.exec('CREATE INDEX unit_globals ON squatter(x)')
-    setup.close()
-
-    const broken = backendAt(path)
-    await expect(broken.kv.open(DESCRIPTOR)).rejects.toThrow(/already an index/)
-    await broken.close()
-
-    // Clear the obstruction; the medium must still be version 0, not a
-    // half-materialized database stamped as current.
-    const repair = new DatabaseSync(path)
-    expect((repair.prepare('PRAGMA user_version').get() as { user_version: number }).user_version).toBe(0)
-    repair.exec('DROP INDEX unit_globals')
-    repair.close()
-
-    const backend = backendAt(path)
-    const unit = await backend.kv.open(DESCRIPTOR)
-    await unit.putRecord('records', 'k', { n: 1 })
     await backend.close()
   })
 

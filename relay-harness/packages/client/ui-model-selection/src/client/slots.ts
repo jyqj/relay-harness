@@ -13,7 +13,9 @@ export interface ModelSelectInjected {
   /** Whether this session supports Agent-bound model inspection and selection. */
   available: boolean
   /** The session's shared directory store (same instance the /model popup reads). */
-  directory: SnapshotStore<ModelDirectoryState>
+  hooks: { modelDirectory: SnapshotStore<ModelDirectoryState> }
+  /** Read the latest selection failure after its acknowledgement. */
+  selectionError: () => string | null
   /** Refresh the advisory directory (fire-and-forget; errors land on the store). */
   load: () => void
   /**

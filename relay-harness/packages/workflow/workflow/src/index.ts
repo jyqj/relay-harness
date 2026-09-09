@@ -126,6 +126,8 @@ export type WorkflowErrorCode =
   | 'JOURNAL_DIVERGENCE'
   | 'JOURNAL_FULL'
   | 'JOURNAL_IO'
+  | 'JOURNAL_OUTCOME_UNKNOWN'
+  | 'JOURNAL_BUSY'
   | 'CANCELLED'
 
 /**

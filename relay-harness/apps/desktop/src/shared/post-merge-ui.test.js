@@ -138,7 +138,7 @@ const UI_FEATURES = [
   },
   {
     name: 'terminal draft uses ctx.get sessions',
-    file: 'packages/client/ui-user-terminal/src/client/draft.ts',
+    file: 'packages/client/ui-user-terminal/src/client/terminal/draft.ts',
     includes: ["ctx.get('sessions')"],
     excludes: ['ctx.sessions'],
   },

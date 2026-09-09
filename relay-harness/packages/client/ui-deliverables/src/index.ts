@@ -1,6 +1,6 @@
 /**
- * Deliverables plugin, node half. Registers the response-format guidance that
- * lets the browser half recognize final-response file references. The browser
+ * Deliverables plugin, node half. Registers response-format guidance while the Host work-results capability owns
+ * the whole-log inventory over execution-captured mutation paths. The browser
  * half ships via exports["./client"], discovered through the package.json
  * rlh.client declaration.
  */
@@ -16,7 +16,7 @@ const FILE_REFERENCE_PROMPT = 'When you successfully create or modify files, men
   + 'To make those and any other changed-file references clickable in Web, format them as Markdown inline code using the exact file-tool path, or a basename when unique among the files changed in that turn.'
 
 /**
- * Register model guidance for the file-reference renderer shipped by this package.
+ * Register model guidance paired with the turn-local browser renderer.
  * @param ctx - host context carrying the system-prompt registry.
  */
 export function apply(ctx: Context): void {

@@ -21,7 +21,7 @@ import {
   TransportClosedError,
   type HarnessNotification,
 } from '../src/index.ts'
-import { finalResponse, normalizeInput } from '../src/api.ts'
+import { finalResponse, finishReason, normalizeInput } from '../src/api.ts'
 
 const fakeRuntime = fileURLToPath(new URL('./fake-runtime.ts', import.meta.url))
 
@@ -127,6 +127,21 @@ describe('RelayHarness', () => {
     await harness.close()
   })
 
+  it('preserves execution-recorded producedFiles through the subprocess event carrier', async () => {
+    const harness = harnessWith({ FAKE_PRODUCED_FILES: '1' })
+    const result = await harness.run('write output')
+    const captured = result.events.find(event => event.type === 'tool/result')
+    expect(captured?.data.producedFiles).toEqual(['output.md'])
+    expect(result.finalResponse).toBe('hello from fake runtime')
+  })
+
+  it('carries the interval turn ending as finishReason', async () => {
+    const completed = harnessWith({ FAKE_TEXT: 'answer' })
+    expect((await completed.run('go')).finishReason).toBe('completed')
+    const aborted = harnessWith({ FAKE_TEXT: 'answer', FAKE_REASON_KIND: 'aborted' })
+    expect((await aborted.run('go')).finishReason).toBe('aborted')
+  })
+
   it('keeps events root-scoped while streaming notifications for the session tree', async () => {
     const harness = harnessWith({ FAKE_SUBAGENT: '1' })
     const seen: HarnessNotification[] = []
@@ -228,6 +243,23 @@ describe('RelayHarness', () => {
   it('rejects a malformed initialize result as a protocol error', async () => {
     const harness = harnessWith({ FAKE_MALFORMED: '1' })
     await expect(harness.run('bad')).rejects.toThrow(SdkProtocolError)
+  })
+
+  it('closes an auto-minted session after its run and keeps named sessions open', async () => {
+    const dir = await tempDir('sdk-client-auto-close-')
+    const closeFile = join(dir, 'closes.jsonl')
+    const harness = new RelayHarness({ launch: fakeLaunch({ FAKE_RECORD_CLOSE: closeFile }) })
+    cleanups.push(() => harness.close())
+
+    const first = await harness.run('auto one')
+    const second = await harness.run('auto two')
+    await harness.run('named run', { sessionId: 'caller-owned' })
+    await harness.close()
+
+    const closed = (await readFile(closeFile, 'utf8')).trim().split('\n')
+      .map(line => (JSON.parse(line) as { sessionId: string }).sessionId)
+    // Each auto-minted id was reclaimed exactly once; the named id was not.
+    expect(closed).toEqual([first.sessionId, second.sessionId])
   })
 
   it('supports await using disposal', async () => {
@@ -468,6 +500,16 @@ describe('HarnessClient', () => {
     await expect(parked).rejects.toThrow(TransportClosedError)
   })
 
+  it('fails subscriptions created before start when close() runs without a child', async () => {
+    const client = new HarnessClient(fakeLaunch())
+    cleanups.push(() => client.close())
+    // A subscription created before any start() has no producer; close() must
+    // settle its waiters instead of parking them forever.
+    const subscription = client.subscribeSessionTree('s')
+    await client.close()
+    await expect(subscription.next()).rejects.toThrow(TransportClosedError)
+  })
+
   it('scopes the session tree across multi-hop lineage and ignores foreign sessions', async () => {
     const client = new HarnessClient(fakeLaunch())
     cleanups.push(() => client.close())
@@ -516,6 +558,11 @@ describe('wire payload validation', () => {
     await expect(harness.run('no-data')).rejects.toThrow(SdkProtocolError)
   })
 
+  it('rejects a turn/end without a string reason kind as a protocol error', async () => {
+    const harness = harnessWith({ FAKE_MALFORMED_REASON: '1' })
+    await expect(harness.run('bad-reason')).rejects.toThrow(SdkProtocolError)
+  })
+
 })
 
 describe('stderr tail bound', () => {
@@ -548,5 +595,16 @@ describe('pure helpers', () => {
       { type: 'assistant/message', seq: 0, time: 0, data: { message: { content: [{ type: 'text', text: 'first' }] } } } as never,
       { type: 'assistant/message', seq: 1, time: 0, data: { message: { content: [{ type: 'text', text: 'a' }, { type: 'tool-call' }, { type: 'text', text: 'b' }] } } } as never,
     ])).toBe('ab')
+  })
+
+  it('finishReason reads the last turn ending and tolerates absence', () => {
+    expect(finishReason([])).toBeNull()
+    expect(finishReason([
+      { type: 'assistant/message', seq: 0, time: 0, data: { message: { content: [] } } } as never,
+    ])).toBeNull()
+    expect(finishReason([
+      { type: 'turn/end', seq: 0, time: 0, data: { turn: 0, reason: { kind: 'completed' } } } as never,
+      { type: 'turn/end', seq: 1, time: 0, data: { turn: 1, reason: { kind: 'aborted' } } } as never,
+    ])).toBe('aborted')
   })
 })

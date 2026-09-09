@@ -6,6 +6,8 @@ An opt-in SQLite `SessionPersistence` provider. It stores eligible `assistant/ch
 
 `locate(meta)` returns `undefined` because every session shares one database. The provider exposes no per-session raw artifact.
 
+An optional ownership proof on `prepare(id, signal?, fence?)` protects cold recovery before live setup. The shared coordinator keeps its `runExclusive` interval across database opening and the complete storage transaction; a session database transaction alone does not serialize takeover in a separate lease database.
+
 ## Storage model
 
 Schema 17 keeps ordinary ROWID tables and the composite `events(session_id, seq)` primary-key index. Scalar rows store one logical event. Packed rows use `text-chunks`, `reasoning-chunks`, or `tool-call-chunks` as the physical `type`; `seq` and `time` identify the first represented event, and `data` holds the shared packed-chunk payload. Packed rows set `ignorable=0` as a physical discriminator and leave `source_event_seqs` and `surface_op` as `NULL`; scalar rows use `ignorable=1` only for logical ignorable events and `NULL` otherwise. A future ignorable logical event may therefore reuse a storage-tag name without being decoded as a packed row. These tags are storage records, not `SessionEventMap` members.

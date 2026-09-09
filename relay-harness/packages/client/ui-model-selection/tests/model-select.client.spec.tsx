@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { ModelSelection } from '@relay-harness/rlh-api-remotes/client'
+import { bindSnapshotSelector } from '@relay-harness/rlh-client-test-runtime'
 import { createSnapshotStore } from '@relay-harness/rlh-client-runtime/client'
 import type { ComponentProps } from 'react'
 import type { ModelDirectoryState } from '../src/client/directory.ts'
@@ -57,7 +58,8 @@ describe('ModelSelect reasoning effort', () => {
     render(<ModelSelect
       locked={false}
       available
-      directory={directory}
+      useModelDirectory={bindSnapshotSelector(directory)}
+      selectionError={() => directory.getSnapshot().error}
       load={vi.fn()}
       select={select}
       t={t}
@@ -98,7 +100,8 @@ describe('ModelSelect reasoning effort', () => {
     render(<ModelSelect
       locked={false}
       available
-      directory={directory}
+      useModelDirectory={bindSnapshotSelector(directory)}
+      selectionError={() => directory.getSnapshot().error}
       load={vi.fn()}
       select={vi.fn().mockResolvedValue(true)}
       t={t}
@@ -120,7 +123,8 @@ describe('ModelSelect reasoning effort', () => {
     render(<ModelSelect
       locked={false}
       available
-      directory={directory}
+      useModelDirectory={bindSnapshotSelector(directory)}
+      selectionError={() => directory.getSnapshot().error}
       load={vi.fn()}
       select={select}
       t={t}
@@ -152,7 +156,8 @@ describe('ModelSelect reasoning effort', () => {
     render(<ModelSelect
       locked={false}
       available
-      directory={directory}
+      useModelDirectory={bindSnapshotSelector(directory)}
+      selectionError={() => directory.getSnapshot().error}
       load={vi.fn()}
       select={select}
       t={t}
@@ -172,7 +177,8 @@ describe('ModelSelect reasoning effort', () => {
     render(<ModelSelect
       locked={false}
       available={false}
-      directory={createSnapshotStore(state())}
+      useModelDirectory={bindSnapshotSelector(createSnapshotStore(state()))}
+      selectionError={() => null}
       load={load}
       select={vi.fn().mockResolvedValue(false)}
       t={t}
@@ -181,4 +187,28 @@ describe('ModelSelect reasoning effort', () => {
     expect(screen.queryByRole('button')).toBeNull()
     expect(load).not.toHaveBeenCalled()
   })
+})
+
+it('keeps one framework directory subscription while selection updates and releases it on unmount', () => {
+  const directory = createSnapshotStore<ModelDirectoryState>(state())
+  const release = vi.fn()
+  const subscribe = vi.fn((listener: () => void) => {
+    const stop = directory.subscribe(listener)
+    return () => { release(); stop() }
+  })
+  const useModelDirectory = bindSnapshotSelector({ getSnapshot: () => directory.getSnapshot(), subscribe })
+  const props = {
+    locked: false, available: true, useModelDirectory,
+    selectionError: () => directory.getSnapshot().error,
+    load: vi.fn(), select: vi.fn(async () => true), t,
+  }
+  const view = render(<ModelSelect {...props} />)
+  expect(subscribe).toHaveBeenCalledTimes(1)
+  act(() => { directory.set(state({ current: { provider: 'deepseek-official', model: 'deepseek-v4-flash', reasoningEffort: 'max' } })) })
+  expect(screen.getByRole('button').getAttribute('aria-label')).toContain('Max')
+  view.rerender(<ModelSelect {...props} />)
+  expect(subscribe).toHaveBeenCalledTimes(1)
+  expect(release).not.toHaveBeenCalled()
+  view.unmount()
+  expect(release).toHaveBeenCalledTimes(1)
 })

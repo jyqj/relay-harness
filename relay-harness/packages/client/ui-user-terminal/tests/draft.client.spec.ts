@@ -2,8 +2,8 @@
  * appendToDraft writes through ctx.get('conversation') without importing the plugin.
  */
 import { Context } from '@relay-harness/cordis'
-import { describe, expect, it, vi } from 'vitest'
-import { appendToDraft } from '../src/client/draft.ts'
+import { describe,expect,it,vi } from 'vitest'
+import { appendToDraft } from '../src/client/terminal/draft.ts'
 
 describe('appendToDraft', () => {
   it('returns false when conversation is missing', () => {

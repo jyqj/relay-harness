@@ -520,6 +520,24 @@ describe('runScenario', () => {
     expect(result.rawStdout).toContain('workspace:committed.txt,runtime.txt')
   })
 
+  it.skipIf(process.platform === 'win32')('keeps relative fixture symlinks inside the copied workspace', async () => {
+    const { dir, fixtureFile } = await scenario({})
+    const { mkdir, symlink, readlink } = await import('node:fs/promises')
+    const workspaceDir = join(dir, 'workspace')
+    await mkdir(workspaceDir)
+    await writeFile(join(workspaceDir, 'AGENTS.canonical.md'), 'original')
+    await symlink('AGENTS.canonical.md', join(workspaceDir, 'AGENTS.md'))
+    await runScenario({ steps: boot }, {
+      agent: AGENT, mode: 'replay', fixtureFile, workspaceDir,
+      prepareWorkspace: async (cwd) => {
+        expect(await readlink(join(cwd, 'AGENTS.md'))).toBe('AGENTS.canonical.md')
+        await writeFile(join(cwd, 'AGENTS.canonical.md'), 'copied')
+        expect(await readFile(join(cwd, 'AGENTS.md'), 'utf8')).toBe('copied')
+        expect(await readFile(join(workspaceDir, 'AGENTS.md'), 'utf8')).toBe('original')
+      },
+    })
+  })
+
   it('creates the generated workspace under an explicit parent', { timeout: 20_000 }, async () => {
     const { fixtureFile } = await scenario({})
     const workspaceParent = await mkdtemp(join(tmpdir(), 'acp-snap-parent-'))

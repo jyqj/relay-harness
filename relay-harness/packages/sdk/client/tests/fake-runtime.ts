@@ -13,8 +13,8 @@
  * - `FAKE_SUBAGENT`: also emit a child session (subagent.started + child event + subagent.finished).
  * - `FAKE_ECHO_CWD`: prefix the assistant text with the process cwd.
  * - `FAKE_ECHO_ENV`: comma-separated env names to echo as `name=value` lines in the assistant text.
- * - `FAKE_MALFORMED`: `initialize` returns `{}` (no serverInfo); `prompt` returns `{}` (no accepted).
- * - `FAKE_MALFORMED_PROMPT`: `initialize` is normal; only `prompt` returns `{}` (no accepted).
+ * - `FAKE_MALFORMED`: `initialize` returns `{}` (no serverInfo); `prompt` returns `{}` (no messageId).
+ * - `FAKE_MALFORMED_PROMPT`: `initialize` is normal; only `prompt` returns `{}` (no messageId).
  * - `FAKE_INIT_ERROR`: `initialize` answers a JSON-RPC error response with code 7.
  * - `FAKE_INIT_ERROR_ONCE_FILE`: fail `initialize` (code 7) only when this
  *   marker file does NOT exist yet, creating it — so the first runtime
@@ -34,7 +34,7 @@
  *   cancel-during-handshake window).
  * - `FAKE_HANG_PROMPT`: never answer `session/prompt` (for timeout/dispose tests).
  * - `FAKE_STREAM_THEN_MALFORMED`: stream a text chunk for the prompt, then
- *   answer `{}` (no accepted) — same-pipe ordering makes the chunk arrive
+ *   answer `{}` (no messageId) — same-pipe ordering makes the chunk arrive
  *   before the protocol failure (partial-output retention probe).
  * - `FAKE_IGNORE_EOF` + `FAKE_SIGTERM_FILE`: keep running after stdin EOF; touch the file on SIGTERM (ladder probe).
  * - `FAKE_TRAP_SIGTERM`: with `FAKE_IGNORE_EOF`, survive SIGTERM too (SIGKILL-rung probe).
@@ -42,6 +42,7 @@
  * - `FAKE_STDERR`: write this line to stderr at boot (diagnostics-tail probe).
  * - `FAKE_STDERR_NO_NEWLINE`: write this to stderr WITHOUT a newline (buffer-flush probe).
  * - `FAKE_RECORD_INIT`: append each `initialize` params JSON to this file (handshake probe).
+ * - `FAKE_RECORD_CLOSE`: append each `session/close` params JSON to this file (session-reclaim probe).
  */
 
 import { appendFileSync, existsSync, writeFileSync } from 'node:fs'
@@ -89,6 +90,13 @@ function assistantText(): string {
 }
 
 function runTurn(sessionId: string): void {
+  if (env.FAKE_PRODUCED_FILES !== undefined) {
+    event(sessionId, 'tool/result', {
+      turn: 1, step: 1, producedFiles: ['output.md'],
+      message: { id: 'result-1', role: 'user', source: { kind: 'tool', callId: 'call-1' },
+        content: [{ type: 'tool-result', toolCallId: 'call-1', isError: false, content: [{ type: 'text', text: 'written' }] }] },
+    })
+  }
   const text = assistantText()
   if (env.FAKE_MALFORMED_EVENT !== undefined) {
     notify('session.event', { sessionId, event: 42 })
@@ -126,7 +134,9 @@ function runTurn(sessionId: string): void {
     },
   })
   const reasonKind = env.FAKE_REASON_KIND ?? 'completed'
-  event(sessionId, 'turn/end', { turn: 0, reason: { kind: reasonKind } })
+  // A bare-string reason models a runtime outside the documented turn-end shape.
+  const reason = env.FAKE_MALFORMED_REASON !== undefined ? reasonKind : { kind: reasonKind }
+  event(sessionId, 'turn/end', { turn: 0, reason })
   if (env.FAKE_SUBAGENT !== undefined) {
     const childId = `${sessionId}-child`
     notify('subagent.started', { parentSessionId: sessionId, childSessionId: childId })
@@ -222,6 +232,10 @@ reader.on('line', (line) => {
       respond({ messageId })
       return
     }
+    case 'session/close':
+      if (env.FAKE_RECORD_CLOSE !== undefined) appendFileSync(env.FAKE_RECORD_CLOSE, `${JSON.stringify(frame.params)}\n`)
+      respond({})
+      return
     case 'shutdown':
       respond({})
       // An EOF-ignoring fake also refuses the protocol exit, so the client's

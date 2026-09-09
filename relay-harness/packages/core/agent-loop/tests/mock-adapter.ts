@@ -64,7 +64,9 @@ export interface HangAfter {
  * Mock adapter driven by a script: each model call consumes the next entry.
  * Records every request it receives for assertions. An entry may be a
  * function to compute chunks from the request, a 'hang' marker that
- * streams one chunk then waits until aborted, 'hang-slow' which takes
+ * streams one chunk then waits until aborted, 'hang-before-start' which
+ * waits until aborted before streaming anything (the request stays
+ * pending), 'hang-slow' which takes
  * 50ms to notice the abort — a stand-in for slow real-world teardown
  * (LLM stream cancellation, tool unwinding) — or a {@link HangAfter}
  * scripting the exact chunks delivered before the hang.
@@ -73,7 +75,7 @@ export class MockAdapter extends LlmAdapter {
   requests: GenerateOptions[] = []
 
   constructor(
-    private script: (StreamChunk[] | ((options: GenerateOptions) => StreamChunk[]) | 'hang' | 'hang-slow' | HangAfter)[],
+    private script: (StreamChunk[] | ((options: GenerateOptions) => StreamChunk[]) | 'hang' | 'hang-before-start' | 'hang-slow' | HangAfter)[],
     private readonly reasoning?: LlmModelReasoningInfo,
     private readonly defaultMaxTokens?: number,
   ) {
@@ -97,6 +99,13 @@ export class MockAdapter extends LlmAdapter {
     this.requests.push(options)
     const entry = this.script.shift()
     if (!entry) throw new Error('MockAdapter: script exhausted')
+    if (entry === 'hang-before-start') {
+      await new Promise<void>((_resolve, reject) => {
+        if (options.signal?.aborted) { reject(new Error('aborted')); return }
+        options.signal?.addEventListener('abort', () => { reject(new Error('aborted')) }, { once: true })
+      })
+      return
+    }
     if (entry === 'hang') {
       yield { type: 'block-start', index: 0, blockType: 'text' }
       yield { type: 'text-delta', index: 0, text: 'partial' }

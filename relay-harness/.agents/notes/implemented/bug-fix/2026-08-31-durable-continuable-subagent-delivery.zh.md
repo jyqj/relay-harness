@@ -16,6 +16,10 @@ child Session 充当持久投递 mailbox。初始提示词或 follow-up 进入 A
 
 Agent inbox 仍是唯一执行 FIFO。持久 mailbox 事件描述恢复所有权，不是第二个 scheduler：回放会通过 `Agent.followup()` 提交每条待处理的带身份消息，之后照常由 AgentLoop 负责轮次排序。
 
+重试身份比较规范化后的消息结构，而非 JSON 属性插入顺序。调整对象字段顺序会保留原回执；修改内容、来源归属或报告投递方式仍然构成冲突。数组顺序仍有意义。
+
+每次同键重试都会再次跨过持久化屏障：内存中的 accepted 事件可能来自此前 flush 失败的调用。恢复保留原消息身份，仅在权威日志与 inbox 尚未包含消息时补投。活动投递会在异步屏障后重新核对 child 租约；报告在修改父级 inbox 前还会重新解析活动父级。
+
 ## Alternatives considered
 
 **在独立队列数据库中只持久化调用方原始内容。** 未采用，因为 child Session 已经拥有持久排序、来源归因、版本拒绝、修复与 flush 语义；另一个存储会要求跨两个权威来源的事务。
@@ -32,4 +36,4 @@ Agent inbox 仍是唯一执行 FIFO。持久 mailbox 事件描述恢复所有权
 
 ## Consequences
 
-已接受的初始提示词或 follow-up 无需等待轮次开始，也能在进程重启后恢复。调用方保留幂等 key 时，可以安全重试结果不确定的 follow-up 响应。每条投递会增加一条仅供日志使用的 accepted 事件；进入模型可见表层后再增加一条 claimed 事件，并在返回回执前产生即时持久化工作。Activation 驻留与父子所有权仍仅限进程内；在具备 fenced 跨进程 lease 前，第二个 harness 进程不得激活同一 child。
+已接受的初始提示词或 follow-up 无需等待轮次开始，也能在进程重启后恢复。调用方保留幂等 key 时，可以安全重试结果不确定的 follow-up 响应。返回回执要求 accepted 事件立即持久化。进入模型可见表层后才追加 claimed 事件。Activation 驻留仍在进程内；启用 [fenced lease 协议](2026-09-05-persistence-commit-takeover-exclusion.md)的部署会串行化跨进程所有权与 child 持久化变更。

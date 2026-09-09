@@ -27,7 +27,7 @@ body {
   --rlw-static-relay-500: rgb(65, 118, 230);
   --rlw-static-relay-50: rgb(237, 243, 254);
   --rlw-static-relay-600: rgb(72, 104, 178);
-  --rlw-static-relay-700-delete: rgb(47, 76, 143);
+  --rlw-static-relay-700: rgb(47, 76, 143);
   --rlw-static-relay-800: rgb(52, 65, 91);
   --rlw-static-relay-900: rgb(40, 49, 66);
   --rlw-static-green-100: rgb(230, 250, 237);
@@ -60,6 +60,8 @@ body {
   --rlw-static-neutral-bluish-500: rgb(151, 157, 166);
   --rlw-static-neutral-bluish-50: rgb(249, 250, 251);
   --rlw-static-neutral-bluish-600: rgb(129, 133, 140);
+  /* Deliberate theme split: dark lifts this one static to rgb(249, 250, 251)
+     (see the dark block); every other static value is identical across themes. */
   --rlw-static-neutral-bluish-60: rgb(245, 246, 247);
   --rlw-static-neutral-bluish-700: rgb(97, 102, 107);
   --rlw-static-neutral-bluish-750: rgb(67, 69, 74);
@@ -103,7 +105,7 @@ body[data-rl-dark-theme] {
   --rlw-static-relay-500: rgb(65, 118, 230);
   --rlw-static-relay-50: rgb(237, 243, 254);
   --rlw-static-relay-600: rgb(72, 104, 178);
-  --rlw-static-relay-700-delete: rgb(47, 76, 143);
+  --rlw-static-relay-700: rgb(47, 76, 143);
   --rlw-static-relay-800: rgb(52, 65, 91);
   --rlw-static-relay-900: rgb(40, 49, 66);
   --rlw-static-green-100: rgb(230, 250, 237);
@@ -136,6 +138,8 @@ body[data-rl-dark-theme] {
   --rlw-static-neutral-bluish-500: rgb(151, 157, 166);
   --rlw-static-neutral-bluish-50: rgb(249, 250, 251);
   --rlw-static-neutral-bluish-600: rgb(129, 133, 140);
+  /* The one static that splits by theme (light: 245, 246, 247): the alias
+     surfaces reading it keep their step against dark-layer backgrounds. */
   --rlw-static-neutral-bluish-60: rgb(249, 250, 251);
   --rlw-static-neutral-bluish-700: rgb(97, 102, 107);
   --rlw-static-neutral-bluish-750: rgb(67, 69, 74);
@@ -181,7 +185,7 @@ body {
   --rlw-alias-border-l3: rgba(0, 0, 0, 0.16);
   --rlw-alias-border-l4: rgba(0, 0, 0, 0.2);
   --rlw-alias-brand-primary-invert: var(--rlw-static-neutral-bluish-1000);
-  --rlw-alias-brand-primary-new-colorprimary-new-color: rgb(65, 118, 230);
+  --rlw-alias-brand-primary-new: rgb(65, 118, 230);
   --rlw-alias-brand-primary: var(--rlw-static-neutral-bluish-1000);
   --rlw-alias-brand-text: var(--rlw-static-neutral-bluish-1000);
   --rlw-alias-button-contrast-fill: var(--rlw-static-neutral-bluish-700);
@@ -286,7 +290,7 @@ body[data-rl-dark-theme] {
   --rlw-alias-border-l3: rgba(255, 255, 255, 0.16);
   --rlw-alias-border-l4: rgba(255, 255, 255, 0.2);
   --rlw-alias-brand-primary-invert: var(--rlw-static-neutral-bluish-50);
-  --rlw-alias-brand-primary-new-colorprimary-new-color: var(--rlw-static-relay-450);
+  --rlw-alias-brand-primary-new: var(--rlw-static-relay-450);
   --rlw-alias-brand-primary: var(--rlw-static-neutral-bluish-50);
   --rlw-alias-brand-text: var(--rlw-static-neutral-bluish-50);
   --rlw-alias-button-contrast-fill: var(--rlw-static-neutral-bluish-50);

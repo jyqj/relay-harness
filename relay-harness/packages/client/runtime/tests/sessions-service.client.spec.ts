@@ -96,6 +96,72 @@ describe('list store projection', () => {
   })
 })
 
+describe('list projection identity guard', () => {
+  /** A host status frame that changes nothing: the manager still marks dirty, so the projection runs. */
+  function noopStatusFrame(b: Bench): void {
+    b.svc.handleHostEnvelope({
+      rpcId: 'noop' as never,
+      payload: { type: 'host/session-status', sessionId: sid('s1'), running: false } as never,
+    })
+  }
+
+  it('a no-op frame keeps the snapshot reference and notifies no store subscriber', async () => {
+    const b = bench()
+    await feedList(b, [{ id: 's1' }])
+    const before = b.svc.list.getSnapshot()
+    const notified = vi.fn()
+    b.svc.list.subscribe(notified)
+    noopStatusFrame(b)
+    await Promise.resolve() // manager notifier flush → projection
+    expect(b.svc.list.getSnapshot()).toBe(before)
+    expect(notified).not.toHaveBeenCalled()
+  })
+
+  it('a single-row title change replaces only that row object; sibling rows and ids keep their identity', async () => {
+    const b = bench()
+    await feedList(b, [{ id: 's1' }, { id: 's2' }])
+    const before = b.svc.list.getSnapshot()
+    const s1 = before.byId[sid('s1')]
+    const s2 = before.byId[sid('s2')]
+    b.svc.handleMuxEnvelope({
+      rpcId: 'title' as never,
+      payload: { type: 'session/projection', sessionId: sid('s1'), key: 'title', value: 'Renamed', seq: 3 } as never,
+    })
+    await Promise.resolve()
+    const after = b.svc.list.getSnapshot()
+    expect(after).not.toBe(before)
+    expect(after.byId).not.toBe(before.byId)
+    expect(after.byId[sid('s1')]).not.toBe(s1)
+    expect(after.byId[sid('s1')]).toMatchObject({ title: 'Renamed', displayTitle: 'Renamed' })
+    expect(after.byId[sid('s2')]).toBe(s2)
+    expect(after.ids).toBe(before.ids)
+  })
+
+  it('a row-only change keeps the subagentsByParent/jobsBySession container references', async () => {
+    const b = bench()
+    await feedList(b, [{ id: 'root' }])
+    b.api.onSubagentList = () => Promise.resolve(ok({
+      entries: [{
+        kind: 'child', id: sid('child'), mode: 'continuable', label: 'Child',
+        activity: 'inactive', hasChildren: false,
+      }] as never[],
+      parentAvailable: true,
+    }))
+    await b.svc.refreshSubagents(sid('root'))
+    await Promise.resolve()
+    const before = b.svc.list.getSnapshot()
+    b.svc.handleMuxEnvelope({
+      rpcId: 'title' as never,
+      payload: { type: 'session/projection', sessionId: sid('root'), key: 'title', value: 'Root renamed', seq: 3 } as never,
+    })
+    await Promise.resolve()
+    const after = b.svc.list.getSnapshot()
+    expect(after).not.toBe(before)
+    expect(after.subagentsByParent).toBe(before.subagentsByParent)
+    expect(after.jobsBySession).toBe(before.jobsBySession)
+  })
+})
+
 describe('search', () => {
   it('delegates transient content search without changing the list snapshot', async () => {
     const b = bench()

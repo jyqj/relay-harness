@@ -1,10 +1,10 @@
 /** The agent loop's card: how many tool calls one step may run at once. */
 
-import type { InjectFace, PropsLocale, PropsRuntime } from '@relay-harness/rlh-client-ui-slots'
+import type { InjectFace,PropsLocale,PropsRuntime } from '@relay-harness/rlh-client-ui-slots'
+import type { AgentLoopCardFace } from './agent-loop-card-controller.ts'
 import { ValueField } from './fields.tsx'
 import { PluginCard } from './PluginCard.tsx'
-import type { AgentLoopCardFace } from './agent-loop-card-controller.ts'
-import type {} from './slot-contract.ts'
+
 
 /** Props the renderer binds for the agent-loop card. */
 export type AgentLoopCardProps =

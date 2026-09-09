@@ -130,6 +130,13 @@ interface ObservedSession {
   fingerprint: string
 }
 
+/** Last observation inputs for one live session, keyed by its id. */
+interface LiveObservationCacheEntry {
+  header: SessionHeader
+  events: readonly SessionEvent[]
+  observed: ObservedSession
+}
+
 interface ObservedPersistedSession {
   header: SessionHeader
   revision: SessionPersistenceRevision
@@ -225,6 +232,13 @@ export class SqliteSessionQueryEngine extends SessionQueryEngine {
   private _tail: Promise<void> = Promise.resolve()
   private _closed = false
   private _closePromise: Promise<void> | undefined
+  /**
+   * Live observations reused while a session's header and event snapshot are
+   * unchanged. `Session.events` reuses one frozen array between appends, so
+   * reference equality is an exact change marker; entries are overwritten per
+   * id and dropped when a session leaves the live set.
+   */
+  private readonly _liveObservations = new Map<SessionId, LiveObservationCacheEntry>()
   private readonly _optionalPersistenceFiber: Fiber
 
   constructor(ctx: Context, config: Config) {
@@ -417,6 +431,7 @@ export class SqliteSessionQueryEngine extends SessionQueryEngine {
       return indexed?.fingerprint !== entry.fingerprint || indexed.persisted !== persisted
     })
     const liveDeletes = liveRows.filter(row => !observation.live.has(row.id as SessionId))
+    for (const row of liveDeletes) this._liveObservations.delete(row.id as SessionId)
     const pointerChanged = this._lastPersistenceIdentity !== undefined
       && this._lastPersistenceIdentity !== observation.persistenceBinding.identity
     const hasWrites = persistentChanges.length > 0
@@ -533,7 +548,7 @@ export class SqliteSessionQueryEngine extends SessionQueryEngine {
       }
       const live = new Map<SessionId, ObservedSession>()
       for (const session of this.ctx.sessions.list()) {
-        const observed = observeLive(session)
+        const observed = this._observeLive(session)
         const durable = persisted.get(session.id)
         if (durable !== undefined) assertSessionHeadersCompatible(observed.header, durable.header)
         live.set(session.id, observed)
@@ -545,6 +560,27 @@ export class SqliteSessionQueryEngine extends SessionQueryEngine {
       'session-search persistence observation did not stabilize after one retry',
       'SESSION_QUERY_PERSISTENCE_FAILED',
     )
+  }
+
+  /**
+   * Observe one live session, reusing the cached observation while both the
+   * session header and the frozen event snapshot array are unchanged, so an
+   * unchanged corpus skips the per-search clone/serialize/hash work.
+   * @param session - a live session from the store.
+   * @returns the session's documents and content fingerprint.
+   */
+  private _observeLive(session: Session): ObservedSession {
+    const cached = this._liveObservations.get(session.id)
+    if (cached !== undefined && session.events === cached.events && sameHeader(session.header, cached.header)) {
+      return cached.observed
+    }
+    const observed = observeSession(session.header, session.events)
+    this._liveObservations.set(session.id, {
+      header: session.header,
+      events: session.events,
+      observed,
+    })
+    return observed
   }
 
   private _mainGeneration(): number {
@@ -853,18 +889,17 @@ function selectedDocumentsParams(query: string, persistenceVisible: boolean): Ar
   ]
 }
 
-function observeLive(session: Session): ObservedSession {
-  return observeSession(session.header, session.events)
-}
-
+/**
+ * Build an observation from session-log inputs, without copying them: live
+ * inputs are the store's deep-frozen snapshots and persisted inputs are arrays
+ * materialized privately by one `inspect()` call, and both are only read here.
+ */
 function observeSession(header: SessionHeader, events: readonly SessionEvent[]): ObservedSession {
-  const detachedHeader = structuredClone(header)
-  const detachedEvents = events.map(event => structuredClone(event))
   return {
-    header: detachedHeader,
-    documents: buildSessionEventSearchDocuments(detachedHeader.id, detachedEvents),
+    header,
+    documents: buildSessionEventSearchDocuments(header.id, events),
     fingerprint: createHash('sha256')
-      .update(JSON.stringify({ header: detachedHeader, events: detachedEvents }))
+      .update(JSON.stringify({ header, events }))
       .digest('base64url'),
   }
 }

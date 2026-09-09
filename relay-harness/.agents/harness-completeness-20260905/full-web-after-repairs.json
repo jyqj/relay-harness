@@ -1,0 +1,526 @@
+{
+  "files": {
+    "failed": 33,
+    "passed": 55,
+    "skipped": 1
+  },
+  "tests": {
+    "failed": 48,
+    "passed": 244,
+    "skipped": 18
+  },
+  "unhandledErrors": 0,
+  "seconds": 833.77,
+  "exitCode": 1,
+  "log": "/tmp/relay-full-web-after-repairs.log",
+  "failures": [
+    {
+      "test": "apps/web/tests/goal-bar.e2e.ts > web e2e: goal bar clear convergence",
+      "diagnostic": [
+        "TimeoutError: page.waitForSelector: Timeout 30000ms exceeded.",
+        "Call log:",
+        "  - waiting for locator('[class*=\"frame\"]') to be visible",
+        " ❯ apps/web/tests/goal-bar.e2e.ts:34:16"
+      ]
+    },
+    {
+      "test": "apps/web/tests/lifecycle-chrome.e2e.ts > web e2e: lifecycle & chrome (workspace flow / reload / dark mode)",
+      "diagnostic": [
+        "Error: llm-replay: fixture not fully consumed — 1 recorded script(s) never bound to a live session; the scenario drove fewer model calls than recorded",
+        " ❯ Object.assertConsumed packages/test-support/llm-replay/src/index.ts:788:15",
+        "    786|       }",
+        "    787|       if (problems.length > 0) {"
+      ]
+    },
+    {
+      "test": "apps/web/tests/sidebar-subagent-activity.e2e.ts > web e2e: sidebar subagent activity",
+      "diagnostic": [
+        "Error: Hook timed out in 60000ms.",
+        "If this is a long-running hook, pass a timeout value as the last argument or configure it globally with \"hookTimeout\".",
+        " ❯ apps/web/tests/sidebar-subagent-activity.e2e.ts:80:3",
+        "     78|   let tripwire: ReturnType<typeof watchConsole>"
+      ]
+    },
+    {
+      "test": "apps/web/tests/subagent-interrupt-ui.e2e.ts > web e2e: composer interrupt for a running continuable child",
+      "diagnostic": [
+        "Error: llm-replay: fixture not fully consumed — session 654b0443-0e14-454b-9413-a321159a0eae consumed 1/5 recorded call(s); the scenario drove fewer model calls than recorded",
+        " ❯ Object.assertConsumed packages/test-support/llm-replay/src/index.ts:788:15",
+        "    786|       }",
+        "    787|       if (problems.length > 0) {"
+      ]
+    },
+    {
+      "test": "apps/web/tests/workflow-run.e2e.ts > web e2e: durable workflow run in Chat",
+      "diagnostic": [
+        "Error: llm-replay: fixture not fully consumed — 1 recorded script(s) never bound to a live session; the scenario drove fewer model calls than recorded",
+        " ❯ Object.assertConsumed packages/test-support/llm-replay/src/index.ts:788:15",
+        "    786|       }",
+        "    787|       if (problems.length > 0) {"
+      ]
+    },
+    {
+      "test": "apps/web/tests/bash-abort-row.e2e.ts > web e2e: cancelled Bash row disclosure > expands the aborted row to its command and full error",
+      "diagnostic": [
+        "AssertionError: expected '- banner:\\n  - navigation \"Session hi…' to be '- banner:\\n  - navigation \"Session hi…' // Object.is equality",
+        "- Expected",
+        "+ Received",
+        "@@ -1,11 +1,10 @@"
+      ]
+    },
+    {
+      "test": "apps/web/tests/chat-continuous-conversation.e2e.ts > web e2e: continuous conversation grown through the composer > keeps twelve generated turns and tool rows bound to one live session",
+      "diagnostic": [
+        "TimeoutError: locator.waitFor: Timeout 15000ms exceeded.",
+        "Call log:",
+        "  - waiting for getByText('CONTINUOUS_CHAT_FIRST_005').last() to be visible",
+        " ❯ apps/web/tests/chat-continuous-conversation.e2e.ts:250:71"
+      ]
+    },
+    {
+      "test": "apps/web/tests/code-mode-round.e2e.ts > web e2e: Code Mode round renders nested sub-calls > matches the conversation aria golden with stable anchors",
+      "diagnostic": [
+        "AssertionError: expected '- banner:\\n  - navigation \"Session hi…' to be '- banner:\\n  - navigation \"Session hi…' // Object.is equality",
+        "- Expected",
+        "+ Received",
+        "@@ -1,34 +1,36 @@"
+      ]
+    },
+    {
+      "test": "apps/web/tests/cordis-tool-round.e2e.ts > web e2e: Cordis tools use their owned cards > the durable log carries one complete Cordis lifecycle",
+      "diagnostic": [
+        "AssertionError: expected [ 'cordis_inspect_self', …(2) ] to deeply equal [ 'cordis_inspect_self', …(3) ]",
+        "- Expected",
+        "+ Received",
+        "  ["
+      ]
+    },
+    {
+      "test": "apps/web/tests/cordis-tool-round.e2e.ts > web e2e: Cordis tools use their owned cards > renders localized Cordis lifecycle cards",
+      "diagnostic": [
+        "TimeoutError: locator.waitFor: Timeout 10000ms exceeded.",
+        "Call log:",
+        "  - waiting for locator('[data-tool=\"cordis_stop\"]').filter({ hasText: 'Stop Cordis Plugin' }).first() to be visible",
+        " ❯ apps/web/tests/cordis-tool-round.e2e.ts:162:19"
+      ]
+    },
+    {
+      "test": "apps/web/tests/cordis-tool-round.e2e.ts > web e2e: Cordis tools use their owned cards > matches the conversation aria golden",
+      "diagnostic": [
+        "AssertionError: expected '- banner:\\n  - navigation \"Session hi…' to be '- banner:\\n  - navigation \"Session hi…' // Object.is equality",
+        "- Expected",
+        "+ Received",
+        "@@ -1,19 +1,17 @@"
+      ]
+    },
+    {
+      "test": "apps/web/tests/feedback-command.e2e.ts > web e2e: /feedback command acknowledgement > records feedback and renders the acknowledgement with session id and sharing status",
+      "diagnostic": [
+        "AssertionError: expected '- banner:\\n  - navigation \"Session hi…' to be '- banner:\\n  - navigation \"Session hi…' // Object.is equality",
+        "- Expected",
+        "+ Received",
+        "@@ -1,26 +1,23 @@"
+      ]
+    },
+    {
+      "test": "apps/web/tests/goal-multi-turn-actions.e2e.ts > web e2e: Goal keeps one assistant action row per completed turn > keeps actions on both completed Goal turn tails",
+      "diagnostic": [
+        "AssertionError: expected '- banner:\\n  - navigation \"Session hi…' to be '- banner:\\n  - navigation \"Session hi…' // Object.is equality",
+        "- Expected",
+        "+ Received",
+        "@@ -1,13 +1,10 @@"
+      ]
+    },
+    {
+      "test": "apps/web/tests/lifecycle-chrome.e2e.ts > web e2e: lifecycle & chrome (workspace flow / reload / dark mode) > shows active Plan as the warn-state status action",
+      "diagnostic": [
+        "AssertionError: expected '- button \"New session\"\\n- button \"Col…' to be '- button \"New session\"\\n- button \"Col…' // Object.is equality",
+        "- Expected",
+        "+ Received",
+        "@@ -1,8 +1,18 @@"
+      ]
+    },
+    {
+      "test": "apps/web/tests/lifecycle-chrome.e2e.ts > web e2e: lifecycle & chrome (workspace flow / reload / dark mode) > sends the first prompt from the empty-state hero (all modes)",
+      "diagnostic": [
+        "AssertionError: expected '- button \"New session\"\\n- button \"Col…' to be '- button \"New session\"\\n- button \"Col…' // Object.is equality",
+        "- Expected",
+        "+ Received",
+        "@@ -1,8 +1,18 @@"
+      ]
+    },
+    {
+      "test": "apps/web/tests/lifecycle-chrome.e2e.ts > web e2e: lifecycle & chrome (workspace flow / reload / dark mode) > materialized a real Workspace and Session over the wire",
+      "diagnostic": [
+        "AssertionError: expected 0 to be greater than or equal to 1",
+        " ❯ apps/web/tests/lifecycle-chrome.e2e.ts:208:105",
+        "    206|     ).toBeGreaterThanOrEqual(1)",
+        "    207|     await expect.poll(() => page.locator('[role=\"treeitem\"][aria-selec…"
+      ]
+    },
+    {
+      "test": "apps/web/tests/lifecycle-chrome.e2e.ts > web e2e: lifecycle & chrome (workspace flow / reload / dark mode) > recovers the whole surface across a reload from the log alone",
+      "diagnostic": [
+        "AssertionError: expected 0 to be greater than or equal to 1",
+        " ❯ apps/web/tests/lifecycle-chrome.e2e.ts:230:105",
+        "    228|     // the replay cursor was fully consumed before the reload, so any …",
+        "    229|     // request would fail the scenario loudly at close()."
+      ]
+    },
+    {
+      "test": "apps/web/tests/markdown-cjk-strong.e2e.ts > web e2e: CJK-adjacent Markdown strong emphasis > renders punctuation-terminated strong spans before adjacent CJK text",
+      "diagnostic": [
+        "AssertionError: expected '- banner:\\n  - navigation \"Session hi…' to be '- banner:\\n  - navigation \"Session hi…' // Object.is equality",
+        "- Expected",
+        "+ Received",
+        "@@ -1,11 +1,10 @@"
+      ]
+    },
+    {
+      "test": "apps/web/tests/markdown-images.e2e.ts > web e2e: remote Markdown image rendering > loads only the remote image and matches the conversation golden",
+      "diagnostic": [
+        "AssertionError: expected '- banner:\\n  - navigation \"Session hi…' to be '- banner:\\n  - navigation \"Session hi…' // Object.is equality",
+        "- Expected",
+        "+ Received",
+        "@@ -1,11 +1,10 @@"
+      ]
+    },
+    {
+      "test": "apps/web/tests/markdown-inline-code-links.e2e.ts > web e2e: Markdown inline-code links > opens a complete HTTP URL from inline code and leaves other code inert",
+      "diagnostic": [
+        "AssertionError: expected '- banner:\\n  - navigation \"Session hi…' to be '- banner:\\n  - navigation \"Session hi…' // Object.is equality",
+        "- Expected",
+        "+ Received",
+        "@@ -1,11 +1,10 @@"
+      ]
+    },
+    {
+      "test": "apps/web/tests/math-rendering.e2e.ts > web e2e: settled Markdown math rendering > renders the settled reply without KaTeX errors",
+      "diagnostic": [
+        "AssertionError: expected '- banner:\\n  - navigation \"Session hi…' to be '- banner:\\n  - navigation \"Session hi…' // Object.is equality",
+        "- Expected",
+        "+ Received",
+        "@@ -1,11 +1,10 @@"
+      ]
+    },
+    {
+      "test": "apps/web/tests/message-actions.e2e.ts > web e2e: message IconActions and clocks on settled history > matches the conversation aria golden with IconActions and clocks",
+      "diagnostic": [
+        "TimeoutError: locator.waitFor: Timeout 10000ms exceeded.",
+        "Call log:",
+        "  - waiting for getByRole('button', { name: /^Select model, current/ }) to be visible",
+        " ❯ apps/web/tests/message-actions.e2e.ts:140:8"
+      ]
+    },
+    {
+      "test": "apps/web/tests/message-actions.e2e.ts > web e2e: message IconActions and clocks on settled history > opens the native Session Tree over durable Turn history",
+      "diagnostic": [
+        "AssertionError: expected +0 to be 1 // Object.is equality",
+        "- Expected",
+        "+ Received",
+        "- 1"
+      ]
+    },
+    {
+      "test": "apps/web/tests/message-actions.e2e.ts > web e2e: message IconActions and clocks on settled history > forks through the settled-message and session-row actions",
+      "diagnostic": [
+        "TimeoutError: locator.click: Timeout 30000ms exceeded.",
+        "Call log:",
+        "  - waiting for getByRole('button', { name: 'Branch into a new conversation' }).last()",
+        "    - locator resolved to <button type=\"button\" class=\"k3EhIG_action\" aria-label=\"Branch into a new conversation\">…</button>"
+      ]
+    },
+    {
+      "test": "apps/web/tests/message-feedback-layout.e2e.ts > web e2e: the feedback note editor floats above the column > keeps the actions row untouched by the note popover, which stays in the viewport",
+      "diagnostic": [
+        "AssertionError: viewport 1680: expected 2 to be 1 // Object.is equality",
+        "- Expected",
+        "+ Received",
+        "- 1"
+      ]
+    },
+    {
+      "test": "apps/web/tests/message-feedback-layout.e2e.ts > web e2e: the feedback note editor floats above the column > matches the committed geometry golden",
+      "diagnostic": [
+        "AssertionError: expected '# Assistant actions row with the feed…' to be '# Assistant actions row with the feed…' // Object.is equality",
+        "- Expected",
+        "+ Received",
+        "@@ -1,10 +1,10 @@"
+      ]
+    },
+    {
+      "test": "apps/web/tests/onboarding-deepseek-config.e2e.ts > web e2e: first-run DeepSeek credential setup > stores a key write-only and observes configured state without restarting",
+      "diagnostic": [
+        "TimeoutError: locator.click: Timeout 30000ms exceeded.",
+        "Call log:",
+        "  - waiting for getByRole('dialog', { name: '设置' }).getByRole('button', { name: '模型' })",
+        " ❯ apps/web/tests/onboarding-deepseek-config.e2e.ts:101:56"
+      ]
+    },
+    {
+      "test": "apps/web/tests/onboarding-deepseek-config.e2e.ts > web e2e: first-run DeepSeek credential setup > configures arbitrary DeepSeek models and prompts after the selected model is removed",
+      "diagnostic": [
+        "TimeoutError: locator.click: Timeout 30000ms exceeded.",
+        "Call log:",
+        "  - waiting for getByRole('dialog', { name: '设置' }).getByRole('button', { name: '模型' })",
+        " ❯ apps/web/tests/onboarding-deepseek-config.e2e.ts:201:56"
+      ]
+    },
+    {
+      "test": "apps/web/tests/onboarding-usable-provider.e2e.ts > web e2e: another usable provider ends first-run onboarding > closes the setup card without discarding the add card beside it",
+      "diagnostic": [
+        "TimeoutError: locator.click: Timeout 30000ms exceeded.",
+        "Call log:",
+        "  - waiting for getByRole('dialog', { name: '设置' }).getByRole('button', { name: '模型' })",
+        " ❯ apps/web/tests/onboarding-usable-provider.e2e.ts:57:56"
+      ]
+    },
+    {
+      "test": "apps/web/tests/onboarding-usable-provider.e2e.ts > web e2e: another usable provider ends first-run onboarding > stops prompting for DeepSeek once the other provider can serve requests",
+      "diagnostic": [
+        "TimeoutError: locator.fill: Timeout 30000ms exceeded.",
+        "Call log:",
+        "  - waiting for getByRole('dialog', { name: '设置' }).getByRole('textbox', { name: 'API 密钥', exact: true })",
+        " ❯ apps/web/tests/onboarding-usable-provider.e2e.ts:91:74"
+      ]
+    },
+    {
+      "test": "apps/web/tests/plan-control-row.e2e.ts > web e2e: plan chip click area at the narrow viewport > keeps the plan chip and model trigger disjoint and exits plan mode by click",
+      "diagnostic": [
+        "TimeoutError: locator.waitFor: Timeout 10000ms exceeded.",
+        "Call log:",
+        "  - waiting for getByRole('button', { name: /Select model/ }) to be visible",
+        " ❯ apps/web/tests/plan-control-row.e2e.ts:91:19"
+      ]
+    },
+    {
+      "test": "apps/web/tests/plan-review.e2e.ts > web e2e: plan review takeover round trip > reviews the plan on a decision card and approves through it",
+      "diagnostic": [
+        "AssertionError: expected '- banner:\\n  - navigation \"Session hi…' to be '- banner:\\n  - navigation \"Session hi…' // Object.is equality",
+        "- Expected",
+        "+ Received",
+        "@@ -1,25 +1,22 @@"
+      ]
+    },
+    {
+      "test": "apps/web/tests/pwa-manifest.e2e.ts > ships a favicon that switches to a light mark under dark color scheme",
+      "diagnostic": [
+        "AssertionError: expected '<svg xmlns=\"http://www.w3.org/2000/sv…' to match /@media \\(prefers-color-scheme: dark\\…/i",
+        "- Expected:",
+        "/@media \\(prefers-color-scheme: dark\\)\\s*{\\s*path\\s*{[^}]*fill:\\s*#fff/i",
+        "+ Received:"
+      ]
+    },
+    {
+      "test": "apps/web/tests/question-composer.e2e.ts > web e2e: resident question composer round trip > asks through the composer, answers, and completes with the answer logged",
+      "diagnostic": [
+        "AssertionError: expected '- banner:\\n  - navigation \"Session hi…' to be '- banner:\\n  - navigation \"Session hi…' // Object.is equality",
+        "- Expected",
+        "+ Received",
+        "@@ -1,26 +1,23 @@"
+      ]
+    },
+    {
+      "test": "apps/web/tests/queue-actions.e2e.ts > web e2e: queue row actions > edits and removes exact occurrences and preserves Queue across stop",
+      "diagnostic": [
+        "AssertionError: expected '- banner:\\n  - navigation \"Session hi…' to be '- banner:\\n  - navigation \"Session hi…' // Object.is equality",
+        "- Expected",
+        "+ Received",
+        "  - banner:"
+      ]
+    },
+    {
+      "test": "apps/web/tests/queue-actions.e2e.ts > web e2e: queue row actions > edits and removes exact occurrences and preserves Queue across stop",
+      "diagnostic": []
+    },
+    {
+      "test": "apps/web/tests/queue-actions.e2e.ts > web e2e: queue row actions > orders Todo before Goal and Queue on one responsive card column",
+      "diagnostic": [
+        "Error: Web scaffold closed before turn settled",
+        " ❯ closedError apps/web/tests/scaffold.ts:651:33",
+        "    649|     whenTurnSettled(timeoutMs = mode === 'record' ? 180_000 : 30_000):…",
+        "    650|       const settled = Promise.withResolvers<SessionId>()"
+      ]
+    },
+    {
+      "test": "apps/web/tests/queue-actions.e2e.ts > web e2e: queue row actions > edits and removes exact occurrences and preserves Queue across stop",
+      "diagnostic": [
+        "Error: llm-replay: fixture not fully consumed — session session-75d83295-0450-40c3-af62-50d71d50599f consumed 1/4 recorded call(s); the scenario drove fewer model calls than recorded",
+        " ❯ Object.assertConsumed packages/test-support/llm-replay/src/index.ts:788:15",
+        "    786|       }",
+        "    787|       if (problems.length > 0) {"
+      ]
+    },
+    {
+      "test": "apps/web/tests/queue-actions.e2e.ts > web e2e: queue row actions > orders Todo before Goal and Queue on one responsive card column",
+      "diagnostic": [
+        "AssertionError: expected '- banner:\\n  - navigation \"Session hi…' to be '- banner:\\n  - navigation \"Session hi…' // Object.is equality",
+        "- Expected",
+        "+ Received",
+        "@@ -1,13 +1,10 @@"
+      ]
+    },
+    {
+      "test": "apps/web/tests/reference-composer.e2e.ts > web e2e: file and session references through the real host > renders the durable direct-message then recall order",
+      "diagnostic": [
+        "TimeoutError: locator.waitFor: Timeout 15000ms exceeded.",
+        "Call log:",
+        "  - waiting for getByRole('treeitem', { name: /Ungrouped/ }) to be visible",
+        " ❯ apps/web/tests/reference-composer.e2e.ts:174:17"
+      ]
+    },
+    {
+      "test": "apps/web/tests/replay-round-trip.e2e.ts > web e2e: fresh round trip through the real assembly > records the Web surface, source checkout, and session cwd in the request header",
+      "diagnostic": [
+        "AssertionError: expected 'You are an AI agent powered by Relay …' to be 'You are an AI agent powered by Relay …' // Object.is equality",
+        "- Expected",
+        "+ Received",
+        "@@ -2,7 +2,8 @@"
+      ]
+    },
+    {
+      "test": "apps/web/tests/replay-round-trip.e2e.ts > web e2e: fresh round trip through the real assembly > matches the conversation aria golden with stable anchors",
+      "diagnostic": [
+        "TimeoutError: locator.waitFor: Timeout 10000ms exceeded.",
+        "Call log:",
+        "  - waiting for getByRole('button', { name: 'Select model, current DeepSeek-V4-Flash' }) to be visible",
+        " ❯ apps/web/tests/replay-round-trip.e2e.ts:147:8"
+      ]
+    },
+    {
+      "test": "apps/web/tests/seeded-history.e2e.ts > web e2e: seeded history renders through cold resume > matches the historical conversation aria golden",
+      "diagnostic": [
+        "TimeoutError: locator.waitFor: Timeout 10000ms exceeded.",
+        "Call log:",
+        "  - waiting for getByRole('button', { name: /^Select model, current/ }) to be visible",
+        " ❯ apps/web/tests/seeded-history.e2e.ts:335:8"
+      ]
+    },
+    {
+      "test": "apps/web/tests/seeded-history.e2e.ts > web e2e: seeded history renders through cold resume > an Access-chip switch lands one command row: bare name, non-repeating settlement text",
+      "diagnostic": [
+        "TimeoutError: locator.click: Timeout 30000ms exceeded.",
+        "Call log:",
+        "  - waiting for getByRole('button', { name: 'Access mode, current: Workspace Write' })",
+        " ❯ apps/web/tests/seeded-history.e2e.ts:481:87"
+      ]
+    },
+    {
+      "test": "apps/web/tests/seeded-history.e2e.ts > web e2e: seeded history renders through cold resume > reports full feedback correlation ids in an expandable two-line row",
+      "diagnostic": [
+        "AssertionError: expected '- banner:\\n  - navigation \"Session hi…' to be '- banner:\\n  - navigation \"Session hi…' // Object.is equality",
+        "- Expected",
+        "+ Received",
+        "@@ -1,11 +1,10 @@"
+      ]
+    },
+    {
+      "test": "apps/web/tests/shipped-composition.e2e.ts > assembles the shipped Web catalog, file-reference guidance, retry policy, and unrestricted access default",
+      "diagnostic": [
+        "Error: Snapshot `assembles the shipped Web catalog, file-reference guidance, retry policy, and unrestricted access default 1` mismatched",
+        "- Expected",
+        "+ Received",
+        "  {"
+      ]
+    },
+    {
+      "test": "apps/web/tests/skill-tool-row.e2e.ts > web e2e: dedicated Skill tool row > expands the loaded skill to its exact recorded instructions",
+      "diagnostic": [
+        "AssertionError: expected '- banner:\\n  - navigation \"Session hi…' to be '- banner:\\n  - navigation \"Session hi…' // Object.is equality",
+        "- Expected",
+        "+ Received",
+        "@@ -1,17 +1,15 @@"
+      ]
+    },
+    {
+      "test": "apps/web/tests/skill-user-invoke.e2e.ts > web e2e: user-explicit skill invocation through the composer > claims /name args into a gesture bubble, an injection row, and a replayed answer",
+      "diagnostic": [
+        "AssertionError: expected '- banner:\\n  - navigation \"Session hi…' to be '- banner:\\n  - navigation \"Session hi…' // Object.is equality",
+        "- Expected",
+        "+ Received",
+        "@@ -1,19 +1,19 @@"
+      ]
+    },
+    {
+      "test": "apps/web/tests/subagent-conversation.e2e.ts > web e2e: persisted subagent conversation and human continuation > matches the settled addressed-conversation aria golden and stays clean",
+      "diagnostic": [
+        "AssertionError: expected '- banner:\\n  - navigation \"Session hi…' to be '- banner:\\n  - navigation \"Session hi…' // Object.is equality",
+        "- Expected",
+        "+ Received",
+        "@@ -1,29 +1,26 @@"
+      ]
+    },
+    {
+      "test": "apps/web/tests/subagent-conversation.e2e.ts > web e2e: persisted subagent conversation and human continuation > opens an unavailable persisted grandchild after recording the available child",
+      "diagnostic": [
+        "AssertionError: expected '- banner:\\n  - navigation \"Session hi…' to be '- banner:\\n  - navigation \"Session hi…' // Object.is equality",
+        "- Expected",
+        "+ Received",
+        "@@ -3,13 +3,12 @@"
+      ]
+    },
+    {
+      "test": "apps/web/tests/subagent-interrupt-ui.e2e.ts > web e2e: composer interrupt for a running continuable child > interrupts the live child through the parent-offline composer",
+      "diagnostic": [
+        "AssertionError: expected '- banner:\\n  - navigation \"Session hi…' to be '- banner:\\n  - navigation \"Session hi…' // Object.is equality",
+        "- Expected",
+        "+ Received",
+        "  - banner:"
+      ]
+    },
+    {
+      "test": "apps/web/tests/subagent-interrupt-ui.e2e.ts > web e2e: composer interrupt for a running continuable child > interrupts through subagent.interrupt, parks the follow-up, and resumes it FIFO",
+      "diagnostic": [
+        "AssertionError: expected [ { content: [ { …(2) } ], …(3) } ] to have a length of 2 but got 1",
+        "- Expected",
+        "+ Received",
+        "- 2"
+      ]
+    },
+    {
+      "test": "apps/web/tests/turn-tail-actions.e2e.ts > web e2e: assistant IconActions wait for the turn to end > withholds the footer while the turn runs and grants it at turn/end",
+      "diagnostic": [
+        "AssertionError: expected '- banner:\\n  - navigation \"Session hi…' to be '- banner:\\n  - navigation \"Session hi…' // Object.is equality",
+        "- Expected",
+        "+ Received",
+        "  - banner:"
+      ]
+    },
+    {
+      "test": "apps/web/tests/turn-tail-actions.e2e.ts > web e2e: assistant IconActions wait for the turn to end > withholds the footer while the turn runs and grants it at turn/end",
+      "diagnostic": [
+        "Error: Web scaffold closed before turn settled",
+        " ❯ closedError apps/web/tests/scaffold.ts:651:33",
+        "    649|     whenTurnSettled(timeoutMs = mode === 'record' ? 180_000 : 30_000):…",
+        "    650|       const settled = Promise.withResolvers<SessionId>()"
+      ]
+    },
+    {
+      "test": "apps/web/tests/web-search-round.e2e.ts > web e2e: shipped default web search > matches the settled search card aria golden",
+      "diagnostic": [
+        "AssertionError: expected '- banner:\\n  - navigation \"Session hi…' to be '- banner:\\n  - navigation \"Session hi…' // Object.is equality",
+        "- Expected",
+        "+ Received",
+        "@@ -1,19 +1,19 @@"
+      ]
+    },
+    {
+      "test": "apps/web/tests/workflow-run.e2e.ts > web e2e: durable workflow run in Chat > shows the live member, opens its local child, then retains the settled record beside the tool row",
+      "diagnostic": [
+        "TimeoutError: locator.waitFor: Timeout 30000ms exceeded.",
+        "Call log:",
+        "  - waiting for locator('[data-workflow-run][data-run-status=\"running\"]') to be visible",
+        " ❯ apps/web/tests/workflow-run.e2e.ts:79:20"
+      ]
+    },
+    {
+      "test": "apps/web/tests/workflow-run.e2e.ts > web e2e: durable workflow run in Chat > rebuilds the terminal record from history after reload",
+      "diagnostic": [
+        "TimeoutError: locator.waitFor: Timeout 15000ms exceeded.",
+        "Call log:",
+        "  - waiting for getByRole('button', { name: /^snapshot-flow/ }) to be visible",
+        " ❯ apps/web/tests/workflow-run.e2e.ts:189:20"
+      ]
+    }
+  ]
+}

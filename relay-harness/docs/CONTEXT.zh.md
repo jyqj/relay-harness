@@ -91,4 +91,4 @@ TypeScript 实现 Relay Harness（见 [ADR-0005](adr/0005-adopt-ts-harness-runti
 
 运行时是 [ADR-0005](adr/0005-adopt-ts-harness-runtime.md) 定义并位于 runtime root 下的 TypeScript Harness。默认 composition 已交付 Agent Loop、恢复、工具、Subagent、Chat/Work/Library 产品壳、显式 Prompt Enhancement、本地 Context Engine、治理型 Memory、Code Index、MCP/Skills 目录，以及普通用户安全默认权限。
 
-当前未交付的 Relay 专属能力是外部中转调度客户端、用户可见的模型强度与计费契约。功能状态不在本文重复维护；以机器可读 [`feature-status.json`](feature-status.json) 及其 CI 证据门禁为唯一权威。
+当前未交付的 Relay 专属能力是外部中转调度客户端、用户可见的模型强度与计费契约。机器可读 [`feature-status.json`](feature-status.json) 维护实现范围与证据引用，不代表执行判定。其验证器检查路径与标记；验证结论另以当前测试、构建、平台与提供方运行结果为依据。

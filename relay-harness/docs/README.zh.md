@@ -9,7 +9,7 @@
 1. [`CONTEXT.md`](CONTEXT.md) — 产品定义、系统边界与术语
 2. [`product/vision-and-positioning.md`](product/vision-and-positioning.md) — 定位、目标用户与价值主张
 3. [`product/product-experience.md`](product/product-experience.md) — 傻瓜式体验、chat/work、Prompt Enhancing
-4. [`feature-status.json`](feature-status.json) — 当前功能完成状态及可验证证据
+4. [`feature-status.json`](feature-status.json) — 实现范围与证据引用，与实际执行的验证结果分开
 5. [`repository-governance.md`](repository-governance.md) — GitHub workflow 权威、分支保护与外层容器/runtime root 分工
 6. [`agent/overview.md`](agent/overview.md) — TypeScript Relay Harness 总体架构
 7. [`agent/agent-runtime.md`](agent/agent-runtime.md) — Agent Loop、状态、恢复与本地验证

@@ -52,9 +52,10 @@ export async function verifyRuntimeClosure(
   const runtimeName = runtimeManifest.name ?? manifestPath
   const workspace = await loadWorkspacePackages(root)
   const runtimeDependencies = runtimeManifest.dependencies ?? {}
-  const platforms = await loadJson<RuntimePlatformManifest>(resolve(root, 'python/sdk-runtime/platforms.json'))
   const presetPaths = globSync(AGENT_PRESET_GLOB, { cwd: root }).sort()
-  const targets = Object.keys(platforms).sort()
+  const targets = resolve(root, manifestPath) === resolve(root, 'apps/cli/package.json')
+    ? ['linux-x64', 'macos-arm64', 'windows-x64']
+    : Object.keys(await loadJson<RuntimePlatformManifest>(resolve(root, 'python/sdk-runtime/platforms.json'))).sort()
   const parents = new Map<string, string | undefined>()
   const queue: string[] = []
 
@@ -104,15 +105,18 @@ if (import.meta.main) {
     args: process.argv.slice(2),
     options: { manifest: { type: 'string' } },
   })
-  const result = await verifyRuntimeClosure(root, values.manifest)
-  if (result.failures.length > 0) {
-    console.error('verify-runtime-closure: preset plugins or required workspace peers are missing from python/sdk-runtime dependencies:')
-    for (const failure of result.failures) console.error(`  ${failure}`)
-    process.exitCode = 1
-  } else {
-    console.log(
-      `verify-runtime-closure: ${result.presetCount} agent presets and ${result.workspacePackageCount} workspace packages form a closed runtime dependency graph.`,
-    )
+  for (const manifest of values.manifest === undefined
+    ? ['python/sdk-runtime/package.json', 'apps/cli/package.json'] : [values.manifest]) {
+    const result = await verifyRuntimeClosure(root, manifest)
+    if (result.failures.length > 0) {
+      console.error(`verify-runtime-closure: preset plugins or required workspace peers are missing from ${manifest}:`)
+      for (const failure of result.failures) console.error(`  ${failure}`)
+      process.exitCode = 1
+    } else {
+      console.log(
+        `verify-runtime-closure: ${manifest}: ${result.presetCount} presets and ${result.workspacePackageCount} workspace packages are closed.`,
+      )
+    }
   }
 }
 
@@ -181,6 +185,7 @@ function disabledOnPlatform(value: unknown, processPlatform: string): boolean {
 function processPlatformForTarget(target: string): string {
   if (target.startsWith('linux-')) return 'linux'
   if (target.startsWith('macos-')) return 'darwin'
+  if (target.startsWith('windows-')) return 'win32'
   throw new Error(`verify-runtime-closure: unsupported runtime target ${JSON.stringify(target)}`)
 }
 

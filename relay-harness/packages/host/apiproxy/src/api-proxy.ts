@@ -3,125 +3,130 @@
  * narrow RpcRequest<P> and echoes request.rpcId on the RpcResponse<T>.
  */
 
+
+import type { Context } from '@relay-harness/cordis'
+import type { Agent,AgentOptions,AgentStatus,ModelSelection,ModelSelectionRef } from '@relay-harness/rlh-agent'
+import { installModelSelection } from '@relay-harness/rlh-agent'
+import type { } from '@relay-harness/rlh-agent-presets/types'
+import { AttachmentError } from '@relay-harness/rlh-attachment'
+import { rlhHomePath } from '@relay-harness/rlh-home-paths'
+import type { MessageSource } from '@relay-harness/rlh-llm'
+import { ReasoningEffortId,contentHasImage,createUserMessage,errorChain,freezeMessage } from '@relay-harness/rlh-llm'
+import type { Session,SessionEvent,SessionEventMap,SessionHeader,SessionId,SessionOrigin,UserMessage } from '@relay-harness/rlh-session'
+import { SessionQueryError,type SessionSearchCursor } from '@relay-harness/rlh-session-query'
+import { isUserInvocable } from '@relay-harness/rlh-skill'
+import type { SubagentListEntry as CatalogSubagentListEntry } from '@relay-harness/rlh-subagent'
+import { SubagentError } from '@relay-harness/rlh-subagent'
+import type { Workspace } from '@relay-harness/rlh-workspace'
+import {
+  WorkspaceMoveInvalidError,WorkspaceOrderInvalidError,WorkspaceUnknownSessionError,
+  WorkspaceId as brandWorkspaceId,
+  workspaceDomainState,
+} from '@relay-harness/rlh-workspace'
 import { randomUUID } from 'node:crypto'
 import { mkdir } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { dirname } from 'node:path'
-import type { Context } from '@relay-harness/cordis'
-import { rlhHomePath } from '@relay-harness/rlh-home-paths'
-import { installModelSelection } from '@relay-harness/rlh-agent'
-import type { Agent, ModelSelection, ModelSelectionRef, AgentOptions, AgentStatus } from '@relay-harness/rlh-agent'
-import type {} from '@relay-harness/rlh-agent-presets/types'
-import { AttachmentError } from '@relay-harness/rlh-attachment'
-import { contentHasImage, createUserMessage, freezeMessage, ReasoningEffortId } from '@relay-harness/rlh-llm'
-import { errorChain } from '@relay-harness/rlh-llm'
-import type { MessageSource } from '@relay-harness/rlh-llm'
-import type { Session, SessionEvent, SessionEventMap, SessionHeader, SessionId, SessionOrigin, UserMessage } from '@relay-harness/rlh-session'
-import { SessionQueryError, type SessionSearchCursor } from '@relay-harness/rlh-session-query'
-import { SubagentError } from '@relay-harness/rlh-subagent'
-import type { SubagentListEntry as CatalogSubagentListEntry } from '@relay-harness/rlh-subagent'
-import { isUserInvocable } from '@relay-harness/rlh-skill'
-import type { Workspace } from '@relay-harness/rlh-workspace'
-import {
-  workspaceDomainState, WorkspaceId as brandWorkspaceId,
-  WorkspaceMoveInvalidError, WorkspaceOrderInvalidError, WorkspaceUnknownSessionError,
-} from '@relay-harness/rlh-workspace'
 // Type-only: brings the `ctx.tools` Context merge into this program (viewFor reads presenters).
-import {
-  PresetMountError, PresetNotWritableError,
-  resolveSessionPreset, UnknownPresetError,
-} from '@relay-harness/rlh-agent-presets'
 import type { PresetBearingSession } from '@relay-harness/rlh-agent-presets'
-import type {} from '@relay-harness/rlh-tools'
+import {
+  PresetMountError,PresetNotWritableError,
+  UnknownPresetError,
+  resolveSessionPreset,
+} from '@relay-harness/rlh-agent-presets'
+import { captureScopeReadView } from '@relay-harness/rlh-scope'
+import type { SessionRawArtifact } from '@relay-harness/rlh-session-persistence'
+import type { } from '@relay-harness/rlh-tools'
 import type {
-  ApiProxy, ConfigurableProviderView, CredentialView, GoalRef, HostFrame,
-  MuxFrame, QuestionResponsePayload, SessionListMetadata, SessionProjectionsBlock, SessionSearchItem,
-  QueuedInboxItem, SessionSummary, SettingsNamespaceView, SubagentAddress, JobView,
+  ApiProxy,ConfigurableProviderView,CredentialView,GoalRef,HostFrame,
+  JobView,
+  MuxFrame,QuestionResponsePayload,
+  QueuedInboxItem,
+  SessionListMetadata,SessionProjectionsBlock,SessionSearchItem,
+  SessionSummary,SettingsNamespaceView,SubagentAddress,
   WorkspaceId,
 } from './api/index.ts'
+import {
+  SESSION_SEARCH_RESULT_LIMIT,
+  SESSION_SEARCH_SNIPPET_MAX_CODE_POINTS,
+  truncateUnicodeCodePoints,
+} from './api/session-search.ts'
 import {
   DEFAULT_SESSION_LOG_COMPRESSION_LEVEL,
   flushLiveSessionLog,
   sessionLogExportDeps,
   sessionLogZipFilename,
   streamSessionLogZip,
-  type SessionLogExportReady,
   type SessionLogCompressionLevel,
+  type SessionLogExportReady,
 } from './session-export.ts'
-import type { SessionRawArtifact } from '@relay-harness/rlh-session-persistence'
-import {
-  SESSION_SEARCH_RESULT_LIMIT,
-  SESSION_SEARCH_SNIPPET_MAX_CODE_POINTS,
-  truncateUnicodeCodePoints,
-} from './api/session-search.ts'
 // Type-only: resolves `ctx.get('sessionProjections')` to the projection registry.
-import type {} from '@relay-harness/rlh-session-projection'
+import type { } from '@relay-harness/rlh-session-projection'
 // Type-only: resolves `ctx.get('tasks')` to the background job registry.
-import type {} from '@relay-harness/rlh-jobs'
 import type { JobSnapshot } from '@relay-harness/rlh-jobs'
 // Type-only: resolves `ctx.get('sessionProjectionCache')` (the cold listing column).
-import type {} from '@relay-harness/rlh-session-projection-cache'
+import type { } from '@relay-harness/rlh-session-projection-cache'
 // GoalError narrows domain rejections to their stable codes at the wire boundary.
-import { GoalError } from '@relay-harness/rlh-goal'
 import type { GoalRef as CoreGoalRef } from '@relay-harness/rlh-goal'
+import { GoalError } from '@relay-harness/rlh-goal'
 // Type-only edges: resolve the command-change stream and `ctx.get('skills')`.
-import type {} from '@relay-harness/rlh-commands'
+import type { } from '@relay-harness/rlh-commands'
 // Type-only: the dynamic-package runner's forwarded-event declarations. Its
 // client-safe `./types` subpath deliberately, not the package root — the root
 // merges `ctx.dynamicCordisRunner`, and a dependency on that package would
 // rebuild the api-remotes cycle this direction exists to avoid.
-import type {} from '@relay-harness/rlh-cordis-host-runner/types'
-import type {} from '@relay-harness/rlh-issue-orchestration/types'
-import type {} from '@relay-harness/rlh-skill'
+import type { } from '@relay-harness/rlh-cordis-host-runner/types'
+import type { } from '@relay-harness/rlh-issue-orchestration/types'
+import type { } from '@relay-harness/rlh-skill'
 // The settings/credentials seams: brand guards run at this wire boundary; the
 // service reads stay optional (`ctx.get`) so a composition without either
 // provider still serves every other domain.
-import { SettingsConflictError, settingsNamespace } from '@relay-harness/rlh-settings'
-import type { SettingsDescriptor, SettingsNamespace, SettingsPathOp } from '@relay-harness/rlh-settings'
 import { credentialRef } from '@relay-harness/rlh-credentials'
+import type { SettingsDescriptor,SettingsNamespace,SettingsPathOp } from '@relay-harness/rlh-settings'
+import { SettingsConflictError,settingsNamespace } from '@relay-harness/rlh-settings'
 // Value edge: the rename impl narrows the title service's validation failure; the import also resolves `ctx.get('sessionTitle')`.
-import { SessionTitleInvalidError } from '@relay-harness/rlh-session-title'
 import type { ScopeKey } from '@relay-harness/rlh-scope'
-import type { ApprovalOutcome, ApprovalRequestId } from '@relay-harness/rlh-user-approval'
+import { SessionTitleInvalidError } from '@relay-harness/rlh-session-title'
+import type { ApprovalOutcome,ApprovalRequestId } from '@relay-harness/rlh-user-approval'
 // Side-effect type import: resolves the `approval/request` waterfall and
 // `ctx.get('approval')` without a value dependency on the seam (optional composition).
-import type {} from '@relay-harness/rlh-user-approval'
-import { approvalResponsePayloadSchema } from './api/approvals.schema.ts'
-import { imageLimitsProjectionSchema, sessionListMetadataProjectionSchema } from './api/sessions.schema.ts'
-import { questionResponsePayloadSchema } from './api/questions.schema.ts'
-import type { ClientResponse, RpcError, RpcReceipt, RpcRequest, RpcResponse } from './api/rpc.ts'
-import { RpcId } from './api/rpc.ts'
-import type {
-  AskUserQuestionAnswer, AskUserQuestionRequest,
-} from '@relay-harness/rlh-user-questions'
-import { UserQuestionError } from '@relay-harness/rlh-user-questions'
-import { DirectoryPickerError } from '@relay-harness/rlh-host-directory-picker'
 import {
+  API_REMOTE_FORWARDED_EVENTS,
   ApiRemoteSessionNotFound as SessionNotFound,
   ApiRemoteSubagentSessionOwnership as SubagentSessionOwnership,
-  API_REMOTE_FORWARDED_EVENTS,
   apiRemoteSubagentOwnershipError,
   createApiRemoteAgentResolver,
   hasApiRemoteSubagentOwner,
   inspectApiRemoteSession,
 } from '@relay-harness/rlh-api-remotes'
-import { canOpenNativePath, openNativePath, openNativeTextFile } from './native-path-opener.ts'
+import { DirectoryPickerError } from '@relay-harness/rlh-host-directory-picker'
+import type { } from '@relay-harness/rlh-user-approval'
+import type {
+  AskUserQuestionAnswer,AskUserQuestionRequest,
+} from '@relay-harness/rlh-user-questions'
+import { UserQuestionError } from '@relay-harness/rlh-user-questions'
+import { approvalResponsePayloadSchema } from './api/approvals.schema.ts'
+import { questionResponsePayloadSchema } from './api/questions.schema.ts'
+import type { ClientResponse,RpcError,RpcReceipt,RpcRequest,RpcResponse } from './api/rpc.ts'
+import { RpcId } from './api/rpc.ts'
+import { imageLimitsProjectionSchema,sessionListMetadataProjectionSchema } from './api/sessions.schema.ts'
 import {
-  DEFAULT_COLD_BLANK_PROBE_MAX_BYTES, applySessionListMetadata, sessionBlank, sessionListFields,
-  summarize, summarizeCold,
-} from './session-list.ts'
-import { durablePromptContent, messagesHaveImage, referencedImage } from './prompt-content.ts'
-import {
-  AgentPresetConflict, SessionCwdConflict, WorkspaceNameConflictError,
-  changedWorkspaceView, presetError, workspaceNotFound, workspaceView,
-} from './workspace-views.ts'
-import { MESSAGE_TYPES, err, frame, isAborted, ok } from './rpc-envelope.ts'
-import { buildModelCatalog } from './model-catalog.ts'
-import { FrameQueue, assertJsonArgs, subscribeSession } from './frame-queue.ts'
-import {
-  PendingApproval, PendingQuestion, matchesQuestions, requestedFrame,
+  PendingApproval,PendingQuestion,matchesQuestions,requestedFrame,
 } from './approval-questions.ts'
-import { ToolCallData, backscanArgs, historyPage, viewFor } from './history-views.ts'
+import { DEFAULT_MUX_STREAM_BUFFER_BYTES,FrameQueue,assertJsonArgs,subscribeSession } from './frame-queue.ts'
+import { ToolCallData,backscanArgs,historyPage,viewFor } from './history-views.ts'
+import { buildModelCatalog } from './model-catalog.ts'
+import { canOpenNativePath,openNativePath,openNativeTextFile } from './native-path-opener.ts'
+import { durablePromptContent,messagesHaveImage,referencedImage } from './prompt-content.ts'
+import { MESSAGE_TYPES,err,frame,isAborted,ok } from './rpc-envelope.ts'
+import {
+  DEFAULT_COLD_BLANK_PROBE_MAX_BYTES,applySessionListMetadata,sessionBlank,sessionListFields,
+  summarize,summarizeCold,
+} from './session-list.ts'
+import {
+  AgentPresetConflict,SessionCwdConflict,WorkspaceNameConflictError,
+  changedWorkspaceView,presetError,workspaceNotFound,workspaceView,
+} from './workspace-views.ts'
 
 /** Provider work budget: at most 100 calls and 2,000 inspected hits. */
 const SESSION_SEARCH_PROVIDER_CALL_LIMIT = 100
@@ -244,6 +249,13 @@ export interface ApiProxyDefaults {
   sessionExportCompressionLevel?: SessionLogCompressionLevel
   /** Maximum artifact size eligible for one cold blankness read. */
   coldBlankProbeMaxBytes?: number
+  /**
+   * Serialized-byte ceiling on one SSE subscriber's buffered event frames. A
+   * consumer whose queue passes it is disconnected; the shipped clients
+   * reconnect and the mux reopens replay the full baseline, so the fold loses
+   * no state.
+   */
+  muxStreamBufferBytes?: number
   /**
    * Whether handing a path to the native opener can work at all — the
    * `hasDocument` capability the preset roster reports, and the switch
@@ -455,6 +467,8 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
     ?? DEFAULT_SESSION_LOG_COMPRESSION_LEVEL
   const coldBlankProbeMaxBytes = defaults.coldBlankProbeMaxBytes
     ?? DEFAULT_COLD_BLANK_PROBE_MAX_BYTES
+  const muxStreamBufferBytes = defaults.muxStreamBufferBytes
+    ?? DEFAULT_MUX_STREAM_BUFFER_BYTES
   /** The seed model each create/resume declares; re-read so it never goes stale. */
   const agentOptions = (): AgentOptions => {
     const { provider, model } = defaults.defaultModelSelection()
@@ -463,28 +477,66 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
   type WebModelSelectionRef = ModelSelectionRef & { current: ModelSelection }
   const selections = new WeakMap<Agent, WebModelSelectionRef>()
   /**
-   * Serializes `agentPreset.select` per session. Two concurrent selects both
-   * pass the blank check, and the second `unmountPresetFor` then finds nothing
-   * to unmount because the first already removed the record — leaving two
-   * compositions registered into one agent layer. The client's `busy` flag is
-   * not enforcement: the wire is reachable directly.
+   * Serializes prompt admission, model selection, and `agentPreset.select` per
+   * session. The blank-session guard in a preset swap is authoritative only
+   * inside this chain: a prompt admitted during the recompose await would open
+   * the turn the swap then lands on, so every admission route shares the slot
+   * (two concurrent selects both passing the blank check — leaving two
+   * compositions in one agent layer — is the same race). The client's `busy`
+   * flag is not enforcement: the wire is reachable directly.
    */
-  const presetSwitches = new Map<SessionId, Promise<unknown>>()
+  const sessionOperations = new Map<SessionId, Promise<unknown>>()
+
+  /** Run `operation` in the session's serialized operation slot. */
+  function serializeSessionOperation<T>(sessionId: SessionId, operation: () => Promise<T>): Promise<T> {
+    const queued = sessionOperations.get(sessionId) ?? Promise.resolve()
+    const turn = queued.then(operation)
+    const tail = turn.then(() => undefined, () => undefined)
+    sessionOperations.set(sessionId, tail)
+    void tail.then(() => {
+      if (sessionOperations.get(sessionId) === tail) sessionOperations.delete(sessionId)
+    })
+    return turn
+  }
+
   /** Client-chosen identity creation/resume, deduplicated across concurrent retries. */
   const sessionCreations = new Map<SessionId, Promise<Agent>>()
+  /**
+   * Prompt rpcIds this gateway has already admitted, per session. A client that
+   * stops waiting on a prompt (transport deadline, dispose abort) and re-sends the
+   * same request identity must not deliver twice: the re-admission of a recorded
+   * rpcId answers `accepted` again without touching the inbox. The window is
+   * bounded because a retry can only race a recent admission, and the guard is per
+   * session — the same rpcId on another session (fork/resume lineage) admits
+   * normally. Fixed bookkeeping bound, not a deployment tunable.
+   */
+  const admittedPromptRpcIds = new Map<SessionId, Set<RpcId>>()
+  const ADMITTED_PROMPT_RPC_ID_WINDOW = 32
+
+  /** Record one admitted prompt rpcId, evicting the oldest past the window. */
+  function rememberPromptRpcId(sessionId: SessionId, rpcId: RpcId): void {
+    let seen = admittedPromptRpcIds.get(sessionId)
+    if (seen === undefined) {
+      seen = new Set()
+      admittedPromptRpcIds.set(sessionId, seen)
+    }
+    seen.add(rpcId)
+    if (seen.size > ADMITTED_PROMPT_RPC_ID_WINDOW) {
+      const oldest = seen.values().next().value
+      if (oldest !== undefined) seen.delete(oldest)
+    }
+  }
   /** Serializes path ownership and explicit title checks with Workspace mutations. */
   let workspaceCreationChain = Promise.resolve()
   const pendingQuestions = new Map<RpcId, PendingQuestion>()
   const pendingApprovals = new Map<RpcId, PendingApproval>()
+  ctx.provide('hostInteractions', {
+    pendingFor: sessionId => ({
+      approvals: [...pendingApprovals.values()].filter(pending => pending.sessionId === sessionId).length,
+      questions: [...pendingQuestions.values()].filter(pending => pending.sessionId === sessionId).length,
+    }),
+  })
   const muxQueues = new Set<FrameQueue<RpcRequest<MuxFrame>>>()
-  const imageAdmissionChains = new WeakMap<Agent, Promise<void>>()
-
-  /** Serialize image admission with model selection for one agent. */
-  function serializeImageAdmission<T>(agent: Agent, operation: () => Promise<T>): Promise<T> {
-    const result = (imageAdmissionChains.get(agent) ?? Promise.resolve()).then(operation)
-    imageAdmissionChains.set(agent, result.then(() => undefined, () => undefined))
-    return result
-  }
 
   /**
    * Install or return the session-local model selection that prompt assembly snapshots.
@@ -623,18 +675,31 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
     for (const queue of muxQueues) queue.push(envelope)
   }
 
+  // Projection keys whose wire delivery is baseline-only: no client consumes
+  // their change frames, so the broadcast below skips them and only the
+  // `session.list` / `session.history` projection blocks carry the values.
+  // `imageLimits` never reaches this filter (its `apply` keeps the state
+  // reference, so the registry never notifies), it is listed to keep both
+  // gateway-owned baseline-only units declared in one place.
+  const baselineOnlyProjectionKeys: ReadonlySet<string> = new Set(['sessionListMetadata', 'imageLimits'])
+
   // Projection change feed → session/projection push frames. The carrier
   // mints the wire frame (the Service Definition package holds no wire vocabulary); the
   // child activates only when a projection registry is composed, and the
-  // subscription unwinds with this gateway's fiber.
+  // subscription unwinds with this gateway's fiber. Baseline-only keys above
+  // are skipped: their values ride the reconnect/history baselines alone.
   ctx.inject(['sessionProjections'], (projectionCtx) => {
     projectionCtx.sessionProjections.onChanged((session, key, value, seq) => {
+      if (baselineOnlyProjectionKeys.has(key)) return
       broadcast({ type: 'session/projection', sessionId: session.id, key, value, seq })
     })
   })
 
   // The cache supplies recency and a monotonic non-blank hint. A cached
   // `blank: true` remains only a prefix fact and is verified on the cold path.
+  // Baseline-only: every client reads `sessionListMetadata` from the
+  // `session.list` / history projection blocks, so the change feed mints no
+  // wire frames for it (see `baselineOnlyProjectionKeys`).
   ctx.inject(['sessionProjections'], (projectionCtx) => {
     projectionCtx.sessionProjections.register<'sessionListMetadata', SessionListMetadata>({
       key: 'sessionListMetadata',
@@ -649,7 +714,8 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
   // The imageLimits projection unit: the attachments config this proxy
   // enforces at prompt admission, constant per host boot. `apply` keeps the
   // same state reference for every event, so no change frames are ever
-  // pushed — baselines alone carry the value — and clients pre-check intake
+  // pushed — baselines alone carry the value; it is also listed in
+  // `baselineOnlyProjectionKeys` above — and clients pre-check intake
   // and label upload affordances from it. Registered here, not in the
   // attachment Service Definition: rlh-llm depends on rlh-attachment, so the
   // seam package cannot reference the projection registry without a cycle,
@@ -715,15 +781,16 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
 
   const disposeProvider = ctx.userQuestions.registerProvider({
     ask(request: AskUserQuestionRequest): Promise<AskUserQuestionAnswer> {
-      const sessionId = request.agent?.id
-      if (sessionId === undefined) {
+      const owner = request.agent
+      if (owner === undefined) {
         return Promise.reject(new UserQuestionError(
           'web user interaction requires an agent-owned session', 'ASK_MISSING_AGENT'))
       }
+      const sessionId = owner.id
       return new Promise<AskUserQuestionAnswer>((resolve, reject) => {
         const rpcId = RpcId(randomUUID())
         const pending: PendingQuestion = {
-          rpcId, sessionId, questions: request.questions, resolve, reject,
+          owner, rpcId, sessionId, questions: request.questions, resolve, reject,
           ...(request.signal === undefined ? {} : { signal: request.signal }),
         }
         const onAbort = (): void => {
@@ -741,6 +808,16 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
         for (const queue of muxQueues) queue.push(envelope)
       })
     },
+  })
+  ctx.on('agent/disposed', ({ agent }) => {
+    for (const pending of [...pendingQuestions.values()]) {
+      if (pending.owner !== agent) continue
+      claimQuestion(pending, 'cancelled')
+      pending.reject(new UserQuestionError('the owning agent was disposed before the user answered', 'ASK_ABORTED'))
+    }
+    for (const pending of [...pendingApprovals.values()]) {
+      if (pending.owner === agent) pending.resolve('cancelled')
+    }
   })
   ctx.effect(() => () => {
     disposeProvider()
@@ -819,6 +896,7 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
         }
         const onAbort = (): void => { settle('cancelled') }
         const pending: PendingApproval = {
+          owner: req.agent,
           rpcId: RpcId(randomUUID()),
           sessionId: req.agent.session.id,
           approvalId: id,
@@ -969,21 +1047,28 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
   async function presenterScopeFor(
     sessionId: SessionId,
     session: PresetBearingSession,
-  ): Promise<ScopeKey | undefined> {
+  ): Promise<{ scope: ScopeKey | undefined; release(): Promise<void> }> {
+    const global = { scope: undefined, release: () => Promise.resolve() }
     const live = ctx.get('agents')?.get(sessionId)
-    if (live !== undefined) return live
     const presets = ctx.get('agentPresets')
-    if (presets === undefined) return undefined
+    if (live !== undefined) {
+      const lease = presets?.acquireAgentScope(live.ctx)
+      return lease === undefined
+        ? { scope: captureScopeReadView(live), release: () => Promise.resolve() }
+        : { scope: lease.key, release: () => lease.release() }
+    }
+    if (presets === undefined) return global
     try {
       // An unrecorded preset (a log from before the roster existed) renders
       // through the DEFAULT preset's standing layer: that is the composition
       // an unnamed session composes today, and presenters are pure display,
       // so the worst a mismatch produces is the generic card it had anyway.
-      return await presets.standingKeyFor(resolveSessionPreset(session))
+      const lease = await presets.acquireStandingScope(resolveSessionPreset(session))
+      return { scope: lease.key, release: () => lease.release() }
     } catch {
       // Swallows only the unknown/unusable-preset rejection from the roster:
       // a deleted or broken preset must degrade this read, never fail it.
-      return undefined
+      return global
     }
   }
 
@@ -1129,6 +1214,7 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
               meta,
               projections?.values.sessionListMetadata,
               coldBlankProbeMaxBytes,
+              id => ctx.sessions.get(id) !== undefined,
               signal,
             )
             const attachedSession = ctx.sessions.get(meta.id)
@@ -1611,14 +1697,18 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
           // missing every preset-owned key; and an attached session keeps
           // appending, so awaiting between the two reads would pair events cut
           // at N with a baseline folded to N+1.
-          const scope = await presenterScopeFor(sessionId, sourceSession(source))
-          const cut = historyCutOf(source, beforeSeq === undefined)
-          const page = historyPage(ctx, cut.events, beforeSeq, maxMessages, scope)
-          return ok(request, {
-            events: page.events,
-            hasMore: page.hasMore,
-            ...cut.projections === undefined ? {} : { projections: cut.projections },
-          })
+          const lease = await presenterScopeFor(sessionId, sourceSession(source))
+          try {
+            const cut = historyCutOf(source, beforeSeq === undefined)
+            const page = historyPage(ctx, cut.events, beforeSeq, maxMessages, lease.scope)
+            return ok(request, {
+              events: page.events,
+              hasMore: page.hasMore,
+              ...cut.projections === undefined ? {} : { projections: cut.projections },
+            })
+          } finally {
+            await lease.release()
+          }
         } catch (error: unknown) {
           if (error instanceof SessionNotFound) {
             return err(request, { code: 'session-not-found', message: error.message, details: { sessionId } })
@@ -1645,7 +1735,7 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
         const { sessionId, provider, model, reasoningEffort } = request.payload
         const found = await agentFor(sessionId)
         if ('error' in found) return err(request, found.error)
-        return serializeImageAdmission(found.agent, async () => {
+        return serializeSessionOperation(sessionId, async () => {
           try {
             const resolved = await ctx.llm.resolveCallConfig({
               provider,
@@ -1855,7 +1945,7 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
         return ok(request, { sessionId: childId, blank })
       },
 
-      async prompt(request) {
+      async prompt(request, signal) {
         const { sessionId, mode, content, clientTimeZone } = request.payload
         const canonicalTimeZone = clientTimeZone === undefined
           ? undefined
@@ -1877,7 +1967,22 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
           ...(canonicalTimeZone === undefined ? {} : { clientTimeZone: canonicalTimeZone }),
         }
         const hasImage = content.some(part => part.type === 'image')
+        const cancelled = (): RpcResponse<{ accepted: true }> => err(request, {
+          code: 'cancelled',
+          message: 'prompt admission was aborted before it was committed',
+          details: {},
+        })
         const admit = async (): Promise<RpcResponse<{ accepted: true }>> => {
+          // The carrier signal cancels only the pre-commit phase: waiting in the
+          // session slot, or the waits before durable content intake starts. Once
+          // intake starts the prompt is admitted regardless, so a caller that
+          // stopped waiting (transport deadline, dispose abort) may still have
+          // delivered the message — which the rpcId dedup below makes safe to
+          // retry.
+          if (signal !== undefined && isAborted(signal)) return cancelled()
+          if (admittedPromptRpcIds.get(sessionId)?.has(request.rpcId) === true) {
+            return ok(request, { accepted: true as const })
+          }
           try {
             if (hasImage) {
               const current = selectionFor(agent).current
@@ -1896,10 +2001,12 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
                 }
               }
             }
+            if (signal !== undefined && isAborted(signal)) return cancelled()
             const durable = await durablePromptContent(ctx, content)
             const message: UserMessage = createUserMessage({ content: durable, source })
             if (mode === 'steer') agent.steer(message)
             else agent.followup(message)
+            rememberPromptRpcId(sessionId, request.rpcId)
           } catch (error: unknown) {
             if (error instanceof AttachmentError) {
               return err(request, {
@@ -1916,7 +2023,9 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
           }
           return ok(request, { accepted: true as const })
         }
-        return hasImage ? serializeImageAdmission(agent, admit) : admit()
+        // Every admission mode shares the session slot: a queue or steer prompt
+        // racing a preset swap must not open the turn the swap lands on.
+        return serializeSessionOperation(sessionId, admit)
       },
 
       async attachment(request) {
@@ -2503,18 +2612,21 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
         const found = await agentFor(sessionId)
         if ('error' in found) return err(request, found.error)
         const { agent } = found
+        const locked = (): RpcResponse<{ agentPreset: string }> => err(request, {
+          code: 'agent-preset-locked',
+          message: `session "${sessionId}" has already started; its agent preset is fixed`,
+          details: { sessionId, agentPreset },
+        })
         const swap = async (): Promise<RpcResponse<{ agentPreset: string }>> => {
-          // Re-read inside the queue: an earlier switch may have run, and a
-          // conversation may have started, since this request arrived.
-          if (!sessionBlank(agent.session)) {
-            return err(request, {
-              code: 'agent-preset-locked',
-              message: `session "${sessionId}" has already started; its agent preset is fixed`,
-              details: { sessionId, agentPreset },
-            })
-          }
+          // Re-read inside the session slot: an earlier switch may have run, and
+          // a conversation may have started, since this request arrived.
+          if (!sessionBlank(agent.session)) return locked()
           try {
             const preset = await presets.recompose(agent.ctx, agentPreset)
+            // Belt-and-braces against an admission that bypassed the session
+            // slot (direct Agent entry): the conversation started while the
+            // recompose awaited, so the swap must not land on top of it.
+            if (!sessionBlank(agent.session) || agent.status !== 'idle') return locked()
             // Recorded only after the swap committed: the log states what the
             // agent runs, and a rejected mount leaves the previous composition.
             agent.session.append('agent-preset/selected', { agentPreset: preset.id })
@@ -2529,14 +2641,7 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
             })
           }
         }
-        const queued = presetSwitches.get(sessionId) ?? Promise.resolve()
-        const turn = queued.then(swap)
-        presetSwitches.set(sessionId, turn.catch(() => undefined))
-        try {
-          return await turn
-        } finally {
-          if (presetSwitches.get(sessionId) === turn) presetSwitches.delete(sessionId)
-        }
+        return serializeSessionOperation(sessionId, swap)
       },
 
       // Authoring is privileged (see PRIVILEGED_METHODS in rlh-client-connection):
@@ -2647,9 +2752,9 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
         // The scope presenters resolve in — the live agent, else the recorded
         // preset's standing key, else the global layer — so a cold session's
         // '/' popup lists the catalog its composition actually serves.
-        const scope = await presenterScopeFor(sessionId, session)
+        const lease = await presenterScopeFor(sessionId, session)
         try {
-          const skills = (await skillRegistry.list({ cwd, scope })).filter(isUserInvocable)
+          const skills = (await skillRegistry.list({ cwd, scope: lease.scope })).filter(isUserInvocable)
           return ok(request, {
             skills: skills.map(skill => ({
               name: skill.name,
@@ -2660,6 +2765,8 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
           })
         } catch (error: unknown) {
           return err(request, { code: 'internal', message: `skill listing failed: ${String(error)}`, details: {} })
+        } finally {
+          await lease.release()
         }
       },
     },
@@ -2832,7 +2939,7 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
 
     events: {
       mux(_request, signal) {
-        const queue = new FrameQueue<RpcRequest<MuxFrame>>()
+        const queue = new FrameQueue<RpcRequest<MuxFrame>>(muxStreamBufferBytes)
         muxQueues.add(queue)
         for (const session of ctx.sessions.list()) {
           subscribeSession(queue, session)
@@ -2936,7 +3043,7 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
       },
 
       host(_request, signal) {
-        const queue = new FrameQueue<RpcRequest<HostFrame>>()
+        const queue = new FrameQueue<RpcRequest<HostFrame>>(muxStreamBufferBytes)
         const committedWorkspaces = ctx.workspaceRegistry.list()
         const committedWorkspaceIds = new Set(
           committedWorkspaces.map(workspace => String(workspace.id)),

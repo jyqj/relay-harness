@@ -188,8 +188,8 @@
   cursor: default;
   outline: none;
   transition:
-    background-color 120ms var(--rl-ease-in-out),
-    opacity 120ms var(--rl-ease-in-out);
+    background-color 120ms var(--rlw-ease-standard),
+    opacity 120ms var(--rlw-ease-standard);
 }
 
 .table tbody tr[data-timeline-focus='outside'] {
@@ -257,8 +257,8 @@
     0 0 0 3px transparent;
   content: '';
   transition:
-    background 120ms var(--rl-ease-in-out),
-    box-shadow 120ms var(--rl-ease-in-out);
+    background 120ms var(--rlw-ease-standard),
+    box-shadow 120ms var(--rlw-ease-standard);
 }
 
 .requestBoundaryControl::after {
@@ -278,15 +278,15 @@
   pointer-events: none;
   transform: translateX(-2px);
   transition:
-    opacity 120ms var(--rl-ease-in-out),
-    transform 120ms var(--rl-ease-in-out);
+    opacity 120ms var(--rlw-ease-standard),
+    transform 120ms var(--rlw-ease-standard);
   user-select: none;
   white-space: nowrap;
 }
 
 .requestBoundaryControl:hover::before,
 .requestBoundaryControl:focus-visible::before {
-  background: var(--rlw-alias-brand-primary-new-colorprimary-new-color);
+  background: var(--rlw-alias-brand-primary-new);
 }
 
 .requestBoundaryControlActive::before,
@@ -294,10 +294,10 @@
 .requestBoundaryControlActive:focus-visible::before {
   background: color-mix(
     in srgb,
-    var(--rlw-alias-brand-primary-new-colorprimary-new-color) 18%,
+    var(--rlw-alias-brand-primary-new) 18%,
     var(--rlw-alias-bg-layer-1)
   );
-  box-shadow: 0 0 0 1.5px var(--rlw-alias-brand-primary-new-colorprimary-new-color);
+  box-shadow: 0 0 0 1.5px var(--rlw-alias-brand-primary-new);
 }
 
 .requestBoundaryControl[data-request-status='error']::before,
@@ -328,7 +328,7 @@
 .selectionRail {
   position: absolute;
   left: 0;
-  background: var(--rlw-alias-brand-primary-new-colorprimary-new-color);
+  background: var(--rlw-alias-brand-primary-new);
   pointer-events: none;
 }
 
@@ -558,7 +558,7 @@
   .turnLabelFull,
   .turnLabelCompact {
     transition-duration: 180ms;
-    transition-timing-function: var(--rl-ease-in-out);
+    transition-timing-function: var(--rlw-ease-standard);
   }
 
   .eventColumn,
@@ -685,14 +685,14 @@
 .assistantVioletBright {
   color: color-mix(
     in srgb,
-    var(--rlw-alias-brand-primary-new-colorprimary-new-color) 60%,
+    var(--rlw-alias-brand-primary-new) 60%,
     var(--rlw-alias-state-error-secondary)
   );
   background: color-mix(
     in srgb,
     color-mix(
       in srgb,
-      var(--rlw-alias-brand-primary-new-colorprimary-new-color) 55%,
+      var(--rlw-alias-brand-primary-new) 55%,
       var(--rlw-alias-state-error-secondary)
     ) 15%,
     var(--rlw-alias-bg-layer-1)
@@ -737,7 +737,7 @@
 .table tbody tr[data-collapsed-summary] {
   cursor: pointer;
   outline: none;
-  transition: background-color 120ms var(--rl-ease-in-out);
+  transition: background-color 120ms var(--rlw-ease-standard);
 }
 
 .table tbody tr[data-collapsed-summary]:hover {
@@ -1372,7 +1372,7 @@
 
 .thinkingChevron {
   flex: none;
-  transition: transform 120ms var(--rl-ease-in-out);
+  transition: transform 120ms var(--rlw-ease-standard);
 }
 
 .thinkingToggle[aria-expanded='true'] .thinkingChevron {
@@ -1709,7 +1709,7 @@
 }
 
 .toolCatalogChevron {
-  transition: transform 100ms var(--rl-ease-in-out);
+  transition: transform 100ms var(--rlw-ease-standard);
 }
 
 .toolCatalogItem[open] .toolCatalogChevron {

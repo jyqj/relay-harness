@@ -22,7 +22,7 @@
 
 ## 动效
 
-共享进出场动效在 [`ui-theme` 的 `motion.css`](../packages/client/ui-theme/src/styles/motion.css) 与 [`usePresence`](../packages/client/ui-primitives/src/usePresence.ts)。overlay、popover、fade、swap、flip 五种 recipe 只动 `opacity` 和 `transform`。表面从 `usePresence` 写上 `data-rlh-motion` 和 `data-state`，不得另起一套时长或缓动。composer 上的加号、权限、模型和上下文圆环弹层都走 `popover`。权限、模型和推理等级触发器文案变化时，`FlipText` 播放 400ms 的 flip recipe（`--rl-motion-duration-flip`）。`prefers-reduced-motion: reduce` 会把 `--rl-transition-duration*` 和 `--rl-motion-duration-*` 收成 `0s`。不要动画 `backdrop-filter`、大面板宽高，也不要引入动画库。新的对话框、菜单和同层切换复用原语，或使用同一 hook 与 recipe。依据：[动效系统 Agent Note](../.agents/notes/implemented/architecture/2026-08-14-web-motion-presence-and-recipes.md)。
+共享进出场动效在 [`ui-theme` 的 `motion.css`](../packages/client/ui-theme/src/styles/motion.css) 与 [`usePresence`](../packages/client/ui-primitives/src/usePresence.ts)。overlay、popover、fade、swap、flip 五种 recipe 只动 `opacity` 和 `transform`。表面从 `usePresence` 写上 `data-rlh-motion` 和 `data-state`，不得另起一套时长或缓动。composer 上的加号、权限、模型和上下文圆环弹层都走 `popover`。权限、模型和推理等级触发器文案变化时，`FlipText` 播放 400ms 的 flip recipe。动效词汇表是 `base.css` 里的 `--rlw-motion-quick/base/slow` 阶梯加三条缓动曲线：进场用 `--rlw-ease-out-quart`，退场用 `--rlw-ease-in-cubic`，中性状态变化用 `--rlw-ease-standard`。五种 recipe 的时长钉在 `motion.css` 里，因为 `usePresence` 和 `FlipText` 持有对应的 JS 常量。`prefers-reduced-motion: reduce` 会把 `--rlw-motion-*` 阶梯收成 `0s`，并关掉 recipe 的过渡与动画。不要动画 `backdrop-filter`、大面板宽高，也不要引入动画库。新的对话框、菜单和同层切换复用原语，或使用同一 hook 与 recipe。依据：[动效系统 Agent Note](../.agents/notes/implemented/architecture/2026-08-14-web-motion-presence-and-recipes.md)。
 
 ## 变更系统
 

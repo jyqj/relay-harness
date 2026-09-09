@@ -8,15 +8,15 @@
  * @module @relay-harness/rlh-client-ui-message-feedback/client/slots
  */
 
-import type {
-  HostObservable, InjectFace, PropsLocale, PropsRuntime,
-} from '@relay-harness/rlh-client-ui-slots'
-import type {} from '@relay-harness/rlh-client-ui-conversation/client'
 import type { MessageId } from '@relay-harness/rlh-client-connection/client'
+import type { } from '@relay-harness/rlh-client-ui-conversation/client'
+import type {
+  HostObservable,InjectFace,PropsLocale,PropsRuntime,
+} from '@relay-harness/rlh-client-ui-slots'
 import type { MessageFeedbackRating } from '@relay-harness/rlh-message-feedback/types'
 // Type-only: pulls this package's LocaleNamespaceMap merge (the 'feedback' seat).
-import type {} from './locales.ts'
-import type { MessageFeedbackActionResult, MessageFeedbackView } from './controller.ts'
+
+import type { MessageFeedbackActionResult,MessageFeedbackView } from './controller.ts'
 
 /** Injected business face of one assistant-message feedback entry. */
 export interface MessageFeedbackInjected {

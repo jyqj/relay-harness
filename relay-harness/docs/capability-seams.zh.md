@@ -249,6 +249,11 @@ flowchart LR
   svc_productMode["ctx.productMode<br/>Shared Simple and Developer product mode"]
   pkg_ui_product_shell["ui-product-shell"]
   svc_apiProxy["ctx.apiProxy<br/>Host API dispatch"]
+  svc_hostInteractions["ctx.hostInteractions<br/>Host interaction pending-state reader"]
+  pkg_host_work_results["host-work-results"]
+  svc_workResults["ctx.workResults<br/>Durable Work review and Library projection"]
+  pkg_client_ui_product_shell["client-ui-product-shell"]
+  pkg_client_ui_deliverables["client-ui-deliverables"]
   pkg_cordis_host_runner["cordis-host-runner"]
   svc_dynamicCordisRunner["ctx.dynamicCordisRunner<br/>Dynamic Cordis package host runner"]
   svc_cordisInspect["ctx.cordisInspect<br/>Dynamic Cordis inspect registry"]
@@ -287,6 +292,8 @@ flowchart LR
   pkg_fs_local --> svc_fs
   pkg_fs_sandbox --> svc_fs
   pkg_goal --> svc_goals
+  pkg_host_apiproxy --> svc_hostInteractions
+  pkg_host_work_results --> svc_workResults
   pkg_index --> svc_codeContext
   pkg_index --> svc_codeIndex
   pkg_invariants --> svc_invariants
@@ -412,6 +419,7 @@ flowchart LR
   svc_e2b --> pkg_fs_e2b
   svc_e2b --> pkg_subprocess_e2b
   svc_fs --> pkg_tool_fs
+  svc_hostInteractions --> pkg_host_work_results
   svc_invariants --> pkg_agent
   svc_invariants --> pkg_agent_loop
   svc_invariants --> pkg_scope
@@ -522,6 +530,9 @@ flowchart LR
   svc_webServer --> pkg_connection
   svc_webServer --> pkg_hmr
   svc_webServer --> pkg_modules
+  svc_workResults --> pkg_api_remotes
+  svc_workResults --> pkg_client_ui_deliverables
+  svc_workResults --> pkg_client_ui_product_shell
   svc_workflowEngine --> pkg_tool_ralph
   svc_workflowEngine --> pkg_tool_workflow
   svc_workspaceRegistry --> pkg_apiproxy
@@ -604,6 +615,8 @@ flowchart LR
 | `ctx.mcpCatalog` | `seam` | [`mcp-catalog`](../packages/mcp/mcp-catalog) | [`mcp-client`](../packages/mcp/mcp-client) | [`host-mcp-servers`](../packages/host/mcp-servers), [`context-engine`](../packages/context/context-engine) | - | Keeps MCP Resources and Prompts protocol-native: explicit Resource URIs hydrate through Context Engine evidence while Prompts use a dedicated catalog/invocation seam. |
 | `ctx.productMode` | `core` | `product-mode` | - | `ui-product-shell` | - | Persists the presentation mode once on the Host so browser and Desktop clients share the same Simple-default shell while Developer Mode remains explicit. |
 | `ctx.apiProxy` | `core` | `apiproxy` | - | `connection` | - | The transport-agnostic host gateway face: it dispatches browser API calls, and each open host stream subscribes to the events it forwards rather than being pushed to through a broadcast verb. |
+| `ctx.hostInteractions` | `core` | [`host-apiproxy`](../packages/host/apiproxy) | - | [`host-work-results`](../packages/host/work-results) | - | 读取指定 Agent 的既有审批与问题所有者；不复制待处理状态，也不授予权限。 |
+| `ctx.workResults` | `core` | [`host-work-results`](../packages/host/work-results) | - | [`api-remotes`](../packages/api/remotes), [`client-ui-product-shell`](../packages/client/ui-product-shell), [`client-ui-deliverables`](../packages/client/ui-deliverables) | - | 从 Session 日志投影已记录的工具输出与经核验的审阅截点。确认绑定持久日志前缀，而非文件 hash、测试成功或真实用户身份。 |
 | `ctx.dynamicCordisRunner` | `core` | [`cordis-host-runner`](../packages/extensions/cordis-host-runner) | - | [`tool-cordis`](../packages/extensions/tool-cordis) | - | Owns the in-memory definition registry, the vm sandbox for host halves, and the request-run round trip; browser pages reach the same service over the wire through its remote namespace. |
 | `ctx.cordisInspect` | `core` | [`cordis-host-runner`](../packages/extensions/cordis-host-runner) | - | [`tool-cordis`](../packages/extensions/tool-cordis) | - | Registers host inspect providers, mirrors the client provider manifest, and routes client queries through the dynamic Cordis transport. |
 

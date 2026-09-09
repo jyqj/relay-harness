@@ -6,6 +6,8 @@ Agent interface, registry, process-local initiator scope, and `agent/*` event vo
 
 The optional `@relay-harness/rlh-agent/invariant` companion registers this package's agent-status transition checks with `ctx.invariants`. The root agent service does not load diagnostics implicitly.
 
+`ResumeAgentOptions.persistenceFence` is an optional exact storage-owner proof passed into cold preparation before setup. Setup installs that same proof on the live Session; it does not create a replacement identity.
+
 ## Service: `AgentRegistry` (ctx key: `agents`)
 
 Tracks live agents and carries the initiating Agent through asynchronous driver work without importing the concrete loop package.

@@ -83,6 +83,7 @@ function loadIpc(options = {}) {
   const installPluginCalls = [];
   const uninstallCalls = [];
   const configSaveCalls = [];
+  const loginItemSettingsCalls = [];
   let startHarnessCalls = 0;
   const installResult = options.installResult || { ok: true };
   const startHarnessImpl = options.startHarness || (async () => {});
@@ -101,7 +102,7 @@ function loadIpc(options = {}) {
       showSaveDialog: options.showSaveDialog || (async () => ({ canceled: true })),
     },
     app: {
-      setLoginItemSettings() {},
+      setLoginItemSettings(settings) { loginItemSettingsCalls.push(settings); },
       getPath: options.getPath || ((name) => (name === 'downloads' ? '/tmp/downloads' : '/tmp')),
     },
     shell: { openExternal: async () => true },
@@ -234,11 +235,40 @@ function loadIpc(options = {}) {
     installPluginCalls,
     uninstallCalls,
     configSaveCalls,
+    loginItemSettingsCalls,
     startHarness() {
       return startHarnessCalls;
     },
   };
 }
+
+test('saving unrelated preferences never mutates OS login items', async () => {
+  const ipc = loadIpc();
+  try {
+    await ipc.invoke('shell:save-config', harnessEvent(), { theme: 'light' });
+    assert.deepEqual(ipc.loginItemSettingsCalls, []);
+    await ipc.invoke('shell:save-config', harnessEvent(), { openAtLogin: true });
+    await ipc.invoke('shell:save-config', harnessEvent(), { openAtLogin: false });
+    assert.deepEqual(ipc.loginItemSettingsCalls, [{ openAtLogin: true }, { openAtLogin: false }]);
+  } finally {
+    ipc.restore();
+  }
+});
+
+test('isolated smoke configuration cannot mutate the shared OS login-item identity', async () => {
+  const previous = process.env.RLH_SMOKE;
+  process.env.RLH_SMOKE = '1';
+  const ipc = loadIpc();
+  try {
+    await ipc.invoke('shell:save-config', harnessEvent(), { openAtLogin: true });
+    assert.deepEqual(ipc.loginItemSettingsCalls, []);
+    assert.deepEqual(ipc.configSaveCalls, [{ openAtLogin: true }]);
+  } finally {
+    ipc.restore();
+    if (previous === undefined) delete process.env.RLH_SMOKE;
+    else process.env.RLH_SMOKE = previous;
+  }
+});
 
 test('shell:list-marketplace forwards locale and refresh without a GitHub token', async () => {
   const ipc = loadIpc();

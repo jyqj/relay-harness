@@ -113,7 +113,9 @@ export interface SlotRendererHost {
    */
   getVersion(key: string): number
   /**
-   * Snapshot the registered entries for a key (stable reference between mutations).
+   * Read policy-eligible registrations for a key, including abdicated entries.
+   * Suppressed cells are intentionally absent, not exhausted crash cells.
+   * This render-body projection is not a useSyncExternalStore snapshot source.
    * @param key - slot key.
    * @returns entries in registration (list: order) sequence.
    */

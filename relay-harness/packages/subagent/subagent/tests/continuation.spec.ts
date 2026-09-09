@@ -3,6 +3,7 @@ import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { Context } from '@relay-harness/cordis'
+import { scopeOf } from '@relay-harness/rlh-scope'
 import type { Agent } from '@relay-harness/rlh-agent'
 import AgentLoop from '@relay-harness/rlh-agent-loop'
 import { mountAgentLoopTestDependencies } from '@relay-harness/rlh-agent-loop-testkit'
@@ -173,6 +174,44 @@ function observeCancel(agent: Agent, callback: () => void): void {
 }
 
 describe('SubagentRuntime.startContinuable', () => {
+  it('revokes public setup contributions with their owner without disposing the resident child', async () => {
+    const release = Promise.withResolvers<undefined>()
+    const adapter = new GatedAdapter([
+      { chunks: textResponse('first'), gate: release.promise }, { chunks: textResponse('second') },
+    ])
+    const { ctx, parent } = await setupWith(adapter)
+    parkParent(ctx, parent)
+    const installations: Context[] = []
+    const revoked = vi.fn()
+    try {
+      const owner = await ctx.plugin(Object.assign((scope: Context) => {
+        scope.subagents.registerContinuableSetup((childCtx) => {
+          installations.push(childCtx)
+          return revoked
+        })
+      }, { inject: ['subagents'] }))
+      const first = await ctx.subagents.startContinuable(startSpec(parent))
+      await vi.waitFor(() => { expect(adapter.requests).toHaveLength(1) })
+      const child = ctx.agents.get(first.childId)
+      if (child === undefined || installations[0] === undefined) throw new Error('child setup was not published')
+      const installedScope = scopeOf(installations[0])
+      expect(installedScope).toBeDefined()
+      expect(installedScope).toBe(scopeOf(child.ctx))
+      await owner.dispose()
+      expect(revoked).toHaveBeenCalledTimes(1)
+      expect(ctx.agents.get(first.childId)).toBe(child)
+      release.resolve(undefined)
+      await waitNoActivation(ctx, first.childId)
+      const second = await ctx.subagents.startContinuable(startSpec(parent))
+      await waitNoActivation(ctx, second.childId)
+      expect(installations).toHaveLength(1)
+      expect(revoked).toHaveBeenCalledTimes(1)
+    } finally {
+      release.resolve(undefined)
+      await ctx.fiber.dispose()
+    }
+  })
+
   it('returns both identities after durable acceptance without waiting for the turn', async () => {
     const { ctx, parent, adapter } = await setup([textResponse('first answer')])
     const enqueued: { id: MessageId; durable: boolean; loggedYet: boolean }[] = []
@@ -494,6 +533,19 @@ describe('SubagentRuntime.followup residency routing', () => {
 
     const first = await ctx.subagents.followup(parent, started.childId, message('retry-safe'), options)
     const retry = await ctx.subagents.followup(parent, started.childId, message('retry-safe'), options)
+    const reordered = await ctx.subagents.followup(parent, started.childId, [{ text: 'retry-safe', type: 'text' }], options)
+    expect(reordered).toBe(first)
+    await expect(ctx.subagents.followup(parent, started.childId, message('changed'), options))
+      .rejects.toMatchObject({ code: 'DUPLICATE_DELIVERY' })
+    await expect(ctx.subagents.followup(parent, started.childId, message('retry-safe'), {
+      ...options, source: { kind: 'plugin', plugin: 'different-origin' },
+    })).rejects.toMatchObject({ code: 'DUPLICATE_DELIVERY' })
+
+    for (const idempotencyKey of ['', ' ', 'x'.repeat(257)]) {
+      await expect(ctx.subagents.followup(parent, started.childId, message('invalid retry key'), {
+        ...options, idempotencyKey,
+      })).rejects.toMatchObject({ code: 'INVALID_ARGUMENT' })
+    }
 
     expect(retry).toBe(first)
     const child = ctx.agents.get(started.childId)!
@@ -818,6 +870,221 @@ describe('continuable durability and teardown', () => {
     contender.close()
   })
 
+  it('ignores a retained renewal callback after its Activation is disposed', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'rlh-retired-renewal-'))
+    roots.push(root)
+    const hold = Promise.withResolvers<undefined>()
+    const adapter = new GatedAdapter([{ chunks: textResponse('done'), gate: hold.promise }])
+    const scheduled = vi.spyOn(globalThis, 'setTimeout')
+    const renewed = vi.spyOn(SubagentActivationLeaseStore.prototype, 'renew')
+    const { ctx, parent } = await setupWith(adapter, {
+      subagents: { activationLeasePath: join(root, 'lease.sqlite3'), activationLeaseMs: 5_000, activationLeaseRenewMs: 47 },
+    })
+    parkParent(ctx, parent)
+    try {
+      const started = await ctx.subagents.startContinuable(startSpec(parent))
+      await vi.waitFor(() => { expect(adapter.requests).toHaveLength(1) })
+      const callback = scheduled.mock.calls.findLast(([, delay]) => delay === 47)?.[0]
+      if (typeof callback !== 'function') throw new Error('renewal callback was not scheduled')
+      scheduled.mockRestore()
+      const draining = drainManager(ctx)
+      hold.resolve(undefined)
+      await draining
+      expect(ctx.agents.get(started.childId)).toBeUndefined()
+      const before = renewed.mock.calls.length
+      callback()
+      expect(renewed).toHaveBeenCalledTimes(before)
+    } finally {
+      hold.resolve(undefined)
+      scheduled.mockRestore()
+      renewed.mockRestore()
+      await ctx.fiber.dispose()
+    }
+  })
+
+  it.each([false, true])('renewal loss retires a resident owner and contains cleanup failure=%s', async (cleanupFails) => {
+    const root = mkdtempSync(join(tmpdir(), 'rlh-resident-lease-loss-'))
+    roots.push(root)
+    const leasePath = join(root, 'lease.sqlite3')
+    const hold = Promise.withResolvers<undefined>()
+    const adapter = new GatedAdapter([{ chunks: textResponse('must not complete'), gate: hold.promise }])
+    const { ctx, parent } = await setupWith(adapter, {
+      subagents: { activationLeasePath: leasePath, activationLeaseMs: 5_000, activationLeaseRenewMs: 25 },
+    })
+    parkParent(ctx, parent)
+    const warnings: string[] = []
+    const warn = vi.spyOn(ctx.logger, 'warn').mockImplementation((...args: unknown[]) => { warnings.push(args.map(String).join(' ')) })
+    const contender = new SubagentActivationLeaseStore(leasePath)
+    let successor: ReturnType<SubagentActivationLeaseStore['acquire']> | undefined
+    try {
+      const started = await ctx.subagents.startContinuable(startSpec(parent))
+      await vi.waitFor(() => { expect(adapter.requests).toHaveLength(1) })
+      const child = ctx.agents.get(started.childId)
+      if (child === undefined) throw new Error('resident child missing')
+      if (cleanupFails) {
+        const manager = (ctx.subagents as unknown as {
+          continuations: { activations: Map<SessionId, { handle: { dispose(): Promise<void> } }> }
+        }).continuations
+        const handle = manager.activations.get(child.id)?.handle
+        if (handle === undefined) throw new Error('resident handle missing')
+        const dispose = handle.dispose.bind(handle)
+        handle.dispose = async () => {
+          await dispose()
+          throw new Error('lease-test cleanup failed')
+        }
+      }
+      let cancelled = false
+      observeCancel(child, () => { cancelled = true })
+      await vi.waitFor(() => { successor ??= contender.acquire(child.id, 5_000, Date.now() + 10_000) })
+      await vi.waitFor(() => { expect(cancelled).toBe(true) })
+      expect(warnings.join('\n')).toContain('Activation lease lost')
+      hold.resolve(undefined)
+      await waitNoActivation(ctx, child.id)
+      if (cleanupFails) await vi.waitFor(() => {
+        expect(warnings.join('\n')).toContain('lease-loss disposal failed')
+        expect(warnings.join('\n')).toContain('lease-test cleanup failed')
+      })
+      expect(child.session.events.some(event => event.type === 'assistant/message')).toBe(false)
+      if (successor === undefined) throw new Error('successor lease missing')
+      const currentOwner = successor
+      expect(() => { contender.assertCurrent(currentOwner, Date.now()) }).not.toThrow()
+    } finally {
+      hold.resolve(undefined)
+      successor?.release()
+      contender.close()
+      warn.mockRestore()
+      await ctx.fiber.dispose()
+    }
+  })
+
+  it.each([false, true])('rolls back a returned handle after takeover, including disposal failure=%s', async (cleanupFails) => {
+    const root = mkdtempSync(join(tmpdir(), 'rlh-post-create-takeover-'))
+    roots.push(root)
+    const leasePath = join(root, 'leases.sqlite3')
+    const { ctx, parent, adapter } = await setup([], {
+      subagents: { activationLeasePath: leasePath, activationLeaseMs: 60_000, activationLeaseRenewMs: 50_000 },
+    })
+    const manager = (ctx.subagents as unknown as { continuations: { ownerCtx: Context } }).continuations
+    const originalCreate = manager.ownerCtx.agents.create.bind(manager.ownerCtx.agents)
+    const contender = new SubagentActivationLeaseStore(leasePath)
+    let successor: ReturnType<SubagentActivationLeaseStore['acquire']> | undefined
+    let disposed = false
+    const childId = SessionId('post-create-takeover-child')
+    manager.ownerCtx.agents.create = async (options) => {
+      const handle = await originalCreate(options)
+      const dispose = handle.dispose.bind(handle)
+      handle.dispose = async () => {
+        await dispose()
+        disposed = true
+        if (cleanupFails) throw new Error('post-create cleanup failed')
+      }
+      successor = contender.acquire(childId, 60_000, Date.now() + 120_000)
+      return handle
+    }
+    try {
+      await expect(ctx.subagents.startContinuable({ ...startSpec(parent), childId }))
+        .rejects.toMatchObject({ code: 'ACTIVATION_LEASE_LOST' })
+      expect(disposed).toBe(true)
+      expect(ctx.agents.get(childId)).toBeUndefined()
+      expect(adapter.requests).toEqual([])
+      const owner = successor
+      if (owner === undefined) throw new Error('successor lease missing')
+      expect(() => { contender.assertCurrent(owner, Date.now()) }).not.toThrow()
+    } finally {
+      manager.ownerCtx.agents.create = originalCreate
+      successor?.release()
+      contender.close()
+      await ctx.fiber.dispose()
+    }
+  })
+
+  it('preserves storage acquisition failures without publishing a child', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'rlh-acquisition-storage-failure-'))
+    roots.push(root)
+    const leasePath = join(root, 'lease.sqlite3')
+    const { ctx, parent, adapter } = await setup([], {
+      subagents: { activationLeasePath: leasePath },
+    })
+    const childId = SessionId('acquisition-storage-failure-child')
+    const failure = new Error('lease storage unavailable')
+    const acquire = vi.spyOn(SubagentActivationLeaseStore.prototype, 'acquire').mockImplementationOnce(() => {
+      throw failure
+    })
+    try {
+      await expect(ctx.subagents.startContinuable({ ...startSpec(parent), childId })).rejects.toBe(failure)
+      expect(ctx.agents.get(childId)).toBeUndefined()
+      expect(adapter.requests).toEqual([])
+      expect(await ctx.sessionPersistence.readRaw(childId)).toBeUndefined()
+      acquire.mockRestore()
+      const contender = new SubagentActivationLeaseStore(leasePath)
+      try { expect(contender.acquire(childId, 1_000).fence).toBe(1) } finally { contender.close() }
+    } finally {
+      acquire.mockRestore()
+      await ctx.fiber.dispose()
+    }
+  })
+
+  it.each([
+    { failure: new Error('renewal failed'), phase: 'before-setup' },
+    { failure: 'renewal failed', phase: 'before-setup' },
+    { failure: new Error('renewal failed'), phase: 'before-commit' },
+    { failure: 'renewal failed', phase: 'before-commit' },
+  ])('keeps an acquisition renewal failure sticky through later recovery at $phase: $failure', async ({ failure, phase }) => {
+    const root = mkdtempSync(join(tmpdir(), 'rlh-acquisition-renewal-'))
+    roots.push(root)
+    const leasePath = join(root, 'lease.sqlite3')
+    const { ctx, parent, adapter } = await setup([], {
+      subagents: { activationLeasePath: leasePath, activationLeaseMs: 1_000, activationLeaseRenewMs: 25 },
+    })
+    const manager = (ctx.subagents as unknown as { continuations: { ownerCtx: Context } }).continuations
+    const originalCreate = manager.ownerCtx.agents.create.bind(manager.ownerCtx.agents)
+    const entered = Promise.withResolvers<undefined>(), release = Promise.withResolvers<undefined>()
+    const childId = SessionId('acquisition-renewal-child')
+    manager.ownerCtx.agents.create = async (options) => {
+      if (phase === 'before-commit') {
+        return originalCreate({
+          ...options,
+          setup: async (childCtx) => {
+            const transaction = await options.setup?.(childCtx)
+            entered.resolve(undefined)
+            await release.promise
+            return transaction
+          },
+        })
+      }
+      entered.resolve(undefined)
+      await release.promise
+      return originalCreate(options)
+    }
+    const brokenRenewal = vi.spyOn(SubagentActivationLeaseStore.prototype, 'renew').mockImplementation(() => {
+      // Exercise normalization of both exception shapes at the storage boundary.
+      throw failure
+    })
+    let restoreRecovered: (() => void) | undefined
+    try {
+      const starting = ctx.subagents.startContinuable({ ...startSpec(parent), childId })
+      await entered.promise
+      await vi.waitFor(() => { expect(brokenRenewal).toHaveBeenCalled() })
+      brokenRenewal.mockRestore()
+      const recoveredRenewal = vi.spyOn(SubagentActivationLeaseStore.prototype, 'renew')
+      restoreRecovered = () => { recoveredRenewal.mockRestore() }
+      await vi.waitFor(() => { expect(recoveredRenewal).toHaveBeenCalled() })
+      release.resolve(undefined)
+      await expect(starting).rejects.toThrow('renewal failed')
+      expect(ctx.agents.get(childId)).toBeUndefined()
+      expect(adapter.requests).toEqual([])
+      expect(await ctx.sessionPersistence.readRaw(childId)).toBeUndefined()
+      const nextOwner = new SubagentActivationLeaseStore(leasePath)
+      try { expect(nextOwner.acquire(childId, 1_000).fence).toBe(2) } finally { nextOwner.close() }
+    } finally {
+      brokenRenewal.mockRestore()
+      restoreRecovered?.()
+      release.resolve(undefined)
+      manager.ownerCtx.agents.create = originalCreate
+      await ctx.fiber.dispose()
+    }
+  })
+
   it('denies a side-effecting tool that loses its fence while pre-execute policy waits', async () => {
     const root = mkdtempSync(join(tmpdir(), 'rlh-subagent-tool-fence-'))
     roots.push(root)
@@ -1104,6 +1371,8 @@ describe('continuable durability and teardown', () => {
     releaseTarget.resolve(undefined)
     releaseGrandchild.resolve(undefined)
     await drained
+    await expect(ctx.subagents.drainContinuableChildren(parent, [target.childId, SessionId('never-resident-child')]))
+      .resolves.toBeUndefined()
     expect(ctx.agents.get(target.childId)).toBeUndefined()
     expect(ctx.agents.get(grandchild.childId)).toBeUndefined()
     expect(ctx.agents.get(sibling.childId)).toBe(siblingAgent)
@@ -1823,6 +2092,257 @@ function settlementNotices(agent: Agent): { sender: string; text: string; summar
 }
 
 describe('continuable report delivery', () => {
+  it.each(['log', 'next-turn'] as const)('repairs a cold report acknowledgement already represented in the parent %s', async (location) => {
+    const firstGate = Promise.withResolvers<undefined>(), secondGate = Promise.withResolvers<undefined>()
+    const adapter = new GatedAdapter([
+      { chunks: textResponse('first'), gate: firstGate.promise },
+      { chunks: textResponse('resumed'), gate: secondGate.promise },
+    ])
+    const leaseRoot = mkdtempSync(join(tmpdir(), 'rlh-cold-report-fence-'))
+    roots.push(leaseRoot)
+    const { ctx, parent } = await setupWith(adapter, {
+      subagents: { activationLeasePath: join(leaseRoot, 'leases.sqlite3') },
+    })
+    parkParent(ctx, parent)
+    try {
+      const started = await ctx.subagents.startContinuable(startSpec(parent))
+      await vi.waitFor(() => { expect(adapter.requests).toHaveLength(1) })
+      const child = ctx.agents.get(started.childId)
+      if (child === undefined) throw new Error('reporting child missing')
+      const reportId = await ctx.subagents.reportFrom(child, message('already delivered'), {
+        delivery: 'quiet', signal: testSignal, idempotencyKey: 'cold-ack',
+      })
+      const report = parent.inbox.nextStep.find(item => item.id === reportId)
+      if (report === undefined) throw new Error('parent report missing')
+      firstGate.resolve(undefined)
+      await waitNoActivation(ctx, child.id)
+      await parent.whenIdle()
+      parent.inbox.clear()
+      if (location === 'log') parent.session.append('user/message', report, { surfaceOp: 'append' })
+      else parent.inbox.append('next-turn', report)
+      const inject = vi.spyOn(parent, 'inject')
+      await followup(ctx, parent, child.id, message('resume after acknowledgement gap'))
+      await vi.waitFor(() => { expect(adapter.requests).toHaveLength(2) })
+      const resumed = ctx.agents.get(child.id)
+      if (resumed === undefined) throw new Error('resumed child missing')
+      expect(resumed.session.events.filter(event => event.type === 'subagent/report-delivered'
+        && event.data.messageId === reportId)).toHaveLength(1)
+      expect(inject).not.toHaveBeenCalled()
+      expect([...parent.inbox.nextStep, ...parent.inbox.nextTurn].filter(item => item.id === reportId))
+        .toHaveLength(location === 'log' ? 0 : 1)
+    } finally {
+      firstGate.resolve(undefined)
+      secondGate.resolve(undefined)
+      await ctx.fiber.dispose()
+    }
+  })
+
+  it('rechecks the child lease after report durability before mutating the parent inbox', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'rlh-report-final-fence-'))
+    roots.push(root)
+    const leasePath = join(root, 'lease.sqlite3')
+    const hold = Promise.withResolvers<undefined>(), flushGate = Promise.withResolvers<undefined>()
+    const entered = Promise.withResolvers<undefined>()
+    const adapter = new GatedAdapter([{ chunks: textResponse('child'), gate: hold.promise }])
+    const { ctx, parent } = await setupWith(adapter, {
+      subagents: { activationLeasePath: leasePath, activationLeaseMs: 60_000, activationLeaseRenewMs: 50_000 },
+    })
+    parkParent(ctx, parent)
+    const contender = new SubagentActivationLeaseStore(leasePath)
+    let successor: ReturnType<SubagentActivationLeaseStore['acquire']> | undefined
+    let removeGate: (() => void) | undefined
+    try {
+      const started = await ctx.subagents.startContinuable(startSpec(parent))
+      await vi.waitFor(() => { expect(adapter.requests).toHaveLength(1) })
+      const child = ctx.agents.get(started.childId)
+      if (child === undefined) throw new Error('reporting child missing')
+      removeGate = ctx.on('session/flush', (session) => {
+        if (session !== child.session) return
+        entered.resolve(undefined)
+        return flushGate.promise
+      })
+      const reporting = ctx.subagents.reportFrom(child, message('fenced report'), {
+        delivery: 'quiet', signal: testSignal, idempotencyKey: 'final-fence-report',
+      })
+      await entered.promise
+      await vi.waitFor(async () => {
+        expect((await ctx.sessionPersistence.readRaw(child.id))?.content).toContain('final-fence-report')
+      })
+      await vi.waitFor(() => {
+        successor ??= contender.acquire(child.id, 60_000, Date.now() + 120_000)
+      })
+      flushGate.resolve(undefined)
+      await expect(reporting).rejects.toMatchObject({ code: 'ACTIVATION_LEASE_LOST' })
+      expect([...parent.inbox.nextTurn, ...parent.inbox.nextStep]
+        .some(item => item.source.kind === 'subagent-report' && item.source.senderSessionId === child.id)).toBe(false)
+    } finally {
+      flushGate.resolve(undefined)
+      removeGate?.()
+      hold.resolve(undefined)
+      successor?.release()
+      contender.close()
+      await ctx.fiber.dispose()
+    }
+  })
+
+  it.each(['followup', 'report'] as const)('never acknowledges a %s retry until its pending receipt is durable', async (kind) => {
+    const hold = Promise.withResolvers<undefined>()
+    const adapter = new GatedAdapter([
+      { chunks: textResponse('first'), gate: hold.promise }, { chunks: textResponse('second') },
+    ])
+    const { ctx, parent, root, disposePersistence } = await setupWith(adapter)
+    parkParent(ctx, parent)
+    try {
+      const started = await ctx.subagents.startContinuable(startSpec(parent))
+      await vi.waitFor(() => { expect(adapter.requests).toHaveLength(1) })
+      const child = ctx.agents.get(started.childId)
+      if (child === undefined || disposePersistence === undefined || root === undefined) throw new Error('durable child setup missing')
+      const send = () => kind === 'followup'
+        ? ctx.subagents.followup(parent, child.id, message('storage retry'), {
+          source: { kind: 'user' }, signal: testSignal, idempotencyKey: 'storage-retry',
+        })
+        : ctx.subagents.reportFrom(child, message('storage retry'), {
+          delivery: 'quiet', signal: testSignal, idempotencyKey: 'storage-retry',
+        })
+      await disposePersistence()
+      await expect(send()).rejects.toMatchObject({ code: 'CONTINUATION_UNAVAILABLE' })
+      await expect(send()).rejects.toMatchObject({ code: 'CONTINUATION_UNAVAILABLE' })
+      const receipt = child.session.events.find(event =>
+        (event.type === 'subagent/delivery-accepted' || event.type === 'subagent/report-accepted')
+        && event.data.idempotencyKey === 'storage-retry')
+      if (receipt?.type !== 'subagent/delivery-accepted' && receipt?.type !== 'subagent/report-accepted') {
+        throw new Error('pending receipt missing')
+      }
+      const target = kind === 'followup' ? child : parent
+      expect([...target.inbox.nextTurn, ...target.inbox.nextStep].some(item => item.id === receipt.data.message.id)).toBe(false)
+      await ctx.plugin(JsonlSessionPersistence, { root })
+      expect(await Promise.all([send(), send()])).toEqual([receipt.data.message.id, receipt.data.message.id])
+      expect([...target.inbox.nextTurn, ...target.inbox.nextStep].filter(item => item.id === receipt.data.message.id)).toHaveLength(1)
+      expect((await ctx.sessionPersistence.readRaw(child.id))?.content).toContain('storage-retry')
+    } finally {
+      hold.resolve(undefined)
+      await ctx.fiber.dispose()
+    }
+  })
+
+  it.each(['report', 'delivery'] as const)('contains a %s acknowledgement storage failure and repairs it on notification retry', async (kind) => {
+    const hold = Promise.withResolvers<undefined>()
+    const adapter = new GatedAdapter([{ chunks: textResponse('done'), gate: hold.promise }])
+    const { ctx, parent } = await setupWith(adapter)
+    parkParent(ctx, parent)
+    const warn = vi.spyOn(ctx.logger, 'warn')
+    let restoreAppend: (() => void) | undefined
+    try {
+      const started = await ctx.subagents.startContinuable(startSpec(parent))
+      await vi.waitFor(() => { expect(adapter.requests).toHaveLength(1) })
+      const child = ctx.agents.get(started.childId)
+      if (child === undefined) throw new Error('reporting child missing')
+      const id = kind === 'report'
+        ? await ctx.subagents.reportFrom(child, message('retry acknowledgement'), {
+          delivery: 'quiet', signal: testSignal,
+        })
+        : await ctx.subagents.followup(parent, child.id, message('retry acknowledgement'), {
+          source: { kind: 'user' }, signal: testSignal,
+        })
+      const target = kind === 'report' ? parent : child
+      const receiptType = kind === 'report' ? 'subagent/report-delivered' : 'subagent/delivery-claimed'
+      const pending = [...target.inbox.nextStep, ...target.inbox.nextTurn].find(item => item.id === id)
+      if (pending === undefined) throw new Error('message missing from target inbox')
+      // ACK work is scheduled in a microtask: fail its append, not the user event.
+      const accepted = target.session.append('user/message', pending, { surfaceOp: 'append' })
+      const failed = vi.spyOn(child.session, 'append').mockImplementationOnce(() => {
+        throw new Error('acknowledgement storage unavailable')
+      })
+      restoreAppend = () => { failed.mockRestore() }
+      await vi.waitFor(() => {
+        expect(warn.mock.calls.some(args => args.some(value => String(value).includes(`${kind} acknowledgement failed`)))).toBe(true)
+      })
+      expect(failed).toHaveBeenCalledWith(receiptType, expect.objectContaining({ messageId: id }))
+      expect(child.session.events.filter(event => event.type === receiptType && event.data.messageId === id)).toEqual([])
+      failed.mockRestore()
+      ctx.emit('session/event', target.session, accepted)
+      await vi.waitFor(() => {
+        expect(child.session.events.filter(event => event.type === receiptType
+          && event.data.messageId === id)).toHaveLength(1)
+      })
+    } finally {
+      restoreAppend?.()
+      warn.mockRestore()
+      hold.resolve(undefined)
+      await ctx.fiber.dispose()
+    }
+  })
+
+  it('acknowledges only the recorded direct-parent report and tolerates duplicate notifications', async () => {
+    const hold = Promise.withResolvers<undefined>()
+    const adapter = new GatedAdapter([{ chunks: textResponse('done'), gate: hold.promise }])
+    const { ctx, parent } = await setupWith(adapter)
+    parkParent(ctx, parent)
+    try {
+      const started = await ctx.subagents.startContinuable(startSpec(parent))
+      await vi.waitFor(() => { expect(adapter.requests).toHaveLength(1) })
+      const child = ctx.agents.get(started.childId)
+      if (child === undefined) throw new Error('reporting child missing')
+      const id = await ctx.subagents.reportFrom(child, message('acknowledge exactly once'), {
+        delivery: 'quiet', signal: testSignal,
+      })
+      const report = parent.inbox.nextStep.find(item => item.id === id)
+      if (report === undefined) throw new Error('durable report did not reach parent inbox')
+      const other = ctx.sessions.create(SessionId('wrong-report-parent'))
+      other.append('user/message', report, { surfaceOp: 'append' })
+      parent.session.append('user/message', createUserMessage({
+        source: { kind: 'subagent-report', form: 'relay', senderSessionId: SessionId('unknown-child') },
+        content: message('unknown sender'),
+      }), { surfaceOp: 'append' })
+      await Promise.resolve()
+      expect(child.session.events.filter(event => event.type === 'subagent/report-delivered')).toEqual([])
+      const accepted = parent.session.append('user/message', report, { surfaceOp: 'append' })
+      ctx.emit('session/event', parent.session, accepted)
+      await vi.waitFor(() => {
+        const receipts = child.session.events.filter(event => event.type === 'subagent/report-delivered')
+        expect(receipts).toHaveLength(1)
+        expect(receipts[0]?.data.messageId).toBe(id)
+      })
+    } finally {
+      hold.resolve(undefined)
+      await ctx.fiber.dispose()
+    }
+  })
+
+  it('rejects a non-child and a retired Agent even after the same child id has resumed', async () => {
+    const firstGate = Promise.withResolvers<undefined>()
+    const secondGate = Promise.withResolvers<undefined>()
+    const adapter = new GatedAdapter([
+      { chunks: textResponse('first'), gate: firstGate.promise },
+      { chunks: textResponse('resumed'), gate: secondGate.promise },
+    ])
+    const { ctx, parent } = await setupWith(adapter)
+    parkParent(ctx, parent)
+    try {
+      const started = await ctx.subagents.startContinuable(startSpec(parent))
+      await vi.waitFor(() => { expect(adapter.requests).toHaveLength(1) })
+      const retired = ctx.agents.get(started.childId)
+      if (retired === undefined) throw new Error('first child not resident')
+      firstGate.resolve(undefined)
+      await waitNoActivation(ctx, started.childId)
+      await followup(ctx, parent, started.childId, message('resume'))
+      await vi.waitFor(() => { expect(adapter.requests).toHaveLength(2) })
+      const current = ctx.agents.get(started.childId)
+      expect(current).not.toBe(retired)
+      if (current === undefined) throw new Error('resumed child not resident')
+      const options = { delivery: 'quiet' as const, signal: testSignal }
+      await expect(ctx.subagents.reportFrom(parent, message('not a child'), options))
+        .rejects.toMatchObject({ code: 'UNAUTHORIZED' })
+      await expect(ctx.subagents.reportFrom(retired, message('stale authority'), options))
+        .rejects.toMatchObject({ code: 'UNAUTHORIZED' })
+      expect(current.session.events.filter(event => event.type === 'subagent/report-accepted')).toEqual([])
+    } finally {
+      firstGate.resolve(undefined)
+      secondGate.resolve(undefined)
+      await ctx.fiber.dispose()
+    }
+  })
+
   it('retains a durable report when parent inbox capacity rejects publication', async () => {
     const hold = Promise.withResolvers<undefined>()
     const adapter = new GatedAdapter([{ chunks: textResponse('child'), gate: hold.promise }])
@@ -1857,6 +2377,16 @@ describe('continuable report delivery', () => {
 
     const first = await ctx.subagents.reportFrom(child, message('durable report'), options)
     const retry = await ctx.subagents.reportFrom(child, message('durable report'), options)
+    const reordered = await ctx.subagents.reportFrom(child, [{ text: 'durable report', type: 'text' }], options)
+    expect(reordered).toBe(first)
+    await expect(ctx.subagents.reportFrom(child, message('changed report'), options))
+      .rejects.toMatchObject({ code: 'DUPLICATE_DELIVERY' })
+    await expect(ctx.subagents.reportFrom(child, message('durable report'), { ...options, delivery: 'next-step' }))
+      .rejects.toMatchObject({ code: 'DUPLICATE_DELIVERY' })
+    for (const idempotencyKey of ['', ' ', 'x'.repeat(257)]) {
+      await expect(ctx.subagents.reportFrom(child, message('invalid retry key'), { ...options, idempotencyKey }))
+        .rejects.toMatchObject({ code: 'INVALID_ARGUMENT' })
+    }
     expect(retry).toBe(first)
     expect(child.session.events.filter(event => event.type === 'subagent/report-accepted')).toHaveLength(1)
 

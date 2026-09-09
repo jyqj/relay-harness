@@ -1,7 +1,7 @@
-import type { ContentBlock } from '@relay-harness/rlh-llm/types'
 import type { MuxFrame } from '@relay-harness/rlh-api-remotes/client'
+import type { ContentBlock } from '@relay-harness/rlh-llm/types'
 import type { SessionEvent } from '@relay-harness/rlh-session/types'
-import type { QueuedMessage } from './conversation.ts'
+import type { QueuedMessage } from '../contract/session-snapshot.ts'
 
 const QUEUE_PREVIEW_CHARS = 200
 

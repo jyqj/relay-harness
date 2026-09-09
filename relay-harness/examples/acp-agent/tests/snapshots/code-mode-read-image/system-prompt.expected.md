@@ -125,7 +125,7 @@ interface ToolArgsMap {
     /** Maximum number of lines to return. Defaults to 2000. */
     limit?: number;
   } & Record<string, JsonValue>;
-  /** Read a PNG/JPEG/WebP/GIF file and return the image itself. Requires the current model to accept image input. */
+  /** Read a PNG/JPEG/WebP/GIF file and return the image itself. Requires the current model to accept image input; when a vision fallback model is designated, text-only models receive a generated description of the image instead. */
   read_image: {
     /** Path to the image file, resolved by the filesystem backend. */
     file_path: string;
@@ -209,6 +209,8 @@ interface ToolArgsMap {
     } & Record<string, JsonValue>;
     /** Optional JSON input exposed to the script as the `args` global (wrap a bare list as a field, e.g. {"files": [...]}). */
     args?: Record<string, JsonValue>;
+    /** Optional prior workflow run id to resume by deterministic journal replay. Requires an engine configured with journalRoot; use the exact same script, meta, args, provider, and limits. */
+    resumeRunId?: string;
   } & Record<string, JsonValue>;
   /** Create or fully replace a UTF-8 text file. */
   write: {

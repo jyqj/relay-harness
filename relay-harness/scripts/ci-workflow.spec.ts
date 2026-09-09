@@ -8,6 +8,46 @@ const repositoryRoot = resolve(root, '..')
 const runnerPrivatePnpmDestination = '${{ runner.temp }}/setup-pnpm'
 
 describe('CI workflow', () => {
+  it('installs the pinned Electron binary explicitly before either desktop smoke', () => {
+    const desktop = workflowJob(loadWorkflow('.github/workflows/desktop-smoke.yml'), 'desktop-smoke')
+    if (!Array.isArray(desktop.steps)) throw new TypeError('desktop smoke must declare executable steps')
+    const commands = desktop.steps.filter(isRecord).map(step => step.run).filter((run): run is string => typeof run === 'string')
+    const install = commands.indexOf('node apps/desktop/node_modules/electron/install.js')
+    expect(install).toBeGreaterThanOrEqual(0)
+    expect(install).toBeLessThan(commands.indexOf('pnpm --dir apps/desktop run smoke:source'))
+    expect(install).toBeLessThan(commands.indexOf('pnpm --dir apps/desktop run pack'))
+    const workspace: unknown = yaml.load(readFileSync(resolve(root, 'pnpm-workspace.yaml'), 'utf8'))
+    if (!isRecord(workspace)) throw new TypeError('workspace configuration must be an object')
+    expect(workspace.allowBuilds).toMatchObject({ electron: false })
+  })
+
+  it('requires real-kernel confinement and packaged desktop execution before the aggregate succeeds', () => {
+    const ci = loadWorkflow('.github/workflows/ci.yml')
+    const aggregate = workflowJob(ci, 'all-checks-passed')
+    expect(aggregate.needs).toEqual(expect.arrayContaining(['sandbox-native', 'desktop-release']))
+    expect(workflowJob(ci, 'sandbox-native').uses).toBe('./.github/workflows/sandbox.yml')
+    expect(workflowJob(ci, 'desktop-release').uses).toBe('./.github/workflows/desktop-smoke.yml')
+    const sandbox = loadWorkflow('.github/workflows/sandbox.yml')
+    expect(workflowEvent(sandbox, 'workflow_call')).toEqual({})
+    expect(sandbox.concurrency).not.toEqual(ci.concurrency)
+    const kernel = workflowJob(sandbox, 'sandbox-e2e')
+    if (!Array.isArray(kernel.steps)) throw new TypeError('kernel checks must declare executable steps')
+    const proofs = kernel.steps.filter(isRecord).filter(step => typeof step.run === 'string' && step.run.includes('status=$?'))
+    expect(proofs).toHaveLength(2)
+    for (const proof of proofs) {
+      expect(proof.run).toContain('[ "$status" -eq 0 ] || exit "$status"')
+    }
+    const desktop = workflowJob(loadWorkflow('.github/workflows/desktop-smoke.yml'), 'desktop-smoke')
+    if (!Array.isArray(desktop.steps)) throw new TypeError('desktop smoke must declare executable steps')
+    const commands = desktop.steps.filter(isRecord).map(step => step.run).filter((run): run is string => typeof run === 'string')
+    expect(commands).toEqual(expect.arrayContaining([
+      'pnpm run build:official',
+      'pnpm --dir apps/desktop run smoke:source',
+      'pnpm --dir apps/desktop run pack',
+      'pnpm --dir apps/desktop run smoke:packaged',
+    ]))
+  })
+
   it('isolates every pnpm action setup destination per runner', () => {
     const workflow: unknown = yaml.load(readFileSync(resolve(repositoryRoot, '.github/workflows/ci.yml'), 'utf8'))
     if (!isRecord(workflow) || !isRecord(workflow.jobs)) throw new TypeError('CI workflow must define jobs')
@@ -63,7 +103,7 @@ describe('CI workflow', () => {
     expect(windows.if).toBe("github.event_name == 'pull_request'")
     expect(commandSteps.some(step => step.run.includes('wine-windows-gates.sh'))).toBe(true)
 
-    // windows-native: non-blocking native job on a currently available hosted runner.
+    // windows-native: required native job on a currently available hosted runner.
     expect(windowsNative['runs-on']).toBe('windows-2025')
     expect(windowsNative.name).toBe('windows node 24 / native complete')
     expect(windowsNative.if).toBe("github.event_name == 'pull_request'")
@@ -84,9 +124,9 @@ describe('CI workflow', () => {
     expect(serialWindows['runs-on']).toEqual(['self-hosted', 'rlh-win-ci', 'windows'])
     expect(serialWindows.name).toBe('serial / windows (self-hosted standby)')
 
-    // Aggregate: Wine `windows` required, native `windows-native` excluded.
+    // Both the compatibility toolchain and real Windows runtime are required.
     expect(aggregate.needs).toContain('windows')
-    expect(aggregate.needs).not.toContain('windows-native')
+    expect(aggregate.needs).toContain('windows-native')
     expect(aggregate.needs).not.toContain('serial-windows')
 
     // Required Linux jobs and their verdict use supported hosted capacity.

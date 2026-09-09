@@ -66,6 +66,7 @@ describe('timeout-policy delegation (unconfigured / fast)', () => {
       content: [{ type: 'text', text: 'ok' }],
       isError: false,
       value: [{ type: 'text', text: 'ok' }],
+      producedFiles: [],
     })
   })
 

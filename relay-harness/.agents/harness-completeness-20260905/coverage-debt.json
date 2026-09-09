@@ -1,0 +1,1069 @@
+{
+  "source": "/tmp/relay-full-coverage-first.log",
+  "command": "pnpm run test:coverage -- --maxWorkers=4",
+  "status": "observed failing baseline, not final current result",
+  "files": {
+    "packages/boot/app-boot/src/profile.ts": {
+      "branches": 98.27
+    },
+    "packages/core/agent-loop/src/agent.ts": {
+      "lines": 98.25,
+      "statements": 98.4,
+      "branches": 97.25
+    },
+    "packages/core/agent-loop/src/tool-calls.ts": {
+      "lines": 98.42,
+      "statements": 97.87
+    },
+    "packages/core/scope/src/store.ts": {
+      "branches": 97.43
+    },
+    "packages/core/tools/src/produced-files.ts": {
+      "branches": 87.5
+    },
+    "packages/session/session-persistence/src/coordinator.ts": {
+      "lines": 99.72,
+      "statements": 99.53,
+      "branches": 98.96
+    },
+    "packages/settings/settings/src/redact.ts": {
+      "branches": 97.87
+    },
+    "packages/subagent/subagent-acp/src/run.ts": {
+      "statements": 99.0,
+      "branches": 97.22
+    },
+    "packages/subagent/subagent/src/activation-lease.ts": {
+      "lines": 95.79,
+      "statements": 94.92,
+      "branches": 91.83
+    },
+    "packages/subagent/subagent/src/continuation.ts": {
+      "lines": 96.36,
+      "functions": 94.23,
+      "statements": 95.35,
+      "branches": 93.5
+    },
+    "packages/subagent/subagent/src/delivery.ts": {
+      "statements": 92.85,
+      "branches": 90.9
+    },
+    "packages/subagent/subagent/src/index.ts": {
+      "lines": 97.87,
+      "statements": 97.22,
+      "branches": 85.41
+    },
+    "packages/automation/issue-orchestrator/src/index.ts": {
+      "lines": 99.32,
+      "statements": 99.41,
+      "branches": 99.41
+    },
+    "packages/client/connection/src/client/index.ts": {
+      "statements": 97.61,
+      "branches": 91.66
+    },
+    "packages/client/connection/src/client/connection.ts": {
+      "lines": 95.6,
+      "statements": 95.09,
+      "branches": 88.23
+    },
+    "packages/client/ui-code-index-center/src/client/store.ts": {
+      "lines": 76.92,
+      "functions": 66.66,
+      "statements": 81.25
+    },
+    "packages/client/ui-diff/src/client/DiffPanel.tsx": {
+      "branches": 96.19
+    },
+    "packages/client/ui-files/src/client/FilesPanel.tsx": {
+      "lines": 91.74,
+      "functions": 87.5,
+      "statements": 88.28,
+      "branches": 80.48
+    },
+    "packages/client/ui-files/src/client/FilePreview.tsx": {
+      "lines": 96.79,
+      "functions": 96.82,
+      "statements": 94.0,
+      "branches": 89.95
+    },
+    "packages/client/ui-files/src/client/fileLineReveal.ts": {
+      "branches": 90.0
+    },
+    "packages/client/ui-files/src/client/filePreviewMode.ts": {
+      "branches": 87.5
+    },
+    "packages/client/ui-files/src/client/fileSaveCoordinator.ts": {
+      "lines": 97.36,
+      "statements": 97.61,
+      "branches": 93.75
+    },
+    "packages/client/ui-files/src/client/projectFilePicker.ts": {
+      "statements": 97.05,
+      "branches": 90.47
+    },
+    "packages/client/ui-files/src/client/shell.ts": {
+      "lines": 69.23,
+      "functions": 69.23,
+      "statements": 69.23,
+      "branches": 50.0
+    },
+    "packages/client/ui-files/src/client/workspacePreview.ts": {
+      "branches": 75.0
+    },
+    "packages/client/ui-files/src/client/fileTreeDragMention.ts": {
+      "lines": 91.17,
+      "statements": 91.17,
+      "branches": 83.33
+    },
+    "packages/client/ui-git/src/client/GitProgressToast.tsx": {
+      "functions": 88.88,
+      "statements": 96.0,
+      "branches": 96.0
+    },
+    "packages/client/ui-git/src/client/GitActionsControl.tsx": {
+      "lines": 87.7,
+      "functions": 86.74,
+      "statements": 84.03,
+      "branches": 75.62
+    },
+    "packages/client/ui-git/src/client/CreateBranchDialog.tsx": {
+      "branches": 83.33
+    },
+    "packages/client/ui-git/src/client/BranchMenu.tsx": {
+      "lines": 96.82,
+      "functions": 90.47,
+      "statements": 88.0,
+      "branches": 84.28
+    },
+    "packages/client/ui-git/src/client/PublishDialog.tsx": {
+      "lines": 33.33,
+      "functions": 20.0,
+      "statements": 33.33,
+      "branches": 66.66
+    },
+    "packages/client/ui-git/src/client/apply.ts": {
+      "lines": 92.3,
+      "functions": 92.3,
+      "statements": 93.1,
+      "branches": 84.37
+    },
+    "packages/client/ui-git/src/client/branches.ts": {
+      "branches": 87.5
+    },
+    "packages/client/ui-git/src/client/git-logic.ts": {
+      "lines": 91.2,
+      "statements": 90.56,
+      "branches": 87.27
+    },
+    "packages/client/ui-memory-center/src/client/store.ts": {
+      "lines": 51.28,
+      "functions": 50.0,
+      "statements": 50.0,
+      "branches": 45.0
+    },
+    "packages/client/ui-preview/src/client/browserRecording.ts": {
+      "lines": 73.29,
+      "functions": 69.23,
+      "statements": 70.52,
+      "branches": 58.92
+    },
+    "packages/client/ui-preview/src/client/PreviewPanel.tsx": {
+      "branches": 98.9
+    },
+    "packages/client/ui-preview/src/client/url.ts": {
+      "branches": 96.15
+    },
+    "packages/client/ui-preview/src/client/zoom.ts": {
+      "branches": 85.71
+    },
+    "packages/client/ui-preview/src/client/shell.ts": {
+      "lines": 2.27,
+      "functions": 2.17,
+      "statements": 2.27,
+      "branches": 0.0
+    },
+    "packages/client/ui-primitives/src/Tooltip.tsx": {
+      "branches": 97.22
+    },
+    "packages/client/ui-product-shell/src/client/index.ts": {
+      "lines": 4.25,
+      "functions": 0.0,
+      "statements": 2.89,
+      "branches": 0.0
+    },
+    "packages/client/ui-product-shell/src/client/LibraryPage.tsx": {
+      "lines": 87.5,
+      "functions": 85.71,
+      "statements": 87.67,
+      "branches": 78.84
+    },
+    "packages/client/ui-product-shell/src/client/mode.ts": {
+      "statements": 90.74,
+      "branches": 70.0
+    },
+    "packages/client/ui-product-shell/src/client/WorkPage.tsx": {
+      "lines": 98.86,
+      "functions": 95.23,
+      "statements": 90.82,
+      "branches": 86.86
+    },
+    "packages/client/ui-product-shell/src/client/work-projection.ts": {
+      "functions": 93.75,
+      "statements": 95.16,
+      "branches": 85.5
+    },
+    "packages/client/ui-primitives/src/markdown/render.tsx": {
+      "statements": 99.49,
+      "branches": 98.93
+    },
+    "packages/client/ui-product-shell/src/client/ProductModeRow.tsx": {
+      "lines": 0.0,
+      "functions": 0.0,
+      "statements": 0.0,
+      "branches": 0.0
+    },
+    "packages/client/ui-settings-general/src/client/AboutSection.tsx": {
+      "lines": 69.23,
+      "functions": 50.0,
+      "statements": 61.25,
+      "branches": 50.72
+    },
+    "packages/client/ui-session-tree/src/client/model.ts": {
+      "branches": 99.39
+    },
+    "packages/client/ui-settings-general/src/client/InterfaceSection.tsx": {
+      "lines": 0.0,
+      "functions": 0.0,
+      "statements": 0.0
+    },
+    "packages/client/ui-settings-general/src/client/desktop-shell.ts": {
+      "lines": 66.66,
+      "functions": 66.66,
+      "statements": 66.66,
+      "branches": 36.84
+    },
+    "packages/client/ui-settings-general/src/client/UpdateAction.tsx": {
+      "lines": 67.85,
+      "functions": 66.66,
+      "statements": 67.16,
+      "branches": 53.62
+    },
+    "packages/client/ui-settings-general/src/client/HarnessRestartRow.tsx": {
+      "lines": 0.0,
+      "functions": 0.0,
+      "statements": 0.0,
+      "branches": 0.0
+    },
+    "packages/client/ui-settings-models/src/client/VisionModelPicker.tsx": {
+      "lines": 96.36,
+      "statements": 95.16,
+      "branches": 95.55
+    },
+    "packages/client/ui-settings-models/src/client/ModelListEditor.tsx": {
+      "branches": 99.14
+    },
+    "packages/client/ui-settings-models/src/client/ModelsSection.tsx": {
+      "lines": 99.02,
+      "functions": 97.36,
+      "statements": 99.16
+    },
+    "packages/client/ui-sidebar/src/client/SidebarRoot.tsx": {
+      "lines": 97.95,
+      "functions": 95.45,
+      "statements": 98.41,
+      "branches": 95.94
+    },
+    "packages/client/ui-surfaces/src/client/persist.ts": {
+      "statements": 99.34,
+      "branches": 98.43
+    },
+    "packages/client/ui-sidebar/src/client/stores.ts": {
+      "lines": 75.0,
+      "functions": 66.66,
+      "statements": 75.0
+    },
+    "packages/client/ui-surfaces/src/client/openpath-intercept.ts": {
+      "branches": 90.0
+    },
+    "packages/client/ui-theme/src/client/index.ts": {
+      "lines": 95.73,
+      "functions": 85.71,
+      "statements": 95.7,
+      "branches": 94.4
+    },
+    "packages/client/ui-theme/src/client/WallpaperGalleryModal.tsx": {
+      "lines": 71.42,
+      "functions": 66.66,
+      "statements": 77.77,
+      "branches": 61.53
+    },
+    "packages/client/ui-theme/src/client/WallpaperCropModal.tsx": {
+      "lines": 69.62,
+      "functions": 60.0,
+      "statements": 69.41,
+      "branches": 62.5
+    },
+    "packages/client/ui-theme/src/client/ThemeLibrary.tsx": {
+      "statements": 98.0,
+      "branches": 95.65
+    },
+    "packages/client/ui-theme/src/client/WallpaperRow.tsx": {
+      "lines": 66.66,
+      "functions": 81.25,
+      "statements": 61.44,
+      "branches": 54.34
+    },
+    "packages/client/ui-theme/src/client/WallpaperSources.tsx": {
+      "lines": 82.6,
+      "functions": 88.88,
+      "statements": 76.36,
+      "branches": 69.64
+    },
+    "packages/client/ui-theme/src/client/slider.ts": {
+      "branches": 50.0
+    },
+    "packages/client/ui-theme/src/theme-settings.ts": {
+      "lines": 99.16,
+      "statements": 93.0,
+      "branches": 86.2
+    },
+    "packages/client/ui-theme/src/wallpaper.ts": {
+      "lines": 88.03,
+      "functions": 83.87,
+      "statements": 85.59,
+      "branches": 79.22
+    },
+    "packages/client/ui-user-terminal/src/client/terminal/stores.ts": {
+      "lines": 96.38,
+      "statements": 92.45,
+      "branches": 79.31
+    },
+    "packages/client/ui-user-terminal/src/client/terminal/links.ts": {
+      "statements": 94.55,
+      "branches": 88.17
+    },
+    "packages/context/agent-instructions/src/files.ts": {
+      "statements": 98.59,
+      "branches": 97.43
+    },
+    "packages/context/context-engine/src/invariant.ts": {
+      "lines": 83.95,
+      "statements": 83.51,
+      "branches": 79.1
+    },
+    "packages/context/context-inspector/src/projection.ts": {
+      "lines": 92.85,
+      "statements": 88.0,
+      "branches": 60.97
+    },
+    "packages/context/code-context/src/contributor.ts": {
+      "lines": 92.23,
+      "functions": 73.33,
+      "statements": 90.83,
+      "branches": 94.54
+    },
+    "packages/context/file-reference-local/src/content.ts": {
+      "statements": 98.86,
+      "branches": 96.66
+    },
+    "packages/context/context-engine/src/index.ts": {
+      "lines": 97.71,
+      "statements": 95.52,
+      "branches": 92.08
+    },
+    "packages/context/prompt-enhancement-context-engine/src/index.ts": {
+      "lines": 87.09,
+      "statements": 82.35,
+      "branches": 73.91
+    },
+    "packages/context/prompt-enhancement-context-none/src/index.ts": {
+      "lines": 80.0,
+      "functions": 50.0,
+      "statements": 80.0
+    },
+    "packages/context/prompt-enhancement-llm/src/index.ts": {
+      "lines": 88.0,
+      "functions": 92.85,
+      "statements": 87.65,
+      "branches": 82.66
+    },
+    "packages/context/prompt-enhancement/src/index.ts": {
+      "lines": 97.11,
+      "statements": 96.39,
+      "branches": 83.56
+    },
+    "packages/context/session-history-context/src/index.ts": {
+      "lines": 98.73,
+      "statements": 92.7,
+      "branches": 79.59
+    },
+    "packages/context/prompt-enhancement-llm/src/prompt.ts": {
+      "statements": 93.54,
+      "branches": 85.71
+    },
+    "packages/examples/agent-spine-demo/src/index.ts": {
+      "branches": 97.8
+    },
+    "packages/experimental/agent-team/src/mailbox.ts": {
+      "branches": 98.83
+    },
+    "packages/guard/llm-circuit-breaker/src/breaker.ts": {
+      "statements": 98.33,
+      "branches": 96.87
+    },
+    "packages/guard/token-budget-controller/src/index.ts": {
+      "statements": 98.24,
+      "branches": 97.77
+    },
+    "packages/guard/llm-circuit-breaker/src/index.ts": {
+      "branches": 89.28
+    },
+    "packages/host/apiproxy/src/approval-questions.ts": {
+      "statements": 83.33,
+      "branches": 80.76
+    },
+    "packages/host/apiproxy/src/model-catalog.ts": {
+      "branches": 83.33
+    },
+    "packages/host/code-index-center/src/index.ts": {
+      "lines": 84.21,
+      "functions": 77.77,
+      "statements": 81.81,
+      "branches": 82.6
+    },
+    "packages/host/directory-picker-browse/src/index.ts": {
+      "branches": 96.47
+    },
+    "packages/host/apiproxy/src/prompt-content.ts": {
+      "lines": 85.29,
+      "statements": 81.25,
+      "branches": 68.42
+    },
+    "packages/host/mcp-servers/src/index.ts": {
+      "lines": 87.69,
+      "functions": 76.19,
+      "statements": 82.27,
+      "branches": 77.19
+    },
+    "packages/host/memory-center/src/index.ts": {
+      "lines": 88.88,
+      "functions": 97.67,
+      "statements": 84.08,
+      "branches": 67.19
+    },
+    "packages/host/skill-inventory/src/frontmatter.ts": {
+      "branches": 94.73
+    },
+    "packages/host/work-results/src/invariant.ts": {
+      "lines": 93.75,
+      "statements": 83.33,
+      "branches": 83.33
+    },
+    "packages/host/work-results/src/index.ts": {
+      "lines": 92.9,
+      "functions": 95.65,
+      "statements": 83.52,
+      "branches": 73.87
+    },
+    "packages/host/skill-inventory/src/index.ts": {
+      "lines": 91.69,
+      "statements": 85.22,
+      "branches": 72.65
+    },
+    "packages/host/work-results/src/projection.ts": {
+      "statements": 95.23,
+      "branches": 94.73
+    },
+    "packages/index/code-index-local/src/eval.ts": {
+      "lines": 91.66,
+      "statements": 83.87,
+      "branches": 64.28
+    },
+    "packages/index/code-index-local/src/embed/worker.ts": {
+      "lines": 96.0,
+      "statements": 94.5,
+      "branches": 88.23
+    },
+    "packages/index/code-index-local/src/gitignore.ts": {
+      "lines": 95.18,
+      "statements": 91.34,
+      "branches": 82.97
+    },
+    "packages/index/code-index-local/src/scanner.ts": {
+      "statements": 96.47,
+      "branches": 92.42
+    },
+    "packages/index/code-index-local/src/invalidate.ts": {
+      "branches": 91.66
+    },
+    "packages/index/code-index-local/src/index.ts": {
+      "lines": 95.65,
+      "functions": 87.5,
+      "statements": 96.0,
+      "branches": 98.91
+    },
+    "packages/index/code-index-local/src/watcher.ts": {
+      "branches": 83.33
+    },
+    "packages/index/code-index-local/src/provider.ts": {
+      "lines": 96.92,
+      "functions": 95.38,
+      "statements": 95.1,
+      "branches": 91.35
+    },
+    "packages/index/code-index-search/src/lanes.vector.ts": {
+      "statements": 96.87,
+      "branches": 95.83
+    },
+    "packages/index/code-index-search/src/plan.ts": {
+      "branches": 98.96
+    },
+    "packages/index/code-index-sqlite/src/embed-queue.ts": {
+      "lines": 97.82,
+      "statements": 98.03
+    },
+    "packages/index/code-index/src/index.ts": {
+      "lines": 57.14,
+      "functions": 66.66,
+      "statements": 57.14
+    },
+    "packages/index/code-index-sqlite/src/reader.ts": {
+      "branches": 98.85
+    },
+    "packages/index/code-index-sqlite/src/embedding-generation.ts": {
+      "lines": 80.0,
+      "statements": 80.0,
+      "branches": 66.66
+    },
+    "packages/index/code-index-sqlite/src/epoch.ts": {
+      "branches": 78.12
+    },
+    "packages/index/code-index-workspace-router/src/index.ts": {
+      "lines": 81.59,
+      "functions": 61.9,
+      "statements": 73.02,
+      "branches": 60.57
+    },
+    "packages/index/tool-code-index/src/refresh-tool.ts": {
+      "branches": 38.88
+    },
+    "packages/index/tool-code-index/src/errors.ts": {
+      "lines": 62.5,
+      "functions": 36.36,
+      "statements": 65.38,
+      "branches": 87.5
+    },
+    "packages/index/tool-code-index/src/status-tool.ts": {
+      "lines": 93.75,
+      "statements": 94.11,
+      "branches": 75.0
+    },
+    "packages/jobs/jobs-local/src/index.ts": {
+      "branches": 98.24
+    },
+    "packages/mcp/mcp-client/src/catalog.ts": {
+      "lines": 93.18,
+      "statements": 84.21,
+      "branches": 58.42
+    },
+    "packages/mcp/mcp-client/src/status.ts": {
+      "statements": 90.9,
+      "branches": 83.33
+    },
+    "packages/mcp/mcp-client/src/index.ts": {
+      "lines": 97.29,
+      "statements": 93.61,
+      "branches": 90.62
+    },
+    "packages/mcp/mcp-client/src/connection.ts": {
+      "lines": 88.61,
+      "functions": 73.8,
+      "statements": 84.21,
+      "branches": 82.8
+    },
+    "packages/mcp/mcp-servers-file/src/index.ts": {
+      "lines": 50.0,
+      "functions": 0.0,
+      "statements": 40.0,
+      "branches": 0.0
+    },
+    "packages/mcp/mcp-servers-file/src/document.ts": {
+      "lines": 91.09,
+      "statements": 88.75,
+      "branches": 84.15
+    },
+    "packages/mcp/mcp-client/src/tools.ts": {
+      "lines": 99.41,
+      "statements": 98.48,
+      "branches": 97.7
+    },
+    "packages/mcp/mcp-catalog/src/index.ts": {
+      "lines": 91.79,
+      "functions": 93.93,
+      "statements": 80.47,
+      "branches": 67.21
+    },
+    "packages/mcp/mcp-servers-file/src/oauth.ts": {
+      "lines": 54.4,
+      "functions": 46.15,
+      "statements": 54.19,
+      "branches": 48.14
+    },
+    "packages/memory/memory-agent/src/index.ts": {
+      "lines": 89.92,
+      "functions": 95.34,
+      "statements": 85.8,
+      "branches": 71.07
+    },
+    "packages/memory/memory-extractor-llm/src/index.ts": {
+      "lines": 82.3,
+      "functions": 88.88,
+      "statements": 77.33,
+      "branches": 61.19
+    },
+    "packages/memory/memory-extractor-llm/src/prompt.ts": {
+      "lines": 97.22,
+      "statements": 95.23,
+      "branches": 92.3
+    },
+    "packages/memory/memory-extractor-llm/src/sources.ts": {
+      "lines": 98.24,
+      "statements": 96.05,
+      "branches": 89.39
+    },
+    "packages/mcp/mcp-servers-file/src/service.ts": {
+      "lines": 85.98,
+      "functions": 86.66,
+      "statements": 84.25,
+      "branches": 68.75
+    },
+    "packages/memory/memory-outcome-reconciler/src/index.ts": {
+      "lines": 85.6,
+      "functions": 84.21,
+      "statements": 81.87,
+      "branches": 60.83
+    },
+    "packages/memory/memory/src/index.ts": {
+      "lines": 80.0,
+      "functions": 80.0,
+      "statements": 87.5
+    },
+    "packages/memory/memory-sqlite/src/schema.ts": {
+      "lines": 89.36,
+      "statements": 87.75,
+      "branches": 85.1
+    },
+    "packages/memory/memory-sqlite/src/index.ts": {
+      "lines": 92.16,
+      "functions": 99.11,
+      "statements": 88.01,
+      "branches": 77.0
+    },
+    "packages/preset/agent-presets/src/index.ts": {
+      "lines": 97.41,
+      "functions": 92.5,
+      "statements": 93.4,
+      "branches": 85.29
+    },
+    "packages/memory/tool-memory/src/index.ts": {
+      "lines": 90.62,
+      "functions": 90.62,
+      "statements": 86.66,
+      "branches": 61.94
+    },
+    "packages/sdk/client/src/api.ts": {
+      "branches": 98.52
+    },
+    "packages/sdk/server/src/server.ts": {
+      "lines": 99.05,
+      "functions": 96.42,
+      "statements": 98.34,
+      "branches": 92.98
+    },
+    "packages/sdk/protocol/src/transport.ts": {
+      "lines": 95.8,
+      "functions": 97.29,
+      "statements": 92.59,
+      "branches": 89.79
+    },
+    "packages/sdk/client/src/client.ts": {
+      "branches": 98.23
+    },
+    "packages/skill/skill-filesystem/src/index.ts": {
+      "lines": 99.3,
+      "statements": 98.8,
+      "branches": 98.16
+    },
+    "packages/spill/spill-local/src/store.ts": {
+      "lines": 93.18,
+      "statements": 94.11
+    },
+    "packages/subagent/subagent-claude-code/src/index.ts": {
+      "lines": 96.42,
+      "statements": 96.42,
+      "branches": 90.0
+    },
+    "packages/subagent/subagent-codex/src/index.ts": {
+      "lines": 96.15,
+      "statements": 96.15,
+      "branches": 90.0
+    },
+    "packages/storage/storage-sqlite/src/schema.ts": {
+      "lines": 97.72,
+      "statements": 97.95,
+      "branches": 96.42
+    },
+    "packages/subagent/tool-subagent-report/src/index.ts": {
+      "branches": 80.0
+    },
+    "packages/test-support/acp-snapshot/src/harness.ts": {
+      "lines": 99.13,
+      "statements": 98.87,
+      "branches": 98.82
+    },
+    "packages/test-support/client-runtime/src/workspaces.ts": {
+      "lines": 92.45,
+      "functions": 94.44,
+      "statements": 91.93,
+      "branches": 88.88
+    },
+    "packages/util/atomic-write/src/index.ts": {
+      "lines": 97.77,
+      "statements": 96.15,
+      "branches": 94.44
+    },
+    "packages/tracker/tracker-linear/src/index.ts": {
+      "branches": 99.29
+    },
+    "packages/workflow/workflow-worker-thread/src/index.ts": {
+      "lines": 96.61,
+      "statements": 96.66
+    },
+    "packages/workflow/workflow-worker-thread/src/host.ts": {
+      "lines": 99.61,
+      "functions": 98.21,
+      "statements": 99.65
+    },
+    "packages/client/ui-code-index-center/src/client/CodeIndexCenterSection.tsx": {
+      "lines": 85.1,
+      "functions": 65.38,
+      "statements": 76.81,
+      "branches": 63.63
+    },
+    "packages/client/ui-context-inspector/src/client/ContextInspectorAction.tsx": {
+      "lines": 83.33,
+      "functions": 80.0,
+      "statements": 84.61,
+      "branches": 69.44
+    },
+    "packages/client/ui-git/src/client/GitErrorDialog.tsx": {
+      "branches": 77.77
+    },
+    "packages/client/ui-memory-center/src/client/MemoryCenterSection.tsx": {
+      "lines": 61.34,
+      "functions": 50.81,
+      "statements": 56.32,
+      "branches": 47.93
+    },
+    "packages/client/ui-prompt-enhancement/src/client/contextTrace.ts": {
+      "lines": 95.91,
+      "statements": 93.65,
+      "branches": 90.41
+    },
+    "packages/client/ui-prompt-enhancement/src/client/index.ts": {
+      "statements": 90.9,
+      "branches": 50.0
+    },
+    "packages/client/ui-prompt-enhancement/src/client/EnhanceControl.tsx": {
+      "lines": 91.66,
+      "functions": 80.0,
+      "statements": 86.07,
+      "branches": 77.46
+    },
+    "packages/client/ui-settings-mcp/src/client/McpSection.tsx": {
+      "lines": 88.97,
+      "functions": 80.53,
+      "statements": 83.33,
+      "branches": 74.8
+    },
+    "packages/client/ui-settings-remote/src/client/RemoteSection.tsx": {
+      "branches": 96.51
+    },
+    "packages/client/ui-settings-skills/src/client/SkillsSection.tsx": {
+      "lines": 88.49,
+      "functions": 80.0,
+      "statements": 84.22,
+      "branches": 78.57
+    },
+    "packages/client/ui-surfaces/src/client/EmptyState.tsx": {
+      "branches": 88.88
+    },
+    "packages/client/ui-surfaces/src/client/SurfacesRoot.tsx": {
+      "lines": 98.87,
+      "functions": 96.77,
+      "statements": 95.83,
+      "branches": 90.47
+    },
+    "packages/client/ui-user-terminal/src/client/apply.ts": {
+      "lines": 88.88,
+      "functions": 86.66,
+      "statements": 91.42,
+      "branches": 83.33
+    },
+    "packages/client/ui-user-terminal/src/client/terminal/fit.ts": {
+      "branches": 78.57
+    },
+    "packages/client/ui-user-terminal/src/client/terminal/terminal-theme.ts": {
+      "statements": 98.03,
+      "branches": 90.19
+    },
+    "packages/client/ui-user-terminal/src/client/terminal/height.ts": {
+      "branches": 50.0
+    },
+    "packages/client/ui-user-terminal/src/client/terminal/TerminalPane.tsx": {
+      "lines": 98.88,
+      "functions": 96.0,
+      "statements": 98.98
+    },
+    "packages/client/ui-user-terminal/src/client/terminal/shell.ts": {
+      "lines": 37.5,
+      "functions": 50.0,
+      "statements": 37.5,
+      "branches": 33.33
+    },
+    "packages/client/ui-user-terminal/src/client/terminal/TerminalWorkspace.tsx": {
+      "lines": 99.01,
+      "statements": 92.74,
+      "branches": 88.03
+    },
+    "packages/client/ui-workflow-run/src/client/WorkflowRunPanel.tsx": {
+      "lines": 99.25,
+      "statements": 99.34,
+      "branches": 98.41
+    },
+    "packages/client/ui-code-index-center/src/index.ts": {
+      "functions": 0.0
+    },
+    "packages/client/ui-context-inspector/src/index.ts": {
+      "functions": 0.0
+    },
+    "packages/client/ui-memory-center/src/index.ts": {
+      "functions": 0.0
+    },
+    "packages/client/ui-preview/src/index.ts": {
+      "functions": 0.0
+    },
+    "packages/client/ui-product-shell/src/index.ts": {
+      "functions": 0.0
+    },
+    "packages/client/ui-user-terminal/src/index.ts": {
+      "functions": 0.0
+    },
+    "packages/context/context-inspector/src/index.ts": {
+      "lines": 0.0,
+      "functions": 0.0,
+      "statements": 0.0
+    },
+    "packages/llm/llm-vision-fallback/src/index.ts": {
+      "lines": 0.0,
+      "functions": 0.0,
+      "statements": 0.0,
+      "branches": 0.0
+    },
+    "packages/client/ui-code-index-center/src/client/locales.ts": {
+      "lines": 0.0,
+      "statements": 0.0
+    },
+    "packages/client/ui-context-inspector/src/client/locales.ts": {
+      "lines": 0.0,
+      "statements": 0.0
+    },
+    "packages/client/ui-context-inspector/src/client/index.ts": {
+      "lines": 0.0,
+      "functions": 0.0,
+      "statements": 0.0
+    },
+    "packages/client/ui-code-index-center/src/client/index.ts": {
+      "lines": 0.0,
+      "functions": 0.0,
+      "statements": 0.0
+    },
+    "packages/client/ui-memory-center/src/client/index.ts": {
+      "lines": 0.0,
+      "functions": 0.0,
+      "statements": 0.0
+    },
+    "packages/client/ui-settings-mcp/src/client/index.ts": {
+      "lines": 0.0,
+      "functions": 0.0,
+      "statements": 0.0,
+      "branches": 0.0
+    },
+    "packages/client/ui-settings-skills/src/client/index.ts": {
+      "lines": 0.0,
+      "functions": 0.0,
+      "statements": 0.0,
+      "branches": 0.0
+    }
+  },
+  "verifiedAfterBaseline": {
+    "packages/core/tools/src/produced-files.ts": {
+      "status": "targeted per-file100 PASS",
+      "sourceSha256": "0b782dd9abf4d5cc9da736f224fe7fde63144a73479f8bd6f97f4b4b07ef3a7d",
+      "report": "/tmp/relay-mutation-coverage/coverage-summary.json",
+      "log": "/tmp/relay-mutation-coverage-final.log"
+    },
+    "packages/session/session-persistence/src/coordinator.ts": {
+      "status": "targeted per-file100 PASS",
+      "sourceSha256": "b19d4f8a2f84e9c6f0cd6b6a86088717d34b2550058b14f5c6feba3cd73472cf",
+      "report": "/tmp/relay-mutation-coverage/coverage-summary.json",
+      "log": "/tmp/relay-mutation-coverage-final.log"
+    },
+    "packages/core/agent-loop/src/agent.ts": {
+      "status": "targeted per-file100 PASS",
+      "sourceSha256": "a7dcc8e08c686e78d7aba96becfd6b34e752a6b43f9dc1d0f37d91bf8985dc44",
+      "report": "/tmp/relay-agent-boundary-coverage/coverage-summary.json",
+      "log": "/tmp/relay-agent-boundary-coverage-final.log"
+    },
+    "packages/core/agent-loop/src/tool-calls.ts": {
+      "status": "targeted per-file100 PASS",
+      "sourceSha256": "d363c27b1444901655ceea3c65b3487fefffd4b6bb5e7c981a935d3e39d99800",
+      "report": "/tmp/relay-agent-boundary-coverage/coverage-summary.json",
+      "log": "/tmp/relay-agent-boundary-coverage-final.log"
+    },
+    "packages/host/work-results/src/invariant.ts": {
+      "status": "targeted per-file100 PASS",
+      "sourceSha256": "cca95d22b3e84201258eab210e32b772be3bb669d06400fa009ad83d88981ad4",
+      "report": "/tmp/relay-work-receipts-coverage/coverage-summary.json",
+      "log": "/tmp/relay-work-receipts-coverage.log"
+    },
+    "packages/host/work-results/src/projection.ts": {
+      "status": "targeted per-file100 PASS",
+      "sourceSha256": "6836a503437dcc1029bd4ae3763ab0bd2f70d80467112715d0869e50e29fb6d2",
+      "report": "/tmp/relay-work-receipts-coverage/coverage-summary.json",
+      "log": "/tmp/relay-work-receipts-coverage.log"
+    },
+    "packages/subagent/subagent/src/activation-lease.ts": {
+      "status": "targeted per-file100 PASS",
+      "sourceSha256": "1e4df11bf98fd247713b96a99e86c2e604fbf78043a5aa92335e8c04cfd955a2",
+      "report": "/tmp/relay-subagent-current-coverage/coverage-summary.json",
+      "log": "/tmp/relay-subagent-service-coverage3.log"
+    },
+    "packages/subagent/subagent/src/delivery.ts": {
+      "status": "targeted per-file100 PASS",
+      "sourceSha256": "e96eac6b9f21be3eff084bbc363f6ebf6b925dabc9e248914af6cea1c90585a5",
+      "report": "/tmp/relay-subagent-current-coverage/coverage-summary.json",
+      "log": "/tmp/relay-subagent-service-coverage3.log"
+    },
+    "packages/subagent/subagent/src/index.ts": {
+      "status": "targeted per-file100 PASS",
+      "sourceSha256": "4ad67a1e78f69de3780302e84a9b9746acde0f39f5bec7f345384c2bad866418",
+      "report": "/tmp/relay-subagent-current-coverage/coverage-summary.json",
+      "log": "/tmp/relay-subagent-service-coverage3.log"
+    },
+    "packages/settings/settings/src/redact.ts": {
+      "status": "targeted per-file100 PASS",
+      "sourceSha256": "9f19863acd750adc6ec93bfaaf1cd89531850e9869d30876967fa6beab2ed480",
+      "report": "/tmp/relay-settings-redaction-coverage/coverage-summary.json",
+      "log": "/tmp/relay-settings-redaction-final-coverage.log"
+    },
+    "packages/core/scope/src/store.ts": {
+      "status": "targeted per-file100 PASS",
+      "sourceSha256": "a897125bc851765d2c073f9e7139c621fd91a8d51d808265b6f2c92e8c7b3216",
+      "report": "/tmp/relay-scope-store-coverage/coverage-summary.json",
+      "log": "/tmp/relay-scope-store-final-coverage.log"
+    },
+    "packages/boot/app-boot/src/profile.ts": {
+      "status": "targeted per-file100 PASS",
+      "sourceSha256": "ae3c6de184a6738f6ca16501ec7d29f9262805c5d9c221c6c830c30a1ccb5111",
+      "report": "/tmp/relay-boot-profile-coverage/coverage-summary.json",
+      "log": "/tmp/relay-boot-profile-final-coverage.log"
+    },
+    "packages/subagent/subagent-acp/src/run.ts": {
+      "status": "targeted per-file100 PASS",
+      "sourceSha256": "1f76b9304e2252f1f5c13ad5ea43eb7084873b44964cab3ec1ab454775bd62a5",
+      "report": "/tmp/relay-acp-run-coverage/coverage-summary.json",
+      "log": "/tmp/relay-acp-run-final-coverage.log"
+    },
+    "packages/mcp/mcp-servers-file/src/service.ts": {
+      "status": "targeted per-file100 PASS",
+      "sourceSha256": "5941cf9a5d7493829cced8ca25706c35a1be19c584c38807186dc5140ba4fbd3",
+      "report": "/tmp/relay-mcp-watch-ready-final/coverage-summary.json",
+      "log": "/tmp/relay-mcp-watch-ready-final.log"
+    },
+    "packages/mcp/mcp-servers-file/src/oauth.ts": {
+      "status": "targeted per-file100 PASS",
+      "sourceSha256": "5bfa8e5bfe6070a12c1eb770ca29de49304d3d117b47f4d355c2dc9b5609a719",
+      "report": "/tmp/relay-mcp-service-current-coverage/coverage-summary.json",
+      "log": "/tmp/relay-oauth-initial-transport-verified.log"
+    },
+    "packages/llm/llm-vision-fallback/src/index.ts": {
+      "status": "targeted per-file100 PASS",
+      "sourceSha256": "e7becf926b70be1e3185da2670b42192c2091732ca5a9c7d857cac1d6d3abca7",
+      "report": "/tmp/relay-vision-fallback-coverage/coverage-summary.json",
+      "log": "/tmp/relay-vision-fallback-verified-coverage.log"
+    },
+    "packages/client/ui-settings-general/src/client/HarnessRestartRow.tsx": {
+      "status": "targeted per-file100 PASS",
+      "sourceSha256": "379761504da128ec4c7d8008507a78b3145492c6d559ee0f91983718c33658df",
+      "report": "/tmp/relay-harness-restart-lifecycle/coverage-summary.json",
+      "log": "/tmp/relay-harness-restart-lifecycle.log"
+    },
+    "packages/client/ui-preview/src/client/browserRecording.ts": {
+      "status": "targeted per-file100 PASS",
+      "sourceSha256": "aaaf7a87dfe5bcadcb0f8b2d9568e8af03f7746e93ee73d0d4f1510b7b7a54ae",
+      "report": "/tmp/relay-recording-full-coverage/coverage-summary.json",
+      "log": "/tmp/relay-recording-full-coverage.log"
+    },
+    "packages/index/code-index-local/src/watcher.ts": {
+      "status": "targeted per-file100 PASS",
+      "sourceSha256": "ce73a328a6b40c02c63e806a51ab71e267e28ffff4727570ec1278f042544c18",
+      "report": "/tmp/relay-tree-watcher-full-coverage/coverage-summary.json",
+      "log": "/tmp/relay-tree-watcher-full-coverage.log"
+    },
+    "packages/index/code-index-workspace-router/src/index.ts": {
+      "status": "targeted per-file100 PASS",
+      "sourceSha256": "1cdaeb6ece772692d4ad9b935ee869046dc9f5bcbb92f7178c33b90be9c564fd",
+      "report": "/tmp/relay-router-coverage-closed/coverage-summary.json",
+      "log": "/tmp/relay-router-coverage-closed.log"
+    },
+    "packages/client/ui-product-shell/src/client/index.ts": {
+      "status": "targeted per-file100 PASS",
+      "sourceSha256": "90fe0df1d8c5e049010080b18cbb91bdedaec9ad5f84b6953531b6c387fd729e",
+      "report": "/tmp/relay-product-shell-scoped-coverage/coverage-summary.json",
+      "log": "/tmp/relay-product-shell-scoped-coverage.log"
+    },
+    "packages/client/ui-product-shell/src/client/mode.ts": {
+      "status": "targeted per-file100 PASS",
+      "sourceSha256": "c984ad74e98e47089640021ae602df4cffe0ce029d63f427240aa2633a507fef",
+      "report": "/tmp/relay-product-mode-coverage-closed/coverage-summary.json",
+      "log": "/tmp/relay-product-mode-coverage-closed.log"
+    },
+    "packages/client/ui-preview/src/client/shell.ts": {
+      "status": "targeted per-file100 PASS",
+      "sourceSha256": "75befabd6f14c30e185d1c9b80f4e0a7b50b737edcb351b139081e4075a74392",
+      "report": "/tmp/relay-preview-shell-full-coverage/coverage-summary.json",
+      "log": "/tmp/relay-preview-shell-full-coverage.log"
+    },
+    "packages/client/ui-memory-center/src/client/index.ts": {
+      "status": "targeted per-file100 PASS",
+      "sourceSha256": "e5656ad816b1912a1a02e6bd9c8bbc06b88358c7734d5c017c65b9b980e5d1d1",
+      "report": "/tmp/relay-memory-private-entry/coverage-summary.json",
+      "log": "/tmp/relay-memory-private-entry.log"
+    },
+    "packages/client/ui-memory-center/src/client/store.ts": {
+      "status": "targeted per-file100 PASS",
+      "sourceSha256": "1daf9d07029c2ce06725ae51d463ea5202c3e8fb1bd30639c9dc7a7f3f3af295",
+      "report": "/tmp/relay-memory-search-cache/coverage-summary.json",
+      "log": "/tmp/relay-memory-search-cache.log"
+    }
+  },
+  "currentMeasurement": {
+    "file": ".agents/harness-completeness-20260905/coverage-current-after-ui.json",
+    "status": "175 failing files; 17880 tests pass",
+    "log": "/tmp/relay-full-coverage-after-ui.log",
+    "originalBaselineFailingFiles": 192,
+    "currentFailingFiles": 175
+  }
+}

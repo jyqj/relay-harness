@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+import threading
 import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -39,6 +41,8 @@ class RelayHarnessConfig:
     launch_args_override: tuple[str, ...] | None = None
     request_timeout_seconds: float | None = None
     shutdown_timeout_seconds: float | None = 1.0
+    eof_grace_seconds: float = 6.0
+    terminate_grace_seconds: float = 3.0
     max_frame_bytes: int = DEFAULT_JSON_RPC_MAX_FRAME_BYTES
     max_queued_write_bytes: int = DEFAULT_JSON_RPC_MAX_QUEUED_WRITE_BYTES
     max_notification_queue_size: int = DEFAULT_NOTIFICATION_QUEUE_SIZE
@@ -94,6 +98,8 @@ class RelayHarness:
                 env=env,
                 request_timeout_seconds=self.config.request_timeout_seconds,
                 shutdown_timeout_seconds=self.config.shutdown_timeout_seconds,
+                eof_grace_seconds=self.config.eof_grace_seconds,
+                terminate_grace_seconds=self.config.terminate_grace_seconds,
                 max_frame_bytes=self.config.max_frame_bytes,
                 max_queued_write_bytes=self.config.max_queued_write_bytes,
                 max_notification_queue_size=self.config.max_notification_queue_size,
@@ -102,6 +108,7 @@ class RelayHarness:
             )
         )
         self._initialized = False
+        self._start_lock = threading.Lock()
 
     def __enter__(self) -> "RelayHarness":
         self.start()
@@ -115,18 +122,25 @@ class RelayHarness:
         return self._client
 
     def start(self) -> None:
-        if self._initialized:
-            return
-        self._client.start()
-        self._client.initialize(
-            cwd=self._cwd,
-            provider=self.config.provider,
-            model=self.config.model,
-            max_tokens=self.config.max_tokens,
-        )
-        self._initialized = True
+        """Start the runtime and perform the initialize handshake exactly once.
+
+        Concurrent ``start()`` calls serialize on one lock, so the runtime
+        receives exactly one ``initialize`` even when several threads race.
+        """
+        with self._start_lock:
+            if self._initialized:
+                return
+            self._client.start()
+            self._client.initialize(
+                cwd=self._cwd,
+                provider=self.config.provider,
+                model=self.config.model,
+                max_tokens=self.config.max_tokens,
+            )
+            self._initialized = True
 
     def close(self) -> None:
+        """Shut down and reap the runtime subprocess. Idempotent and terminal."""
         self._client.close()
         self._initialized = False
 
@@ -141,7 +155,15 @@ class RelayHarness:
         session_id: str | None = None,
         on_notification: Callable[[Notification], None] | None = None,
     ) -> RunResult:
-        return self.start_session(session_id).run(input, on_notification=on_notification)
+        session = self.start_session(session_id)
+        try:
+            return session.run(input, on_notification=on_notification)
+        finally:
+            # Auto-minted sessions are per-run handles no caller can address
+            # afterwards, so they are reclaimed immediately; a named session
+            # stays owned by its caller.
+            if session_id is None:
+                self._client.session_close(session.id)
 
 
 class Session:
@@ -167,9 +189,10 @@ class Session:
                 notification.method == "session.event"
                 and notification.payload.get("sessionId") == self.id
             ):
-                event = notification.payload.get("event")
-                if isinstance(event, dict):
-                    events.append(event)
+                # Wire boundary: the envelope feeds the typed RunResult, so a
+                # malformed runtime raises a protocol error instead of
+                # surfacing type-invalid data (or an empty final_response).
+                events.append(_validated_session_event(notification.payload.get("event")))
 
         with self.harness.client.subscribe_session_notifications(self.id) as subscription:
             message_id = self.harness.client.session_prompt(
@@ -222,7 +245,34 @@ def normalize_input(input: str | list[JsonObject]) -> list[JsonObject]:
     return input
 
 
+def _validated_session_event(value: object) -> JsonObject:
+    """Validate one wire session-event envelope before it feeds RunResult.
+
+    Raises:
+        SdkProtocolError: The envelope is not an object with a string type, or
+            an ``assistant/message`` event lacks kind-tagged content blocks.
+    """
+    if not isinstance(value, dict) or not isinstance(value.get("type"), str):
+        raise SdkProtocolError(f"session.event carried no event envelope: {json.dumps(value)}")
+    if value["type"] == "assistant/message":
+        data = value.get("data")
+        message = data.get("message") if isinstance(data, dict) else None
+        content = message.get("content") if isinstance(message, dict) else None
+        if not isinstance(content, list) or not all(
+            isinstance(block, dict) and isinstance(block.get("type"), str) for block in content
+        ):
+            raise SdkProtocolError(
+                f"assistant/message event carried malformed content: {json.dumps(value)}"
+            )
+    return value
+
+
 def final_response(events: list[JsonObject]) -> str:
+    """Return the concatenated text of the last root-session assistant message.
+
+    Events must be validated root-session envelopes from one owned run
+    interval; ``data.message.content`` is the single wire read path.
+    """
     for event in reversed(events):
         if event.get("type") != "assistant/message":
             continue
@@ -230,8 +280,9 @@ def final_response(events: list[JsonObject]) -> str:
         if not isinstance(data, dict):
             continue
         message = data.get("message")
-        content_owner = message if isinstance(message, dict) else data
-        content = content_owner.get("content")
+        if not isinstance(message, dict):
+            continue
+        content = message.get("content")
         if not isinstance(content, list):
             continue
         parts: list[str] = []

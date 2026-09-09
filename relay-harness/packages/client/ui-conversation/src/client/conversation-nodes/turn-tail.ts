@@ -7,7 +7,7 @@ import type {} from '@relay-harness/rlh-llm-retry/types'
 import type {
   AssistantChatData, FinalAssistantChatData, TurnTailChatData,
 } from '../contract/chat-nodes.ts'
-import { deriveTurnMetrics } from '../chat/turn-metrics.ts'
+import { deriveTurnMetrics } from '../turn-metrics.ts'
 import { CHAT_SYNTHETIC_SEQ_OFFSETS, chatNode } from './common.ts'
 
 declare module '@relay-harness/rlh-client-ui-conversation/client' {

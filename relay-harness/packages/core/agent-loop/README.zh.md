@@ -6,6 +6,8 @@ agent（智能体）的唯一具体实现插件和循环驱动器。其包内部
 
 这是 harness 中唯一包含具体循环逻辑的包。其他所有内容要么是抽象服务，要么是针对扩展点的插件：新行为应放入插件，而不是这里。
 
+恢复会在未发布的 setup 前，将可选 `persistenceFence` 转发给 `SessionPersistence.prepare(id, signal, fence)`。持久化提供方在冷修复全程持有其排他权限；owner 在 setup 中安装同一证明，以保护后续活动写入。
+
 ## 服务：`AgentLoop`（ctx 键：`agentLoop`）
 
 ### 公开 API
@@ -21,7 +23,7 @@ agent（智能体）的唯一具体实现插件和循环驱动器。其包内部
 `AgentLoop` 还实现 `AgentFactory` 约定，并通过 `ctx.agents.setFactory(this)` 注册自身，因此插件会通过 `ctx.agents` 创建／恢复 agent：
 
 - `ctx.agents.create({ sessionId, meta?, seed?, agentOptions?, setup?, signal? }): Promise<AgentHandle>`：使用调用方提供的共享 id 以编程方式创建。它会等待尚未发布的 setup 事务，然后才返回；`meta` 携带 cwd／谱系／seed 边界元数据，`seed` 则在会话边界验证并快照持久值后，重建 fork 子级的前缀。`signal` 只在此 Promise 结算前生效。返回的 [`AgentHandle`](../agent/README.md) 拥有确切的 teardown 能力。
-- `ctx.agents.resume({ resumeSessionId, agentOptions?, setup?, signal? }): Promise<AgentHandle>`：通过 `ctx.sessionPersistence` 加载持久化会话（参见[会话持久化](../../../.agents/notes/implemented/architecture/2026-06-14-session-persistence.md)），使用同一 id 注册 agent，重建历史，然后针对全新且尚未发布的 agent 作用域等待 setup，再执行受回滚保护的发布。轮次编号和派生历史从已加载日志继续。此操作要求存在会话持久化后端（不会硬注入，因此非持久化 demo 仍能工作；缺少持久化时，`resume` 会以明确错误拒绝）。`signal` 仅用于创建。返回 `AgentHandle`。
+- `ctx.agents.resume({ resumeSessionId, agentOptions?, setup?, signal?, persistenceFence? }): Promise<AgentHandle>`：通过 `ctx.sessionPersistence` 加载持久化会话（参见[会话持久化](../../../.agents/notes/implemented/architecture/2026-06-14-session-persistence.md)），使用同一 id 注册 agent，重建历史，然后针对全新且尚未发布的 agent 作用域等待 setup，再执行受回滚保护的发布。轮次编号和派生历史从已加载日志继续。此操作要求存在会话持久化后端（不会硬注入，因此非持久化 demo 仍能工作；缺少持久化时，`resume` 会以明确错误拒绝）。`signal` 仅用于创建。返回 `AgentHandle`。
 
 配置驱动的 `ctx.agentLoop.create()` 路径让循环 fiber 拥有其 agent（该路径会丢弃 handle）。对于以编程方式创建的 agent，handle 持有者是唯一面向消费方的 teardown 能力；AgentLoop 提供方卸载是一条独立的结构性 teardown 边，而不是向应用代码公开的另一个 handle。
 

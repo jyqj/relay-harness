@@ -60,3 +60,9 @@ Status: implemented
 - 常驻目录缓存 + 推失效换来菜单零延迟与回车裁决可靠；代价是三条失效路径（change 帧、重连、epoch guard）都需测试钉住。
 - sessionId 寻址让 host 的 per-agent 有效目录（全局 + scoped shadows）直接上 wire，client 原样呈现。
 - 已知欠账：popupSelect 壳暂无已上架业务消费方（模型选择等将随 host `selectModel` 工作以 live-mutation 形态到来，届时作接入样板）；队列第二刀（逐项 Inbox 操作）、富结果卡、roster 可配置性入台账待触发。
+
+## 渲染器拥有的弹窗订阅
+
+popupSelect 弹窗的 inject face 通过 `hooks.popup` 提供现有控制器状态，`InjectFace` 为组件推导 `usePopup`。完整控制器被明确绑定的关闭、移动、选择、搜索、重试、高亮及三个风险确认操作回调替代。这移除了业务组件内的订阅机制及私有控制器能力暴露，不复制状态，也不改变控制器在打开时捕获的上下文。
+
+真实 Cordis 注册测试检查控制器状态同一性，以及所有操作经收窄接口的参数转发。组件测试使用共享 test-runtime hook 绑定器，保留搜索焦点、筛选、键盘及指针选择、风险确认和组合器焦点断言。构建后的浏览器回放仍是独立验证要求。

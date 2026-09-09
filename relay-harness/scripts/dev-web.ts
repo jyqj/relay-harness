@@ -111,6 +111,8 @@ export async function watchClientPlugins(
   const initialized = new WeakSet<object>()
   const readiness: { expectedBuilds?: number; initializedBuilds: number } = { initializedBuilds: 0 }
   const bundles = await build({
+    // Keep config loading on the same TS carrier; native sync hooks conflict with tsx on supported Node versions.
+    configLoader: 'tsx',
     cwd: root,
     workspace: [...pluginDirs],
     watch: true,

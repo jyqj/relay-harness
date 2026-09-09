@@ -1,5 +1,6 @@
 import { mkdtempSync, readFileSync, statSync, unlinkSync } from 'node:fs'
 import { tmpdir } from 'node:os'
+import { randomBytes } from 'node:crypto'
 import { dirname, join } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 import {
@@ -577,6 +578,31 @@ describe('OutputCollector', () => {
     expect(failNextUnlink.value).toBe(false)
     expect(collector.finalize().spillPath).toBeUndefined()
     unlinkSync(spillPath)
+  })
+
+  it('degrades a failed spill to the in-memory tail instead of throwing', () => {
+    // A spill directory whose parent cannot exist makes the lazy open fail
+    // (ENOENT) — the same shape as ENOSPC/EMFILE mid-stream. The 'data'
+    // callback must survive: the stream degrades to the documented tail.
+    const absentSpillDir = join(tmpdir(), `rlh-subprocess-absent-${randomBytes(4).toString('hex')}`, 'child')
+    const collector = new OutputCollector(10, 100, 'test', absentSpillDir)
+    expect(() => { collector.push(Buffer.from('0123456789abcdef')) }).not.toThrow()
+    const out = collector.finalize()
+    expect(out.text).toBe('6789abcdef')
+    expect(out.truncated).toBe(true)
+    expect(out.spillPath).toBeUndefined()
+    expect(collector.readFrom(0).lossy).toBe(true)
+  })
+
+  it('settles a live child whose stream cannot spill', async () => {
+    const absentSpillDir = join(tmpdir(), `rlh-subprocess-absent-${randomBytes(4).toString('hex')}`, 'child')
+    const result = await finish(spawnSubprocess(
+      spec('printf "%.0sx" $(seq 1 500)', { stdoutMaxBytes: 100 }),
+      { spillDir: absentSpillDir },
+    ))
+    expect(result.exitCode).toBe(0)
+    expect(result.stdout.truncated).toBe(true)
+    expect(result.stdout.spillPath).toBeUndefined()
   })
 })
 

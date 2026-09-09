@@ -14,6 +14,10 @@ The reporting child Session owns an outbound mailbox. Before parent inbox public
 
 When the parent appends the matching `user/message`, the live manager appends `subagent/report-delivered` to the child. Cold child materialization also treats the parent's durable log or current inbox as authoritative acknowledgement, so a crash after parent admission but before the child acknowledgement does not duplicate the report. Remaining accepted reports replay in commit order before the resumed child receives new work.
 
+Retry identity compares the normalized message structures, not JSON property insertion order. Reordering object fields preserves the original receipt; changing content, attribution, or report delivery mode remains a conflict. Array order remains significant.
+
+Every same-key retry crosses the persistence barrier again: an in-memory accepted event may belong to a caller whose earlier flush failed. Recovery preserves the original message identity and republishes it only when the authoritative log and inbox do not already contain it. Active publication rechecks the child lease after the asynchronous barrier; a report resolves its live parent again before parent inbox mutation.
+
 ## Alternatives considered
 
 **Store reports in the parent before sending.** Rejected because a report begins under child authority and the child Session is the only durable object guaranteed live at acceptance; cross-Session atomic append does not exist.

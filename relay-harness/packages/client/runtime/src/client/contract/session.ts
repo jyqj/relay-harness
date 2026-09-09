@@ -7,12 +7,12 @@
  * must stub); runtime-internal entry points (history staging, wire-frame
  * dispatch) stay on the class, invisible out here.
  */
-import type { AttachmentIdType, ImageAttachmentRef } from '@relay-harness/rlh-attachment'
 import type {
-  MessageId, PromptContentPart, QueueAction, RpcResult, SessionId,
+  MessageId,PromptContentPart,QueueAction,RpcResult,SessionId,
 } from '@relay-harness/rlh-api-remotes/client'
+import type { AttachmentIdType,ImageAttachmentRef } from '@relay-harness/rlh-attachment'
 import type { RemoteResult } from '@relay-harness/rlh-typert-protocol'
-import type { ConversationSnapshot } from '../sessions/conversation.ts'
+import type { ConversationSnapshot } from './session-snapshot.ts'
 import type { ObservableSnapshot } from './store.ts'
 
 /** Key-addressed projection read face (the useProjection resolution path; see ProjectionValueStore). */

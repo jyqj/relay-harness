@@ -1,3 +1,4 @@
+// @ts-check
 const {
   isLocalAppNavigationUrl,
   isSameOriginLoopbackUrl,
@@ -46,8 +47,7 @@ function assertIpcSender(event, allowedRoles, options) {
   const allowed = allowedRoles instanceof Set ? allowedRoles : new Set(allowedRoles || []);
   const role = ipcSenderRole(event, options);
   if (!role || !allowed.has(role)) {
-    const error = new Error('Unauthorized IPC sender');
-    error.code = 'ERR_RLH_IPC_SENDER';
+    const error = Object.assign(new Error('Unauthorized IPC sender'), { code: 'ERR_RLH_IPC_SENDER' });
     throw error;
   }
   return role;

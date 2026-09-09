@@ -179,6 +179,13 @@ type TypertGatewayErrorCode =
 /** Host dispatcher consumed by Connection adapters. */
 interface TypertGateway {
   /**
+   * Observe the original active trusted Connection request, never direct invocation.
+   * The returned snapshot is not a transferable authority; consumers re-read it
+   * at final mutation admission, matching the expected original endpoint.
+   * @returns current original endpoint and carrier signal, or undefined outside its live dispatch.
+   */
+  currentTrustedRequest(): { readonly endpoint: string; readonly signal: AbortSignal } | undefined
+  /**
    * Invoke one live Remote method without assuming a carrier or response envelope.
    * @param request - decoded endpoint and named wire arguments.
    * @returns the validated business result.
@@ -249,6 +256,25 @@ respond(message: ClientResponse): Promise<RpcReceipt>
 ```
 
 Source: [`packages/host/apiproxy/src/api/index.ts:22`](../../packages/host/apiproxy/src/api/index.ts)
+
+<a id="ctxhostinteractions--hostinteractions"></a>
+
+### `ctx.hostInteractions` — `HostInteractions`
+
+Counts borrowed synchronously from the live proxy's authoritative request maps.
+
+```ts cordis-catalog
+/**
+ * Count pending approval and question requests for one exact Session.
+ * @param sessionId - owning Session identity.
+ * @returns current pending counts, without consuming any request.
+ */
+pendingFor(sessionId: SessionId): { approvals: number; questions: number }
+```
+
+Types: [SessionId](core.md)
+
+Source: [`packages/host/apiproxy/src/host-interactions.ts:5`](../../packages/host/apiproxy/src/host-interactions.ts)
 
 <a id="ctxtypert--typertregistry"></a>
 
@@ -324,6 +350,12 @@ Resolve strict generated definitions or conservative SRC markers against current
 
 ```ts cordis-catalog
 /**
+ * Read live carrier provenance without minting or extending its authority.
+ * @returns the active original endpoint and signal, or undefined outside trusted dispatch.
+ */
+currentTrustedRequest(): { readonly endpoint: string; readonly signal: AbortSignal } | undefined
+
+/**
  * Invoke one live Remote method through strict generated reflection or SRC markers.
  * @param request - decoded endpoint and exact named wire arguments.
  * @returns the validated business result.
@@ -332,5 +364,5 @@ Resolve strict generated definitions or conservative SRC markers against current
 async invoke(request: InvokeRemoteRequest): Promise<unknown>
 ```
 
-Source: [`packages/api/gateway/src/index.ts:90`](../../packages/api/gateway/src/index.ts)
+Source: [`packages/api/gateway/src/index.ts:91`](../../packages/api/gateway/src/index.ts)
 <!-- END GENERATED cordis-surface -->

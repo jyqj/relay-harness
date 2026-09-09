@@ -1,0 +1,51 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "lib/types"
+  },
+  "include": [
+    "src"
+  ],
+  "references": [
+    {
+      "path": "../../../vendor/cordis"
+    },
+    {
+      "path": "../../../vendor/schemastery"
+    },
+    {
+      "path": "../../runtime-diagnostics/invariants"
+    },
+    {
+      "path": "../../typert/protocol"
+    },
+    {
+      "path": "../../api/gateway/tsconfig.host.json"
+    },
+    {
+      "path": "../../core/agent"
+    },
+    {
+      "path": "../../core/session"
+    },
+    {
+      "path": "../../session/session-persistence"
+    },
+    {
+      "path": "../../session/session-projection"
+    },
+    {
+      "path": "../../session-query/session-query"
+    },
+    {
+      "path": "../../jobs/jobs"
+    },
+    {
+      "path": "../apiproxy"
+    },
+    {
+      "path": "../../util/brand"
+    }
+  ]
+}

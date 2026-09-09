@@ -1,14 +1,13 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi } from 'vitest'
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import type {
-  SessionListState, WorkspaceId, WorkspaceListState, WorkspaceView,
-} from '@relay-harness/rlh-client-runtime/client'
-import { makeTranslate } from '@relay-harness/rlh-client-test-runtime'
 import { zh as commonZh } from '@relay-harness/rlh-client-locale/src/locales/zh.ts'
-import type { DirectoryFlowOwnerProps, WorkspacePickerProps } from '../src/client/contract/slots.ts'
-import { bindSnapshotSelector } from '@relay-harness/rlh-client-test-runtime'
-import { WorkspacePicker } from '../src/client/WorkspacePicker.tsx'
+import type {
+  SessionListState,WorkspaceId,WorkspaceListState,WorkspaceView,
+} from '@relay-harness/rlh-client-runtime/client'
+import { bindSnapshotSelector,makeTranslate } from '@relay-harness/rlh-client-test-runtime'
+import { act,cleanup,fireEvent,render,screen,waitFor } from '@testing-library/react'
+import { afterEach,describe,expect,it,vi } from 'vitest'
+import { WorkspacePicker } from '../src/client/browser/WorkspacePicker.tsx'
+import type { DirectoryFlowOwnerProps,WorkspacePickerProps } from '../src/client/contract/slots.ts'
 import { zh } from '../src/client/locales.ts'
 
 afterEach(cleanup)

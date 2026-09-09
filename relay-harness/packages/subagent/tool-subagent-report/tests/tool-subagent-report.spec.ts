@@ -535,20 +535,61 @@ describe('rlh-tool-subagent-report', () => {
   })
 
   it('accepts a report into a host-disposing but still-registered parent', async () => {
-    const { ctx } = await setup()
+    const { ctx, adapter } = await setup()
     const parentHandle = await ctx.agents.create({
       sessionId: SessionId('disposing-parent'),
       agentOptions: { provider: 'mock', model: 'mock' },
     })
+    // Hold real model quiescence: a merely async disposer can finish while
+    // reportFrom awaits its durable receipt. Registry presence must persist
+    // through that barrier, not only through the initial function call.
+    await startHeldParentTurn(parentHandle.agent, adapter)
     const { child } = await startChild(ctx, parentHandle.agent)
-    // Host-owned disposal starts asynchronously; the parent stays registered
-    // until quiescence, and registry presence — not disposal state — is the
-    // acceptance gate (pins the README contract).
     const disposing = parentHandle.dispose()
-    const accepted = await callReport(ctx, child, 'during-close')
-    expect(accepted.isError).toBe(false)
-    await disposing
+    try {
+      expect(ctx.agents.get(parentHandle.agent.id)).toBe(parentHandle.agent)
+      const accepted = await callReport(ctx, child, 'during-close')
+      expect(accepted.isError).toBe(false)
+      expect(ctx.agents.get(parentHandle.agent.id)).toBe(parentHandle.agent)
+    } finally {
+      adapter.release()
+      await disposing
+    }
+    expect(ctx.agents.get(parentHandle.agent.id)).toBeUndefined()
     expect((await callReport(ctx, child, 'after-close')).isError).toBe(true)
+  })
+
+  it('refuses inbox admission when the parent disappears during report durability', async () => {
+    const { ctx } = await setup()
+    const parentHandle = await ctx.agents.create({
+      sessionId: SessionId('vanishing-report-parent'),
+      agentOptions: { provider: 'mock', model: 'mock' },
+    })
+    const { child } = await startChild(ctx, parentHandle.agent)
+    const entered = Promise.withResolvers<undefined>()
+    const release = Promise.withResolvers<undefined>()
+    const removeGate = ctx.on('session/flush', (session) => {
+      if (session !== child.session) return
+      entered.resolve(undefined)
+      return release.promise
+    })
+    try {
+      const reporting = callReport(ctx, child, 'parent left during persistence')
+      await entered.promise
+      await parentHandle.dispose()
+      expect(ctx.agents.get(parentHandle.agent.id)).toBeUndefined()
+      release.resolve(undefined)
+      const result = await reporting
+      expect(result.isError).toBe(true)
+      expect(JSON.stringify(result.content)).toContain('direct parent is not live')
+      expect(parentHandle.agent.inbox.nextStep).toEqual([])
+      expect(child.session.events.filter(event => event.type === 'subagent/report-accepted')).toHaveLength(1)
+      expect(child.session.events.filter(event => event.type === 'subagent/report-delivered')).toEqual([])
+    } finally {
+      release.resolve(undefined)
+      removeGate()
+      await parentHandle.dispose()
+    }
   })
 
   it('keeps the namespace plugin shape and validates its default', () => {

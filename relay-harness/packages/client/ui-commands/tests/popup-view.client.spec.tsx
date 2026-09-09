@@ -14,7 +14,7 @@ import type { SelectOption } from '../src/client/contract.ts'
 import type { PopupSpec, TokenSegment } from '../src/client/popup.ts'
 import { PopupSelectController } from '../src/client/popup.ts'
 import { PopupSelectView } from '../src/client/PopupSelectView.tsx'
-import { makeTranslate } from '@relay-harness/rlh-client-test-runtime'
+import { bindSnapshotSelector, makeTranslate } from '@relay-harness/rlh-client-test-runtime'
 import { zh as commonZh } from '@relay-harness/rlh-client-locale/src/locales/zh.ts'
 import { zh } from '../src/client/locales.ts'
 
@@ -64,7 +64,7 @@ async function mountOpen(overrides: Partial<PopupSpec<string>> = {}, consumeResu
   const consume = vi.fn((_segment: TokenSegment) => consumeResult)
   const focusComposer = vi.fn()
   const popup = new PopupSelectController<string>({ consume, focusComposer })
-  const view = render(<PopupSelectView popup={popup} t={t} />)
+  const view = render(<PopupSelectView {...popupProps(popup)} t={t} />)
   await act(async () => {
     popup.open('theme', spec(overrides), 'ctx-A', SEGMENT)
     await Promise.resolve()
@@ -79,7 +79,7 @@ function rowLabels(): string[] {
 describe('PopupSelectView', () => {
   it('renders null while closed, opens with focus in the search input', async () => {
     const popup = new PopupSelectController<string>({ consume: () => true, focusComposer: () => {} })
-    const view = render(<PopupSelectView popup={popup} t={t} />)
+    const view = render(<PopupSelectView {...popupProps(popup)} t={t} />)
     expect(view.container.childElementCount).toBe(0)
     await act(async () => {
       popup.open('theme', spec(), 'ctx-A', SEGMENT)
@@ -252,3 +252,13 @@ describe('PopupSelectView', () => {
     expect(focusComposer).not.toHaveBeenCalled()
   })
 })
+
+function popupProps(popup: PopupSelectController<string>) {
+  return {
+    usePopup: bindSnapshotSelector(popup.state),
+    dismiss: popup.dismiss.bind(popup), move: popup.move.bind(popup), select: popup.select.bind(popup),
+    setSearch: popup.setSearch.bind(popup), retry: popup.retry.bind(popup), highlight: popup.highlight.bind(popup),
+    acknowledge: popup.acknowledge.bind(popup), cancelConfirmation: popup.cancelConfirmation.bind(popup),
+    confirm: popup.confirm.bind(popup),
+  }
+}

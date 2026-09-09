@@ -445,7 +445,7 @@ export class CodeIndexLocal extends CodeIndex {
       // Ignore-rule edits can affect arbitrary descendants, so they widen to
       // the authoritative full-tree diff instead of pretending to be local.
       this.invalidator.schedule(paths?.some(path => path.split('/').at(-1) === '.gitignore') === true ? undefined : paths)
-    })
+    }, () => { this.runtime.setWatcherDegraded(true) })
     const scheduleOnToolResult = toolResultStaleHandler(this.invalidator)
     ctx.on('session/event', (_session, event) => {
       scheduleOnToolResult(event)

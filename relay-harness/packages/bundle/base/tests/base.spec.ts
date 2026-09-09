@@ -39,6 +39,8 @@ describe('rlh-base bundle', () => {
       maxContributorChars: 64000,
       maxContributorTokens: 16000,
       contributorTimeoutMs: 5000,
+      prepareTimeoutMs: 5000,
+      maxConcurrentContributors: 4,
     })
     expect(rows.filter(row => row.id === 'mcp-catalog')).toHaveLength(1)
     expect(rows.find(row => row.id === 'session-history-context')?.config).toEqual({

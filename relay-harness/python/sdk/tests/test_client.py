@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import inspect
 import json
+import os
 import sys
 import threading
 import time
@@ -48,10 +49,11 @@ for line in sys.stdin:
     method = msg.get("method")
     if method == "initialize":
         json.dump(msg.get("params"), open(os.environ["INIT_DUMP"], "w"))
-        print(json.dumps({"jsonrpc": "2.0", "id": msg["id"], "result": {"serverInfo": {"name": "fake-runtime"}}}), flush=True)
+        print(json.dumps({"jsonrpc": "2.0", "id": msg["id"], "result": {"serverInfo": {"name": "fake-runtime", "version": "0.0.1"}}}), flush=True)
     elif method == "session/prompt":
         params = msg.get("params") or {}
         print(json.dumps({"jsonrpc": "2.0", "method": "session.event", "params": {"sessionId": params["sessionId"], "event": {"type": "agent/inbox/spliced", "data": {"target": "next-turn", "start": 0, "inserted": [{"id": "message-1"}]}}}}), flush=True)
+        print(json.dumps({"jsonrpc": "2.0", "method": "session.event", "params": {"sessionId": params["sessionId"], "event": {"type": "tool/result", "data": {"turn": 1, "step": 1, "producedFiles": ["output.md"], "message": {"id": "result-1", "role": "user", "source": {"kind": "tool", "callId": "call-1"}, "content": [{"type": "tool-result", "toolCallId": "call-1", "isError": False, "content": [{"type": "text", "text": "written"}]}]}}}}}), flush=True)
         print(json.dumps({"jsonrpc": "2.0", "method": "session.status", "params": {"sessionId": params["sessionId"], "status": "running"}}), flush=True)
         print(json.dumps({"jsonrpc": "2.0", "id": msg["id"], "result": {"messageId": "message-1"}}), flush=True)
         print(json.dumps({
@@ -119,6 +121,7 @@ for line in sys.stdin:
     ) as harness:
         result = harness.run("say hello", session_id="main")
 
+    assert next(event for event in result.events if event["type"] == "tool/result")["data"]["producedFiles"] == ["output.md"]
     assert result.final_response == "hello from runtime"
     assert result.finish_reason == "max-tokens"
     assert result.events[-1]["type"] == "turn/end"
@@ -147,7 +150,7 @@ for line in sys.stdin:
     msg = json.loads(line)
     method = msg.get("method")
     if method == "initialize":
-        print(json.dumps({"jsonrpc": "2.0", "id": msg["id"], "result": {"serverInfo": {"name": "fake-runtime"}}}), flush=True)
+        print(json.dumps({"jsonrpc": "2.0", "id": msg["id"], "result": {"serverInfo": {"name": "fake-runtime", "version": "0.0.1"}}}), flush=True)
     elif method == "session/prompt":
         print(json.dumps({"jsonrpc": "2.0", "method": "session.event", "params": {"sessionId": "main", "event": {"type": "agent/inbox/spliced", "data": {"target": "next-turn", "start": 0, "inserted": [{"id": "message-1"}]}}}}), flush=True)
         print(json.dumps({"jsonrpc": "2.0", "method": "session.status", "params": {"sessionId": "main", "status": "running"}}), flush=True)
@@ -186,7 +189,7 @@ for line in sys.stdin:
     msg = json.loads(line)
     method = msg.get("method")
     if method == "initialize":
-        print(json.dumps({"jsonrpc": "2.0", "id": msg["id"], "result": {"serverInfo": {"name": "fake-runtime"}}}), flush=True)
+        print(json.dumps({"jsonrpc": "2.0", "id": msg["id"], "result": {"serverInfo": {"name": "fake-runtime", "version": "0.0.1"}}}), flush=True)
     elif method == "session/prompt":
         params = msg.get("params") or {}
         print(json.dumps({"jsonrpc": "2.0", "method": "session.event", "params": {"sessionId": params["sessionId"], "event": {"type": "agent/inbox/spliced", "data": {"target": "next-turn", "start": 0, "inserted": [{"id": "message-1"}]}}}}), flush=True)
@@ -225,7 +228,7 @@ for line in sys.stdin:
     msg = json.loads(line)
     if msg.get("method") == "initialize":
         json.dump({"process": os.getcwd(), "environment": os.environ.get("RLH_CWD"), "wire": msg["params"]["cwd"]}, open(os.environ["CAPTURE"], "w"))
-        print(json.dumps({"jsonrpc": "2.0", "id": msg["id"], "result": {"serverInfo": {"name": "fake-runtime"}}}), flush=True)
+        print(json.dumps({"jsonrpc": "2.0", "id": msg["id"], "result": {"serverInfo": {"name": "fake-runtime", "version": "0.0.1"}}}), flush=True)
     elif msg.get("method") == "shutdown":
         print(json.dumps({"jsonrpc": "2.0", "id": msg["id"], "result": {}}), flush=True)
         break
@@ -260,7 +263,7 @@ for line in sys.stdin:
     msg = json.loads(line)
     method = msg.get("method")
     if method == "initialize":
-        print(json.dumps({"jsonrpc": "2.0", "id": msg["id"], "result": {"serverInfo": {"name": "fake-runtime"}}}), flush=True)
+        print(json.dumps({"jsonrpc": "2.0", "id": msg["id"], "result": {"serverInfo": {"name": "fake-runtime", "version": "0.0.1"}}}), flush=True)
     elif method == "session/prompt":
         print(json.dumps({"jsonrpc": "2.0", "method": "session.event", "params": {"sessionId": "main", "event": {"type": "agent/inbox/spliced", "data": {"target": "next-turn", "start": 0, "inserted": [{"id": "message-1"}]}}}}), flush=True)
         print(json.dumps({"jsonrpc": "2.0", "method": "session.status", "params": {"sessionId": "main", "status": "running"}}), flush=True)
@@ -302,7 +305,7 @@ for line in sys.stdin:
     msg = json.loads(line)
     method = msg.get("method")
     if method == "initialize":
-        print(json.dumps({"jsonrpc": "2.0", "id": msg["id"], "result": {"serverInfo": {"name": "fake-runtime"}}}), flush=True)
+        print(json.dumps({"jsonrpc": "2.0", "id": msg["id"], "result": {"serverInfo": {"name": "fake-runtime", "version": "0.0.1"}}}), flush=True)
     elif method == "session/prompt":
         root = (msg.get("params") or {})["sessionId"]
         print(json.dumps({"jsonrpc": "2.0", "method": "session.event", "params": {"sessionId": root, "event": {"type": "agent/inbox/spliced", "data": {"target": "next-turn", "start": 0, "inserted": [{"id": "message-1"}]}}}}), flush=True)
@@ -314,7 +317,7 @@ for line in sys.stdin:
         print(json.dumps({"jsonrpc": "2.0", "method": "session.event", "params": {"sessionId": "grandchild", "event": {"type": "assistant/message", "data": {"content": [{"type": "text", "text": "grandchild response"}]}}}}), flush=True)
         print(json.dumps({"jsonrpc": "2.0", "method": "subagent.finished", "params": {"parentSessionId": "child", "childSessionId": "grandchild", "status": "ok"}}), flush=True)
         print(json.dumps({"jsonrpc": "2.0", "method": "subagent.finished", "params": {"parentSessionId": root, "childSessionId": "child", "status": "ok"}}), flush=True)
-        print(json.dumps({"jsonrpc": "2.0", "method": "session.event", "params": {"sessionId": root, "event": {"type": "assistant/message", "data": {"content": [{"type": "text", "text": "root response"}]}}}}), flush=True)
+        print(json.dumps({"jsonrpc": "2.0", "method": "session.event", "params": {"sessionId": root, "event": {"type": "assistant/message", "data": {"message": {"content": [{"type": "text", "text": "root response"}]}}}}}), flush=True)
         print(json.dumps({"jsonrpc": "2.0", "method": "session.status", "params": {"sessionId": root, "status": "idle"}}), flush=True)
     elif method == "shutdown":
         print(json.dumps({"jsonrpc": "2.0", "id": msg["id"], "result": {}}), flush=True)
@@ -335,7 +338,7 @@ for line in sys.stdin:
         assert harness.client._notifications.qsize() == 0
 
     assert result.final_response == "root response"
-    assert [event["data"]["content"][0]["text"] for event in result.events if event["type"] == "assistant/message"] == ["root response"]
+    assert [event["data"]["message"]["content"][0]["text"] for event in result.events if event["type"] == "assistant/message"] == ["root response"]
     assert [notification.method for notification in result.notifications] == [
         "session.event",
         "session.status",
@@ -362,7 +365,7 @@ for line in sys.stdin:
     msg = json.loads(line)
     method = msg.get("method")
     if method == "initialize":
-        print(json.dumps({"jsonrpc": "2.0", "id": msg["id"], "result": {"serverInfo": {"name": "fake-runtime"}}}), flush=True)
+        print(json.dumps({"jsonrpc": "2.0", "id": msg["id"], "result": {"serverInfo": {"name": "fake-runtime", "version": "0.0.1"}}}), flush=True)
     elif method == "session/prompt":
         params = msg.get("params") or {}
         print(json.dumps({"jsonrpc": "2.0", "method": "session.event", "params": {"sessionId": "other", "event": {"type": "assistant/message", "data": {"content": [{"type": "text", "text": "wrong session"}]}}}}), flush=True)
@@ -370,7 +373,7 @@ for line in sys.stdin:
         print(json.dumps({"jsonrpc": "2.0", "method": "session.event", "params": {"sessionId": params["sessionId"], "event": {"type": "agent/inbox/spliced", "data": {"target": "next-turn", "start": 0, "inserted": [{"id": "message-1"}]}}}}), flush=True)
         print(json.dumps({"jsonrpc": "2.0", "method": "session.status", "params": {"sessionId": params["sessionId"], "status": "running"}}), flush=True)
         print(json.dumps({"jsonrpc": "2.0", "id": msg["id"], "result": {"messageId": "message-1"}}), flush=True)
-        print(json.dumps({"jsonrpc": "2.0", "method": "session.event", "params": {"sessionId": params["sessionId"], "event": {"type": "assistant/message", "data": {"content": [{"type": "text", "text": "right session"}]}}}}), flush=True)
+        print(json.dumps({"jsonrpc": "2.0", "method": "session.event", "params": {"sessionId": params["sessionId"], "event": {"type": "assistant/message", "data": {"message": {"content": [{"type": "text", "text": "right session"}]}}}}}), flush=True)
         print(json.dumps({"jsonrpc": "2.0", "method": "session.status", "params": {"sessionId": params["sessionId"], "status": "idle"}}), flush=True)
     elif method == "shutdown":
         print(json.dumps({"jsonrpc": "2.0", "id": msg["id"], "result": {}}), flush=True)
@@ -399,13 +402,13 @@ for line in sys.stdin:
     msg = json.loads(line)
     method = msg.get("method")
     if method == "initialize":
-        print(json.dumps({"jsonrpc": "2.0", "id": msg["id"], "result": {"serverInfo": {"name": "fake-runtime"}}}), flush=True)
+        print(json.dumps({"jsonrpc": "2.0", "id": msg["id"], "result": {"serverInfo": {"name": "fake-runtime", "version": "0.0.1"}}}), flush=True)
     elif method == "session/prompt":
         params = msg.get("params") or {}
         print(json.dumps({"jsonrpc": "2.0", "method": "session.event", "params": {"sessionId": params["sessionId"], "event": {"type": "agent/inbox/spliced", "data": {"target": "next-turn", "start": 0, "inserted": [{"id": "message-1"}]}}}}), flush=True)
         print(json.dumps({"jsonrpc": "2.0", "method": "session.status", "params": {"sessionId": params["sessionId"], "status": "running"}}), flush=True)
         print(json.dumps({"jsonrpc": "2.0", "id": msg["id"], "result": {"messageId": "message-1"}}), flush=True)
-        print(json.dumps({"jsonrpc": "2.0", "method": "session.event", "params": {"sessionId": params["sessionId"], "event": {"type": "assistant/message", "data": {"content": [{"type": "text", "text": "ok"}]}}}}), flush=True)
+        print(json.dumps({"jsonrpc": "2.0", "method": "session.event", "params": {"sessionId": params["sessionId"], "event": {"type": "assistant/message", "data": {"message": {"content": [{"type": "text", "text": "ok"}]}}}}}), flush=True)
         print(json.dumps({"jsonrpc": "2.0", "method": "session.status", "params": {"sessionId": params["sessionId"], "status": "idle"}}), flush=True)
     elif method == "shutdown":
         print(json.dumps({"jsonrpc": "2.0", "id": msg["id"], "result": {}}), flush=True)
@@ -431,7 +434,7 @@ for line in sys.stdin:
     msg = json.loads(line)
     method = msg.get("method")
     if method == "initialize":
-        print(json.dumps({"jsonrpc": "2.0", "id": msg["id"], "result": {"serverInfo": {"name": "fake-runtime"}}}), flush=True)
+        print(json.dumps({"jsonrpc": "2.0", "id": msg["id"], "result": {"serverInfo": {"name": "fake-runtime", "version": "0.0.1"}}}), flush=True)
     elif method == "session/prompt":
         turn += 1
         params = msg.get("params") or {}
@@ -441,11 +444,11 @@ for line in sys.stdin:
         print(json.dumps({"jsonrpc": "2.0", "method": "session.status", "params": {"sessionId": session_id, "status": "running"}}), flush=True)
         print(json.dumps({"jsonrpc": "2.0", "id": msg["id"], "result": {"messageId": message_id}}), flush=True)
         if turn == 1:
-            print(json.dumps({"jsonrpc": "2.0", "method": "session.event", "params": {"sessionId": session_id, "event": {"type": "assistant/message", "data": {"content": [{"type": "text", "text": "first"}]}}}}), flush=True)
+            print(json.dumps({"jsonrpc": "2.0", "method": "session.event", "params": {"sessionId": session_id, "event": {"type": "assistant/message", "data": {"message": {"content": [{"type": "text", "text": "first"}]}}}}}), flush=True)
             print(json.dumps({"jsonrpc": "2.0", "method": "session.status", "params": {"sessionId": session_id, "status": "idle"}}), flush=True)
         else:
             time.sleep(0.05)
-            print(json.dumps({"jsonrpc": "2.0", "method": "session.event", "params": {"sessionId": session_id, "event": {"type": "assistant/message", "data": {"content": [{"type": "text", "text": "second"}]}}}}), flush=True)
+            print(json.dumps({"jsonrpc": "2.0", "method": "session.event", "params": {"sessionId": session_id, "event": {"type": "assistant/message", "data": {"message": {"content": [{"type": "text", "text": "second"}]}}}}}), flush=True)
             print(json.dumps({"jsonrpc": "2.0", "method": "session.status", "params": {"sessionId": session_id, "status": "idle"}}), flush=True)
     elif method == "shutdown":
         print(json.dumps({"jsonrpc": "2.0", "id": msg["id"], "result": {}}), flush=True)
@@ -473,7 +476,7 @@ for line in sys.stdin:
     msg = json.loads(line)
     method = msg.get("method")
     if method == "initialize":
-        print(json.dumps({"jsonrpc": "2.0", "id": msg["id"], "result": {"serverInfo": {"name": "fake-rlh"}}}), flush=True)
+        print(json.dumps({"jsonrpc": "2.0", "id": msg["id"], "result": {"serverInfo": {"name": "fake-rlh", "version": "0.0.1"}}}), flush=True)
     elif method == "session/prompt":
         params = msg.get("params") or {}
         print(json.dumps({"jsonrpc": "2.0", "method": "llm/request", "params": {"requestId": "req-1", "sessionId": params["sessionId"], "model": "dsagent", "messages": []}}), flush=True)
@@ -610,7 +613,7 @@ for line in sys.stdin:
     msg = json.loads(line)
     method = msg.get("method")
     if method == "initialize":
-        print(json.dumps({"jsonrpc": "2.0", "id": msg["id"], "result": {"serverInfo": {"name": "fake-rlh"}}}), flush=True)
+        print(json.dumps({"jsonrpc": "2.0", "id": msg["id"], "result": {"serverInfo": {"name": "fake-rlh", "version": "0.0.1"}}}), flush=True)
     elif method in {"emit-first", "emit-second"}:
         print(json.dumps({"jsonrpc": "2.0", "method": "tick", "params": {"source": method}}), flush=True)
     elif method == "session/prompt":
@@ -786,6 +789,8 @@ time.sleep(60)
         max_frame_bytes=64,
         request_timeout_seconds=2,
         shutdown_timeout_seconds=0.05,
+        eof_grace_seconds=0.05,
+        terminate_grace_seconds=0.05,
     ))
     with pytest.raises(JsonRpcFrameTooLargeError) as excinfo:
         client.initialize(provider="deepseek-official", cwd="/workspace", model="dsagent")
@@ -896,7 +901,7 @@ for line in sys.stdin:
     msg = json.loads(line)
     method = msg.get("method")
     if method == "initialize":
-        print(json.dumps({"jsonrpc": "2.0", "id": msg["id"], "result": {"serverInfo": {"name": "fake-rlh"}}}), flush=True)
+        print(json.dumps({"jsonrpc": "2.0", "id": msg["id"], "result": {"serverInfo": {"name": "fake-rlh", "version": "0.0.1"}}}), flush=True)
     elif method == "session/prompt":
         print(json.dumps({"jsonrpc": "2.0", "id": msg["id"], "result": {"accepted": False}}), flush=True)
     elif method == "shutdown":
@@ -922,7 +927,7 @@ for line in sys.stdin:
     msg = json.loads(line)
     method = msg.get("method")
     if method == "initialize":
-        print(json.dumps({"jsonrpc": "2.0", "id": msg["id"], "result": {"serverInfo": {"name": "fake-rlh"}}}), flush=True)
+        print(json.dumps({"jsonrpc": "2.0", "id": msg["id"], "result": {"serverInfo": {"name": "fake-rlh", "version": "0.0.1"}}}), flush=True)
         print(json.dumps({"jsonrpc": "2.0", "id": "bridge-req-1", "method": "llm.request", "params": {"requestId": "req-1", "sessionId": "main", "model": "dsagent", "messages": []}}), flush=True)
     elif "id" in msg and "method" not in msg:
         print(json.dumps({"jsonrpc": "2.0", "method": "response/seen", "params": {"result": msg.get("result")}}), flush=True)
@@ -959,7 +964,7 @@ print("node warning: experimental loader", flush=True)
 for line in sys.stdin:
     msg = json.loads(line)
     if msg.get("method") == "initialize":
-        print(json.dumps({"jsonrpc": "2.0", "id": msg["id"], "result": {"serverInfo": {"name": "fake-rlh"}}}), flush=True)
+        print(json.dumps({"jsonrpc": "2.0", "id": msg["id"], "result": {"serverInfo": {"name": "fake-rlh", "version": "0.0.1"}}}), flush=True)
     elif msg.get("method") == "shutdown":
         print(json.dumps({"jsonrpc": "2.0", "id": msg["id"], "result": {}}), flush=True)
         break
@@ -989,6 +994,8 @@ time.sleep(60)
         HarnessConfig(
             launch_args_override=(sys.executable, str(script)),
             request_timeout_seconds=0.1,
+            eof_grace_seconds=0.1,
+            terminate_grace_seconds=0.1,
         )
     ) as client:
         start = time.monotonic()
@@ -1015,7 +1022,7 @@ signal.signal(signal.SIGTERM, signal.SIG_IGN)
 for line in sys.stdin:
     msg = json.loads(line)
     if msg.get("method") == "initialize":
-        print(json.dumps({"jsonrpc": "2.0", "id": msg["id"], "result": {"serverInfo": {"name": "fake-rlh"}}}), flush=True)
+        print(json.dumps({"jsonrpc": "2.0", "id": msg["id"], "result": {"serverInfo": {"name": "fake-rlh", "version": "0.0.1"}}}), flush=True)
     elif msg.get("method") == "shutdown":
         time.sleep(60)
 """.strip()
@@ -1025,6 +1032,8 @@ for line in sys.stdin:
         HarnessConfig(
             launch_args_override=(sys.executable, str(script)),
             shutdown_timeout_seconds=0.1,
+            eof_grace_seconds=0.05,
+            terminate_grace_seconds=0.05,
         )
     )
     client.start()
@@ -1133,7 +1142,7 @@ import sys
 for line in sys.stdin:
     msg = json.loads(line)
     if msg.get("method") == "initialize":
-        print(json.dumps({"jsonrpc": "2.0", "id": msg["id"], "result": {"serverInfo": {"name": "fake-rlh"}}}), flush=True)
+        print(json.dumps({"jsonrpc": "2.0", "id": msg["id"], "result": {"serverInfo": {"name": "fake-rlh", "version": "0.0.1"}}}), flush=True)
     elif msg.get("method") == "shutdown":
         print(json.dumps({"jsonrpc": "2.0", "id": msg["id"], "result": {}}), flush=True)
         break
@@ -1183,7 +1192,7 @@ with open(os.environ["SEEN"], "w") as seen:
         seen.flush()
         msg = json.loads(line)
         if "id" in msg and msg.get("method") == "initialize":
-            print(json.dumps({"jsonrpc": "2.0", "id": msg["id"], "result": {"serverInfo": {"name": "fake-rlh"}}}), flush=True)
+            print(json.dumps({"jsonrpc": "2.0", "id": msg["id"], "result": {"serverInfo": {"name": "fake-rlh", "version": "0.0.1"}}}), flush=True)
         elif "id" in msg and msg.get("method") == "shutdown":
             print(json.dumps({"jsonrpc": "2.0", "id": msg["id"], "result": {}}), flush=True)
             break
@@ -1222,7 +1231,9 @@ def _install_fake_bundled_runtime(
 ) -> Path:
     """Install a fake runtime package that records config and serves lifecycle calls.
 
-    Returns the fake bundled default config path.
+    When the ``STDIN_LOG`` environment variable is set, every received request
+    line is appended to that file so tests can assert on wire traffic. Returns
+    the fake bundled default config path.
     """
     runtime = tmp_path / "rlh-jsonrpc-agent"
     runtime.write_text(
@@ -1231,11 +1242,19 @@ import json
 import os
 import sys
 
-json.dump({"RLH_CORDIS_CONFIG": os.environ.get("RLH_CORDIS_CONFIG")}, open(os.environ["ENV_DUMP"], "w"))
+env_dump = os.environ.get("ENV_DUMP")
+if env_dump:
+    json.dump({"RLH_CORDIS_CONFIG": os.environ.get("RLH_CORDIS_CONFIG")}, open(env_dump, "w"))
+stdin_log = os.environ.get("STDIN_LOG")
 for line in sys.stdin:
+    if stdin_log:
+        with open(stdin_log, "a") as log:
+            log.write(line)
     msg = json.loads(line)
     if msg.get("method") == "initialize":
-        print(json.dumps({"jsonrpc": "2.0", "id": msg["id"], "result": {"serverInfo": {"name": "bundled-runtime"}}}), flush=True)
+        print(json.dumps({"jsonrpc": "2.0", "id": msg["id"], "result": {"serverInfo": {"name": "bundled-runtime", "version": "0.0.1"}}}), flush=True)
+    elif msg.get("method") == "session/close":
+        print(json.dumps({"jsonrpc": "2.0", "id": msg["id"], "result": {}}), flush=True)
     elif msg.get("method") == "shutdown":
         print(json.dumps({"jsonrpc": "2.0", "id": msg["id"], "result": {}}), flush=True)
         break
@@ -1301,3 +1320,377 @@ def test_client_reports_missing_bundled_runtime_dependency(monkeypatch: pytest.M
 
     with pytest.raises(FileNotFoundError, match="Install relay-harness-runtime-bin"):
         HarnessClient().start()
+
+
+def test_concurrent_start_spawns_single_runtime(tmp_path: Path) -> None:
+    script = tmp_path / "fake_bridge.py"
+    marker = tmp_path / "spawn-marker.txt"
+    script.write_text(
+        """
+import json
+import os
+import sys
+
+with open(os.environ["SPAWN_MARKER"], "a") as marker:
+    marker.write("spawned\\n")
+
+for line in sys.stdin:
+    msg = json.loads(line)
+    if msg.get("method") == "initialize":
+        print(json.dumps({"jsonrpc": "2.0", "id": msg["id"], "result": {"serverInfo": {"name": "fake-rlh", "version": "0.0.1"}}}), flush=True)
+    elif msg.get("method") == "shutdown":
+        print(json.dumps({"jsonrpc": "2.0", "id": msg["id"], "result": {}}), flush=True)
+        break
+""".strip()
+    )
+
+    client = HarnessClient(
+        HarnessConfig(
+            launch_args_override=(sys.executable, str(script)),
+            env={"SPAWN_MARKER": str(marker)},
+        )
+    )
+    launch = threading.Barrier(8)
+
+    def start_runtime() -> None:
+        launch.wait()
+        client.start()
+
+    threads = [threading.Thread(target=start_runtime) for _ in range(8)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+    try:
+        client.initialize(provider="deepseek-official", cwd="/workspace", model="dsagent")
+        assert marker.read_text().splitlines() == ["spawned"]
+    finally:
+        client.close()
+
+
+def test_concurrent_relay_harness_start_initializes_once(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    stdin_log = tmp_path / "stdin.jsonl"
+    _install_fake_bundled_runtime(tmp_path, monkeypatch)
+    monkeypatch.delenv("RLH_CORDIS_CONFIG", raising=False)
+    monkeypatch.setenv("STDIN_LOG", str(stdin_log))
+
+    harness = RelayHarness(cwd=str(tmp_path))
+    launch = threading.Barrier(2)
+
+    def start_harness() -> None:
+        launch.wait()
+        harness.start()
+
+    threads = [threading.Thread(target=start_harness) for _ in range(2)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+    try:
+        methods = [json.loads(line).get("method") for line in stdin_log.read_text().splitlines()]
+        assert methods.count("initialize") == 1
+        assert methods.count("shutdown") == 0
+    finally:
+        harness.close()
+
+
+def test_subscribe_before_start_then_close_fails_subscription() -> None:
+    from relay_harness.errors import TransportClosedError
+
+    client = HarnessClient()
+    subscription = client.subscribe_notifications()
+    client.close()
+    with pytest.raises(TransportClosedError, match="Relay Harness runtime closed"):
+        subscription.next()
+
+
+@pytest.mark.parametrize("server_info", [{}, {"serverInfo": None}], ids=["missing", "null"])
+def test_initialize_rejects_missing_server_info(tmp_path: Path, server_info: object) -> None:
+    script = tmp_path / "fake_bridge.py"
+    script.write_text(
+        f"""
+import json
+import sys
+
+SERVER_INFO = {server_info!r}
+
+for line in sys.stdin:
+    msg = json.loads(line)
+    if msg.get("method") == "initialize":
+        print(json.dumps({{"jsonrpc": "2.0", "id": msg["id"], "result": SERVER_INFO}}), flush=True)
+    elif msg.get("method") == "shutdown":
+        print(json.dumps({{"jsonrpc": "2.0", "id": msg["id"], "result": {{}}}}), flush=True)
+        break
+""".strip()
+    )
+
+    with HarnessClient(HarnessConfig(launch_args_override=(sys.executable, str(script)))) as client:
+        with pytest.raises(SdkProtocolError, match="initialize returned no server identity"):
+            client.initialize(provider="deepseek-official", cwd="/workspace", model="dsagent")
+
+
+@pytest.mark.parametrize(
+    ("event_params", "expected"),
+    [
+        (
+            '{"sessionId": "main", "event": "not-an-envelope"}',
+            "session.event carried no event envelope",
+        ),
+        (
+            '{"sessionId": "main", "event": {"type": "assistant/message", "data": {"message": {"role": "assistant"}}}}',
+            "assistant/message event carried malformed content",
+        ),
+    ],
+    ids=["non-dict-envelope", "assistant-content-missing"],
+)
+def test_session_run_rejects_malformed_session_event(
+    tmp_path: Path, event_params: str, expected: str
+) -> None:
+    script = tmp_path / "fake_runtime.py"
+    script.write_text(
+        f"""
+import json
+import sys
+
+for line in sys.stdin:
+    msg = json.loads(line)
+    method = msg.get("method")
+    if method == "initialize":
+        print(json.dumps({{"jsonrpc": "2.0", "id": msg["id"], "result": {{"serverInfo": {{"name": "fake-runtime", "version": "0.0.1"}}}}}}), flush=True)
+    elif method == "session/prompt":
+        params = msg.get("params") or {{}}
+        session_id = params["sessionId"]
+        print(json.dumps({{"jsonrpc": "2.0", "method": "session.event", "params": {{"sessionId": session_id, "event": {{"type": "agent/inbox/spliced", "data": {{"target": "next-turn", "start": 0, "inserted": [{{"id": "message-1"}}]}}}}}}}}), flush=True)
+        print(json.dumps({{"jsonrpc": "2.0", "id": msg["id"], "result": {{"messageId": "message-1"}}}}), flush=True)
+        print(json.dumps({{"jsonrpc": "2.0", "method": "session.event", "params": {event_params}}}), flush=True)
+        print(json.dumps({{"jsonrpc": "2.0", "method": "session.status", "params": {{"sessionId": session_id, "status": "idle"}}}}), flush=True)
+    elif method == "shutdown":
+        print(json.dumps({{"jsonrpc": "2.0", "id": msg["id"], "result": {{}}}}), flush=True)
+        break
+""".strip()
+    )
+
+    with RelayHarness(
+        launch_args_override=(sys.executable, str(script)), cwd=str(tmp_path)
+    ) as harness:
+        with pytest.raises(SdkProtocolError, match=expected):
+            harness.run("send malformed event", session_id="main")
+
+
+def test_close_is_terminal_and_start_rejects(tmp_path: Path) -> None:
+    from relay_harness.errors import TransportClosedError
+
+    script = tmp_path / "fake_bridge.py"
+    script.write_text(
+        """
+import json
+import sys
+
+for line in sys.stdin:
+    msg = json.loads(line)
+    if msg.get("method") == "initialize":
+        print(json.dumps({"jsonrpc": "2.0", "id": msg["id"], "result": {"serverInfo": {"name": "fake-rlh", "version": "0.0.1"}}}), flush=True)
+    elif msg.get("method") == "shutdown":
+        print(json.dumps({"jsonrpc": "2.0", "id": msg["id"], "result": {}}), flush=True)
+        break
+""".strip()
+    )
+
+    client = HarnessClient(HarnessConfig(launch_args_override=(sys.executable, str(script))))
+    client.start()
+    client.initialize(provider="deepseek-official", cwd="/workspace", model="dsagent")
+    client.close()
+    with pytest.raises(TransportClosedError, match="client is closed"):
+        client.start()
+
+
+def test_close_during_pending_start_leaves_no_orphan_runtime(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from relay_harness.errors import TransportClosedError
+
+    script = tmp_path / "fake_bridge.py"
+    script.write_text(
+        """
+import json
+import sys
+
+for line in sys.stdin:
+    msg = json.loads(line)
+    if msg.get("method") == "initialize":
+        print(json.dumps({"jsonrpc": "2.0", "id": msg["id"], "result": {"serverInfo": {"name": "fake-rlh", "version": "0.0.1"}}}), flush=True)
+    elif msg.get("method") == "shutdown":
+        print(json.dumps({"jsonrpc": "2.0", "id": msg["id"], "result": {}}), flush=True)
+        break
+""".strip()
+    )
+    entered = threading.Event()
+    release = tmp_path / "start-gate.txt"
+
+    def gated_launch_args(self: HarnessClient) -> tuple[str, ...]:
+        entered.set()
+        deadline = time.monotonic() + 10
+        while not release.exists() and time.monotonic() < deadline:
+            time.sleep(0.01)
+        return (sys.executable, str(script))
+
+    monkeypatch.setattr(HarnessClient, "_default_launch_args", gated_launch_args)
+    client = HarnessClient(HarnessConfig(runtime_bin=sys.executable))
+
+    start_errors: list[BaseException] = []
+
+    def start_runtime() -> None:
+        try:
+            client.start()
+        except BaseException as exc:
+            start_errors.append(exc)
+
+    thread = threading.Thread(target=start_runtime)
+    thread.start()
+    assert entered.wait(5), "start never reached the pre-spawn launch window"
+    client.close()
+    release.write_text("go")
+    thread.join(10)
+    assert not thread.is_alive()
+
+    # close is terminal: the pending start was cancelled and never spawned.
+    assert len(start_errors) == 1
+    assert isinstance(start_errors[0], TransportClosedError)
+    proc = client._proc
+    assert proc is None or proc.poll() is not None
+    with pytest.raises(TransportClosedError, match="client is closed"):
+        client.start()
+
+
+def test_close_waits_for_inflight_spawn_and_reaps_runtime(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import relay_harness.client as client_module
+    from relay_harness.errors import TransportClosedError
+
+    pid_file = tmp_path / "child-pid.txt"
+    script = tmp_path / "fake_bridge.py"
+    script.write_text(
+        f"""
+import json
+import os
+import sys
+
+with open({str(pid_file)!r}, "w") as pid:
+    pid.write(str(os.getpid()))
+
+for line in sys.stdin:
+    msg = json.loads(line)
+    if msg.get("method") == "initialize":
+        print(json.dumps({{"jsonrpc": "2.0", "id": msg["id"], "result": {{"serverInfo": {{"name": "fake-rlh", "version": "0.0.1"}}}}}}), flush=True)
+    elif msg.get("method") == "shutdown":
+        print(json.dumps({{"jsonrpc": "2.0", "id": msg["id"], "result": {{}}}}), flush=True)
+        break
+""".strip()
+    )
+    entered = threading.Event()
+    release = tmp_path / "spawn-gate.txt"
+    real_popen = client_module.subprocess.Popen
+
+    def gated_popen(*args: object, **kwargs: object) -> object:
+        entered.set()
+        deadline = time.monotonic() + 10
+        while not release.exists() and time.monotonic() < deadline:
+            time.sleep(0.01)
+        return real_popen(*args, **kwargs)
+
+    monkeypatch.setattr(client_module.subprocess, "Popen", gated_popen)
+    client = HarnessClient(
+        HarnessConfig(
+            launch_args_override=(sys.executable, str(script)),
+            shutdown_timeout_seconds=1.0,
+            eof_grace_seconds=2.0,
+            terminate_grace_seconds=1.0,
+        )
+    )
+
+    start_errors: list[BaseException] = []
+
+    def start_runtime() -> None:
+        try:
+            client.start()
+        except BaseException as exc:
+            start_errors.append(exc)
+
+    thread = threading.Thread(target=start_runtime)
+    thread.start()
+    assert entered.wait(5), "start never reached the spawn critical section"
+    # close() settles against the in-flight spawn, then reaps the runtime.
+    releaser = threading.Timer(0.3, release.touch)
+    releaser.start()
+    client.close()
+    releaser.join(10)
+    thread.join(10)
+    assert not thread.is_alive()
+    assert start_errors == []
+    assert client._proc is None
+    with pytest.raises(TransportClosedError, match="client is closed"):
+        client.start()
+    deadline = time.monotonic() + 5
+    while not pid_file.exists() and time.monotonic() < deadline:
+        time.sleep(0.05)
+    pid = int(pid_file.read_text())
+    with pytest.raises(ProcessLookupError):
+        os.kill(pid, 0)
+
+
+def test_run_closes_auto_session_and_keeps_named_session(tmp_path: Path) -> None:
+    script = tmp_path / "fake_runtime.py"
+    script.write_text(
+        """
+import json
+import os
+import sys
+
+def record(msg):
+    with open(os.environ["STDIN_LOG"], "a") as log:
+        log.write(json.dumps(msg) + "\\n")
+
+for line in sys.stdin:
+    msg = json.loads(line)
+    record(msg)
+    method = msg.get("method")
+    if method == "initialize":
+        print(json.dumps({"jsonrpc": "2.0", "id": msg["id"], "result": {"serverInfo": {"name": "fake-runtime", "version": "0.0.1"}}}), flush=True)
+    elif method == "session/prompt":
+        params = msg.get("params") or {}
+        session_id = params["sessionId"]
+        print(json.dumps({"jsonrpc": "2.0", "method": "session.event", "params": {"sessionId": session_id, "event": {"type": "agent/inbox/spliced", "data": {"target": "next-turn", "start": 0, "inserted": [{"id": "message-1"}]}}}}), flush=True)
+        print(json.dumps({"jsonrpc": "2.0", "id": msg["id"], "result": {"messageId": "message-1"}}), flush=True)
+        print(json.dumps({"jsonrpc": "2.0", "method": "session.event", "params": {"sessionId": session_id, "event": {"type": "assistant/message", "data": {"message": {"content": [{"type": "text", "text": "turn done"}]}}}}}), flush=True)
+        print(json.dumps({"jsonrpc": "2.0", "method": "session.event", "params": {"sessionId": session_id, "event": {"type": "turn/end", "data": {"turn": 1, "reason": {"kind": "completed"}}}}}), flush=True)
+        print(json.dumps({"jsonrpc": "2.0", "method": "session.status", "params": {"sessionId": session_id, "status": "idle"}}), flush=True)
+    elif method == "session/close":
+        print(json.dumps({"jsonrpc": "2.0", "id": msg["id"], "result": {}}), flush=True)
+    elif method == "shutdown":
+        print(json.dumps({"jsonrpc": "2.0", "id": msg["id"], "result": {}}), flush=True)
+        break
+""".strip()
+    )
+    stdin_log = tmp_path / "stdin.jsonl"
+
+    with RelayHarness(
+        launch_args_override=(sys.executable, str(script)),
+        cwd=str(tmp_path),
+        env={"STDIN_LOG": str(stdin_log)},
+    ) as harness:
+        first = harness.run("first turn")
+        second = harness.run("second turn")
+        named = harness.run("named turn", session_id="main")
+
+    requests = [json.loads(line) for line in stdin_log.read_text().splitlines()]
+    closed_ids = [
+        request["params"]["sessionId"]
+        for request in requests
+        if request.get("method") == "session/close"
+    ]
+    assert closed_ids == [first.session_id, second.session_id]
+    assert "main" not in closed_ids
+    assert named.final_response == "turn done"

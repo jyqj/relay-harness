@@ -15,6 +15,7 @@ import type { SessionHeader, SessionId } from '@relay-harness/rlh-session'
 import type { SessionLineageNode } from '@relay-harness/rlh-session-query'
 import type { SessionRawArtifact } from '@relay-harness/rlh-session-persistence'
 import ApiProxyService, { createApiProxy, toFetchHandler } from '@relay-harness/rlh-host-apiproxy'
+import { DEFAULT_MUX_STREAM_BUFFER_BYTES } from '../src/frame-queue.ts'
 
 const sid = (id: string): SessionId => id as SessionId
 
@@ -130,11 +131,12 @@ describe('session export compression config', () => {
     expect(ApiProxyService.Config({})).toEqual({
       sessionExportCompressionLevel: 6,
       coldBlankProbeMaxBytes: 1024,
+      muxStreamBufferBytes: DEFAULT_MUX_STREAM_BUFFER_BYTES,
     })
     expect(ApiProxyService.Config({ sessionExportCompressionLevel: 0 }))
-      .toEqual({ sessionExportCompressionLevel: 0, coldBlankProbeMaxBytes: 1024 })
+      .toEqual({ sessionExportCompressionLevel: 0, coldBlankProbeMaxBytes: 1024, muxStreamBufferBytes: DEFAULT_MUX_STREAM_BUFFER_BYTES })
     expect(ApiProxyService.Config({ sessionExportCompressionLevel: 9 }))
-      .toEqual({ sessionExportCompressionLevel: 9, coldBlankProbeMaxBytes: 1024 })
+      .toEqual({ sessionExportCompressionLevel: 9, coldBlankProbeMaxBytes: 1024, muxStreamBufferBytes: DEFAULT_MUX_STREAM_BUFFER_BYTES })
     for (const value of [-1, 10, 1.5]) {
       expect(() => ApiProxyService.Config({ sessionExportCompressionLevel: value } as never)).toThrow()
     }
@@ -144,9 +146,9 @@ describe('session export compression config', () => {
 describe('cold blank probe config', () => {
   it('accepts a per-Session byte bound including zero and rejects invalid bounds', () => {
     expect(ApiProxyService.Config({ coldBlankProbeMaxBytes: 0 }))
-      .toEqual({ sessionExportCompressionLevel: 6, coldBlankProbeMaxBytes: 0 })
+      .toEqual({ sessionExportCompressionLevel: 6, coldBlankProbeMaxBytes: 0, muxStreamBufferBytes: DEFAULT_MUX_STREAM_BUFFER_BYTES })
     expect(ApiProxyService.Config({ coldBlankProbeMaxBytes: 2048 }))
-      .toEqual({ sessionExportCompressionLevel: 6, coldBlankProbeMaxBytes: 2048 })
+      .toEqual({ sessionExportCompressionLevel: 6, coldBlankProbeMaxBytes: 2048, muxStreamBufferBytes: DEFAULT_MUX_STREAM_BUFFER_BYTES })
     for (const value of [-1, 1.5]) {
       expect(() => ApiProxyService.Config({ coldBlankProbeMaxBytes: value })).toThrow()
     }

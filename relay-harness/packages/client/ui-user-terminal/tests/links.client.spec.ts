@@ -1,16 +1,5 @@
-import { describe, expect, it, vi } from 'vitest'
-import {
-  activateTerminalTarget,
-  collectWrappedTerminalLinkLine,
-  extractTerminalLinks,
-  isLoopbackHttpUrl,
-  isTerminalLinkActivation,
-  linksOnBufferLine,
-  resolveOpenPath,
-  resolveWrappedTerminalLinkRange,
-  splitPathAndPosition,
-  wrappedTerminalLinkRangeIntersectsBufferLine,
-} from '../src/client/links.ts'
+import { describe,expect,it,vi } from 'vitest'
+import { activateTerminalTarget,collectWrappedTerminalLinkLine,extractTerminalLinks,isLoopbackHttpUrl,isTerminalLinkActivation,linksOnBufferLine,resolveOpenPath,resolveWrappedTerminalLinkRange,splitPathAndPosition,wrappedTerminalLinkRangeIntersectsBufferLine } from '../src/client/terminal/links.ts'
 
 describe('extractTerminalLinks', () => {
   it('prefers a URL over an overlapping path and keeps a relative file', () => {

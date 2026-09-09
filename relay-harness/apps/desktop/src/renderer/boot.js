@@ -1,12 +1,13 @@
+// @ts-check
 const statusEl = document.getElementById('status');
 const hintEl = document.getElementById('hint');
 const failureEl = document.getElementById('failure');
 const recoveryEl = document.getElementById('recovery');
 const actionsEl = document.getElementById('actions');
 const logEl = document.getElementById('log');
-const retryEl = document.getElementById('retry');
-const cancelRestartEl = document.getElementById('cancel-restart');
-const saveLogEl = document.getElementById('save-log');
+const retryEl = /** @type {HTMLButtonElement | null} */ (document.getElementById('retry'));
+const cancelRestartEl = /** @type {HTMLButtonElement | null} */ (document.getElementById('cancel-restart'));
+const saveLogEl = /** @type {HTMLButtonElement | null} */ (document.getElementById('save-log'));
 const stampEl = document.getElementById('stamp');
 const stampCodeEl = document.getElementById('stamp-code');
 

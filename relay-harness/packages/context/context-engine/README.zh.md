@@ -23,6 +23,8 @@ planner 是确定性的，不调用模型。`StepContextContributor.purposes` �
 | `maxTokens` | `16000` | `ctx.tokenMeter` 下的总 token 上限；meter 缺席时使用引擎的确定性后备估算。 |
 | `maxContributorChars` | `64000` | 单 Provider 字符上限。 |
 | `maxContributorTokens` | `16000` | 单 Provider token 上限。 |
+| `prepareTimeoutMs` | `5000` | 包含排队时间的完整准备期限；未完成 Provider 记录 `deadline`。 |
+| `maxConcurrentContributors` | `4` | 每次准备的 Provider 并发读取上限。 |
 | `contributorTimeoutMs` | `5000` | 单 Provider wall-clock deadline；超时只中止该 Provider 读取。 |
 
 ## 词汇
@@ -39,7 +41,7 @@ planner 是确定性的，不调用模型。`StepContextContributor.purposes` �
 
 ## Known Limitations and Deferred Work
 
-- **Provider 串行读取** —— deadline 可避免一个不合作 Provider 阻塞后续读取，但合格 Provider 仍按注册顺序执行，尚未并行扇出。
+- **协作式资源取消** —— deadline 丢弃迟到结果并发送取消信号，但不合作的 Provider 可能继续底层工作；timer 无法抢占同步 JavaScript。
 - **整消息打包** —— Provider 在局部配额内自行裁剪／hydrate；引擎会拒绝超大 contribution，而不会切开 Provider 自有的消息／Evidence 对应关系。
 - **Provider 覆盖仍不完整** —— 发行的 file-reference、本地 code-index、长期记忆、Prompt 专用 Session History 与 MCP Resource contributor 会生成 Evidence；通用 session-query 与 LSP Provider 仍待实现。
 - **Hydration policy 仍由 Provider 所有** —— 引擎校验 JSON 持久性与 Evidence identity；各来源 Provider 拥有当前源读取、revision 对比及内容 digest 验证。

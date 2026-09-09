@@ -1,0 +1,484 @@
+{
+ "lyra": [
+  {
+   "patterns": [
+    {
+     "adoption_value": "high",
+     "detail": "relay 用 vitest 而非 node:test（vitest.config.ts defineConfig，另有 e2e/snapshot/web/web-perf/web-stress 共 6 套配置）。runner 本身不建议换；可借鉴的是其 setup 守卫模式。",
+     "lyra_evidence": "packages/core/package.json:20; packages/desktop/test/setup.ts:14-18",
+     "name": "零框架测试基座：node:test + strip-types",
+     "relay_evidence": "/Users/jin/Desktop/Relay/relay-harness/vitest.config.ts:5-8",
+     "relay_status": "absent"
+    },
+    {
+     "adoption_value": "medium",
+     "detail": "pre-commit 只有并行两件事：对 staged 文件跑 oxlint --fix 并 stage_fixed: true，外加 git diff --cached --check 查尾随空白（lefthook.yml:5-19）；重活 typecheck + test 全部放在 pre-push（lefthook.yml:21-28）。注释明说分界理由：pre-commit 快到不会有人去 --no-verify。根命令收敛为 check = lint && typecheck && test（根 package.json scripts.check），lint 是 oxlint --deny-warnings 无 eslint/prettier 配置负担。relay 的机制同类但更重：pre-commit 塞了翻译配对、存档笔记校验、第三方 notices 再生成、vendor 守卫等多个 job，主 gate 走 scripts/run-gates.ts 的 CI 矩阵。可借鉴点：把非 lint 的校验从 pre-commit 挪到 pre-push/CI，保住提交速度。",
+     "lyra_evidence": "lefthook.yml:1-28; package.json:18 check 脚本",
+     "name": "双速 git 门禁：staged 快钩 + pre-push 全量",
+     "relay_evidence": "/Users/jin/Desktop/Relay/relay-harness/lefthook.yml:5,17,52; /Users/jin/Desktop/Relay/relay-harness/package.json check:all",
+     "relay_status": "partial"
+    },
+    {
+     "adoption_value": "medium",
+     "detail": "@lyra/core 的 main/types 直接指向 ./src/index.ts，exports 映射也全是 .ts 入口（packages/core/package.json:8-15），下游 desktop 在 electron-vite 主进程配置里用 externalizeDepsPlugin({exclude:[\"@lyra/core\"]}) 强制打包 TS 源、并给 Rollup 加 \".ts\" resolve 扩展（electron.vite.config.ts:main 段，含 why 注释）。好处：内部包改代码零 build 延迟、typecheck 直接吃源码。代价：必须有 bundler 兜底。relay 走的是先构建后消费（build:lib 用 tsc -b + tsdown 产出 lib/），迭代时多一步构建。若 relay 的 client UI 包在 dev 链路里也走 vite，可评估让桌面/web 的 vite 直接解析 workspace 包的 src，缩短前端改一轮的反馈环。",
+     "lyra_evidence": "packages/core/package.json:8-15,20-22; packages/desktop/electron.vite.config.ts main.plugins/resolve.extensions",
+     "name": "内部包零构建：TypeScript 源码直发 workspace",
+     "relay_evidence": "/Users/jin/Desktop/Relay/relay-harness/package.json build:lib:host/client (tsc -b + tsdown)",
+     "relay_status": "absent"
+    },
+    {
+     "adoption_value": "high",
+     "detail": "core 定义 AgentEventSink，runTurn(config, emit) 是唯一入口（packages/core/src/agent/runner.ts:17,26），agent loop 在每个节点 emit 类型化事件 agent_start/turn_start/message_*/tool_*（packages/core/src/agent/loop.ts:131-222）。Electron 主进程经 session-hub 把每个事件 webContents.send(\"agent:event\", {sessionId, event}) 推给渲染层，并可选转发到跨设备 sync（packages/desktop/electron/session-hub.ts:48-53,92）。渲染层不做订阅选择——applyAgentEvent 对所有会话的所有事件先更新 per-session activity（后台会话/手机/定时任务的事件也进列表角标），再判断是否属于当前屏幕（packages/desktop/src/store/apply-event.ts:15-37,52-60）。relay 有 zustand 4.4.7 和 connection 包，事件流架构存在，但\"离屏会话事件也要折叠成可见活动\"与\"单一 fold 函数收口全部事件\"这两点是否成立未逐行核实，值得对照。",
+     "lyra_evidence": "packages/core/src/agent/runner.ts:17-28; packages/core/src/agent/loop.ts:131-146; packages/desktop/electron/session-hub.ts:48-53,92; packages/desktop/src/store/apply-event.ts:15-60",
+     "name": "事件扇出三段式：emit-sink → IPC 广播 → 单点 fold 进 store",
+     "relay_evidence": "/Users/jin/Desktop/Relay/relay-harness/packages/client/runtime/package.json:46 (zustand ~4.4.7); packages/client/connection/",
+     "relay_status": "partial"
+    },
+    {
+     "adoption_value": "high",
+     "detail": "relay-harness 中未发现等价的 requestAnimationFrame 合批层；streaming 相关能力在 client/runtime 与 ui-conversation 中，未核实到 per-frame 去抖。",
+     "lyra_evidence": "packages/desktop/src/store/coalesce.ts:1-53; packages/desktop/src/store/apply-event.ts:24-27 调用点",
+     "name": "rAF 帧级合批：token 流按屏幕节奏落 store",
+     "relay_status": "absent"
+    },
+    {
+     "adoption_value": "high",
+     "detail": "relay apps/desktop 与 apps/web 的 package.json 均未检出 tailwindcss；relay 前端样式体系不同，token 化需自建。",
+     "lyra_evidence": "packages/desktop/src/styles.css:1,140-200,306,527,2787",
+     "name": "Tailwind v4 CSS-first token 系统（@theme + 三档动效刻度）",
+     "relay_status": "absent"
+    },
+    {
+     "adoption_value": "medium",
+     "detail": "e2e/app.ts 头注释：\"Electron 已经会说 CDP，所以不需要 driver、不需要下载浏览器、不需要第二种描述点击的方式\"。每个测试文件 startApp({port, seed}) 启一个真实 Electron 进程：seed 在 profile 目录建好后、应用启动前写入设置（这是唯一能让启动时设置生效的窗口）；evaluate() 直接在 renderer 求值；send() 暴露原始 CDP，存在的核心理由是 window.resizeTo 对 Electron 无效、必须用 Emulation.setDeviceMetricsOverride 才能触达 <760px 的窄布局（e2e/app.ts:20-52）。两个防御：启动前探测端口占用，宁可拒绝也不让 probe 驱动上一次没退干净的旧进程（\"这是测试和谎言的区别\"，e2e/app.ts:53-73）；test:e2e 用 --test-concurrency=1，三个 Electron 抢一台笔记本会让量布局的测试时序性挂掉（e2e/app.ts:9-12）。relay 的 e2e 已有 vitest.e2e.config.ts + apps/web 里的 playwright 依赖，路线不同；可借鉴的是 seed-before-boot 与并发=1 两个约束，尤其若 relay 后续给 desktop 应用补 e2e。",
+     "lyra_evidence": "packages/desktop/e2e/app.ts:1-30,53-73; packages/desktop/package.json test:e2e 脚本 (--test-concurrency=1)",
+     "name": "裸 CDP 端到端：直接驱动真实 Electron，无测试框架",
+     "relay_evidence": "/Users/jin/Desktop/Relay/relay-harness/vitest.e2e.config.ts; /Users/jin/Desktop/Relay/relay-harness/apps/web/package.json playwright 依赖",
+     "relay_status": "partial"
+    },
+    {
+     "adoption_value": "low",
+     "detail": "pnpm-workspace.yaml 只含 packages/*（Lyra pnpm-workspace.yaml:1-2）；五个包统一 version 0.8.33、统一 engines node>=24/pnpm>=11、packageManager 钉死 pnpm@11.9.0（各 package.json）；allowBuilds 白名单显式批准 electron/esbuild/node-pty/workerd 等原生 postinstall 并注释各自原因（pnpm-workspace.yaml allowBuilds 段）；knip 按工作区声明 entry/project 做死代码检查（knip.json:3-40）；tsconfig.base.json 统一 strict + verbatimModuleSyntax + isolatedModules + moduleResolution bundler + noImplicitOverride，各包 typecheck 一律 tsc -p --noEmit。relay 同为 pnpm monorepo 且也有 knip.json/lefthook，但 workspace 更宽（vendor/*、packages/*/*、apps/*、website），TS 走 tsc -b project references。这一层 relay 已有等价物，无采纳动作。",
+     "lyra_evidence": "pnpm-workspace.yaml:1-2 及 allowBuilds 段; package.json engines/packageManager; knip.json:3-40; tsconfig.base.json:1-20",
+     "name": "monorepo 纪律：单版本、lockstep 发布、knip 死代码门",
+     "relay_evidence": "/Users/jin/Desktop/Relay/relay-harness/package.json workspaces; /Users/jin/Desktop/Relay/relay-harness/knip.json; tsconfig.base.json + tsc -b",
+     "relay_status": "equivalent"
+    }
+   ],
+   "slice": "lyra-stack",
+   "summary": "Lyra 是一个 pnpm 单仓五包 monorepo（core/desktop/mobile/agent-cli/registry-shared），技术栈为 Electron 43 + electron-vite 5 + Vite 8 + React 19.2 + Tailwind v4 (CSS-first @theme tokens) + zustand 5 渲染层，桌面端 @lyra/core 以 TypeScript 源码直接被 bundler 打包（无 build 产物），agent 内核自研 provider 层（Anthropic Messages / OpenAI Chat Completions / OpenAI Responses 三种 SSE 流式协议）+ 事件 sink 模型，移动端 Expo 57 + React Native 0.86 + NativeWind。工程质量体系很有特色：所有单测用 node:test + --experimental-strip-types（零 vitest/jest 依赖），lint 用 oxlint --deny-warnings，lefthook 做\"pre-commit 只碰 staged（快）/ pre-push 跑全量 typecheck+test（慢）\"的双速门禁，e2e 直接用 DevTools 协议驱动真实 Electron 进程而非 Playwright。与 relay-harness 相比，Lyra 显著更轻：relay-harness 用 vitest + 多配置矩阵 + tsc -b/tsdown 预构建产物 + 更重的 gate 脚本体系，而 Lyra 用 node:test + 源码直发 + 三条命令的 check。可借鉴的核心是模式而非工具替换：GIT_* 环境变量测试守卫、rAF 帧合批、@theme 动效/颜色 token 刻度、离屏会话活动折叠。"
+  },
+  {
+   "patterns": [
+    {
+     "name": "light/dark asymmetric surface-vs-rule derivation",
+     "detail": "derive.ts 目前用同一条 mix 曲线派生所有层级、边框用 foreground 的 alpha（derive.ts:78-79），没有 Lyra 的 light 主题下 surfaces/rule 分曲线、paper（输入面取亮）和 float（浮层取亮）特例。采纳意味着在 deriveThemeTokens 里按 isDark 分开 rule 系数，并补 input/float 两个别名 token——这是「浅色主题发灰、边框比卡片还浅」一类问题的根因修法。",
+     "lyra_evidence": "packages/desktop/src/theme.ts:43-76 (SURFACE_ON_LIGHT=0.45 / RULE_ON_LIGHT=1.7 双曲线，paper/float 两个反向特例)",
+     "relay_status": "partial",
+     "relay_evidence": "packages/client/ui-theme/src/derive.ts:40-79 (单一 mix 曲线派生 layer/card/overlay，border 用 foreground alpha)",
+     "adoption_value": "high"
+    },
+    {
+     "name": "one-size-drives-all type scale",
+     "detail": "relay-harness 的 rem 阶梯靠 root font-size 间接跟随用户设置，方向等价但每步是固定 rem 而非 calc(--ly-ui-size)，且没有 code 独立步（--rlw-font-size-code 已有但未纳入 @property 式 text-code 步）。价值在补齐：代码字号/行高/字重/字距四件套作为独立步挂在 token 表，让 diff/terminal/markdown 统一读一个名字。",
+     "lyra_evidence": "packages/desktop/src/styles.css:248-303 (七步全部 calc 自 --ly-ui-size，code 独立步带 line-height/weight/tracking)",
+     "relay_status": "partial",
+     "relay_evidence": "packages/client/ui-theme/src/styles/base.css:59-81 (rem 固定阶梯 + tracking；root font-size 由 appearance-apply.ts:80 写入)",
+     "adoption_value": "medium"
+    },
+    {
+     "name": "weight paired with size once in a Text primitive",
+     "detail": "ui-primitives 没有 Text 原语，各 CSS module 自行写 font-weight，层级靠谁写谁。新建一个瘦 Text 原语（size/tone/weight/mono/numeric 五个 prop）即可把双轴层级固定下来，成本低、收益直接。",
+     "lyra_evidence": "packages/desktop/src/components/Text.tsx:56-64 (DEFAULT_WEIGHT 表) + styles.css:239-243 (token 层故意不放 weight，避免 utility 顺序决定胜负)",
+     "relay_status": "absent",
+     "adoption_value": "high"
+    },
+    {
+     "name": "three-state reduce-motion (system/on/off)",
+     "detail": "ui-theme 只有 @media (prefers-reduced-motion)（base.css:113-127 清零 token，motion.css:111-116 关 swap/flip），没有用户开关。theme-settings.ts 增加三态字段 + 写 data-rl-reduce-motion + base.css 加一条 on 分支即可覆盖；JS 侧的 motionReduced() 按需再加。",
+     "lyra_evidence": "packages/desktop/src/theme.ts:183 (dataset.reduceMotion) + styles.css:2209-2225 (system 跟随媒体查询、on 无条件清零全局) + theme.ts:235-240 (motionReduced() 供 JS 动画读)",
+     "relay_status": "absent",
+     "adoption_value": "high"
+    },
+    {
+     "name": "three-duration motion vocabulary sized by what moves",
+     "detail": "ui-theme 的 base.css:106-110 已有同款三时长 + 同款两条曲线（连注释都是同一套语义），且 motion.css 的进出分离（overlay-out 更快）与 Lyra 的「离场比进场快」一致。此模式无需动作。",
+     "lyra_evidence": "packages/desktop/src/styles.css:169-197 (--ly-t-quick/base/slow + --ly-e-out/in/soft，注释写明按时长语义分档)",
+     "relay_status": "equivalent",
+     "relay_evidence": "packages/client/ui-theme/src/styles/base.css:96-110 (--rlw-motion-quick/base/slow + ease-out-quart/ease-in-cubic)",
+     "adoption_value": "low"
+    },
+    {
+     "name": "registered-property scroll fade mask with held band",
+     "detail": "ui-theme 已有逐 stop 相同的 mask 实现，且多出 WebKit 双写与 portal 约束文档（fade-mask.css:23-31），比 Lyra 更完整。唯一差异：Lyra 的 --ly-fade-inset 不继承而 relay 的 --rlh-fade-inset inherits:true，若发现嵌套 scroller 串值可改回 inherits:false。无需动作。",
+     "lyra_evidence": "packages/desktop/src/styles.css:1310-1427 (@property 三长度 + ease-out alpha 曲线 stops + --ly-fade-inset sticky 行保留带)",
+     "relay_status": "equivalent",
+     "relay_evidence": "packages/client/ui-theme/src/styles/fade-mask.css:34-118 (同三 @property、同 alpha 曲线、同 inset 语义)",
+     "adoption_value": "low"
+    },
+    {
+     "name": "custom overlay scrollbar thumb, native hidden globally",
+     "detail": "relay-harness 走的是另一条路：styled 原生细滚动条 + 双引擎 @supports 分流（scrollbar.css:44-60 的引擎互斥论证很扎实）。Lyra 的 overlay thumb 换来的是「静止窗口零 chrome」和任意粗细/悬停增粗，但要自带 Scroller 组件和命中区扩边。除非视觉上要追平 Lyra 的无 chrome 观感，否则保留现状；可借鉴的只有一条：thumb 悬停时向内增粗且外缘不动（styles.css:1235-1240）。",
+     "lyra_evidence": "packages/desktop/src/styles.css:457-465 (全局隐藏原生条) + 1168-1281 (ly-thumb 悬停浮现/增粗、::after 扩大命中区、拖拽禁选)",
+     "relay_status": "absent",
+     "relay_evidence": "packages/client/ui-theme/src/styles/scrollbar.css:44-90 (原生 thin scrollbar 双路径主题化)",
+     "adoption_value": "low"
+    },
+    {
+     "name": "CJK size-adjust composite face leading both stacks",
+     "detail": "ui-theme 已实现同一方案（含 PostScript 名孪生 face 这一比 Lyra 更细的修复）。无需动作。",
+     "lyra_evidence": "packages/desktop/src/styles.css:116-134 (Lyra CJK 双 face) + 217-220 (栈首) + 335 (body 上 'Lyra CJK' 前置的理由)",
+     "relay_status": "equivalent",
+     "relay_evidence": "packages/client/ui-theme/src/styles/base.css:19-57 (Relay CJK 三 face + 栈首) + appearance-apply.ts:9-15 (同样注释)",
+     "adoption_value": "low"
+    },
+    {
+     "name": "bundled variable webfonts + Inter legibility features + global tabular-nums",
+     "detail": "ui-theme 只用系统栈（base.css:54-57），无 @font-face、无 font-feature-settings；tabular-nums 散落各 module（ChatView.module.css 等）而非 body 默认。全部采纳体积代价约 86KB（Lyra 注释口径）；最小做法是先补 body 级 font-variant-numeric: tabular-nums 和 input 的 font: inherit，webfont 引入再按体积权衡。",
+     "lyra_evidence": "packages/desktop/src/styles.css:21-100 (Inter/JetBrains/Fira/SCP/Plex latin-only woff2) + 344-348 (cv05/cv08/ss03 + body 级 tabular-nums) + 21-20 注释 (86KB 成本)",
+     "relay_status": "absent",
+     "adoption_value": "medium"
+    },
+    {
+     "name": "transcript render containment (content-visibility + drag-time motion freeze)",
+     "detail": "ui-conversation 只有零散 contain:style/strict（ChatView.module.css:58、ProducedFiles.module.css:98），转写行没有 content-visibility: auto，也没有拖拽冻结机制。若 ui-conversation 有自绘拖拽/宽度调整，按 Lyra 的结论做：行级 content-visibility + 冻结时在元素本身写 data 属性（不要祖先 flag）+ selectstart 拒绝代替 user-select。",
+     "lyra_evidence": "packages/desktop/src/styles.css:427-430 (content-visibility: auto + contain-intrinsic-size: auto 200px，带 65ms→0ms 实测) + motion-freeze.ts:29,44,72-94 (每元素 data-ly-frozen 属性 + selectstart 拒绝，引用计数) + styles.css:2463-2469 (元素级而非祖先 flag 的性能论证)",
+     "relay_status": "absent",
+     "adoption_value": "high"
+    },
+    {
+     "name": "explicit color-scheme declaration alongside theme attribute",
+     "detail": "ui-theme 只切 body[data-rl-dark-theme]（boot-theme.ts:67），全库 grep 不到 color-scheme 或 light-dark()。这意味着原生表单控件、滚动条底色、<input> 的 auto 深色渲染都留在 UA 默认。一行修复：boot-theme.ts 里同步 documentElement.style.colorScheme = dark ? 'dark' : 'light'（注意 relay 的 token 声明在 body，color-scheme 应写在 html 或 body 并与现有属性切换同点）。",
+     "lyra_evidence": "packages/desktop/src/theme.ts:170-179 (dark/light 双 class + root.style.colorScheme，注释说明 light-dark() 与表单控件依赖它)",
+     "relay_status": "absent",
+     "adoption_value": "high"
+    },
+    {
+     "name": "keyboard/hover affordance parity via :focus-visible and :has",
+     "detail": "ui-theme styles 里没有任何 :focus-visible 规则（grep 为空）。低成本高确定性的子集：给悬停浮现类控件（菜单触发、行尾操作）补 :has(:focus-visible) 显形规则即可。",
+     "lyra_evidence": "packages/desktop/src/styles.css:1613-1615 (update-dot 悬停信息对键盘可见) + 2973-2984 (:focus-visible 而非 :focus-within 的选型论证) + 380-389 (pointer-cursor 可选开关) + 509-514 (inert 元素不再切出 drag-region 洞)",
+     "relay_status": "absent",
+     "adoption_value": "medium"
+    },
+    {
+     "name": "styling architecture: Tailwind v4 @theme/@utility vs token-sheet + CSS Modules",
+     "detail": "Lyra 是 Tailwind v4 单文件（@theme 发 token、@utility 做窗口 chrome、@layer components 放 .prose-dw）；relay-harness 是 ui-theme 的全局 token sheet（design-platform.css 的 static/alias/specific 三层）+ 各包 CSS Modules + data-rlh-motion 状态配方。两套不兼容，不建议迁移；真正值得跨栈搬运的是上面列的 token 语义（surface/rule 不对称、color-scheme、三态 reduce-motion），它们都是纯 CSS/TS 层改动，与架构选择无关。",
+     "lyra_evidence": "packages/desktop/src/styles.css:1 (@import tailwindcss), 140 (@theme), 476-514 (@utility + inert drag-region 修补), 527 (@layer components)",
+     "relay_status": "partial",
+     "relay_evidence": "packages/client/ui-theme/src/styles/design-platform.css:1-364 + packages/client/ui-theme/src/css-modules.d.ts",
+     "adoption_value": "low"
+    }
+   ],
+   "slice": "lyra-design-system",
+   "summary": "Lyra 桌面端的设计系统集中在两个文件：`packages/desktop/src/styles.css`（3501 行，Tailwind v4 `@theme` + `@layer base/components` + 手写 keyframes，无 CSS Modules）和 `packages/desktop/src/theme.ts`（249 行运行时派生）。核心做法：(1) 三个种子色（accent/background/foreground）+ 对比度滑杆在运行时派生全部 surface/rule/ink token，浅色主题下 surfaces 与 rules 走两条不同曲线避免「整头发灰」；(2) 七步字阶全部 calc 自用户唯一可设的 `--ly-ui-size`，字重与字阶在 Text 原语里一次性配对；(3) 动效只有三档时长三档曲线、按时长语义命名，reduce-motion 是 system/on/off 三态 + 全局清零 + 逐动画降级；(4) 组件样式 = Tailwind utility + 语义组件（Text/Scroller/OverlayScrollbar），无 CSS Modules。relay-harness 的 `packages/client/ui-theme`（`--rlw-*` token + `body[data-rl-dark-theme]` + CSS Modules + data-rlh-motion 配方）在 CJK size-adjust 合成字面、滚动 fade mask（@property 三长度 + ease-out alpha 曲线）、三档动效时长/曲线、以及 token 从种子色派生这几处已与 Lyra 等价甚至（fade mask）更完整；缺口在 color-scheme 显式声明、浅色主题 surface/rule 分曲线、三态 reduce-motion 用户开关、正文级 tabular-nums/Inter 特性、转写行 content-visibility、以及拖拽期 motion freeze。"
+  },
+  {
+   "patterns": [
+    {
+     "adoption_value": "medium",
+     "detail": "Lyra 把限速放在写入 store 这一层：只有最后一个 message_update 会落地，且任何会改变语义的事件到达时先同步 flush 挂起的更新，杜绝乱序（coalesce.ts:14-17 注释：乱序会让工具卡片出现在介绍它的句子之上）。relay-harness 的 Notifier.markFrameDirty 把通知压到一帧一次且 rebuild 先于通知，效果等价、层次更通用；但它没有\"非流式事件强制越过帧边界先落地\"的显式语义，靠 markDirty 走 microtask、markFrameDirty 走 rAF 的调度差异隐式区分。若未来出现流式 delta 与终态事件同帧竞争的 bug，Lyra 的 flush-before-non-stream-event 纪律（apply-event.ts:187）值得补成显式保证。",
+     "lyra_evidence": "packages/desktop/src/store/coalesce.ts:30-39（coalesce 用 requestAnimationFrame 只保留最新一次写入）；coalesce.ts:42-50（flushCoalesced 立即落地）；packages/desktop/src/store/apply-event.ts:187（凡非 message_update 事件先 flushCoalesced 再进 switch）；apply-event.ts:235-245（message_update 走 coalesce，只取最新）",
+     "name": "frame-coalesced streaming writes with ordered flush",
+     "relay_evidence": "packages/client/runtime/src/client/sessions/notifier.ts:45-50（markFrameDirty 每帧至多发布一次）；notifier.ts:37-42（markDirty 折叠为一次 microtask flush）；notifier.ts:56-61（notifyNow 同步 flush，供受控输入用）",
+     "relay_status": "equivalent"
+    },
+    {
+     "adoption_value": "medium",
+     "detail": "两者解决同一问题（几千条消息的长会话挂载成本），机制不同：Lyra 是纯客户端窗口（数据已全在内存），relay 是 host 分页 + 锚点恢复滚动。relay 方案内存上更省，但依赖 host 分页契约。Lyra 值得借鉴的两点细节：窗口状态随会话切换重置（Conversation.tsx:33-34）；窗口以折叠后的 Run 行数计量而非消息行数——若 relay 引入跨消息工具折叠（见下条），loadOlder 的分页步长也必须按折叠后的行数算，否则一页只有几行。",
+     "lyra_evidence": "packages/desktop/src/components/Conversation.tsx:33-34（windowSize 随 activeSessionId 重置）；Conversation.tsx:221-222（hidden = allRuns.length - windowSize；visibleRuns = allRuns.slice(hidden)）；Conversation.tsx:318-326（\"显示更早的 N 条\"按钮，每按一次加 WINDOW_STEP）；components/conversation/runs.tsx:23（WINDOW_STEP = 60）；Conversation.tsx:309-317 注释说明挂载全部行的内存与重绘代价",
+     "name": "tail-window transcript mounting (expand-earlier instead of full mount)",
+     "relay_evidence": "packages/client/ui-conversation/src/client/chat/ChatView.tsx:407-421（loadOlderAnchored 先记录可见锚点行再调 loadOlder）；ChatView.tsx:438-444（hasMore 渲染分页按钮）；ChatView.tsx:295-307（prepend 后按锚点行 top 差值修正 scrollTop，排除无关的尾部增长）",
+     "relay_status": "equivalent"
+    },
+    {
+     "adoption_value": "high",
+     "detail": "这是 Lyra 针对工具密集轮次最核心的呈现决策：模型每轮\"调用-读结果-再调用\"会产出多条 assistant 消息，若按消息分组，7 个串行调用会渲染成 7 行一调用的小卡（grouping.ts:8-11 注释点名了这个失败）。Lyra 在渲染前用纯数据函数把跨消息调用合并进同一 Run，行 key 取首个 call id 保证中途插入不重建，memo 比较器补上 trailing 这个\"调用不变但状态变\"的通道。relay-harness 目前每个工具调用是独立 chat node、各占一行，长工具链呈现为一长列同质卡片，且没有 added/removed 汇总。借鉴点：在 chat-snapshot-builder（conversation-nodes/tool.ts、chat-snapshot-builder.ts）层做跨节点折叠 + 稳定 key，一行折叠摘要 + 展开卡片，并配同样的 memo 比较。",
+     "lyra_evidence": "packages/desktop/src/components/conversation/grouping.ts:184-271（runs() 单遍扫描把 toolCall 收进 work() 延伸的 Run，grouping.ts:190-195）；grouping.ts:216-224（toolResult 不是转录条目、跳过，注释说明这正是\"7 个调用变成 7 个单调用组\"的根因）；Conversation.tsx:354-355（ToolRunGroup 的 key 取 run.calls[0].block.id 而非位置）；runs.tsx:186-195（memo 比较器：trailing 与 runs 变化即重渲，否则按 call id + stopReason 逐项比较）；runs.tsx:153-156（组级摘要与 added/removed 数值选择器）",
+     "name": "cross-message tool-run grouping into one stable collapsible row",
+     "relay_status": "absent"
+    },
+    {
+     "adoption_value": "low",
+     "detail": "这一条 relay-harness 已经做对，且形态更干净：不可变快照 + per-key 选择器替代了 Lyra 的\"整 map 复制 + memo 比较\"。无需行动；价值在于它是 Lyra 大量注释在解释的同一原则的已有实现，审计 diff 时可用来校准预期。",
+     "lyra_evidence": "packages/desktop/src/components/conversation/runs.tsx:59-77（LiveToolCard：useApp(s => s.toolRuns[block.id]) 只订阅自己那条，注释 runs.tsx:49-58 说明整 map 订阅曾让每次 tool_update 重绘全转录）；runs.tsx:154-156（added/removed 用 reduce 成 number 的选择器，注释 runs.tsx:123-129：返回新对象的选择器永远\"变了\"，数字才按值比较）；store/apply-tool.ts:17-74（tool_start/update/end 按 toolCallId 键入 toolRuns，独立文件因为工具是另一套时钟）",
+     "name": "per-key tool-card subscription (narrow selectors over the toolRuns map)",
+     "relay_evidence": "packages/client/ui-conversation/src/client/chat/ChatNodeSeat.tsx:19-24（每个 seat 只订阅 snapshot.chat.nodes.get(nodeKey) 一个键，注释：不观察兄弟 Node）；ChatView.tsx:162-174（视图级选择器全部取原始值或 Map 引用）",
+     "relay_status": "equivalent"
+    },
+    {
+     "adoption_value": "high",
+     "detail": "relay 的重连后一致性由 mux 代际 baseline 重放 + resync 保证（传输层更强、有协议契约），但它没有客户端转写缓存：每次打开/回到会话都要重建（resync/open），也没有把并发打开请求折叠成\"最后一个赢家\"。Lyra 这里的三个点值得借鉴：(1) 打开请求折叠（首点击立即走、后续点击互相覆盖）直接消除主进程/重复 IPC 风暴；(2) LRU 上限封住缓存的内存增长；(3) \"只被真正改变转写的事件失效\"（title 类高频无害事件不炸缓存）是缓存失效粒度的范本，可用于 relay 未来引入任何快照缓存的场景。",
+     "lyra_evidence": "packages/desktop/src/store/session-slice.ts:30-31（reading/queued 模块级变量）；session-slice.ts:257-272（reading 非空时 queued = meta 直接返回，finally 里取最后一个 queued 重放；注释 session-slice.ts:18-29 记录 18 次点击把主进程从 156MB 打到 1.5GB 的 OOM）；store/derive.ts:28-39（CACHE_LIMIT = 12 的 LRU prune，插入序即最近序）；apply-event.ts:39-46 与 148-150（TOUCHES_TRANSCRIPT 白名单事件才把离屏会话的缓存条目删掉，注释 132-147：宁可骨架屏也不展示过期内容当现状）；session-slice.ts:131-149（离开时把转写连 scrollTop/pinnedToBottom 一起停进缓存）",
+     "name": "session-switch read coalescing + LRU transcript cache with precise invalidation",
+     "relay_evidence": "packages/client/runtime/src/client/sessions/session.ts:420（resync() 重建 open）；sessions/manager.ts:926-936（onConnected 后对每个已开 session resync）——有权威重放但无客户端读折叠或 LRU 快照缓存",
+     "relay_status": "partial"
+    },
+    {
+     "adoption_value": "medium",
+     "detail": "两者分层互补：relay 的 mux 代际 baseline 重放是协议级权威重同步，比 Lyra 的\"重开重读转写\"更强；Lyra 的可借鉴面在 UI 语义层：(1) 重试横幅的清除由\"任何流事件到达\"触发，而不是等 turn 结束——修掉了\"连接早已恢复、横幅挂满一轮\"的状态残留（apply-event.ts:170-177 注释）；(2) retry 事件带绝对时刻 until 而非相对时长，倒计时读钟不漂移（store.ts:239-248 注释）；(3) resume 与普通重试是两种语义、两种等待与两种措辞（apply-event.ts:358-368）。relay 客户端目前没有对应的\"正在重试，N 秒后继续\"浮层（ChatView 只有 TurnStatus 转动指示），长重试等待期对用户表现为纯静默。",
+     "lyra_evidence": "packages/core/src/ai/retry.ts:260-285（retryStream：流断后整段重来，reset() 清理上次累积，注释 243-258 论证工具在完整回复后才执行所以可安全重来）；retry.ts:120-128（尊重 Retry-After/错误体 reset_seconds，封顶 60s，带抖动）；retry.ts:83-109（从响应体正则提取服务器自报的等待时长）；agent/loop.ts:408-425（onRetry 发 retry 事件并统一跨嵌套重试层的计数）；desktop apply-event.ts:24-31 与 178（RECONNECTED 事件集合：任何流事件到达即清 retrying 横幅）；apply-event.ts:349-369（retry 事件带 until 绝对时刻；resume 时把 running 与时钟重新立起来，注释 358-365：agent_end 已把窗收起、不立回去会被当成已死）",
+     "name": "layered reconnect: request/stream retry + visible banner cleared by stream arrival + resume semantics",
+     "relay_evidence": "packages/client/runtime/src/client/sessions/session.ts:415-437（重连代际：doOpen 作废、baseline 重放、pending 重建）；sessions/manager.ts:927-936（连接代际后刷新基线并重建已开窗口）；ui-conversation/src/client/chat/ChatView.tsx:466（TurnStatus 只覆盖\"轮在跑\"，无重试等待态）",
+     "relay_status": "partial"
+    },
+    {
+     "adoption_value": "medium",
+     "detail": "relay-harness 在契约层面已宣称同一不变量（model-visible ⟺ logged），并有 SessionEventMap 版本机制，方向一致。Lyra 可借鉴的是三个具体机制而非原则：(1) compaction 是\"三档最便宜优先\"的流水线且阈值/保尾预算全是显式常量；(2) 防御式摘要 prompt 把被摘要内容当不可信数据、固定输出小节防漂移（对 relay 的 compaction 组同样适用）；(3) 边界与消息一起 restore、rewind 越界即退休边界，这两个边角在 client 端会话恢复实现时最容易漏。",
+     "lyra_evidence": "packages/core/src/runtime/session-log.ts:25（PERSISTED_EVENTS 白名单：只有 compacted/context/subagent/subagent_done 落盘，其余是 live-only）；session-log.ts:59、76-81（committed WeakSet 按身份去重，steering 与直发两条路径都收敛到 commit 恰好一次）；session-log.ts:49、130-132（compaction 边界 {summary, keptFrom} 存在 log 上而非运行循环数组里，注释 41-47：边界不落盘则下轮重建全量历史、从头再压缩一次）；session.ts:110-112（restore 同时收消息与边界，注释 102-109：只恢复消息会把已压缩会话在首个 prompt 重新顶过窗口）；runtime/compaction.ts:33-74（阈值 0.8、先剪枝、KEEP_BUDGET 0.12、SAFE_AFTER 0.3、SUMMARY_INPUT 0.4 等显式预算）；compaction.ts:84-120（摘要 prompt 把会话内容当不可信数据、固定小节格式防漂移）；session-log.ts:152-168（truncateFrom 越过边界时退休边界）",
+     "name": "durable session log dual-write with compaction boundary (long-session memory management)",
+     "relay_evidence": "relay-harness/CLAUDE.md:78（\"Model-visible ⟺ logged\"不变量：新模型可见输入必须有 session event）；CLAUDE.md:75（SessionEventMap 成员默认 required-on-read，结构性变更才 bump SESSION_FORMAT_VERSION）",
+     "relay_status": "equivalent"
+    },
+    {
+     "adoption_value": "high",
+     "detail": "relay 有等价的乐观呈现（PendingSteeringBubble 显示排队/插话中的输入），但没有\"存储副本按引用替换乐观副本\"的去重机制：Lyra 用引用相等在 message_start/message_end 两个时点都把副本原位换掉，并处理了\"新会话首个消息的 message_start 因 sessionId 未定而被丢、message_end 兜底替换\"的边角（apply-event.ts:250-257 注释：没有这条，每条首消息都会出现两次）。若 relay 的 steer→node 落地链路存在同类双绘窗口（本地 bubble 与流上来的 user node 短暂并存），这个 by-reference 换位 + 收尾兜底是现成解法；also retryFrom 复用 editMessage 的实现（turn-slice.ts:168-177）值得留意。",
+     "lyra_evidence": "packages/desktop/src/store/turn-slice.ts:54-82（send 先把 pending user message 推进 messages 并记 pendingUserMessage 引用，注释 46-53：建会话约 2 秒，不先画则像吞了消息）；apply-event.ts:210-221（message_start 按引用 includes(pending) 识别并用存储副本原位替换，注释 208-209：按引用匹配，重发同文本仍是两条）；apply-event.ts:258-265（message_end 兜底：新会话上 message_start 在 sessions.create 返回前到达会被丢，没有这条则首条消息必双绘）；apply-event.ts:224-230（重连时已存在消息的 message_start 被忽略）",
+     "name": "optimistic user message with by-reference replacement",
+     "relay_evidence": "packages/client/ui-conversation/src/client/chat/ChatView.tsx:217-220、467-474（queue inbox 里 placement === 'steering' 的项渲染为 PendingSteeringBubble）；runtime sessions/session.ts:84-85 注释（queue mirror 是 stream-only 收件箱、不进 history）",
+     "relay_status": "partial"
+    },
+    {
+     "adoption_value": "high",
+     "detail": "Lyra 的关键洞察：会话切走时事件照常到达但转写无人观看，事件不足以重建离屏转写，所以缓存直接失效、靠重读兜底——但 turns/activity 这类标量事实按会话持续记账，回来时读得回。relay 的 sessions manager 对未实例化会话也维护摘要行与 queue mirror（manager.ts:109-136 注释），方向一致；缺的是\"被观看与否\"这层区分带来的两种处理：relay 的重放是权威路径（更强），但 Lyra 的 activity 读后即清（readOutcome，session-slice.ts:392-401）、以及\"watched 会话不能未读即完成\"（apply-event.ts:60-72）这类已读/未读语义在 relay 的会话列表边栏投影里没有对应物。",
+     "lyra_evidence": "packages/desktop/src/store/apply-event.ts:57-80（activity：每个会话的事件都先折进 activity map，正在观看的会话 done/failed 即刻清零）；apply-event.ts:91-130（turns：每会话计时/Token 表，注释 93-100：只让四个动表事件触碰 map，否则每秒多次的 message_update 会让窗口里所有选择器空转）；apply-event.ts:341-347（subagent_message 只在该子代理转写被打开时追加，注释 338-344：刻意不进主转录，避免污染）；store.ts:207-218（turns 按 session 键、turnStartedAt/turnTokens 是它的镜像）；session-slice.ts:199-200（打开会话时从 turns 读回自己的钟）；Conversation.tsx:2-25（整个 Conversation 用 memo 边界隔离 dock 拖拽重渲，注释：拖动侧栏一次 470KB markdown 重解析）",
+     "name": "per-session background bookkeeping (turns/activity for off-screen conversations)",
+     "relay_evidence": "packages/client/runtime/src/client/sessions/manager.ts:109-136（未实例化会话的变更缓冲与重放，按连接代际清除）；manager.ts:337（store.subscribeAny → notifier.markDirty 把投影层变更接到列表快照）；ChatView.tsx:110-116（timeline.turns 里 status === 'open' 的轮取 start.time 作钟锚）",
+     "relay_status": "partial"
+    }
+   ],
+   "slice": "lyra-architecture",
+   "summary": "Lyra（Electron + React + 单一 zustand store，packages/desktop）把长会话流式 UI 的性能与正确性做成了几条可迁移的工程纪律：(1) 流式写入按帧合并、非流式事件先 flush 保序；(2) 长转录用尾部窗口 + 展开更早控制挂载量；(3) 跨 assistant 消息把工具调用折叠成一条以首个 call id 为 key 的稳定行，并配自定义 memo 比较器；(4) 每张工具卡片只订阅 toolRuns 里自己的一个键；(5) 会话切换的读取做 last-click-wins 折叠，转录用 12 条 LRU 缓存且被会改变转写的事件精确失效；(6) 重连由请求级/流级重试 + UI 横幅（任何流事件到达即清除）+ resume 语义三层表达；(7) 内存治理靠 SessionLog 双写（内存转写 + 追加日志）、compaction 边界持久化（0.8 阈值、先剪枝、recall 兜底）、后台会话 turns/activity 按会话记账；(8) 用户消息乐观上屏并以引用替换存储副本。relay-harness 客户端是插件化 + 每会话 engine store + keyed node 注册表，其中帧级通知批处理（Notifier.markFrameDirty）、按 key 订阅（ChatNodeSeat）、host 端分页 loadOlder + 锚点恢复、mux 代际 baseline 重放/resync 分别与 Lyra 的 1/2/4/6 对应或更强；但 Lyra 的跨消息工具行折叠 (3)、会话读取折叠 + LRU 转写缓存 + 事件驱动失效 (5)、乐观用户消息按引用替换 (8) 在 relay-harness 中缺失或形态不同，是借鉴价值最高的三处。"
+  }
+ ],
+ "relay": [
+  {
+   "patterns": [
+    {
+     "adoption_value": "high",
+     "detail": "Lyra 用显式渲染窗口控制 DOM 规模：`windowSize` 从 WINDOW_STEP 起步、`visibleRuns = allRuns.slice(hidden)` 只挂载最近 N 个 run，用户可主动扩窗。relay 的 ChatView 没有对应物：`const order = useSession(s => s.chat.order)`（ChatView.tsx:162）后整表渲染，滚动锚定逻辑自己也承认这一点——pagingAnchor 的 fallback 注释写着 \"a virtualizer naturally bounds it\"（ChatView.tsx:60-61），但虚拟化器从未引入。这与 round-1 的 runtime 事件窗口无界是两层问题：即使未来给 runtime store 加了窗口上限，渲染层仍会挂载窗口内全部节点。落地方式不必是虚拟化器：照抄 Lyra 的 visible-run 窗（初始 N 行 + \"load older runs\" 扩窗按钮）即可，ChatView 已有的 chatScroll 锚点恢复（ChatView.tsx:87-97）和 loadOlder 分页通道正好承载扩窗语义。",
+     "lyra_evidence": "/Users/jin/Desktop/Relay/Lyra/packages/desktop/src/components/Conversation.tsx:33 (const [windowSize, setWindowSize] = useState(WINDOW_STEP)) 与 :221-222 (hidden = allRuns.length - windowSize; visibleRuns = allRuns.slice(hidden))",
+     "name": "visible-run 窗口化（渲染层只挂载最近 N 个 run）",
+     "relay_evidence": "packages/client/ui-conversation/src/client/chat/ChatView.tsx:60-61,162-163",
+     "relay_status": "absent"
+    },
+    {
+     "adoption_value": "high",
+     "detail": "relay 的三层体系里 alias 层语义是好的（derive.ts 按种子色推导、带对比度下限），但 static 层是从 Figma 原样导出的清单，带着四类债：(1) 真正的品牌强调色住在畸形 token `--rlw-alias-brand-primary-new-colorprimary-new-color` 里（design-platform.css:184、:289；derive.ts:105 同名派生；被 TrajectoryTable/TrajectoryCell/TrajectoryTimeline 四处 module.css 消费），而名为 `--rlw-alias-brand-primary` 的 token 在默认 sheets 里是黑白两色（design-platform.css:185、:290）；(2) `--rlw-static-relay-700-delete` 这种带 \"-delete\" 后缀的名字进了生产 token 表（design-platform.css:30、:106）；(3) 73 个 static token 中 27 个在 ui-* 全部 src 里无任何 var() 消费（逐 token grep 验证，含 relay-700-delete）；(4) dark 块把整张 static 调色板逐字节复制一遍（design-platform.css:81-153 vs :5-78），唯一实质差异是 `--rlw-static-neutral-bluish-60` light rgb(245,246,247)（:63）vs dark rgb(249,250,251)（:139）——一个藏在复制块里的静默分歧，而按命名约定 static 本应主题无关。Lyra 的做法证明该词汇表可以小一个数量级：约 30 个角色名 token + theme.ts 只覆盖 3 个可配色。收敛动作是删未用、改畸形名（连带 4 个消费文件）、把 bluish-60 分歧显式化，不必照搬 Lyra 的命名。",
+     "lyra_evidence": "/Users/jin/Desktop/Relay/Lyra/packages/desktop/src/styles.css:141-167（约 30 个角色名 token：--color-shell/sidebar/panel/card/ink/line/accent/ok/danger）；theme.ts:8（\"Only three colours are configurable\"）与 :109-110",
+     "name": "扁平角色名语义 token 词汇表（替代设计工具导出的 static 色阶）",
+     "relay_evidence": "packages/client/ui-theme/src/styles/design-platform.css:184,289（畸形 accent token）、:30,106（-delete 后缀）、:63 vs :139（静默分歧）、:5-78 与 :81-153（整块复制）；packages/client/ui-theme/src/derive.ts:105",
+     "relay_status": "partial"
+    },
+    {
+     "adoption_value": "high",
+     "detail": "Relay Focus 重绘（commit 8cefaab336）引入了新的 `--rlw-motion-quick/base/slow` + 双 easing 阶梯（base.css:106-110，配 150/220/340ms），但没有退役旧的 `--rl-transition-duration-*` + `--rl-ease-in-out` + `--rl-motion-duration-*` 集合（base.css:83-94）。结果是三重混用：(a) prefers-reduced-motion 块必须把两套共 11 个 token 逐一清零（base.css:113-127），新增动画若漏登记任一套就逃过降级；(b) 组件消费侧两套都在用（旧 `--rl-ease-in-out` 36 处、`--rl-font-family-code` 53 处，新 `--rlw-motion-*` 57 处，ui-* src grep 计数），可以出现 `--rlw-motion-base` 配旧 easing 的混搭，而 base.css:1-6 注释声称 motion \"rides one shared curve\" 已不成立；(c) docs/web-styling.md:25 仍只记载旧集合（`--rl-transition-duration*`、`--rl-motion-duration-flip`），新阶梯在文档里不存在——文档把混合词汇表当成了规范。Lyra 证明一条阶梯够用。收敛动作：定一个迁移终点（建议保留 --rlw-motion-*），把 --rl-transition-duration-*/--rl-ease-in-out 消费点批量改写后删除旧定义，同步改写 web-styling.md:25；可加一条 lint/gate 禁止新 CSS 引用已退役 token。",
+     "lyra_evidence": "/Users/jin/Desktop/Relay/Lyra/packages/desktop/src/styles.css:191-197（唯一阶梯：--ly-t-quick/base/slow = 150/220/340ms + 3 条 easing 曲线）",
+     "name": "单一 motion token 阶梯",
+     "relay_evidence": "packages/client/ui-theme/src/styles/base.css:83-94（旧 --rl-* 集合）、:106-110（新 --rlw-motion-* 阶梯）、:113-127（两套都要清零）；docs/web-styling.md:25",
+     "relay_status": "partial"
+    },
+    {
+     "adoption_value": "medium",
+     "detail": "粒度本身是该前端的主架构决策，不应整体倒向 Lyra 的单包模型：plugin 边界支撑 HMR 安全（registry disposal 测试要求）、按 cordis.patch.yml 逐包启停（web-app/cordis.patch.yml:320-321 注释掉 ui-settings-remote 即下线一个表面）、以及 type-only import 的 client bundle 纯度门（ui-conversation/apply.ts:7-8 注释明说跨插件协作只走 service 不走值导入）。但它有三类可度量的税：(1) 每包 ~5 份基础设施文件，纯展示包也不例外——ui-brand-official 全部内容是一个 Brand.tsx，却要维护 package.json 的 exports 三入口 + rlh.client manifest、tsdown.config、以及一个空转的 invariant 伴生插件（src/invariant.ts:15-18 \"No runtime invariant\"）——对无状态的 slots 注册者，invariant 伴生是合规仪式而非运行时断言；(2) packages/client/README.md 落后 20 个包（round-1 已报，根因是粒度使清单人工维护）；(3) 跨包共享契约没有默认归宿，导致 window.shell 11 份手写（round-1 已报）这类重复。可采纳的中庸动作：为\"纯 slots 注册、零状态\"的包引入声明式的极简包模板（自动生成 invariant 伴生与 exports map），并把 slot 键名表从 108 处 declare-module 收敛为每包一处集中 merge 文件，降低合并面维护成本。",
+     "lyra_evidence": "/Users/jin/Desktop/Relay/Lyra/packages/desktop/src/App.tsx:11-24（单包内直接 import 组件组装）；components/ 目录 198 个 .tsx、约 57.5k 行",
+     "name": "包即插件：53 个 ui-* 双面（host/client）包 vs Lyra 单包直接组装",
+     "relay_evidence": "packages/client/ui-brand-official/src/invariant.ts:15-18（空 installer）、package.json:8-37（三入口 exports + rlh.client manifest）、tsdown.config.ts；packages/bundle/web-app/cordis.patch.yml:259-339（逐包枚举）；108 个文件 declare module '@relay-harness/rlh-client-ui-slots'",
+     "relay_status": "equivalent"
+    },
+    {
+     "adoption_value": "low",
+     "detail": "这是 relay 明显领先 Lyra 的结构：SlotMap/LocaleNamespaceMap 由各包 declare module 合并（ui-slots/src/index.ts:20-21、:28），拥有者用 children 声明子槽的 kind（single/chain/list/keyed）与 scope（root/session/session-maybe），渲染器按 entry 做授权检查——未声明即抛 SlotOwnershipError、disposed 注册再调用抛 StaleAuthorizationError（ui-renderer/src/client/scoped-slots.tsx:39-59），注入失败被 entry 边界包含。ui-conversation/apply.ts:269-299 一次声明 12 个子槽并把 ApprovalPanel 作为 selector-routed chain entry 接入（:454-467），ui-tool 以 keyed entry 挂进 chat.node（ui-tool/src/client/apply.ts:26-27），第三方包（ui-attachment、ui-brand-official）无需改 core 即插面。47 个唯一 slot 键、58 个注册文件构成整个 GUI 的组合骨架，对应 cordis \"everything is a plugin\" 的服务端模型。Lyra 无对应物（App.tsx 直接 import），采纳其方向是倒退。真正的改进点在 reverse direction：把 round-1 报过的 11 份 window.shell 局部声明收敛成同一机制——在 rlh-client-runtime 声明一个 DesktopShellBridge 的 SlotMap 式契约面，让 drift 变成编译错，而不是引入 Lyra 式直接组装。",
+     "lyra_evidence": "/Users/jin/Desktop/Relay/Lyra/packages/desktop/src/App.tsx:11-24（直接 import + JSX 组合，无注册面）",
+     "name": "声明合并式 typed slot registry + thunk 注册（Lyra 无对应物）",
+     "relay_evidence": "packages/client/ui-slots/src/index.ts:20-21,28（SlotMap/LocaleNamespaceMap）；packages/client/ui-renderer/src/client/scoped-slots.tsx:39-59（所有权/过期检查）；packages/client/ui-conversation/src/client/apply.ts:269-299（children 声明）；packages/client/ui-tool/src/client/apply.ts:26-27（keyed 挂入 chat.node）",
+     "relay_status": "equivalent"
+    },
+    {
+     "adoption_value": "low",
+     "detail": "relay 的输入状态机（machine.ts:4-13：\"Events in, effects out; zero React / DOM / cordis / ambient clock\"，draft+occurrence 表+undo log 在 dispatch() 内单事务原子提交，draftRev CAS 归约为版本相等检查）是框架无关、可穷尽性兜底（unreachable() at machine.ts:48-50）、undo 有界（LOG_LIMIT=100，machine.ts:43-44）的纯 reducer，facade/hub 只做接线。Lyra 的 Composer 把文本、附件、菜单状态散在组件 useState（Composer.tsx:71-72、:144-147），输入逻辑与 React 生命周期耦合、不可脱离 DOM 测试。方向上 relay 正确，Lyra 做法（hooks 局部状态）不会改善它。结构上值得记录的唯一弱点是：粒度精良的 machine 与接线层之间的双实现面（consume-token/set-invalid 与 image-only 提交面）——这些是 round-1 已报告项，此处只指出它们全部位于 machine 外的接线层，进一步佐证\"保持 machine 纯、把 wiring 面收敛到 machine 事件\"是正确的收敛方向，而非引入 Lyra 式组件内状态。",
+     "lyra_evidence": "/Users/jin/Desktop/Relay/Lyra/packages/desktop/src/components/Composer.tsx:71-72,144-147（文本/附件/命令菜单均为组件内 useState）",
+     "name": "纯函数式输入状态机（events in / effects out）",
+     "relay_evidence": "packages/client/ui-conversation/src/client/input/machine.ts:4-13（纯度契约）、:43-44（LOG_LIMIT=100）、:48-50（穷尽性兜底）；facade.ts:605 行接线层、hub.ts:221 行",
+     "relay_status": "equivalent"
+    },
+    {
+     "adoption_value": "low",
+     "detail": "会话组合是 relay 强于 Lyra 的部分：12 个 conversation-node 定义文件按事件 kind 分件（conversation-nodes/register.ts:17-30），chat-snapshot-builder.ts（557 行）做增量 fold，ChatNodeSeat 按 Node key 单行订阅（ChatView.tsx:12-14 注释明示 render economics：Assistant delta 只替换自己的行，不重挂载）；Lyra 的 Conversation.tsx 侧没有 per-row 订阅模型。Lyra 唯一可借鉴且 relay 缺的就是上面第 1 条的 visible-run 窗口（adoption high，单列不重复）。另外重绘本身（8cefaab336）质量兑现了 token 化：type scale --rlw-text-caption..display（base.css:65-71）、composer 专属 radius/shadow token（design-platform.css:255-260、:362-363）、surface 阶梯带注释说明取值理由（design-platform.css:167-175、:274-276），能力面板统一回接 token 并顺带修了 prompt-enhancement/jobs/memory-center 的死 token 引用。此条目的价值是标记\"哪些地方不要动\"：后续优化轮不应把 ChatView/node 组合重构成 Lyra 形态。",
+     "lyra_evidence": "/Users/jin/Desktop/Relay/Lyra/packages/desktop/src/components/Conversation.tsx:221-222（窗口切片）；transcript.ts（Lyra 无 per-row 订阅模型，run 级渲染）",
+     "name": "会话组合：per-kind node 定义 + 增量快照 fold + keyed seat（Lyra 无 node 定义层）",
+     "relay_evidence": "packages/client/ui-conversation/src/client/conversation-nodes/register.ts:17-30；chat-snapshot-builder.ts（557 行增量 fold）；chat/ChatView.tsx:12-14（每行单 key 订阅）；chat/register-node-renderers.ts",
+     "relay_status": "equivalent"
+    }
+   ],
+   "slice": "relay-ui-packages",
+   "summary": "packages/client 的 53 个 ui-* 包是\"包即插件\"模型：每包双面（src/index.ts host 面 + src/client/index.ts 浏览器面）、以 cordis.patch.yml 逐包枚举组合（packages/bundle/web-app/cordis.patch.yml:259-339），组件不直接互相 import，而是经 ui-slots 的声明合并式 slot registry（SlotMap/LocaleNamespaceMap，108 个文件做 declare module 扩展）+ thunk 式 `ctx.slots.inject(...register(...))` 注册。ui-conversation 是组合根：apply.ts（559 行）声明 conversation 的 12 个子槽并注册 ChatView/InputBar/ApprovalPanel 等 ~15 个 entry；conversation-nodes/ 按事件 kind 分件（12 个定义 + 557 行 chat-snapshot-builder 增量 fold），ChatView 只持有稳定 key 序列表、每行经 ChatNodeSeat 单 key 订阅（渲染经济学在 ChatView.tsx:1-14 注释明示）；输入侧是纯函数式 InputMachine（machine.ts:4-13，events in / effects out、LOG_LIMIT=100 undo 环）+ facade/hub 接线。ui-theme 是三层 token 体系（73 个 Figma 导出 --rlw-static-* 色阶 → ~90 个 --rlw-alias-* 语义别名 → ~15 个 --rlw-specific-* 表面），derive.ts 从三种子色推导并带对比度下限（derive.ts:24-27）。Relay Focus 重绘（commit 8cefaab336）补齐了 type scale（base.css:65-71）与 motion 阶梯（base.css:106-110）。与 Lyra（单 desktop 包、~57.5k 行、198 个 tsx、直接 import 组装）相比：relay 的 slot registry、输入状态机、会话快照 fold 均强于或不同于 Lyra，不应倒退；真正的结构性差距在三处 token/渲染层债——畸形且存活的 accent token 名、27/73 死 static token、dark 块整表复制里一处静默分歧（design-platform.css:63 vs :139）、新旧两套 motion 词汇表并存且文档只记旧套（docs/web-styling.md:25），以及 ChatView 无 Lyra 式 visible-run 渲染窗口。粒度的代价集中在跨包契约无单一归宿与每包 ~5 份基础设施仪式（含纯展示包的空转 invariant 伴生，ui-brand-official/src/invariant.ts:15-18）。"
+  },
+  {
+   "patterns": [
+    {
+     "adoption_value": "high",
+     "detail": "Lyra 的教训是「无变化也要身份稳定」：只有真正移动仪表的四个事件才写 map，且无变化时返回同一个对象（readOutcome 注释明言『不把新 map 递给 React』）。relay 侧每条 list 级帧（session/projection 任意 key——title、contextBreakdown、plan 等、session/jobs、任意 session 的 user/message activity）都触发 markDirty → buildListSnapshot 全量重建（其中 Object.fromEntries(catalogs)/Object.fromEntries(jobsBySession) 每次新分配）→ projectList 全量重建所有行对象 → list.set 新对象 → 所有裸订阅者收到通知。采用方式：给 SessionListState 增加逐字段/逐行的身份守卫（行对象复用 entryCache 已有的值比较结果，catalogs/jobsBySession 做引用缓存），applyMutation 检测 no-op 时短路 markDirty；子组件级收益立即可见（WorkspaceBrowser/SubagentCatalogAction 不再随无关会话的每条帧重渲染）。manager.ts:1088-1089 的 itemsCache/entryCache 证明该模式在包内已被意识到，只是没有推广到 store 投影层。",
+     "lyra_evidence": "Lyra/packages/desktop/src/store/apply-event.ts:91-130（注释明言：只有移动仪表的事件才复制 map——『A new object is a new identity, so each one made every selector in the window run again』）；Lyra/packages/desktop/src/store/session-slice.ts:386-401（readOutcome 无变化时返回同一对象，避免整行列表重渲染）",
+     "name": "identity-guarded store writes",
+     "relay_evidence": "packages/client/runtime/src/client/sessions/service.ts:679-752（projectList 每次为每行新建对象并无条件 list.set）；packages/client/runtime/src/client/contract/store.ts:113-116（set 无等值门槛，zustand setState 无条件通知）；packages/client/runtime/src/client/sessions/manager.ts:1132-1136,651-658（applyMutation no-op upsert 仍返回新数组并 markDirty）；消费者证据：packages/client/ui-workspace/src/client/WorkspaceBrowser.tsx:351,656,780（useSessions(s => s) 全态选择器）、packages/client/ui-subagent/src/client/SubagentCatalogAction.tsx:416-417（byId 整表选择器）——任一会话的任一 list 级帧都会让它们重渲染",
+     "relay_status": "absent"
+    },
+    {
+     "adoption_value": "medium",
+     "detail": "Lyra 用 CACHE_LIMIT=12 的 LRU 明确界定渲染进程保留多少会话数据（『Enough to cover switching around a project, not a whole day』）。relay 每行数据极小（{value,seq}、一个 address），增长慢但同样无界；真正的问题是这些 map 的删除路径不对称：entryCache/prevRunning/completedNotifications 都有基于 seen 集合的清扫（manager.ts:1041-1047,1085-1087），证明包内已有『与存活集合对账』的惯用法，addresses/catalogs/durable-subagent 的 projectionStores 是同一规则下未解释的例外（AGENTS.md『unexplained asymmetry signals a missed extraction』）。采用方式：在 host/session-removed 与 list 对账处统一清扫 addresses/catalogs，并给 projectionStores 套同一 eligible/seen 对账；无需引入容量上限即可封顶。",
+     "lyra_evidence": "Lyra/packages/desktop/src/store/derive.ts:27-39（CACHE_LIMIT=12 + prune：访问序即 recency，保住正在打开的那条）",
+     "name": "bounded renderer-side per-session cache (LRU prune)",
+     "relay_evidence": "packages/client/runtime/src/client/sessions/manager.ts:486-492（list 拉取为每个带 projections 的会话建 projectionStore）、manager.ts:863（仅非 durable 会话在 session-removed 时删除，durable subagent 的 store 永久保留）、manager.ts:190,214（addresses.set 无任何 delete 路径）、manager.ts:353-398（catalogs 只覆写 parentAvailable，从不删除）；对照已修剪的 entryCache：manager.ts:1085-1087",
+     "relay_status": "partial"
+    },
+    {
+     "adoption_value": "medium",
+     "detail": "relay 的事件窗口内容来自持久 session log，host 重启也不丢，而 resync 无条件清空重拉：每次重连对所有 open 会话并发 1-2 个 tail page 请求（含 doOpen 的 gap 二次拉取 session.ts:630-637），移动网络抖动下是 N 会话 × 全窗口重建的渲染与流量尖峰。而 seq 守卫的修复路径已存在且被证明正确（repairGap 与 subscribedLastSeq gap 检测是同一机制的现网路径）。采用方式：resync 保留 events/contexts，仅清 queue 镜像与 pending 重放（这两者才依赖代际），随后用 subscribedLastSeq 走 repairGap 前向补齐；只有检测到不可续接（如 history 连续性断言失败 session.ts:395-399）才退回全量重建。需要同步调整 installWindow 的 liveBuffer 拼接语义与回归测试。",
+     "lyra_evidence": "Lyra/packages/desktop/src/store/apply-event.ts:39-46（TOUCHES_TRANSCRIPT 白名单：只有真正改变 transcript 语义的事件才失效缓存）+ 148-150（后台事件只丢弃缓存、等下次 open 时重读权威源，不主动重拉全部会话）",
+     "name": "reconnect invalidate-on-touch (window survives generation)",
+     "relay_evidence": "packages/client/runtime/src/client/sessions/session.ts:427-441（resync 清空 events/views/baseSeq/pending，整个窗口作废）+ manager.ts:936（handleConnected 对每个 open 会话 Promise.all resync）；同文件已有前向修复原语未被复用：session.ts:712-728（repairGap 尾页重拉+拼接）、session.ts:482-489（subscribedLastSeq 基线）",
+     "relay_status": "partial"
+    },
+    {
+     "adoption_value": "low",
+     "detail": "两者已同级：relay 的 Notifier 把「microtask 通知」与「rAF 流通知」分成两个调度位，assembler 再按每个 Definition 声明的 publication 档位聚合（比 Lyra 的按事件类型二分更细），并有 out-of-order 防护（notifyNow 作废已排程的 flush）。无需采纳；此条确认 parity，指出唯一差异是 Lyra 用 cancelAnimationFrame 显式取消而 relay 用 scheduleGeneration 代数作废——语义等价。",
+     "lyra_evidence": "Lyra/packages/desktop/src/store/coalesce.ts:30-50（替换式 rAF 合帧 + flushCoalesced）；Lyra/packages/desktop/src/store/apply-event.ts:187（非流式事件先 flush，防旧态覆盖新态）",
+     "name": "frame-coalesced stream painting with ordered-event flush",
+     "relay_evidence": "packages/client/runtime/src/client/sessions/notifier.ts:44-50（markFrameDirty 按 rAF 合帧）+ packages/client/runtime/src/client/sessions/conversation-assembler.ts:47-51,59-64（PUBLICATION_RANK/maximumPublication：immediate 事件永远压过 animation-frame，等价于 flushCoalesced 的乱序防护）+ session.ts:704-707",
+     "relay_status": "equivalent"
+    },
+    {
+     "adoption_value": "low",
+     "detail": "方向一致：都是「每个会话的事实常驻、离屏会话继续驱动列表」，relay 靠 wire 快照帧 + summary 行完成，不需要 Lyra 那种 per-event 折叠（因为 host 已投影成 summary）。无采纳项；记录此映射以说明 relay 的 SessionManager 层职责划分与 Lyra apply-event 的前 130 行等价。",
+     "lyra_evidence": "Lyra/packages/desktop/src/store/apply-event.ts:48-80（每个事件先折叠进 per-session activity，包括没人看的会话）+ 91-130（离屏会话的 turn 计时/token 仪表照常维护）",
+     "name": "off-screen session activity surface",
+     "relay_evidence": "packages/client/runtime/src/client/sessions/manager.ts:1017-1047（syncCompletedNotifications：running→idle 边沿武装 sidebar 完成提醒，按帧序逐个 reconcile 防止边沿塌缩）、manager.ts:761-775 与 776-812（未实例化会话的 pending 交互与队列帧按稳定身份缓冲）",
+     "relay_status": "equivalent"
+    },
+    {
+     "adoption_value": "low",
+     "detail": "relay 已具备单飞（openPromise 身份守卫、loadingOlder 位），且每页有界（PAGE_MESSAGES=50）带 30s 超时（packages/host/apiproxy/src/fetch/client.ts:227-228,315），不存在 Lyra 那种整日志读放大的爆炸半径——Lyra 的模式是对「读无限大对象」的防御，relay 的读有界，收益有限。唯一可借鉴点：若未来 reconnect resync 改为按需（见 invalidate-on-touch 条），该 newest-wins 队列就是现成的调度形状。",
+     "lyra_evidence": "Lyra/packages/desktop/src/store/session-slice.ts:30-31,257-272（reading/queued 单飞 + 最新点击胜出，源自一次 156MB→1.5GB 的 OOM 事故）",
+     "name": "newest-wins single-flight session reads",
+     "relay_evidence": "packages/client/runtime/src/client/sessions/session.ts:369-378（open() 单飞：in-flight/已 open 返回同一 promise）、session.ts:383（loadOlder 重入守卫）；缺口在重连突发：manager.ts:929-937（handleConnected 对 refreshList + 全部 open 会话 resync + 各 catalog refresh 无折叠地 Promise.all）",
+     "relay_status": "partial"
+    }
+   ],
+   "slice": "relay-frontend-core",
+   "summary": "数据流映射：`WebApiClient.readWebSocket`（web-api-client.ts:45-101，唯一 wire 解析点：zod 双层校验、坏帧丢弃、wake 式 inbox 泵）→ `ConnectionController`（connection.ts:113-192：describe unary 握手 → onConnected → mux/host 双 WS 泵；generation 计数 + 指数退避，流错误在 pumpStream 收敛为共享重连）→ runtime apply 装配的 sinks（runtime/src/client/index.ts:204-233）→ `SessionManager.handleMuxEnvelope/handleHostEnvelope`（manager.ts:708-902：list 真相、未实例化会话的 pendingBuffers 身份压缩缓冲、projection/jobs 落 store）→ 按 sessionId 路由进驻留 `Session.handleMuxEnvelope`（session.ts:471-519 分派开关）→ `ConversationNodeAssembler`（contexts 依赖图 + 位置索引 + view builder，publication 档位 none/animation-frame/immediate）→ Notifier 微任务/rAF 双档批量 flush 重建 snapshotCache → React 侧经 ui-renderer 的单一 uSES 桥（bind.ts）+ per-key ProjectionValueStore face 消费；会话列表另走 manager→`SessionRuntime.projectList`→zustand vanilla store 的投影（service.ts:310,679-754）。重连/续传是代际作用域的：handleDisconnected 先清 pendingInteractions/请求帧缓冲（manager.ts:913-925），session/subscribed 基线重置 queue 镜像并 truncate 过期 projection 行（manager.ts:739-759，projection-store.ts:171-177），随后 resync 全部 open 窗口。状态管理无全局 store：每会话 Notifier+不可变 snapshot 缓存、zustand vanilla+immer 的 SnapshotStore、模块系统（modules/system.ts 懒 CJS 工厂表）+ HMR fiber 热替换（hmr/client/index.ts）。本轮不重复 round-1 已知项（fixture 静态导入、无界事件窗、readWebSocket 无测试、plan-review 重复、ConnectionBanner）。深入发现的三个实质点：(1) store 投影层无身份守卫——projectList 每次为每行新建对象并无条件 list.set，任一会话的 projection/jobs/activity 帧都会让全态选择器组件（WorkspaceBrowser×3、SubagentCatalogAction）重渲染；(2) manager 侧 addresses/catalogs/durable-subagent projectionStores 随访问的会话数在标签页生命周期内无界累积，无 Lyra 式 LRU 对账；(3) 重连 resync-all 无条件丢弃仍连续的持久窗口并按 open 会话数并发重拉，而已验证的 seq 守卫 repairGap 路径本可前向修复。逐模式的 relay 证据与 Lyra 对照见 patterns；帧合批与离屏会话活动面两项 relay 已达到或高于 Lyra 水平（equivalent）。"
+  }
+ ],
+ "r1Digest": "R3 分配项（backlog rounds 含 \"R3\" 的共 3 项）：\n\n1. Rank 4（high）— 生产 bundle 静态引入 3,335 行开发用 FixtureApiClient（~150KB）\n- 文件：`packages/client/connection/src/client/index.ts:9,88-91`、`packages/client/connection/src/client/fixture.ts`\n- 修法：改为动态 `await import('./fixture.ts')`（apply 已可异步）或挪到 `__RLH_BOOT_GATE__`/lazy subpath，让 tsdown 树摇掉。\n- 约束：改动只在 connection 的 client 入口装配层，不触碰 wire 协议与 projection 契约；需保证非 fixture 路径（WebApiClient）行为不变。\n\n2. Rank 20（medium，与 R8 共担）— 输入面绕过 machine 生命周期：空草稿纯图片发送用未持有的 AbortController（facade.ts:214），dispose 无法取消在途 Host 发送；ComposerBlocks.forget 无人调用，per-session store 全 app 生命周期泄漏\n- 文件：`packages/client/ui-conversation/src/client/input/facade.ts`、`input/blocks.ts`、`apply.ts`\n- 修法建议是走 machine attempt plane 或在 InputHub.shellFor 的 scope effect 注册 forget(id)；配 dispose-mid-flight 与 HMR 清理测试。\n- 约束（关键）：`input/*` 状态机与 `ui-conversation/apply.ts` 的 slot 注册属于不可动层——修法必须落在允许的缝上（如 InputHub 的 scope disposal、shell 层保留/abort controller），不得重写 InputMachine 语义、不得改动 apply.ts 的注册结构；发送序列化契约（sinkSerialized，\"never a silent downgrade\"）不可破坏。\n\n3. Rank 22（medium，与 R9 共担）— 硬编码英文绕过 locale 字典：\"Deep diving...\"（`ui-conversation/src/client/chat/ChatView.tsx:144`）、\"Inspect\"（`ui-tool/src/client/tool/components/ToolRow.tsx:300`）、Context Inspector 各字面量（`ui-context-inspector/src/client/ContextInspectorAction.tsx:18/32/46`，含重复的 format() 插值）\n- 修法：在 `ui-conversation/src/client/locales.ts`（owns 两个 namespace）加 key 并走 t()；同步更新钉住英文输出的测试（chat-view.client.spec.tsx:924,1018）。\n- 约束：ChatView 的 turn status 是 aria-live role=\"status\" 节点——改文案不得动 DOM 结构与 aria 语义；不得触碰 conversation-nodes 事件折叠（ChatSnapshotBuilder/tool-node folding）；ToolRow 属 tool-node 派发展示层，只改文案不改折叠逻辑。\n\n整体约束（适用 R3 全部）：conversation-nodes 事件折叠、input/* 状态机、slot registries 的 apply.ts、runtime/ 工具层、projection key wire 契约、DOM 行为 hook（如 data-conversation-scroll）与 aria 语义均为不可动层；R3 应限于装配边界、生命周期清理与文案层。",
+ "plan": {
+  "strategy": "R3 按价值/成本排 6 个可独立验证的切片，全部落在 R1 划定的允许缝内：装配边界（R3-A fixture 懒加载）、文案与 locale 字典层（R3-B）、生命周期清理（R3-C 输入壳 dispose/forget）、store 投影装配层的身份守卫（R3-D，Lyra identity-guarded writes 的直接采纳）、呈现层挂载窗口（R3-E，Lyra visible-run window 的呈现侧等价物，不动 conversation-nodes 折叠与 per-key seat）、以及 token 词汇表收敛（R3-F，新旧两套 motion 阶梯合一，修复 reduced-motion 逃逸面）。排序依据：R3-A 一次性砍 ~150KB 生产 bundle 且面小确定性高；R3-B/C 是 R1 分配的必做项且成本低；R3-D/E 是五份深挖分析里 adoption_value=high 且用户可感（无关会话帧不再重渲染全列表、长会话 DOM 规模有界）的两项；R3-F 收敛词汇表消除\"新动画漏登记即逃过 reduced-motion\"的正确性债。每片均不触碰 wire 契约、conversation-nodes 事件折叠、input/* 状态机语义、apply.ts slot 注册结构、DOM 行为 hook 与 aria 语义。测试沿用现有约定：`.client.spec.tsx` + 文件头 `// @vitest-environment jsdom`，实际由默认 vitest.config.ts 单测泳道执行（vitest.web.config.ts 只 include apps/web/tests 的 e2e/snapshot，跑不了 packages 下的 client spec——focused 命令按实际泳道给出）；每次前端改动后必须 `pnpm run build`。",
+  "slices": [
+   {
+    "changes": "1) 将 `import { FixtureApiClient } from './fixture.ts'` 改为 type-only 或移除；2) apply 改为异步装配：`const fixtureClient = fixture ? new (await import('./fixture.ts')).FixtureApiClient() : undefined`（digest 已确认 apply 路径可异步；若 cordis apply 签名限制同步，则在 provide 的 service 初始化回调内做一次 memoized `void import('./fixture.ts')` 并在 promise settle 后再构造 handle）；3) 保持非 fixture 分支完全同步构造 WebApiClient 与 createWebConnectionRpc，路径行为零变化；4) 确认 tsdown/rollup 对动态 import 产出的独立 chunk 只在 fixture 模式加载。",
+    "constraints": "只动 connection 的 client 入口装配层（index.ts apply 函数体）；wire 协议、FixtureApiClient 内部实现、WebApiClient 行为、ConnectionController 均不变。",
+    "docs": "在 packages/client/connection 内注释 fixture 懒加载的 bundle 理由（~150KB 生产代价、仅 ?fixture 查询参数触发）；若 packages/client/README.md 的 connection 段描述了 fixture 装配，同步一句。",
+    "effort": "S",
+    "files": [
+     "/Users/jin/Desktop/Relay/relay-harness/packages/client/connection/src/client/index.ts",
+     "/Users/jin/Desktop/Relay/relay-harness/packages/client/connection/src/client/fixture.ts",
+     "/Users/jin/Desktop/Relay/relay-harness/packages/client/connection/tests/client-apply.client.spec.ts",
+     "/Users/jin/Desktop/Relay/relay-harness/packages/client/connection/tests/fixture.client.spec.ts"
+    ],
+    "id": "R3-A",
+    "objective": "生产 bundle 不再静态引入 3,335 行开发用 FixtureApiClient（约 150KB）：?fixture 查询参数改为唯一触发动态 import 的路径，WebApiClient 路径行为逐字节不变（backlog Rank 4, high）。",
+    "tests": "扩展 packages/client/connection/tests/client-apply.client.spec.ts：断言 (a) 带 ?fixture 的 pageLocation 装配后 ctx.connection.api 具备 FixtureApiClient 行为（沿用现有 fixture 行为断言）；(b) 无 ?fixture 时 api 是 WebApiClient 且 fixture.ts 模块从未被请求（可用 vi.mock('./fixture.ts') 计数 import 调用为 0）；(c) rpc 来源与现状一致。fixture.client.spec.ts 既有断言不动，作为行为回归网。",
+    "title": "FixtureApiClient 改为 ?fixture 动态 import，生产 bundle 树摇掉 ~150KB",
+    "verification": "pnpm run build && pnpm exec vitest run packages/client/connection/tests/client-apply.client.spec.ts packages/client/connection/tests/fixture.client.spec.ts packages/client/connection/tests/connection.client.spec.ts；bundle 验证：grep 构建产物（packages/bundle/web-app 的 client dist）确认 fixture 专属字面量（如 fixture 命令名）不在生产 chunk，且对比改动前后 client chunk 体积下降约 150KB。"
+   },
+   {
+    "changes": "1) ui-conversation/src/client/locales.ts 两个字典加 `chat.turnStatus.working`（zh: 如「深潜中…」；en: 'Deep diving...'）与 `row.inspect`（zh/en），ChatView.tsx:144 改 `t('chat.turnStatus.working')`，ToolRow.tsx:300 改 `t('row.inspect')`（ToolRow 已持有 `t: TranslateNS<'conversation'>`，无 props 变更）；2) ui-context-inspector/src/client/locales.ts（contextInspector namespace，已存在）加 `badge`（'Context {count}'）、`tracePrepared`（'context/prepared #{seq}'）、`truncated` 三 key，ContextInspectorAction.tsx:21/45/53 的字面量改走 t()/既有 format()，三处重复的 format 插值收敛为一个本地 helper；3) 同步更新钉住英文输出的既有断言。",
+    "constraints": "TurnStatus 是 aria-live role=\"status\" 节点——只换文案来源，不改 DOM 结构、不改 aria 语义；不得触碰 conversation-nodes 事件折叠与 ChatSnapshotBuilder/tool-node folding；ToolRow 只改 pill 文案来源，不动折叠/展开逻辑；ui-context-inspector 的 contextInspector namespace 声明（declare module 合并）不得改形状，只加 key。",
+    "docs": "无 README 必改项；locales.ts 内保持现有 key 分组注释风格。",
+    "effort": "S",
+    "files": [
+     "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-conversation/src/client/locales.ts",
+     "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-conversation/src/client/chat/ChatView.tsx",
+     "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-tool/src/client/tool/components/ToolRow.tsx",
+     "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-context-inspector/src/client/ContextInspectorAction.tsx",
+     "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-context-inspector/src/client/locales.ts",
+     "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-conversation/tests/chat-view.client.spec.tsx",
+     "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-tool/tests/tool-row.client.spec.tsx",
+     "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-context-inspector/tests/context-inspector.client.spec.tsx"
+    ],
+    "id": "R3-B",
+    "objective": "消灭三处绕过 locale 字典的硬编码英文：TurnStatus 的 \"Deep diving...\"、ToolRow 的 \"Inspect\"、ContextInspector 的 \"Context {count}\" / \"context/prepared #\" / \"truncated\" 字面量（backlog Rank 22）。",
+    "tests": "chat-view.client.spec.tsx:920 与 ~1018 两处 `textContent` 断言从字面量改为经 makeTranslate(zh)/t 期望值（沿用文件内既有 harness 的 t）；tool-row.client.spec.tsx 增加/调整 Inspect pill 的文案断言（经 t 注入）；context-inspector.client.spec.tsx 增加 badge/prepared/truncated 走字典的断言。",
+    "title": "硬编码英文收敛进 locale 字典（TurnStatus / ToolRow Inspect / ContextInspector）",
+    "verification": "pnpm run build && pnpm exec vitest run packages/client/ui-conversation/tests/chat-view.client.spec.tsx packages/client/ui-tool/tests/tool-row.client.spec.tsx packages/client/ui-context-inspector/tests/context-inspector.client.spec.tsx （.client.spec.tsx 由默认 vitest.config.ts 泳道执行，jsdom pragma 已在文件头）"
+   },
+   {
+    "changes": "1) facade.ts：image-only 分支不再 `new AbortController().signal` 丢弃引用——把 controller 存为实例字段（如 imageSendAbortRef），dispose() 时 `abort()` 它并保留现有 disposed 晚到守卫（facade.ts:216/474/588 已有三处，语义不重复计数）；同一时刻仅一笔在途（imageSendInFlight 位已有），重入前先 abort 旧 signal；2) hub.ts：在 shellFor 现有 scope-effect teardown（hub.ts:111-121，'conversation.input: session shell'）里追加：经 rootCtx 懒解析 conversation face（与同函数 releaseDraftImages 的 `as ... | undefined` 模式一致，把 forget(sessionId) 加进该本地 interface）调用 blocks 的 forget(id)，并 abort/清理 imageSendAbortRef；blocks.ts 与 ComposerBlocks 接口零改动（forget 已存在，doc 注释本就写着 'The session scope disposer calls this'）。",
+    "constraints": "input/* 状态机（machine.ts）语义零改动——纯事件/效果模型不动；apply.ts 的 slot 注册结构不动（hub 经 rootCtx 懒解析 conversation face，与 releaseDraftImages 同一模式，不新增 apply 装配面）；sinkSerialized 发送序列化契约（never a silent downgrade）不可破坏——abort 只作用于 image-only 直发路径的 signal 传递，不降级不吞结果。",
+    "docs": "blocks.ts 的 forget 注释从『scope 的 disposer 会调用』改为指向 hub teardown 的实际接线点；facade.ts image-only 分支补一行 abort 语义注释。",
+    "effort": "M",
+    "files": [
+     "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-conversation/src/client/input/facade.ts",
+     "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-conversation/src/client/input/hub.ts",
+     "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-conversation/src/client/input/blocks.ts",
+     "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-conversation/tests/input-scenarios.client.spec.tsx",
+     "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-conversation/tests/input-bar.client.spec.tsx"
+    ],
+    "id": "R3-C",
+    "objective": "输入面生命周期归位（backlog Rank 20）：空草稿纯图片直发持有的 AbortController 在 shell dispose 时 abort，Host 在途发送可取消；ComposerBlocks.forget 在 InputHub 的 scope effect 接线，per-session block store 不再全 app 生命周期泄漏。",
+    "tests": "扩展 input-scenarios.client.spec.tsx（沿用其 shell/hub harness）：(a) dispose-mid-flight——stub defaultSink 返回挂起 promise，触发 image-only submit 后调 shell.dispose()，断言收到的 signal.aborted === true 且 promise settle 后不产生 notify/error；(b) scope teardown forget——经 blocks.set(id, …) 挂块后触发 scope disposer，断言 per-session store 不再被 registry 保留（forget 后 registry 对该 id 可观察面为空/新建）；(c) HMR/重复 shellFor 路径下 forget 幂等不抛。",
+    "title": "输入壳生命周期：dispose 取消在途图片直发 + ComposerBlocks.forget 接入 scope teardown",
+    "verification": "pnpm run build && pnpm exec vitest run packages/client/ui-conversation/tests/input-scenarios.client.spec.tsx packages/client/ui-conversation/tests/input-bar.client.spec.tsx packages/client/ui-conversation/tests/input-machine.client.spec.ts"
+   },
+   {
+    "changes": "1) 行身份复用：service 内加一个 `prevById: Map<SessionId, SessionSummary>`（或复用 manager 已有的 itemsCache/entryCache 思路，manager.ts:1088-1089 证明该模式包内已被意识到），projectList 逐行深比较标量字段，无变化时返回上一行对象引用；2) 顶层 set 门槛：ids 数组逐元素、phase/current/currentAddress/subagentsByParent/jobsBySession 逐一引用或值比较，全部无变化时跳过 `this.list.set`（从而不触发 zustand 通知）；selection 分支同样只在真变化时 set（现有条件已大部分具备）；3) subagent 派生行复用同一 byId 缓存。收益直达 WorkspaceBrowser 三处 `useSessions(s => s)` 全态选择器与 SubagentCatalogAction 的 byId 整表选择器。",
+    "constraints": "只动 service.ts 的 store 投影装配（projectList 的身份策略与通知时机）；wire 契约、manager 的 list 真相、projection key、conversation-nodes 折叠均不动；对外 store 快照的形状与语义不变（消费组件无需改动）。",
+    "docs": "在 service.ts projectList 头部注释 Lyra 式理由一句话：『无变化也要身份稳定——新对象即新身份，每次都会让窗口里所有选择器重跑』。",
+    "effort": "M",
+    "files": [
+     "/Users/jin/Desktop/Relay/relay-harness/packages/client/runtime/src/client/sessions/service.ts",
+     "/Users/jin/Desktop/Relay/relay-harness/packages/client/runtime/tests/sessions-service.client.spec.ts",
+     "/Users/jin/Desktop/Relay/relay-harness/packages/client/runtime/tests/manager.client.spec.ts"
+    ],
+    "id": "R3-D",
+    "objective": "会话列表 store 投影加身份守卫（深挖 relay-frontend-core 首位 high 项）：projectList 当前每次为每行新建对象并无条件 list.set，任一会话的 projection/jobs/activity 帧都让全态选择器组件（WorkspaceBrowser ×3、SubagentCatalogAction）重渲染；改为逐行值比较复用行对象、no-op 帧短路 store 通知。",
+    "tests": "扩展 sessions-service.client.spec.ts（沿用其 fake-api/event-script harness）：(a) 同值 upsert 帧（仅触发 markDirty 的 no-op）后 list store 快照引用不变、订阅通知计数为 0；(b) 单行 title 变化帧只替换该行对象，其余行引用保持；(c) subagentsByParent/jobsBySession 引用缓存命中时不产生新容器对象；(d) 现有 manager.client.spec.ts 全量作行为回归网（pruneScopes、selection、address 链不受影响）。",
+    "title": "projectList 身份守卫：行对象复用 + no-op 帧短路 store 通知，掐断跨会话重渲染风暴",
+    "verification": "pnpm run build && pnpm exec vitest run packages/client/runtime/tests/sessions-service.client.spec.ts packages/client/runtime/tests/manager.client.spec.ts packages/client/runtime/tests/store.client.spec.ts"
+   },
+   {
+    "changes": "1) 在 visibleOrder（ChatView.tsx:210-217，房间过滤后）之上加第二层 `renderOrder = visibleOrder.slice(Math.max(0, visibleOrder.length - windowSize))`，`const [windowSize, setWindowSize] = useState(WINDOW_STEP)`（建议 WINDOW_STEP = 80），sessionId 变化时重置（参照 Lyra Conversation.tsx:33-34 的随会话重置）；2) `hidden > 0` 时在 chat.loadOlder 按钮之上渲染『显示更早 N 行』按钮（新 locale key `chat.showEarlier`），点击 `setWindowSize(w => w + WINDOW_STEP)`——纯 head-prepend，天然走既有 chatScroll 锚点恢复与 followSig，无需改锚点逻辑；3) 与 loadOlder 的组合语义：hasMore 为 true 时『加载更早』点击同时扩窗到包含新 prepend 的页（避免新页落在窗口外成为死行）；hasMore 为 false 后只剩扩窗按钮；4) 窗口外行与 pagingAnchor/anchorElement 的交互天然安全（锚点只在可见 DOM 内查找）；在 ChatView 头部 render-economics 注释块补一段窗口化说明。",
+    "constraints": "conversation-nodes 事件折叠与 chat-snapshot-builder 不动；ChatNodeSeat per-key 订阅模型与 seat 归属不动；data-conversation-scroll 等 DOM 行为 hook 与既有锚点恢复语义不回归（扩窗属纯 head-prepend，走既有锚点通道）；aria 语义不变；loading 历史骨架与 empty 态不受窗口影响。",
+    "docs": "ChatView.tsx:12-14 的 render economics 注释扩一句窗口化动机；docs/ 前端文档若列渲染经济学则补一行（R9 文档轮可再补全）。",
+    "effort": "L",
+    "files": [
+     "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-conversation/src/client/chat/ChatView.tsx",
+     "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-conversation/src/client/locales.ts",
+     "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-conversation/tests/chat-view.client.spec.tsx",
+     "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-conversation/src/client/chat/ChatView.module.css"
+    ],
+    "id": "R3-E",
+    "objective": "ChatView 引入 Lyra 式可见行渲染窗口：order 目前整表挂载（pagingAnchor 的 fallback 注释自己承认 \"a virtualizer naturally bounds it\" 但虚拟化器从未引入），长会话 DOM 无上界；加 tail-window 初始 N 行 + 『显示更早』扩窗，不引入虚拟化库、不动 host 分页与锚点恢复。",
+    "tests": "扩展 chat-view.client.spec.tsx（沿用 scripted snapshot harness）：(a) 超过 WINDOW_STEP 的 order 只挂载尾部 N 个 seat，头部行不出现在 DOM；(b) 点击『显示更早』后窗口扩大 WINDOW_STEP 且既有锚点恢复断言仍通过；(c) sessionId 切换后窗口重置；(d) hasMore && hidden 时『加载更早』点击后新页行全部可见；(e) 空会话/短于窗口的行为与现状逐断言一致（visibleOrder.length === 0 empty 态不回归）。",
+    "title": "ChatView 渲染窗口：只挂载最近 N 行 + 『显示更早』扩窗（Lyra visible-run 窗）",
+    "verification": "pnpm run build && pnpm exec vitest run packages/client/ui-conversation/tests/chat-view.client.spec.tsx packages/client/ui-conversation/tests/chat-store.client.spec.ts packages/client/ui-conversation/tests/selection-survival.client.spec.tsx"
+   },
+   {
+    "changes": "1) 定迁移终点为 `--rlw-motion-quick/base/slow` + 既有 easing 阶梯：grep 全部 `--rl-transition-duration-*` / `--rl-ease-in-out` / `--rl-motion-duration-*` 消费点（ui-* src 约 36+ 处 easing、20 个 css 文件 duration），按 token 语义映射表批量改写（--rl-motion-duration-flip 这类专用配方可映射到 base 或保留为 specific 层别名再退役）；2) base.css:83-94 删除旧定义，prefers-reduced-motion 块（:113-127）从 11 个 token 清零收敛为新阶梯；3) docs/web-styling.md Motion 段改写为新词汇表（现 :25 只记旧集合，把混合态当成了规范）；4) 收尾在 design-platform.css 顺手修正畸形 accent token 名 `--rlw-alias-brand-primary-new-colorprimary-new-color` → `--rlw-alias-brand-primary-new`（连带 derive.ts:105 与 4 个 ui-trajectory module.css 消费文件）与 `--rlw-static-relay-700-delete` 后缀名，并显式化 `--rlw-static-neutral-bluish-60` light/dark 分歧（:63 vs :139 各加注释或拉平）。",
+    "constraints": "纯 CSS/token 与文案层收敛：不改任何动效的时长/曲线语义（新旧 token 当前值一致的映射点直接换名，不一致处保留现值并注释）；prefers-reduced-motion 行为只收敛为更强不减弱；ui-theme 的 token sheet 分层（design-platform.css 三层结构）不动。",
+    "docs": "docs/web-styling.md:25 Motion 段整体改写为新阶梯；design-platform.css 各修正点带一行理由注释（沿用该文件既有注释风格）。",
+    "effort": "M",
+    "files": [
+     "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-theme/src/styles/base.css",
+     "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-theme/src/styles/motion.css",
+     "/Users/jin/Desktop/Relay/relay-harness/docs/web-styling.md",
+     "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-theme/src/styles/design-platform.css",
+     "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-theme/src/derive.ts"
+    ],
+    "id": "R3-F",
+    "objective": "motion token 单阶梯收敛（深挖 relay-ui-packages high 项）：Relay Focus 重绘引入 --rlw-motion-* 后旧 --rl-transition-duration-*/--rl-ease-in-out/--rl-motion-duration-* 未退役，两套共 11 个 token 都要在 reduced-motion 块逐一清零，新动画漏登记任一套即逃过降级；收敛为单一阶梯并修正 docs/web-styling.md:25 只记旧套的失真。",
+    "tests": "ui-theme 既有样式契约测试（如存在 token 清单/golden 断言的 spec，grep ui-theme tests）更新 token 表期望；ui-conversation/ui-tool 依赖 motion 的 client spec（如 view-tabs-row、resize-row 等含动效断言的）全量回归确保视觉配方等价；为退役 token 增加一条负向断言（ui-theme spec 内断言 base.css 源文本不再含 `--rl-transition-duration` / `--rl-ease-in-out` 定义），防止回潮。",
+    "title": "motion 词汇表收敛：退役旧 --rl-* 阶梯，文档对齐，畸形 accent token 顺带归位",
+    "verification": "pnpm run build && grep -c -- '--rl-ease-in-out' packages/client/ui-theme/src/styles/base.css （期望 0）&& pnpm exec vitest run packages/client/ui-theme/tests packages/client/ui-conversation/tests/view-tabs-row.client.spec.tsx packages/client/ui-conversation/tests/resize-row.client.spec.ts"
+   }
+  ]
+ }
+}

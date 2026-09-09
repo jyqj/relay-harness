@@ -1,8 +1,8 @@
 import type { SessionEvent } from '@relay-harness/rlh-session/types'
-import { describe, expect, it } from 'vitest'
-import type { RunningToolCall, ToolCallBlock } from '../src/client/sessions/conversation.ts'
+import { describe,expect,it } from 'vitest'
+import type { RunningToolCall,ToolCallBlock } from '../src/client/contract/session-snapshot.ts'
 import {
-  MAX_TOOL_CALL_TREE_DEPTH, ToolCallTree,
+  MAX_TOOL_CALL_TREE_DEPTH,ToolCallTree,
 } from '../src/client/sessions/tool-call-tree.ts'
 
 const at = (seq: number, type: string, data: Record<string, unknown>): SessionEvent =>

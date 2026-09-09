@@ -1,3 +1,4 @@
+import { loadNodeSqlite } from '@relay-harness/rlh-sqlite-runtime'
 /**
  * Fail-closed admission for code-index database files.
  *
@@ -80,7 +81,7 @@ export async function openCodeIndexDatabase(path: string, journalMode: JournalMo
     await mkdir(dirname(actual), { recursive: true, mode: 0o700 })
     await createDatabaseFile(actual)
   }
-  const { DatabaseSync } = await import('node:sqlite')
+  const { DatabaseSync } = loadNodeSqlite()
   const db = new DatabaseSync(actual)
   try {
     const applicationId = pragmaNumber(db, 'application_id')

@@ -8,7 +8,7 @@ spill 存储 seam 是一项[能力 seam](../../.agents/notes/implemented/archite
 
 ## 保存请求
 
-`saveText` 是唯一的服务操作：原样持久保存 `content`，并返回不透明的定位符、后端提供的检索提示和准确字节数。请求携带保存时的存储命名空间（`owner`）、生成内容的工具和调用（`source`，用于命名和检查，而非访问控制）以及后端可用作命名提示的 `suggestedName`（它不是路径）。
+`saveText` 是该服务的保存操作：原样持久保存 `content`，并返回不透明的定位符、后端提供的检索提示和准确字节数。请求携带保存时的存储命名空间（`owner`）、生成内容的工具和调用（`source`，用于命名和检查，而非访问控制）以及后端可用作命名提示的 `suggestedName`（它不是路径）。`disposeSession` 是唯一的回收动词：删除归属某一个会话的全部产物。
 
 ```ts type-equiv
 /** One request to persist text to a spill artifact. */
@@ -38,7 +38,7 @@ interface SpillOwner {
 }
 ```
 
-`SpillOwner.sessionId` 是保存时的存储命名空间。fork 后的会话会从种子日志继承已有的 spill 定位符；这些产物不会被复制或重新取得所有权，fork 后产生的 spill 则使用子会话 id。保留期清理可以连同其他旧会话产物一起使旧定位符失效；spill seam 不定义逐会话的清理策略。
+`SpillOwner.sessionId` 是保存时的存储命名空间。fork 后的会话会从种子日志继承已有的 spill 定位符；这些产物不会被复制或重新取得所有权，fork 后产生的 spill 则使用子会话 id。定位符只是尽力而为的取回路径：后端会在会话被处置时回收该会话的产物，并由其自身的保留机制（本地后端的启动扫描）清理早期进程的残留；仍引用被回收路径的日志读取时会响亮失败。
 
 ```ts type-equiv
 /**
@@ -80,9 +80,9 @@ type SpillLocator = Branded<'SpillLocator'>
 
 ## 服务
 
-`SpillStore`（`ctx.spillStore`，定义于 [`packages/spill/spill/src/index.ts`](../../packages/spill/spill/src/index.ts)）是只有一个方法的抽象服务：`saveText(input) → Promise<SpillRef>`。它持久保存完整的 `content`，并在实际存储失败（权限、ENOSPC、后端不可用）时拒绝。该 seam 只负责存储：不负责保留策略、工具结果替换或检索／搜索 API。
+`SpillStore`（`ctx.spillStore`，定义于 [`packages/spill/spill/src/index.ts`](../../packages/spill/spill/src/index.ts)）是有两个方法的抽象服务：`saveText(input) → Promise<SpillRef>` 与 `disposeSession(sessionId) → Promise<void>`。`saveText` 持久保存完整的 `content`，并在实际存储失败（权限、ENOSPC、后端不可用）时拒绝；`disposeSession` 回收归属某一个会话的全部产物。该 seam 只负责存储：不负责预览/保留策略、工具结果替换或检索／搜索 API。保留机制由后端自行拥有。
 
-本地后端（[rlh-spill-local](../../packages/spill/spill-local)）写入 `<root>/session-<hash>/<random>-<safeName>`：根目录是已配置或延迟创建的私有（0700）目录，会话子目录采用 `sha256(sessionId)`，并通过排他且仅所有者可访问的写入（`open(path, 'wx', 0o600)`）防止预先植入的符号链接重定向写入。其 `locator` 是本地路径，`retrievalHint` 则告知模型在该路径上使用 `read` 或 `grep`。策略消费方（[rlh-spill-policy](../../packages/spill/spill-policy)）会把超过 `maxInlineBytes` 的纯文本最终结果替换为保留库生成的首尾预览和 spill 引用；该过程尽力而为：保存失败时保留原始内联结果，而不会把成功的调用变成 `isError`。
+本地后端（[rlh-spill-local](../../packages/spill/spill-local)）写入 `<root>/session-<hash>/<random>-<safeName>`：根目录是已配置或延迟创建的私有（0700）目录，会话子目录采用 `sha256(sessionId)`，并通过排他且仅所有者可访问的写入（`open(path, 'wx', 0o600)`）防止预先植入的符号链接重定向写入。其 `locator` 是本地路径，`retrievalHint` 则告知模型在该路径上使用 `read` 或 `grep`；它会在会话处置时回收该会话目录，并在启动时一次性扫描超过 `orphanRetentionMs` 的 `rlh-spill-*` 孤儿根。策略消费方（[rlh-spill-policy](../../packages/spill/spill-policy)）会把超过 `maxInlineBytes` 的纯文本最终结果替换为保留库生成的首尾预览和 spill 引用；该过程尽力而为：保存失败时保留原始内联结果，而不会把成功的调用变成 `isError`。
 
 <!-- BEGIN GENERATED cordis-surface (gen-cordis-catalog.ts) — do not edit between markers -->
 
@@ -103,6 +103,7 @@ Semantics every implementation must honor:
 - saveText persists the FULL `content` verbatim and returns an opaque locator, exact byte length, and model-facing retrieval guidance.
 - Storage is scoped by the request's SaveTextSpill.owner session; the backend chooses a private (not world-readable) location and a collision-free name derived from — never equal to — the caller's `suggestedName`.
 - `saveText` REJECTS on a real storage failure (permissions, ENOSPC, backend unavailable); the caller decides how to degrade (the spill policy treats a rejection as best-effort and keeps the inline result).
+- disposeSession reclaims the session's whole storage scope. Locators are best-effort recovery paths, not durable promises: a disposed session's log may still reference the reclaimed paths, and reads of them fail loudly.
 
 ```ts cordis-catalog
 /**
@@ -111,7 +112,17 @@ Semantics every implementation must honor:
  * @returns the saved artifact's {@link SpillRef}; rejects on a storage failure.
  */
 abstract saveText(input: SaveTextSpill): Promise<SpillRef>
+
+/**
+ * Reclaim every artifact owned by `sessionId`. Called at that session's
+ * disposal; idempotent, and a session that spilled nothing resolves.
+ * @param sessionId - the session whose spill storage should be reclaimed.
+ * @returns resolves when reclamation completes; rejects on a storage failure.
+ */
+abstract disposeSession(sessionId: SessionId): Promise<void>
 ```
 
-Source: [`packages/spill/spill/src/index.ts:45`](../../packages/spill/spill/src/index.ts)
+Types: [SessionId](core.md)
+
+Source: [`packages/spill/spill/src/index.ts:52`](../../packages/spill/spill/src/index.ts)
 <!-- END GENERATED cordis-surface -->

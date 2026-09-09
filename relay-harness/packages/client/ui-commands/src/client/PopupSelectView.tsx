@@ -10,36 +10,35 @@
  * mounted. The card height clamps to the space above the composer.
  */
 import { useEffect, useRef } from 'react'
-import { useSyncExternalStore } from 'react'
 import clsx from 'clsx'
 import { IconCheckOutline16, RiskConfirmation, useAnchoredMaxHeight, usePresence } from '@relay-harness/rlh-client-ui-primitives'
-import type { PropsLocale } from '@relay-harness/rlh-client-ui-slots'
+import type { InjectFace, PropsLocale } from '@relay-harness/rlh-client-ui-slots'
 import { filterOptions } from './popup.ts'
-import type { PopupSelectController } from './popup.ts'
+import type { PopupSelectController, PopupState } from './popup.ts'
+import type { SnapshotStore } from '@relay-harness/rlh-client-runtime/client'
 import css from './PopupSelectView.module.css'
 
 /** Design cap on the card height (same MenuDropdown family as the slash menu). */
 const MAX_HEIGHT = 320
 
 /** Injected business face of the popupSelect overlay entry. */
-export interface PopupSelectInjected {
-  /** The session's shell controller (state store + verbs; the view never touches the open-context type). */
-  popup: PopupSelectController
-}
+export type PopupSelectInjected = Pick<PopupSelectController,
+  'dismiss' | 'move' | 'select' | 'setSearch' | 'retry' | 'highlight' | 'acknowledge' | 'cancelConfirmation' | 'confirm'> & {
+    hooks: { popup: SnapshotStore<PopupState> }
+  }
 
 /** Full shell props: injected face + the locale seat. */
-export type PopupSelectViewProps = PopupSelectInjected & PropsLocale<'command'>
+export type PopupSelectViewProps = InjectFace<PopupSelectInjected> & PropsLocale<'command'>
 
 /**
  * Render the popupSelect shell overlay entry.
- * @param props - injected face: the session's shell controller; `t` rides the standard locale seat.
+ * @param props - framework state hook and scoped controller actions; `t` rides the standard locale seat.
  * @returns the select card while open; null while closed.
  */
-export function PopupSelectView({ popup, t }: PopupSelectViewProps) {
-  const state = useSyncExternalStore(
-    fn => popup.state.subscribe(fn),
-    () => popup.state.getSnapshot(),
-  )
+export function PopupSelectView({
+  usePopup, dismiss, move, select, setSearch, retry, highlight, acknowledge, cancelConfirmation, confirm, t,
+}: PopupSelectViewProps) {
+  const state = usePopup(value => value)
   const cardRef = useRef<HTMLDivElement>(null)
   const searchRef = useRef<HTMLInputElement>(null)
   const lastOpen = useRef(state)
@@ -67,11 +66,11 @@ export function PopupSelectView({ popup, t }: PopupSelectViewProps) {
     if (!state.open || state.confirming !== null) return
     const onPointerDown = (ev: PointerEvent): void => {
       if (cardRef.current !== null && ev.target instanceof Node && cardRef.current.contains(ev.target)) return
-      popup.dismiss()
+      dismiss()
     }
     document.addEventListener('pointerdown', onPointerDown, true)
     return () => { document.removeEventListener('pointerdown', onPointerDown, true) }
-  }, [state.open, state.confirming, popup])
+  }, [state.open, state.confirming, dismiss])
 
   // Focus the search input after it mounts (separate effect so the ref is populated).
   useEffect(() => {
@@ -89,19 +88,19 @@ export function PopupSelectView({ popup, t }: PopupSelectViewProps) {
     switch (ev.key) {
       case 'ArrowDown':
         ev.preventDefault()
-        popup.move(1)
+        move(1)
         return
       case 'ArrowUp':
         ev.preventDefault()
-        popup.move(-1)
+        move(-1)
         return
       case 'Enter':
         ev.preventDefault()
-        void popup.select(state.active)
+        void select(state.active)
         return
       case 'Escape':
         ev.preventDefault()
-        popup.dismiss({ focusComposer: true })
+        dismiss({ focusComposer: true })
         return
       default:
     }
@@ -128,13 +127,13 @@ export function PopupSelectView({ popup, t }: PopupSelectViewProps) {
             aria-label={t('search.aria')}
             value={view.search}
             readOnly={view.submitting}
-            onChange={(ev) => { popup.setSearch(ev.currentTarget.value) }}
+            onChange={(ev) => { setSearch(ev.currentTarget.value) }}
           />
           {view.error !== null && (
             <div className={css.error} role="alert">
               <span className={css.errorText}>{view.error}</span>
               {view.status === 'failed' && (
-                <button type="button" className={css.retry} onClick={() => { popup.retry() }}>{t('retry')}</button>
+                <button type="button" className={css.retry} onClick={() => { retry() }}>{t('retry')}</button>
               )}
             </div>
           )}
@@ -152,8 +151,8 @@ export function PopupSelectView({ popup, t }: PopupSelectViewProps) {
                   // mousedown would race the document capture listener; the shell
                   // owns focus anyway, so a plain click (inside the card → no
                   // dismiss) works.
-                  onClick={() => { void popup.select(index) }}
-                  onMouseEnter={() => { popup.highlight(index) }}
+                  onClick={() => { void select(index) }}
+                  onMouseEnter={() => { highlight(index) }}
                 >
                   <span className={css.label}>{option.label}</span>
                   {option.detail !== undefined && <span className={css.detail}>{option.detail}</span>}
@@ -173,9 +172,9 @@ export function PopupSelectView({ popup, t }: PopupSelectViewProps) {
           cancelLabel={confirmation.cancelLabel}
           confirmLabel={confirmation.confirmLabel}
           acknowledged={view.acknowledged}
-          onAcknowledgedChange={(value) => { popup.acknowledge(value) }}
-          onCancel={() => { popup.cancelConfirmation() }}
-          onConfirm={() => { void popup.confirm() }}
+          onAcknowledgedChange={(value) => { acknowledge(value) }}
+          onCancel={() => { cancelConfirmation() }}
+          onConfirm={() => { void confirm() }}
         />
       )}
     </>

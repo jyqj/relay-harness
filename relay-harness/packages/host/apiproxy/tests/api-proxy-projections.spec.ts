@@ -3,8 +3,9 @@
  * projections block reads the registry's watermark snapshot (asOfSeq = last
  * event seq, one consistent cut); loadOlder pages never carry the block; a
  * composition without the registry serves histories without it; a disposed
- * registration's key leaves subsequent responses; and every unit change is
- * pushed to mux consumers as a session/projection frame minted here.
+ * registration's key leaves subsequent responses; and every consumed unit
+ * change is pushed to mux consumers as a session/projection frame minted
+ * here, with baseline-only keys (sessionListMetadata, imageLimits) skipped.
  */
 
 import { describe, expect, it, vi } from 'vitest'
@@ -284,7 +285,7 @@ describe('session/projection push frame', () => {
     return frames
   }
 
-  it('broadcasts a frame per changed unit with the causing seq, and none for same-reference applies', async () => {
+  it('broadcasts a frame per consumed unit change with the causing seq, and none for same-reference applies or baseline-only keys', async () => {
     const { ctx, session } = await harness(true)
     ctx.sessionProjections.register(lastUserUnit())
     const proxy = api(ctx)
@@ -293,7 +294,7 @@ describe('session/projection push frame', () => {
     await new Promise(resolve => setTimeout(resolve, 0))
     const abort = new AbortController()
     const stream = proxy.events.mux({ rpcId: RpcId('t-proj-mux'), payload: {} }, abort.signal)
-    const collected = collect(stream, 5, abort)
+    const collected = collect(stream, 2, abort)
 
     const now = vi.spyOn(Date, 'now').mockReturnValue(100)
     seedMessages(session, 1)
@@ -312,14 +313,12 @@ describe('session/projection push frame', () => {
       { type: 'session/projection', sessionId: session.id, key: 'test/last-user', value: { text: 'm0' }, seq: 0 },
       { type: 'session/projection', sessionId: session.id, key: 'test/last-user', value: { text: 'm0' }, seq: 2 },
     ])
-    expect(frames.filter(
-      (f): f is Extract<MuxFrame, { type: 'session/projection' }> =>
-        f.type === 'session/projection' && f.key === 'sessionListMetadata',
-    )).toEqual([
-      { type: 'session/projection', sessionId: session.id, key: 'sessionListMetadata', value: { blank: true, lastPromptAt: 100 }, seq: 0 },
-      { type: 'session/projection', sessionId: session.id, key: 'sessionListMetadata', value: { blank: false, lastPromptAt: 100 }, seq: 1 },
-      { type: 'session/projection', sessionId: session.id, key: 'sessionListMetadata', value: { blank: false, lastPromptAt: 300 }, seq: 2 },
-    ])
+    // sessionListMetadata is baseline-only: no client consumes its change
+    // frames, so the gateway's broadcast filter skips it even though the
+    // unit's state changed three times above.
+    expect(frames.some(
+      f => f.type === 'session/projection' && f.key === 'sessionListMetadata',
+    )).toBe(false)
     // Frame seq aligns with the tail block's asOfSeq vocabulary (higher-seq-wins compatible).
     const tail = await proxy.sessions.history(request({ sessionId: session.id }))
     if (!tail.result.ok) throw new Error('unreachable')

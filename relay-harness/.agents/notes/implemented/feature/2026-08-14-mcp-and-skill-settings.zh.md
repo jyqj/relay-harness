@@ -18,6 +18,8 @@ MCP 持久化是 `$RLH_HOME/mcp-servers.yaml`，由挂在 base bundle 上的 `@r
 
 `@relay-harness/rlh-client-ui-settings-mcp` 与 `@relay-harness/rlh-client-ui-settings-skills` 注册 Settings 页。两页采用同一套紧凑管理语言：搜索、一个来源或启用筛选、结果计数、发丝行、来源 `Pill`、保留原生语义的共享 `Switch`、就地错误和图标动作。MCP 把受管行与只读组成配置行分开，并把配置启用状态与 Host `fiberPhase` 分开；没有观察到阶段的行采用中性文字，不显示警告色。MCP 编辑弹窗在表单与 JSON 对象之间切换。技能行显示模型调用 `Switch` 并打开现有编辑器；只读行没有删除。
 
+受管 MCP watcher 在初始扫描后协调一次，因为启动读取与监听订阅并非原子操作。忽略初始文件事件不能成为保留订阅前快照的理由。重读共用修改队列，不引入第二个配置 owner。
+
 ## Alternatives considered
 
 **把 MCP 行写进用户的 `cordis.patch.yml`。** 否决，因为该文件可能含 `!!js` 和其他手写组成，Settings 不能变成 YAML 编辑器。

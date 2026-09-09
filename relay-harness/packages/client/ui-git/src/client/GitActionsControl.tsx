@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import clsx from 'clsx'
 import {
   Button,
@@ -159,6 +159,11 @@ function foldPr(result: GitResult): NonNullable<StackedActionResult['pr']> {
   }
 }
 
+/** Normalize thrown adapter errors without postponing the actual callback invocation. */
+async function invokeGit<T>(operation: () => Promise<T>): Promise<T> {
+  return operation()
+}
+
 /**
  * Render the titlebar Git split button, dropdown, commit dialog, and default-ref confirm.
  * @param props - titlebar owner widths and density, current-session seats, git IPC, and copy.
@@ -209,6 +214,34 @@ export function GitActionsControl({
   const refreshSeq = useRef(0)
   const lastProgressLine = useRef<string | null>(null)
   const currentPhaseLabel = useRef('Running git action...')
+  const activeCwd = useRef(cwd)
+
+  useLayoutEffect(() => {
+    activeCwd.current = cwd
+    refreshSeq.current += 1
+    setStatus(null)
+    setLoaded(cwd === undefined)
+    setMenuOpen(false)
+    setCommitOpen(false)
+    setCommitMessage('')
+    setExcludedFiles(new Set())
+    setEditingFiles(false)
+    setPublishOpen(false)
+    setPending(null)
+    // Completion may remain visible, but an old workspace's follow-up action
+    // must not survive into another workspace's controls.
+    setProgress((previous) => {
+      if (previous === null) return previous
+      const next = { ...previous }
+      delete next.actionLabel
+      delete next.onAction
+      return next
+    })
+    return () => {
+      activeCwd.current = undefined
+      refreshSeq.current += 1
+    }
+  }, [cwd])
 
   const beginProgress = (title: string): number => {
     const id = actionSeq.current + 1
@@ -237,6 +270,20 @@ export function GitActionsControl({
     })
   }
 
+  const failTransport = (error: unknown, title?: string): void => {
+    failProgress(error instanceof Error ? error.message : t('error.fallback'), title)
+  }
+
+  const openGitLink = (url: string): void => {
+    const token = actionSeq.current
+    void invokeGit(() => openExternal(url)).then((opened) => {
+      if (token !== actionSeq.current || activeCwd.current !== cwd) return
+      if (!opened) failProgress(t('error.openLink'))
+    }).catch((error: unknown) => {
+      if (token === actionSeq.current && activeCwd.current === cwd) failTransport(error)
+    })
+  }
+
   const succeedProgress = (
     title: string,
     description?: string  ,
@@ -247,15 +294,15 @@ export function GitActionsControl({
       title,
       ...(description ? { description } : {}),
       startedAt: null,
-      ...(action ? { actionLabel: action.label, onAction: action.onAction } : {}),
+      ...(action && activeCwd.current === cwd ? { actionLabel: action.label, onAction: action.onAction } : {}),
     })
   }
 
   const refresh = async (target: string): Promise<VcsStatus | null> => {
-    const token = refreshSeq.current + 1
-    refreshSeq.current = token
-    const next = await gitStatus(target)
-    if (token !== refreshSeq.current) return next
+    const token = activeCwd.current === target ? refreshSeq.current + 1 : undefined
+    if (token !== undefined) refreshSeq.current = token
+    const next = await Promise.resolve().then(() => gitStatus(target)).catch(() => null)
+    if (token === undefined || activeCwd.current !== target || token !== refreshSeq.current) return next
     // Only keep a prior PR badge when still on the same ref.
     setStatus(prev => (
       next && prev?.refName && next.refName === prev.refName
@@ -263,26 +310,26 @@ export function GitActionsControl({
         : next
     ))
     setLoaded(true)
-    void gitFetchForStatus(target).then((fresh) => {
-      if (token !== refreshSeq.current || !fresh) return
+    void Promise.resolve().then(() => gitFetchForStatus(target)).then((fresh) => {
+      if (activeCwd.current !== target || token !== refreshSeq.current || !fresh) return
       setStatus(prev => (
         prev?.refName && fresh.refName === prev.refName
           ? { ...fresh, pr: prev.pr ?? fresh.pr ?? null }
           : fresh
       ))
-    })
-    void gitReadPullRequest(target).then((result) => {
-      if (token !== refreshSeq.current || !result.ok) return
+    }).catch(() => undefined)
+    void Promise.resolve().then(() => gitReadPullRequest(target)).then((result) => {
+      if (activeCwd.current !== target || token !== refreshSeq.current || !result.ok) return
       setStatus(prev => (prev ? { ...prev, pr: result.pr ?? null } : prev))
-    })
+    }).catch(() => undefined)
     return next
   }
 
   const settleStatus = async (target: string): Promise<VcsStatus | null> => {
-    const token = refreshSeq.current + 1
-    refreshSeq.current = token
-    const local = await gitStatus(target)
-    if (token !== refreshSeq.current) return local
+    const token = activeCwd.current === target ? refreshSeq.current + 1 : undefined
+    if (token !== undefined) refreshSeq.current = token
+    const local = await Promise.resolve().then(() => gitStatus(target)).catch(() => null)
+    if (token === undefined || activeCwd.current !== target || token !== refreshSeq.current) return local
     setStatus(prev => (
       local && prev?.refName && local.refName === prev.refName
         ? { ...local, pr: local.pr ?? prev.pr ?? null }
@@ -290,10 +337,10 @@ export function GitActionsControl({
     ))
     setLoaded(true)
     const [fresh, prResult] = await Promise.all([
-      gitFetchForStatus(target),
-      gitReadPullRequest(target),
+      Promise.resolve().then(() => gitFetchForStatus(target)).catch(() => null),
+      Promise.resolve().then(() => gitReadPullRequest(target)).catch(() => ({ ok: false as const })),
     ])
-    if (token !== refreshSeq.current) return local
+    if (activeCwd.current !== target || token !== refreshSeq.current) return local
     const pr = prResult.ok ? (prResult.pr ?? null) : (fresh?.pr ?? local?.pr ?? null)
     const merged = fresh ? { ...fresh, pr } : (local ? { ...local, pr } : null)
     if (merged) setStatus(merged)
@@ -405,11 +452,11 @@ export function GitActionsControl({
     if (cwd === undefined) return
     beginProgress(t('action.init.busy'))
     setBusy(true)
-    void gitInit(cwd).then((result) => {
+    void invokeGit(() => gitInit(cwd)).then((result) => {
       const failed = failureMessage(result, t('error.fallback'))
       if (failed !== undefined) failProgress(failed)
       else succeedProgress(t('action.init'))
-    }).finally(() => {
+    }).catch(failTransport).finally(() => {
       setBusy(false)
       void refresh(cwd)
     })
@@ -436,9 +483,16 @@ export function GitActionsControl({
 
   const runStacked = async (
     action: GitStackedAction,
-    options: { commitMessage?: string; skipConfirm?: boolean; filePaths?: readonly string[]; featureBranch?: boolean } = {},
+    options: {
+      commitMessage?: string
+      skipConfirm?: boolean
+      confirmedRef?: string
+      filePaths?: readonly string[]
+      featureBranch?: boolean
+    } = {},
   ): Promise<void> => {
-    if (cwd === undefined) return
+    if (cwd === undefined || activeCwd.current !== cwd) return
+    const expectedRef = options.confirmedRef ?? status?.refName
     // A feature ref forces a commit step even when the working tree looks clean.
     const includesCommitPreview = (action === 'commit' || action === 'commit_push' || action === 'commit_push_pr')
       && (action === 'commit' || Boolean(status?.hasWorkingTreeChanges) || Boolean(options.featureBranch))
@@ -483,7 +537,7 @@ export function GitActionsControl({
       const live = (action === 'create_pr' || action === 'push')
         ? await gitFetchForStatus(cwd)
         : await gitStatus(cwd)
-      if (live) {
+      if (live && activeCwd.current === cwd) {
         setStatus(prev => (
           prev?.refName && live.refName === prev.refName
             ? { ...live, pr: live.pr ?? prev.pr ?? null }
@@ -491,6 +545,12 @@ export function GitActionsControl({
         ))
       }
       const actionStatus = live ?? previewStatus
+      // A displayed or explicitly confirmed branch is intent, not permission
+      // to operate on whatever ref a later status read happens to return.
+      if (live && expectedRef !== undefined && live.refName !== expectedRef) {
+        failProgress(t('error.branchChanged'))
+        return
+      }
       // Always run the commit step for commit_* actions.
       // A clean tree is skipped_no_changes on the desktop, not a skipped IPC call.
       const wantsCommit = action === 'commit' || action === 'commit_push' || action === 'commit_push_pr'
@@ -552,10 +612,10 @@ export function GitActionsControl({
       }
       const terms = getChangeRequestTerminology(actionStatus?.sourceControlProvider)
       const nextStatus = action === 'commit'
-        ? await gitStatus(cwd)
+        ? await Promise.resolve().then(() => gitStatus(cwd)).catch(() => null)
         : await settleStatus(cwd)
       if (action === 'commit') {
-        if (nextStatus) {
+        if (nextStatus && activeCwd.current === cwd) {
           setStatus(prev => (
             prev?.refName && nextStatus.refName === prev.refName
               ? { ...nextStatus, pr: nextStatus.pr ?? prev.pr ?? null }
@@ -575,11 +635,13 @@ export function GitActionsControl({
         summary.title,
         summary.description,
         cta.kind === 'open_pr'
-          ? { label: cta.label, onAction: () => { void openExternal(cta.url) } }
+          ? { label: cta.label, onAction: () => { openGitLink(cta.url) } }
           : cta.kind === 'run_action'
             ? { label: cta.label, onAction: () => { void runStacked(cta.action) } }
             : undefined,
       )
+    } catch (error: unknown) {
+      failProgress(error instanceof Error ? error.message : fallback)
     } finally {
       setBusy(false)
       if (!settled) await refresh(cwd)
@@ -600,7 +662,7 @@ export function GitActionsControl({
       failProgress(`No open ${getChangeRequestTerminology(status?.sourceControlProvider).shortLabel} URL.`)
       return
     }
-    void openExternal(url)
+    openGitLink(url)
   }
 
   const runQuick = (): void => {
@@ -617,7 +679,7 @@ export function GitActionsControl({
       if (cwd === undefined) return
       const actionId = beginProgress('Pulling...')
       setBusy(true)
-      void gitPull(cwd, actionId).then((result) => {
+      void invokeGit(() => gitPull(cwd, actionId)).then((result) => {
         const failed = failureMessage(result, t('error.fallback'))
         if (failed !== undefined) {
           failProgress(failed)
@@ -637,7 +699,7 @@ export function GitActionsControl({
             upstream: result.upstreamRef || 'upstream',
           }),
         )
-      }).finally(() => {
+      }).catch(failTransport).finally(() => {
         setBusy(false)
         void refresh(cwd)
       })
@@ -706,6 +768,7 @@ export function GitActionsControl({
       {showChrome ? (showInit ? initButton : (
         <div className={css.split}>
           <BranchMenu
+            key={cwd}
             cwd={cwd}
             currentRef={status?.refName ?? null}
             t={t}
@@ -830,9 +893,13 @@ export function GitActionsControl({
         }}
         onOpenFile={(filePath) => {
           if (cwd === undefined) return
-          void openWorkspacePath(cwd, filePath).then((result) => {
+          const token = actionSeq.current
+          void invokeGit(() => openWorkspacePath(cwd, filePath)).then((result) => {
+            if (token !== actionSeq.current || activeCwd.current !== cwd) return
             const failed = failureMessage(result, t('error.fallback'))
             if (failed !== undefined) failProgress(failed, t('commit.openFailed'))
+          }).catch((error: unknown) => {
+            if (token === actionSeq.current && activeCwd.current === cwd) failTransport(error, t('commit.openFailed'))
           })
         }}
       />
@@ -852,15 +919,15 @@ export function GitActionsControl({
           const actionId = beginProgress('Publishing repository...')
           setPublishOpen(false)
           setBusy(true)
-          void gitPublishRepository(cwd, {
+          void invokeGit(() => gitPublishRepository(cwd, {
             name: publishName.trim(),
             visibility: publishVisibility,
             ...(publishRemoteUrl.trim() ? { remoteUrl: publishRemoteUrl.trim() } : {}),
-          }, actionId).then((result) => {
+          }, actionId)).then((result) => {
             const failed = failureMessage(result, t('error.fallback'))
             if (failed !== undefined) {
               failProgress(failed)
-              setPublishOpen(true)
+              if (activeCwd.current === cwd) setPublishOpen(true)
               return
             }
             const url = result.url
@@ -868,9 +935,12 @@ export function GitActionsControl({
               t('action.publish'),
               url,
               url
-                ? { label: t('progress.openRepo'), onAction: () => { void openExternal(url) } }
+                ? { label: t('progress.openRepo'), onAction: () => { openGitLink(url) } }
                 : undefined,
             )
+          }).catch((error: unknown) => {
+            failTransport(error)
+            if (activeCwd.current === cwd) setPublishOpen(true)
           }).finally(() => {
             setBusy(false)
             void refresh(cwd)
@@ -906,6 +976,7 @@ export function GitActionsControl({
                 setPending(null)
                 void runStacked(next.action, {
                   skipConfirm: true,
+                  confirmedRef: next.branchName,
                   ...(next.commitMessage ? { commitMessage: next.commitMessage } : {}),
                   ...(next.filePaths ? { filePaths: next.filePaths } : {}),
                 })
@@ -922,6 +993,7 @@ export function GitActionsControl({
                   setPending(null)
                   void runStacked(next.action, {
                     skipConfirm: true,
+                    confirmedRef: next.branchName,
                     featureBranch: true,
                     ...(next.commitMessage ? { commitMessage: next.commitMessage } : {}),
                     ...(next.filePaths ? { filePaths: next.filePaths } : {}),

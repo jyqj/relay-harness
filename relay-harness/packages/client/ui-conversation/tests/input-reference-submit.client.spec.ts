@@ -5,9 +5,9 @@
  */
 import { describe, expect, it, vi } from 'vitest'
 import type { ClientContext } from '@relay-harness/rlh-client-runtime/client'
-import type { InputTriggerController, SubmitOutcome } from '@relay-harness/rlh-client-ui-input-trigger/client'
+import type { InputTriggerController, PickOutcome, SubmitOutcome } from '@relay-harness/rlh-client-ui-input-trigger/client'
 import { SessionInputShell } from '../src/client/input/facade.ts'
-import type { DraftAttachmentId } from '../src/client/input/contract.ts'
+import type { DraftAttachmentId } from '../src/client/contract/input.ts'
 
 const mention = '@[Research](rlh-session:InNvdXJjZSI)'
 const spacedMention = '@[Research notes](rlh-session:InNvdXJjZSI)'
@@ -117,6 +117,42 @@ describe('reference submission', () => {
     expect(sink).toHaveBeenNthCalledWith(2, mention, [], 'queue', expect.any(AbortSignal))
     expect(shell.snapshot.occurrences).toEqual([])
     expect(serializeReference).toHaveBeenCalledTimes(2)
+  })
+
+  it('serializes the enter-time occurrence table: an adjudication-window draft edit never misplaces the model form', async () => {
+    let settleAdjudication!: (outcome: PickOutcome) => void
+    const serializeReference = vi.fn(() => Promise.resolve(mention))
+    const inputTriggers = {
+      serializeReference,
+      track: vi.fn(),
+      adjudicate: () => new Promise<PickOutcome>((resolve) => { settleAdjudication = resolve }),
+    } as unknown as InputTriggerController
+    const sink = vi.fn(() => Promise.resolve<SubmitOutcome>({ kind: 'success' }))
+    const shell = new SessionInputShell({
+      actx: {} as ClientContext,
+      inputTriggers: () => inputTriggers,
+      defaultSink: sink,
+      commandImages,
+    })
+    shell.setDraft('/ask @res')
+    expect(shell.insertReference({
+      source: 'reference',
+      ref: mention,
+      label: 'Research',
+      clipboardText: mention,
+    }, { start: 5, end: 9, draftRev: shell.snapshot.draftRev })).toBe(true)
+    expect(shell.snapshot.draft).toBe('/ask @Research ')
+
+    shell.submit()
+    expect(shell.snapshot.phase).toBe('adjudicating')
+    // External write during the adjudication window shifts the live table;
+    // the sink must still splice the enter-time snapshot.
+    shell.actions.setDraft(`x${shell.snapshot.draft}`)
+    settleAdjudication(undefined)
+    await vi.waitFor(() => {
+      expect(sink).toHaveBeenCalledTimes(1)
+    })
+    expect(sink).toHaveBeenCalledWith('/ask @[Research](rlh-session:InNvdXJjZSI)', [], 'queue', expect.any(AbortSignal))
   })
 
   it('blocks submission and retains the chip when its owner cannot serialize it', async () => {

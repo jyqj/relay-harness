@@ -19,7 +19,7 @@ with RelayHarness() as harness:
     result = harness.run("Say hi.")
 ```
 
-`RelayHarness` 会保留其按需启动的运行时子进程，以便在多次调用之间复用。请像上例一样将其用作上下文管理器，或在使用完毕后显式调用 `close()`。
+`RelayHarness` 会保留其按需启动的运行时子进程，以便在多次调用之间复用。请像上例一样将其用作上下文管理器，或在使用完毕后显式调用 `close()`。`close()` 是幂等且终态的：它发送尽力而为的 `shutdown` 请求（以 `shutdown_timeout_seconds` 为界），关闭 stdin，等待 `eof_grace_seconds=6.0` 的协作式拆卸，随后终止进程并等待 `terminate_grace_seconds=3.0` 再强制杀掉；此后客户端会拒绝 `start()`，并让 subscription 与挂起中的请求立即以 `TransportClosedError` 失败。两个宽限字段都同时存在于 `RelayHarnessConfig` 与 `HarnessConfig` 上。
 
 默认情况下，SDK 会启动 `relay-harness-runtime-bin` 包内置的单文件可执行程序 `rlh-jsonrpc-agent`，并通过 `RLH_CORDIS_CONFIG` 注入该包的默认配置，其中包括 stdio JSON-RPC 服务器、agent core（智能体核心）、预载的 DeepSeek 适配器、采用显式组合语义检查点策略的 JSONL 会话持久化，以及本地 bash。要运行自己的插件组合，请在配置中保留 `@relay-harness/rlh-sdk-jsonrpc-server` 配置项，并传入 Cordis 配置文件路径。
 
@@ -39,9 +39,9 @@ with RelayHarness(
 
 [Python SDK 教程](https://github.com/jyqj/relay-harness/blob/master/relay-harness/docs/user/guide/python-sdk.md)提供一套无需使用 Web UI、按步骤完成安装和首次运行的流程。该教程所用的完整独立 Cordis 配置文件位于 [`jsonrpc-agent` 示例](https://github.com/jyqj/relay-harness/blob/master/relay-harness/examples/jsonrpc-agent/README.md)中。
 
-`Session.run()` 的活动区间从其提示词被持久 inbox 接收时开始，到整个 agent 下一次进入空闲状态时结束，并返回 `RunResult(session_id, final_response, finish_reason, events, notifications, session_root)`。`final_response` 是该区间内根会话最后提交的助手文本。`finish_reason` 是该区间内根会话最后一个 `turn/end` 的 `kind`，例如 `completed`、`max-tokens` 或 `error`；没有轮次结束时为 `None`。缺少字符串 `data.reason.kind` 的 `turn/end` 违反运行时协议，并会抛出 `SdkProtocolError`。这两个结果字段描述的是 `Session.run()` 所界定的活动区间，并不表示某项输出或结束原因在因果上归属于该提示词。steering（中途引导）、注入的上下文和其他排队工作，也可能在 agent 进入空闲状态前参与这段活动。
+`Session.run()` 的活动区间从其提示词被持久 inbox 接收时开始，到整个 agent 下一次进入空闲状态时结束，并返回 `RunResult(session_id, final_response, finish_reason, events, notifications, session_root)`。`final_response` 是该区间内根会话最后提交的助手文本。`finish_reason` 是该区间内根会话最后一个 `turn/end` 的 `kind`，例如 `completed`、`max-tokens` 或 `error`；没有轮次结束时为 `None`。缺少字符串 `data.reason.kind` 的 `turn/end` 违反运行时协议，并会抛出 `SdkProtocolError`。这两个结果字段描述的是 `Session.run()` 所界定的活动区间，并不表示某项输出或结束原因在因果上归属于该提示词。steering（中途引导）、注入的上下文和其他排队工作，也可能在 agent 进入空闲状态前参与这段活动。未显式传入 `session_id` 的 `RelayHarness.run()` 每次调用都会铸造一个新会话，并在区间结算后通过 `session_close` 关闭它；命名会话仍由其调用方持有。
 
-`HarnessClient` 会在运行时进程的整个生命周期内保留已发现的 subagent 谱系。每次执行 `Session.run()` 时，`RunResult.notifications` 与 `on_notification` 会按协议传输顺序收到根会话及所有已知后代的通知，其中包括嵌套 subagent 的生命周期事件与会话事件。`RunResult.events` 只包含根会话事件，因此后代消息不会覆盖根会话回复。底层 `session_prompt()` 会立即返回已排队消息的 `MessageId`；绕过 `Session.run()` 的调用方必须自行负责后续的活动边界。
+`HarnessClient` 会在运行时进程的整个生命周期内保留已发现的 subagent 谱系。每次执行 `Session.run()` 时，`RunResult.notifications` 与 `on_notification` 会按协议传输顺序收到根会话及所有已知后代的通知，其中包括嵌套 subagent 的生命周期事件与会话事件。`RunResult.events` 只包含根会话事件，因此后代消息不会覆盖根会话回复。底层 `session_prompt()` 会立即返回已排队消息的 `MessageId`；绕过 `Session.run()` 的调用方必须自行负责后续的活动边界。`session_close(session_id)` 会释放一个会话的运行时 agent；未知 id 会抛出 `JsonRpcError`，且只有创建该会话的调用方才能关闭它。
 
 Python transport 与 TypeScript SDK 使用相同资源默认值：`max_frame_bytes=64 * 1024 * 1024`、`max_queued_write_bytes=64 * 1024 * 1024 + 1`、`max_notification_queue_size=4096`，并同时暴露在 `RelayHarnessConfig` 与 `HarnessConfig` 上。Python 独有的底层通道另有 `next_notification()` 使用的 `max_global_notification_queue_size=4096` 与 `next_request()` 使用的 `max_incoming_request_queue_size=4096`。frame 上限按入站和出站 UTF-8 字节计量，也覆盖运行时一直不发送 `\n` 的 partial frame；等待中与正在执行的写入会持续记账，直到阻塞式 stdio write-all 循环结算。底层 write 返回 `0` 或 `None` 会 fail closed，而不是发出截断 frame。慢 subscription 先保留已准入前缀，随后抛出 `NotificationQueueOverflowError` 并解除注册，不会打断同级 subscription；两个旧式通道也会先排干已准入前缀，再抛出 `GlobalNotificationQueueOverflowError` 或 `IncomingRequestQueueOverflowError`。调用 `NotificationSubscription.close()` 会丢弃其队列，此后的 `next()` 与 `drain()` 都立即以 `TransportClosedError` 失败。frame 与写队列失败分别抛出 `JsonRpcFrameTooLargeError` 和 `JsonRpcWriteQueueOverflowError`；五项限制都必须是正整数，部署可显式调低。
 

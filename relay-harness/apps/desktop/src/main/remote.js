@@ -1,3 +1,4 @@
+// @ts-check
 const http = require('http');
 const net = require('net');
 const zlib = require('zlib');
@@ -36,6 +37,7 @@ function loopbackOrigin(port) {
 
 function rewriteProxyHeaders(headers, target, options = {}) {
   const keepUpgrade = Boolean(options.upgrade);
+  /** @type {import('node:http').OutgoingHttpHeaders} */
   const out = {};
   for (const [key, value] of Object.entries(headers || {})) {
     const name = String(key).toLowerCase();
@@ -470,7 +472,9 @@ class RemoteGateway extends EventEmitter {
       });
       server.listen(port, '0.0.0.0', () => {
         this.server = server;
-        this.port = server.address().port;
+        const address = server.address();
+        if (!address || typeof address === 'string') { reject(new Error('remote server did not bind a TCP port')); return; }
+        this.port = address.port;
         this.emit('listening', this.snapshot());
         resolve();
       });

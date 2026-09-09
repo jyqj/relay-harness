@@ -633,6 +633,9 @@ export async function launchWebScaffold(options: LaunchOptions = {}): Promise<We
     if (process.cwd() !== originalCwd) process.chdir(originalCwd)
   }
 
+  const pendingTurnWaiters = new Set<() => void>()
+  const turnWaiterFailures: unknown[] = []
+  let closed = false
   return {
     harnessHome,
     mode,
@@ -644,22 +647,45 @@ export async function launchWebScaffold(options: LaunchOptions = {}): Promise<We
     // explicit flush makes the transcript durable, and the caller's browser
     // settled-poll comes last because host completion strictly precedes render.
     whenTurnSettled(timeoutMs = mode === 'record' ? 180_000 : 30_000): Promise<SessionId> {
-      return new Promise<SessionId>((resolveSettled, reject) => {
-        const timer = setTimeout(() => {
-          off()
-          reject(new Error(`no turn/end within ${timeoutMs}ms`))
-        }, timeoutMs)
-        const off = ctx.on('session/event', (session: Session, event: SessionEvent) => {
-          if (event.type !== 'turn/end') return
-          clearTimeout(timer)
-          off()
-          ctx.sessions.flush(session)
-            .then(() => { resolveSettled(session.id) }, reject)
-        })
+      const settled = Promise.withResolvers<SessionId>()
+      const closedError = () => new Error('Web scaffold closed before turn settled')
+      if (closed) {
+        settled.reject(closedError())
+        return settled.promise
+      }
+      // Observe abandoned waits after an earlier UI assertion fails; the original promise still rejects for its caller.
+      void settled.promise.catch(() => { /* rejection remains on the returned promise */ })
+      const release = () => {
+        clearTimeout(timer)
+        off()
+        pendingTurnWaiters.delete(cancel)
+      }
+      const rejectWaiter = (error: unknown) => {
+        if (!pendingTurnWaiters.has(cancel)) return
+        release()
+        turnWaiterFailures.push(error)
+        settled.reject(error)
+      }
+      const cancel = () => { rejectWaiter(closedError()) }
+      const timer = setTimeout(() => {
+        rejectWaiter(new Error(`no turn/end within ${timeoutMs}ms`))
+      }, timeoutMs)
+      const off = ctx.on('session/event', (session: Session, event: SessionEvent) => {
+        if (event.type !== 'turn/end') return
+        clearTimeout(timer)
+        off()
+        ctx.sessions.flush(session).then(
+          () => { if (pendingTurnWaiters.has(cancel)) { release(); settled.resolve(session.id) } },
+          rejectWaiter,
+        )
       })
+      pendingTurnWaiters.add(cancel)
+      return settled.promise
     },
     async close(): Promise<void> {
-      const failures: unknown[] = []
+      closed = true
+      for (const cancel of pendingTurnWaiters) cancel()
+      const failures: unknown[] = [...turnWaiterFailures]
       // Fixture-consumption check first, while the run's binding state is
       // still authoritative — a scenario that drove fewer model calls than
       // recorded fails here instead of drifting green. Skipped for

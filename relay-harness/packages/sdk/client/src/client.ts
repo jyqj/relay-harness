@@ -56,7 +56,7 @@ export class RequestTimeoutError extends Error {
 
 /**
  * The runtime answered outside its documented protocol (for example a
- * `session/prompt` response without `accepted: true`).
+ * `session/prompt` response without `messageId`).
  */
 export class SdkProtocolError extends Error {
   /** @param message - the protocol violation description. */
@@ -317,6 +317,19 @@ export class HarnessClient {
   }
 
   /**
+   * Close one session on the runtime: the runtime disposes the session's
+   * agent and stops attributing the id, so a later prompt for it creates a
+   * fresh session that resumes the id's durable log when one exists. Sessions
+   * opened only for one {@link RelayHarness.run} call are closed
+   * automatically; named sessions stay caller-owned.
+   * @param sessionId - the session id previously used on this runtime.
+   * @throws JsonRpcResponseError when the runtime reports an unknown session.
+   */
+  async closeSession(sessionId: string): Promise<void> {
+    await this.request('session/close', { sessionId })
+  }
+
+  /**
    * Send one JSON-RPC request and await its result.
    * @param method - the wire method name.
    * @param params - the params object; omitted params send `{}`.
@@ -417,7 +430,13 @@ export class HarnessClient {
 
   private async performClose(): Promise<void> {
     const child = this.child
-    if (child === undefined) return
+    if (child === undefined) {
+      // A subscription created before any start() has no producer ever; close
+      // settles its waiters here instead of leaving them parked (the next()
+      // contract). With a child, teardown below fails every subscription.
+      this.failSubscriptions(this.closedError('Relay Harness runtime closed'))
+      return
+    }
     try {
       await this.request('shutdown', undefined, this.options.shutdownTimeoutMs ?? 1_000)
     } catch (error) {

@@ -41,7 +41,7 @@
   width: 12px;
   flex-shrink: 0;
   color: var(--rlw-alias-label-tertiary);
-  transition: transform var(--rl-transition-duration-fast) var(--rl-ease-in-out);
+  transition: transform 100ms var(--rlw-ease-standard);
 }
 
 .twistOpen {
@@ -99,4 +99,10 @@
   width: 0;
   height: 0;
   pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .twist {
+    transition: none;
+  }
 }

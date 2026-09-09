@@ -42,6 +42,8 @@ class StubStore extends SpillStore {
       retrievalHint: 'Use the stub retrieval path.',
     }
   }
+
+  async disposeSession(): Promise<void> {}
 }
 
 /** A tool returning `text` verbatim (name configurable so we can register `read`). */

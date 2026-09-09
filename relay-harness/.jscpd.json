@@ -8,7 +8,7 @@
   "ignore": [
     "**/tests/**",
     "**/tsdown.config.ts",
-    "**/ui-user-terminal/src/client/ghostty/**",
+    "**/ui-user-terminal/src/client/terminal/ghostty/**",
     "apps/desktop/vendor/**"
   ],
   "ignorePattern": [

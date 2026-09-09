@@ -154,6 +154,10 @@ function workspaceManifests(): WorkspaceManifest[] {
 }
 
 const packageFileExtras: Readonly<Record<string, readonly string[]>> = {
+  // These independently loaded entries share one state/projection module;
+  // retain the emitted chunks rather than duplicating their runtime owners.
+  '@relay-harness/rlh-host-webserver': ['lib/route-state-*.js'],
+  '@relay-harness/rlh-host-work-results': ['lib/projection-*.js'],
   // Statically linked client libraries keep their stylesheets next to the emitted
   // JavaScript, which imports them by relative path: the compile shell runs
   // them through its own CSS pipeline, so the sheets are published artifacts.

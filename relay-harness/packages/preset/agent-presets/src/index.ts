@@ -21,20 +21,20 @@
  * @module @relay-harness/rlh-agent-presets
  */
 
-import { stat } from 'node:fs/promises'
-import { Context, Service } from '@relay-harness/cordis'
+import { Context,Service } from '@relay-harness/cordis'
+import { bindScopeParent,captureScopeReadView,createScope,scopeOf,type Scope,type ScopeKey,type ScopeParentBinding } from '@relay-harness/rlh-scope'
 import z from '@relay-harness/schemastery'
-import { bindScopeParent, createScope, scopeOf, type Scope, type ScopeKey, type ScopeParentBinding } from '@relay-harness/rlh-scope'
+import { stat } from 'node:fs/promises'
 // Type-only: resolves the `agent/created` lifecycle event this service watches.
-import type {} from '@relay-harness/rlh-agent'
-import { settingsNamespace, type SettingsScope, type default as SettingsService } from '@relay-harness/rlh-settings'
+import type { } from '@relay-harness/rlh-agent'
 import { rlhHomePath } from '@relay-harness/rlh-home-paths'
-import { discoverPresets, USER_PRESET_DIR } from './discovery.ts'
-import { copyComposition, deleteComposition, readComposition } from './authoring.ts'
-import { mountPreset, serviceForAgent, standingMountFor } from './mount.ts'
-import { PresetExistsError } from './authoring.ts'
-import { PresetMountError, UnknownPresetError, type AgentPreset, type Config, type PresetRoot } from './preset.ts'
-import type {} from './types.ts'
+import { settingsNamespace,type SettingsScope,type default as SettingsService } from '@relay-harness/rlh-settings'
+import { copyComposition,deleteComposition,PresetExistsError,readComposition } from './authoring.ts'
+import { discoverPresets,USER_PRESET_DIR } from './discovery.ts'
+import { mountPreset,serviceForAgent,standingMountFor } from './mount.ts'
+import { PresetMountError,UnknownPresetError,type AgentPreset,type Config,type PresetRoot } from './preset.ts'
+export type {} from './types.ts'
+
 
 /** Settings namespace carrying the user's chosen default preset. */
 export const SETTINGS_NAMESPACE = 'agent-presets'
@@ -45,26 +45,34 @@ export interface AgentPresetSettings {
   default?: string
 }
 
+/** A cold reader's hold on one standing generation; release after all asynchronous registry reads. */
+export interface PresetScopeLease {
+  /** Scope used for registry views while the lease is held. */
+  readonly key: ScopeKey
+  /** Release this hold exactly once; repeated calls await the same disposal. */
+  release(): Promise<void>
+}
+
 /** Runtime schema for the user-writable slice. */
 export const AgentPresetSettingsSchema: z<AgentPresetSettings> = z.object({
   default: z.string(),
 })
 
-export { COMPOSITION_FILE, discoverPresets, scanRoot } from './discovery.ts'
 export {
-  METADATA_FILE, readPresetMetadata, renderPresetMetadata, type PresetMetadata,
+  copyComposition,deleteComposition,InvalidPresetIdError,PresetExistsError,
+  PresetNotWritableError,readComposition,writableRoot,
+} from './authoring.ts'
+export { COMPOSITION_FILE,discoverPresets,scanRoot } from './discovery.ts'
+export {
+  METADATA_FILE,readPresetMetadata,renderPresetMetadata,type PresetMetadata,
 } from './metadata.ts'
 export {
-  inactiveRows, leakedServices, livePresetMounts, mountPreset, serviceForAgent, standingMountFor,
-  type JoinedPresetMount, type PresetMount,
+  inactiveRows,leakedServices,livePresetMounts,mountPreset,serviceForAgent,standingMountFor,
+  type JoinedPresetMount,type PresetMount,
 } from './mount.ts'
-export {
-  copyComposition, deleteComposition, InvalidPresetIdError, PresetExistsError,
-  PresetNotWritableError, readComposition, writableRoot,
-} from './authoring.ts'
-export { resolveSessionPreset, type PresetBearingSession } from './session.ts'
-export { PresetMountError, UnknownPresetError } from './preset.ts'
-export type { AgentPreset, Config, PresetRoot, PresetTrust } from './preset.ts'
+export { PresetMountError,UnknownPresetError } from './preset.ts'
+export type { AgentPreset,Config,PresetRoot,PresetTrust } from './preset.ts'
+export { resolveSessionPreset,type PresetBearingSession } from './session.ts'
 
 declare module '@relay-harness/cordis' {
   interface Context {
@@ -245,9 +253,8 @@ export class AgentPresets extends Service {
    * settled success serves until the composition FILE visibly changes — each
    * generation records its file stamp, and a stale stamp starts the next
    * generation for sessions created afterwards. Sessions already joined keep
-   * the generation they run on; a superseded one is never disposed while the
-   * process lives (reclaimed only by whole-tree teardown), so editing files
-   * is bounded by how often compositions change, not by session count.
+   * the generation they run on. A superseded generation is disposed after its
+   * last agent or cold-reader hold releases; one current generation remains cached.
    */
   private readonly standing = new Map<string, Promise<StandingMount>>()
 
@@ -257,7 +264,12 @@ export class AgentPresets extends Service {
    * here makes this service the sole authority that can move an agent between
    * standing compositions. WeakMap: entries die with their agents.
    */
-  private readonly bindings = new WeakMap<ScopeKey, ScopeParentBinding>()
+  private readonly bindings = new WeakMap<ScopeKey, {
+    binding: ScopeParentBinding
+    lease: PresetScopeLease
+  }>()
+
+  private readonly generations = new WeakMap<ScopeKey, StandingMount>()
 
   /**
    * Compose one agent from a preset: ensure the preset's standing mount, then
@@ -278,12 +290,17 @@ export class AgentPresets extends Service {
       throw new Error('agent-presets: refusing to compose an unscoped context; the scope key is what joins an agent to its preset')
     }
     const preset = await this.resolveMountable(id)
-    const standing = await this.ensureStanding(preset)
+    const lease = await this.acquireStanding(preset)
     // The one bind of this agent's ancestry. The binding is the only re-link
     // authority, held privately so nothing outside this roster can move a
     // composed agent to another preset; a later recompose layer re-links
     // through it under the caller-owned blank-session contract.
-    this.bindings.set(agentKey, bindScopeParent(agentKey, standing.key))
+    try {
+      this.bindAgent(agentCtx, agentKey, lease)
+    } catch (error) {
+      await lease.release()
+      throw error
+    }
     return preset
   }
 
@@ -320,7 +337,17 @@ export class AgentPresets extends Service {
     }
     const standing = standingMountFor(parentCtx)
     if (standing === undefined) return undefined
-    this.bindings.set(agentKey, bindScopeParent(agentKey, standing.key))
+    const generation = this.generations.get(standing.key)
+    if (generation === undefined) throw new Error('agent-presets: parent standing generation is not owned by this roster')
+    const lease = this.retain(generation)
+    try {
+      this.bindAgent(agentCtx, agentKey, lease)
+    } catch (error) {
+      void lease.release().catch((error: unknown) => {
+        this.selfCtx.logger.warn('agent-presets: generation release failed', error)
+      })
+      throw error
+    }
     return standing.presetId
   }
 
@@ -389,7 +416,7 @@ export class AgentPresets extends Service {
     // A settled mount under this id can only be stale (its preset was deleted
     // from disk outside `remove`); the new preset must not inherit it. Every
     // session already joined keeps the generation it runs on regardless.
-    this.standing.delete(id)
+    await this.invalidate(id)
   }
 
   /**
@@ -401,7 +428,7 @@ export class AgentPresets extends Service {
     await deleteComposition(this.resolvedRoots, await this.resolve(id))
     // Sessions on the deleted preset keep their standing mount; only new
     // sessions see the roster without it.
-    this.standing.delete(id)
+    await this.invalidate(id)
     // Storing a default that does not exist YET is deliberate — the roster is a
     // live directory, so a name absent now may exist by the time a session asks
     // for it, and `resolve` reports it then. A default this call just deleted is
@@ -443,7 +470,7 @@ export class AgentPresets extends Service {
    * history.
    *
    * The swap is a parent re-link, not an unmount: standing mounts are shared
-   * and permanent, so the old composition stays for its other agents and the
+   * and reference-held, so the old composition stays for its other agents and the
    * new one is ensured BEFORE the link moves. An unknown or unusable preset
    * therefore throws with the agent exactly as it was — there is no torn-down
    * state to restore. The re-link runs through the binding this roster kept
@@ -461,12 +488,19 @@ export class AgentPresets extends Service {
       throw new Error('agent-presets: refusing to recompose an unscoped context')
     }
     const preset = await this.resolveMountable(id)
-    const standing = await this.ensureStanding(preset)
-    const binding = this.bindings.get(agentKey)
-    if (binding === undefined) {
-      this.bindings.set(agentKey, bindScopeParent(agentKey, standing.key))
-    } else {
-      binding.rebind(standing.key)
+    const lease = await this.acquireStanding(preset)
+    const joined = this.bindings.get(agentKey)
+    try {
+      if (joined === undefined) this.bindAgent(agentCtx, agentKey, lease)
+      else {
+        joined.binding.rebind(lease.key)
+        const previous = joined.lease
+        joined.lease = lease
+        await previous.release()
+      }
+    } catch (error) {
+      if (joined?.lease !== lease) await lease.release()
+      throw error
     }
     return preset
   }
@@ -479,12 +513,82 @@ export class AgentPresets extends Service {
    * resuming anything: ensuring the mount composes plugins but starts no
    * agent, no session, and no turn.
    * @param id - the preset id, or `undefined` for {@link defaultId}.
-   * @returns the standing scope key readers pass as a registry view scope.
+   * @returns a held standing scope; release it after all asynchronous registry reads.
    * @throws when the preset is unknown or its composition is unusable.
    */
-  async standingKeyFor(id?: string): Promise<ScopeKey> {
-    const preset = await this.resolveMountable(id)
-    return (await this.ensureStanding(preset)).key
+  async acquireStandingScope(id?: string): Promise<PresetScopeLease> {
+    return this.acquireStanding(await this.resolveMountable(id))
+  }
+
+  /**
+   * Hold the exact joined generation and snapshot all live-agent registration layers for an asynchronous read.
+   * @param agentCtx - agent whose current composition and ancestry the read observes.
+   * @returns held immutable registry ancestry, or undefined for an unjoined agent; release after the read settles.
+   */
+  acquireAgentScope(agentCtx: Context): PresetScopeLease | undefined {
+    const key = scopeOf(agentCtx)
+    if (key === undefined) return undefined
+    const joined = this.bindings.get(key)
+    if (joined === undefined) return undefined
+    const generation = this.generations.get(joined.lease.key)
+    if (generation === undefined) throw new Error('agent-presets: joined generation is not owned by this roster')
+    const hold = this.retain(generation)
+    return { key: captureScopeReadView(key), release: () => hold.release() }
+  }
+
+  /** Bind an acquired hold to an agent's exact teardown lifetime. */
+  private bindAgent(agentCtx: Context, key: ScopeKey, lease: PresetScopeLease): void {
+    const binding = bindScopeParent(key, lease.key)
+    const joined = { binding, lease }
+    agentCtx.effect(() => () => {
+      this.bindings.delete(key)
+      return joined.lease.release()
+    })
+    this.bindings.set(key, joined)
+  }
+
+  /** Acquire only a generation that has not lost its cache position during asynchronous resolution. */
+  private async acquireStanding(preset: AgentPreset): Promise<PresetScopeLease> {
+    while (true) {
+      const generation = await this.ensureStanding(preset)
+      if (!generation.retired) return this.retain(generation)
+    }
+  }
+
+  /** Parent/child inheritance may retain an already-retired generation while its parent still holds it. */
+  private retain(generation: StandingMount): PresetScopeLease {
+    if (generation.disposal !== undefined) throw new Error('agent-presets: standing generation is already disposing')
+    generation.holders += 1
+    let released: Promise<void> | undefined
+    return {
+      key: generation.key,
+      release: () => {
+        if (released !== undefined) return released
+        generation.holders -= 1
+        released = this.reclaim(generation)
+        return released
+      },
+    }
+  }
+
+  /** Invalidate a cache pointer without disposing generations still held by agents or readers. */
+  private async invalidate(id: string): Promise<void> {
+    const pending = this.standing.get(id)
+    if (pending === undefined) return
+    this.standing.delete(id)
+    // A failed mount already owns its rollback; invalidation must not replay that failure after an authoring commit.
+    const generation = await pending.catch(() => undefined)
+    if (generation === undefined) return
+    generation.retired = true
+    await this.reclaim(generation)
+  }
+
+  /** Dispose superseded, unheld generations and await the complete subtree teardown. */
+  private reclaim(generation: StandingMount): Promise<void> {
+    if (!generation.retired || generation.holders !== 0) return Promise.resolve()
+    return generation.disposal ??= generation.scope.dispose().catch((error: unknown) => {
+      this.selfCtx.logger.warn('agent-presets: retired generation teardown failed', error)
+    })
   }
 
   /** Resolve (or create, single-flight) the standing mount of one preset. */
@@ -499,18 +603,15 @@ export class AgentPresets extends Service {
       // disappearing, and failing the session over a stat would not.
       const current = await compositionStamp(preset.path)
       if (current === undefined || sameStamp(mounted.stamp, current)) return mounted
-      // TODO: reclaim the superseded generation once the last agent joined to
-      // it is gone. The subtree is not inert — `rlh-skill-filesystem` watches its
-      // roots — and the settings-page authoring flow turns "a composition
-      // changed" into a per-save event. This needs a joined-agent count on
-      // StandingMount, incremented in `mount`/`composeFrom`/`recompose` and
-      // decremented when the agent's scope key dies.
-      // Guarded delete: a caller that raced this one may have already started
-      // the next generation, and dropping THAT pointer would fork a third.
-      if (this.standing.get(preset.id) === pending) this.standing.delete(preset.id)
+      // A racing refresher may already own the successor pointer.
+      if (this.standing.get(preset.id) === pending) {
+        this.standing.delete(preset.id)
+        mounted.retired = true
+        await this.reclaim(mounted)
+      }
       return this.ensureStanding(preset)
     }
-    const created = (async (): Promise<StandingMount> => {
+    const created = Promise.resolve().then(async (): Promise<StandingMount> => {
       const key: ScopeKey = { agentPreset: preset.id }
       const scope = createScope(this.selfCtx, key)
       try {
@@ -522,13 +623,15 @@ export class AgentPresets extends Service {
           throw new PresetMountError(preset.id, `composition file is unreadable: ${preset.path}`)
         }
         await mountPreset(scope.ctx, preset)
-        return { key, scope, stamp }
+        const generation: StandingMount = { key, scope, stamp, holders: 0, retired: false }
+        this.generations.set(key, generation)
+        return generation
       } catch (error) {
-        this.standing.delete(preset.id)
+        if (this.standing.get(preset.id) === created) this.standing.delete(preset.id)
         await scope.dispose()
         throw error
       }
-    })()
+    })
     this.standing.set(preset.id, created)
     return created
   }
@@ -563,10 +666,13 @@ function sameStamp(a: CompositionStamp, b: CompositionStamp): boolean {
 interface StandingMount {
   /** Scope key agents are parented to; also the mount's registration scope. */
   readonly key: ScopeKey
-  /** Disposal boundary; held for whole-tree teardown, never per-session. */
+  /** Disposal boundary shared by the cache and all agent/reader holds. */
   readonly scope: Scope
   /** Stamp of the composition file this generation was mounted from. */
   readonly stamp: CompositionStamp
+  holders: number
+  retired: boolean
+  disposal?: Promise<void>
 }
 
 export default AgentPresets

@@ -1,0 +1,6 @@
+# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
+# side as of the last confirmed-consistent state. Both languages carry equal authority;
+# after editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write .agents/notes/implemented/bug-fix/2026-09-06-desktop-preference-effect-and-smoke-isolation.md
+2026-09-06-desktop-preference-effect-and-smoke-isolation.md: 3a5676843363f6245867cd660f19906c1a2f5a4f
+2026-09-06-desktop-preference-effect-and-smoke-isolation.zh.md: 5a03d2f84f27300c9a7aaf00c45237565cb926e0

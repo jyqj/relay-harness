@@ -1,3 +1,4 @@
+// @ts-check
 'use strict';
 
 const THEME_VARS = Object.freeze({
@@ -107,7 +108,7 @@ function applyAnnotationTheme(host, theme) {
  * @param {{ href?: string, title?: string }} [page]
  */
 function captureElement(element, page) {
-  const loc = page || (typeof location !== 'undefined' ? location : {});
+  const loc = page || { href: typeof location !== 'undefined' ? location.href : '' };
   const doc = typeof document !== 'undefined' ? document : {};
   const pageUrl = typeof loc.href === 'string' ? loc.href : '';
   const rawTitle = typeof loc.title === 'string'
@@ -166,7 +167,7 @@ function isPickedElementPayload(value) {
 
 function isRect(value) {
   if (typeof value !== 'object' || value === null) return false;
-  const rect = value;
+  const rect = /** @type {Record<string, unknown>} */ (value);
   return ['x', 'y', 'width', 'height'].every(
     (key) => typeof rect[key] === 'number' && Number.isFinite(rect[key]),
   );
@@ -240,7 +241,7 @@ function isPreviewAnnotationPayload(value) {
  */
 function normalizeCaptureRect(value) {
   if (typeof value !== 'object' || value === null) return null;
-  const rect = value;
+  const rect = /** @type {Record<string, unknown>} */ (value);
   const x = rect.x;
   const y = rect.y;
   const width = rect.width;

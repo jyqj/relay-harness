@@ -377,9 +377,10 @@ export class ReactLoopAgent implements Agent {
           if (turnEnds && decision.messages.length === 0) break
           // A removed waking message or an enter decision rewritten to empty
           // still owns the initial turn boundary, but it spends no model call.
+          // It shares the tail inbox re-check, so queued input continues.
           if (phase.step === 0 && decision.messages.length === 0) {
             turnEnds = { kind: 'completed' }
-            return false
+            break
           }
           signal.throwIfAborted()
           this.session.append('step/start', { turn, step })

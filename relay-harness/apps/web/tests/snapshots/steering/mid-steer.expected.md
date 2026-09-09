@@ -1,17 +1,18 @@
 - banner:
   - navigation "Session hierarchy":
     - button "Use the ask_user_question tool to" [disabled]
-  - img
-  - text: Standard mode
-  - tablist:
-    - tab "Chat" [selected]
-    - tab "Trajectory"
+  - button "Session Tree"
+  - button "Inspect context used for this session": Context 1
 - text: Use the ask_user_question tool to ask me exactly one question with id "checkpoint", question "Ready to continue?", header "Checkpoint", and options labeled "Yes" and "No". After I answer, reply with one short sentence acknowledging my answer and stop. {{clock}}
 - button "Copy":
   - img
 - button "Edit" [disabled]:
   - img
 - text: Wait for the current response to finish before editing
+- button "Context injection code-index":
+  - img
+  - img
+  - text: Context injection code-index
 - button "Context injection @relay-harness/rlh-system-prompt":
   - img
   - img

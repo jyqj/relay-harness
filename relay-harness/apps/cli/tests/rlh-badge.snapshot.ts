@@ -115,6 +115,7 @@ describe('rlh badge assembled snapshot', () => {
             },
           ],
           "isError": false,
+          "producedFiles": [],
           "value": {
             "content": "# rlh Badge
 

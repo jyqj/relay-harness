@@ -109,6 +109,15 @@ describe('redactSecrets', () => {
     expect(secrets).toEqual([])
   })
 
+  it('passes a transform with only public object fields and rejects a root secret union', () => {
+    const publicTransform = z.transform(z.object({ label: z.string() }), value => value)
+    expect(redactSecrets(publicTransform as z<never>, { label: 'public' }))
+      .toEqual({ value: { label: 'public' }, secrets: [] })
+    const rootSecret = z.union([z.string(), z.string().role('secret')])
+    expect(() => redactSecrets(rootSecret as z<never>, 'fixture-secret'))
+      .toThrow(/declares a secret inside a union node at <root>/)
+  })
+
   it('refuses to redact a value whose schema hides a secret in a union', () => {
     const Leaky = z.object({ choice: z.union([z.string(), z.string().role('secret')]) })
     expect(() => redactSecrets(Leaky as z<never>, { choice: 'maybe-secret' }))
@@ -183,5 +192,45 @@ describe('describe() layers and redaction', () => {
     expect(descriptor?.secrets).toEqual([{ path: ['apiKey'], set: true }])
     const [verbatim] = ctx.settings.describe()
     expect(verbatim?.value).toEqual({ apiKey: 'user-key', baseURL: 'https://user' })
+  })
+})
+
+describe('redaction own-property boundaries', () => {
+  it('preserves unknown JSON keys without invoking inherited setters', () => {
+    const schema = z.object({ apiKey: z.string().role('secret') })
+    const input = JSON.parse('{"__proto__":{"marker":"own-data"},"constructor":"own-constructor","toString":"own-toString","apiKey":"fixture-secret"}') as unknown
+    const { value, secrets } = redactSecrets(schema as z<never>, input)
+    expect(Object.getPrototypeOf(value)).toBe(Object.prototype)
+    expect(Object.keys(value as object)).toEqual(['__proto__', 'constructor', 'toString'])
+    expect(JSON.stringify(value)).toBe('{"__proto__":{"marker":"own-data"},"constructor":"own-constructor","toString":"own-toString"}')
+    expect(secrets).toEqual([{ path: ['apiKey'], set: true }])
+  })
+
+  it('redacts entries named __proto__ as ordinary dictionary data', () => {
+    const schema = z.dict(z.object({ apiKey: z.string().role('secret'), label: z.string() }))
+    const input = Object.fromEntries([['__proto__', { apiKey: 'fixture-secret', label: 'kept' }]])
+    const { value, secrets } = redactSecrets(schema as z<never>, input)
+    expect(Object.getPrototypeOf(value)).toBe(Object.prototype)
+    expect(Object.hasOwn(value as object, '__proto__')).toBe(true)
+    expect(JSON.stringify(value)).toBe('{"__proto__":{"label":"kept"}}')
+    expect(secrets).toEqual([{ path: ['__proto__', 'apiKey'], set: true }])
+    expect(input['__proto__']).toEqual({ apiKey: 'fixture-secret', label: 'kept' })
+  })
+
+  it('preserves schema-declared __proto__ data without changing the output prototype', () => {
+    const schema = z.object(Object.fromEntries([['__proto__', z.string()]]))
+    const { value, secrets } = redactSecrets(schema as z<never>, Object.fromEntries([['__proto__', 'ordinary-data']]))
+    expect(Object.getPrototypeOf(value)).toBe(Object.prototype)
+    expect(Object.keys(value as object)).toEqual(['__proto__'])
+    expect(JSON.stringify(value)).toBe('{"__proto__":"ordinary-data"}')
+    expect(secrets).toEqual([])
+  })
+
+  it('does not materialize inherited configuration or report inherited secrets as set', () => {
+    const schema = z.object({ apiKey: z.string().role('secret'), label: z.string() })
+    const input: unknown = Object.create({ apiKey: 'fixture-inherited', label: 'not-own' })
+    expect(redactSecrets(schema as z<never>, input)).toEqual({
+      value: {}, secrets: [{ path: ['apiKey'], set: false }],
+    })
   })
 })

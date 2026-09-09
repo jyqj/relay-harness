@@ -304,9 +304,10 @@ abstract append(id: SessionId, events: readonly SessionEvent[]): Promise<void>
  * for one read/check round trip; continuous external writers may delay completion.
  * @param id - persisted session to prepare.
  * @param signal - optional cancellation for preparation work.
+ * @param fence - optional owner excluding takeover throughout cold recovery.
  * @returns one owned unpublished Session preparation.
  */
-async prepare(id: SessionId, signal?: AbortSignal): Promise<SessionPreparation>
+async prepare(id: SessionId, signal?: AbortSignal, fence?: SessionPersistenceFence): Promise<SessionPreparation>
 
 /**
  * Load an immutable balanced logical view and commit any required cold
@@ -382,5 +383,23 @@ abstract listSnapshots(signal?: AbortSignal): Promise<SessionPersistenceSnapshot
 
 Types: [SessionEvent](session.md) · [SessionId](core.md)
 
-Source: [`packages/session/session-persistence/src/index.ts:84`](../../packages/session/session-persistence/src/index.ts)
+Source: [`packages/session/session-persistence/src/index.ts:86`](../../packages/session/session-persistence/src/index.ts)
 <!-- END GENERATED cordis-surface -->
+
+## SessionPersistenceFence
+
+```ts type-equiv
+/** Cross-process ownership proof checked immediately before persistence writes. */
+interface SessionPersistenceFence {
+  /** Stable owner/fence identity for diagnostics. */
+  readonly token: string
+  /** Throw when this owner is expired or superseded. */
+  assertCurrent(): void
+  /**
+   * Optionally exclude lease release/takeover through a complete storage commit.
+   * @param operation - mutation that remains inside the owner's exclusion interval.
+   * @returns the mutation result after its full durability barrier settles.
+   */
+  runExclusive?<T>(operation: () => Promise<T>): Promise<T>
+}
+```

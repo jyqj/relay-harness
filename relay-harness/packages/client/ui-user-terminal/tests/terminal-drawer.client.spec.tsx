@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
-import { readFileSync, readdirSync } from 'node:fs'
+import { act,cleanup,fireEvent,render,screen,waitFor } from '@testing-library/react'
+import { readdirSync,readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { useSyncExternalStore } from 'react'
-import { afterEach, describe, expect, it, vi } from 'vitest'
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { afterEach,describe,expect,it,vi } from 'vitest'
 
 // Ghostty needs a real layout to fit; the pane integration is asserted against
 // a scripted fake that records writes, data handlers, and disposal.
@@ -44,7 +44,7 @@ const ghosttyState = vi.hoisted(() => ({ instances: [] as Array<{
   setTheme: (theme: unknown) => void
 }>, throwFit: false, cols: 80, rows: 24, delayMs: 0, createError: null as unknown }))
 
-vi.mock('../src/client/ghostty/surface.ts', () => {
+vi.mock('../src/client/terminal/ghostty/surface.ts', () => {
   class FakeGhosttySurface {
     cols = 80
     rows = 24
@@ -117,17 +117,17 @@ vi.mock('../src/client/ghostty/surface.ts', () => {
   }
 })
 
-import type { SessionId, SessionListState } from '@relay-harness/rlh-client-runtime/client'
-import type { TerminalDrawerProps } from '../src/client/TerminalDrawer.tsx'
-import { TerminalDrawer } from '../src/client/TerminalDrawer.tsx'
-import { TerminalPane } from '../src/client/TerminalPane.tsx'
-import type { TerminalSurfaceProps } from '../src/client/TerminalSurface.tsx'
-import { TerminalSurface } from '../src/client/TerminalSurface.tsx'
-import { createTerminalSessionStore, DEFAULT_TERMINAL_COLS, DEFAULT_TERMINAL_ROWS, MAX_TERMINALS_PER_GROUP, type TerminalSessionRecord } from '../src/client/stores.ts'
-import { clampDrawerHeight, maxDrawerHeight, TERMINAL_DRAWER_MIN } from '../src/client/height.ts'
-import { FIT_SETTLE_MS, PTY_RESIZE_DEBOUNCE_MS } from '../src/client/fit.ts'
-import { en, zh } from '../src/client/locales.ts'
-import { bindPtyListeners } from '../src/client/pty-bridge.ts'
+import type { SessionId,SessionListState } from '@relay-harness/rlh-client-runtime/client'
+import { en,zh } from '../src/client/locales.ts'
+import type { TerminalDrawerProps } from '../src/client/terminal/TerminalDrawer.tsx'
+import { TerminalDrawer } from '../src/client/terminal/TerminalDrawer.tsx'
+import { TerminalPane } from '../src/client/terminal/TerminalPane.tsx'
+import type { TerminalSurfaceProps } from '../src/client/terminal/TerminalSurface.tsx'
+import { TerminalSurface } from '../src/client/terminal/TerminalSurface.tsx'
+import { FIT_SETTLE_MS,PTY_RESIZE_DEBOUNCE_MS } from '../src/client/terminal/fit.ts'
+import { clampDrawerHeight,maxDrawerHeight,TERMINAL_DRAWER_MIN } from '../src/client/terminal/height.ts'
+import { bindPtyListeners } from '../src/client/terminal/pty-bridge.ts'
+import { createTerminalSessionStore,DEFAULT_TERMINAL_COLS,DEFAULT_TERMINAL_ROWS,MAX_TERMINALS_PER_GROUP,type TerminalSessionRecord } from '../src/client/terminal/stores.ts'
 
 const SID = 'session-term' as SessionId
 const t: TerminalDrawerProps['t'] = key => (en as Record<string, string>)[key] ?? key
@@ -938,7 +938,7 @@ describe('TerminalPane', () => {
 describe('ui-user-terminal production imports', () => {
   it('does not import another plugin src/client from production code', () => {
     const dir = join(process.cwd(), 'packages/client/ui-user-terminal/src/client')
-    for (const name of readdirSync(dir)) {
+    for (const name of readdirSync(dir, { recursive: true }) as string[]) {
       if (!/\.(ts|tsx)$/.test(name)) continue
       const text = readFileSync(join(dir, name), 'utf8')
       expect(text.includes('@relay-harness/rlh-client-ui-layout/src/'), name).toBe(false)
@@ -947,7 +947,7 @@ describe('ui-user-terminal production imports', () => {
 
   it('does not stretch a Ghostty canvas with xterm screen CSS', () => {
     const css = readFileSync(
-      join(process.cwd(), 'packages/client/ui-user-terminal/src/client/TerminalWorkspace.module.css'),
+      join(process.cwd(), 'packages/client/ui-user-terminal/src/client/terminal/TerminalWorkspace.module.css'),
       'utf8',
     )
     expect(css).not.toMatch(/xterm-screen/)
@@ -956,7 +956,7 @@ describe('ui-user-terminal production imports', () => {
 
   it('keeps the workspace transparent and paints an opaque terminal pane', () => {
     const terminalCss = readFileSync(
-      join(process.cwd(), 'packages/client/ui-user-terminal/src/client/TerminalWorkspace.module.css'),
+      join(process.cwd(), 'packages/client/ui-user-terminal/src/client/terminal/TerminalWorkspace.module.css'),
       'utf8',
     )
     expect(terminalCss).toMatch(/\.root\s*{[\s\S]{0,220}background:\s*transparent/)
@@ -969,7 +969,7 @@ describe('ui-user-terminal production imports', () => {
 
   it('never restyles TUI rows; Ghostty paints cells on the opaque well', () => {
     const terminalCss = readFileSync(
-      join(process.cwd(), 'packages/client/ui-user-terminal/src/client/TerminalWorkspace.module.css'),
+      join(process.cwd(), 'packages/client/ui-user-terminal/src/client/terminal/TerminalWorkspace.module.css'),
       'utf8',
     )
     expect(terminalCss).not.toMatch(/xterm-bg-257/)

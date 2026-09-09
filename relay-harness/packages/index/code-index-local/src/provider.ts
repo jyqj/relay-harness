@@ -661,7 +661,7 @@ export class LocalCodeIndexRuntime {
   }
 
   /**
-   * Recorded by the owning plugin when the optional watcher failed to start.
+   * Recorded by the owning plugin when the optional watcher fails at startup or during use.
    * @param degraded - whether watcher events can no longer arrive.
    */
   setWatcherDegraded(degraded: boolean): void {

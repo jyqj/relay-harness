@@ -243,7 +243,8 @@ export async function runScenario(input: InputScript, opts: RunOptions): Promise
     // Copied into the generated cwd so the agent's bash tools see it; the expected outputs
     // normalize the cwd, so the seeded paths stay stable across runs.
     if (opts.workspaceDir !== undefined && existsSync(opts.workspaceDir)) {
-      await cp(opts.workspaceDir, cwd, { recursive: true })
+      // Relative fixture links must refer to the copied targets, not the source checkout.
+      await cp(opts.workspaceDir, cwd, { recursive: true, verbatimSymlinks: true })
     }
     await opts.prepareWorkspace?.(cwd)
     const env: NodeJS.ProcessEnv = {

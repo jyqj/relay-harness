@@ -6,15 +6,15 @@
  * @module @relay-harness/rlh-tools/src/code-mode
  */
 
-import { CallId, createUserMessage, HarnessError } from '@relay-harness/rlh-llm'
+import type { CodeBindingFunction,CodeRunResult,CodeRuntime } from '@relay-harness/rlh-code-runtime'
 import type { ContentBlock } from '@relay-harness/rlh-llm'
-import type { CodeBindingFunction, CodeRunResult, CodeRuntime } from '@relay-harness/rlh-code-runtime'
-import { snapshotJsonValue } from '@relay-harness/rlh-session'
+import { CallId,createUserMessage,HarnessError } from '@relay-harness/rlh-llm'
 import type { JsonValue } from '@relay-harness/rlh-session'
-import { defineTool, parameterSchemaSpecToJsonSchema } from './schema.ts'
-import type { CodeDispatchLog, ToolDefinition, ToolExecutionResult, ToolRuntime, ToolRunContext } from './index.ts'
+import { snapshotJsonValue } from '@relay-harness/rlh-session'
+import type { CodeDispatchLog,ToolDefinition,ToolExecutionResult,ToolRunContext,ToolRuntime } from './index.ts'
 import { toolRuntimeExecutionRequest } from './request-snapshot.ts'
-import type {} from './types.ts'
+import { defineTool,parameterSchemaSpecToJsonSchema } from './schema.ts'
+
 
 /** The model-facing name of the Code Mode tool. */
 export const RUN_CODE_NAME = 'run_code'

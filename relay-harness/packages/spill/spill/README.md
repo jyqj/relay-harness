@@ -19,8 +19,9 @@ The split mirrors the shell/fs seams. A future remote or virtual backend (e.g. a
 | Member | Semantics |
 |---|---|
 | `saveText(input)` | Persist `input.content` verbatim; resolves with a `SpillRef` (opaque locator, exact bytes written, and retrieval hint). **Rejects on a real storage failure** (permissions, ENOSPC, backend unavailable) — the caller decides how to degrade. |
+| `disposeSession(sessionId)` | Reclaim every artifact owned by that session; called at the session's disposal. Idempotent. Locators are best-effort recovery paths, so a disposed session's log may reference reclaimed paths whose reads fail loudly. |
 
-Storage is grouped by the request's `owner` session as a save-time namespace; the backend chooses its own private representation and may derive names from — never trust as a path — the caller's `suggestedName`. The seam owns storage only: NO retention policy (that is [`@relay-harness/rlh-output-retention`](../../util/output-retention)), NO tool-result replacement (that is `@relay-harness/rlh-spill-policy`), NO retrieval/search API (the backend's `retrievalHint` tells the model what to do with the locator).
+Storage is grouped by the request's `owner` session as a save-time namespace; the backend chooses its own private representation and may derive names from — never trust as a path — the caller's `suggestedName`. The seam owns storage only: NO preview or retention policy (that is [`@relay-harness/rlh-output-retention`](../../util/output-retention)), NO tool-result replacement (that is `@relay-harness/rlh-spill-policy`), NO retrieval/search API (the backend's `retrievalHint` tells the model what to do with the locator). Retention mechanics — orphan-root sweeping, per-session reclamation — are backend-owned.
 
 ## Vocabulary
 
@@ -38,5 +39,5 @@ No direct invalidation; the named consumer owns any request-prefix changes.
 
 ## Known Limitations and Deferred Work
 
-- **The seam has no retrieval or deletion API** — consumers can only render the backend's locator and guidance; lifecycle and access semantics remain backend-specific.
+- **The seam has no retrieval or per-artifact deletion API** — consumers can only render the backend's locator and guidance, and reclamation is all-or-nothing per session; lifecycle and access semantics remain backend-specific.
 - **Storage is not access control** — `SpillOwner` namespaces writes but does not authorize reads of a locator; each backend and retrieval consumer must enforce its own boundary.

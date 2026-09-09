@@ -175,7 +175,7 @@ describe('ui-model-selection dual entry', () => {
       model: 'deepseek-v4-pro',
       reasoningEffort: 'max',
     })
-    expect(seatFace.directory.getSnapshot().current).toEqual({
+    expect(seatFace.hooks.modelDirectory.getSnapshot().current).toEqual({
       provider: 'deepseek-official',
       model: 'deepseek-v4-pro',
       reasoningEffort: 'max',
@@ -192,7 +192,7 @@ describe('ui-model-selection dual entry', () => {
     const options = await b.contribution().ui.options(projection('s1'), new AbortController().signal)
     const pro = options.find((o: SelectOption) => o.label === 'DeepSeek-V4-Pro')!
     await b.contribution().ui.onSelect(pro, projection('s1'))
-    expect(seatFace.directory.getSnapshot().current).toEqual({
+    expect(seatFace.hooks.modelDirectory.getSnapshot().current).toEqual({
       provider: 'deepseek-official',
       model: 'deepseek-v4-pro',
       reasoningEffort: 'high',
@@ -206,10 +206,10 @@ describe('ui-model-selection dual entry', () => {
     const faceA = b.seat().inject!(sid('a'))
     const faceA2 = b.seat().inject!(sid('a'))
     const faceB = b.seat().inject!(sid('b'))
-    expect(faceA.directory).toBe(faceA2.directory)
-    expect(faceA.directory).not.toBe(faceB.directory)
+    expect(faceA.hooks.modelDirectory).toBe(faceA2.hooks.modelDirectory)
+    expect(faceA.hooks.modelDirectory).not.toBe(faceB.hooks.modelDirectory)
     // The service face resolves the same instance the seat inject handed out.
-    expect(b.ctx.modelDirectories.directoryFor(sid('a')).store).toBe(faceA.directory)
+    expect(b.ctx.modelDirectories.directoryFor(sid('a')).store).toBe(faceA.hooks.modelDirectory)
   })
 
   it('drops an unconsumed local selection and restores the Host target after reconnect', async () => {
@@ -220,9 +220,9 @@ describe('ui-model-selection dual entry', () => {
     b.setHostCurrent({ provider: 'deepseek-official', model: 'deepseek-v4-flash' })
 
     b.ctx.emit('connection/reset')
-    expect(face.directory.getSnapshot()).toMatchObject({ current: null, status: 'loading' })
+    expect(face.hooks.modelDirectory.getSnapshot()).toMatchObject({ current: null, status: 'loading' })
     await Promise.resolve()
-    expect(face.directory.getSnapshot()).toMatchObject({
+    expect(face.hooks.modelDirectory.getSnapshot()).toMatchObject({
       current: { provider: 'deepseek-official', model: 'deepseek-v4-flash' },
       status: 'ready',
     })
@@ -235,7 +235,7 @@ describe('ui-model-selection dual entry', () => {
     await first.fiber.dispose()
     b.mint('s1')
     const face2 = b.seat().inject!(sid('s1'))
-    expect(face2.directory).not.toBe(face1.directory)
+    expect(face2.hooks.modelDirectory).not.toBe(face1.hooks.modelDirectory)
   })
 
   it('blocks the composer only once the Host reports the route unservable', async () => {
@@ -276,7 +276,7 @@ describe('ui-model-selection dual entry', () => {
     face.load()
     await Promise.resolve()
     await Promise.resolve()
-    const snapshot = face.directory.getSnapshot()
+    const snapshot = face.hooks.modelDirectory.getSnapshot()
     expect(snapshot.groups.flatMap(group => group.models.map(model => model.id))).not.toContain('unlisted')
     expect(b.blockOf('s1')).toBeUndefined()
   })

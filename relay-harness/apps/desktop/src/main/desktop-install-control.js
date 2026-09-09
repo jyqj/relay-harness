@@ -1,3 +1,4 @@
+// @ts-check
 'use strict';
 
 const http = require('http');
@@ -76,7 +77,7 @@ function scheduleRestart(startHarness, delayMs) {
   }, delayMs);
 }
 
-function createHandler({ installPlugin, startHarness, restartDelayMs }) {
+function createHandler({ installPlugin = undefined, startHarness = undefined, restartDelayMs = undefined }) {
   const delay = Number.isFinite(restartDelayMs) ? restartDelayMs : RESTART_DELAY_MS;
   return async (req, res) => {
     if (req.method !== 'POST' || req.url !== '/install') {
@@ -140,6 +141,7 @@ function startDesktopInstallControl(options = {}) {
     server.once('error', reject);
     server.listen(0, '127.0.0.1', () => {
       const address = server.address();
+      if (!address || typeof address === 'string') { reject(new Error('install control did not bind a TCP port')); return; }
       const url = `http://127.0.0.1:${address.port}`;
       if (active) {
         active.url = url;

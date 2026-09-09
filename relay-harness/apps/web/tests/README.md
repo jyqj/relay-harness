@@ -8,6 +8,12 @@ the deliberate composition divergences from `rlh web` — are documented in
 [`scaffold.ts`](scaffold.ts) and the
 [browser e2e Agent Note](../../../.agents/notes/implemented/testing/2026-07-24-web-gui-browser-e2e-lane.md).
 
+The [Settings catalog scenario](settings-catalog-pages.e2e.ts) exercises Memory Center validation through the built browser and real governance Remote in an isolated temporary store. It pins the invalid-draft alert, verifies that blank confidence leaves the persisted value unchanged, and verifies that explicit zero saves one revision.
+
+The [recording media test](browser-recording.e2e.ts) is a lower-level exception: it transpiles the dependency-free recording source into a real Chromium page without booting the Host or loading built bundles. Real canvas capture, MediaRecorder, and video decoding verify dimensions, non-black frame pixels, and ended tracks; only the frame source and save transport are supplied by the test. It does not prove Electron IPC or packaged recording.
+
+The [product-shell scenario](product-shell-prompt-context.e2e.ts) toggles Developer Mode through the built Settings UI, checks the real Host-persisted mode, and pins both switch states with inline ARIA snapshots before exercising Prompt Enhancement.
+
 ## These are Host-face tests
 
 They type-check in the root `tsconfig.host.json`, not in the Client aggregate,

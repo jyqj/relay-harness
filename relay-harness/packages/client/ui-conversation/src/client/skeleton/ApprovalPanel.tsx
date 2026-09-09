@@ -17,7 +17,7 @@ import { useMemo, useRef, useState } from 'react'
 import { Button } from '@relay-harness/rlh-client-ui-primitives'
 import type { RunningToolCall } from '@relay-harness/rlh-client-runtime/client'
 import { PendingApproval, type ApprovalComposerProps } from '../contract/slots.ts'
-import { rootToolCall } from '../chat/tool-node-reader.ts'
+import { rootToolCall } from '../tool-node-reader.ts'
 import { ComposerResizeHandles, useComposerResizeDrag } from './ComposerResizeHandles.tsx'
 import css from './ApprovalPanel.module.css'
 

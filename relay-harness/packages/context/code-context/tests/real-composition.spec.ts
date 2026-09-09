@@ -209,3 +209,27 @@ describe('code-context real composition', () => {
     expect(searchRequests).toEqual([])
   })
 })
+
+describe('code-context degradation through Loader and AgentLoop', () => {
+  it.each([
+    { search: searchResult([], { degraded: true, readErrors: [QUERY] }), reasons: ['degraded', 'search_degraded'] },
+    { search: new Error(QUERY), reasons: ['error', 'search_failed'] },
+  ])('persists $reasons without inventing no-results or leaking query into diagnostics', async ({ search, reasons }) => {
+    const root = await workspace()
+    resetStub()
+    scripted.search = search
+    await loadComposition(root, true)
+    const adapter = new MockAdapter(['ok'])
+    context!.llm.registerAdapter(['mock'], adapter)
+    const agent = context!.agentLoop.create(SessionId('degraded-recall'), { provider: 'mock', model: 'mock' })
+    agent.followup(directUserMessage(QUERY))
+    await waitForIdle(context!)
+    expect(adapter.requests[0]?.messages.map(message => message.source.kind)).toEqual(['user'])
+    const trace = [...agent.session.events].find(event => event.type === 'context/prepared')
+    expect(trace?.data).toMatchObject({
+      contributions: [],
+      decisions: [{ contributorId: 'code-index-recall', outcome: 'rejected', reasons }],
+    })
+    expect(JSON.stringify(trace)).not.toContain(QUERY)
+  })
+})

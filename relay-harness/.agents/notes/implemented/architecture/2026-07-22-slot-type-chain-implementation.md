@@ -119,3 +119,9 @@ Render authority is enforceable rather than conventional: who renders what is a 
 | `FC` at the register position / inferring `I` from the component | FC statics generate covariant noise that rejects valid components; component-side inference absorbs props drift silently (see rulings above) |
 | Keyed dispatch with owner-side routing for takeover slots | The owner accumulates per-entry contracts and a hardcoded routing table (`find` + `entryKey` per takeover); the chain currency keeps new takeover registrations at zero owner edits |
 | Components declining by rendering null | Declining requires mounting first — hooks and effects run for nothing, and mount/unmount churn breaks memoization and key semantics; a pure selector decides without a component instance |
+
+## Policy-empty versus exhausted cells
+
+Simple Mode suppression initially removed winner entries but left the raw registration ledger visible to the renderer's dry-cell detection. That made intentionally hidden single/list entries produce `data-slot-error` even though no component had crashed. Workspace deletion/re-registration browser checks exposed the false error markers.
+
+SlotCore now owns a `renderCandidates` projection: single/list/keyed suppression is applied before abdication and winner selection, while chain election remains unchanged. SlotRegistry routes the renderer host's `entriesOf` read through these candidates; raw `entries()` stays authoritative for inspection and disposal. Abdicated candidates remain visible to dry-cell detection. Real-core renderer regressions cover all three suppression kinds, restored occupants, unchanged raw registration counts, and a genuinely crashed cell whose error face returns after suppression is released.

@@ -121,13 +121,14 @@ export function setRecordEnabled(document: McpServersDocument, id: string, enabl
  * @returns the record with secret values replaced by the mask.
  */
 export function maskRecordSecrets(record: McpServerRecord): McpServerRecord {
-  if (record.transport === 'stdio') {
-    const env = maskMap(record.env)
-    return env === undefined ? record : { ...record, env }
+  const copy = structuredClone(record)
+  if (copy.transport === 'stdio') {
+    const env = maskMap(copy.env)
+    return env === undefined ? copy : { ...copy, env }
   }
-  const headers = maskMap(record.headers)
-  const url = maskUrl(record.url)
-  return headers === undefined ? { ...record, url } : { ...record, url, headers }
+  const headers = maskMap(copy.headers)
+  const url = maskUrl(copy.url)
+  return headers === undefined ? { ...copy, url } : { ...copy, url, headers }
 }
 
 function maskUrl(value: string): string {

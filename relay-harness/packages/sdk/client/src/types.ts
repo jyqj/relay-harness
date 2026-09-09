@@ -70,6 +70,8 @@ export interface RunResult {
   sessionId: string
   /** Concatenated text of the interval's last assistant message (empty when none). */
   finalResponse: string
+  /** The interval's last turn ending (`turn/end` `reason.kind`), or `null` when no turn ended. */
+  finishReason: string | null
   /** Every `session.event` payload for the root session, in wire order. */
   events: SessionEvent[]
   /** Every notification for the root session and discovered descendants, in wire order. */

@@ -5,14 +5,14 @@
  * so the three figures match `measure()`'s heuristic vocabulary exactly.
  */
 
-import { z } from 'zod'
 import { canonicalHeader } from '@relay-harness/rlh-session'
 import type { ProjectionDefinition } from '@relay-harness/rlh-session-projection'
-import { estimateSystemTokens, estimateToolsTokens } from './estimate.ts'
-import { foldSurfaceProjection } from './surface-projection.ts'
+import { z } from 'zod'
+import { estimateSystemTokens,estimateToolsTokens } from './estimate.ts'
 import type { ShadowPriceClaim } from './surface-projection.ts'
+import { foldSurfaceProjection } from './surface-projection.ts'
 // Import for the `contextBreakdown` SessionProjectionMap key merge.
-import type {} from './projection.ts'
+
 
 interface ContextBreakdownState {
   systemTokens: number

@@ -35,6 +35,9 @@ class StagedAdapter extends LlmAdapter {
   override async *stream(options: GenerateOptions): AsyncIterable<StreamChunk> {
     if (this.calls === 0) {
       this.calls += 1
+      yield { type: 'block-start', index: 0, blockType: 'text' }
+      yield { type: 'text-delta', index: 0, text: 'The background job can now be delegated.' }
+      yield { type: 'block-end', index: 0 }
       yield { type: 'finish', reason: { kind: 'stop' } }
       return
     }

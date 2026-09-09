@@ -194,11 +194,11 @@ export default defineConfig({
         'packages/client/ui-primitives/src/markdown/plain-text.ts',
         'packages/client/ui-user-questions/src/client/QuestionComposer.tsx',
         // Vendored T3code libghostty-vt adapter (copied, not rewritten).
-        'packages/client/ui-user-terminal/src/client/ghostty/**',
+        'packages/client/ui-user-terminal/src/client/terminal/ghostty/**',
         'packages/client/ui-primitives/src/Menu.tsx',
         'packages/client/ui-primitives/src/RiskConfirmation.tsx',
-        'packages/client/ui-workspace/src/client/WorkspaceBrowser.tsx',
-        'packages/client/ui-workspace/src/client/WorkspacePicker.tsx',
+        'packages/client/ui-workspace/src/client/browser/WorkspaceBrowser.tsx',
+        'packages/client/ui-workspace/src/client/browser/WorkspacePicker.tsx',
         // Pointer-capture canvas gestures and the slot-only trigger are covered
         // by component assertions plus the assembled Playwright Session Tree scenario.
         'packages/client/ui-session-tree/src/client/SessionTreeCanvas.tsx',
@@ -217,7 +217,6 @@ export default defineConfig({
         'packages/client/ui-slots/src/*',
         'packages/client/ui-layout/src/*',
         'packages/client/web/src/*',
-        'packages/host/webserver/src/*',
         'packages/client/modules/src/client/system.ts',
         'packages/client/hmr/src/client/index.ts',
         // Web config-tree boot round: the new host-side web-transport halves
@@ -270,15 +269,11 @@ export default defineConfig({
         // would put whole-workspace compiler analysis under v8
         // instrumentation — the coverage lane's longest tail.
         'packages/typert/generator/src/*.ts',
-        'packages/host/apiproxy/src/index.ts',
         'packages/host/apiproxy/src/invariant.ts',
         'packages/host/apiproxy/src/api-proxy.ts',
         // Projection/command round: executor lifecycle branches and the
         // registry's drive tails need the same maturing lanes. TODO(gui):
         // cover and remove with the client test lane above.
-        'packages/interaction/commands/src/index.ts',
-        'packages/interaction/commands/src/invariant.ts',
-        'packages/session/session-projection/src/index.ts',
         ...windowsUnsupportedCoveragePackages.map(path => `${path}/src/**/*.ts`),
         ...windowsOnlyCoverageExclusions,
         ...windowsRunnerCoverageExclusions,

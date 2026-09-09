@@ -9,11 +9,11 @@
  */
 import { describe, expect, it } from 'vitest'
 import type { CommandClaim, ReferenceInsert, TokenSpan } from '@relay-harness/rlh-client-ui-input-trigger/client'
-import type { InputEffect, SubmitAttempt } from '../src/client/input/contract.ts'
+import type { InputEffect, SubmitAttempt } from '../src/client/contract/input.ts'
 import {
   InputMachine, PLACEHOLDER, projectClipboard, referenceDraftText,
 } from '../src/client/input/machine.ts'
-import { deriveDecorations, scanTextRefs } from '../src/client/input/decorations.ts'
+import { deriveDecorations, scanTextRefs } from '../src/client/draft-decorations.ts'
 
 const LEGACY_PLACEHOLDER = PLACEHOLDER
 
@@ -59,7 +59,7 @@ function enterSubmitting(m: InputMachine, name: string, args: string): { attempt
 }
 
 function staleAttempt(): SubmitAttempt {
-  return { seq: 9999, signal: new AbortController().signal, draftSnapshot: '', mode: 'queue' }
+  return { seq: 9999, signal: new AbortController().signal, draftSnapshot: '', occurrences: [], mode: 'queue' }
 }
 
 describe('input-machine: plain × enter', () => {
@@ -830,6 +830,34 @@ describe('input-machine: submitting transaction', () => {
     expect(m.dispatch({ type: 'enter', mode: 'queue' })).toEqual([])
     expect(m.dispatch({ type: 'draft-changed', draft: '/goal y' })).toEqual([])
     expect(m.state).toMatchObject({ phase: 'submitting', draft: '/goal y' })
+  })
+
+  it('the adjudicating attempt freezes the enter-time occurrence table; busy-period edits only move the live one', () => {
+    const m = new InputMachine()
+    m.dispatch({ type: 'draft-changed', draft: '/ask @wor' })
+    m.dispatch({ type: 'insert-ref', reference: refOf('worker-1', 'subagent'), span: spanOf(m, 5, 9) })
+    const attempt = effectAt(m.dispatch({ type: 'enter', mode: 'queue' }), 0, 'adjudicate').attempt
+    const frozen = m.state.occurrences
+    expect(frozen).toEqual([expect.objectContaining({ ref: 'worker-1', offset: 5 })])
+    m.dispatch({ type: 'draft-changed', draft: `x${attempt.draftSnapshot}` })
+    expect(m.state.occurrences[0]?.offset).toBe(6)
+    expect(attempt.occurrences).toBe(frozen)
+    expect(attempt.occurrences[0]?.offset).toBe(5)
+  })
+
+  it('the submitting attempt freezes the enter-time occurrence table the same way', () => {
+    const m = new InputMachine()
+    const claim = claimOf('goal')
+    m.dispatch({ type: 'draft-changed', draft: '/go' })
+    m.dispatch({ type: 'begin-command', claim, span: spanOf(m, 0, 3) })
+    m.dispatch({ type: 'draft-changed', draft: '/goal  @wor' })
+    m.dispatch({ type: 'insert-ref', reference: refOf('worker-1', 'subagent'), span: spanOf(m, 7, 11) })
+    const attempt = effectAt(m.dispatch({ type: 'enter', mode: 'queue' }), 0, 'begin-submit').attempt
+    const frozen = attempt.occurrences
+    expect(frozen).toEqual([expect.objectContaining({ ref: 'worker-1', offset: 7 })])
+    m.dispatch({ type: 'draft-changed', draft: `x${attempt.draftSnapshot}` })
+    expect(m.state.occurrences[0]?.offset).toBe(8)
+    expect(attempt.occurrences).toBe(frozen)
   })
 
   it('commit clears draft and occurrences, releases the claim, and relays the outcome text', () => {

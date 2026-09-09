@@ -157,6 +157,8 @@ function harnessApi(renderer) {
   };
 }
 
+/** @typedef {ReturnType<typeof bootApi> & ReturnType<typeof harnessApi>} ShellApi */
+
 function buildShellApi(role, renderer) {
   if (role === 'boot') return bootApi(renderer);
   if (role === 'harness') return harnessApi(renderer);

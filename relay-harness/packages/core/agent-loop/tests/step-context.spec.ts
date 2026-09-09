@@ -4,7 +4,7 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import LlmRuntime, { createUserMessage } from '@relay-harness/rlh-llm'
-import SessionStore, { Session, SessionId, type UserMessage } from '@relay-harness/rlh-session'
+import SessionStore, { Session, SessionId, type UserMessage, type SessionEvent } from '@relay-harness/rlh-session'
 import SystemPrompt from '@relay-harness/rlh-system-prompt'
 import ToolRuntime from '@relay-harness/rlh-tools'
 import AgentRegistry, { type Agent } from '@relay-harness/rlh-agent'
@@ -33,6 +33,7 @@ interface StepCall {
   messages: readonly UserMessage[]
   signal: AbortSignal
   cwd: string
+  caller: { agentPreset?: string; origin?: Session['header']['origin']; sessionId: SessionId }
 }
 
 /** A scripted `contextEngine` service: records calls, returns the scripted messages. */
@@ -43,7 +44,7 @@ class ScriptedEngine extends Service {
     super(ctx, 'contextEngine')
   }
 
-  prepareStep(input: { purpose: 'agent_step'; messages: readonly UserMessage[]; signal: AbortSignal; cwd: string }):
+  prepareStep(input: StepCall):
   Promise<PreparedStepContext | undefined> {
     this.calls.push(input)
     return Promise.resolve(this.result)
@@ -128,6 +129,36 @@ function requestTexts(adapter: MockAdapter): string[][] {
 }
 
 describe('step-context seam', () => {
+  it.each([
+    { selection: 'replacement', expected: 'replacement' },
+    { selection: null, expected: 'original' },
+  ])('uses durable preset and origin facts when preparing optional context: $selection', async ({ selection, expected }) => {
+    const adapter = new MockAdapter([textResponse('ok')])
+    const ctx = await harness(adapter)
+    try {
+      const engine = new ScriptedEngine(ctx, undefined)
+      // Optional-plugin records cross the durable seed boundary without adding
+      // an AgentLoop runtime dependency on that plugin's declaration merge.
+      const seed = JSON.parse(JSON.stringify([{
+        type: 'agent-preset/selected', seq: 0, time: 0, data: { agentPreset: selection },
+      }])) as SessionEvent[]
+      const handle = await ctx.agents.create({
+        sessionId: SessionId('context-preset-origin'), seed,
+        meta: { agentPreset: 'original', origin: 'subagent' },
+        agentOptions: { provider: 'mock', model: 'mock' },
+      })
+      const idle = waitForIdle(ctx, handle.agent)
+      send(handle.agent, 'hello')
+      await idle
+      expect(engine.calls[0]?.caller).toMatchObject({
+        sessionId: handle.agent.session.id, agentPreset: expected, origin: 'subagent',
+      })
+      expect(adapter.requests).toHaveLength(1)
+    } finally {
+      await ctx.fiber.dispose()
+    }
+  })
+
   it('appends engine messages after the claimed message and logs them as user/message events', async () => {
     const adapter = new MockAdapter([textResponse('ok')])
     const ctx = await harness(adapter)
@@ -382,5 +413,74 @@ describe('step-context seam', () => {
     expect(replay.deriveMessages().filter(message => message.id === contextMessage.id)).toHaveLength(0)
     expect(replay.deriveMessages().filter(message => message.id === compacted.id)).toHaveLength(1)
     await ctx.fiber.dispose()
+  })
+})
+
+/** Script the optional rewrite seam while retaining real AgentLoop dispatch and logging. */
+class ScriptedVision extends Service {
+  constructor(ctx: Context, private readonly rewrite: (
+    session: Session, messages: readonly import('@relay-harness/rlh-llm').Message[], signal: AbortSignal,
+  ) => Promise<import('@relay-harness/rlh-llm').Message[]>) {
+    super(ctx, 'visionFallback')
+  }
+
+  rewriteMessages(
+    session: Session, _selection: { provider: string; model: string },
+    messages: readonly import('@relay-harness/rlh-llm').Message[], signal: AbortSignal,
+  ): Promise<import('@relay-harness/rlh-llm').Message[]> {
+    return this.rewrite(session, messages, signal)
+  }
+}
+
+describe('optional rewrite provider boundary', () => {
+  it('dispatches a logged rewrite rather than the stale pre-rewrite message snapshot', async () => {
+    const adapter = new MockAdapter([textResponse('ok')])
+    const ctx = await harness(adapter)
+    try {
+      new ScriptedVision(ctx, async (session) => {
+        session.append('user/message', createUserMessage({
+          source: { kind: 'plugin', plugin: 'scripted-vision' },
+          content: [{ type: 'text', text: 'durable description' }],
+        }), { surfaceOp: 'append' })
+        return session.deriveMessages()
+      })
+      const agent = ctx.agentLoop.create(SessionId('logged-rewrite'), { provider: 'mock', model: 'mock' })
+      const idle = waitForIdle(ctx, agent)
+      send(agent, 'inspect')
+      await idle
+      expect(requestTexts(adapter)).toEqual([['inspect', 'durable description']])
+      expect(adapter.requests[0]?.messages).toEqual(agent.session.deriveMessages().slice(0, -1))
+    } finally {
+      await ctx.fiber.dispose()
+    }
+  })
+
+  it('does not dispatch when cancellation arrives while a rewrite is awaiting completion', async () => {
+    const adapter = new MockAdapter([textResponse('must not dispatch')])
+    const ctx = await harness(adapter)
+    const entered = Promise.withResolvers<AbortSignal>()
+    const release = Promise.withResolvers<undefined>()
+    try {
+      new ScriptedVision(ctx, async (_session, messages, signal) => {
+        entered.resolve(signal)
+        await release.promise
+        return [...messages]
+      })
+      const agent = ctx.agentLoop.create(SessionId('cancelled-rewrite'), { provider: 'mock', model: 'mock' })
+      const idle = waitForIdle(ctx, agent)
+      send(agent, 'inspect')
+      const signal = await entered.promise
+      agent.cancel({ kind: 'user' })
+      expect(signal.aborted).toBe(true)
+      release.resolve(undefined)
+      await idle
+      await agent.whenIdle()
+      expect(adapter.requests).toEqual([])
+      expect(agent.session.events.findLast(event => event.type === 'turn/end'))
+        .toMatchObject({ data: { reason: { kind: 'aborted' } } })
+    } finally {
+      release.resolve(undefined)
+      await ctx.fiber.dispose()
+    }
   })
 })

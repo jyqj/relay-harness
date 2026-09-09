@@ -7,11 +7,11 @@
  * which keys to dispatch.
  */
 
+import type { InjectFace,PropsLocale,PropsRenderSlots,PropsRuntime } from '@relay-harness/rlh-client-ui-slots'
 import { Fragment } from 'react'
-import type { InjectFace, PropsLocale, PropsRenderSlots, PropsRuntime } from '@relay-harness/rlh-client-ui-slots'
-import type {} from './slot-contract.ts'
-import type { ConfigurablePluginsTabFace } from './tab-store.ts'
+
 import css from './PluginsSettingsSection.module.css'
+import type { ConfigurablePluginsTabFace } from './tab-store.ts'
 
 /** Props the renderer binds for the configurable tab. */
 export type ConfigurablePluginsTabProps =

@@ -35,7 +35,7 @@
 {"type":"tool/call","seq":139,"time":1785730468607,"data":{"turn":1,"step":2,"callId":"call_00_tDV4j1p5eAeHTtQhXOfn6856","name":"bash","arguments":"{\"command\": \"echo HELLO\", \"description\": \"Echo HELLO to stdout\"}"}}
 {"type":"hook/invoked","seq":140,"time":1785730468618,"data":{"turn":1,"point":"PostToolUse","dialect":"claude-code","handlerId":"claude-code:PostToolUse:2","matcher":"bash"}}
 {"type":"hook/result","seq":141,"time":1785730468623,"data":{"turn":1,"point":"PostToolUse","handlerId":"claude-code:PostToolUse:2","decision":"pass","exitCode":0,"durationMs":5.523832999999968}}
-{"type":"tool/result","seq":142,"time":1785730468624,"data":{"turn":1,"step":2,"message":{"source":{"kind":"tool","callId":"call_00_tDV4j1p5eAeHTtQhXOfn6856"},"content":[{"type":"tool-result","toolCallId":"call_00_tDV4j1p5eAeHTtQhXOfn6856","content":[{"type":"text","text":"HELLO\n"}],"isError":false}],"role":"user","id":"69f60e3f-b776-4c68-8cd0-e70511d01d07"}},"sourceEventSeqs":[139],"surfaceOp":"append"}
+{"type":"tool/result","seq":142,"time":1785730468624,"data":{"turn":1,"step":2,"message":{"source":{"kind":"tool","callId":"call_00_tDV4j1p5eAeHTtQhXOfn6856"},"content":[{"type":"tool-result","toolCallId":"call_00_tDV4j1p5eAeHTtQhXOfn6856","content":[{"type":"text","text":"HELLO\n"}],"isError":false}],"role":"user","id":"69f60e3f-b776-4c68-8cd0-e70511d01d07"},"producedFiles":[]},"sourceEventSeqs":[139],"surfaceOp":"append"}
 {"type":"step/end","seq":143,"time":1785730468624,"data":{"turn":1,"step":2}}
 {"type":"step/start","seq":144,"time":1785730468634,"data":{"turn":1,"step":3}}
 {"type":"assistant/chunk","seq":145,"time":1783962508803,"data":{"turn":1,"step":3,"chunk":{"type":"block-start","index":0,"blockType":"reasoning"}}}

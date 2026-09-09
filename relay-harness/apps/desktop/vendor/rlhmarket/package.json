@@ -40,7 +40,8 @@
   },
   "peerDependencies": {
     "@relay-harness/cordis": "^4.0.1",
-    "@relay-harness/rlh-settings": "^0.1.0-rc.7"
+    "@relay-harness/rlh-settings": "^0.1.0-rc.7",
+    "@relay-harness/schemastery": "^3.18.1"
   },
   "rlh": {
     "bundle": {

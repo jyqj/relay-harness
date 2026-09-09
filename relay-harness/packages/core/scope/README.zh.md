@@ -4,6 +4,8 @@
 
 带作用域的注册原语。`createScope(ctx, key)` 创建一个带标签的 Cordis 上下文，其底层 fiber 拥有通过该上下文进行的每项注册。`scopeOf(ctx)` 读取标签；`scopeTarget(base, key)` 将带作用域的事件路由到键相同的监听器，同时让无作用域监听器保持全局可见。键可以构成可选的父链（`bindScopeParent`）：注册视图沿链**向下**继承——子作用域看得见祖先各层，近者遮蔽远者——事件放行沿链**向上**扩展——标签为祖先的监听器能收到子孙键的事件，反向永不成立。agent loop（智能体循环）为每个存活的 agent 创建一个作用域，agent preset 的常驻挂载则是其 agent 们的父作用域，但该机制与键的具体含义无关，底层包无需依赖两者即可使用。
 
+`captureScopeReadView(key)` 使用原始注册键捕获不可变的注册表读取祖先链。存活键重新绑定父级后，`scopeChainOf` 与 `ScopedLayers.peek/chainLayers/merge` 仍解析该祖先链；确切作用域的限制与覆盖层保持不变。它冻结的是祖先关系，不是注册表内容或资源生命周期：调用方另行持有必要的所有者，内容变更仍遵循注册表 revision 规则。只读视图不能拥有作用域、成为父级或重新绑定目标，也不能派发事件。
+
 ## 公开 API
 
 - `createScope(ctx: Context, key: ScopeKey, options?): Scope`：在 `ctx` 的 fiber 下创建作用域。可以同步使用（effect 收集受 uid 门禁约束；服务解析会沿创建该作用域的插件依赖范围继续查找）。同进程、带类型的键受信任；处于非活动状态的创建上下文仍会通过 Cordis 失败（`INACTIVE_EFFECT`）。`options.parent` 在作用域可用之前经 `bindScopeParent` 绑定其外围作用域；绑定句柄不外泄。

@@ -36,7 +36,7 @@
   height: 16px;
   border-radius: 999px;
   background: var(--rlw-alias-bg-layer-1);
-  transition: transform var(--rl-transition-duration-fast) var(--rl-ease-in-out);
+  transition: transform 100ms var(--rlw-ease-standard);
 }
 
 .input:checked + .track {

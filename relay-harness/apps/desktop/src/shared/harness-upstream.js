@@ -1,3 +1,4 @@
+// @ts-check
 'use strict';
 
 const fs = require('node:fs');
@@ -60,7 +61,7 @@ function parsePin(text) {
 
 /**
  * @param {string} rootDir
- * @param {typeof fs} [io]
+ * @param {typeof import('node:fs')} [io]
  * @returns {HarnessPin}
  */
 function readPin(rootDir, io = fs) {
@@ -70,7 +71,7 @@ function readPin(rootDir, io = fs) {
 /**
  * @param {string} rootDir
  * @param {HarnessPin} pin
- * @param {typeof fs} [io]
+ * @param {typeof import('node:fs')} [io]
  */
 function writePin(rootDir, pin, io = fs) {
   const valid = parsePin(JSON.stringify(pin));

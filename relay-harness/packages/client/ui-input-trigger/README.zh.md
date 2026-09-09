@@ -23,3 +23,5 @@ MenuView 把菜单 store 渲染进 `conversation.input.overlay` slot（列表类
 - **只有全局 source 层**：会话 scope 的 source 注册（逐会话遮蔽、类 ScopedLayers 机制）已有设计但未启用；台账记录着触发条件（出现真实的逐会话 source 需求）。
 - **`InputTriggerCandidate.icon` 以文本渲染**：MenuView 把该字符串原样放进图标位；与设计系统图标枚举（iconFile 五变体家族）的接入将在该枚举交付后完成。
 - **overlay 的 SlotMap 合并归属与 slot 所有权分离**：唯一的 `conversation.input.overlay` 合并放在本包，而 ui-conversation 负责其锚点、children 声明和生命周期，因为依赖方向是 ui-conversation → ui-input-trigger。
+
+菜单状态通过注册项的 `hooks.menu` 数据源和渲染器提供的 `useMenu` selector hook 传递。MenuView 不接收原始 store，也不自行订阅外部状态。控制器归属、指针选择、焦点保留及退场动画保持不变。

@@ -1,9 +1,9 @@
 /** Package-owned durable workflow-record invariants. @module @relay-harness/rlh-tool-workflow/invariant */
 
 import type { Context } from '@relay-harness/cordis'
-import type { Session, SessionEvent } from '@relay-harness/rlh-session'
-import type { InvariantFailure, InvariantInstaller } from '@relay-harness/rlh-invariants'
-import type {} from './types.ts'
+import type { InvariantFailure,InvariantInstaller } from '@relay-harness/rlh-invariants'
+import type { Session,SessionEvent } from '@relay-harness/rlh-session'
+
 
 const PACKAGE_NAME = '@relay-harness/rlh-tool-workflow'
 
@@ -165,3 +165,5 @@ const install: InvariantInstaller = Object.assign((ctx: Context, fail: Invariant
 /** Register this package's invariant companion. */
 export const apply = (ctx: Context): Promise<() => void> =>
   Promise.resolve(ctx.invariants.register(PACKAGE_NAME, install))
+// The companion consumes these durable records independently of the tool plugin.
+import type {} from './types.ts'

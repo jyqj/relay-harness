@@ -4,6 +4,7 @@
  * @module @relay-harness/rlh-session-persistence-sqlite
  */
 
+import type { SessionPersistenceFence } from '@relay-harness/rlh-session'
 import { Context, Service } from '@relay-harness/cordis'
 import z from '@relay-harness/schemastery'
 import type {
@@ -102,8 +103,8 @@ export class SqliteSessionPersistence extends SessionPersistence {
     return this.coordinator.append(id, events)
   }
 
-  override prepare(id: SessionId, signal?: AbortSignal): Promise<SessionPreparation> {
-    return this.coordinator.prepare(id, signal)
+  override prepare(id: SessionId, signal?: AbortSignal, fence?: SessionPersistenceFence): Promise<SessionPreparation> {
+    return this.coordinator.prepare(id, signal, fence)
   }
 
   load(id: SessionId): Promise<SessionInspection> {

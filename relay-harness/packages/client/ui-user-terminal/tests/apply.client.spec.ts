@@ -1,14 +1,14 @@
 // @vitest-environment jsdom
 /** User-terminal plugin injects the drawer now and surfaces.terminal when Task 6 declares it. */
 import { Context } from '@relay-harness/cordis'
-import { describe, expect, it, vi } from 'vitest'
-import { SlotRegistry } from '@relay-harness/rlh-client-runtime/client'
 import { LocaleRuntime } from '@relay-harness/rlh-client-locale/client'
-import { apply, inject } from '../src/client/index.ts'
-import type { TerminalShellInjected } from '../src/client/shell.ts'
-import { OPEN_SURFACE_EVENT, PENDING_PREVIEW_URL_KEY } from '../src/client/links.ts'
-import { TerminalDrawer } from '../src/client/TerminalDrawer.tsx'
-import { TerminalSurface } from '../src/client/TerminalSurface.tsx'
+import { SlotRegistry } from '@relay-harness/rlh-client-runtime/client'
+import { describe,expect,it,vi } from 'vitest'
+import { apply,inject } from '../src/client/index.ts'
+import { OPEN_SURFACE_EVENT,PENDING_PREVIEW_URL_KEY } from '../src/client/terminal/links.ts'
+import type { TerminalShellInjected } from '../src/client/terminal/shell.ts'
+import { TerminalDrawer } from '../src/client/terminal/TerminalDrawer.tsx'
+import { TerminalSurface } from '../src/client/terminal/TerminalSurface.tsx'
 
 function declare(slots: SlotRegistry): () => void {
   return slots.register({

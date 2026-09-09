@@ -8,7 +8,7 @@ Source: [`packages/spill/spill/src/types.ts`](../../packages/spill/spill/src/typ
 
 ## The save request
 
-`saveText` is the sole service operation: persist `content` verbatim, return an opaque locator, a backend-supplied retrieval hint, and the exact byte count. The request carries the save-time storage namespace (`owner`), the tool and call that produced it (`source`, used for naming and inspection — not access control), and a `suggestedName` the backend may use as a naming hint (it is not a path).
+`saveText` is the service's save operation: persist `content` verbatim, return an opaque locator, a backend-supplied retrieval hint, and the exact byte count. The request carries the save-time storage namespace (`owner`), the tool and call that produced it (`source`, used for naming and inspection — not access control), and a `suggestedName` the backend may use as a naming hint (it is not a path). `disposeSession` is the one reclamation verb: it removes every artifact owned by one session.
 
 ```ts type-equiv
 /** One request to persist text to a spill artifact. */
@@ -38,7 +38,7 @@ interface SpillOwner {
 }
 ```
 
-`SpillOwner.sessionId` is the save-time storage namespace. Forked sessions inherit existing spill locators from the seeded log; those artifacts are not copied or re-owned, and spills produced after the fork use the child session id. A retention-period cleanup may expire old locators with other old session artifacts; the spill seam does not define a per-session cleanup policy.
+`SpillOwner.sessionId` is the save-time storage namespace. Forked sessions inherit existing spill locators from the seeded log; those artifacts are not copied or re-owned, and spills produced after the fork use the child session id. Locators are best-effort recovery paths: the backend reclaims a session's artifacts at that session's disposal, and its own retention mechanics (the local backend's startup sweep) expire residue from earlier processes — a log that still references a reclaimed path reads it as a loud tool failure.
 
 ```ts type-equiv
 /**
@@ -80,9 +80,9 @@ type SpillLocator = Branded<'SpillLocator'>
 
 ## The service
 
-`SpillStore` (`ctx.spillStore`, defined in [`packages/spill/spill/src/index.ts`](../../packages/spill/spill/src/index.ts)) is a one-method abstract service: `saveText(input) → Promise<SpillRef>`. It persists the FULL `content` and REJECTS on a real storage failure (permissions, ENOSPC, backend unavailable). The seam owns storage only: no retention policy, no tool-result replacement, no retrieval/search API.
+`SpillStore` (`ctx.spillStore`, defined in [`packages/spill/spill/src/index.ts`](../../packages/spill/spill/src/index.ts)) is a two-method abstract service: `saveText(input) → Promise<SpillRef>` and `disposeSession(sessionId) → Promise<void>`. `saveText` persists the FULL `content` and REJECTS on a real storage failure (permissions, ENOSPC, backend unavailable); `disposeSession` reclaims every artifact owned by one session. The seam owns storage only: no preview/retention policy, no tool-result replacement, no retrieval/search API. Retention mechanics are backend-owned.
 
-The local backend ([rlh-spill-local](../../packages/spill/spill-local)) writes under `<root>/session-<hash>/<random>-<safeName>` — a configured or lazily-created private (0700) root, a `sha256(sessionId)` session subdir, and an exclusive owner-only (`open(path, 'wx', 0o600)`) write so a planted symlink cannot redirect it. Its `locator` is the local path and its `retrievalHint` tells the model to use `read` or `grep` on that path. The policy consumer ([rlh-spill-policy](../../packages/spill/spill-policy)) replaces an over-`maxInlineBytes` plain-text final result with a retention-library head/tail preview plus the spill reference, best-effort: a save failure keeps the original inline result rather than turning a successful call into an `isError`.
+The local backend ([rlh-spill-local](../../packages/spill/spill-local)) writes under `<root>/session-<hash>/<random>-<safeName>` — a configured or lazily-created private (0700) root, a `sha256(sessionId)` session subdir, and an exclusive owner-only (`open(path, 'wx', 0o600)`) write so a planted symlink cannot redirect it. Its `locator` is the local path and its `retrievalHint` tells the model to use `read` or `grep` on that path; it reclaims a session's directory at disposal and sweeps `rlh-spill-*` orphan roots older than `orphanRetentionMs` once at startup. The policy consumer ([rlh-spill-policy](../../packages/spill/spill-policy)) replaces an over-`maxInlineBytes` plain-text final result with a retention-library head/tail preview plus the spill reference, best-effort: a save failure keeps the original inline result rather than turning a successful call into an `isError`.
 
 <!-- BEGIN GENERATED cordis-surface (gen-cordis-catalog.ts) — do not edit between markers -->
 
@@ -103,6 +103,7 @@ Semantics every implementation must honor:
 - saveText persists the FULL `content` verbatim and returns an opaque locator, exact byte length, and model-facing retrieval guidance.
 - Storage is scoped by the request's SaveTextSpill.owner session; the backend chooses a private (not world-readable) location and a collision-free name derived from — never equal to — the caller's `suggestedName`.
 - `saveText` REJECTS on a real storage failure (permissions, ENOSPC, backend unavailable); the caller decides how to degrade (the spill policy treats a rejection as best-effort and keeps the inline result).
+- disposeSession reclaims the session's whole storage scope. Locators are best-effort recovery paths, not durable promises: a disposed session's log may still reference the reclaimed paths, and reads of them fail loudly.
 
 ```ts cordis-catalog
 /**
@@ -111,7 +112,17 @@ Semantics every implementation must honor:
  * @returns the saved artifact's {@link SpillRef}; rejects on a storage failure.
  */
 abstract saveText(input: SaveTextSpill): Promise<SpillRef>
+
+/**
+ * Reclaim every artifact owned by `sessionId`. Called at that session's
+ * disposal; idempotent, and a session that spilled nothing resolves.
+ * @param sessionId - the session whose spill storage should be reclaimed.
+ * @returns resolves when reclamation completes; rejects on a storage failure.
+ */
+abstract disposeSession(sessionId: SessionId): Promise<void>
 ```
 
-Source: [`packages/spill/spill/src/index.ts:45`](../../packages/spill/spill/src/index.ts)
+Types: [SessionId](core.md)
+
+Source: [`packages/spill/spill/src/index.ts:52`](../../packages/spill/spill/src/index.ts)
 <!-- END GENERATED cordis-surface -->

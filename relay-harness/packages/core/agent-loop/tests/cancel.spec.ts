@@ -72,6 +72,25 @@ describe('Agent.cancel()', () => {
     expect(agent.session.events.some(e => e.type === 'turn/end')).toBe(true)
   })
 
+  it('a disposed-cause cancel while the model request is pending still ends the turn aborted', async () => {
+    // The SDK close path cancels with `{ kind: 'disposed' }`; the cancellation
+    // can land before the model stream yields its first observable chunk. The
+    // open turn must still reach its terminal `turn/end` — the same wire
+    // vocabulary a mid-stream close produces.
+    const adapter = new MockAdapter(['hang-before-start'])
+    const ctx = await harness(adapter)
+    const agent = ctx.agentLoop.create(SessionId('close-pending'), { provider: 'mock', model: 'mock' })
+
+    send(agent, 'active')
+    while (adapter.requests.length === 0) await new Promise(resolve => setTimeout(resolve, 5))
+    agent.cancel({ kind: 'disposed' })
+    await agent.whenIdle()
+
+    expect(agent.session.events.findLast(event => event.type === 'turn/end')?.data.reason)
+      .toEqual({ kind: 'aborted', reason: { kind: 'disposed' } })
+    expect(agent.session.events.some(event => event.type === 'assistant/chunk')).toBe(false)
+  })
+
   it('cancel({ keepInbox: true }) does not restore work already claimed by a waking send', async () => {
     const adapter = new MockAdapter([textResponse('wake reply')])
     const ctx = await harness(adapter)

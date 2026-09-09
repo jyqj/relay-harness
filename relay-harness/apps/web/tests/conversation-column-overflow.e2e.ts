@@ -221,7 +221,7 @@ describe('web e2e: the conversation column scrolls on one axis', () => {
    * Resize to a viewport and read the column once its width stops moving.
    *
    * The glow rides the hero box, which rides the column, and the frame eases
-   * its column tracks over `--rl-transition-duration-slow`: reading straight
+   * its column tracks over 300ms: reading straight
    * after a resize can report the previous viewport's relation, or a width
    * caught mid-transition.
    * @param width - viewport width to settle at.

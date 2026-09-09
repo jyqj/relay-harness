@@ -16,6 +16,7 @@ The shared wire protocol for the Relay Harness SDK runtime: one newline-delimite
 |---|---|---|
 | client→server | `initialize` | `InitializeParams` → `InitializeResult` |
 | client→server | `session/prompt` | `SessionPromptParams` → `SessionPromptResult` (durable enqueue receipt) |
+| client→server | `session/close` | `SessionCloseParams` → `{}` (dispose one session's agent) |
 | client→server | `shutdown` | no params → `{}` |
 | server→client | `session.event` | `SessionEventNotification` (every session in the runtime, unfiltered) |
 | server→client | `session.status` | `SessionStatusNotification` (whole-agent `running`/`idle` transition) |
@@ -35,5 +36,5 @@ None; this package neither assembles nor sends a provider request.
 ## Known Limitations and Deferred Work
 
 - **No protocol-version negotiation** — the handshake carries only `serverInfo.version` (`0.0.1`, unvalidated by clients); pre-release stance, no compatibility promise.
-- **No cancel or session-close methods** — a client abandons a turn by closing the runtime process; see the [`rlh-sdk-jsonrpc-server` README](../server/README.md).
+- **No cancel method** — a client abandons a turn by closing the runtime process or reclaiming the session with `session/close`; see the [`rlh-sdk-jsonrpc-server` README](../server/README.md).
 - **Server→client requests are dead capability** — the transport supports them, but the server never sends one; the Python SDK's responder surface exists for future approval flows.

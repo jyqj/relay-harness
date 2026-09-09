@@ -26,6 +26,8 @@ type ScopeKey = object
 type Scoped<T extends object> = object & { readonly [ScopedBrand]: T }
 ```
 
+`ScopeReadView` 是由 `captureScopeReadView(key)` 捕获的不透明、不可变祖先链。链中保留原始注册身份，因此后续重新绑定父级不会改变注册表覆盖层或确切作用域的限制。它不快照注册表值，也不持有 effect；读取方须另行持有所需所有者。变更与派发 API 拒绝只读视图。
+
 ## 拥有所有权的注册上下文
 
 `Scope` 将带标签的注册上下文与两个拆卸接口配对。`rawDispose` 保留有序复合 effect 所需的 Cordis disposer 的确切身份；`dispose()` 是面向直接调用方和竞态调用方的公共完全停稳边界。

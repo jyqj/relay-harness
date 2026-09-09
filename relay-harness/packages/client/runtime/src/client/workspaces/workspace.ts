@@ -1,11 +1,11 @@
 /** React-free Workspace entity with a client-local materialization lifecycle. */
 
 import type {
-  IApiClient, RpcResult, WorkspaceView,
+  IApiClient,RpcResult,WorkspaceView,
 } from '@relay-harness/rlh-api-remotes/client'
 import { transportError } from '@relay-harness/rlh-host-apiproxy/api'
 import type { ObservableSnapshot } from '../contract/store.ts'
-import { Notifier } from '../sessions/notifier.ts'
+import { Notifier } from '../notifier.ts'
 
 /** Host input retained by a local Workspace until materialization succeeds. */
 export type WorkspaceCreateInput = { path: string }

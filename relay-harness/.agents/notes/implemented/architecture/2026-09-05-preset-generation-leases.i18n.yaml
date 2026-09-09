@@ -1,0 +1,6 @@
+# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
+# side as of the last confirmed-consistent state. Both languages carry equal authority;
+# after editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-09-05-preset-generation-leases.md
+2026-09-05-preset-generation-leases.md: 3583c14db8867329d7a2d7c94c4b167afc2d0669
+2026-09-05-preset-generation-leases.zh.md: f3984d3ad25edbdfacb34e4f494721c7c5c1d042

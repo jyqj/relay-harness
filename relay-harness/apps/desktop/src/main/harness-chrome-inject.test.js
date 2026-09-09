@@ -7,7 +7,7 @@ const vm = require('node:vm');
 const injectSource = fs.readFileSync(path.join(__dirname, 'harness-chrome-inject.js'), 'utf8');
 
 test('injected chrome script is a re-runnable IIFE with no Node exports', () => {
-  assert.match(injectSource.trimStart(), /^\(\(\)\s*=>/);
+  assert.match(injectSource.replace(/^\/\/ @ts-check\n/, '').trimStart(), /^\(\(\)\s*=>/);
   assert.doesNotMatch(injectSource, /module\.exports/);
   assert.doesNotMatch(injectSource, /^const /m);
   assert.doesNotMatch(injectSource, /^function /m);

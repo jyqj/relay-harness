@@ -256,13 +256,15 @@ function scrollGeometry(page: Page): Promise<ScrollGeometry> {
  * projection and stay fixed across paging by design, while the row count is
  * exactly what grows when an older page prepends or a live turn streams in.
  * @param page - the scenario page.
- * @returns the number of mounted chat flow rows.
+ * @returns loaded conversation nodes, independently of the current virtual mount range.
  */
 async function loadedFlowRows(page: Page): Promise<number> {
-  return page.locator('[data-chat-flow-key]').count()
+  return Number(await page.locator('[data-chat-loaded-count]').getAttribute('data-chat-loaded-count'))
 }
 
 async function openSeed(page: Page, fixture: ChatScrollFixture, tailMarker?: string): Promise<void> {
+  const openSidebar = page.getByRole('button', { name: 'Open sidebar', exact: true }).first()
+  if (await openSidebar.isVisible()) await openSidebar.click()
   // Search collapsed into a header action; expand it before filling.
   const searchButton = page.getByRole('button', { name: 'Search sessions' })
   if (await searchButton.getAttribute('aria-expanded') !== 'true') await searchButton.click()
@@ -275,7 +277,7 @@ async function openSeed(page: Page, fixture: ChatScrollFixture, tailMarker?: str
   const results = page.getByRole('tree', { name: 'Search results' }).getByRole('treeitem')
   await expect.poll(() => results.count(), { timeout: 60_000 }).toBe(1)
   await results.click()
-  await page.getByRole('tab', { name: 'Chat', exact: true }).waitFor({ timeout: 30_000 })
+  await page.getByRole('tab', { name: 'Chat', exact: true }).first().waitFor({ timeout: 30_000 })
   if (tailMarker !== undefined) {
     await page.getByText(tailMarker, { exact: false }).last().waitFor({ timeout: 30_000 })
   }
@@ -523,7 +525,8 @@ describe('web e2e: long Chat scroll contract', () => {
 
       await settled
       await expect.poll(() => world.page.locator('[data-streaming="true"]').count(), { timeout: 15_000 }).toBe(0)
-      await world.page.getByText(LIVE_TEXT_DONE, { exact: false }).last().waitFor({ timeout: 15_000 })
+      expect(world.events.some(event => event.type === 'assistant/message'
+        && event.data.message.content.some(block => block.type === 'text' && block.text.includes(LIVE_TEXT_DONE)))).toBe(true)
       await world.page.unroute('**/api/session.history')
 
       let additionalPages = 0
@@ -540,6 +543,9 @@ describe('web e2e: long Chat scroll contract', () => {
       expect(await world.page.locator('[data-conversation-scroll]')
         .getByText(HISTORY_FIXTURE.markers.user(1), { exact: false }).count()).toBe(1)
       expect(await world.page.getByRole('button', { name: 'Load earlier', exact: true }).count()).toBe(0)
+      await world.page.getByRole('button', { name: 'Back to bottom', exact: true }).click()
+      await expectBottom(world.page)
+      await world.page.getByText(LIVE_TEXT_DONE, { exact: false }).last().waitFor({ timeout: 15_000 })
       assertClean(world)
     })
   }, 180_000)
@@ -643,6 +649,9 @@ describe('web e2e: long Chat scroll contract', () => {
         { fixture: RESTORE_FIXTURE_B, id: RESTORE_SESSION_B_ID },
       ],
     }, async (world) => {
+      // Trajectory is a Developer-mode surface; this scenario exercises its scroll handoff.
+      await world.scaffold.ctx.productMode.set({ mode: 'developer' })
+      await world.page.reload()
       await openSeed(
         world.page,
         RESTORE_FIXTURE_A,
@@ -664,7 +673,7 @@ describe('web e2e: long Chat scroll contract', () => {
       // switch below reopens it.
       await world.page.getByRole('button', { name: 'Open sidebar', exact: true }).first().click()
       await world.page.getByRole('button', { name: 'Close sidebar', exact: true }).click()
-      await world.page.getByRole('tab', { name: 'Chat', exact: true }).click()
+      await world.page.getByRole('banner').getByRole('tab', { name: 'Chat', exact: true }).click()
       await world.page.getByRole('button', { name: 'Open sidebar', exact: true }).first().click()
       await nextPaint(world.page)
       await expectSameFlowTop(world.page, sessionAnchor)
@@ -692,7 +701,7 @@ describe('web e2e: long Chat scroll contract', () => {
         trajectory.click()
       })
       await world.page.getByLabel('Trajectory timeline').waitFor({ timeout: 30_000 })
-      await world.page.getByRole('tab', { name: 'Chat', exact: true }).click()
+      await world.page.getByRole('banner').getByRole('tab', { name: 'Chat', exact: true }).click()
       await expectBottom(world.page)
       await openSeed(
         world.page,

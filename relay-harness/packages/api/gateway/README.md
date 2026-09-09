@@ -4,6 +4,8 @@ English | [中文](README.zh.md)
 
 Two-sided Typert RPC endpoint for Host and Client Cordis environments. The Host entry provides `ctx.typertGateway`, while `@relay-harness/rlh-api-gateway/client` provides `ctx.remote`; both consume the same generated `InvocationDescriptor` contract and leave business selection to API Remotes and transport, request correlation, trust, and response envelopes to Connection.
 
+The Host-only `currentTrustedRequest()` observes the original endpoint and signal only inside an active trusted Connection dispatch. Direct `invoke()` does not create that provenance; nested calls retain the original endpoint, and settlement invalidates escaped asynchronous callbacks. The returned snapshot is not a credential: a sensitive consumer re-reads it at final admission and checks its own expected endpoint. This inherits Connection trust and does not attest a physical human interaction.
+
 ## Host service: `TypertGatewayService` (ctx key: `typertGateway`)
 
 `ctx.typertGateway.invoke()` resolves the current descriptor and Cordis Service for each call, validates exact named arguments, resolves registered object or Context identities, invokes the public business method, and validates its result. Business Services extend `TypertRemoteService` and mark methods with `@Remote` or `@RemoteScope` from [`rlh-typert-protocol`](../../typert/protocol/README.md); `bindTypertRemote()` remains available when another base class owns inheritance.

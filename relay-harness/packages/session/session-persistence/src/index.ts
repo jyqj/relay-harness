@@ -7,8 +7,9 @@
 
 import { Context, Service } from '@relay-harness/cordis'
 import { SessionPreparation } from '@relay-harness/rlh-session'
-import type { SessionEvent, SessionId, SessionHeader } from '@relay-harness/rlh-session'
+import type { SessionEvent, SessionId, SessionHeader, SessionPersistenceFence } from '@relay-harness/rlh-session'
 import type { SessionPersistenceRevision } from './revision.ts'
+import { runPersistenceMutation } from './mutation.ts'
 
 // Re-export the metadata vocabulary so Consumers import it from the Service Definition.
 export type { SessionHeader } from '@relay-harness/rlh-session'
@@ -43,6 +44,7 @@ export interface SessionRawArtifact {
 // The backend-agnostic write-path orchestration first-party backends compose.
 export {
   DEFAULT_PREPARED_SESSION_CACHE_SIZE,
+  DEFAULT_RETIREMENT_RETRY_DELAY_MS,
   DEFAULT_WRITE_BATCH_MAX_DELAY_MS,
   MAX_WRITE_BATCH_DELAY_MS,
   PersistenceCoordinator,
@@ -150,11 +152,12 @@ export abstract class SessionPersistence extends Service {
    * for one read/check round trip; continuous external writers may delay completion.
    * @param id - persisted session to prepare.
    * @param signal - optional cancellation for preparation work.
+   * @param fence - optional owner excluding takeover throughout cold recovery.
    * @returns one owned unpublished Session preparation.
    */
-  async prepare(id: SessionId, signal?: AbortSignal): Promise<SessionPreparation> {
+  async prepare(id: SessionId, signal?: AbortSignal, fence?: SessionPersistenceFence): Promise<SessionPreparation> {
     signal?.throwIfAborted()
-    const loaded = await this.load(id)
+    const loaded = await runPersistenceMutation(fence, () => this.load(id))
     signal?.throwIfAborted()
     const sessions = this.ctx.get('sessions')
     if (sessions === undefined) {

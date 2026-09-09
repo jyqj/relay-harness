@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { CodeIndexManagementStatus, CodeIndexSearchDebugResult } from '@relay-harness/rlh-api-remotes/client'
 import { Button, Input, Modal, Pill } from '@relay-harness/rlh-client-ui-primitives'
 import type { InjectFace, PropsLocale, PropsRuntime } from '@relay-harness/rlh-client-ui-slots'
@@ -6,8 +6,6 @@ import type { CodeIndexCenterLocaleKey } from './locales.ts'
 import styles from './CodeIndexCenterSection.module.css'
 
 export interface CodeIndexCenterInjected {
-  currentSessionId: () => string | undefined
-  subscribeSession: (listener: () => void) => () => void
   status: (sessionId: string, fresh?: boolean) => Promise<CodeIndexManagementStatus>
   refresh: (sessionId: string) => Promise<CodeIndexManagementStatus>
   reconcile: (sessionId: string) => Promise<CodeIndexManagementStatus>
@@ -18,14 +16,14 @@ export interface CodeIndexCenterInjected {
 export type CodeIndexCenterSectionProps = PropsRuntime<'settings.section'> & PropsLocale<'settings.codeIndex'> & InjectFace<CodeIndexCenterInjected>
 
 export function CodeIndexCenterSection(props: CodeIndexCenterSectionProps) {
-  const sessionId = useSyncExternalStore(props.subscribeSession, props.currentSessionId, props.currentSessionId)
+  const sessionId = props.useSessions(state => state.current)
   const selectedSession = useRef(sessionId)
   selectedSession.current = sessionId
   const operation = useRef(0)
   const [status, setStatus] = useState<CodeIndexManagementStatus>()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(false)
-  const [confirm, setConfirm] = useState(false)
+  const [confirm, setConfirm] = useState<string>()
   const [token, setToken] = useState('')
   const [query, setQuery] = useState('')
   const [debug, setDebug] = useState<CodeIndexSearchDebugResult>()
@@ -45,6 +43,7 @@ export function CodeIndexCenterSection(props: CodeIndexCenterSectionProps) {
   useEffect(() => {
     operation.current += 1
     setStatus(undefined); setDebug(undefined); setError(false); setBusy(false)
+    setConfirm(undefined); setToken('')
     if (sessionId !== undefined) load(sessionId, () => props.status(sessionId, false))
   }, [props.status, sessionId])
 
@@ -72,7 +71,7 @@ export function CodeIndexCenterSection(props: CodeIndexCenterSectionProps) {
           if (sessionId !== undefined) load(sessionId, () => props.reconcile(sessionId))
         }}>{props.t('reconcile')}</Button>
         <Button disabled={busy || sessionId === undefined} variant="outline" onClick={() => {
-          setConfirm(true)
+          setToken(''); setConfirm(sessionId)
         }}>{props.t('rebuild')}</Button>
       </div>
     </div>
@@ -127,16 +126,16 @@ export function CodeIndexCenterSection(props: CodeIndexCenterSectionProps) {
         </li>)}</ul> : null}
     </section>
     <Modal
-      open={confirm}
-      onClose={() => { setConfirm(false) }}
+      open={confirm !== undefined && confirm === sessionId}
+      onClose={() => { setConfirm(undefined) }}
       title={props.t('rebuildTitle')}
       closeLabel={props.t('cancel')}
       footer={<>
-        <Button variant="outline" onClick={() => { setConfirm(false) }}>{props.t('cancel')}</Button>
+        <Button variant="outline" onClick={() => { setConfirm(undefined) }}>{props.t('cancel')}</Button>
         <Button disabled={token !== 'REBUILD' || busy || sessionId === undefined} onClick={() => {
-          if (sessionId === undefined) return
+          if (sessionId === undefined || confirm !== sessionId) return
           const owner = sessionId
-          setConfirm(false)
+          setConfirm(undefined)
           setToken('')
           load(owner, () => props.rebuild(owner))
         }}>{props.t('confirm')}</Button>

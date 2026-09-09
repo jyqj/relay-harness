@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-08-29-governed-memory-center.md
-2026-08-29-governed-memory-center.md: 942d281d990499e31f2440a281249bac7ebad9a3
-2026-08-29-governed-memory-center.zh.md: f665ea5cec3a3a371a0c8822c94ffc42dbc6b079
+2026-08-29-governed-memory-center.md: 43a7acb97d4d49ea51fce1b007f0435b22265543
+2026-08-29-governed-memory-center.zh.md: f2e816243790752878dbebc36a5934c93c3bcdd2

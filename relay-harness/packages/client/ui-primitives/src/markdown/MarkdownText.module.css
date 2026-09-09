@@ -59,7 +59,7 @@
   /* The design-platform theme keeps the brand-text alias near-black, so
      links use the blue business-primary alias instead. */
   color: var(--rlw-alias-state-business-primary);
-  transition: box-shadow var(--rl-transition-duration) var(--rl-ease-in-out);
+  transition: box-shadow 200ms var(--rlw-ease-standard);
   position: relative;
   text-decoration: none;
   /* Transparent hit-area padding; literal zero-alpha only (no painted color). */
@@ -261,4 +261,10 @@
   outline: none;
   text-decoration: underline var(--rlw-alias-state-business-primary);
   text-underline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .markdown a {
+    transition: none;
+  }
 }

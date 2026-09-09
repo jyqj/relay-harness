@@ -167,7 +167,7 @@ abstract start(request: WorkflowStartRequest): WorkflowRun
 activeRuns(): readonly WorkflowActiveRunSnapshot[]
 ```
 
-Source: [`packages/workflow/workflow/src/index.ts:167`](../../packages/workflow/workflow/src/index.ts)
+Source: [`packages/workflow/workflow/src/index.ts:169`](../../packages/workflow/workflow/src/index.ts)
 
 <a id="workflow-events"></a>
 

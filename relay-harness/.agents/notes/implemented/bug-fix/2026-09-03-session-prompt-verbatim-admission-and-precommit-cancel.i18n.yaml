@@ -1,0 +1,6 @@
+# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
+# side as of the last confirmed-consistent state. Both languages carry equal authority;
+# after editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write .agents/notes/implemented/bug-fix/2026-09-03-session-prompt-verbatim-admission-and-precommit-cancel.md
+2026-09-03-session-prompt-verbatim-admission-and-precommit-cancel.md: 079519e3f92eeec4bccbfecbfdff91347d55cd0a
+2026-09-03-session-prompt-verbatim-admission-and-precommit-cancel.zh.md: 64f6ea0a212d053d55655ad24f829786ea62dde1

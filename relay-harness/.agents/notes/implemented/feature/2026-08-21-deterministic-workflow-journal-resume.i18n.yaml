@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-08-21-deterministic-workflow-journal-resume.md
-2026-08-21-deterministic-workflow-journal-resume.md: 0647715fcf4373f9c110159858ced339895d5308
-2026-08-21-deterministic-workflow-journal-resume.zh.md: 9ba11ff9931f23f0aad07f5ad55a4eb3fb8f1be5
+2026-08-21-deterministic-workflow-journal-resume.md: 9f57e51d9f1a3401f16d9e8cf7dcd9c9992918c5
+2026-08-21-deterministic-workflow-journal-resume.zh.md: 29e9bf8344b09ab219a3b956e40718a2079f68d1

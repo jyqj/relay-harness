@@ -16,6 +16,7 @@ import WorkflowEngine, { WorkflowError, WorkflowRunId } from '@relay-harness/rlh
 import type { WorkflowRun, WorkflowRunInfo, WorkflowStartRequest } from '@relay-harness/rlh-workflow'
 import { WorkerRun } from './host.ts'
 import { validateMeta } from './meta.ts'
+import { claimWorkflowJournal } from './journal-lock.ts'
 import type { WorkerInit, WorkerLimits } from './types.ts'
 import {
   WorkflowJournal,
@@ -182,6 +183,7 @@ class WorkerThreadWorkflowEngine extends WorkflowEngine {
       limits,
     }
     let journal: WorkflowJournal | undefined
+    let releaseJournal: (() => void) | undefined
     if (journalRoot !== undefined) {
       const journalPath = join(journalRoot, workflowRequestHash('run-id', id), 'journal.jsonl')
       const requestHash = workflowRequestHash('workflow', {
@@ -192,10 +194,12 @@ class WorkerThreadWorkflowEngine extends WorkflowEngine {
         maxTotalAgents,
       })
       try {
+        releaseJournal = claimWorkflowJournal(journalPath)
         journal = request.resumeRunId !== undefined
           ? WorkflowJournal.load(journalPath, id, requestHash)
           : WorkflowJournal.create(journalPath, id, requestHash)
       } catch (error: unknown) {
+        releaseJournal?.()
         /* v8 ignore else -- journal entry points normalize every external throw. */
         if (error instanceof WorkflowJournalError) {
           throw new WorkflowError(error.message, error.code, { cause: error })
@@ -212,25 +216,32 @@ class WorkerThreadWorkflowEngine extends WorkflowEngine {
     // the now-inactive engine fiber and break the seam's holder-owned lifetime.
     const runCtx = this.ctx
     const subagents = runCtx.subagents
-    const workerRun = new WorkerRun(
-      runCtx,
-      subagents,
-      id,
-      meta,
-      request.parent,
-      init,
-      subagentProvider,
-      this.config.disposeGraceMs,
-      this.config.stallTimeoutMs,
-      journal,
-      {
-        phase: (title) => { this.emitWorkflowEvent('workflow/phase', info, title) },
-        log: (message) => { this.emitWorkflowEvent('workflow/log', info, message) },
-        agentStart: (agent) => { this.emitWorkflowEvent('workflow/agent-start', info, agent) },
-        agentEnd: (agent) => { this.emitWorkflowEvent('workflow/agent-end', info, agent) },
-      },
-      request.signal,
-    )
+    let workerRun: WorkerRun
+    try {
+      workerRun = new WorkerRun(
+        runCtx,
+        subagents,
+        id,
+        meta,
+        request.parent,
+        init,
+        subagentProvider,
+        this.config.disposeGraceMs,
+        this.config.stallTimeoutMs,
+        journal,
+        {
+          phase: (title) => { this.emitWorkflowEvent('workflow/phase', info, title) },
+          log: (message) => { this.emitWorkflowEvent('workflow/log', info, message) },
+          agentStart: (agent) => { this.emitWorkflowEvent('workflow/agent-start', info, agent) },
+          agentEnd: (agent) => { this.emitWorkflowEvent('workflow/agent-end', info, agent) },
+        },
+        request.signal,
+        releaseJournal,
+      )
+    } catch (error: unknown) {
+      releaseJournal?.()
+      throw error
+    }
 
     this.emitWorkflowEvent('workflow/start', info)
     // `workflow/end` fires as the (never-rejecting) result settles, with the

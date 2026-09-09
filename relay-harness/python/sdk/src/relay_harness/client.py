@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TypeAlias, TypeVar
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 from .errors import (
     JsonRpcError,
@@ -22,6 +22,7 @@ from .errors import (
     GlobalNotificationQueueOverflowError,
     IncomingRequestQueueOverflowError,
     NotificationQueueOverflowError,
+    SdkProtocolError,
     TransportClosedError,
 )
 from .models import (
@@ -61,6 +62,8 @@ class HarnessConfig:
     env: dict[str, str] | None = None
     request_timeout_seconds: float | None = None
     shutdown_timeout_seconds: float | None = 1.0
+    eof_grace_seconds: float = 6.0
+    terminate_grace_seconds: float = 3.0
     max_frame_bytes: int = DEFAULT_JSON_RPC_MAX_FRAME_BYTES
     max_queued_write_bytes: int = DEFAULT_JSON_RPC_MAX_QUEUED_WRITE_BYTES
     max_notification_queue_size: int = DEFAULT_NOTIFICATION_QUEUE_SIZE
@@ -89,7 +92,10 @@ class HarnessClient:
             "max_incoming_request_queue_size",
         )
         self._proc: subprocess.Popen[bytes] | None = None
+        self._closed = False
+        self._starting = False
         self._lock = threading.Lock()
+        self._spawn_settled = threading.Condition(self._lock)
         self._write_lock = threading.Lock()
         self._write_budget_lock = threading.Lock()
         self._queued_write_bytes = 0
@@ -116,33 +122,70 @@ class HarnessClient:
         self.close()
 
     def start(self) -> None:
-        if self._proc is not None:
-            return
-        with self._lock:
-            self._session_parents.clear()
-            self._global_notification_failure = None
-            self._incoming_request_failure = None
+        """Spawn the runtime subprocess and start reading frames.
+
+        Concurrent ``start()`` calls spawn exactly one runtime: the spawn and
+        thread registration run under the same lock that guards the process
+        handle. The closed state re-checks inside that lock, so a
+        :meth:`close` that lands before the spawn cancels the start and no
+        runtime child is created. Reuse after :meth:`close` is rejected;
+        close is terminal.
+        """
         args = list(self.config.launch_args_override or self._default_launch_args())
         env = os.environ.copy()
         if self.config.env:
             env.update(self.config.env)
         self._inject_bundled_default_config(env)
-        self._proc = subprocess.Popen(
-            args,
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=False,
-            cwd=None if self.config.cwd is None else str(Path(self.config.cwd).resolve()),
-            env=env,
-            bufsize=0,
-        )
-        self._start_reader_thread()
-        self._start_stderr_thread()
+        with self._spawn_settled:
+            if self._closed:
+                raise TransportClosedError("Relay Harness runtime client is closed")
+            if self._proc is not None:
+                return
+            self._starting = True
+            try:
+                self._session_parents.clear()
+                self._global_notification_failure = None
+                self._incoming_request_failure = None
+                self._proc = subprocess.Popen(
+                    args,
+                    stdin=subprocess.PIPE,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=False,
+                    cwd=None if self.config.cwd is None else str(Path(self.config.cwd).resolve()),
+                    env=env,
+                    bufsize=0,
+                )
+                self._start_reader_thread()
+                self._start_stderr_thread()
+            finally:
+                self._starting = False
+                self._spawn_settled.notify_all()
 
     def close(self) -> None:
-        proc = self._proc
+        """Shut down and reap the runtime subprocess. Idempotent and terminal.
+
+        After the best-effort ``shutdown`` request, stdin closes and the
+        runtime gets ``eof_grace_seconds`` for cooperative teardown before
+        terminate, then ``terminate_grace_seconds`` before force kill.
+        Subscriptions and pending requests created before close fail
+        immediately with ``TransportClosedError``; a later ``start()`` raises.
+        A ``start()`` already in flight has one of two endings: a spawn that
+        has not begun is cancelled and no runtime child is created, while a
+        spawn already under way completes first and its runtime is reaped by
+        this close — the same endings as the TypeScript client's memoized
+        close task.
+        """
+        self._closed = True
+        # Settle against the spawn critical section: either it has not begun
+        # (its in-lock closed check cancels it) or it finished and ``_proc``
+        # names the child this close must reap.
+        with self._spawn_settled:
+            while self._starting:
+                self._spawn_settled.wait()
+            proc = self._proc
         if proc is None:
+            self._fail_waiters(self._runtime_closed_error("Relay Harness runtime closed"))
             return
         try:
             self.request("shutdown", None, response_model=_ShutdownResponse, timeout_seconds=self.config.shutdown_timeout_seconds)
@@ -153,14 +196,14 @@ class HarnessClient:
                 proc.stdin.close()
             except Exception as exc:
                 self._stderr_lines.append(f"stdin close failed: {exc}")
+        self._await_exit(proc, self.config.eof_grace_seconds)
         if proc.poll() is None:
             try:
                 proc.terminate()
             except ProcessLookupError:
                 pass
-        try:
-            proc.wait(timeout=self.config.shutdown_timeout_seconds)
-        except subprocess.TimeoutExpired:
+            self._await_exit(proc, self.config.terminate_grace_seconds)
+        if proc.poll() is None:
             proc.kill()
             proc.wait()
         self._proc = None
@@ -169,6 +212,13 @@ class HarnessClient:
             self._reader_thread.join(timeout=0.5)
         if self._stderr_thread and self._stderr_thread.is_alive():
             self._stderr_thread.join(timeout=0.5)
+
+    def _await_exit(self, proc: subprocess.Popen[bytes], grace_seconds: float) -> None:
+        """Wait a bounded grace for the runtime to exit on its own."""
+        try:
+            proc.wait(timeout=max(grace_seconds, 0))
+        except subprocess.TimeoutExpired:
+            pass
 
     def initialize(
         self,
@@ -186,10 +236,14 @@ class HarnessClient:
         if max_tokens is not None:
             payload["maxTokens"] = max_tokens
         try:
-            return self.request("initialize", payload, response_model=InitializeResponse)
+            response = self.request("initialize", payload, response_model=InitializeResponse)
+        except (TypeError, ValidationError) as exc:
+            self.close()
+            raise SdkProtocolError(f"initialize returned no server identity: {exc}") from exc
         except BaseException:
             self.close()
             raise
+        return response
 
     def session_prompt(
         self,
@@ -209,6 +263,15 @@ class HarnessClient:
             notification_subscription=notification_subscription,
         )
         return response.messageId
+
+    def session_close(self, session_id: str) -> None:
+        """Close one runtime session: dispose its agent and stop ownership tracking.
+
+        Raises:
+            JsonRpcError: The runtime does not know the session id; callers may
+                only close sessions they created.
+        """
+        self.request("session/close", {"sessionId": session_id}, response_model=_SessionCloseResponse)
 
     def request(
         self,
@@ -719,6 +782,10 @@ class _SessionPromptResponse(BaseModel):
 
 
 class _ShutdownResponse(BaseModel):
+    pass
+
+
+class _SessionCloseResponse(BaseModel):
     pass
 
 

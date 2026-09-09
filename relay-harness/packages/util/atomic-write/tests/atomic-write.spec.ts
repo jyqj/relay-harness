@@ -1,5 +1,6 @@
+import { spawn } from 'node:child_process'
 import { lstat, mkdir, mkdtemp, readFile, readdir, rm, stat, symlink, writeFile } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
+import { hostname, tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { withFileLock, writeFileAtomic } from '../src/index.ts'
@@ -104,5 +105,52 @@ describe('withFileLock', () => {
       called = true
     })).rejects.toThrow(/ENOENT|ENOTDIR|not a directory/i)
     expect(called).toBe(false)
+  })
+
+  it('recovers a stale lock whose recorded owner pid is dead on this host', async () => {
+    const dir = await scratch()
+    const target = join(dir, 'document')
+    const dead = spawn(process.execPath, ['-e', ''])
+    const deadPid = dead.pid
+    if (deadPid === undefined) throw new Error('child failed to spawn')
+    await new Promise<void>(resolve => dead.once('exit', resolve))
+    await writeFile(`${target}.lock`, `${deadPid}\n${hostname()}\n`)
+    let called = false
+
+    await withFileLock(target, async () => { called = true })
+    expect(called).toBe(true)
+  })
+
+  it('keeps timing out when the lock owner is alive', async () => {
+    const dir = await scratch()
+    const target = join(dir, 'document')
+    const lockPath = `${target}.lock`
+    const holder = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'])
+    const holderPid = holder.pid
+    if (holderPid === undefined) throw new Error('child failed to spawn')
+    const payload = `${holderPid}\n${hostname()}\n`
+    await writeFile(lockPath, payload)
+
+    try {
+      await expect(withFileLock(target, async () => {})).rejects.toThrow(/timed out waiting for the writer lock/)
+      expect(await readFile(lockPath, 'utf8')).toBe(payload)
+    } finally {
+      holder.kill()
+    }
+  })
+
+  it('keeps timing out when the lock records a foreign host', async () => {
+    const dir = await scratch()
+    const target = join(dir, 'document')
+    const lockPath = `${target}.lock`
+    const dead = spawn(process.execPath, ['-e', ''])
+    const deadPid = dead.pid
+    if (deadPid === undefined) throw new Error('child failed to spawn')
+    await new Promise<void>(resolve => dead.once('exit', resolve))
+    const payload = `${deadPid}\nrlh-foreign-host\n`
+    await writeFile(lockPath, payload)
+
+    await expect(withFileLock(target, async () => {})).rejects.toThrow(/timed out waiting for the writer lock/)
+    expect(await readFile(lockPath, 'utf8')).toBe(payload)
   })
 })

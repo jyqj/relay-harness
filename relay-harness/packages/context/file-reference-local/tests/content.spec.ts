@@ -271,6 +271,9 @@ describe('FileReferenceContentContributor', () => {
       signal: new AbortController().signal,
       cwd: root,
       caller: { sessionId: SessionId('content-agent'), agentId: 'content-agent', workspaceId: root, turn: 1, step: 1 },
-    })).rejects.toThrow('file-reference-local: file-content injection requires a filesystem service')
+    })).rejects.toMatchObject({
+      code: 'CONTEXT_ENGINE_INVALID_CONTRIBUTOR',
+      message: 'file-reference-local: file-content injection requires a filesystem service',
+    })
   })
 })

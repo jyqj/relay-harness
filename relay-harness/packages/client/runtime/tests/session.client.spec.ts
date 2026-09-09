@@ -967,6 +967,54 @@ describe('resync', () => {
 
 })
 
+describe('reconnect baseline gap (session/subscribed tail check)', () => {
+  it('backfills the tail page when the subscribed frame lands past an open window', async () => {
+    const { api, session } = makeSession()
+    const full = [...plainTurn(0, 0, 'a', 'b'), ...plainTurn(6, 1, 'c', 'd')]
+    let call = 0
+    api.onHistory = () => {
+      call++
+      return call === 1 ? histResponse(plainTurn(0, 0, 'a', 'b')) : histResponse(full)
+    }
+    await session.open()
+    expect(call).toBe(1)
+    // Resync reconnect: onConnected hydration completes before the mux stream
+    // opens, so doOpen's stitch pull ran with subscribedLastSeq === null — the
+    // subscribed frame's tail check is the only guard for events lost inside
+    // the closed-stream window (host replay resends baselines, not events).
+    session.handleMuxEnvelope('rs' as never, { type: 'session/subscribed', sessionId: SID, lastSeq: 11 })
+    await vi.waitFor(() => { expect(api.callsOf('session.history')).toHaveLength(2) })
+    expect(session.getSnapshot().nodes.map(n => n.seq)).toEqual([1, 3, 7, 9])
+  })
+
+  it('does not backfill when the subscribed lastSeq is at or below the window tail', async () => {
+    const { api, session } = makeSession()
+    api.onHistory = () => histResponse(plainTurn(0, 0, 'a', 'b'))
+    await session.open()
+    session.handleMuxEnvelope('rs' as never, { type: 'session/subscribed', sessionId: SID, lastSeq: 5 })
+    session.handleMuxEnvelope('rs2' as never, { type: 'session/subscribed', sessionId: SID, lastSeq: 3 })
+    await new Promise(resolve => setTimeout(resolve, 0))
+    expect(api.callsOf('session.history')).toHaveLength(1)
+  })
+
+  it('leaves the lazy first-open path to the doOpen stitch pull (no repair while not open)', async () => {
+    const { api, session } = makeSession()
+    const full = [...plainTurn(0, 0, 'a', 'b'), ...plainTurn(6, 1, 'c', 'd')]
+    let call = 0
+    api.onHistory = () => {
+      call++
+      return call === 1 ? histResponse(plainTurn(0, 0, 'a', 'b')) : histResponse(full)
+    }
+    // Cold: the subscribed frame records the baseline only — doOpen's own
+    // second pull stays the owner of the lazy-open gap case.
+    session.handleMuxEnvelope('rs' as never, { type: 'session/subscribed', sessionId: SID, lastSeq: 11 })
+    expect(api.calls).toEqual([])
+    await session.open()
+    expect(call).toBe(2)
+    expect(session.getSnapshot().nodes.map(n => n.seq)).toEqual([1, 3, 7, 9])
+  })
+})
+
 describe('reference stability (the memo contract)', () => {
   it('keeps unchanged node references across an append and swaps the snapshot object', async () => {
     const { api, session } = makeSession()

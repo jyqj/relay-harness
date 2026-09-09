@@ -1,35 +1,35 @@
 /** Cordis dynamic-plugin cards, inventory panel, business-view host, and `@pluginId` source. */
 
-import type { ClientContext, SessionId } from '@relay-harness/rlh-client-runtime/client'
-import type {} from '@relay-harness/rlh-client-ui-tool/client'
-import type {} from '@relay-harness/rlh-client-locale/client'
-import type {} from '@relay-harness/rlh-client-ui-sidebar/client'
-import type {} from '@relay-harness/rlh-api-remotes/client'
-import type { InputTriggerService, InputTriggerSource } from '@relay-harness/rlh-client-ui-input-trigger/client'
-import type {} from './events.ts'
+import type { } from '@relay-harness/rlh-api-remotes/client'
+import type { } from '@relay-harness/rlh-client-locale/client'
+import type { ClientContext,SessionId } from '@relay-harness/rlh-client-runtime/client'
+import type { InputTriggerService,InputTriggerSource } from '@relay-harness/rlh-client-ui-input-trigger/client'
+import type { } from '@relay-harness/rlh-client-ui-sidebar/client'
+import type { } from '@relay-harness/rlh-client-ui-tool/client'
+
 import { CordisActionRow } from './CordisActionRow.tsx'
 import { CordisDefineRow } from './CordisDefineRow.tsx'
-import { CordisRunRow } from './CordisRunRow.tsx'
 import { CordisPanel } from './CordisPanel.tsx'
-import { createCordisInventory } from './inventory.ts'
-import { CordisRunCardRegistry } from './run-card-index.ts'
+import { CordisRunRow } from './CordisRunRow.tsx'
 import type { CordisDynamicPort } from './dynamic-port.ts'
-import type { CordisCardFace, CordisPanelFace, CordisRunCardFace } from './slots.ts'
-import { en, NS, zh } from './locales.ts'
+import { createCordisInventory } from './inventory.ts'
+import { en,NS,zh } from './locales.ts'
+import { CordisRunCardRegistry } from './run-card-index.ts'
+import type { CordisCardFace,CordisPanelFace,CordisRunCardFace } from './slots.ts'
 
-export type { CordisCardFace, CordisPanelFace, CordisRunCardFace, CordisToolViewOwnerProps } from './slots.ts'
-export type { CordisActionResult, CordisDynamicPort, CordisInventoryRow } from './dynamic-port.ts'
-export type { CordisDefineRowProps } from './CordisDefineRow.tsx'
 export type { CordisActionRowProps } from './CordisActionRow.tsx'
+export type { CordisDefineRowProps } from './CordisDefineRow.tsx'
 export type { CordisRunRowProps } from './CordisRunRow.tsx'
+export type { CordisActionResult,CordisDynamicPort,CordisInventoryRow } from './dynamic-port.ts'
 export type {
-  CordisRunCardPointer, CordisRunCardStore, CordisToolViewKey,
-} from './run-card-index.ts'
-export type {
-  ApprovalRequestId, CordisDynamicPackageId, CordisDynamicPluginId, CordisDynamicPluginRunId,
-  DynamicCordisInventoryRow, DynamicCordisPackage, DynamicCordisRetracted,
+  ApprovalRequestId,CordisDynamicPackageId,CordisDynamicPluginId,CordisDynamicPluginRunId,
+  DynamicCordisInventoryRow,DynamicCordisPackage,DynamicCordisRetracted,
 } from './events.ts'
 export type { CordisKey } from './locales.ts'
+export type {
+  CordisRunCardPointer,CordisRunCardStore,CordisToolViewKey,
+} from './run-card-index.ts'
+export type { CordisCardFace,CordisPanelFace,CordisRunCardFace,CordisToolViewOwnerProps } from './slots.ts'
 
 /** Required services for the two Tool cards, panel, Remote lifecycle, and Slash source. */
 export const inject = [

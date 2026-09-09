@@ -83,11 +83,11 @@ describe.skipIf(!builtArtifactsExist)('rlh web browser-open assembled snapshot',
       {
         "apiKeyPresent": false,
         "bootManifest": true,
-        "rlhHomePresent": false,
         "exitCode": 0,
         "openedUrl": "http://127.0.0.1:{{port}}",
         "opening": true,
         "readyUrl": "http://127.0.0.1:{{port}}",
+        "rlhHomePresent": false,
         "status": 200,
         "stderr": "",
       }

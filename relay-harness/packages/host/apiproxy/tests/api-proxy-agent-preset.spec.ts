@@ -11,7 +11,7 @@ import { join } from 'node:path'
 import { Context } from '@relay-harness/cordis'
 import AgentRegistry, { type AgentFactory } from '@relay-harness/rlh-agent'
 import type { Agent } from '@relay-harness/rlh-agent'
-import SessionStore, { SessionId, type Session } from '@relay-harness/rlh-session'
+import SessionStore, { SessionId, type Session, type UserMessage } from '@relay-harness/rlh-session'
 import UserQuestionService from '@relay-harness/rlh-user-questions'
 import { RpcId, type RpcRequest } from '../src/api/rpc.ts'
 import type { HostFrame } from '../src/api/events.ts'
@@ -21,16 +21,33 @@ import {
 import type {} from '@relay-harness/rlh-agent-presets/types'
 import { GoalId } from '@relay-harness/rlh-goal'
 import { createApiProxy } from '../src/api-proxy.ts'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
+import { bindScopeParent, captureScopeReadView, scopeChainOf } from '@relay-harness/rlh-scope'
 
 let nextRpc = 0
 function request<P>(payload: P): RpcRequest<P> {
   return { rpcId: RpcId(`preset-${String(nextRpc++)}`), payload }
 }
 
-/** Minimal live agent; the gateway only needs identity and its session. */
+/**
+ * Minimal live agent; the gateway only needs identity and its session. The
+ * delivery verbs imitate what the real loop driver does on admission — open
+ * the turn and commit the durable user message — so prompt-ordering tests see
+ * the same log the driver produces.
+ */
 function stubAgent(session: Session): Agent {
-  return { id: session.id, session, status: 'idle' } as unknown as Agent
+  return {
+    id: session.id,
+    session,
+    status: 'idle',
+    followup: (message: unknown) => {
+      session.append('turn/start', { turn: session.seq })
+      session.append('user/message', message as UserMessage, { surfaceOp: 'append' })
+    },
+    steer: (message: unknown) => {
+      session.append('user/message', message as UserMessage, { surfaceOp: 'append' })
+    },
+  } as unknown as Agent
 }
 
 /**
@@ -39,10 +56,15 @@ function stubAgent(session: Session): Agent {
  * `apps/cli`. Ids listed in `userIds` present as locally authored; the rest
  * ship with the deployment.
  */
-function roster(ids: readonly string[], userIds: readonly string[] = []): unknown {
+function roster(
+  ids: readonly string[],
+  userIds: readonly string[] = [],
+  options: { recomposeGate?: Promise<unknown> } = {},
+): unknown {
   const trustOf = (id: string): 'system' | 'user' => (userIds.includes(id) ? 'user' : 'system')
   const presetOf = (id: string): object =>
     ({ id, trust: trustOf(id), path: `/presets/${id}/agent.cordis.yml` })
+  const gate = options.recomposeGate
   return {
     defaultId: ids[0],
     list: () => Promise.resolve(ids.map(presetOf)),
@@ -52,6 +74,7 @@ function roster(ids: readonly string[], userIds: readonly string[] = []): unknow
       return Promise.resolve(presetOf(wanted))
     },
     mount: (_ctx: Context, id?: string) => Promise.resolve(presetOf(id ?? ids[0] ?? '')),
+    acquireAgentScope: () => undefined,
     // What a real mount leaves behind: a service instance only the agent that
     // mounted it can be used to address. The doubles are per agent so a test
     // can tell "this session's" from "some session's".
@@ -73,10 +96,11 @@ function roster(ids: readonly string[], userIds: readonly string[] = []): unknow
     },
     recompose: (_ctx: Context, id: string) => {
       if (!ids.includes(id)) return Promise.reject(new UnknownPresetError(id, ids))
-      return Promise.resolve({ id, trust: 'system', path: `/presets/${id}.yml` })
+      const composed = Promise.resolve({ id, trust: 'system', path: `/presets/${id}.yml` })
+      return gate === undefined ? composed : gate.then(() => composed)
     },
     // The standing scope key a cold transcript read resolves presenters in.
-    standingKeyFor: (id?: string) => {
+    acquireStandingScope: (id?: string) => {
       const wanted = id ?? ids[0] ?? ''
       standingKeyRequests.push(wanted)
       if (!ids.includes(wanted) || failingStandingKeys.has(wanted)) {
@@ -87,7 +111,7 @@ function roster(ids: readonly string[], userIds: readonly string[] = []): unknow
         key = { agentPreset: wanted }
         standingKeys.set(wanted, key)
       }
-      return Promise.resolve(key)
+      return Promise.resolve({ key, release: () => { releasedStandingKeys.push(wanted); return Promise.resolve() } })
     },
   }
 }
@@ -95,6 +119,7 @@ function roster(ids: readonly string[], userIds: readonly string[] = []): unknow
 /** Standing keys the roster double minted, and the ids readers asked for. */
 const standingKeys = new Map<string, object>()
 const standingKeyRequests: string[] = []
+const releasedStandingKeys: string[] = []
 /** Preset ids whose standing mount the double reports as unusable. */
 const failingStandingKeys = new Set<string>()
 
@@ -104,7 +129,12 @@ const services = new Map<string, Record<string, unknown>>()
 async function harness(
   presets?: readonly string[],
   persistence?: unknown,
-  options: { userIds?: readonly string[]; defaults?: Record<string, unknown> } = {},
+  options: {
+    userIds?: readonly string[]
+    defaults?: Record<string, unknown>
+    /** Parks `recompose` until resolved, reproducing the slow-swap window. */
+    recomposeGate?: Promise<unknown>
+  } = {},
 ) {
   const cwd = realpathSync(mkdtempSync(join(tmpdir(), 'rlh-apiproxy-preset-')))
   const ctx = new Context()
@@ -112,7 +142,9 @@ async function harness(
   await ctx.plugin(AgentRegistry)
   await ctx.plugin(UserQuestionService)
   ctx.provide('sessionPersistence', (persistence ?? { list: () => Promise.resolve([]) }) as never)
-  if (presets !== undefined) ctx.provide('agentPresets', roster(presets, options.userIds) as never)
+  if (presets !== undefined) {
+    ctx.provide('agentPresets', roster(presets, options.userIds, options) as never)
+  }
 
   const factory: AgentFactory = {
     async createAgent(_ownerCtx, options) {
@@ -439,6 +471,72 @@ describe('agentPreset.select', () => {
     expect(resolveSessionPreset(session)).toBe('standard')
   })
 
+  it('commits the switch before a prompt arriving mid-recompose opens the turn', async () => {
+    // The blank guard is only authoritative if a prompt cannot slip into the
+    // recompose await: unserialized, the prompt opens the turn under the OLD
+    // composition and the switch lands on top of it — exactly the state the
+    // guard exists to prevent.
+    const gate = Promise.withResolvers<undefined>()
+    const { api, ctx } = await harness(['standard', 'minimal'], undefined, { recomposeGate: gate.promise })
+    await api.sessions.create(request({ sessionId: SessionId('sel-toctou'), agentPreset: 'standard' }))
+
+    const selecting = api.agentPresets.select(
+      request({ sessionId: SessionId('sel-toctou'), agentPreset: 'minimal' }))
+    await new Promise(resolve => setTimeout(resolve, 0))
+    const prompting = api.sessions.prompt(request({
+      sessionId: SessionId('sel-toctou'),
+      mode: 'queue' as const,
+      content: [{ type: 'text' as const, text: 'race' }],
+    }))
+    gate.resolve(undefined)
+    const [selectResponse, promptResponse] = await Promise.all([selecting, prompting])
+
+    expect(selectResponse.result.ok).toBe(true)
+    expect(promptResponse.result.ok).toBe(true)
+    const session = ctx.sessions.get(SessionId('sel-toctou'))
+    if (session === undefined) throw new Error('unreachable')
+    const selected = session.events.find(event => event.type === 'agent-preset/selected')
+    const firstUser = session.events.find(event => event.type === 'user/message')
+    expect(selected).toBeDefined()
+    expect(firstUser).toBeDefined()
+    expect(selected!.seq).toBeLessThan(firstUser!.seq)
+  })
+
+  it('settles a prompt queued behind a slow swap with the swap committed first', async () => {
+    // The served-app session-switch sequence: a preset swap parks mid-recompose
+    // while a prompt for the same session arrives. The slot must settle both —
+    // no starvation on the switch path — and the log a projection later reads
+    // must show the committed switch before the prompt's message, so list rows
+    // and history never describe a session whose composition disagrees with
+    // its transcript.
+    const gate = Promise.withResolvers<undefined>()
+    const { api, ctx } = await harness(['standard', 'minimal'], undefined, { recomposeGate: gate.promise })
+    await api.sessions.create(request({ sessionId: SessionId('sel-switch'), agentPreset: 'standard' }))
+
+    const selecting = api.agentPresets.select(
+      request({ sessionId: SessionId('sel-switch'), agentPreset: 'minimal' }))
+    await new Promise(resolve => setTimeout(resolve, 0))
+    const prompting = api.sessions.prompt(request({
+      sessionId: SessionId('sel-switch'),
+      mode: 'queue' as const,
+      content: [{ type: 'text' as const, text: 'after the swap' }],
+    }))
+    gate.resolve(undefined)
+    const [selectResponse, promptResponse] = await Promise.all([selecting, prompting])
+
+    expect(selectResponse.result.ok).toBe(true)
+    expect(promptResponse.result.ok).toBe(true)
+    const session = ctx.sessions.get(SessionId('sel-switch'))
+    if (session === undefined) throw new Error('unreachable')
+    const selected = session.events.find(event => event.type === 'agent-preset/selected')
+    const firstUser = session.events.find(event => event.type === 'user/message')
+    expect(selected).toBeDefined()
+    expect(firstUser).toBeDefined()
+    expect(selected!.seq).toBeLessThan(firstUser!.seq)
+    // What any list row or history presenter derives from this log.
+    expect(resolveSessionPreset(session)).toBe('minimal')
+  })
+
   it('refuses once the conversation has started', async () => {
     const { api, ctx } = await harness(['standard', 'minimal'])
     await api.sessions.create(request({ sessionId: SessionId('sel-2'), agentPreset: 'standard' }))
@@ -646,7 +744,7 @@ describe('skills over the layered host registry', () => {
     const response = await api.skills.list(request({ sessionId: SessionId('h1') }))
 
     expect(response.result).toMatchObject({ ok: true, value: { skills: [] } })
-    expect(seen).toEqual([ctx.agents.get(SessionId('h1'))])
+    expect(seen.map(scope => scopeChainOf(scope as object))).toEqual([[ctx.agents.get(SessionId('h1'))]])
   })
 
   it('resolves a cold session to its recorded preset standing key', async () => {
@@ -739,4 +837,65 @@ describe('session.history presenter scope', () => {
       failingStandingKeys.delete('standard')
     }
   })
+})
+
+
+it.each([false, true])('holds the cold generation through asynchronous skill listing and releases on error=%s', async (fails) => {
+  const id = `lease-${String(fails)}`
+  const { api, ctx } = await harness([id])
+  let finish!: () => void
+  let entered!: () => void
+  const started = new Promise<void>((resolve) => { entered = resolve })
+  const blocked = new Promise<void>((resolve) => { finish = resolve })
+  ctx.provide('skills', {
+    async list() {
+      entered()
+      await blocked
+      if (fails) throw new Error('listing failed')
+      return []
+    },
+  } as never)
+  ctx.sessions.create(SessionId(id), { meta: { cwd: '/workspace/cold', agentPreset: id } })
+  const pending = api.skills.list(request({ sessionId: SessionId(id) }))
+  await started
+  expect(releasedStandingKeys.filter(value => value === id)).toHaveLength(0)
+  finish()
+  const result = await pending
+  expect(result.result.ok).toBe(!fails)
+  expect(releasedStandingKeys.filter(value => value === id)).toHaveLength(1)
+})
+
+
+it.each([false, true])('holds a live read ancestry across rebind and releases on error=%s', async (fails) => {
+  const id = `live-scope-${String(fails)}`
+  const { api, ctx } = await harness([id])
+  await api.sessions.create(request({ sessionId: SessionId(id), agentPreset: id }))
+  const live = ctx.agents.get(SessionId(id))!
+  const oldKey = {}, newKey = {}
+  const binding = bindScopeParent(live, oldKey)
+  const captured = captureScopeReadView(live)
+  const release = vi.fn(async () => {})
+  const acquire = vi.spyOn(ctx.agentPresets, 'acquireAgentScope').mockReturnValue({ key: captured, release })
+  let finish!: () => void, entered!: () => void
+  const gate = new Promise<void>((resolve) => { finish = resolve })
+  const started = new Promise<void>((resolve) => { entered = resolve })
+  const seen: object[][] = []
+  ctx.provide('skills', {
+    async list(options: { scope: object }) {
+      entered()
+      await gate
+      seen.push(scopeChainOf(options.scope))
+      if (fails) throw new Error('listing failed')
+      return []
+    },
+  } as never)
+  const pending = api.skills.list(request({ sessionId: SessionId(id) }))
+  await started
+  binding.rebind(newKey)
+  expect(release).not.toHaveBeenCalled()
+  finish()
+  expect((await pending).result.ok).toBe(!fails)
+  expect(seen).toEqual([[live, oldKey]])
+  expect(release).toHaveBeenCalledOnce()
+  acquire.mockRestore()
 })

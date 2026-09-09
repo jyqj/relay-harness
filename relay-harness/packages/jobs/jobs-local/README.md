@@ -20,6 +20,8 @@ Settlement is first-wins: the earliest terminal outcome — producer settlement,
 
 Controllers and listeners are layered by the scope that registered them, in the tools-registry shape: a registration files into its registering context's scope, and a read unions the global layer with the owner's scope chain. One process-wide registry therefore answers per-owner questions per owner — `start()` refuses `background jobs unavailable: no job controller serves this agent (load @relay-harness/rlh-tool-jobs in its composition)` for an owner whose own composition attaches none, however many other compositions attach theirs, and a settlement reaches only the listeners its owner's composition registered.
 
+Terminal records are not kept forever. A record stays readable until it is reported — its completion notice deliverable — plus `terminalRetentionMs` of grace (default `60000`), and each owner bucket keeps at most `maxTerminalRecords` terminal records (default `100`), oldest-finished first. Retention sweeps run at `start()` and `list()` time, never on a timer; an unreported terminal record is never pruned, so completion notices stay at-least-once. A pruned id reads as `unknown job <id>` from `get`, `read`, `kill`, and `wait`.
+
 ## Model Experience
 
 Indirectly, through producer plugins and [`rlh-tool-jobs`](../tool-jobs/README.md), which render job ids, output, status, cancellation, and completion notices.

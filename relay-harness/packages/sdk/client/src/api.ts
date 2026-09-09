@@ -90,13 +90,20 @@ export class RelayHarness implements AsyncDisposable {
   }
 
   /**
-   * Run one prompt on a fresh (or named) session.
+   * Run one prompt on a fresh (or named) session. An auto-minted session is
+   * closed (its runtime agent disposed) once the run settles; a named
+   * session stays open for reuse until {@link close}.
    * @param input - prompt text, or content blocks sent verbatim.
    * @param options - optional session id and per-notification observer.
    * @returns the owned activity interval.
    */
-  run(input: string | ContentBlock[], options?: RunOptions): Promise<RunResult> {
-    return this.session(options?.sessionId).run(input, options)
+  async run(input: string | ContentBlock[], options?: RunOptions): Promise<RunResult> {
+    const ownedSession = this.session(options?.sessionId)
+    try {
+      return await ownedSession.run(input, options)
+    } finally {
+      if (options?.sessionId === undefined) await this.clientInstance.closeSession(ownedSession.id)
+    }
   }
 
   /**
@@ -188,6 +195,7 @@ export class HarnessSession {
     return {
       sessionId: this.id,
       finalResponse: finalResponse(events),
+      finishReason: finishReason(events),
       events,
       notifications,
     }
@@ -243,4 +251,27 @@ export function finalResponse(events: SessionEvent[]): string {
       .join('')
   }
   return ''
+}
+
+/**
+ * Extract the kind of the interval's last turn ending.
+ * @param events - the activity interval's `session.event` payloads in wire order.
+ * @returns the last `turn/end`'s `reason.kind`, or `null` when no turn ended.
+ * @throws SdkProtocolError when the last `turn/end` carries no string reason kind.
+ */
+export function finishReason(events: SessionEvent[]): string | null {
+  for (let index = events.length - 1; index >= 0; index--) {
+    const event = events[index]
+    if (event?.type !== 'turn/end') continue
+    // Wire boundary: the reason feeds the typed RunResult, so a malformed
+    // runtime surfaces as a protocol error instead of a type-invalid kind.
+    const data: unknown = event.data
+    const reason = isRecord(data) ? data.reason : undefined
+    const kind = isRecord(reason) ? reason.kind : undefined
+    if (typeof kind !== 'string') {
+      throw new SdkProtocolError(`turn/end event carried no reason kind: ${JSON.stringify(event)}`)
+    }
+    return kind
+  }
+  return null
 }

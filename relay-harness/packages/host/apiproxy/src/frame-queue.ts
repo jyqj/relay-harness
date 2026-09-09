@@ -9,21 +9,59 @@ import type { JsonValue, Session } from '@relay-harness/rlh-session'
 import type { MuxFrame, RpcRequest } from './api/index.ts'
 import { frame } from './rpc-envelope.ts'
 
-/** Simple async queue: core callbacks push, the AsyncIterable pulls; abort/return cleans up. */
+/**
+ * Default byte budget for one subscriber's frame buffer (`muxStreamBufferBytes`
+ * config). Single frames are bounded far below this by the session-log's own
+ * output limits, so a healthy consumer never approaches it while a stalled one
+ * cannot grow past it.
+ */
+export const DEFAULT_MUX_STREAM_BUFFER_BYTES = 8 * 1024 * 1024
+
+/** One buffered frame and its serialized size, measured once at push time. */
+interface FrameQueueEntry<F> { item: F; bytes: number }
+
+/**
+ * Simple async queue: core callbacks push, the AsyncIterable pulls; abort/return cleans up.
+ *
+ * Retention contract: the queue holds frames until they are pulled, up to the
+ * constructor's `maxBytes` of serialized JSON. A push that would exceed the
+ * budget ends the queue instead of buffering — the frame that crossed the
+ * budget is still delivered, then the stream closes. It never drops or
+ * truncates individual frames: a silently dropped delta would corrupt the
+ * client's incremental fold, while a closed event stream makes the SSE client
+ * reconnect and re-baseline. The mux re-open replays only the baseline
+ * (subscription, queue, jobs, pending) — events emitted inside the closed
+ * window are not resent; the client recovers them through the subscribed
+ * frame's tail check and its repairGap tail-page backfill.
+ */
 export class FrameQueue<F> {
-  private buffer: F[] = []
+  private buffer: FrameQueueEntry<F>[] = []
+  private head = 0
   private waiter: (() => void) | undefined
   private done = false
+  private totalBytes = 0
+
+  /**
+   * @param maxBytes - serialized-byte ceiling on retained frames; a push that
+   * exceeds it ends the queue (see the class retention contract).
+   */
+  constructor(private readonly maxBytes: number) {}
 
   /**
    * Enqueue one frame and wake a waiting iterator; frames pushed after `end()`
-   * are dropped.
+   * are dropped. A frame that pushes the retained total past `maxBytes` ends
+   * the queue.
    * @param item - the frame to enqueue.
    */
   push(item: F): void {
     if (this.done) return
-    this.buffer.push(item)
+    // The SSE layer serializes the same frame right after this, so this is the
+    // one honest measure of the retained value.
+    const bytes = Buffer.byteLength(JSON.stringify(item))
+    this.buffer.push({ item, bytes })
+    this.totalBytes += bytes
     this.waiter?.()
+    if (this.totalBytes > this.maxBytes) this.end()
   }
 
   /** Mark the queue finished: buffered frames still drain, later pushes are dropped. */
@@ -44,7 +82,15 @@ export class FrameQueue<F> {
     signal.addEventListener('abort', onAbort, { once: true })
     try {
       while (true) {
-        while (this.buffer.length > 0) yield this.buffer.shift() as F
+        while (this.head < this.buffer.length) {
+          const entry = this.buffer[this.head++] as FrameQueueEntry<F>
+          this.totalBytes -= entry.bytes
+          if (this.head === this.buffer.length) {
+            this.buffer = []
+            this.head = 0
+          }
+          yield entry.item
+        }
         if (this.done || signal.aborted) return
         await new Promise<void>((resolve) => { this.waiter = resolve })
         this.waiter = undefined

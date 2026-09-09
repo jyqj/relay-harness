@@ -1,5 +1,6 @@
 /** Tree watcher: active/degraded lifecycle, debounced triggers, idempotent dispose. */
 
+import type { FSWatcher } from 'node:fs'
 import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -113,4 +114,72 @@ describe('TreeWatcher', () => {
     await new Promise(resolvePromise => setTimeout(resolvePromise, 60))
     expect(onChange).not.toHaveBeenCalled()
   })
+})
+
+it('degrades and releases a watcher that emits an error after startup', async () => {
+  const root = await scratch()
+  const onChange = vi.fn()
+  const onDegraded = vi.fn()
+  const watcher = new TreeWatcher(root, onChange, onDegraded)
+  await watcher.start()
+  const native = Reflect.get(watcher, 'watcher') as FSWatcher
+  const close = vi.spyOn(native, 'close')
+  try {
+    watcher.schedule('pending.ts')
+    expect(() => native.emit('error', new Error('fixture watcher error'))).not.toThrow()
+    expect(watcher.state).toBe('degraded')
+    expect(onDegraded).toHaveBeenCalledTimes(1)
+    expect(close).toHaveBeenCalledTimes(1)
+    watcher.dispose()
+    expect(() => native.emit('error', new Error('late error'))).not.toThrow()
+    expect(watcher.state).toBe('off')
+    expect(onDegraded).toHaveBeenCalledTimes(1)
+    expect(onChange).not.toHaveBeenCalled()
+  } finally {
+    watcher.dispose()
+    close.mockRestore()
+  }
+})
+
+it.each(['dispose', 'error'] as const)('ignores retained native change callbacks after %s', async (ending) => {
+  const root = await scratch()
+  const onChange = vi.fn()
+  const watcher = new TreeWatcher(root, onChange)
+  await watcher.start()
+  const native = Reflect.get(watcher, 'watcher') as FSWatcher
+  vi.useFakeTimers()
+  try {
+    if (ending === 'dispose') watcher.dispose()
+    else native.emit('error', new Error('fixture retired handle'))
+    native.emit('change', 'change', 'late.ts')
+    await vi.advanceTimersByTimeAsync(WATCHER_EVENT_DEBOUNCE_MS * 2)
+    expect(onChange).not.toHaveBeenCalled()
+    expect(vi.getTimerCount()).toBe(0)
+    expect(watcher.state).toBe(ending === 'dispose' ? 'off' : 'degraded')
+  } finally {
+    watcher.dispose()
+    vi.useRealTimers()
+  }
+})
+
+it.each([null, 'src\\nested.ts'])('normalizes native event filename %j without narrowing a pending full refresh', async (filename) => {
+  const root = await scratch()
+  const onChange = vi.fn()
+  const watcher = new TreeWatcher(root, onChange)
+  await watcher.start()
+  const native = Reflect.get(watcher, 'watcher') as FSWatcher
+  vi.useFakeTimers()
+  try {
+    native.emit('change', 'change', filename)
+    await vi.advanceTimersByTimeAsync(WATCHER_EVENT_DEBOUNCE_MS)
+    expect(onChange).toHaveBeenLastCalledWith(filename === null ? undefined : ['src/nested.ts'])
+    watcher.schedule()
+    watcher.schedule('later-file.ts')
+    await vi.advanceTimersByTimeAsync(WATCHER_EVENT_DEBOUNCE_MS)
+    expect(onChange).toHaveBeenLastCalledWith(undefined)
+    expect(onChange).toHaveBeenCalledTimes(2)
+  } finally {
+    watcher.dispose()
+    vi.useRealTimers()
+  }
 })

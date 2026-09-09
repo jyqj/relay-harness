@@ -189,7 +189,11 @@ describe('HarnessSdkJsonRpcServer', () => {
     const liveAgents = new Map<string, Agent>([['main', mainAgent], ['other', otherAgent]])
     const ctx = {
       on: vi.fn(() => () => undefined),
-      agents: { create, get: (id: SessionId) => liveAgents.get(String(id)) },
+      agents: {
+        create,
+        resume: vi.fn(async () => { throw new Error('session "main" not found') }),
+        get: (id: SessionId) => liveAgents.get(String(id)),
+      },
       get: () => undefined,
     } as unknown as Context
     const server = new HarnessSdkJsonRpcServer(ctx, new FakeTransport())
@@ -209,6 +213,152 @@ describe('HarnessSdkJsonRpcServer', () => {
     expect(otherHandle.dispose).toHaveBeenCalledOnce()
   })
 
+  it('session/close disposes the agent and unregisters the session', async () => {
+    const firstAgent = ({
+      id: SessionId('main'),
+      followup: vi.fn<Agent['followup']>(),
+    } satisfies Pick<Agent, 'id' | 'followup'>) as unknown as Agent
+    const secondAgent = ({
+      id: SessionId('main'),
+      followup: vi.fn<Agent['followup']>(),
+    } satisfies Pick<Agent, 'id' | 'followup'>) as unknown as Agent
+    const firstHandle = { agent: firstAgent, dispose: vi.fn(() => Promise.resolve()) }
+    const secondHandle = { agent: secondAgent, dispose: vi.fn(() => Promise.resolve()) }
+    const create = vi.fn<(options: { sessionId: SessionId }) => Promise<AgentHandle>>()
+      .mockResolvedValueOnce(firstHandle)
+      .mockResolvedValueOnce(secondHandle)
+    const resume = vi.fn<(options: { resumeSessionId: SessionId }) => Promise<AgentHandle>>()
+      .mockRejectedValueOnce(new Error('session "main" not found'))
+      .mockResolvedValueOnce(secondHandle)
+    const liveAgents = new Map<string, Agent>([['main', firstAgent]])
+    const ctx = {
+      on: vi.fn(() => () => undefined),
+      agents: { create, resume, get: (id: SessionId) => liveAgents.get(String(id)) },
+      get: () => undefined,
+    } as unknown as Context
+    const server = new HarnessSdkJsonRpcServer(ctx, new FakeTransport())
+    const prompt = () => server.prompt({ sessionId: 'main', contentBlocks: [{ type: 'text', text: 'go' }] })
+
+    expect((await prompt()).messageId).toBeTypeOf('string')
+    expect(resume).toHaveBeenCalledTimes(1)
+    await server.handleRequest('session/close', { sessionId: 'main' })
+    expect(firstHandle.dispose).toHaveBeenCalledOnce()
+
+    // An unknown or already-closed id fails loud; a closed id is not reused.
+    await expect(server.handleRequest('session/close', { sessionId: 'main' }))
+      .rejects.toThrow('unknown session: main')
+    await expect(server.handleRequest('session/close', { sessionId: 'never-created' }))
+      .rejects.toThrow('unknown session: never-created')
+
+    // A later prompt for the closed id reattaches through resume: the id's
+    // durable log is its history, so only a first use ever hits create.
+    liveAgents.set('main', secondAgent)
+
+    expect((await prompt()).messageId).toBeTypeOf('string')
+    expect(resume).toHaveBeenCalledTimes(2)
+    expect(create).toHaveBeenCalledTimes(1)
+    expect(secondHandle.dispose).not.toHaveBeenCalled()
+    await server.shutdown()
+    expect(secondHandle.dispose).toHaveBeenCalledOnce()
+  })
+
+  it('pipelines a prompt for a mid-close session onto the in-flight dispose', async () => {
+    const firstFollowup = vi.fn<Agent['followup']>()
+    const secondFollowup = vi.fn<Agent['followup']>()
+    const firstAgent = ({
+      id: SessionId('main'),
+      followup: firstFollowup,
+    } satisfies Pick<Agent, 'id' | 'followup'>) as unknown as Agent
+    const secondAgent = ({
+      id: SessionId('main'),
+      followup: secondFollowup,
+    } satisfies Pick<Agent, 'id' | 'followup'>) as unknown as Agent
+    let releaseDispose!: () => void
+    const disposeReleased = new Promise<void>((resolve) => { releaseDispose = resolve })
+    const firstHandle = { agent: firstAgent, dispose: vi.fn(() => disposeReleased) }
+    const secondHandle = { agent: secondAgent, dispose: vi.fn(() => Promise.resolve()) }
+    const create = vi.fn<(options: { sessionId: SessionId }) => Promise<AgentHandle>>()
+      .mockResolvedValueOnce(firstHandle)
+    const resume = vi.fn<(options: { resumeSessionId: SessionId }) => Promise<AgentHandle>>()
+      .mockRejectedValueOnce(new Error('session "main" not found'))
+      .mockResolvedValueOnce(secondHandle)
+    const liveAgents = new Map<string, Agent>([['main', firstAgent]])
+    const ctx = {
+      on: vi.fn(() => () => undefined),
+      agents: { create, resume, get: (id: SessionId) => liveAgents.get(String(id)) },
+      get: () => undefined,
+    } as unknown as Context
+    const server = new HarnessSdkJsonRpcServer(ctx, new FakeTransport())
+    const prompt = () => server.prompt({ sessionId: 'main', contentBlocks: [{ type: 'text', text: 'go' }] })
+
+    expect((await prompt()).messageId).toBeTypeOf('string')
+    const closing = server.handleRequest('session/close', { sessionId: 'main' })
+    await vi.waitFor(() => { expect(firstHandle.dispose).toHaveBeenCalledOnce() })
+
+    // Both transports allow pipelining: a prompt issued before the close
+    // response must wait behind the in-flight dispose, then create the fresh
+    // session the close contract promises — never 'unknown session' and never
+    // a second agent racing the old agent's unregister.
+    liveAgents.set('main', secondAgent)
+    const reprompt = prompt()
+    let settled = false
+    void reprompt.then(() => { settled = true })
+    await new Promise(resolve => setTimeout(resolve, 0))
+    expect(settled).toBe(false)
+
+    releaseDispose()
+    await expect(closing).resolves.toEqual({})
+    expect((await reprompt).messageId).toBeTypeOf('string')
+    expect(firstFollowup).toHaveBeenCalledOnce()
+    expect(secondFollowup).toHaveBeenCalledOnce()
+    expect(resume).toHaveBeenCalledTimes(2)
+    expect(create).toHaveBeenCalledTimes(1)
+    await server.shutdown()
+    expect(firstHandle.dispose).toHaveBeenCalledOnce()
+    expect(secondHandle.dispose).toHaveBeenCalledOnce()
+  })
+
+  it('reattaches a released id by resuming its durable log', { timeout: 15_000 }, async () => {
+    const storageDir = await mkdtemp(join(tmpdir(), 'rlh-jsonrpc-reattach-'))
+    const llmServer = await mockCompletionServer()
+    vi.stubEnv('DEEPSEEK_API_KEY', 'test-key')
+    vi.stubEnv('DEEPSEEK_BASE_URL', llmServer.url)
+    const ctx = await makeHarness(storageDir)
+    try {
+      const server = new HarnessSdkJsonRpcServer(ctx, new FakeTransport())
+      await server.handleRequest('initialize', {
+        cwd: storageDir,
+        provider: 'deepseek-official',
+        model: 'dsagent-model',
+      })
+      await server.handleRequest('session/prompt', {
+        sessionId: 'main',
+        contentBlocks: [{ type: 'text', text: 'first turn' }],
+      })
+      await vi.waitFor(() => { expect(llmServer.requests).toHaveLength(1) })
+      await server.handleRequest('session/close', { sessionId: 'main' })
+
+      // The close released the id; a prompt for it must reattach the id's
+      // durable log, not collide with it — so the second request carries the
+      // first turn's history and the fresh turn persists to the same log.
+      await server.handleRequest('session/prompt', {
+        sessionId: 'main',
+        contentBlocks: [{ type: 'text', text: 'second turn' }],
+      })
+      await vi.waitFor(() => { expect(llmServer.requests).toHaveLength(2) })
+      const body = llmServer.requests[1] as { messages: { role: string; content: unknown }[] }
+      const userTexts = body.messages
+        .filter(message => message.role === 'user')
+        .map(message => JSON.stringify(message.content))
+      expect(userTexts.some(text => text.includes('first turn'))).toBe(true)
+      expect(userTexts.some(text => text.includes('second turn'))).toBe(true)
+      await server.handleRequest('shutdown', undefined)
+    } finally {
+      await ctx.fiber.dispose()
+      await rm(storageDir, { recursive: true, force: true })
+    }
+  })
+
   it('rejects a prompt for a session whose agent was disposed outside the server', async () => {
     const followup = vi.fn<Agent['followup']>()
     const agent = ({
@@ -224,6 +374,7 @@ describe('HarnessSdkJsonRpcServer', () => {
       on: vi.fn(() => () => undefined),
       agents: {
         create: vi.fn(async () => handle),
+        resume: vi.fn(async () => { throw new Error('session "zombie" not found') }),
         get: (id: SessionId) => (live && String(id) === 'zombie' ? agent : undefined),
       },
       get: () => undefined,

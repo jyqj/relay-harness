@@ -24,6 +24,7 @@ describe('CurrentWorkProjection', () => {
       byId: { [sessionId]: { cwd: '/work', projectionValues: {
         goal: { goal: { objective: 'Deliver product shell', phase: 'active' } },
         plan: { active: true, pending: false },
+        deliverables: { paths: ['a.md', 'b.ts'], unindexedResults: 0 },
       } } },
       jobsBySession: { [sessionId]: [
         { status: 'running' }, { status: 'completed' }, { status: 'stopping' },
@@ -44,6 +45,8 @@ describe('CurrentWorkProjection', () => {
       jobs: { total: 3, running: 2 },
       trajectoryRecords: 3,
       deliverables: ['a.md', 'b.ts'],
+      unindexedResults: 0,
+      acceptance: null,
       approvals: 1,
       questions: 1,
       completion: 'running',
@@ -53,4 +56,83 @@ describe('CurrentWorkProjection', () => {
     expect(listListeners.size).toBe(0)
     expect(sessionListeners.size).toBe(0)
   })
+})
+
+function workHarness(phase: string, running = false, jobStatus?: string) {
+  const listListeners = new Set<() => void>()
+  const sessionListeners = new Set<() => void>()
+  const snapshot = {
+    views: { get: () => undefined }, pending: [], running,
+    get chat(): never { throw new Error('Work must not scan the paged chat timeline') },
+  }
+  const state = {
+    current: 's1',
+    byId: { s1: { cwd: '/work', projectionValues: {
+      goal: { goal: { objective: 'Ship', phase } },
+      deliverables: { paths: ['older-than-page.md'], unindexedResults: 0 },
+    } } },
+    jobsBySession: { s1: jobStatus === undefined ? [] : [{ status: jobStatus }] },
+  }
+  const session = {
+    getSnapshot: () => snapshot,
+    subscribe: (fn: () => void) => { sessionListeners.add(fn); return () => { sessionListeners.delete(fn) } },
+  }
+  const sessions = {
+    list: { getSnapshot: () => state, subscribe: (fn: () => void) => { listListeners.add(fn); return () => { listListeners.delete(fn) } } },
+    binding: () => ({ session }),
+  } as unknown as ISessions
+  return { projection: new CurrentWorkProjection(sessions), snapshot, state, sessionListeners, listListeners }
+}
+
+describe('Work fact invalidation', () => {
+  it.each([
+    ['paused', false, undefined, 'paused'], ['blocked', false, undefined, 'blocked'],
+    ['complete', true, undefined, 'running'], ['complete', false, 'running', 'running'],
+    ['complete', false, 'stopping', 'running'], ['complete', false, undefined, 'complete'],
+  ] as const)('derives %s with running=%s and job=%s as %s', (phase, running, jobStatus, expected) => {
+    const { projection } = workHarness(phase, running, jobStatus)
+    expect(projection.getSnapshot().completion).toBe(expected)
+    expect(projection.getSnapshot().deliverables).toEqual(['older-than-page.md'])
+    projection.dispose()
+  })
+
+  it('does not publish when streams or equivalent carrier snapshots change no Work facts', () => {
+    const { projection, state, snapshot, sessionListeners, listListeners } = workHarness('active', true)
+    const original = projection.getSnapshot()
+    let calls = 0
+    projection.subscribe(() => { calls++ })
+    for (let i = 0; i < 100; i++) for (const fn of sessionListeners) fn()
+    state.byId.s1.projectionValues.deliverables = { paths: ['older-than-page.md'], unindexedResults: 0 }
+    for (const fn of listListeners) fn()
+    expect(projection.getSnapshot()).toBe(original)
+    expect(calls).toBe(0)
+    snapshot.running = false
+    for (const fn of sessionListeners) fn()
+    expect(projection.getSnapshot().completion).toBe('idle')
+    expect(calls).toBe(1)
+    projection.dispose()
+  })
+})
+
+it('does not publish streaming review-sequence changes while Work is busy', () => {
+  const { projection, state, snapshot, sessionListeners } = workHarness('active', true)
+  const initial = projection.getSnapshot()
+  let notifications = 0
+  projection.subscribe(() => { notifications += 1 })
+  for (let reviewRevision = 1; reviewRevision <= 100; reviewRevision += 1) {
+    Object.assign(state.byId.s1.projectionValues, {
+      workAcceptance: { reviewRevision, acceptedRevision: 0, reviewable: false },
+    })
+    for (const listener of sessionListeners) listener()
+  }
+  expect(notifications).toBe(0)
+  expect(projection.getSnapshot()).toBe(initial)
+  snapshot.running = false
+  Object.assign(state.byId.s1.projectionValues, {
+    workAcceptance: { reviewRevision: 101, acceptedRevision: 0, reviewable: true },
+  })
+  for (const listener of sessionListeners) listener()
+  expect(notifications).toBe(1)
+  expect(projection.getSnapshot().acceptance?.reviewRevision).toBe(101)
+  projection.dispose()
 })

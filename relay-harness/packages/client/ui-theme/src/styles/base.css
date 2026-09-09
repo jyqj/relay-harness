@@ -1,7 +1,7 @@
 /* Base variables referenced by the token sheets and component CSS — the root
  * font, type scale and motion values of the rlh web design language
  * (docs/web-styling.md), supplied here so the composite --rlw-font-*
- * variables resolve and motion rides one shared curve. Code font stack
+ * variables resolve and motion rides one shared ladder. Code font stack
  * deliberately omits a bare `monospace` tail (Windows CJK falls back to
  * SimSun otherwise). */
 
@@ -80,19 +80,6 @@
   --rlw-text-heading-tracking: -0.015em;
   --rlw-text-display-tracking: -0.022em;
 
-  --rl-ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
-  --rl-transition-duration: 0.2s;
-  --rl-transition-duration-fast: 0.1s;
-  --rl-transition-duration-slow: 0.3s;
-  --rl-motion-duration-overlay: var(--rl-transition-duration);
-  --rl-motion-duration-overlay-out: var(--rl-transition-duration-fast);
-  --rl-motion-duration-popover: 0.16s;
-  --rl-motion-duration-swap: var(--rl-transition-duration-fast);
-  --rl-motion-duration-flip: 0.4s;
-  --rl-motion-distance-overlay: 8px;
-  --rl-motion-distance-popover: 4px;
-  --rl-motion-scale-overlay: 0.96;
-
   /*
    * Tempo for component transitions, scaled by what is moving rather than by
    * importance: a state change (hover, press, a colour shift) uses quick —
@@ -108,18 +95,14 @@
   --rlw-motion-slow: 340ms;
   --rlw-ease-out-quart: cubic-bezier(0.22, 1, 0.36, 1);
   --rlw-ease-in-cubic: cubic-bezier(0.55, 0, 1, 0.45);
+  /* Neutral state-change curve (hover, colour shift): the one curve the
+     retired `--rl-ease-*` ladder carried forward. Enter/exit motion uses the
+     directional curves above instead. */
+  --rlw-ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 @media (prefers-reduced-motion: reduce) {
   :root {
-    --rl-transition-duration: 0s;
-    --rl-transition-duration-fast: 0s;
-    --rl-transition-duration-slow: 0s;
-    --rl-motion-duration-overlay: 0s;
-    --rl-motion-duration-overlay-out: 0s;
-    --rl-motion-duration-popover: 0s;
-    --rl-motion-duration-swap: 0s;
-    --rl-motion-duration-flip: 0s;
     --rlw-motion-quick: 0s;
     --rlw-motion-base: 0s;
     --rlw-motion-slow: 0s;

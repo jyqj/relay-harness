@@ -1,24 +1,21 @@
 - banner:
   - navigation "Session hierarchy":
     - button "Reply with a one-sentence description" [disabled]
-  - img
-  - text: Standard mode
-  - tablist:
-    - tab "Chat" [selected]
-    - tab "Trajectory"
+  - button "Session Tree"
+  - button "Inspect context used for this session": Context 1
 - text: Reply with a one-sentence description of event sourcing, then stop. {{clock}}
 - button "Copy":
   - img
 - button "Edit":
   - img
+- button "Context injection code-index":
+  - img
+  - img
+  - text: Context injection code-index
 - button "Context injection @relay-harness/rlh-system-prompt":
   - img
   - img
   - text: Context injection @relay-harness/rlh-system-prompt
-- button "Context injection skill-catalog":
-  - img
-  - img
-  - text: Context injection skill-catalog
 - group:
   - status: Retried model request (1/5) · {{duration}}
 - button "Think The user is asking for a one-sentence description of event sourcing. This is a straightforward knowledge question that doesn't require any skill loading or tool calls.":
@@ -38,9 +35,8 @@
 - textbox "Message the agent"
 - button "Commands":
   - img
-- 'button "Access mode, current: Workspace Write"': Workspace Write
-- button "Select model, current DeepSeek-V4-Flash":
-  - text: DeepSeek-V4-Flash
+- 'button "Access mode, current: Standard"': Standard
+- button "Enhance prompt" [disabled]:
   - img
 - button "6% of context used"
 - button "Send message" [disabled]

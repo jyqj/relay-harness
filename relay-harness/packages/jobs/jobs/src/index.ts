@@ -51,6 +51,11 @@ declare module '@relay-harness/cordis' {
  *   outcome. Completion is announced last, after the record is committed and
  *   every other observer of the settlement has seen it, because a reporter
  *   may open a model turn synchronously.
+ * - Terminal records are retained only until they are reported — their
+ *   completion notice deliverable — plus an implementation-configured grace
+ *   window, subject to a per-owner cap. Implementations prune at registry
+ *   entry points, never drop an unreported terminal record (completion
+ *   notices are at-least-once), and a pruned id reads as an unknown job.
  * - {@link start} refuses work while no attached job controller serves the
  *   spec's owner, so a producer cannot start work that owner cannot collect
  *   or stop. One registry serves every composition in the process, so this

@@ -343,8 +343,9 @@ interface ToolDispatchExecution extends Omit<ToolExecution, 'signal'> {
 
 ```ts type-equiv
 /**
- * A monotonic execution guard evaluated after every `tools/pre-execute`
- * listener and before the tool body. Returning a reason denies the call;
+ * A monotonic execution guard evaluated after the `tools/pre-execute`
+ * waterfall and again after resource acquisition, immediately before each
+ * tool body invocation. Returning a reason denies the call;
  * returning `undefined` leaves it unchanged. Because guards have no allow
  * result, listener ordering cannot turn a denial back into permission.
  * @param execution - the identity-protected call after extensible pre-execute policy completed.
@@ -373,6 +374,8 @@ interface ToolExecutionSuccess {
   readonly error?: never
   readonly meta?: JsonValue
   readonly additionalContexts?: UserMessage[]
+  /** Execution-captured root mutation paths; absent means capture was unavailable, empty means no declared files. */
+  readonly producedFiles?: readonly string[]
   /** The agent loop stops after committing this successful result batch. */
   readonly concludesTurn?: true
 }
@@ -396,7 +399,7 @@ interface ToolExecutionFailure {
 type ToolExecutionResult = ToolExecutionSuccess | ToolExecutionFailure
 ```
 
-结果仅承载产出。调用身份保留在不可变的 `ToolExecution` 上，后者伴随结果经过每个钩子，并出现在持久化的 `tool/call` / `tool/result` 会话事件上，因此包装层无法创建第二个相互矛盾的身份。规范的 `value` 仅存在于执行期间：循环只持久化 `content`、`error` 和 `meta`，`tool/code-dispatch` 则原样存储子调用渲染后的 `content` 与 `isError`。回放可以重现展示，却无法重建规范的中间值。
+结果仅承载产出。调用身份保留在不可变的 `ToolExecution` 上，后者伴随结果经过每个钩子，并出现在持久化的 `tool/call` / `tool/result` 会话事件上，因此包装层无法创建第二个相互矛盾的身份。规范的 `value` 仅存在于执行期间：循环持久化 `content`、`error`、`meta` 与执行时捕获的 `producedFiles`，`tool/code-dispatch` 则原样存储子调用渲染后的 `content` 与 `isError`。回放可以重现展示，却无法重建规范的中间值。
 
 成功时，注册表会快照并校验函数体返回值，将其冻结，然后调用纯渲染器；对于直接的外层调用，还会调用可选的元数据投影器。注册表会在 `tools/result` 之前另行物化持久展示字段；无效值、渲染器/投影器失败或非 JSON 展示都会转为 JSON 安全的 `isError`。因此，最终实时观察者能看到精确的执行期值，以及可安全用于后续持久追加的字段。
 
@@ -546,8 +549,9 @@ restrict(filter: ToolRestriction): () => void
  * waterfall. A plain-context guard applies globally; one registered through
  * `agent.ctx` applies only to that agent. Any matching guard may deny by
  * returning a reason, while no guard can force-allow a call another guard
- * denied. The exact effect disposer is returned for ordered ownership and
- * HMR cleanup.
+ * denied. Guards run again after around-dispatch and resource waits, before
+ * each body invocation; they must support repeated synchronous checks.
+ * The exact effect disposer is returned for ordered ownership and HMR cleanup.
  * @param guard - synchronous check; a returned string denies the execution.
  * @returns the exact disposer that unregisters the guard.
  */
@@ -600,7 +604,7 @@ async execute(exec: ToolExecutionInput): Promise<ToolExecutionResult>
 
 Types: [ScopeKey](scope.md)
 
-Source: [`packages/core/tools/src/index.ts:867`](../../packages/core/tools/src/index.ts)
+Source: [`packages/core/tools/src/index.ts:871`](../../packages/core/tools/src/index.ts)
 
 <a id="tools-events"></a>
 
@@ -625,7 +629,7 @@ A tool was registered or unregistered, or a scoped restriction changed (the avai
 'tools/change'(): void
 ```
 
-Source: [`packages/core/tools/src/index.ts:209`](../../packages/core/tools/src/index.ts)
+Source: [`packages/core/tools/src/index.ts:210`](../../packages/core/tools/src/index.ts)
 
 <a id="toolscode-dispatch-log--waterfall"></a>
 
@@ -652,7 +656,7 @@ Allow a listener to replace content in the DURABLE LOG COPY of one `run_code` su
 
 Types: [ContentBlock](llm-streaming.md) · [Scoped](scope.md)
 
-Source: [`packages/core/tools/src/index.ts:191`](../../packages/core/tools/src/index.ts)
+Source: [`packages/core/tools/src/index.ts:192`](../../packages/core/tools/src/index.ts)
 
 <a id="toolsexecute--waterfall"></a>
 
@@ -676,7 +680,7 @@ Around-dispatch waterfall for timeout, retry, or metrics. `next()` returns a nor
 
 Types: [Scoped](scope.md)
 
-Source: [`packages/core/tools/src/index.ts:165`](../../packages/core/tools/src/index.ts)
+Source: [`packages/core/tools/src/index.ts:166`](../../packages/core/tools/src/index.ts)
 
 <a id="toolspost-execute--waterfall"></a>
 
@@ -701,7 +705,7 @@ Accept, replace, enrich, or block a normalized dispatch result. `next()` accepts
 
 Types: [Scoped](scope.md)
 
-Source: [`packages/core/tools/src/index.ts:177`](../../packages/core/tools/src/index.ts)
+Source: [`packages/core/tools/src/index.ts:178`](../../packages/core/tools/src/index.ts)
 
 <a id="toolspre-execute--waterfall"></a>
 
@@ -724,7 +728,7 @@ Allow, deny, or ask before dispatch. `next()` delegates to allow; missing approv
 
 Types: [Scoped](scope.md)
 
-Source: [`packages/core/tools/src/index.ts:154`](../../packages/core/tools/src/index.ts)
+Source: [`packages/core/tools/src/index.ts:155`](../../packages/core/tools/src/index.ts)
 
 <a id="toolsresult--emit"></a>
 
@@ -745,5 +749,5 @@ Observe the frozen, lossless-JSON final outcome. Listener failures are contained
 
 Types: [Scoped](scope.md)
 
-Source: [`packages/core/tools/src/index.ts:199`](../../packages/core/tools/src/index.ts)
+Source: [`packages/core/tools/src/index.ts:200`](../../packages/core/tools/src/index.ts)
 <!-- END GENERATED cordis-surface -->

@@ -1,3 +1,4 @@
+// @ts-check
 function applyDarkAttribute(dark) {
   document.documentElement.toggleAttribute('data-rl-dark-theme', dark);
   document.body?.toggleAttribute('data-rl-dark-theme', dark);

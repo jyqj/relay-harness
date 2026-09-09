@@ -1,112 +1,140 @@
 /** Browser runtime services for slots, sessions, workspaces, and connection-stream delivery. */
 import type { Context } from '@relay-harness/cordis'
-import type { ConnectionHandle, ConnectionSinks, SessionId } from '@relay-harness/rlh-api-remotes/client'
+import type { ConnectionHandle,ConnectionSinks,SessionId } from '@relay-harness/rlh-api-remotes/client'
 // Type-only: the ctx.remote merge. Deliberately the gateway's Client half rather
 // than api-remotes': that face imports a Host-tsdown-generated artifact, and this
 // project sits in the Host build graph.
-import type {} from '@relay-harness/rlh-api-remotes/client'
+import type { } from '@relay-harness/rlh-api-remotes/client'
+import type { MaybeSnapshotSelectorHook,SnapshotSelectorHook } from '@relay-harness/rlh-client-ui-slots'
 import type { TypertContext } from '@relay-harness/rlh-typert-protocol'
-import type { MaybeSnapshotSelectorHook, SnapshotSelectorHook } from '@relay-harness/rlh-client-ui-slots'
-import { SlotRegistry } from './slots.ts'
-import { SessionRuntime } from './sessions/service.ts'
-import type { SessionListState } from './sessions/service.ts'
-import { WorkspaceRuntime } from './workspaces/service.ts'
-import type { ConversationSnapshot } from './sessions/conversation.ts'
-import type { UseProjection } from './sessions/projection-store.ts'
+import type { ConversationSnapshot } from './contract/session-snapshot.ts'
+import type { SessionListState } from './contract/sessions.ts'
 import { ConversationEventRegistry } from './conversation/event-registry.ts'
 import { ConversationViewRegistry } from './conversation/view-registry.ts'
+import type { UseProjection } from './sessions/projection-store.ts'
+import { SessionRuntime } from './sessions/service.ts'
+import { SlotRegistry } from './slots.ts'
+import { WorkspaceRuntime } from './workspaces/service.ts'
 
-export { isAppendSurfaceEvent, isReplacementSurfaceEvent } from '@relay-harness/rlh-session/surface'
+export { isAppendSurfaceEvent,isReplacementSurfaceEvent } from '@relay-harness/rlh-session/surface'
 
-export { SlotRegistry } from './slots.ts'
+export { conversationContextKey } from './contract/conversation.ts'
+export type {
+  ChatConversationViewNode,
+  ConversationContextReader,
+  ConversationEventInput,
+  ConversationLocation,
+  ConversationLocationData,
+  ConversationLocationDataScope,
+  ConversationLocationDataStore,
+  ConversationMatch,
+  ConversationMatchResult,
+  ConversationNodeContext,ConversationNodeDefinition,ConversationPreviousContext,
+  ConversationPublication,ConversationStepDataMap,ConversationTimelineSnapshot,ConversationTurnDataMap,ConversationViewBuilder,
+  ConversationViewDefinition,ConversationViewNode,ConversationViewSnapshotMap,
+  ConversationViewSnapshotStore,StepLocation,TurnLocation,
+} from './contract/conversation.ts'
 export { ConversationEventRegistry } from './conversation/event-registry.ts'
 export { ConversationViewRegistry } from './conversation/view-registry.ts'
 export { ConversationNodeAssembler } from './sessions/conversation-assembler.ts'
-export { ConversationLocationIndex } from './sessions/conversation-location-index.ts'
-export { conversationContextKey } from './contract/conversation.ts'
-export type {
-  ChatConversationViewNode, ConversationContextReader, ConversationEventInput,
-  ConversationLocationData, ConversationLocationDataScope, ConversationLocationDataStore,
-  ConversationStepDataMap,
-  ConversationLocation, ConversationMatch, ConversationMatchResult,
-  ConversationNodeContext, ConversationNodeDefinition, ConversationPreviousContext,
-  ConversationPublication, ConversationTimelineSnapshot, ConversationTurnDataMap, ConversationViewBuilder,
-  ConversationViewDefinition, ConversationViewNode, ConversationViewSnapshotMap,
-  ConversationViewSnapshotStore, StepLocation, TurnLocation,
-} from './contract/conversation.ts'
 export type { ConversationRuntime } from './sessions/conversation-assembler.ts'
-export type { RootOwnerProps } from './slots.ts'
-export { SessionCreateError, SessionRuntime, scopeOf, workspaceTitleOf } from './sessions/service.ts'
+export { ConversationLocationIndex } from './sessions/conversation-location-index.ts'
+export { scopeOf,SessionCreateError,SessionRuntime,workspaceTitleOf } from './sessions/service.ts'
 export { indexSubagentDescendants } from './sessions/subagent-lineage.ts'
 export type { SubagentDescendantSummary } from './sessions/subagent-lineage.ts'
+export { SlotRegistry } from './slots.ts'
+export type { RootOwnerProps } from './slots.ts'
 // The provide channel is shared with the client test runtime (one
 // materialization/projection implementation; no test-side mirror to drift).
+export { createScope } from './scope.ts'
+export type { AgentScopeHandle } from './scope.ts'
 export { SessionProvideChannel } from './sessions/provide.ts'
 export type { SessionProvideChannelHost } from './sessions/provide.ts'
-export { createScope } from './agents/scope.ts'
-export type { AgentScopeHandle } from './agents/scope.ts'
-export { DirectoryBrowseError, WorkspaceCreateError, WorkspaceRuntime } from './workspaces/service.ts'
-export { abbreviateHomePath, resolveWorkspacePath } from './workspaces/path.ts'
+export { abbreviateHomePath,resolveWorkspacePath } from './workspaces/path.ts'
+export { DirectoryBrowseError,WorkspaceCreateError,WorkspaceRuntime } from './workspaces/service.ts'
 // Contract only: the scope implementation and its Host transport belong to
 // rlh-client-ui-settings (see that package's settings-scope.ts).
 export type {
-  SettingsScope, SettingsScopeSnapshot, SettingsScopeSpec,
-} from './contract/settings-scope.ts'
-export type { Session } from './sessions/session.ts'
-export type { ISession, ProjectionsFace, SessionFace } from './contract/session.ts'
-export type { AgentContext, ISessions } from './contract/sessions.ts'
-export type { IWorkspaces } from './contract/workspaces.ts'
-export type {
-  SessionBinding, SessionListState, SessionProvideContribution, SessionProvideDescriptor, SessionSummary,
-} from './sessions/service.ts'
-export type { SessionListPhase, SessionSearchResultItem, SubagentCatalogSnapshot } from './sessions/manager.ts'
-export type { SubagentAddress, JobView } from '@relay-harness/rlh-client-connection/client'
-export type { WorkspaceListPhase } from './workspaces/manager.ts'
-export type { WorkspaceListState } from './workspaces/service.ts'
-export type {
-  DirectoryEntry, DirectoryListing, WorkspaceId, WorkspaceView,
+  DirectoryEntry,
+  DirectoryListing,
+  JobView,
+  SubagentAddress,
+  WorkspaceId,
+  WorkspaceView,
 } from '@relay-harness/rlh-client-connection/client'
+export type { ISession,ProjectionsFace,SessionFace } from './contract/session.ts'
+export type {
+  AgentContext,
+  ISessions,
+  SessionBinding,
+  SessionListPhase,
+  SessionListState,
+  SessionProvideContribution,
+  SessionProvideDescriptor,
+  SessionSearchResultItem,
+  SessionSummary,
+  SubagentCatalogSnapshot,
+} from './contract/sessions.ts'
+export type {
+  SettingsScope,SettingsScopeSnapshot,SettingsScopeSpec,
+} from './contract/settings-scope.ts'
+export type { IWorkspaces,WorkspaceListPhase,WorkspaceListState } from './contract/workspaces.ts'
+export type { Session } from './sessions/session.ts'
 // Runtime owns the snapshot store; ui-renderer only binds it to React.
-export { createSnapshotStore, defineStore, shallowEqual } from './contract/store.ts'
+export { contextForm,contextProvenance,sessionRecallLabels } from './context-provenance.ts'
+export type { ContextProvenanceView,ContextRole,KnownContextForm } from './context-provenance.ts'
+export { EMPTY_CHAT_SNAPSHOT,EMPTY_CONVERSATION_VIEWS,toAssistantBlock,toAssistantBlocks } from './contract/session-snapshot.ts'
 export type {
-  EngineStoreHandle, EngineStoreInstance, ObservableSnapshot, SnapshotStore,
+  AssistantBlock,
+  AssistantMessageNode,
+  AssistantProvenanceView,
+  AssistantRequestConfig,
+  AssistantTiming,
+  ChatLocationNodeIndex,
+  ChatNodeStore,
+  ChatSnapshot,
+  CommandNode,
+  CompactionSummaryNode,
+  ComposerPhase,
+  ContextMessageNode,
+  ConversationNode,
+  ConversationSnapshot,
+  LegacyConversationSlice,
+  ModelRetryNode,
+  PartialAssistant,
+  QueuedMessage,
+  RunningToolCall,
+  SteeringMessageNode,
+  TodoItem,
+  ToolCallBlock,
+  ToolResultNode,
+  TurnErrorNode,
+  TurnMaxTokensNode,
+  UnknownSurfaceNode,
+  UserMessageNode,
+} from './contract/session-snapshot.ts'
+export { createSnapshotStore,defineStore,shallowEqual } from './contract/store.ts'
+export type {
+  EngineStoreHandle,EngineStoreInstance,ObservableSnapshot,SnapshotStore,
 } from './contract/store.ts'
+export { PendingWait } from './pending.ts'
+export type { PendingInteraction,PendingInteractionStatus,PendingKind,PendingPayloads } from './pending.ts'
+export { isTokenDelta } from '@relay-harness/rlh-llm/message'
 export type {
-  AssistantBlock, AssistantMessageNode, AssistantProvenanceView, AssistantRequestConfig,
-  AssistantTiming, ChatLocationNodeIndex, ChatNodeStore, ChatSnapshot,
-  CommandNode, CompactionSummaryNode, ComposerPhase,
-  ContextMessageNode, ConversationNode, ConversationSnapshot, ModelRetryNode, QueuedMessage,
-  LegacyConversationSlice, PartialAssistant, RunningToolCall,
-  SteeringMessageNode, TodoItem, ToolCallBlock, ToolResultNode, TurnErrorNode, TurnMaxTokensNode,
-  UnknownSurfaceNode, UserMessageNode,
-} from './sessions/conversation.ts'
-export {
-  EMPTY_CHAT_SNAPSHOT, EMPTY_CONVERSATION_VIEWS, toAssistantBlock, toAssistantBlocks,
-} from './sessions/conversation.ts'
-export { emptyAssistantBlock } from './sessions/partial.ts'
-export { isTokenDelta } from './sessions/assistant-timing.ts'
-export { contextForm, contextProvenance, sessionRecallLabels } from './sessions/context-provenance.ts'
-export { displayFailureMessage } from './sessions/failure-display.ts'
-export type {
-  ConversationContext, ConversationContextOriginKind,
+  ConversationContext,ConversationContextOriginKind,
 } from './sessions/conversation-context.ts'
+export { displayFailureMessage } from './sessions/failure-display.ts'
+export { emptyAssistantBlock } from './sessions/partial.ts'
 export type {
-  ContextProvenanceView, ContextRole, KnownContextForm,
-} from './sessions/context-provenance.ts'
-export type {
-  ConversationPromptSnapshot, RequestInspectionSnapshot, RequestPromptChange, RequestView,
+  ConversationPromptSnapshot,RequestInspectionSnapshot,RequestPromptChange,RequestView,
 } from './sessions/request-inspection.ts'
-export { PendingWait } from './sessions/pending.ts'
-export type {
-  PendingInteraction, PendingInteractionStatus, PendingKind, PendingPayloads,
-} from './sessions/pending.ts'
 // Projection value store (push model; see the session-projection subsystem
 // page, docs/subsystems/session-projection.md): host-computed
 // whole values per key; domains ship projection support with zero client code.
-export type {
-  ProjectionsBaseline, ProjectionValueStore, SessionProjectionMap, UseProjection,
-} from './sessions/projection-store.ts'
 export type { SessionId } from '@relay-harness/rlh-client-connection/client'
+export type {
+  ProjectionsBaseline,ProjectionValueStore,SessionProjectionMap,UseProjection,
+} from './sessions/projection-store.ts'
 
 /** Client-side Cordis context after declaration merging. */
 export type ClientContext = Context
@@ -146,7 +174,7 @@ declare module '@relay-harness/rlh-client-ui-slots' {
   interface GlobalStandardProps {
     useSessions: SnapshotSelectorHook<SessionListState>
     /** Selector hook over real Workspaces and their independent baseline lifecycle. */
-    useWorkspaces: SnapshotSelectorHook<import('./workspaces/service.ts').WorkspaceListState>
+    useWorkspaces: SnapshotSelectorHook<import('./contract/workspaces.ts').WorkspaceListState>
   }
 }
 
@@ -223,9 +251,10 @@ export function apply(ctx: Context): void {
       ctx.emit('connection/reset')
     },
     onStateChange: (state) => {
-      // Generation death fires before any next-generation frame can arrive
-      // (reconnect replays flow from stream open, ahead of onConnected):
-      // the only safe moment to drop generation-scoped interaction state.
+      // Generation death fires before any next-generation traffic: the fresh
+      // generation runs describe + awaits onConnected hydration before the
+      // streams reopen. The only safe moment to drop generation-scoped
+      // interaction state.
       if (state === 'reconnecting') {
         sessions.handleDisconnected()
       }

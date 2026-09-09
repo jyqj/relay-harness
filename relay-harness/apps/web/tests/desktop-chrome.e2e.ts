@@ -48,12 +48,14 @@ describe('web e2e: titlebar cluster and surfaces empty five cards', () => {
     const cluster = page.locator('#rlhd-shell-titlebar-trailing')
     await cluster.waitFor({ timeout: 15_000 })
     const sessionLog = cluster.getByRole('button', { name: 'Session log' })
+    const sessionTree = cluster.getByRole('button', { name: 'Open Session Tree' })
     const branch = cluster.getByRole('button', { name: 'Switch branch' })
     const git = cluster.getByRole('button', { name: 'Commit' })
     const gitMenu = cluster.getByRole('button', { name: 'Git actions' })
     const terminal = cluster.getByRole('button', { name: 'Toggle terminal drawer' })
     const surfaces = cluster.getByRole('button', { name: 'Toggle right panel' })
     expect(await sessionLog.isVisible()).toBe(true)
+    expect(await sessionTree.isVisible()).toBe(true)
     expect(await branch.isVisible()).toBe(true)
     expect(await git.isVisible()).toBe(true)
     expect(await gitMenu.isVisible()).toBe(true)
@@ -61,6 +63,7 @@ describe('web e2e: titlebar cluster and surfaces empty five cards', () => {
     expect(await surfaces.isVisible()).toBe(true)
     const boxes = await Promise.all([
       sessionLog.boundingBox(),
+      sessionTree.boundingBox(),
       branch.boundingBox(),
       git.boundingBox(),
       terminal.boundingBox(),
@@ -75,6 +78,7 @@ describe('web e2e: titlebar cluster and surfaces empty five cards', () => {
     const snapshot = await captureStableAria(page, '#rlhd-shell-titlebar-trailing', scaffold.workspaceCwd)
     await compareOrRefreshGolden(TITLEBAR_EXPECTED, snapshot, MODE)
     expect(snapshot).toContain('Session log')
+    expect(snapshot).toContain('Open Session Tree')
     expect(snapshot).toContain('Switch branch')
     expect(snapshot).toContain('Commit')
     expect(snapshot).toContain('Git actions')
@@ -157,10 +161,12 @@ describe('web e2e: titlebar cluster and surfaces empty five cards', () => {
     await expect.poll(() => surfaces.getAttribute('aria-pressed'), { timeout: 10_000 }).toBe('true')
     const cluster = page.locator('#rlhd-shell-titlebar-trailing')
     const sessionLog = cluster.getByRole('button', { name: 'Session log' })
+    const sessionTree = cluster.getByRole('button', { name: 'Open Session Tree' })
     const branch = cluster.getByRole('button', { name: 'Switch branch' })
     const git = cluster.getByRole('button', { name: 'Commit' })
     const boxes = await Promise.all([
       sessionLog.boundingBox(),
+      sessionTree.boundingBox(),
       branch.boundingBox(),
       git.boundingBox(),
     ])

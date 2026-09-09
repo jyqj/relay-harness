@@ -297,7 +297,7 @@ export function ToolRow({
               onClick={inspect}
             >
               <IconInspectOutline12 />
-              Inspect
+              {t('row.inspect')}
             </button>
           )}
         </div>

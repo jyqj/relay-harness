@@ -21,10 +21,11 @@ declare module '@relay-harness/rlh-client-ui-slots' {
     // only this suite's own test keys merge here.
     'spec.single': { kind: 'single'; scope: 'root'; owner: { label?: string } }
     'spec.list': { kind: 'list'; scope: 'root' }
+    'spec.keyed': { kind: 'keyed'; scope: 'root' }
   }
 }
 
-type FrameSlots = PropsRenderSlots<'spec.single' | 'spec.list'>
+type FrameSlots = PropsRenderSlots<'spec.single' | 'spec.list' | 'spec.keyed'>
 
 /** Passthrough host over the real core (store/session seats unused here). */
 function hostOver(core: SlotCore): SlotRendererHost {
@@ -32,7 +33,7 @@ function hostOver(core: SlotCore): SlotRendererHost {
   return {
     subscribe: (key, fn) => core.subscribe(key, fn),
     getVersion: key => core.getVersion(key),
-    entriesOf: key => core.entries(key),
+    entriesOf: key => core.renderCandidates(key),
     entriesOfSlot: key => core.entriesOfSlot(key),
     reportEntryError: (key, entry, error, info) => { core.reportEntryError(key, entry, error, info) },
     specOf: key => core.specDynamic(key),
@@ -55,6 +56,7 @@ function mountFrame(core: SlotCore, body: (renderSlot: FrameSlots['renderSlot'])
     children: {
       'spec.single': { kind: 'single', scope: 'root' },
       'spec.list': { kind: 'list', scope: 'root' },
+      'spec.keyed': { kind: 'keyed', scope: 'root' },
     },
   }, (props: FrameSlots) => <>{body(props.renderSlot)}</>)
   const view = render(<>{createSlotRenderer().renderRoot(hostOver(core), {})}</>)
@@ -95,6 +97,7 @@ describe('createSlotRenderer over the real SlotCore', () => {
     core.register({ name: 'root', children: {
       'spec.single': { kind: 'single', scope: 'root' },
       'spec.list': { kind: 'list', scope: 'root' },
+      'spec.keyed': { kind: 'keyed', scope: 'root' },
     } }, (props: FrameSlots) => <>
       {props.renderSlot('spec.single', { label: 'owner' })}
       {props.renderSlot('spec.list', {})}
@@ -125,4 +128,43 @@ describe('createSlotRenderer over the real SlotCore', () => {
     dispose()
     expect(() => captured!('spec.single', {})).toThrow(StaleAuthorizationError)
   })
+})
+
+it.each(['single', 'list', 'keyed'] as const)('treats policy-suppressed %s cells as intentionally empty, not crashed', async (kind) => {
+  const core = new SlotCore()
+  const slot = kind === 'single' ? 'spec.single' : kind === 'list' ? 'spec.list' : 'spec.keyed'
+  const { view, dispose } = mountFrame(core, renderSlot => renderSlot(slot, {}, { fallback: <i>hidden</i>, entryKey: 'target' }))
+  let release = () => {}
+  try {
+    await act(async () => {
+      if (kind === 'single') core.register({ name: 'spec.single' }, () => <b>visible</b>)
+      else if (kind === 'list') core.register({ name: 'spec.list', id: 'target' }, () => <b>visible</b>)
+      else core.register({ name: 'spec.keyed', key: 'target' }, () => <b>visible</b>)
+    })
+    expect(view.container.textContent).toBe('visible')
+    await act(async () => { release = core.suppress(slot, kind === 'single' ? undefined : 'target') })
+    expect(core.entries(slot)).toHaveLength(1)
+    expect(view.container.querySelector('[data-slot-error]')).toBeNull()
+    expect(view.container.textContent).toBe('hidden')
+    await act(async () => { release() })
+    expect(view.container.textContent).toBe('visible')
+  } finally { view.unmount(); release(); dispose() }
+})
+
+
+it('retains a real crashed cell after suppression is released', async () => {
+  const errorLog = vi.spyOn(console, 'error').mockImplementation(() => {})
+  const core = new SlotCore()
+  const { view, dispose } = mountFrame(core, renderSlot => renderSlot('spec.single', {}, { fallback: <i>hidden</i> }))
+  let release = () => {}
+  try {
+    await act(async () => { core.register({ name: 'spec.single' }, () => { throw new Error('fixture render failure') }) })
+    expect(view.container.querySelector('[data-slot-error]')).not.toBeNull()
+    await act(async () => { release = core.suppress('spec.single') })
+    expect(view.container.querySelector('[data-slot-error]')).toBeNull()
+    expect(view.container.textContent).toBe('hidden')
+    await act(async () => { release() })
+    expect(view.container.querySelector('[data-slot-error]')).not.toBeNull()
+    expect(core.entries('spec.single')).toHaveLength(1)
+  } finally { view.unmount(); release(); dispose(); errorLog.mockRestore() }
 })

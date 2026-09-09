@@ -10,6 +10,7 @@ export type StorageErrorCode =
   | 'duplicate-backend'
   | 'duplicate-mount'
   | 'version-mismatch'
+  | 'foreign-medium'
   | 'malformed-medium'
   | 'closed'
 

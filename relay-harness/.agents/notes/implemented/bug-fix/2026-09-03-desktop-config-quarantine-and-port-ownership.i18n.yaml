@@ -1,0 +1,6 @@
+# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
+# side as of the last confirmed-consistent state. Both languages carry equal authority;
+# after editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write .agents/notes/implemented/bug-fix/2026-09-03-desktop-config-quarantine-and-port-ownership.md
+2026-09-03-desktop-config-quarantine-and-port-ownership.md: 5d468c6b620f3eca5e93e618b0e7de2496fb5290
+2026-09-03-desktop-config-quarantine-and-port-ownership.zh.md: 38a6e9133628c649e78f05cf27bfff6622b56b8f

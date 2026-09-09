@@ -1378,3 +1378,39 @@ test('automation status snapshot type press and scroll succeed', async () => {
   )));
 });
 
+
+test('late initial capture cannot publish old frames or reinstall a timer after recording replacement', async (t) => {
+  const fake = fakeAttach();
+  const frames = [];
+  const preview = createPreviewController({ attach: fake.attach, onRecordingFrame: frame => frames.push(frame) });
+  const opened = await preview.open({ url: 'http://127.0.0.1:3000' });
+  const held = Promise.withResolvers();
+  const image = text => ({ getSize: () => ({ width: 800, height: 600 }), toJPEG: () => Buffer.from(text) });
+  let captureCount = 0;
+  fake.views[0].webContents.capturePage = () => {
+    captureCount += 1;
+    return captureCount === 1 ? held.promise : Promise.resolve(image('current'));
+  };
+  const intervals = t.mock.method(globalThis, 'setInterval');
+  const oldStart = preview.startRecording(opened.id);
+  try {
+    assert.equal(captureCount, 1);
+    assert.equal((await preview.stopRecording(opened.id)).ok, true);
+    assert.equal((await preview.startRecording(opened.id)).ok, true);
+    assert.equal(intervals.mock.callCount(), 1);
+    assert.equal(frames.length, 1);
+    held.resolve(image('obsolete'));
+    await oldStart;
+    assert.equal(frames.length, 1);
+    assert.equal(frames[0].data, Buffer.from('current').toString('base64'));
+    assert.equal(intervals.mock.callCount(), 1);
+    await preview.stopRecording(opened.id);
+    const stoppedCount = captureCount;
+    await new Promise(resolve => setTimeout(resolve, PREVIEW_PIP_FRAME_INTERVAL_MS + 40));
+    assert.equal(captureCount, stoppedCount);
+  } finally {
+    held.resolve(image('obsolete'));
+    await oldStart;
+    await preview.close(opened.id);
+  }
+});

@@ -37,3 +37,17 @@ The keyless fresh-round-trip browser scenario boots the shipped Web composition,
 ## Consequences
 
 Ordinary Web prompts gain a dynamic URL paragraph, so provider prefix reuse now varies by bound port. Their Bash processes gain one non-secret managed environment variable. Bare Vite can no longer be used as a shell-only visual sandbox; developers use the full host or build mode instead. In exchange, GUI work has one mechanically observable target, the agent can teach the user the exact update behavior of the process actually serving their session, and the unsupported startup path fails before a white screen. The URL contract guides the agent away from replacement ports; it does not prohibit arbitrary shell commands from starting one. Profiles that disable `surfaceContext` also give up this feedback-loop guidance and shell context.
+
+## Explicit watch configuration loader
+
+The development watch API pins tsdown `configLoader: 'tsx'`. On Node 24.10.0, auto selection installed import-without-cache's synchronous native hooks alongside the tsx source carrier; loading a CommonJS dependency then failed with a null-source hook result before the watcher became ready. Changing only the script launcher to `tsx/esm` did not fix it and was reverted. The supported tsdown configuration-loader option fixes the composition without patching dependencies, disabling HMR, or requiring a Node upgrade.
+
+The real HMR regression then reached the browser and exposed a separate const-enum runtime import in product-mode lifetime checks. That consumer now uses the typed numeric mirror of the pinned Cordis unloading value, as existing browser boot-state code does. The regression verifies a real source edit changes the DOM under the same page identity with no page errors, and restores source and bundle artifacts in cleanup. This is current macOS Node 24.10.0 evidence, not a cross-platform claim.
+
+## Web test turn-barrier ownership
+
+A test may create a `whenTurnSettled` barrier before dispatching a browser gesture; if the gesture or an intermediate assertion fails, the caller can abandon that promise. The scaffold now tracks pending barriers, removes their timer/listener on timeout or settlement, and rejects them when the world closes. Calls after close reject immediately. A rejection observer is attached to the original promise, not a replacement promise: awaiting callers still receive timeouts, flush failures, or teardown rejection, while an already-failed test does not produce a later unrelated unhandled rejection.
+
+Tests verify teardown wins over the pending deadline, ordinary timeout remains a rejection, an abandoned timeout is observed, and post-close admission fails. The live-interactions/steering rerun retains its existing assertion failures but no longer emits the two orphaned unhandled rejections; this is infrastructure cleanup, not evidence those UI scenarios pass.
+
+Timeouts, flush failures and unfinished waits cancelled at close are also accumulated into the scaffold's teardown AggregateError. This prevents an omitted await from silently passing: observing a rejection only removes process-global noise, never the failed scenario evidence. Failures are recorded once even when a flush completes after cancellation. Calls after close are not auto-observed because their owner has already ended.

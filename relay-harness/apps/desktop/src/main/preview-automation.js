@@ -22,7 +22,6 @@ const AUTOMATION_WAIT_DEFAULT_TIMEOUT_MS = 15_000;
  * @param {() => { ok: false, message: string }} host.unknownPreviewId Result for an id with no session.
  * @param {(error: unknown) => { ok: false, message: string }} host.failClosed Result for a thrown error.
  * @param {(contents: any) => any} host.ensureDebugger Attaches and returns the guest's CDP debugger.
- * @returns {Record<string, (...args: any[]) => Promise<any>>} The automation methods.
  */
 function createPreviewAutomation(host) {
   const { sessions, unknownPreviewId, failClosed, ensureDebugger } = host;

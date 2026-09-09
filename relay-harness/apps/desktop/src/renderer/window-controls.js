@@ -1,3 +1,4 @@
+// @ts-check
 function iconMin() {
   return '<svg viewBox="0 0 12 12" aria-hidden="true"><rect x="2" y="5.4" width="8" height="1.2" rx="0.6" fill="currentColor"/></svg>';
 }

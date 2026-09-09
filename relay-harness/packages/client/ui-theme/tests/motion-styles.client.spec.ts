@@ -1,6 +1,7 @@
 /**
  * Motion stylesheet contract: recipes transition only opacity and transform,
- * and reduced-motion zeros every duration token the recipes read.
+ * the legacy `--rl-*` duration/easing tokens stay retired, and reduced-motion
+ * zeros the `--rlw-motion-*` ladder and disables every recipe.
  */
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
@@ -25,6 +26,7 @@ describe('motion recipes', () => {
   it('transitions only opacity and transform', () => {
     const transitions = [...motionCss.matchAll(/transition(?:-property)?:\s*([^;]+);/g)]
       .map(([, value = '']) => value)
+      .filter(value => value.trim() !== 'none')
     expect(transitions.length).toBeGreaterThan(0)
     for (const value of transitions) {
       const properties = value
@@ -35,12 +37,24 @@ describe('motion recipes', () => {
     }
   })
 
-  it('zeros duration tokens under prefers-reduced-motion', () => {
+  it('retires the legacy --rl duration and easing tokens', () => {
+    expect(baseCss).not.toMatch(/--rl-transition-duration|--rl-motion-duration|--rl-ease-in-out/)
+    expect(motionCss).not.toMatch(/var\(--rl-/)
+  })
+
+  it('zeros the motion ladder under prefers-reduced-motion', () => {
     expect(baseCss).toContain('@media (prefers-reduced-motion: reduce)')
-    expect(baseCss).toMatch(/--rl-motion-duration-overlay:\s*0s/)
-    expect(baseCss).toMatch(/--rl-motion-duration-popover:\s*0s/)
-    expect(baseCss).toMatch(/--rl-motion-duration-swap:\s*0s/)
-    expect(baseCss).toMatch(/--rl-motion-duration-flip:\s*0s/)
-    expect(motionCss).toContain('@media (prefers-reduced-motion: reduce)')
+    expect(baseCss).toMatch(/--rlw-motion-quick:\s*0s/)
+    expect(baseCss).toMatch(/--rlw-motion-base:\s*0s/)
+    expect(baseCss).toMatch(/--rlw-motion-slow:\s*0s/)
+  })
+
+  it('disables every recipe transition and animation under prefers-reduced-motion', () => {
+    const reduced = motionCss.slice(motionCss.indexOf('@media (prefers-reduced-motion: reduce)'))
+    expect(reduced).toContain("[data-rlh-motion='overlay'][data-state='closed']")
+    expect(reduced).toContain("[data-rlh-motion='popover']")
+    expect(reduced).toContain("[data-rlh-motion='fade']")
+    expect(reduced).toMatch(/transition:\s*none/)
+    expect(reduced).toMatch(/animation:\s*none/)
   })
 })

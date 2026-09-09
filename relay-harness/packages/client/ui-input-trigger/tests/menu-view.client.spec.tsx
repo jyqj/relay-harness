@@ -10,7 +10,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { createSnapshotStore } from '@relay-harness/rlh-client-runtime/client'
-import { makeTranslate } from '@relay-harness/rlh-client-test-runtime'
+import { bindSnapshotSelector, makeTranslate } from '@relay-harness/rlh-client-test-runtime'
 import { zh as commonZh } from '@relay-harness/rlh-client-locale/src/locales/zh.ts'
 import { zh } from '../src/client/locales.ts'
 import type { MenuState, TriggerHit } from '@relay-harness/rlh-client-ui-input-trigger/client'
@@ -61,7 +61,7 @@ function mount(state: MenuState) {
   const menu = createSnapshotStore<MenuState>(state)
   const onPick = vi.fn()
   const onDismiss = vi.fn()
-  const view = render(<MenuView menu={menu} onPick={onPick} onDismiss={onDismiss} t={t} />)
+  const view = render(<MenuView useMenu={bindSnapshotSelector(menu)} onPick={onPick} onDismiss={onDismiss} t={t} />)
   return { menu, onPick, onDismiss, view }
 }
 
@@ -198,7 +198,7 @@ describe('MenuView', () => {
     const onDismiss = vi.fn()
     render(
       <div data-composer-card="">
-        <MenuView menu={menu} onPick={vi.fn()} onDismiss={onDismiss} t={t} />
+        <MenuView useMenu={bindSnapshotSelector(menu)} onPick={vi.fn()} onDismiss={onDismiss} t={t} />
         <button type="button" data-testid="composer-button" />
       </div>,
     )
@@ -231,4 +231,27 @@ describe('MenuView', () => {
     expect(notPrevented).toBe(false)
     expect(onPick).toHaveBeenCalledWith('command', 1)
   })
+})
+
+it('keeps one framework subscription through menu updates and releases it on unmount', () => {
+  const menu = createSnapshotStore<MenuState>(CLOSED)
+  const release = vi.fn()
+  const subscribe = vi.fn((listener: () => void) => {
+    const stop = menu.subscribe(listener)
+    return () => { release(); stop() }
+  })
+  const useMenu = bindSnapshotSelector({ getSnapshot: () => menu.getSnapshot(), subscribe })
+  const onPick = vi.fn()
+  const onDismiss = vi.fn()
+  const view = render(<MenuView useMenu={useMenu} onPick={onPick} onDismiss={onDismiss} t={t} />)
+  expect(subscribe).toHaveBeenCalledTimes(1)
+  act(() => { menu.set(openState()) })
+  expect(screen.getAllByRole('option')).toHaveLength(2)
+  act(() => { menu.set(openState({ highlight: { source: 'command', index: 1 } })) })
+  expect(screen.getAllByRole('option')[1]!.getAttribute('aria-selected')).toBe('true')
+  view.rerender(<MenuView useMenu={useMenu} onPick={onPick} onDismiss={onDismiss} t={t} />)
+  expect(subscribe).toHaveBeenCalledTimes(1)
+  expect(release).not.toHaveBeenCalled()
+  view.unmount()
+  expect(release).toHaveBeenCalledTimes(1)
 })

@@ -3,6 +3,10 @@
   - img
 - button "Edit":
   - img
+- button "Context injection code-index":
+  - img
+  - img
+  - text: Context injection code-index
 - button "Context injection @relay-harness/rlh-system-prompt":
   - img
   - img

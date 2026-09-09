@@ -102,7 +102,7 @@ describe('ToolRuntime', () => {
     let observed: ToolExecutionResult | undefined
     ctx.on('tools/result', (_exec, result) => { observed = result })
     const result = await ctx.tools.execute({ signal: testToolSignal, callId: CallId('c1'), name: 'echo', arguments: { text: 'hi' } })
-    expect(result).toEqual({ content: [{ type: 'text', text: 'hi' }], isError: false, value: 'hi' })
+    expect(result).toEqual({ producedFiles: [], content: [{ type: 'text', text: 'hi' }], isError: false, value: 'hi' })
     expect(observed).toEqual(result)
   })
 
@@ -121,6 +121,7 @@ describe('ToolRuntime', () => {
     })
     const result = await ctx.tools.execute({ signal: testToolSignal, callId: CallId('c1'), name: 'meta-tool', arguments: {} })
     expect(result).toEqual({
+      producedFiles: [],
       content: [{ type: 'text', text: 'ok' }],
       isError: false,
       meta: { diffs: [{ path: 'a', oldText: null, newText: 'x' }] },
@@ -138,7 +139,7 @@ describe('ToolRuntime', () => {
       },
     })
     const result = await ctx.tools.execute({ signal: testToolSignal, callId: CallId('c1'), name: 'no-meta-tool', arguments: {} })
-    expect(result).toEqual({ content: [{ type: 'text', text: 'ok' }], isError: false, value: 'ok' })
+    expect(result).toEqual({ producedFiles: [], content: [{ type: 'text', text: 'ok' }], isError: false, value: 'ok' })
     expect('meta' in result).toBe(false)
   })
 
@@ -388,12 +389,14 @@ describe('ToolRuntime', () => {
     const value = await ctx.tools.execute({ signal: testToolSignal, callId: CallId('value'), name: 'projected', arguments: {} })
 
     expect(content).toEqual({
+      producedFiles: [],
       isError: false,
       value: { text: 'body' },
       content: [{ type: 'text', text: 'policy content' }],
       meta: { projected: 'body' },
     })
     expect(value).toEqual({
+      producedFiles: [],
       isError: false,
       value: { text: 'policy value' },
       content: [{ type: 'text', text: 'render:policy value' }],
@@ -453,6 +456,7 @@ describe('ToolRuntime', () => {
 
     const result = await ctx.tools.execute({ signal: testToolSignal, callId: CallId('replace-value'), name: 'echo', arguments: {} })
     expect(result).toEqual({
+      producedFiles: [],
       isError: false,
       value: 'replacement',
       content: [{ type: 'text', text: 'replacement' }],
@@ -512,6 +516,7 @@ describe('ToolRuntime', () => {
 
     const result = await ctx.tools.execute({ signal: testToolSignal, callId: CallId('post-disposed'), name: 'echo', arguments: {} })
     expect(result).toEqual({
+      producedFiles: [],
       isError: false,
       value: 'replacement',
       content: [{ type: 'text', text: 'replacement' }],
@@ -556,6 +561,7 @@ describe('ToolRuntime', () => {
 
     const result = await ctx.tools.execute({ signal: testToolSignal, callId: CallId('wrapper-disposed'), name: 'echo', arguments: {} })
     expect(result).toEqual({
+      producedFiles: [],
       isError: false,
       value: 'replacement',
       content: [{ type: 'text', text: 'replacement' }],
@@ -1118,7 +1124,7 @@ describe('ToolRuntime', () => {
     ctx.on('tools/post-execute', async (_exec, _result, next) => { order.push('post'); return next() })
 
     const result = await ctx.tools.execute({ signal: testToolSignal, callId: CallId('c1'), name: 'traced', arguments: { text: 'hi' } })
-    expect(result).toEqual({ content: [{ type: 'text', text: 'hi' }], isError: false, value: [{ type: 'text', text: 'hi' }] })
+    expect(result).toEqual({ producedFiles: [], content: [{ type: 'text', text: 'hi' }], isError: false, value: [{ type: 'text', text: 'hi' }] })
     // The around-dispatch extension point wraps dispatch; pre gates before it, post runs over its result.
     expect(order).toEqual(['pre', 'execute:before', 'dispatch', 'execute:after', 'post'])
   })
@@ -2629,6 +2635,7 @@ describe('defineTool validation (the runtime-validation Agent Note, part 1)', ()
     }))
     const result = await ctx.tools.execute({ signal: testToolSignal, callId: CallId('c1'), name: 'reader', arguments: { path: '/x' } })
     expect(result).toEqual({
+      producedFiles: [],
       content: [{ type: 'text', text: 'read /x' }],
       isError: false,
       value: [{ type: 'text', text: 'read /x' }],

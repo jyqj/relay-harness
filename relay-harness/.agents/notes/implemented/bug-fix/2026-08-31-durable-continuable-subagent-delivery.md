@@ -16,6 +16,10 @@ When the accepted message reaches the model-visible `user/message` log, the mana
 
 The Agent inbox remains the only execution FIFO. Durable mailbox events describe recovery ownership, not a second scheduler: replay submits each pending identified message through `Agent.followup()`, after which AgentLoop owns turn ordering normally.
 
+Retry identity compares the normalized message structures, not JSON property insertion order. Reordering object fields preserves the original receipt; changing content, attribution, or report delivery mode remains a conflict. Array order remains significant.
+
+Every same-key retry crosses the persistence barrier again: an in-memory accepted event may belong to a caller whose earlier flush failed. Recovery preserves the original message identity and republishes it only when the authoritative log and inbox do not already contain it. Active publication rechecks the child lease after the asynchronous barrier; a report resolves its live parent again before parent inbox mutation.
+
 ## Alternatives considered
 
 **Persist only the caller's raw content in a separate queue database.** Rejected because the child Session already owns durable ordering, source attribution, version refusal, repair, and flush semantics; another store would require a transaction across two authorities.
@@ -32,4 +36,4 @@ Continuation tests interrupt the process-local Activation with an accepted messa
 
 ## Consequences
 
-An accepted initial prompt or follow-up survives process restart without waiting for its turn to begin. Callers can safely retry an uncertain follow-up response when they retain an idempotency key. Each delivery adds one log-only accepted event and, after model-visible admission, one claimed event plus immediate durability work before the receipt returns. Activation residency and parent/child ownership are still process-local; a second harness process must not activate the same child until a fenced cross-process lease exists.
+An accepted initial prompt or follow-up survives process restart without waiting for its turn to begin. Callers can safely retry an uncertain follow-up response when they retain an idempotency key. Returning the receipt requires immediate durability of the accepted event. A claimed event is appended after model-visible admission. Activation residency remains process-local; deployments enabling the [fenced lease protocol](2026-09-05-persistence-commit-takeover-exclusion.md) serialize cross-process ownership and child persistence mutations.

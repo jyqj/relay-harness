@@ -1,33 +1,8 @@
 // @vitest-environment jsdom
-import { describe, expect, it, vi } from 'vitest'
+import { describe,expect,it,vi } from 'vitest'
 
-import type { GhosttyCell, GhosttyRow } from '../../src/client/ghostty/core.ts'
-import {
-  DEFAULT_TERMINAL_FONT_FAMILY,
-  DEFAULT_TERMINAL_FONT_SIZE,
-  advanceTerminalSelectionClickSequence,
-  ghosttyMouseButton,
-  isTerminalAltGraphText,
-  isTerminalCompositionCommitInput,
-  isTerminalCopyShortcut,
-  isTerminalLinkPointerGesture,
-  isTerminalPasteShortcut,
-  loadTerminalFontFamily,
-  shouldBlinkTerminalCursor,
-  shouldReportTerminalMouse,
-  shouldShowTerminalLinkHover,
-  terminalGridCellAt,
-  terminalScrollbarGeometry,
-  terminalScrollbarOffsetAtPointer,
-  terminalLinkAtColumn,
-  terminalLinkAtPosition,
-  terminalLinkAtPositionWithRange,
-  terminalContentOriginY,
-  terminalFontFamily,
-  terminalFontSize,
-  terminalWheelArrowData,
-  terminalWheelDeltaRows,
-} from '../../src/client/ghostty/surface.ts'
+import type { GhosttyCell,GhosttyRow } from '../../src/client/terminal/ghostty/core.ts'
+import { DEFAULT_TERMINAL_FONT_FAMILY,DEFAULT_TERMINAL_FONT_SIZE,advanceTerminalSelectionClickSequence,ghosttyMouseButton,isTerminalAltGraphText,isTerminalCompositionCommitInput,isTerminalCopyShortcut,isTerminalLinkPointerGesture,isTerminalPasteShortcut,loadTerminalFontFamily,shouldBlinkTerminalCursor,shouldReportTerminalMouse,shouldShowTerminalLinkHover,terminalContentOriginY,terminalFontFamily,terminalFontSize,terminalGridCellAt,terminalLinkAtColumn,terminalLinkAtPosition,terminalLinkAtPositionWithRange,terminalScrollbarGeometry,terminalScrollbarOffsetAtPointer,terminalWheelArrowData,terminalWheelDeltaRows } from '../../src/client/terminal/ghostty/surface.ts'
 
 const cell = (text: string): GhosttyCell => ({
   text,

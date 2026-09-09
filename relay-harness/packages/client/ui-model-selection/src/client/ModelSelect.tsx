@@ -12,7 +12,7 @@
  * card; the in-menu strip with Retry remains the catalog-load surface.
  */
 import {
-  useEffect, useId, useMemo, useRef, useState, useSyncExternalStore,
+  useEffect, useId, useMemo, useRef, useState,
   type KeyboardEvent, type FocusEvent,
 } from 'react'
 import clsx from 'clsx'
@@ -21,7 +21,7 @@ import {
   FlipText, IconCheckOutline16, IconChevronDownOutline14, IconChevronRightOutline14,
   IconWarningOutline16, Toast, usePresence,
 } from '@relay-harness/rlh-client-ui-primitives'
-import type { PropsLocale } from '@relay-harness/rlh-client-ui-slots'
+import type { InjectFace, PropsLocale } from '@relay-harness/rlh-client-ui-slots'
 import type { ModelSelectInjected } from './slots.ts'
 import css from './ModelSelect.module.css'
 
@@ -43,13 +43,10 @@ interface EffortChoice {
  * @returns the trigger and, while open, the two-level menu.
  */
 export function ModelSelect(
-  { locked, available, directory, load, select, t }:
-  ModelSelectInjected & { locked: boolean } & PropsLocale<'model'>,
+  { locked, available, useModelDirectory, selectionError, load, select, t }:
+  InjectFace<ModelSelectInjected> & { locked: boolean } & PropsLocale<'model'>,
 ) {
-  const state = useSyncExternalStore(
-    fn => directory.subscribe(fn),
-    () => directory.getSnapshot(),
-  )
+  const state = useModelDirectory(value => value)
   const [open, setOpen] = useState(false)
   const { mounted, state: motionState } = usePresence(open)
   const [pane, setPane] = useState<Pane>('root')
@@ -175,7 +172,7 @@ export function ModelSelect(
       if (rootRef.current !== null) close(true)
       return
     }
-    const message = directory.getSnapshot().error
+    const message = selectionError()
     if (message !== null) {
       toastSeq.current += 1
       setToast({ seq: toastSeq.current, text: t('error.action', { message }) })

@@ -26,3 +26,23 @@ The Code Index Settings page uses a connection-scoped status cache and renders h
 ## Consequences
 
 Users can inspect what was used, why, its revision quality, where coverage stopped, and which proposals did not reach the model. Operators can observe and repair the default index without developer tools. The Context projection intentionally omits bodies older than 50 traces. The Center now resolves Host Session cwd through the workspace router, so its status, debug search, and maintenance operations are Session-scoped rather than hidden process-wide UI state.
+
+## Session-owned rebuild confirmation
+
+The Center uses framework-provided `useSessions`, not a manual subscription inside a business component. Confirmation stores the opening Session id and checks it against current selection during rendering and before dispatch. Session changes and reopening clear the token: approval for workspace A cannot authorize a later rebuild in B. This does not cancel an already dispatched Host operation. Component and cache exports remain private.
+
+A regression opens and types confirmation in A, switches to B, then checks dismissal, no rebuild call, and a blank disabled new confirmation. Real Cordis registration tests verify Remote arguments, cache reset, and scoped teardown with fake replies. These tests alone do not prove assembled browser Session switching.
+
+## Status cache publication ownership
+
+Every uncached status read and maintenance request obtains a private per-Session publication token. Only the latest admitted request may populate that Session's cache; finally retires only its own token. Connection reset clears both values and pending ownership. Late callers still receive their own replies, but cannot repopulate invalidated cache or overwrite a newer admitted maintenance result. Failures retire ownership without deleting another Session's cache. Status reads additionally wait for all maintenance requests admitted by this store for the same Session, rechecking for newly admitted requests before dispatch. Success and failure both release the wait; the following status fetch bypasses old cache. Reset retires publication ownership but keeps outstanding maintenance barriers, since it cannot cancel Host work. Different Sessions remain independent. This is not cross-client or cross-Session Host operation serialization.
+
+Five red regressions demonstrated stale status repopulation after reset, fresh status, refresh, reconcile, and rebuild. Additional coverage verifies that the newest request failing does not let an older pending reply take ownership back, while another Session's cached value remains available and a later retry fetches anew.
+
+The assembled Settings catalog browser scenario now opens rebuild confirmation, types the token, cancels, and reopens. It verifies an empty input and an inline ARIA snapshot of the disabled confirmation button against the rebuilt official client, without dispatching a rebuild. This covers reopening and the framework-driven initial Session selection; adversarial Session switching while the confirmation is open remains a component-level regression.
+
+## Cache instance lifetime across hot reload
+
+Real Cordis teardown already rejects required-service access from an inactive context, but this alone is insufficient: `fork.restart()` reactivates the context, allowing an old waiting status read to dispatch after its maintenance acknowledgement. The regression passes for disposal and fails for restart before the fix.
+
+The apply scope now owns an effect that permanently disposes that cache instance. Status admission and post-maintenance waits, maintenance admission, and search admission reject on a retired instance. Disposal clears cache publication owners; outstanding maintenance still settles and releases waiters, without cancelling Host work or fabricating rollback. The new plugin gets its own usable cache. Tests retain old callbacks across real disposal/restart, settle held Remote replies, verify no late status dispatch, reject further calls, and verify the replacement works.

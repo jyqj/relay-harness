@@ -260,6 +260,49 @@ describe('rlh-workflow-worker-thread', () => {
       }
     })
 
+    it('excludes another host until the original worker and children are disposed', async () => {
+      const journalRoot = mkdtempSync(join(tmpdir(), 'rlh-workflow-two-hosts-'))
+      try {
+        const firstHost = await setup({ manual: true, config: { journalRoot } })
+        const nextHost = await setup({ manual: true, config: { journalRoot } })
+        const source = scripted("return await agent('pending side effect')")
+        const first = firstHost.ctx.workflowEngine.start({ ...source, parent: firstHost.parent })
+        await waitFor(() => { expect(firstHost.provider.runs).toHaveLength(1) })
+        expect(() => nextHost.ctx.workflowEngine.start({ ...source, parent: nextHost.parent, resumeRunId: first.id }))
+          .toThrow(expect.objectContaining({ code: 'JOURNAL_BUSY' }))
+        first.cancel('stop')
+        await first.result
+        await first.dispose()
+        const next = nextHost.ctx.workflowEngine.start({ ...source, parent: nextHost.parent, resumeRunId: first.id })
+        expectWorkflowError(await next.result, 'unknown outcome')
+        expect(nextHost.provider.runs).toHaveLength(0)
+        await next.dispose()
+      } finally {
+        rmSync(journalRoot, { recursive: true, force: true })
+      }
+    })
+
+    it('retains the writer claim after bounded disposal abandons a slow child', async () => {
+      const journalRoot = mkdtempSync(join(tmpdir(), 'rlh-workflow-abandoned-owner-'))
+      try {
+        const firstHost = await setup({ manual: true, disposeDelayMs: 500, config: { journalRoot, disposeGraceMs: 1 } })
+        const nextHost = await setup({ config: { journalRoot } })
+        const source = scripted("return await agent('slow disposal')")
+        const first = firstHost.ctx.workflowEngine.start({ ...source, parent: firstHost.parent })
+        await waitFor(() => { expect(firstHost.provider.runs).toHaveLength(1) })
+        await first.dispose()
+        expect(firstHost.provider.runs[0]?.disposed).toBe(false)
+        expect(() => nextHost.ctx.workflowEngine.start({ ...source, parent: nextHost.parent, resumeRunId: first.id }))
+          .toThrow(expect.objectContaining({ code: 'JOURNAL_BUSY' }))
+        await waitFor(() => { expect(firstHost.provider.runs[0]?.disposed).toBe(true) })
+        const next = nextHost.ctx.workflowEngine.start({ ...source, parent: nextHost.parent, resumeRunId: first.id })
+        expectWorkflowError(await next.result, 'unknown outcome')
+        await next.dispose()
+      } finally {
+        rmSync(journalRoot, { recursive: true, force: true })
+      }
+    })
+
     it('rejects resume without a configured journal root', async () => {
       const { ctx, parent } = await setup()
       expect(() => ctx.workflowEngine.start({
@@ -396,7 +439,7 @@ describe('rlh-workflow-worker-thread', () => {
       }
     })
 
-    it('does not journal a cancelled live suffix call, so resume retries it', async () => {
+    it('refuses to repeat a cancelled child whose side effects have no recorded outcome', async () => {
       const journalRoot = mkdtempSync(join(tmpdir(), 'rlh-workflow-cancel-resume-'))
       try {
         const { ctx, parent, provider } = await setup({ manual: true, config: { journalRoot } })
@@ -408,9 +451,8 @@ describe('rlh-workflow-worker-thread', () => {
         await first.dispose()
 
         const resumed = ctx.workflowEngine.start({ ...source, parent, resumeRunId: first.id })
-        await waitFor(() => { expect(provider.runs).toHaveLength(2) })
-        provider.runs[1]!.settle(text('retried'))
-        expect(await resumed.result).toMatchObject({ stopReason: 'completed', value: 'retried' })
+        expectWorkflowError(await resumed.result, 'unknown outcome')
+        expect(provider.runs).toHaveLength(1)
         await resumed.dispose()
       } finally {
         rmSync(journalRoot, { recursive: true, force: true })
@@ -1711,4 +1753,28 @@ describe('rlh-workflow-worker-thread', () => {
       expect(unwrapped).toBe(WorkerThreadWorkflowEngine)
     })
   })
+})
+
+
+it('preserves unknown outcome after worker death instead of journaling an abort as replayable completion', async () => {
+  const journalRoot = mkdtempSync(join(tmpdir(), 'rlh-workflow-death-intent-'))
+  try {
+    const { ctx, parent, provider } = await setup({ manual: true, config: { journalRoot } })
+    const request = { ...scripted("return await agent('irreversible step')"), parent }
+    const run = ctx.workflowEngine.start(request)
+    await waitFor(() => { expect(provider.runs).toHaveLength(1) })
+    const worker = (run as unknown as { worker: Worker }).worker
+    worker.emit('error', new Error('worker failed after child startup'))
+    expect((await run.result).stopReason).toBe('error')
+    await run.dispose()
+    const resumed = ctx.workflowEngine.start({ ...request, resumeRunId: run.id })
+    const result = await resumed.result
+    expect(result.stopReason).toBe('error')
+    expect(result.error).toContain('unknown outcome')
+    expect(provider.runs).toHaveLength(1)
+    await resumed.dispose()
+    await ctx.fiber.dispose()
+  } finally {
+    rmSync(journalRoot, { recursive: true, force: true })
+  }
 })

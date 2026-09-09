@@ -35,6 +35,19 @@ afterEach(() => {
 })
 
 describe('verifyRuntimeClosure', () => {
+  it.each(['apps/cli/package.json', './apps/cli/package.json'])('checks Windows CLI presets independently for %s', async (manifest) => {
+    const root = fixture({
+      'apps/cli/package.json': { name: 'cli', dependencies: {} },
+      'apps/cli/config/agent-presets/standard/agent.cordis.yml': `
+- id: windows
+  name: '@scope/windows'
+  disabled: !!js process.platform !== 'win32'
+`,
+    })
+    const result = await verifyRuntimeClosure(root, manifest)
+    expect(result.failures).toEqual(['standard preset -> @scope/windows (windows-x64)'])
+  })
+
   it('requires only plugins active for a Linux or macOS target', async () => {
     const root = fixture({
       'python/sdk-runtime/package.json': { name: 'runtime', dependencies: { '@scope/shared': 'workspace:^' } },

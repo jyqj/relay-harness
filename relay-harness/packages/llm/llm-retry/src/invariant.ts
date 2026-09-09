@@ -1,12 +1,12 @@
 /** Package-owned durable retry-event invariants. @module @relay-harness/rlh-llm-retry/invariant */
 
 import type { Context } from '@relay-harness/cordis'
-import type { Session, SessionEvent } from '@relay-harness/rlh-session'
+import type { InvariantFailure,InvariantInstaller } from '@relay-harness/rlh-invariants'
 import type { LlmFailure } from '@relay-harness/rlh-llm'
+import type { Session,SessionEvent } from '@relay-harness/rlh-session'
 import { MAX_TIMER_DELAY_MS } from '@relay-harness/rlh-timeout'
-import type { InvariantFailure, InvariantInstaller } from '@relay-harness/rlh-invariants'
 import { providerForOpenStep } from './history.ts'
-import type {} from './index.ts'
+
 
 const PACKAGE_NAME = '@relay-harness/rlh-llm-retry'
 

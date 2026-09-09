@@ -195,17 +195,23 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
       },
       {
         signature: 'async recompose(agentCtx: Context, id: string): Promise<AgentPreset>',
-        description: 'Re-link one agent to a different preset\'s standing composition.\n\nOnly valid while the agent has produced nothing: swapping tools mid conversation would leave logged tool calls the new composition cannot make. The CALLER owns that check — this method does not read session history.\n\nThe swap is a parent re-link, not an unmount: standing mounts are shared and permanent, so the old composition stays for its other agents and the new one is ensured BEFORE the link moves. An unknown or unusable preset therefore throws with the agent exactly as it was — there is no torn-down state to restore. The re-link runs through the binding this roster kept from the agent\'s mount — rlh-scope\'s only re-link authority. An agent that never composed one has nothing to re-link: the switch is then the agent\'s first bind, exactly a mount.',
+        description: 'Re-link one agent to a different preset\'s standing composition.\n\nOnly valid while the agent has produced nothing: swapping tools mid conversation would leave logged tool calls the new composition cannot make. The CALLER owns that check — this method does not read session history.\n\nThe swap is a parent re-link, not an unmount: standing mounts are shared and reference-held, so the old composition stays for its other agents and the new one is ensured BEFORE the link moves. An unknown or unusable preset therefore throws with the agent exactly as it was — there is no torn-down state to restore. The re-link runs through the binding this roster kept from the agent\'s mount — rlh-scope\'s only re-link authority. An agent that never composed one has nothing to re-link: the switch is then the agent\'s first bind, exactly a mount.',
         parameters: [{ name: 'agentCtx', description: 'the agent\'s scope context.' }, { name: 'id', description: 'the preset to compose the agent from instead.' }],
         returns: 'the preset now installed.',
         throws: ['when the preset is unknown or its composition is unusable.'],
       },
       {
-        signature: 'async standingKeyFor(id?: string): Promise<ScopeKey>',
+        signature: 'async acquireStandingScope(id?: string): Promise<PresetScopeLease>',
         description: 'The standing scope key of one preset, for a host reader with no agent.\n\nA cold transcript read resolves tool presenters against the composition the session recorded, and the standing mount makes that possible without resuming anything: ensuring the mount composes plugins but starts no agent, no session, and no turn.',
         parameters: [{ name: 'id', description: 'the preset id, or `undefined` for {@link defaultId}.' }],
-        returns: 'the standing scope key readers pass as a registry view scope.',
+        returns: 'a held standing scope; release it after all asynchronous registry reads.',
         throws: ['when the preset is unknown or its composition is unusable.'],
+      },
+      {
+        signature: 'acquireAgentScope(agentCtx: Context): PresetScopeLease | undefined',
+        description: 'Hold the exact joined generation and snapshot all live-agent registration layers for an asynchronous read.',
+        parameters: [{ name: 'agentCtx', description: 'agent whose current composition and ancestry the read observes.' }],
+        returns: 'held immutable registry ancestry, or undefined for an unjoined agent; release after the read settles.',
       },
     ],
   },
@@ -888,6 +894,19 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     ],
   },
   {
+    key: 'hostInteractions',
+    summary: 'Counts borrowed synchronously from the live proxy\'s authoritative request maps.',
+    description: 'Counts borrowed synchronously from the live proxy\'s authoritative request maps.',
+    methods: [
+      {
+        signature: 'pendingFor(sessionId: SessionId): { approvals: number; questions: number }',
+        description: 'Count pending approval and question requests for one exact Session.',
+        parameters: [{ name: 'sessionId', description: 'owning Session identity.' }],
+        returns: 'current pending counts, without consuming any request.',
+      },
+    ],
+  },
+  {
     key: 'invariants',
     summary: 'Package-owned invariant registry with global and regex-based selection.',
     description: 'Package-owned invariant registry with global and regex-based selection.',
@@ -1000,7 +1019,7 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
   {
     key: 'jobs',
     summary: 'Abstract background job registry.',
-    description: 'Abstract background job registry. Subclass, implement the abstract methods, and load the subclass as a plugin — it registers as `ctx.jobs` (one implementation per context; loading a second throws, which is cordis\' standard duplicate-service behavior).\n\nImplementations must honor these semantics:\n\n- Registrations outlive producer and controller fibers. Owner and service disposal cancel live work and await compliant producers; a throwing teardown cancel force-fails only the record. Teardown cancellation also marks the record reported, because a record its owner is being destroyed for has no reader left.\n- Owned-job access is fenced by the owner\'s session id. Ids are predictable, so authorization — not secrecy — is the boundary.\n- Settlement is first-wins: one terminal record, released waiters, and one round of contained listener notification, even against a late producer outcome. Completion is announced last, after the record is committed and every other observer of the settlement has seen it, because a reporter may open a model turn synchronously.\n- start refuses work while no attached job controller serves the spec\'s owner, so a producer cannot start work that owner cannot collect or stop. One registry serves every composition in the process, so this question — and completion-listener delivery — is owner-relative rather than process-wide: registrations made from an unscoped context serve every owner, and registrations made under an agent composition\'s scope serve exactly the agents composed under it.',
+    description: 'Abstract background job registry. Subclass, implement the abstract methods, and load the subclass as a plugin — it registers as `ctx.jobs` (one implementation per context; loading a second throws, which is cordis\' standard duplicate-service behavior).\n\nImplementations must honor these semantics:\n\n- Registrations outlive producer and controller fibers. Owner and service disposal cancel live work and await compliant producers; a throwing teardown cancel force-fails only the record. Teardown cancellation also marks the record reported, because a record its owner is being destroyed for has no reader left.\n- Owned-job access is fenced by the owner\'s session id. Ids are predictable, so authorization — not secrecy — is the boundary.\n- Settlement is first-wins: one terminal record, released waiters, and one round of contained listener notification, even against a late producer outcome. Completion is announced last, after the record is committed and every other observer of the settlement has seen it, because a reporter may open a model turn synchronously.\n- Terminal records are retained only until they are reported — their completion notice deliverable — plus an implementation-configured grace window, subject to a per-owner cap. Implementations prune at registry entry points, never drop an unreported terminal record (completion notices are at-least-once), and a pruned id reads as an unknown job.\n- start refuses work while no attached job controller serves the spec\'s owner, so a producer cannot start work that owner cannot collect or stop. One registry serves every composition in the process, so this question — and completion-listener delivery — is owner-relative rather than process-wide: registrations made from an unscoped context serve every owner, and registrations made under an agent composition\'s scope serve exactly the agents composed under it.',
     methods: [
       {
         signature: 'abstract start(spec: JobStart): JobId',
@@ -1300,15 +1319,15 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         parameters: [{ name: 'mounter', description: 'child factory.' }],
       },
       {
-        signature: 'useAuthorizeHttp(authorizeHttp: (url: string) => Promise<McpOAuthTokens>): void',
+        signature: 'useAuthorizeHttp(authorizeHttp: (url: string, signal: AbortSignal) => Promise<McpOAuthTokens>): void',
         description: 'Replace HTTP OAuth. Tests call this before authorize.',
         parameters: [{ name: 'authorizeHttp', description: 'returns tokens for one MCP endpoint URL.' }],
       },
       {
-        signature: 'start(): () => void',
+        signature: 'start(): () => Promise<void>',
         description: 'Load the document, mount enabled servers, and optionally watch.',
         parameters: [],
-        returns: 'disposer that closes the watcher and child fibers.',
+        returns: 'idempotent disposer that closes admission and awaits queued work, watcher, and child fibers.',
       },
       {
         signature: 'listManaged(): readonly McpServerRecord[]',
@@ -1657,9 +1676,9 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         parameters: [{ name: 'id', description: 'the session the batch belongs to.' }, { name: 'events', description: 'the contiguous batch to persist, in seq order.' }],
       },
       {
-        signature: 'async prepare(id: SessionId, signal?: AbortSignal): Promise<SessionPreparation>',
+        signature: 'async prepare(id: SessionId, signal?: AbortSignal, fence?: SessionPersistenceFence): Promise<SessionPreparation>',
         description: 'Prepare the exact unpublished Session used by resume. Implementations may reuse object graphs retained by an earlier inspect after confirming their durable revision is still current; disposal releases an unpublished reservation. Revision retries require the durable log to remain unchanged for one read/check round trip; continuous external writers may delay completion.',
-        parameters: [{ name: 'id', description: 'persisted session to prepare.' }, { name: 'signal', description: 'optional cancellation for preparation work.' }],
+        parameters: [{ name: 'id', description: 'persisted session to prepare.' }, { name: 'signal', description: 'optional cancellation for preparation work.' }, { name: 'fence', description: 'optional owner excluding takeover throughout cold recovery.' }],
         returns: 'one owned unpublished Session preparation.',
       },
       {
@@ -2153,13 +2172,19 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
   {
     key: 'spillStore',
     summary: 'Abstract spill storage service.',
-    description: 'Abstract spill storage service. Subclass, implement saveText, and load the subclass as a plugin — it registers as `ctx.spillStore` (one implementation per context; loading a second throws, cordis\' standard duplicate-service behavior).\n\nSemantics every implementation must honor:\n\n- saveText persists the FULL `content` verbatim and returns an opaque locator, exact byte length, and model-facing retrieval guidance.\n- Storage is scoped by the request\'s SaveTextSpill.owner session; the backend chooses a private (not world-readable) location and a collision-free name derived from — never equal to — the caller\'s `suggestedName`.\n- `saveText` REJECTS on a real storage failure (permissions, ENOSPC, backend unavailable); the caller decides how to degrade (the spill policy treats a rejection as best-effort and keeps the inline result).',
+    description: 'Abstract spill storage service. Subclass, implement saveText, and load the subclass as a plugin — it registers as `ctx.spillStore` (one implementation per context; loading a second throws, cordis\' standard duplicate-service behavior).\n\nSemantics every implementation must honor:\n\n- saveText persists the FULL `content` verbatim and returns an opaque locator, exact byte length, and model-facing retrieval guidance.\n- Storage is scoped by the request\'s SaveTextSpill.owner session; the backend chooses a private (not world-readable) location and a collision-free name derived from — never equal to — the caller\'s `suggestedName`.\n- `saveText` REJECTS on a real storage failure (permissions, ENOSPC, backend unavailable); the caller decides how to degrade (the spill policy treats a rejection as best-effort and keeps the inline result).\n- disposeSession reclaims the session\'s whole storage scope. Locators are best-effort recovery paths, not durable promises: a disposed session\'s log may still reference the reclaimed paths, and reads of them fail loudly.',
     methods: [
       {
         signature: 'abstract saveText(input: SaveTextSpill): Promise<SpillRef>',
         description: 'Persist `input.content` to a session-scoped spill artifact.',
         parameters: [{ name: 'input', description: 'the owner, caller-supplied source fields, suggested name, and full text to save.' }],
         returns: 'the saved artifact\'s {@link SpillRef}; rejects on a storage failure.',
+      },
+      {
+        signature: 'abstract disposeSession(sessionId: SessionId): Promise<void>',
+        description: 'Reclaim every artifact owned by `sessionId`. Called at that session\'s disposal; idempotent, and a session that spilled nothing resolves.',
+        parameters: [{ name: 'sessionId', description: 'the session whose spill storage should be reclaimed.' }],
+        returns: 'resolves when reclamation completes; rejects on a storage failure.',
       },
     ],
   },
@@ -2545,7 +2570,7 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
       },
       {
         signature: 'guard(guard: ToolGuard): () => void',
-        description: 'Register a monotonic guard after the extensible `tools/pre-execute` waterfall. A plain-context guard applies globally; one registered through `agent.ctx` applies only to that agent. Any matching guard may deny by returning a reason, while no guard can force-allow a call another guard denied. The exact effect disposer is returned for ordered ownership and HMR cleanup.',
+        description: 'Register a monotonic guard after the extensible `tools/pre-execute` waterfall. A plain-context guard applies globally; one registered through `agent.ctx` applies only to that agent. Any matching guard may deny by returning a reason, while no guard can force-allow a call another guard denied. Guards run again after around-dispatch and resource waits, before each body invocation; they must support repeated synchronous checks. The exact effect disposer is returned for ordered ownership and HMR cleanup.',
         parameters: [{ name: 'guard', description: 'synchronous check; a returned string denies the execution.' }],
         returns: 'the exact disposer that unregisters the guard.',
       },
@@ -2661,6 +2686,12 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     summary: 'Resolve strict generated definitions or conservative SRC markers against current Cordis Services and Typert providers.',
     description: 'Resolve strict generated definitions or conservative SRC markers against current Cordis Services and Typert providers.',
     methods: [
+      {
+        signature: 'currentTrustedRequest(): { readonly endpoint: string; readonly signal: AbortSignal } | undefined',
+        description: 'Read live carrier provenance without minting or extending its authority.',
+        parameters: [],
+        returns: 'the active original endpoint and signal, or undefined outside trusted dispatch.',
+      },
       {
         signature: 'async invoke(request: InvokeRemoteRequest): Promise<unknown>',
         description: 'Invoke one live Remote method through strict generated reflection or SRC markers.',
@@ -2799,6 +2830,37 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         description: 'Return detached snapshots of runs whose start event has committed without a matching end event. The service event stream is the sole state owner; callers receive no cancellation or disposal authority.',
         parameters: [],
         returns: 'Active runs in start order.',
+      },
+    ],
+  },
+  {
+    key: 'workResults',
+    summary: 'Stateless business adapter; accepted versions and file inventories remain log projections.',
+    description: 'Stateless business adapter; accepted versions and file inventories remain log projections.',
+    methods: [
+      {
+        signature: '@Remote(\'get\') async get(agent: Agent, signal: AbortSignal): Promise<WorkVerifiedReview>',
+        description: 'Read the exact review prefix without changing goal or task state.',
+        parameters: [{ name: 'agent', description: 'addressed live agent resolved by the existing Remote lookup.' }, { name: 'signal', description: 'cancellation through the captured durability verification.' }],
+        returns: 'the captured review cut and only its physically verified receipt.',
+      },
+      {
+        signature: '@Remote(\'accept\') async accept(agent: Agent, request: WorkAcceptRequest, signal: AbortSignal): Promise<WorkAcceptReceipt>',
+        description: 'Record explicit user acceptance after final quiescence and revision checks.',
+        parameters: [{ name: 'agent', description: 'exact live runtime root being reviewed.' }, { name: 'request', description: 'expected non-acceptance log revision shown to the user.' }, { name: 'signal', description: 'trusted carrier cancellation, never a wire argument.' }],
+        returns: 'a receipt only after durability; later work makes its current flag false.',
+      },
+      {
+        signature: '@Remote(\'list\') async list(request: WorkLibraryRequest, signal: AbortSignal): Promise<WorkLibraryPage>',
+        description: 'Scan a bounded page of existing Session logs without activating any agent.',
+        parameters: [{ name: 'request', description: 'filename query, pagination position, and result bound.' }, { name: 'signal', description: 'cancellation between bounded non-activating reads.' }],
+        returns: 'source-attributed outputs and explicit scan/incomplete-history coverage.',
+      },
+      {
+        signature: '@Remote(\'open\') async open(request: WorkOpenRequest, signal: AbortSignal): Promise<void>',
+        description: 'Validate a captured output against its source Session and open it on the Host.',
+        parameters: [{ name: 'request', description: 'source Session identity and exact execution-recorded path.' }, { name: 'signal', description: 'carrier cancellation through native-open completion.' }],
+        returns: 'after the existing native-open operation succeeds.',
       },
     ],
   },
@@ -4636,6 +4698,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface PresetOption {\n    value: string;\n    name: string;\n    description?: string;\n}',
   },
   {
+    name: 'PresetScopeLease',
+    declaration: 'export interface PresetScopeLease {\n    readonly key: ScopeKey;\n    release(): Promise<void>;\n}',
+  },
+  {
     name: 'PresetSpec',
     declaration: 'export interface PresetSpec {\n    sandbox: SandboxMode;\n    approval: ApprovalPolicy;\n    name?: string;\n    description?: string;\n}',
   },
@@ -4845,7 +4911,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'ResumeAgentOptions',
-    declaration: 'export interface ResumeAgentOptions {\n    readonly resumeSessionId: SessionId;\n    readonly agentOptions?: AgentOptions;\n    readonly signal?: AbortSignal;\n    readonly setup?: AgentSetup;\n}',
+    declaration: 'export interface ResumeAgentOptions {\n    readonly persistenceFence?: SessionPersistenceFence;\n    readonly resumeSessionId: SessionId;\n    readonly agentOptions?: AgentOptions;\n    readonly signal?: AbortSignal;\n    readonly setup?: AgentSetup;\n}',
   },
   {
     name: 'ReviseMemoryInput',
@@ -4993,7 +5059,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'SessionEventMap',
-    declaration: 'export interface SessionEventMap {\n    \'turn/start\': {\n        turn: number;\n    };\n    \'turn/end\': {\n        turn: number;\n        reason: TurnEndReason;\n    };\n    \'step/start\': {\n        turn: number;\n        step: number;\n    };\n    \'step/end\': {\n        turn: number;\n        step: number;\n    };\n    \'user/message\': UserMessage;\n    \'assistant/chunk\': {\n        turn: number;\n        step: number;\n        chunk: StreamChunk;\n    };\n    \'assistant/message\': {\n        turn: number;\n        step: number;\n        message: AssistantMessage;\n        usage?: TokenUsage;\n        interrupted?: true;\n    };\n    \'tool/call\': {\n        turn: number;\n        step: number;\n        callId: CallId;\n        name: string;\n        arguments: string;\n    };\n    \'tool/result\': {\n        turn: number;\n        step: number;\n        message: ToolResultMessage;\n        error?: {\n            name: string;\n            code: string;\n        };\n        meta?: JsonValue;\n    };\n    \'todo/write\': {\n        todos: TodoItem[];\n    };\n    \'request/header\': {\n        header: EpochHeader;\n        reason: RequestHeaderReason;\n    };\n    \'request/context\': RequestContext;\n    \'session/end-seed\': Record<string, never>;\n}',
+    declaration: 'export interface SessionEventMap {\n    \'turn/start\': {\n        turn: number;\n    };\n    \'turn/end\': {\n        turn: number;\n        reason: TurnEndReason;\n    };\n    \'step/start\': {\n        turn: number;\n        step: number;\n    };\n    \'step/end\': {\n        turn: number;\n        step: number;\n    };\n    \'user/message\': UserMessage;\n    \'assistant/chunk\': {\n        turn: number;\n        step: number;\n        chunk: StreamChunk;\n    };\n    \'assistant/message\': {\n        turn: number;\n        step: number;\n        message: AssistantMessage;\n        usage?: TokenUsage;\n        interrupted?: true;\n    };\n    \'tool/call\': {\n        turn: number;\n        step: number;\n        callId: CallId;\n        name: string;\n        arguments: string;\n    };\n    \'tool/result\': {\n        turn: number;\n        step: number;\n        message: ToolResultMessage;\n        error?: {\n            name: string;\n            code: string;\n        };\n        meta?: JsonValue;\n        producedFiles?: readonly string[];\n    };\n    \'todo/write\': {\n        todos: TodoItem[];\n    };\n    \'request/header\': {\n        header: EpochHeader;\n        reason: RequestHeaderReason;\n    };\n    \'request/context\': RequestContext;\n    \'session/end-seed\': Record<string, never>;\n}',
   },
   {
     name: 'SessionEventMetadataFilter',
@@ -5090,6 +5156,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'SessionOrigin',
     declaration: 'export type SessionOrigin = \'subagent\' | \'rlhbot\';',
+  },
+  {
+    name: 'SessionPersistenceFence',
+    declaration: 'export interface SessionPersistenceFence {\n    readonly token: string;\n    assertCurrent(): void;\n    runExclusive?<T>(operation: () => Promise<T>): Promise<T>;\n}',
   },
   {
     name: 'SessionPersistenceRevision',
@@ -5717,7 +5787,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'ToolExecutionSuccess',
-    declaration: 'export interface ToolExecutionSuccess {\n    readonly isError: false;\n    readonly value: JsonValue;\n    readonly content: ContentBlock[];\n    readonly error?: never;\n    readonly meta?: JsonValue;\n    readonly additionalContexts?: UserMessage[];\n    readonly concludesTurn?: true;\n}',
+    declaration: 'export interface ToolExecutionSuccess {\n    readonly isError: false;\n    readonly value: JsonValue;\n    readonly content: ContentBlock[];\n    readonly error?: never;\n    readonly meta?: JsonValue;\n    readonly additionalContexts?: UserMessage[];\n    readonly producedFiles?: readonly string[];\n    readonly concludesTurn?: true;\n}',
   },
   {
     name: 'ToolExecutionToken',
@@ -5976,6 +6046,18 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface WebUpgradeRoute {\n    path: string;\n    handler: (req: IncomingMessage, socket: Duplex, head: Buffer) => void | Promise<void>;\n}',
   },
   {
+    name: 'WorkAcceptanceProjection',
+    declaration: 'export interface WorkAcceptanceProjection {\n    readonly reviewRevision: number;\n    readonly reviewable: boolean;\n    readonly acceptedRevision: number | null;\n}',
+  },
+  {
+    name: 'WorkAcceptReceipt',
+    declaration: 'export interface WorkAcceptReceipt {\n    readonly reviewedThroughSeq: number;\n    readonly recordedSeq: number;\n    readonly current: boolean;\n}',
+  },
+  {
+    name: 'WorkAcceptRequest',
+    declaration: 'export interface WorkAcceptRequest {\n    readonly reviewRevision: number;\n}',
+  },
+  {
     name: 'WorkflowActiveRunSnapshot',
     declaration: 'export interface WorkflowActiveRunSnapshot extends WorkflowRunInfo {\n    readonly startedAt: number;\n    readonly lastProgressAt: number;\n    readonly phase?: string;\n    readonly agentsStarted: number;\n    readonly activeAgents: number;\n}',
   },
@@ -6026,6 +6108,30 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'WorkflowStopReason',
     declaration: 'export type WorkflowStopReason = \'completed\' | \'cancelled\' | \'error\';',
+  },
+  {
+    name: 'WorkLibraryEntry',
+    declaration: 'export interface WorkLibraryEntry {\n    readonly sessionId: import(\'@relay-harness/rlh-session/types\').SessionId;\n    readonly path: string;\n    readonly cwd?: string;\n}',
+  },
+  {
+    name: 'WorkLibraryPage',
+    declaration: 'export interface WorkLibraryPage {\n    readonly entries: readonly WorkLibraryEntry[];\n    readonly scannedSessions: number;\n    readonly totalSessions: number;\n    readonly unindexedResults: number;\n    readonly unavailableSessions: number;\n    readonly next: {\n        readonly sessionOffset: number;\n        readonly pathOffset: number;\n        readonly corpusRevision: WorkLibraryRevision;\n    } | null;\n}',
+  },
+  {
+    name: 'WorkLibraryRequest',
+    declaration: 'export interface WorkLibraryRequest {\n    readonly query?: string;\n    readonly corpusRevision?: WorkLibraryRevision;\n    readonly sessionOffset?: number;\n    readonly pathOffset?: number;\n    readonly limit?: number;\n}',
+  },
+  {
+    name: 'WorkLibraryRevision',
+    declaration: 'export type WorkLibraryRevision = Branded<\'work-library-revision\'>;',
+  },
+  {
+    name: 'WorkOpenRequest',
+    declaration: 'export interface WorkOpenRequest {\n    readonly sessionId: import(\'@relay-harness/rlh-session/types\').SessionId;\n    readonly path: string;\n}',
+  },
+  {
+    name: 'WorkVerifiedReview',
+    declaration: 'export interface WorkVerifiedReview extends WorkAcceptanceProjection {\n    readonly verifiedThroughSeq: number;\n    readonly current: boolean;\n}',
   },
 ]
 

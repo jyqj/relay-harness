@@ -5,7 +5,7 @@
 
 /** Update snapshot returned by the shell's check/install calls. */
 export type UpdateInfo = {
-  status?: string
+  status?: 'none' | 'current' | 'available' | 'unavailable' | 'error'
   current?: string
   latest?: string
   htmlUrl?: string

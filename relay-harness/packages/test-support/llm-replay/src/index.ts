@@ -38,6 +38,12 @@ export type ReplayEntry =
   | { kind: 'throw'; chunks: StreamChunk[]; message: string; code: string }
   | {
     kind: 'hang'
+    /**
+     * Hang BEFORE streaming any chunk: the request stays pending with no
+     * observable output, so a scenario can cancel inside the pre-first-chunk
+     * window. Default `false` keeps the two-chunk prefix of the plain hang.
+     */
+    beforeStart?: boolean
     /** Optional marker written after the prefix chunks are consumed and before the stream waits for cancellation. */
     readyFile?: string
   }
@@ -433,12 +439,24 @@ function readReplayEntry(value: unknown, file: string, location: string): Replay
     }
     case 'hang': {
       const readyFile = value['readyFile']
-      const keys = readyFile === undefined ? ['kind'] : ['kind', 'readyFile']
+      const beforeStart = value['beforeStart']
+      const keys = [
+        'kind',
+        ...(readyFile === undefined ? [] : ['readyFile']),
+        ...(beforeStart === undefined ? [] : ['beforeStart']),
+      ]
       if (!hasExactKeys(value, keys)) invalidOverride(file, location, 'has invalid hang-entry fields')
       if (readyFile !== undefined && (typeof readyFile !== 'string' || readyFile.length === 0)) {
         invalidOverride(file, location, 'readyFile must be a non-empty string')
       }
-      return { kind: 'hang', ...(readyFile === undefined ? {} : { readyFile }) }
+      if (beforeStart !== undefined && typeof beforeStart !== 'boolean') {
+        invalidOverride(file, location, 'beforeStart must be a boolean')
+      }
+      return {
+        kind: 'hang',
+        ...(beforeStart === undefined ? {} : { beforeStart }),
+        ...(readyFile === undefined ? {} : { readyFile }),
+      }
     }
     default:
       return invalidOverride(file, location, `has unknown kind ${JSON.stringify(value['kind'])}`)
@@ -668,8 +686,12 @@ async function* replayEntry(entry: ReplayEntry, signal: AbortSignal | undefined,
     case 'hang':
       // Replay a stream that stalls until cancelled (mirrors MockAdapter): one
       // chunk, then wait for abort and surface it as the consumer expects.
-      yield { type: 'block-start', index: 0, blockType: 'text' }
-      yield { type: 'text-delta', index: 0, text: 'partial' }
+      // `beforeStart` skips the prefix so the request is still pending — no
+      // observable output — when the scenario cancels.
+      if (entry.beforeStart !== true) {
+        yield { type: 'block-start', index: 0, blockType: 'text' }
+        yield { type: 'text-delta', index: 0, text: 'partial' }
+      }
       if (entry.readyFile !== undefined) writeFileSync(entry.readyFile, '')
       await new Promise<void>((_resolve, reject) => {
         if (signal?.aborted) { reject(new Error('aborted')); return }

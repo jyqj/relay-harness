@@ -730,6 +730,22 @@ const SERVICE_ROLES: ServiceRole[] = [
     note: 'The transport-agnostic host gateway face: it dispatches browser API calls, and each open host stream subscribes to the events it forwards rather than being pushed to through a broadcast verb.',
   },
   {
+    key: 'hostInteractions',
+    pkg: 'host-apiproxy',
+    title: 'Host interaction pending-state reader',
+    mode: 'core',
+    consumers: ['host-work-results'],
+    note: 'Reads the existing approval and question owners for an exact Agent; it does not duplicate pending state or grant authorization.',
+  },
+  {
+    key: 'workResults',
+    pkg: 'host-work-results',
+    title: 'Durable Work review and Library projection',
+    mode: 'core',
+    consumers: ['api-remotes', 'client-ui-product-shell', 'client-ui-deliverables'],
+    note: 'Projects recorded tool outputs and verified review cuts from Session logs. Confirmation binds a durable log prefix, not file hashes, test success, or physical user identity.',
+  },
+  {
     key: 'dynamicCordisRunner',
     pkg: 'cordis-host-runner',
     title: 'Dynamic Cordis package host runner',

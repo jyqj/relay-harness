@@ -206,6 +206,36 @@ describe('abort during tool execution ends the turn', () => {
     expect(agent.inbox.nextTurn).toHaveLength(0)
   })
 
+  it('continues the queued tail after an empty admitted batch as its own turn', async () => {
+    const adapter = new MockAdapter([textResponse('only for the queued message')])
+    const ctx = await harness(adapter)
+    const agent = ctx.agentLoop.create(SessionId('a-empty-batch-tail'), { provider: 'mock', model: 'mock' })
+    ctx.on('agent/pre-step', ({ agent: subject, turn }, next) => {
+      if (subject !== agent || turn !== 1) return next()
+      return Promise.resolve({ kind: 'enter', messages: [] })
+    })
+
+    send(agent, 'first')
+    send(agent, 'queued followup')
+    await waitForIdle(ctx, agent)
+
+    // Turn 1 closes without a step; the queued followup must still open turn 2.
+    expect(adapter.requests).toHaveLength(1)
+    expect(agent.session.events.filter(event => event.type === 'turn/start'
+      || event.type === 'turn/end').map(event => [event.type, event.data.turn]))
+      .toEqual([['turn/start', 1], ['turn/end', 1], ['turn/start', 2], ['turn/end', 2]])
+    expect(agent.session.events.find(event => event.type === 'turn/end')?.data)
+      .toEqual({ turn: 1, reason: { kind: 'completed' } })
+    expect(agent.session.events.filter(event => event.type === 'step/start').map(event => event.data))
+      .toEqual([{ turn: 2, step: 1 }])
+    expect(agent.session.events
+      .filter(event => event.type === 'user/message')
+      .flatMap(event => event.data.content)
+      .flatMap(block => block.type === 'text' ? [block.text] : []))
+      .toEqual(['queued followup'])
+    expect(agent.inbox.nextTurn).toHaveLength(0)
+  })
+
   it('parks result context finalized after disposal cancellation without opening another turn', async () => {
     const adapter = new MockAdapter([toolCallResponse('c1', 'waiter', {})])
     const ctx = await harness(adapter)

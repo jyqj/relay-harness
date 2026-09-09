@@ -1,3 +1,4 @@
+// @ts-check
 const http = require('http');
 const net = require('net');
 const tls = require('tls');
@@ -23,6 +24,7 @@ const MAX_RETRY_MS = 8000;
 const MAX_HANDSHAKE_BYTES = 65_536;
 
 function filterHeaders(headers) {
+  /** @type {import('node:http').OutgoingHttpHeaders} */
   const out = {};
   for (const [key, value] of Object.entries(headers || {})) {
     const name = String(key).toLowerCase();

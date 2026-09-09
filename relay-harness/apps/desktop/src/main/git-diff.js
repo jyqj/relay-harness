@@ -1,3 +1,4 @@
+// @ts-check
 const fs = require('node:fs');
 const path = require('node:path');
 const { runGit, asCwd, safeRefName } = require('./git-exec');
@@ -68,6 +69,7 @@ function pathFromPlusMinus(spec) {
 
 function parseUnifiedDiff(text) {
   const files = [];
+  /** @type {{path: string, status: string, oldPath?: string, hunks: object[]} | null} */
   let current = null;
   let hunk = null;
   const lines = String(text || '').replace(/\r\n/g, '\n').split('\n');

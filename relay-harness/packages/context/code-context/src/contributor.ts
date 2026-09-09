@@ -19,7 +19,7 @@ import type {
   SearchRequest,
   SearchResult,
 } from '@relay-harness/rlh-code-index'
-import { EvidenceId, SourceId } from '@relay-harness/rlh-context-engine'
+import { ContextEngineError, ContextProviderError, EvidenceId, SourceId } from '@relay-harness/rlh-context-engine'
 import type {
   ContributedStepContext,
   CoverageRecord,
@@ -86,9 +86,9 @@ interface AdmittedHit {
 /**
  * Run one ranked search over `ctx.codeIndex` for the step's direct user text
  * and contribute one recall message with the admitted hits, their evidence,
- * and a coverage record. A degraded answer, a failed search, or a too-short
- * query contributes nothing: degradation is reported as a warning and never
- * rendered as a legitimate "no results" message.
+ * and a coverage record. A too-short query declines silently; degraded search, failed
+ * retrieval, and unavailable hydration throw a classified ContextProviderError for the
+ * engine trace without a model message or raw query in diagnostics.
  */
 export class CodeContextContributor implements StepContextContributor {
   readonly id = 'code-index-recall'
@@ -104,9 +104,10 @@ export class CodeContextContributor implements StepContextContributor {
     if (direct.text.trim().length < this.config.minQueryChars) return undefined
     const codeIndex = this.ctx.get('codeIndex')
     if (codeIndex === undefined) {
-      throw new Error(
+      throw new ContextEngineError(
         'code-context: code-index recall injection requires a code-index provider,'
         + ' but no ctx.codeIndex service is loaded in this deployment',
+        'CONTEXT_ENGINE_INVALID_CONTRIBUTOR',
       )
     }
     const request: SearchRequest = {
@@ -122,19 +123,10 @@ export class CodeContextContributor implements StepContextContributor {
       result = await workspaceIndex.search(request, input.signal)
     } catch (error: unknown) {
       if (input.signal.aborted) throw error
-      this.ctx.logger.warn('code-context: code-index search failed; contributing no recall', {
-        query: direct.text,
-        reason: error instanceof Error ? error.message : String(error),
-      })
-      return undefined
+      throw new ContextProviderError('error', 'search_failed')
     }
     if (result.degraded || result.readErrors.length > 0) {
-      this.ctx.logger.warn('code-context: degraded code-index answer; contributing no recall', {
-        query: direct.text,
-        epochs: result.epochs,
-        readErrors: result.readErrors,
-      })
-      return undefined
+      throw new ContextProviderError('degraded', 'search_degraded')
     }
     if (result.hits.length === 0) {
       return {
@@ -153,11 +145,7 @@ export class CodeContextContributor implements StepContextContributor {
       }, input.signal)
     } catch (error: unknown) {
       if (input.signal.aborted) throw error
-      this.ctx.logger.warn('code-context: code-index hydration failed; contributing no recall', {
-        query: direct.text,
-        reason: error instanceof Error ? error.message : String(error),
-      })
-      return undefined
+      throw new ContextProviderError('error', 'hydration_failed')
     }
     const hitsById = new Map(result.hits.map(hit => [hit.chunkId, hit]))
     const drifted: string[] = []
@@ -173,13 +161,12 @@ export class CodeContextContributor implements StepContextContributor {
     const rejected = [...hydration.rejected.map(item => item.chunkId), ...drifted]
     if (rejected.length > 0) {
       this.ctx.logger.warn('code-context: stale or unavailable code-index hydration omitted', {
-        query: direct.text,
-        chunkIds: rejected,
+        rejectedCount: rejected.length,
       })
     }
-    if (hydrated.length === 0) return undefined
+    if (hydrated.length === 0) throw new ContextProviderError('degraded', 'hydration_unavailable')
     const admitted = admitHits(hydrated, this.config)
-    if (admitted.length === 0) return undefined
+    if (admitted.length === 0) throw new ContextProviderError('declined', 'budget_exhausted')
     const hits: CodeContextRecallHit[] = admitted.map(({ hit, source, truncated }) => ({
       chunkId: hit.chunkId,
       filePath: hit.filePath,

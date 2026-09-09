@@ -79,6 +79,8 @@ describe('web e2e: the composer model switch is the default for later sessions',
         },
       },
     })
+    // The model seat is an explicit Developer Mode surface.
+    await scaffold.ctx.productMode.set({ mode: 'developer' })
     browser = await chromium.launch()
     page = await browser.newPage({ viewport: { width: 1680, height: 1000 }, locale: ZH_BROWSER_LOCALE })
     tripwire = watchConsole(page)

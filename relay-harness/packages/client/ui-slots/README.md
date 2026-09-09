@@ -33,3 +33,5 @@ None; this package neither assembles nor sends a provider request.
 
 - **`isLive` scans all records linearly** — fine at UI-plugin registration counts (tens); revisit with an entry→record backref if ledgers ever grow hot.
 - **The `__renders` phantom anchor is visible on `PropsRenderSlots`** — the same accepted noise as the type-chain design's `__accepts`: generic method signatures compare loosely across key unions, so the contravariant marker is what enforces "component key set ⊆ children declaration".
+
+Render policy and runtime failure are separate states. `renderCandidates()` removes policy-suppressed cells but retains abdicated registrations so the renderer can still show a genuine exhausted-cell error. `entries()` remains the unmodified inspection/disposal ledger; `entriesOfSlot()` selects live winners from the same policy-eligible candidates. The renderer host uses the candidate projection rather than the raw ledger for empty-versus-crashed decisions.

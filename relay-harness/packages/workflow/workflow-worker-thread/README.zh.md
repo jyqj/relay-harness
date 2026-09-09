@@ -38,7 +38,7 @@ worker 仍提供实用的隔离：
 
 `start()` 会校验 meta、解析脚本正文、解析一个已注册且规范化的提供方路由，并解析每次运行的子 agent 总数上限，然后才创建 worker 或发布 `workflow/start`。请求的 `maxTotalAgents` 必须是正安全整数，且不能超过引擎配置的部署上限。源代码模式通过 data URL bootstrap 安装 TypeScript 转换；构建模式把同级 `lib/worker.cjs` 作为文件系统路径传入，因为 pkg 的虚拟文件系统（VFS）钩子要求 CommonJS。两者都能在普通 Node 下运行。ready/go 握手可以避免启动信号取消与 worker 启动发生竞态，导致脚本最初的同步片段被执行。
 
-配置绝对 `journalRoot` 后，新 run 会在 worker 发布前以 exclusive create 建立 `<journalRoot>/<sha256(runId)>/journal.jsonl`。header 会 fingerprint 脚本、已验证 meta、args、解析后的提供方与子 agent 总数上限。每个 terminal `agent()` host call 都会追加一条有界且 fsync 的 JSON line，包含其序号、规范 request hash、child id，以及结果或稳定 failure。`resumeRunId` 会加载该确切 journal，在 header 处拒绝已编辑配置，从头重启脚本，并在不执行提供方工作的情况下 replay 匹配的已完成调用。同一序号出现不同调用时会以 replay divergence 失败；取消不会记录未完成 suffix，因此后续 resume 会重试该调用。撕裂的最终行会被截断，而格式错误的完整行、symlink、非普通文件、重复序号和超过 64 MiB 的 journal 都会 fail closed。
+配置绝对 `journalRoot` 后，引擎先在 journal 旁持有 SQLite 独占 writer 事务；竞争中的活动 host 会在读取或修复文件之前以 `JOURNAL_BUSY` 失败。该事务仅在 worker 退出且 child 完全停止后释放，或随所属进程退出而释放。新 run 会在 worker 发布前以 exclusive create 建立 `<journalRoot>/<sha256(runId)>/journal.jsonl`。版本 2 的 header 会 fingerprint 脚本、已验证 meta、args、解析后的提供方与子 agent 总数上限；旧格式会被拒绝。每个 `agent()` 调用在提供方启动前 fsync intent，在向 worker 发布结果前 fsync terminal outcome。`resumeRunId` 从头重启脚本，在不执行提供方工作的情况下 replay 匹配的已完成调用。同一序号出现不同请求时会以 replay divergence 失败。只有 intent 而无 terminal outcome 的调用，包括被取消的 child 或撕裂的终态追加，会以 `JOURNAL_OUTCOME_UNKNOWN` 拒绝 replay：启动新 run 前必须核对其副作用。撕裂的最终行会被截断，而格式错误的完整行、symlink、非普通文件、非法 intent/outcome 状态迁移和超过 64 MiB 的 journal 都会 fail closed。
 
 对于每次 `agent()` 调用：
 
@@ -51,6 +51,9 @@ worker 仍提供实用的隔离：
 提供方启动与已发布子 agent 分开跟踪。如果启动仍在等待，而取消、worker 死亡或正常工作流结算关闭了接纳，共享信号会中止该启动。即便提供方随后兑现，宿主也会 dispose 它，且绝不向 worker 通知。
 
 可选的 `stallTimeoutMs` watchdog 会在 worker 首条被接受的协议消息（`Ready`）到达时启动，并在之后每条被接受的双向宿主／worker 协议消息后重新计时。`Ready` 之前的宿主调度是启动延迟，不是协议静默。静默超过配置时长会以 `error` 结果接管运行，中止并 dispose 子 agent，为滞留的生命周期事件配对，关闭后续消息准入并终止 worker。因此，长时间运行的子 agent 需要把部署时长设为大于最长预期事件静默时间。默认值 `0` 会禁用此策略。
+
+
+恢复会在修改尾部之前校验请求 header、全部完整记录、运行时消费的 child-result 字段、有限 JSON 值和连续调用编号。随后在完整 64 MiB 上限内 fsync 尾部截断或缺失的换行。请求不匹配与完整记录损坏均不会修改原文件。悬空 writer 数据库符号链接、缺失的较早调用编号均被拒绝。Worker 死亡导致的 child 中断与显式取消一样保留未知结果 intent，不会重放成完成。
 
 ## 值边界
 
@@ -128,5 +131,5 @@ worker 错误、消息失败或提前退出会在清理前关闭消息接纳，�
 - **不注入默认可用的定时器、文件系统或网络，但逃逸代码仍可访问 Node**：这些缺失的全局变量属于可移植性 API 设计，而非隔离措施。
 - **终止只能报告宿主观察到的启动**：`agentsStarted` 不包括因并发限制仍在 worker 侧排队、且在强制终止后无法得知的调用。
 - **跨 realm 错误在脚本内无法通过 `instanceof Error`**：工作流作者必须根据 `name` 和 `code` 等稳定字段分支。
-- **journal 是单进程／单 writer**：文件创建与追加会 fail closed，但没有跨进程 lease 协调两个 host 并发恢复同一 run。
-- **只 replay 已完成 host call**：任意 JavaScript heap 状态、phase／log narration，以及 crash 前已完成但 journal fsync 前尚未记录的 child effect 都不会 checkpoint。
+- **Journal 要求本地文件系统锁** — SQLite writer claim 会排斥重叠 host；不支持无法可靠执行 SQLite 锁的网络文件系统。被有界 dispose 放弃等待的 child 会继续持有 claim，直到真正完全停止或所属 host 进程退出。
+- **只有已完成 host call 可 replay** — 任意 JavaScript heap 状态与 phase/log narration 不会被 checkpoint。未决 intent 会阻止恢复时执行该调用；核对副作用后需要显式启动新 run，不能编辑 journal 或假定已经回滚。

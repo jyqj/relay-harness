@@ -4,7 +4,7 @@
 
 主动启用的代码索引召回上下文。当插件条目携带 config 小节时，本包注册一个 context-engine 步骤上下文 contributor。对每个被认领的步骤，它先把 `ctx.codeIndex` 绑定到 `input.cwd`，再把直接用户消息的 text block 拼成 query，把去重后的 `@file` 提及作为显式 `paths` 范围，执行一次排序检索，并通过同一个不可变 Workspace face 批量 hydrate 被选中的候选。
 
-带命中的健康答案贡献一条包含 source-verified fenced snippet 的 `code-index` 召回消息，并为每条接纳的 snippet 生成 evidence。evidence revision 是当前文件内容哈希，digest 覆盖实际注入的源码，`verification` 为 `verified`；parser 来源、score trace 与 search/hydration 两组 epoch 保留在 durable source/domain 记录中。过期、不可用或 revision 漂移的 hydration 会被省略并写入 warning 与 coverage。degraded/失败 search 或失败/空 hydration 不贡献 path-only fallback。
+带命中的健康答案贡献一条包含 source-verified fenced snippet 的 `code-index` 召回消息，并为每条接纳的 snippet 生成 evidence。evidence revision 是当前文件内容哈希，digest 覆盖实际注入的源码，`verification` 为 `verified`；parser 来源、score trace 与 search/hydration 两组 epoch 保留在 durable source/domain 记录中。过期、不可用或 revision 漂移的 hydration 会被省略并写入 warning 与 coverage。degraded/失败 search 或失败/空 hydration 不产生模型消息，而是抛出携带稳定阶段分类的 `ContextProviderError`，供引擎记录决策 trace；不产生 path-only fallback 或虚假的无结果声明。渲染预算耗尽记录显式 declined。诊断不包含原始 query 或 Provider 异常文本，部分 hydration 的 warning 只包含拒绝数量。健康且无命中的 search 仍贡献有范围限制的否定消息。
 
 `form: 'recall'` 的 source 记录使该投影不进入派生消费方：session-query 语料抽取跳过 recall 形态的消息，memory 抽取只收集 `kind: 'user'` 的消息。注入严格 opt-in：不带 config 小节的 Loader 条目会构造 `ctx.codeContext` service，但不注册 contributor。默认 Web/Desktop 组合会在 Workspace router 上启用它。
 

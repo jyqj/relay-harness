@@ -8,6 +8,10 @@ The package knows no harness concepts and serves no files: the `/api` HTTP bridg
 
 A listen failure (EADDRINUSE…) throws out of activation and rejects Loader composition with the bind diagnostic; the failed candidate fiber is disposed. An HTTP request whose handling throws (a fallback owner's `decodeURIComponent` on a malformed %-escape, a client dropping mid-body) is answered 400 — or the socket destroyed when headers are already out — and logged as a warning; it never exits the process. An upgrade-handler exception or upgraded-socket transport error is logged as a warning and destroys its socket. Disposal starts `close()` and `closeAllConnections()`, destroys every tracked upgraded socket, and returns only after the HTTP server and those sockets have closed.
 
+Registration disposers release only their own occurrence and are idempotent: a stale disposer cannot remove a route, fallback, or index tap installed after its first release.
+
+Dispatch tables retain exact registration occurrences with their caller-owned Cordis activation fence. The invariant companion reads those same tables after unload quiescence and reports any surviving retired registration, including reloads that preserve a Fiber id. It performs no probe registration and reserves no URL. Route descriptors are captured at registration, and repeated index-transform functions retain occurrence identity so disposing one cannot reorder another.
+
 ## Model Experience
 
 None, as the package is a Web carrier between the browser and the HTTP/upgrade routes other plugins register; nothing here reaches a model request.

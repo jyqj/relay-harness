@@ -4,6 +4,7 @@
  * @module @relay-harness/rlh-host-apiproxy/approval-questions
  */
 
+import type { Agent } from '@relay-harness/rlh-agent'
 import type { ApprovalOutcome, ApprovalRequestId } from '@relay-harness/rlh-user-approval'
 import type { AskUserQuestionAnswer, AskUserQuestionItem, UserQuestionError } from '@relay-harness/rlh-user-questions'
 import type { CallId } from '@relay-harness/rlh-llm/brand'
@@ -17,6 +18,8 @@ import type { RpcId } from './api/rpc.ts'
  * answerer's promise back into `ctx.approval`.
  */
 export interface PendingApproval {
+  /** Exact runtime owner; a same-id successor does not inherit this wait. */
+  owner: Agent
   rpcId: RpcId
   sessionId: SessionId
   approvalId: ApprovalRequestId
@@ -48,6 +51,8 @@ export function requestedFrame(pending: PendingApproval): RpcRequest<MuxFrame> {
 
 /** One host-owned question wait, addressed by the stable server-request id. */
 export interface PendingQuestion {
+  /** Exact runtime owner; teardown withdraws the wait even without a request signal. */
+  owner: Agent
   rpcId: RpcId
   sessionId: SessionId
   questions: AskUserQuestionItem[]

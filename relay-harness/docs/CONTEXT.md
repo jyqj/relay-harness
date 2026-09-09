@@ -91,4 +91,4 @@ This project does not specify scheduling scores, weights, model-pool implementat
 
 The runtime is the TypeScript Harness under the runtime root defined by [ADR-0005](adr/0005-adopt-ts-harness-runtime.md). Default composition ships the agent loop, recovery, tools, subagents, the Chat/Work/Library product shell, explicit Prompt Enhancement, the local Context Engine, governed Memory, Code Index, MCP/skill directories, and ordinary-user-safe permissions.
 
-Relay-specific capabilities that remain unshipped are the external scheduling client and the user-visible model-strength and pricing contract. This document does not duplicate feature status; the machine-readable [`feature-status.json`](feature-status.json) and its CI evidence verifier are the sole authority.
+Relay-specific capabilities that remain unshipped are the external scheduling client and the user-visible model-strength and pricing contract. The machine-readable [`feature-status.json`](feature-status.json) owns implementation scope and evidence references, not execution verdicts. Its verifier checks paths and markers; current test, build, platform, and provider results separately establish validation.

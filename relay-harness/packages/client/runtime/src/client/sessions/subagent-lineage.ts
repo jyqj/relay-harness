@@ -5,7 +5,7 @@
  * @module @relay-harness/rlh-client-runtime/client/sessions/subagent-lineage
  */
 import type { SessionId } from '@relay-harness/rlh-api-remotes/client'
-import type { SessionSummary } from './service.ts'
+import type { SessionSummary } from '../contract/sessions.ts'
 
 /** Descendant counts projected for one possible parent session. */
 export interface SubagentDescendantSummary {

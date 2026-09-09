@@ -1,0 +1,981 @@
+{
+  "files": {
+    "failed": 44,
+    "passed": 44,
+    "skipped": 1
+  },
+  "tests": {
+    "failed": 97,
+    "passed": 190,
+    "skipped": 20
+  },
+  "unhandledErrors": 2,
+  "seconds": 2050.22,
+  "exitCode": 1,
+  "log": "/tmp/relay-hooks-full-web.log",
+  "failures": [
+    {
+      "test": "apps/web/tests/goal-bar.e2e.ts > web e2e: goal bar clear convergence",
+      "diagnostic": [
+        "TimeoutError: page.waitForSelector: Timeout 30000ms exceeded.",
+        "Call log:",
+        "  - waiting for locator('[class*=\"frame\"]') to be visible",
+        " ❯ apps/web/tests/goal-bar.e2e.ts:34:16"
+      ]
+    },
+    {
+      "test": "apps/web/tests/lifecycle-chrome.e2e.ts > web e2e: lifecycle & chrome (workspace flow / reload / dark mode)",
+      "diagnostic": [
+        "Error: llm-replay: fixture not fully consumed — 1 recorded script(s) never bound to a live session; the scenario drove fewer model calls than recorded",
+        " ❯ Object.assertConsumed packages/test-support/llm-replay/src/index.ts:788:15",
+        "    786|       }",
+        "    787|       if (problems.length > 0) {"
+      ]
+    },
+    {
+      "test": "apps/web/tests/sidebar-subagent-activity.e2e.ts > web e2e: sidebar subagent activity",
+      "diagnostic": [
+        "Error: Hook timed out in 60000ms.",
+        "If this is a long-running hook, pass a timeout value as the last argument or configure it globally with \"hookTimeout\".",
+        " ❯ apps/web/tests/sidebar-subagent-activity.e2e.ts:80:3",
+        "     78|   let tripwire: ReturnType<typeof watchConsole>"
+      ]
+    },
+    {
+      "test": "apps/web/tests/steering.e2e.ts > web e2e: mid-turn steering lands durably and visibly",
+      "diagnostic": [
+        "Error: llm-replay: fixture not fully consumed — session session-478a2654-b5f6-4df0-a4f8-29569354be7e consumed 1/2 recorded call(s); the scenario drove fewer model calls than recorded",
+        " ❯ Object.assertConsumed packages/test-support/llm-replay/src/index.ts:788:15",
+        "    786|       }",
+        "    787|       if (problems.length > 0) {"
+      ]
+    },
+    {
+      "test": "apps/web/tests/steering.e2e.ts > web e2e: empty-draft Cmd+Enter steers the whole queue",
+      "diagnostic": [
+        "TimeoutError: locator.waitFor: Timeout 10000ms exceeded.",
+        "Call log:",
+        "  - waiting for getByText('Standard mode', { exact: true }) to be visible",
+        " ❯ apps/web/tests/steering.e2e.ts:316:60"
+      ]
+    },
+    {
+      "test": "apps/web/tests/steering.e2e.ts > web e2e: empty-draft Cmd+Enter steers the whole queue",
+      "diagnostic": [
+        "Error: llm-replay: fixture not fully consumed — 1 recorded script(s) never bound to a live session; the scenario drove fewer model calls than recorded",
+        " ❯ Object.assertConsumed packages/test-support/llm-replay/src/index.ts:788:15",
+        "    786|       }",
+        "    787|       if (problems.length > 0) {"
+      ]
+    },
+    {
+      "test": "apps/web/tests/subagent-interrupt-ui.e2e.ts > web e2e: composer interrupt for a running continuable child",
+      "diagnostic": [
+        "Error: llm-replay: fixture not fully consumed — session dfbeb1f6-c5e3-4c05-8c75-797860ab1b84 consumed 1/5 recorded call(s); the scenario drove fewer model calls than recorded",
+        " ❯ Object.assertConsumed packages/test-support/llm-replay/src/index.ts:788:15",
+        "    786|       }",
+        "    787|       if (problems.length > 0) {"
+      ]
+    },
+    {
+      "test": "apps/web/tests/trajectory-virtualization.e2e.ts > web e2e: Trajectory virtualization over tail-paged history",
+      "diagnostic": [
+        "Error: llm-replay: fixture not fully consumed — 1 recorded script(s) never bound to a live session; the scenario drove fewer model calls than recorded",
+        " ❯ Object.assertConsumed packages/test-support/llm-replay/src/index.ts:788:15",
+        "    786|       }",
+        "    787|       if (problems.length > 0) {"
+      ]
+    },
+    {
+      "test": "apps/web/tests/workflow-run.e2e.ts > web e2e: durable workflow run in Chat",
+      "diagnostic": [
+        "Error: llm-replay: fixture not fully consumed — 1 recorded script(s) never bound to a live session; the scenario drove fewer model calls than recorded",
+        " ❯ Object.assertConsumed packages/test-support/llm-replay/src/index.ts:788:15",
+        "    786|       }",
+        "    787|       if (problems.length > 0) {"
+      ]
+    },
+    {
+      "test": "apps/web/tests/agent-preset-authoring.e2e.ts > web e2e: agent-preset authoring is a host-side copy > offers the roster with copy as the only way to create",
+      "diagnostic": [
+        "TimeoutError: locator.click: Timeout 30000ms exceeded.",
+        "Call log:",
+        "  - waiting for getByRole('dialog', { name: '设置' }).getByRole('button', { name: 'Agent 预设' })",
+        " ❯ apps/web/tests/agent-preset-authoring.e2e.ts:87:60"
+      ]
+    },
+    {
+      "test": "apps/web/tests/agent-preset-authoring.e2e.ts > web e2e: agent-preset authoring is a host-side copy > views a shipped composition read-only instead of editing it",
+      "diagnostic": [
+        "TimeoutError: locator.click: Timeout 30000ms exceeded.",
+        "Call log:",
+        "  - waiting for getByRole('dialog', { name: '设置' }).getByRole('button', { name: '查看: 标准模式' })",
+        " ❯ apps/web/tests/agent-preset-authoring.e2e.ts:107:60"
+      ]
+    },
+    {
+      "test": "apps/web/tests/agent-preset-authoring.e2e.ts > web e2e: agent-preset authoring is a host-side copy > copies 极简模式 whole under a new id and lands in its files",
+      "diagnostic": [
+        "TimeoutError: locator.click: Timeout 30000ms exceeded.",
+        "Call log:",
+        "  - waiting for getByRole('dialog', { name: '设置' }).getByRole('button', { name: '复制: 极简模式' })",
+        " ❯ apps/web/tests/agent-preset-authoring.e2e.ts:125:60"
+      ]
+    },
+    {
+      "test": "apps/web/tests/agent-preset-authoring.e2e.ts > web e2e: agent-preset authoring is a host-side copy > deletes the copy after confirmation and reclaims the roster",
+      "diagnostic": [
+        "TimeoutError: locator.click: Timeout 30000ms exceeded.",
+        "Call log:",
+        "  - waiting for getByRole('dialog', { name: '设置' }).getByRole('button', { name: '删除: 我的模式' })",
+        " ❯ apps/web/tests/agent-preset-authoring.e2e.ts:170:60"
+      ]
+    },
+    {
+      "test": "apps/web/tests/agent-preset-authoring.e2e.ts > web e2e: agent-preset authoring is a host-side copy > marks damaged presets broken and clears a ghost through delete",
+      "diagnostic": [
+        "TimeoutError: locator.click: Timeout 30000ms exceeded.",
+        "Call log:",
+        "  - waiting for getByRole('dialog', { name: '设置' }).getByRole('button', { name: 'Agent 预设' })",
+        " ❯ apps/web/tests/agent-preset-authoring.e2e.ts:197:60"
+      ]
+    },
+    {
+      "test": "apps/web/tests/agent-preset-authoring.e2e.ts > web e2e: agent-preset authoring is a host-side copy > starts a creator-mode session from the section",
+      "diagnostic": [
+        "TimeoutError: locator.click: Timeout 30000ms exceeded.",
+        "Call log:",
+        "  - waiting for getByRole('dialog', { name: '设置' }).getByRole('button', { name: 'Agent 预设' })",
+        " ❯ apps/web/tests/agent-preset-authoring.e2e.ts:252:60"
+      ]
+    },
+    {
+      "test": "apps/web/tests/agent-preset-selection.e2e.ts > web e2e: agent-preset selection > offers the chip on the new-session screen, beside the workspace picker",
+      "diagnostic": [
+        "AssertionError: expected '- button \"Choose workspace\":\\n  - img…' to be '- button \"Choose workspace\":\\n  - img…' // Object.is equality",
+        "- Expected",
+        "+ Received",
+        "  - button \"Choose workspace\":"
+      ]
+    },
+    {
+      "test": "apps/web/tests/agent-preset-selection.e2e.ts > web e2e: agent-preset selection > names every preset and what it is for",
+      "diagnostic": [
+        "TimeoutError: locator.click: Timeout 30000ms exceeded.",
+        "Call log:",
+        "  - waiting for getByRole('button', { name: 'Standard mode' })",
+        " ❯ apps/web/tests/agent-preset-selection.e2e.ts:210:63"
+      ]
+    },
+    {
+      "test": "apps/web/tests/agent-preset-selection.e2e.ts > web e2e: agent-preset selection > applies the staged pick to the blank session, and the host honors it",
+      "diagnostic": [
+        "TimeoutError: locator.click: Timeout 30000ms exceeded.",
+        "Call log:",
+        "  - waiting for getByRole('button', { name: 'Standard mode' })",
+        " ❯ apps/web/tests/agent-preset-selection.e2e.ts:226:63"
+      ]
+    },
+    {
+      "test": "apps/web/tests/agent-preset-selection.e2e.ts > web e2e: agent-preset selection > re-reads the slash catalog through the composition the switch installed",
+      "diagnostic": [
+        "AssertionError: expected [ …(8) ] to not deeply equal ArrayContaining{…}",
+        "- Expected",
+        "+ Received",
+        "- ArrayContaining ["
+      ]
+    },
+    {
+      "test": "apps/web/tests/agent-preset-selection.e2e.ts > web e2e: agent-preset selection > labels a resumed session with the preset it was created under",
+      "diagnostic": [
+        "AssertionError: expected '- navigation \"Session hierarchy\":\\n  …' to be '- navigation \"Session hierarchy\":\\n  …' // Object.is equality",
+        "- Expected",
+        "+ Received",
+        "  - navigation \"Session hierarchy\":"
+      ]
+    },
+    {
+      "test": "apps/web/tests/bash-abort-row.e2e.ts > web e2e: cancelled Bash row disclosure > expands the aborted row to its command and full error",
+      "diagnostic": [
+        "AssertionError: expected '- banner:\\n  - navigation \"Session hi…' to be '- banner:\\n  - navigation \"Session hi…' // Object.is equality",
+        "- Expected",
+        "+ Received",
+        "@@ -1,11 +1,10 @@"
+      ]
+    },
+    {
+      "test": "apps/web/tests/chat-continuous-conversation.e2e.ts > web e2e: continuous conversation grown through the composer > keeps twelve generated turns and tool rows bound to one live session",
+      "diagnostic": [
+        "TimeoutError: locator.waitFor: Timeout 15000ms exceeded.",
+        "Call log:",
+        "  - waiting for getByText('CONTINUOUS_CHAT_FIRST_005').last() to be visible",
+        " ❯ apps/web/tests/chat-continuous-conversation.e2e.ts:250:71"
+      ]
+    },
+    {
+      "test": "apps/web/tests/code-mode-round.e2e.ts > web e2e: Code Mode round renders nested sub-calls > matches the conversation aria golden with stable anchors",
+      "diagnostic": [
+        "AssertionError: expected '- banner:\\n  - navigation \"Session hi…' to be '- banner:\\n  - navigation \"Session hi…' // Object.is equality",
+        "- Expected",
+        "+ Received",
+        "@@ -1,34 +1,36 @@"
+      ]
+    },
+    {
+      "test": "apps/web/tests/composer-tab-geometry.e2e.ts > web e2e: input card position across view tabs > reserves the gutter in Chat and lets Trajectory own its width",
+      "diagnostic": [
+        "TimeoutError: locator.click: Timeout 30000ms exceeded.",
+        "Call log:",
+        "  - waiting for getByRole('tab', { name: 'Trajectory', exact: true })",
+        " ❯ showTab apps/web/tests/composer-tab-geometry.e2e.ts:193:59"
+      ]
+    },
+    {
+      "test": "apps/web/tests/composer-tab-geometry.e2e.ts > web e2e: input card position across view tabs > holds the input card in place when the tab changes",
+      "diagnostic": [
+        "TimeoutError: locator.click: Timeout 30000ms exceeded.",
+        "Call log:",
+        "  - waiting for getByRole('tab', { name: 'Trajectory', exact: true })",
+        " ❯ showTab apps/web/tests/composer-tab-geometry.e2e.ts:193:59"
+      ]
+    },
+    {
+      "test": "apps/web/tests/composer-tab-geometry.e2e.ts > web e2e: input card position across view tabs > holds the input card in place at a viewport where it shrinks with the column",
+      "diagnostic": [
+        "TimeoutError: locator.click: Timeout 30000ms exceeded.",
+        "Call log:",
+        "  - waiting for getByRole('tab', { name: 'Trajectory', exact: true })",
+        " ❯ showTab apps/web/tests/composer-tab-geometry.e2e.ts:193:59"
+      ]
+    },
+    {
+      "test": "apps/web/tests/composer-tab-geometry.e2e.ts > web e2e: input card position across view tabs > moves the card again once the seat compensation is removed in the page",
+      "diagnostic": [
+        "TimeoutError: locator.click: Timeout 30000ms exceeded.",
+        "Call log:",
+        "  - waiting for getByRole('tab', { name: 'Trajectory', exact: true })",
+        " ❯ showTab apps/web/tests/composer-tab-geometry.e2e.ts:193:59"
+      ]
+    },
+    {
+      "test": "apps/web/tests/composer-tab-geometry.e2e.ts > web e2e: input card position across view tabs > matches the committed tab geometry golden",
+      "diagnostic": [
+        "TimeoutError: locator.click: Timeout 30000ms exceeded.",
+        "Call log:",
+        "  - waiting for getByRole('tab', { name: 'Trajectory', exact: true })",
+        " ❯ showTab apps/web/tests/composer-tab-geometry.e2e.ts:193:59"
+      ]
+    },
+    {
+      "test": "apps/web/tests/cordis-tool-round.e2e.ts > web e2e: Cordis tools use their owned cards > the durable log carries one complete Cordis lifecycle",
+      "diagnostic": [
+        "AssertionError: expected { kind: 'error', error: { …(2) } } to deeply equal { kind: 'completed' }",
+        "- Expected",
+        "+ Received",
+        "  {"
+      ]
+    },
+    {
+      "test": "apps/web/tests/cordis-tool-round.e2e.ts > web e2e: Cordis tools use their owned cards > renders localized Cordis lifecycle cards",
+      "diagnostic": [
+        "AssertionError: expected 0 to be greater than or equal to 1",
+        " ❯ apps/web/tests/cordis-tool-round.e2e.ts:140:8",
+        "    138|     onTestFailed(() => saveFailureShot(page, 'web-e2e-cordis-rows'))",
+        "    139|     await expect.poll(() => page.getByText('CORDIS_UI_DONE', { exact: …"
+      ]
+    },
+    {
+      "test": "apps/web/tests/cordis-tool-round.e2e.ts > web e2e: Cordis tools use their owned cards > matches the conversation aria golden",
+      "diagnostic": [
+        "AssertionError: expected '- banner:\\n  - navigation \"Session hi…' to be '- banner:\\n  - navigation \"Session hi…' // Object.is equality",
+        "- Expected",
+        "+ Received",
+        "@@ -1,19 +1,17 @@"
+      ]
+    },
+    {
+      "test": "apps/web/tests/feedback-command.e2e.ts > web e2e: /feedback command acknowledgement > records feedback and renders the acknowledgement with session id and sharing status",
+      "diagnostic": [
+        "AssertionError: expected '- banner:\\n  - navigation \"Session hi…' to be '- banner:\\n  - navigation \"Session hi…' // Object.is equality",
+        "- Expected",
+        "+ Received",
+        "@@ -1,26 +1,23 @@"
+      ]
+    },
+    {
+      "test": "apps/web/tests/goal-multi-turn-actions.e2e.ts > web e2e: Goal keeps one assistant action row per completed turn > keeps actions on both completed Goal turn tails",
+      "diagnostic": [
+        "AssertionError: expected '- banner:\\n  - navigation \"Session hi…' to be '- banner:\\n  - navigation \"Session hi…' // Object.is equality",
+        "- Expected",
+        "+ Received",
+        "@@ -1,13 +1,10 @@"
+      ]
+    },
+    {
+      "test": "apps/web/tests/hmr-live.e2e.ts > hot-reloads a real client-plugin source edit without refreshing the page",
+      "diagnostic": [
+        "Error: pnpm run dev:web exited before ready ({\"exitCode\":1,\"signal\":null}):",
+        "native/landlock-run/packages/linux-arm64 | [WARN] Unsupported platform: wanted: {\"cpu\":[\"arm64\"],\"os\":[\"linux\"],\"libc\":[\"any\"]} (current: {\"os\":\"darwin\",\"cpu\":\"arm64\",\"libc\":\"unknown\"})",
+        "native/landlock-run/packages/linux-x64   | [WARN] Unsupported platform: wanted: {\"cpu\":[\"x64\"],\"os\":[\"linux\"],\"libc\":[\"any\"]} (current: {\"os\":\"darwin\",\"cpu\":\"arm64\",\"libc\":\"unknown\"})",
+        "Scope: all 312 workspace projects"
+      ]
+    },
+    {
+      "test": "apps/web/tests/lifecycle-chrome.e2e.ts > web e2e: lifecycle & chrome (workspace flow / reload / dark mode) > shows active Plan as the warn-state status action",
+      "diagnostic": [
+        "AssertionError: expected '- button \"New session\"\\n- button \"Col…' to be '- button \"New session\"\\n- button \"Col…' // Object.is equality",
+        "- Expected",
+        "+ Received",
+        "@@ -1,8 +1,18 @@"
+      ]
+    },
+    {
+      "test": "apps/web/tests/lifecycle-chrome.e2e.ts > web e2e: lifecycle & chrome (workspace flow / reload / dark mode) > sends the first prompt from the empty-state hero (all modes)",
+      "diagnostic": [
+        "AssertionError: expected '- button \"New session\"\\n- button \"Col…' to be '- button \"New session\"\\n- button \"Col…' // Object.is equality",
+        "- Expected",
+        "+ Received",
+        "@@ -1,8 +1,18 @@"
+      ]
+    },
+    {
+      "test": "apps/web/tests/lifecycle-chrome.e2e.ts > web e2e: lifecycle & chrome (workspace flow / reload / dark mode) > materialized a real Workspace and Session over the wire",
+      "diagnostic": [
+        "AssertionError: expected 0 to be greater than or equal to 1",
+        " ❯ apps/web/tests/lifecycle-chrome.e2e.ts:208:105",
+        "    206|     ).toBeGreaterThanOrEqual(1)",
+        "    207|     await expect.poll(() => page.locator('[role=\"treeitem\"][aria-selec…"
+      ]
+    },
+    {
+      "test": "apps/web/tests/lifecycle-chrome.e2e.ts > web e2e: lifecycle & chrome (workspace flow / reload / dark mode) > recovers the whole surface across a reload from the log alone",
+      "diagnostic": [
+        "AssertionError: expected 0 to be greater than or equal to 1",
+        " ❯ apps/web/tests/lifecycle-chrome.e2e.ts:230:105",
+        "    228|     // the replay cursor was fully consumed before the reload, so any …",
+        "    229|     // request would fail the scenario loudly at close()."
+      ]
+    },
+    {
+      "test": "apps/web/tests/live-interactions.e2e.ts > web e2e: live-turn interactions (cancel / error / retry) > cancels a hung stream deterministically via the readyFile marker",
+      "diagnostic": [
+        "AssertionError: expected '- banner:\\n  - navigation \"Session hi…' to be '- banner:\\n  - navigation \"Session hi…' // Object.is equality",
+        "- Expected",
+        "+ Received",
+        "  - banner:"
+      ]
+    },
+    {
+      "test": "apps/web/tests/live-interactions.e2e.ts > web e2e: live-turn interactions (cancel / error / retry) > surfaces a non-retryable AUTH failure without retrying",
+      "diagnostic": [
+        "AssertionError: expected '- banner:\\n  - navigation \"Session hi…' to be '- banner:\\n  - navigation \"Session hi…' // Object.is equality",
+        "- Expected",
+        "+ Received",
+        "  - banner:"
+      ]
+    },
+    {
+      "test": "apps/web/tests/live-interactions.e2e.ts > web e2e: live-turn interactions (cancel / error / retry) > keeps a terminal request marker inside the trajectory table",
+      "diagnostic": [
+        "TimeoutError: locator.click: Timeout 30000ms exceeded.",
+        "Call log:",
+        "  - waiting for getByRole('tab', { name: 'Trajectory' })",
+        " ❯ apps/web/tests/live-interactions.e2e.ts:194:57"
+      ]
+    },
+    {
+      "test": "apps/web/tests/live-interactions.e2e.ts > web e2e: live-turn interactions (cancel / error / retry) > recovers a transient SERVER failure through llm-retry and completes",
+      "diagnostic": [
+        "AssertionError: expected '- banner:\\n  - navigation \"Session hi…' to be '- banner:\\n  - navigation \"Session hi…' // Object.is equality",
+        "- Expected",
+        "+ Received",
+        "@@ -1,26 +1,23 @@"
+      ]
+    },
+    {
+      "test": "apps/web/tests/markdown-cjk-strong.e2e.ts > web e2e: CJK-adjacent Markdown strong emphasis > renders punctuation-terminated strong spans before adjacent CJK text",
+      "diagnostic": [
+        "AssertionError: expected '- banner:\\n  - navigation \"Session hi…' to be '- banner:\\n  - navigation \"Session hi…' // Object.is equality",
+        "- Expected",
+        "+ Received",
+        "@@ -1,11 +1,10 @@"
+      ]
+    },
+    {
+      "test": "apps/web/tests/markdown-images.e2e.ts > web e2e: remote Markdown image rendering > loads only the remote image and matches the conversation golden",
+      "diagnostic": [
+        "AssertionError: expected '- banner:\\n  - navigation \"Session hi…' to be '- banner:\\n  - navigation \"Session hi…' // Object.is equality",
+        "- Expected",
+        "+ Received",
+        "@@ -1,11 +1,10 @@"
+      ]
+    },
+    {
+      "test": "apps/web/tests/markdown-inline-code-links.e2e.ts > web e2e: Markdown inline-code links > opens a complete HTTP URL from inline code and leaves other code inert",
+      "diagnostic": [
+        "AssertionError: expected '- banner:\\n  - navigation \"Session hi…' to be '- banner:\\n  - navigation \"Session hi…' // Object.is equality",
+        "- Expected",
+        "+ Received",
+        "@@ -1,11 +1,10 @@"
+      ]
+    },
+    {
+      "test": "apps/web/tests/math-rendering.e2e.ts > web e2e: settled Markdown math rendering > renders the settled reply without KaTeX errors",
+      "diagnostic": [
+        "AssertionError: expected '- banner:\\n  - navigation \"Session hi…' to be '- banner:\\n  - navigation \"Session hi…' // Object.is equality",
+        "- Expected",
+        "+ Received",
+        "@@ -1,11 +1,10 @@"
+      ]
+    },
+    {
+      "test": "apps/web/tests/message-actions.e2e.ts > web e2e: message IconActions and clocks on settled history > matches the conversation aria golden with IconActions and clocks",
+      "diagnostic": [
+        "TimeoutError: locator.waitFor: Timeout 10000ms exceeded.",
+        "Call log:",
+        "  - waiting for getByRole('button', { name: /^Select model, current/ }) to be visible",
+        " ❯ apps/web/tests/message-actions.e2e.ts:140:8"
+      ]
+    },
+    {
+      "test": "apps/web/tests/message-actions.e2e.ts > web e2e: message IconActions and clocks on settled history > opens the native Session Tree over durable Turn history",
+      "diagnostic": [
+        "AssertionError: expected +0 to be 1 // Object.is equality",
+        "- Expected",
+        "+ Received",
+        "- 1"
+      ]
+    },
+    {
+      "test": "apps/web/tests/message-actions.e2e.ts > web e2e: message IconActions and clocks on settled history > forks through the settled-message and session-row actions",
+      "diagnostic": [
+        "TimeoutError: locator.click: Timeout 30000ms exceeded.",
+        "Call log:",
+        "  - waiting for getByRole('button', { name: 'Branch into a new conversation' }).last()",
+        "    - locator resolved to <button type=\"button\" class=\"k3EhIG_action\" aria-label=\"Branch into a new conversation\">…</button>"
+      ]
+    },
+    {
+      "test": "apps/web/tests/message-feedback-layout.e2e.ts > web e2e: the feedback note editor floats above the column > keeps the actions row untouched by the note popover, which stays in the viewport",
+      "diagnostic": [
+        "AssertionError: viewport 1680: expected 2 to be 1 // Object.is equality",
+        "- Expected",
+        "+ Received",
+        "- 1"
+      ]
+    },
+    {
+      "test": "apps/web/tests/message-feedback-layout.e2e.ts > web e2e: the feedback note editor floats above the column > matches the committed geometry golden",
+      "diagnostic": [
+        "AssertionError: expected '# Assistant actions row with the feed…' to be '# Assistant actions row with the feed…' // Object.is equality",
+        "- Expected",
+        "+ Received",
+        "  # Assistant actions row with the feedback note popover open"
+      ]
+    },
+    {
+      "test": "apps/web/tests/models-settings.e2e.ts > web e2e: Models settings page configures a dormant provider > opens the add card over the dormant directory vocabulary",
+      "diagnostic": [
+        "TimeoutError: locator.click: Timeout 30000ms exceeded.",
+        "Call log:",
+        "  - waiting for getByRole('dialog', { name: '设置' }).getByRole('button', { name: '模型' })",
+        " ❯ apps/web/tests/models-settings.e2e.ts:64:54"
+      ]
+    },
+    {
+      "test": "apps/web/tests/models-settings.e2e.ts > web e2e: Models settings page configures a dormant provider > refuses a key no HTTP header can carry before anything is written",
+      "diagnostic": [
+        "TimeoutError: locator.fill: Timeout 30000ms exceeded.",
+        "Call log:",
+        "  - waiting for getByRole('dialog', { name: '设置' }).getByLabel('API 密钥')",
+        " ❯ apps/web/tests/models-settings.e2e.ts:94:15"
+      ]
+    },
+    {
+      "test": "apps/web/tests/models-settings.e2e.ts > web e2e: Models settings page configures a dormant provider > saves a blank key as a reference-free provider-native profile",
+      "diagnostic": [
+        "TimeoutError: locator.click: Timeout 30000ms exceeded.",
+        "Call log:",
+        "  - waiting for getByRole('dialog', { name: '设置' }).getByRole('button', { name: '保存', exact: true })",
+        " ❯ apps/web/tests/models-settings.e2e.ts:108:67"
+      ]
+    },
+    {
+      "test": "apps/web/tests/models-settings.e2e.ts > web e2e: Models settings page configures a dormant provider > describes reference-free deletion without claiming a credential exists",
+      "diagnostic": [
+        "TimeoutError: locator.click: Timeout 30000ms exceeded.",
+        "Call log:",
+        "  - waiting for getByRole('dialog', { name: '设置' }).getByRole('button', { name: '删除 minimax-cn', exact: true })",
+        " ❯ apps/web/tests/models-settings.e2e.ts:122:86"
+      ]
+    },
+    {
+      "test": "apps/web/tests/models-settings.e2e.ts > web e2e: Models settings page configures a dormant provider > stores the key under the derived reference and keeps the route live",
+      "diagnostic": [
+        "TimeoutError: locator.click: Timeout 30000ms exceeded.",
+        "Call log:",
+        "  - waiting for getByRole('dialog', { name: '设置' }).getByRole('button', { name: '编辑 minimax-cn' })",
+        " ❯ apps/web/tests/models-settings.e2e.ts:137:65"
+      ]
+    },
+    {
+      "test": "apps/web/tests/models-settings.e2e.ts > web e2e: Models settings page configures a dormant provider > applies a customized-settings field as a merge patch",
+      "diagnostic": [
+        "TimeoutError: locator.click: Timeout 30000ms exceeded.",
+        "Call log:",
+        "  - waiting for getByRole('dialog', { name: '设置' }).getByRole('button', { name: '编辑 minimax-cn' })",
+        " ❯ apps/web/tests/models-settings.e2e.ts:164:65"
+      ]
+    },
+    {
+      "test": "apps/web/tests/models-settings.e2e.ts > web e2e: Models settings page configures a dormant provider > selects and clears the discovered model catalog in one action",
+      "diagnostic": [
+        "TimeoutError: locator.click: Timeout 30000ms exceeded.",
+        "Call log:",
+        "  - waiting for getByRole('dialog', { name: '设置' }).getByRole('button', { name: '编辑 minimax-cn' })",
+        " ❯ apps/web/tests/models-settings.e2e.ts:191:73"
+      ]
+    },
+    {
+      "test": "apps/web/tests/models-settings.e2e.ts > web e2e: Models settings page configures a dormant provider > declares a route the adapter does not ship",
+      "diagnostic": [
+        "Error: Test timed out in 60000ms.",
+        "If this is a long-running test, pass a timeout value as the last argument or configure it globally with \"testTimeout\".",
+        " ❯ apps/web/tests/models-settings.e2e.ts:224:3",
+        "    222|   }, 60_000)"
+      ]
+    },
+    {
+      "test": "apps/web/tests/models-settings.e2e.ts > web e2e: Models settings page configures a dormant provider > reopens the name and protocol a declared route was created with",
+      "diagnostic": [
+        "TimeoutError: locator.click: Timeout 30000ms exceeded.",
+        "Call log:",
+        "  - waiting for getByRole('dialog', { name: '设置' }).getByRole('button', { name: '编辑 Acme Gateway (acme-gateway)' })",
+        " ❯ apps/web/tests/models-settings.e2e.ts:260:82"
+      ]
+    },
+    {
+      "test": "apps/web/tests/models-settings.e2e.ts > web e2e: Models settings page configures a dormant provider > confirms an identified provider deletion before removing its profile and key",
+      "diagnostic": [
+        "TimeoutError: locator.click: Timeout 30000ms exceeded.",
+        "Call log:",
+        "  - waiting for getByRole('dialog', { name: '设置' }).getByRole('button', { name: '删除 minimax-cn', exact: true })",
+        " ❯ apps/web/tests/models-settings.e2e.ts:300:86"
+      ]
+    },
+    {
+      "test": "apps/web/tests/navigation-panes.e2e.ts > web e2e: navigation & panes over a rich seeded session > renders the trajectory ledger and opens its local record inspector",
+      "diagnostic": [
+        "TimeoutError: locator.click: Timeout 30000ms exceeded.",
+        "Call log:",
+        "  - waiting for getByRole('tab', { name: 'Trajectory' })",
+        " ❯ apps/web/tests/navigation-panes.e2e.ts:229:57"
+      ]
+    },
+    {
+      "test": "apps/web/tests/navigation-panes.e2e.ts > web e2e: navigation & panes over a rich seeded session > focuses the ledger by dragging an overview interval",
+      "diagnostic": [
+        "TimeoutError: locator.click: Timeout 30000ms exceeded.",
+        "Call log:",
+        "  - waiting for getByRole('tab', { name: 'Trajectory' })",
+        " ❯ apps/web/tests/navigation-panes.e2e.ts:393:57"
+      ]
+    },
+    {
+      "test": "apps/web/tests/onboarding-deepseek-config.e2e.ts > web e2e: first-run DeepSeek credential setup > stores a key write-only and observes configured state without restarting",
+      "diagnostic": [
+        "TimeoutError: locator.click: Timeout 30000ms exceeded.",
+        "Call log:",
+        "  - waiting for getByRole('dialog', { name: '设置' }).getByRole('button', { name: '模型' })",
+        " ❯ apps/web/tests/onboarding-deepseek-config.e2e.ts:101:56"
+      ]
+    },
+    {
+      "test": "apps/web/tests/onboarding-deepseek-config.e2e.ts > web e2e: first-run DeepSeek credential setup > configures arbitrary DeepSeek models and prompts after the selected model is removed",
+      "diagnostic": [
+        "TimeoutError: locator.click: Timeout 30000ms exceeded.",
+        "Call log:",
+        "  - waiting for getByRole('dialog', { name: '设置' }).getByRole('button', { name: '模型' })",
+        " ❯ apps/web/tests/onboarding-deepseek-config.e2e.ts:201:56"
+      ]
+    },
+    {
+      "test": "apps/web/tests/onboarding-usable-provider.e2e.ts > web e2e: another usable provider ends first-run onboarding > closes the setup card without discarding the add card beside it",
+      "diagnostic": [
+        "TimeoutError: locator.click: Timeout 30000ms exceeded.",
+        "Call log:",
+        "  - waiting for getByRole('dialog', { name: '设置' }).getByRole('button', { name: '模型' })",
+        " ❯ apps/web/tests/onboarding-usable-provider.e2e.ts:57:56"
+      ]
+    },
+    {
+      "test": "apps/web/tests/onboarding-usable-provider.e2e.ts > web e2e: another usable provider ends first-run onboarding > stops prompting for DeepSeek once the other provider can serve requests",
+      "diagnostic": [
+        "TimeoutError: locator.fill: Timeout 30000ms exceeded.",
+        "Call log:",
+        "  - waiting for getByRole('dialog', { name: '设置' }).getByRole('textbox', { name: 'API 密钥', exact: true })",
+        " ❯ apps/web/tests/onboarding-usable-provider.e2e.ts:91:74"
+      ]
+    },
+    {
+      "test": "apps/web/tests/plan-control-row.e2e.ts > web e2e: plan chip click area at the narrow viewport > keeps the plan chip and model trigger disjoint and exits plan mode by click",
+      "diagnostic": [
+        "TimeoutError: locator.waitFor: Timeout 10000ms exceeded.",
+        "Call log:",
+        "  - waiting for getByRole('button', { name: /Select model/ }) to be visible",
+        " ❯ apps/web/tests/plan-control-row.e2e.ts:91:19"
+      ]
+    },
+    {
+      "test": "apps/web/tests/plan-review.e2e.ts > web e2e: plan review takeover round trip > reviews the plan on a decision card and approves through it",
+      "diagnostic": [
+        "AssertionError: expected '- banner:\\n  - navigation \"Session hi…' to be '- banner:\\n  - navigation \"Session hi…' // Object.is equality",
+        "- Expected",
+        "+ Received",
+        "@@ -1,25 +1,22 @@"
+      ]
+    },
+    {
+      "test": "apps/web/tests/plugin-config.e2e.ts > web e2e: plugin configuration section > shows one card per exposed host-plane namespace",
+      "diagnostic": [
+        "TimeoutError: locator.click: Timeout 30000ms exceeded.",
+        "Call log:",
+        "  - waiting for getByRole('dialog', { name: '设置' }).getByRole('button', { name: '插件', exact: true })",
+        " ❯ openPlugins apps/web/tests/plugin-config.e2e.ts:59:67"
+      ]
+    },
+    {
+      "test": "apps/web/tests/plugin-config.e2e.ts > web e2e: plugin configuration section > stages an edit and writes it only when saved",
+      "diagnostic": [
+        "TimeoutError: locator.click: Timeout 30000ms exceeded.",
+        "Call log:",
+        "  - waiting for getByRole('dialog', { name: '设置' }).getByRole('button', { name: '插件', exact: true })",
+        " ❯ openPlugins apps/web/tests/plugin-config.e2e.ts:59:67"
+      ]
+    },
+    {
+      "test": "apps/web/tests/plugin-config.e2e.ts > web e2e: plugin configuration section > drops a staged edit on discard without touching the document",
+      "diagnostic": [
+        "TimeoutError: locator.click: Timeout 30000ms exceeded.",
+        "Call log:",
+        "  - waiting for getByRole('dialog', { name: '设置' }).getByRole('button', { name: '插件', exact: true })",
+        " ❯ openPlugins apps/web/tests/plugin-config.e2e.ts:59:67"
+      ]
+    },
+    {
+      "test": "apps/web/tests/plugin-config.e2e.ts > web e2e: plugin configuration section > refuses to save a draft that is not a number",
+      "diagnostic": [
+        "TimeoutError: locator.click: Timeout 30000ms exceeded.",
+        "Call log:",
+        "  - waiting for getByRole('dialog', { name: '设置' }).getByRole('button', { name: '插件', exact: true })",
+        " ❯ openPlugins apps/web/tests/plugin-config.e2e.ts:59:67"
+      ]
+    },
+    {
+      "test": "apps/web/tests/plugin-config.e2e.ts > web e2e: plugin configuration section > clears the field back to the composed default on reset",
+      "diagnostic": [
+        "TimeoutError: locator.click: Timeout 30000ms exceeded.",
+        "Call log:",
+        "  - waiting for getByRole('dialog', { name: '设置' }).getByRole('button', { name: '插件', exact: true })",
+        " ❯ openPlugins apps/web/tests/plugin-config.e2e.ts:59:67"
+      ]
+    },
+    {
+      "test": "apps/web/tests/pwa-manifest.e2e.ts > ships a favicon that switches to a light mark under dark color scheme",
+      "diagnostic": [
+        "AssertionError: expected '<svg xmlns=\"http://www.w3.org/2000/sv…' to match /@media \\(prefers-color-scheme: dark\\…/i",
+        "- Expected:",
+        "/@media \\(prefers-color-scheme: dark\\)\\s*{\\s*path\\s*{[^}]*fill:\\s*#fff/i",
+        "+ Received:"
+      ]
+    },
+    {
+      "test": "apps/web/tests/question-composer.e2e.ts > web e2e: resident question composer round trip > asks through the composer, answers, and completes with the answer logged",
+      "diagnostic": [
+        "AssertionError: expected '- banner:\\n  - navigation \"Session hi…' to be '- banner:\\n  - navigation \"Session hi…' // Object.is equality",
+        "- Expected",
+        "+ Received",
+        "@@ -1,26 +1,23 @@"
+      ]
+    },
+    {
+      "test": "apps/web/tests/queue-actions.e2e.ts > web e2e: queue row actions > edits and removes exact occurrences and preserves Queue across stop",
+      "diagnostic": [
+        "AssertionError: expected '- banner:\\n  - navigation \"Session hi…' to be '- banner:\\n  - navigation \"Session hi…' // Object.is equality",
+        "- Expected",
+        "+ Received",
+        "  - banner:"
+      ]
+    },
+    {
+      "test": "apps/web/tests/queue-actions.e2e.ts > web e2e: queue row actions > edits and removes exact occurrences and preserves Queue across stop",
+      "diagnostic": [
+        "Error: llm-replay: fixture not fully consumed — session session-c06f4a70-ce1a-4654-9513-c55b1c96d021 consumed 1/4 recorded call(s); the scenario drove fewer model calls than recorded",
+        " ❯ Object.assertConsumed packages/test-support/llm-replay/src/index.ts:788:15",
+        "    786|       }",
+        "    787|       if (problems.length > 0) {"
+      ]
+    },
+    {
+      "test": "apps/web/tests/queue-actions.e2e.ts > web e2e: queue row actions > orders Todo before Goal and Queue on one responsive card column",
+      "diagnostic": [
+        "AssertionError: expected '- banner:\\n  - navigation \"Session hi…' to be '- banner:\\n  - navigation \"Session hi…' // Object.is equality",
+        "- Expected",
+        "+ Received",
+        "@@ -1,13 +1,10 @@"
+      ]
+    },
+    {
+      "test": "apps/web/tests/reference-composer.e2e.ts > web e2e: file and session references through the real host > renders the durable direct-message then recall order",
+      "diagnostic": [
+        "TimeoutError: locator.waitFor: Timeout 15000ms exceeded.",
+        "Call log:",
+        "  - waiting for getByRole('treeitem', { name: /Ungrouped/ }) to be visible",
+        " ❯ apps/web/tests/reference-composer.e2e.ts:174:17"
+      ]
+    },
+    {
+      "test": "apps/web/tests/replay-round-trip.e2e.ts > web e2e: fresh round trip through the real assembly > records the Web surface, source checkout, and session cwd in the request header",
+      "diagnostic": [
+        "AssertionError: expected 'You are an AI agent powered by Relay …' to be 'You are an AI agent powered by Relay …' // Object.is equality",
+        "- Expected",
+        "+ Received",
+        "@@ -2,7 +2,8 @@"
+      ]
+    },
+    {
+      "test": "apps/web/tests/replay-round-trip.e2e.ts > web e2e: fresh round trip through the real assembly > matches the conversation aria golden with stable anchors",
+      "diagnostic": [
+        "TimeoutError: locator.waitFor: Timeout 10000ms exceeded.",
+        "Call log:",
+        "  - waiting for getByRole('button', { name: 'Select model, current DeepSeek-V4-Flash' }) to be visible",
+        " ❯ apps/web/tests/replay-round-trip.e2e.ts:147:8"
+      ]
+    },
+    {
+      "test": "apps/web/tests/seeded-history.e2e.ts > web e2e: seeded history renders through cold resume > matches the historical conversation aria golden",
+      "diagnostic": [
+        "TimeoutError: locator.waitFor: Timeout 10000ms exceeded.",
+        "Call log:",
+        "  - waiting for getByRole('button', { name: /^Select model, current/ }) to be visible",
+        " ❯ apps/web/tests/seeded-history.e2e.ts:335:8"
+      ]
+    },
+    {
+      "test": "apps/web/tests/seeded-history.e2e.ts > web e2e: seeded history renders through cold resume > an Access-chip switch lands one command row: bare name, non-repeating settlement text",
+      "diagnostic": [
+        "TimeoutError: locator.click: Timeout 30000ms exceeded.",
+        "Call log:",
+        "  - waiting for getByRole('button', { name: 'Access mode, current: Workspace Write' })",
+        " ❯ apps/web/tests/seeded-history.e2e.ts:481:87"
+      ]
+    },
+    {
+      "test": "apps/web/tests/seeded-history.e2e.ts > web e2e: seeded history renders through cold resume > reports full feedback correlation ids in an expandable two-line row",
+      "diagnostic": [
+        "AssertionError: expected '- banner:\\n  - navigation \"Session hi…' to be '- banner:\\n  - navigation \"Session hi…' // Object.is equality",
+        "- Expected",
+        "+ Received",
+        "@@ -1,11 +1,10 @@"
+      ]
+    },
+    {
+      "test": "apps/web/tests/shipped-composition.e2e.ts > assembles the shipped Web catalog, file-reference guidance, retry policy, and unrestricted access default",
+      "diagnostic": [
+        "Error: Snapshot `assembles the shipped Web catalog, file-reference guidance, retry policy, and unrestricted access default 1` mismatched",
+        "- Expected",
+        "+ Received",
+        "  {"
+      ]
+    },
+    {
+      "test": "apps/web/tests/skill-tool-row.e2e.ts > web e2e: dedicated Skill tool row > expands the loaded skill to its exact recorded instructions",
+      "diagnostic": [
+        "AssertionError: expected '- banner:\\n  - navigation \"Session hi…' to be '- banner:\\n  - navigation \"Session hi…' // Object.is equality",
+        "- Expected",
+        "+ Received",
+        "@@ -1,17 +1,15 @@"
+      ]
+    },
+    {
+      "test": "apps/web/tests/skill-user-invoke.e2e.ts > web e2e: user-explicit skill invocation through the composer > claims /name args into a gesture bubble, an injection row, and a replayed answer",
+      "diagnostic": [
+        "AssertionError: expected '- banner:\\n  - navigation \"Session hi…' to be '- banner:\\n  - navigation \"Session hi…' // Object.is equality",
+        "- Expected",
+        "+ Received",
+        "@@ -1,19 +1,19 @@"
+      ]
+    },
+    {
+      "test": "apps/web/tests/steering.e2e.ts > web e2e: mid-turn steering lands durably and visibly > strictly steers one queued row; the interjection is logged, rendered, and obeyed",
+      "diagnostic": [
+        "AssertionError: expected '- banner:\\n  - navigation \"Session hi…' to be '- banner:\\n  - navigation \"Session hi…' // Object.is equality",
+        "- Expected",
+        "+ Received",
+        "@@ -1,19 +1,20 @@"
+      ]
+    },
+    {
+      "test": "apps/web/tests/subagent-conversation.e2e.ts > web e2e: persisted subagent conversation and human continuation > matches the settled addressed-conversation aria golden and stays clean",
+      "diagnostic": [
+        "AssertionError: expected '- banner:\\n  - navigation \"Session hi…' to be '- banner:\\n  - navigation \"Session hi…' // Object.is equality",
+        "- Expected",
+        "+ Received",
+        "@@ -1,29 +1,26 @@"
+      ]
+    },
+    {
+      "test": "apps/web/tests/subagent-conversation.e2e.ts > web e2e: persisted subagent conversation and human continuation > opens an unavailable persisted grandchild after recording the available child",
+      "diagnostic": [
+        "AssertionError: expected '- banner:\\n  - navigation \"Session hi…' to be '- banner:\\n  - navigation \"Session hi…' // Object.is equality",
+        "- Expected",
+        "+ Received",
+        "@@ -3,13 +3,12 @@"
+      ]
+    },
+    {
+      "test": "apps/web/tests/subagent-interrupt-ui.e2e.ts > web e2e: composer interrupt for a running continuable child > interrupts the live child through the parent-offline composer",
+      "diagnostic": [
+        "AssertionError: expected '- banner:\\n  - navigation \"Session hi…' to be '- banner:\\n  - navigation \"Session hi…' // Object.is equality",
+        "- Expected",
+        "+ Received",
+        "  - banner:"
+      ]
+    },
+    {
+      "test": "apps/web/tests/subagent-interrupt-ui.e2e.ts > web e2e: composer interrupt for a running continuable child > interrupts through subagent.interrupt, parks the follow-up, and resumes it FIFO",
+      "diagnostic": [
+        "AssertionError: expected [ { content: [ { …(2) } ], …(3) } ] to have a length of 2 but got 1",
+        "- Expected",
+        "+ Received",
+        "- 2"
+      ]
+    },
+    {
+      "test": "apps/web/tests/trajectory-virtualization.e2e.ts > web e2e: Trajectory virtualization over tail-paged history > retains identity on prepend and reaches the bounded virtual range",
+      "diagnostic": [
+        "TimeoutError: locator.waitFor: Timeout 30000ms exceeded.",
+        "Call log:",
+        "  - waiting for getByRole('tab', { name: 'Trajectory', exact: true }) to be visible",
+        " ❯ openSeed apps/web/tests/trajectory-virtualization.e2e.ts:77:68"
+      ]
+    },
+    {
+      "test": "apps/web/tests/turn-tail-actions.e2e.ts > web e2e: assistant IconActions wait for the turn to end > withholds the footer while the turn runs and grants it at turn/end",
+      "diagnostic": [
+        "AssertionError: expected '- banner:\\n  - navigation \"Session hi…' to be '- banner:\\n  - navigation \"Session hi…' // Object.is equality",
+        "- Expected",
+        "+ Received",
+        "  - banner:"
+      ]
+    },
+    {
+      "test": "apps/web/tests/web-search-round.e2e.ts > web e2e: shipped default web search > matches the settled search card aria golden",
+      "diagnostic": [
+        "AssertionError: expected '- banner:\\n  - navigation \"Session hi…' to be '- banner:\\n  - navigation \"Session hi…' // Object.is equality",
+        "- Expected",
+        "+ Received",
+        "@@ -1,19 +1,19 @@"
+      ]
+    },
+    {
+      "test": "apps/web/tests/workflow-run.e2e.ts > web e2e: durable workflow run in Chat > shows the live member, opens its local child, then retains the settled record beside the tool row",
+      "diagnostic": [
+        "TimeoutError: locator.waitFor: Timeout 30000ms exceeded.",
+        "Call log:",
+        "  - waiting for locator('[data-workflow-run][data-run-status=\"running\"]') to be visible",
+        " ❯ apps/web/tests/workflow-run.e2e.ts:79:20"
+      ]
+    },
+    {
+      "test": "apps/web/tests/workflow-run.e2e.ts > web e2e: durable workflow run in Chat > rebuilds the terminal record from history after reload",
+      "diagnostic": [
+        "TimeoutError: locator.waitFor: Timeout 15000ms exceeded.",
+        "Call log:",
+        "  - waiting for getByRole('button', { name: /^snapshot-flow/ }) to be visible",
+        " ❯ apps/web/tests/workflow-run.e2e.ts:189:20"
+      ]
+    },
+    {
+      "test": "apps/web/tests/workspace-management.e2e.ts > web e2e: workspace management (create / rename / flat view / hover affordances) > renames a workspace over the wire with a duplicate-name pre-check",
+      "diagnostic": [
+        "TimeoutError: locator.click: Timeout 30000ms exceeded.",
+        "Call log:",
+        "  - waiting for locator('[role=\"treeitem\"]').filter({ hasText: 'alpha-ws' }).first().getByRole('button', { name: 'Workspace actions for alpha-ws' })",
+        "    - locator resolved to <button type=\"button\" class=\"NCnNwa_iconButton\" aria-label=\"Workspace actions for alpha-ws\">…</button>"
+      ]
+    },
+    {
+      "test": "apps/web/tests/workspace-management.e2e.ts > web e2e: workspace management (create / rename / flat view / hover affordances) > deletes only the Workspace registration and keeps its current Session, folder, and log",
+      "diagnostic": [
+        "AssertionError: expected [ …(3) ] to deeply equal []",
+        "- Expected",
+        "+ Received",
+        "- []"
+      ]
+    },
+    {
+      "test": "apps/web/tests/workspace-management.e2e.ts > web e2e: workspace management (create / rename / flat view / hover affordances) > reuses a deleted title for a different new directory without any transient error surface",
+      "diagnostic": [
+        "AssertionError: expected [ …(3) ] to deeply equal []",
+        "- Expected",
+        "+ Received",
+        "- []"
+      ]
+    },
+    {
+      "test": "apps/web/tests/workspace-management.e2e.ts > web e2e: workspace management (create / rename / flat view / hover affordances) > matches the directory-browser dialog aria golden at a staged directory",
+      "diagnostic": [
+        "AssertionError: expected '- dialog \"Select Workspace Directory\"…' to be '- dialog \"Select Workspace Directory\"…' // Object.is equality",
+        "- Expected",
+        "+ Received",
+        "@@ -1,10 +1,10 @@"
+      ]
+    },
+    {
+      "test": "apps/web/tests/workspace-management.e2e.ts > web e2e: workspace management (create / rename / flat view / hover affordances) > walks the panes with the typed path: deeper past a separator, back up on erase, whole on a miss",
+      "diagnostic": [
+        "TimeoutError: locator.click: Timeout 30000ms exceeded.",
+        "Call log:",
+        "  - waiting for getByRole('button', { name: 'Add workspace' })",
+        "    - locator resolved to <button type=\"button\" class=\"o_cVTW_iconButton\" aria-label=\"Add workspace\">…</button>"
+      ]
+    },
+    {
+      "test": "apps/web/tests/workspace-management.e2e.ts > web e2e: workspace management (create / rename / flat view / hover affordances) > shows the session hover card after a dwell on the row",
+      "diagnostic": [
+        "TimeoutError: locator.hover: Timeout 30000ms exceeded.",
+        "Call log:",
+        "  - waiting for getByText('Tasks', { exact: true }).locator('..').locator('..').locator('..').locator('[role=\"treeitem\"]').nth(1)",
+        "    - locator resolved to <div role=\"treeitem\" draggable=\"true\" aria-selected=\"true\" class=\"NCnNwa_sessionRow NCnNwa_selected\">…</div>"
+      ]
+    },
+    {
+      "test": "apps/web/tests/workspace-management.e2e.ts > web e2e: workspace management (create / rename / flat view / hover affordances) > keeps an open row menu up while the pointer moves between trigger and list",
+      "diagnostic": [
+        "Error: Test timed out in 60000ms.",
+        "If this is a long-running test, pass a timeout value as the last argument or configure it globally with \"testTimeout\".",
+        " ❯ apps/web/tests/workspace-management.e2e.ts:558:3",
+        "    556|   }, 60_000)"
+      ]
+    },
+    {
+      "test": "apps/web/tests/workspace-management.e2e.ts > web e2e: workspace management (create / rename / flat view / hover affordances) > archives the seeded session from its row menu, hiding it durably across reload",
+      "diagnostic": [
+        "TimeoutError: locator.hover: Timeout 30000ms exceeded.",
+        "Call log:",
+        "  - waiting for getByText('Tasks', { exact: true }).locator('..').locator('..').locator('..').locator('[role=\"treeitem\"]').filter({ has: locator('button[aria-label^=\"Session actions for \"]') }).first()",
+        "    - locator resolved to <div role=\"treeitem\" draggable=\"true\" aria-selected=\"true\" class=\"NCnNwa_sessionRow NCnNwa_selected\">…</div>"
+      ]
+    },
+    {
+      "test": "apps/web/tests/workspace-management.e2e.ts > web e2e: workspace management (create / rename / flat view / hover affordances) > opens folders with identical basenames as distinct workspaces",
+      "diagnostic": [
+        "TimeoutError: locator.click: Timeout 30000ms exceeded.",
+        "Call log:",
+        "  - waiting for getByRole('button', { name: 'Add workspace' })",
+        "    - locator resolved to <button type=\"button\" class=\"o_cVTW_iconButton\" aria-label=\"Add workspace\">…</button>"
+      ]
+    }
+  ]
+}

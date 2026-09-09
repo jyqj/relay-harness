@@ -22,6 +22,24 @@ import {
   type SessionSearchRequest,
 } from '@relay-harness/rlh-session-query'
 
+// Fingerprinting is the only work whose repeat cost the live-observation cache
+// removes, so the tests count `createHash('sha256')` invocations per search.
+const sha256Counts = vi.hoisted(() => ({ count: 0 }))
+
+vi.mock('node:crypto', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:crypto')>()
+  return {
+    ...actual,
+    createHash: ((algorithm: string, ...rest: never[]) => {
+      if (algorithm === 'sha256') sha256Counts.count += 1
+      return (actual.createHash as (algorithm: string, ...rest: never[]) => import('node:crypto').Hash)(
+        algorithm,
+        ...rest,
+      )
+    }) as typeof actual.createHash,
+  }
+})
+
 const temporaryDirectories: string[] = []
 
 afterEach(async () => {
@@ -332,6 +350,41 @@ describe('SQLite session search', () => {
       })
     await expect(ctx.sessionQuery.searchSessions({ query: 'AI' }))
       .resolves.toMatchObject({ items: [{ header: { ...session.header, seedLength: 1 }, live: true, persisted: false }] })
+  })
+
+  it('reuses the live observation while a session log is unchanged', async () => {
+    const ctx = await liveContext()
+    ctx.sessions.create(SessionId('cache-one'), { seed: messageEvents('first live needle') })
+    ctx.sessions.create(SessionId('cache-two'), { seed: messageEvents('second live needle') })
+
+    const beforeFirst = sha256Counts.count
+    await expect(ctx.sessionQuery.searchSessions({ query: 'needle' }))
+      .resolves.toMatchObject({ items: [{}, {}] })
+    const firstCost = sha256Counts.count - beforeFirst
+    expect(firstCost).toBeGreaterThan(0)
+
+    const beforeSecond = sha256Counts.count
+    await expect(ctx.sessionQuery.searchSessions({ query: 'needle' }))
+      .resolves.toMatchObject({ items: [{}, {}] })
+    // Two unchanged live sessions are observed from the cache: the second
+    // search fingerprints the request only, skipping both session hashes.
+    expect(sha256Counts.count - beforeSecond).toBe(firstCost - 2)
+  })
+
+  it('re-fingerprints and indexes newly appended live events', async () => {
+    const ctx = await liveContext()
+    const session = ctx.sessions.create(SessionId('cache-grow'), { seed: messageEvents('baseline needle') })
+
+    await expect(ctx.sessionQuery.searchSessions({ query: 'baseline' }))
+      .resolves.toMatchObject({ items: [{ header: { id: session.id } }] })
+    session.append('user/message', createUserMessage({
+      content: [{ type: 'text', text: 'fresh keyword' }], source: { kind: 'user' },
+    }), { surfaceOp: 'append' })
+
+    await expect(ctx.sessionQuery.searchSessions({ query: 'fresh keyword' }))
+      .resolves.toMatchObject({ items: [{ header: { id: session.id } }] })
+    await expect(ctx.sessionQuery.searchSessions({ query: 'baseline' }))
+      .resolves.toMatchObject({ items: [{ header: { id: session.id } }] })
   })
 
   it('excludes assistant reasoning while indexing visible answer text', async () => {

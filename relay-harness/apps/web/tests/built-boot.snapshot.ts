@@ -14,6 +14,7 @@ import { resolve } from 'node:path'
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { expect, it } from 'vitest'
 import { installAssembledBootEnv, mountAssembledApp } from './assembled-boot.ts'
+import { expectedBuiltBranding } from './built-branding.ts'
 
 installAssembledBootEnv()
 
@@ -29,9 +30,7 @@ if (!isBuildRecordReader(readClientBuildRecord)) {
 const record: unknown = readClientBuildRecord(resolve(import.meta.dirname, '../../..'))
 if (typeof record !== 'object' || record === null) throw new TypeError('client build record must be an object')
 const clientBuildEnvironment: unknown = Reflect.get(record, 'environment')
-if (typeof clientBuildEnvironment !== 'object' || clientBuildEnvironment === null) {
-  throw new TypeError('client build record environment must be an object')
-}
+const branding = expectedBuiltBranding(clientBuildEnvironment)
 
 function isBuildRecordReader(value: unknown): value is (root: string) => unknown {
   return typeof value === 'function'
@@ -41,9 +40,10 @@ it('boots the built plugin graph and renders a fixture session end to end', asyn
   mountAssembledApp()
 
   // The sidebar renders from the boot graph: every inject layer activated.
+  // The artifact-verified record selects the exact official occupants or local fallback.
   const tree = await screen.findByRole('tree', { name: 'Sessions' }, { timeout: 10_000 })
-  expect(document.querySelector('svg[viewBox="26 0 156 24"]')).not.toBeNull()
-  expect(screen.queryByText('RLH Local Build')).toBeNull()
+  expect(document.querySelector(`svg[viewBox="${branding.wordmarkViewBox}"]`)).not.toBeNull()
+  expect(screen.queryByText('RLH Local Build') !== null).toBe(branding.localBuildName)
   // The compact layout dropped group session counts; the fixture workspace
   // group row renders immediately with its sessions beneath it.
   const fixtureGroup = (await within(tree).findAllByText('fixture'))

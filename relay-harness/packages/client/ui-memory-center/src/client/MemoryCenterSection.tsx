@@ -58,6 +58,9 @@ interface EditorDraft {
   validUntil: string
 }
 
+/** Observe synchronous adapter throws as well as asynchronous rejections. */
+async function invokeMemory<T>(operation: () => Promise<T>): Promise<T> { return operation() }
+
 /** Render the Memory Center settings page. */
 export function MemoryCenterSection(props: MemoryCenterSectionProps) {
   const t = props.t
@@ -70,14 +73,29 @@ export function MemoryCenterSection(props: MemoryCenterSectionProps) {
   const [query, setQuery] = useState('')
   const [status, setStatus] = useState<StatusFilter>('all')
   const [view, setView] = useState<View>({ status: 'loading' })
+  const [pageError, setPageError] = useState(false)
+  const [pageLoading, setPageLoading] = useState(false)
   const [detail, setDetail] = useState<MemoryCenterDetail | undefined>()
+  const [detailId, setDetailId] = useState<string | undefined>()
   const [detailLoading, setDetailLoading] = useState(false)
   const [editor, setEditor] = useState<EditorDraft | undefined>()
   const [reason, setReason] = useState('')
   const [pending, setPending] = useState(false)
   const [mutationError, setMutationError] = useState<string | undefined>()
   const sequence = useRef(0)
+  const detailSequence = useRef(0)
   const scopeGeneration = useRef(0)
+
+  const closeDetail = (): void => {
+    if (pending) return
+    detailSequence.current += 1
+    setDetailLoading(false)
+    setDetailId(undefined)
+    setDetail(undefined)
+    setEditor(undefined)
+    setReason('')
+    setMutationError(undefined)
+  }
 
   const request = (offset = 0): MemoryCenterListRequest => ({
     workspaceId,
@@ -95,11 +113,13 @@ export function MemoryCenterSection(props: MemoryCenterSectionProps) {
       setView({ status: 'no-session' })
       return
     }
+    setPageError(false)
+    setPageLoading(append)
     const current = sequence.current + 1
     sequence.current = current
     if (!append) setView({ status: 'loading' })
     const offset = append && view.status === 'ready' ? view.snapshot.entries.length : 0
-    void props.list(request(offset), fresh)
+    void invokeMemory(() => props.list(request(offset), fresh))
       .then((snapshot) => {
         if (sequence.current !== current) return
         setView(previous => append && previous.status === 'ready'
@@ -107,12 +127,20 @@ export function MemoryCenterSection(props: MemoryCenterSectionProps) {
           : { status: 'ready', snapshot })
       })
       .catch(() => {
-        if (sequence.current === current && !append) setView({ status: 'error' })
+        if (sequence.current !== current) return
+        if (append) setPageError(true)
+        else setView({ status: 'error' })
       })
+      .finally(() => { if (sequence.current === current) setPageLoading(false) })
   }
 
   useEffect(() => {
     scopeGeneration.current += 1
+    setPageError(false)
+    setPageLoading(false)
+    detailSequence.current += 1
+    setDetailLoading(false)
+    setDetailId(undefined)
     setDetail(undefined)
     setEditor(undefined)
     setReason('')
@@ -126,12 +154,17 @@ export function MemoryCenterSection(props: MemoryCenterSectionProps) {
   const openDetail = (id: string): void => {
     if (sessionId === undefined) return
     const generation = scopeGeneration.current
+    const token = ++detailSequence.current
+    setDetailId(id)
+    const isCurrent = (): boolean => scopeGeneration.current === generation && detailSequence.current === token
+    setDetail(undefined)
+    setEditor(undefined)
     setDetailLoading(true)
     setMutationError(undefined)
-    void props.read({ workspaceId, sessionId, id }, true)
-      .then((loaded) => { if (scopeGeneration.current === generation) { setDetail(loaded); setReason('') } })
-      .catch(() => { if (scopeGeneration.current === generation) setMutationError(t('error')) })
-      .finally(() => { if (scopeGeneration.current === generation) setDetailLoading(false) })
+    void invokeMemory(() => props.read({ workspaceId, sessionId, id }, true))
+      .then((loaded) => { if (isCurrent()) { setDetail(loaded); setReason('') } })
+      .catch(() => { if (isCurrent()) setMutationError(t('error')) })
+      .finally(() => { if (isCurrent()) setDetailLoading(false) })
   }
 
   const mutate = (label: MemoryCenterLocaleKey, action: () => Promise<MemoryCenterDetail>): void => {
@@ -139,7 +172,7 @@ export function MemoryCenterSection(props: MemoryCenterSectionProps) {
     const generation = scopeGeneration.current
     setPending(true)
     setMutationError(undefined)
-    void action()
+    void invokeMemory(action)
       .then((updated) => {
         if (scopeGeneration.current !== generation) return
         setDetail(updated)
@@ -225,21 +258,24 @@ export function MemoryCenterSection(props: MemoryCenterSectionProps) {
                 ))}
               </ul>
             )}
+          {pageError ? <p className={styles.error} role="alert">{t('error')}</p> : null}
           {view.snapshot.hasMore ? (
-            <Button variant="outline" onClick={() => { load(false, true) }}>{t('loadMore')}</Button>
+            <Button variant="outline" disabled={pageLoading} onClick={() => { load(false, true) }}>
+              {pageLoading ? t('loading') : pageError ? t('retry') : t('loadMore')}
+            </Button>
           ) : null}
         </>
       ) : null}
 
       <Modal
-        open={detail !== undefined || detailLoading}
-        onClose={() => { if (!pending) { setDetail(undefined); setEditor(undefined); setMutationError(undefined) } }}
+        open={detailId !== undefined}
+        onClose={closeDetail}
         title={t('details')}
         closeLabel={t('close')}
         {...styles.modalContent === undefined ? {} : { contentClassName: styles.modalContent }}
         footer={detail === undefined ? undefined : (
           <>
-            <Button disabled={pending} onClick={() => { setDetail(undefined); setEditor(undefined) }}>{t('close')}</Button>
+            <Button disabled={pending} onClick={closeDetail}>{t('close')}</Button>
             {editor === undefined && detail.memory.entry.status !== 'tombstoned' && detail.memory.entry.status !== 'superseded' ? (
               <Button disabled={pending || sessionId === undefined} onClick={() => { setEditor(draftOf(detail)); setMutationError(undefined) }}>{t('edit')}</Button>
             ) : null}
@@ -247,6 +283,9 @@ export function MemoryCenterSection(props: MemoryCenterSectionProps) {
         )}
       >
         {detailLoading && detail === undefined ? <p role="status">{t('loading')}</p> : null}
+        {!detailLoading && detail === undefined && mutationError !== undefined && detailId !== undefined ? (
+          <Button variant="outline" onClick={() => { openDetail(detailId) }}>{t('retry')}</Button>
+        ) : null}
         {detail === undefined ? null : editor === undefined ? (
           <MemoryDetail
             detail={detail}
@@ -270,12 +309,13 @@ export function MemoryCenterSection(props: MemoryCenterSectionProps) {
             draft={editor}
             pending={pending}
             t={t}
-            setDraft={setEditor}
+            setDraft={(draft) => { setEditor(draft); setMutationError(undefined) }}
             cancel={() => { setEditor(undefined); setMutationError(undefined) }}
             save={() => {
               if (sessionId === undefined) return
               const parsed = parseDraft(editor)
-              if (parsed !== undefined) mutate('reviseFailed', () => props.revise(sessionId, detail.memory.entry.id, detail.memory.entry.revision, parsed))
+              if (parsed === undefined) { setMutationError(t('invalidDraft')); return }
+              mutate('reviseFailed', () => props.revise(sessionId, detail.memory.entry.id, detail.memory.entry.revision, parsed))
             }}
           />
         )}
@@ -425,6 +465,7 @@ function draftOf(detail: MemoryCenterDetail): EditorDraft {
 }
 
 function parseDraft(draft: EditorDraft): ReviseInput | undefined {
+  if (draft.confidence.trim() === '') return undefined
   const importance = Number(draft.importance)
   const confidence = Number(draft.confidence)
   const validUntil = draft.validUntil.trim() === '' ? null : new Date(draft.validUntil).getTime()

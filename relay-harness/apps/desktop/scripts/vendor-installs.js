@@ -9,6 +9,7 @@
 
 const { spawnSync } = require('node:child_process');
 const path = require('node:path');
+const { LOCKED_INSTALL_ARGS, readPluginLock } = require('./vendor-lock');
 
 const {
   installablePlugins,
@@ -19,7 +20,8 @@ const {
 
 function install(name) {
   const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm';
-  const args = ['ci', '--omit=dev', '--ignore-scripts', '--no-fund', '--no-audit'];
+  readPluginLock(path.join(vendorDir, name));
+  const args = [...LOCKED_INSTALL_ARGS];
   const result = spawnSync(npm, args, {
     cwd: path.join(vendorDir, name),
     stdio: 'inherit',

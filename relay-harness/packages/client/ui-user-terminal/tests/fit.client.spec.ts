@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from 'vitest'
-import { hostHasFitSize, shouldFollowOutput, TERMINAL_MINIMUM_CONTRAST } from '../src/client/fit.ts'
+import { describe,expect,it } from 'vitest'
+import { hostHasFitSize,shouldFollowOutput,TERMINAL_MINIMUM_CONTRAST } from '../src/client/terminal/fit.ts'
 
 describe('hostHasFitSize', () => {
   it('rejects a 0×0 host and accepts a used box', () => {

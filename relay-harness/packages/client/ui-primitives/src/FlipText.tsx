@@ -4,7 +4,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 
-/** Exit hold in milliseconds; matches `--rl-motion-duration-flip` (400ms). */
+/** Exit hold in milliseconds; matches the flip recipe in ui-theme motion.css (400ms). */
 export const FLIP_TEXT_MS = 400
 
 /**

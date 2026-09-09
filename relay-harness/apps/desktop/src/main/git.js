@@ -1,3 +1,4 @@
+// @ts-check
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
@@ -150,7 +151,7 @@ async function gitStatus(cwd) {
   return {
     refName,
     hasWorkingTreeChanges,
-    workingTree: buildWorkingTree(numstatEntries, changedFilesWithoutNumstat),
+    workingTree: buildWorkingTree(numstatEntries, [...changedFilesWithoutNumstat]),
     hasUpstream: hasUsableUpstream,
     aheadCount,
     behindCount,
@@ -350,6 +351,7 @@ async function gitCommit(cwd, message, filePaths, onProgress, options = {}) {
   const custom = parseCustomCommitMessage(message);
   const hasCustom = custom !== null;
   // Keep custom messages verbatim; sanitize only model/heuristic output.
+  /** @type {{subject?: string, body?: string, branch?: string, error?: string} | null} */
   let suggestion = hasCustom
     ? {
       subject: custom.subject,
@@ -375,13 +377,13 @@ async function gitCommit(cwd, message, filePaths, onProgress, options = {}) {
       if (suggestion.error) return fail(suggestion.error);
     }
     const listed = await gitBranchList(root);
-    if (!listed.ok) return fail(listed.message || 'git branch list failed.');
+    if (listed.ok === false) return fail(listed.message || 'git branch list failed.');
     const nextRef = uniqueFeatureBranchName(
       (listed.branches || []).map((ref) => ref.name),
       suggestion.branch || suggestion.subject,
     );
     const created = await gitCreateBranch(root, nextRef);
-    if (!created.ok) return fail(created.message || 'git checkout -b failed.');
+    if (created.ok === false) return fail(created.message || 'git checkout -b failed.');
   } else if (!hasCustom) {
     emit({ kind: 'phase', title: 'Generating commit message...' });
     suggestion = await resolveGenerated();
@@ -841,6 +843,7 @@ async function gitBranchList(cwd) {
   if (listed.missing) return fail('Git is unavailable.');
   if (listed.timedOut) return fail('Git command timed out.');
   if (listed.code !== 0) return fail(listed.stderr.trim() || 'git branch list failed.');
+  /** @type {{name: string, isRemote: boolean, isCurrent: boolean, remoteName?: string, isDefault?: boolean}[]} */
   const branches = [];
   for (const line of listed.stdout.split('\n')) {
     const [short, headMark, full] = line.split('\t');

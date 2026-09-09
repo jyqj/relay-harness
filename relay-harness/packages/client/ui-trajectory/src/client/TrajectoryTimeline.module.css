@@ -184,7 +184,7 @@
 .span[data-timeline-span='message'] {
   --trajectory-assistant-decoding-color: color-mix(
     in srgb,
-    var(--rlw-alias-brand-primary-new-colorprimary-new-color) 60%,
+    var(--rlw-alias-brand-primary-new) 60%,
     var(--rlw-alias-state-error-secondary)
   );
   --trajectory-assistant-ttft-color: color-mix(

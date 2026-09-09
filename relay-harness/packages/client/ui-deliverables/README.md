@@ -12,6 +12,10 @@ The closing prose carries the same vocabulary. This plugin provides the `chatFil
 
 The Node half registers the static `ui:deliverable-file-references` system-prompt section. It asks the model to mention the primary files it successfully created or modified and to write those and any other changed-file references as Markdown inline code, using the exact file-tool path or a basename only when unique within the Turn. The guidance makes the renderer's accepted syntax explicit; it does not govern unrelated path discussions or widen the renderer's successful-mutation vocabulary.
 
+## Whole-session inventory
+
+The whole-session `deliverables` projection is owned and registered only by [Host work-results](../../host/work-results/README.md). This plugin contributes response guidance and turn-local presentation; it does not create a second inventory producer.
+
 ## Model Experience
 
 ### Clickable file-reference guidance

@@ -1,9 +1,10 @@
+import { loadNodeSqlite } from '@relay-harness/rlh-sqlite-runtime'
 /** SQLite-backed cross-process lease and fencing for continuable child Activations. */
 
-import { randomUUID } from 'node:crypto'
-import { chmodSync, mkdirSync } from 'node:fs'
-import { dirname, isAbsolute } from 'node:path'
-import { DatabaseSync } from 'node:sqlite'
+import { createHash, randomUUID } from 'node:crypto'
+import { chmodSync, closeSync, lstatSync, mkdirSync, openSync, realpathSync } from 'node:fs'
+import { dirname, isAbsolute, join } from 'node:path'
+import type { DatabaseSync } from 'node:sqlite'
 import type { SessionId } from '@relay-harness/rlh-session'
 
 /** Stable cross-process lease failure. */
@@ -51,6 +52,15 @@ export class SubagentActivationLease {
    */
   assertCurrent(now: number = Date.now()): void { this.store.assertCurrent(this, now) }
 
+  /**
+   * Exclude release and takeover until the complete storage mutation settles.
+   * @param operation - mutation that must remain owned through its awaited commit.
+   * @returns the mutation result; contention or stale ownership rejects before dispatch.
+   */
+  runExclusive<T>(operation: () => Promise<T>): Promise<T> {
+    return this.store.runExclusive(this, operation)
+  }
+
   /** Release this exact token/fence without affecting any successor. */
   release(): void { this.store.release(this) }
 }
@@ -58,14 +68,24 @@ export class SubagentActivationLease {
 /** Dedicated SQLite lease Adapter. Transactions serialize owners across Harness processes. */
 export class SubagentActivationLeaseStore {
   private readonly db: DatabaseSync
+  private readonly mutationRoot: string | undefined
+  private readonly mutations = new Map<SessionId, DatabaseSync>()
+  private closing = false
+  private closed = false
 
   constructor(readonly path: string) {
     if (path !== ':memory:' && !isAbsolute(path)) {
       throw new SubagentActivationLeaseError('subagent activation lease path must be absolute', 'LEASE_STORE_INVALID')
     }
     if (path !== ':memory:') mkdirSync(dirname(path), { recursive: true, mode: 0o700 })
-    this.db = new DatabaseSync(path)
+    this.db = new (loadNodeSqlite().DatabaseSync)(path)
     if (path !== ':memory:') chmodSync(path, 0o600)
+    const canonicalPath = path === ':memory:' ? undefined : realpathSync(path)
+    if (canonicalPath !== undefined && lstatSync(canonicalPath).nlink !== 1) {
+      this.db.close()
+      throw new SubagentActivationLeaseError('activation lease database must not have hard-link aliases', 'LEASE_STORE_INVALID')
+    }
+    this.mutationRoot = canonicalPath === undefined ? undefined : `${canonicalPath}.mutation-locks`
     this.db.exec('PRAGMA busy_timeout = 5000')
     const version = this.db.prepare('PRAGMA user_version').get() as { user_version: number }
     if (version.user_version !== 0 && version.user_version !== 1) {
@@ -99,39 +119,64 @@ export class SubagentActivationLeaseStore {
     const expiresAt = this.expiry(now, leaseMs)
     const ownerToken = randomUUID()
     let fence = 1
-    this.transaction(() => {
-      const row = this.row(childId)
-      if (row !== undefined && row.owner_token !== null && row.expires_at > now) {
-        throw new SubagentActivationLeaseError(
-          `subagent "${childId}" is activated by another Harness owner until ${row.expires_at}`,
-          'LEASE_HELD',
-        )
-      }
-      fence = (row?.fence ?? 0) + 1
-      this.db.prepare(`
-        INSERT INTO activation_leases (child_id, owner_token, fence, expires_at)
-        VALUES (?, ?, ?, ?)
-        ON CONFLICT(child_id) DO UPDATE SET
-          owner_token = excluded.owner_token,
-          fence = excluded.fence,
-          expires_at = excluded.expires_at
-      `).run(childId, ownerToken, fence, expiresAt)
-    })
+    const unlock = this.lockMutation(childId)
+    try {
+      this.transaction(() => {
+        const row = this.row(childId)
+        if (row !== undefined && row.owner_token !== null && row.expires_at > now) {
+          throw new SubagentActivationLeaseError(
+            `subagent "${childId}" is activated by another Harness owner until ${row.expires_at}`,
+            'LEASE_HELD',
+          )
+        }
+        fence = (row?.fence ?? 0) + 1
+        this.db.prepare(`
+          INSERT INTO activation_leases (child_id, owner_token, fence, expires_at)
+          VALUES (?, ?, ?, ?)
+          ON CONFLICT(child_id) DO UPDATE SET
+            owner_token = excluded.owner_token,
+            fence = excluded.fence,
+            expires_at = excluded.expires_at
+        `).run(childId, ownerToken, fence, expiresAt)
+      })
+    } finally { unlock() }
     return new SubagentActivationLease(this, childId, ownerToken, fence, leaseMs, expiresAt)
   }
 
-  /** Close this process's database handle without releasing durable leases. */
-  close(): void { this.db.close() }
+  /** Request close without releasing leases; an in-flight mutation retains its handles until settlement. */
+  close(): void {
+    this.closing = true
+    this.closeIfIdle()
+  }
+
+  /**
+   * Hold the child-specific OS transaction lock through one complete mutation.
+   * Renewal uses the separate lease database and remains independent.
+   * @param lease - exact owner admitted before dispatch.
+   * @param operation - asynchronous storage mutation, including its durability barrier.
+   * @returns the mutation result; the lock is released on success or failure.
+   */
+  async runExclusive<T>(lease: SubagentActivationLease, operation: () => Promise<T>): Promise<T> {
+    const unlock = this.lockMutation(lease.childId)
+    try {
+      this.assertCurrent(lease, Date.now())
+      return await operation()
+    } finally {
+      unlock()
+    }
+  }
 
   /**
    * Renew an exact handle.
    * @param lease - owner handle.
    * @param now - current time.
-   * @param leaseMs - lifetime.
+   * @param leaseMs - positive safe-integer lifetime; invalid values are rejected before ownership changes.
    * @returns next expiry.
    */
   renew(lease: SubagentActivationLease, now: number, leaseMs: number): number {
+    this.assertOpen()
     this.assertTime('now', now, false)
+    this.assertTime('leaseMs', leaseMs, true)
     const expiresAt = this.expiry(now, leaseMs)
     const changed = this.db.prepare(`
       UPDATE activation_leases SET expires_at = ?
@@ -147,6 +192,7 @@ export class SubagentActivationLeaseStore {
    * @param now - current time.
    */
   assertCurrent(lease: SubagentActivationLease, now: number): void {
+    this.assertOpen()
     this.assertTime('now', now, false)
     const row = this.row(lease.childId)
     if (row?.owner_token !== lease.ownerToken || row.fence !== lease.fence || row.expires_at <= now) this.lost(lease)
@@ -157,11 +203,81 @@ export class SubagentActivationLeaseStore {
    * @param lease - owner handle.
    */
   release(lease: SubagentActivationLease): void {
-    const changed = this.db.prepare(`
-      UPDATE activation_leases SET owner_token = NULL, expires_at = 0
-      WHERE child_id = ? AND owner_token = ? AND fence = ?
-    `).run(lease.childId, lease.ownerToken, lease.fence).changes
-    if (changed !== 1) this.lost(lease)
+    const unlock = this.lockMutation(lease.childId)
+    try {
+      const changed = this.db.prepare(`
+        UPDATE activation_leases SET owner_token = NULL, expires_at = 0
+        WHERE child_id = ? AND owner_token = ? AND fence = ?
+      `).run(lease.childId, lease.ownerToken, lease.fence).changes
+      if (changed !== 1) this.lost(lease)
+    } finally { unlock() }
+  }
+
+  /** Take a non-blocking per-child lock without holding the lease database across awaits. */
+  private lockMutation(childId: SessionId): () => void {
+    this.assertOpen()
+    if (this.mutations.has(childId)) this.mutationHeld(childId)
+    const root = this.mutationRoot
+    if (root !== undefined) {
+      try {
+        const existing = lstatSync(root)
+        if (!existing.isDirectory() || existing.isSymbolicLink()) this.invalidMutationPath(root)
+      } catch (error: unknown) {
+        if (typeof error !== 'object' || error === null || !('code' in error) || error.code !== 'ENOENT') throw error
+      }
+      mkdirSync(root, { recursive: true, mode: 0o700 })
+      const stat = lstatSync(root)
+      if (!stat.isDirectory() || stat.isSymbolicLink()) this.invalidMutationPath(root)
+    }
+    const path = root === undefined ? ':memory:'
+      : join(root, `${createHash('sha256').update(childId).digest('hex')}.sqlite3`)
+    if (root !== undefined) {
+      try {
+        closeSync(openSync(path, 'wx', 0o600))
+      } catch (error: unknown) {
+        if (typeof error !== 'object' || error === null || !('code' in error) || error.code !== 'EEXIST') throw error
+      }
+      const stat = lstatSync(path)
+      if (!stat.isFile() || stat.isSymbolicLink() || stat.nlink !== 1) this.invalidMutationPath(path)
+    }
+    const lock = new (loadNodeSqlite().DatabaseSync)(path)
+    try {
+      if (path !== ':memory:') chmodSync(path, 0o600)
+      lock.exec('PRAGMA busy_timeout = 0; BEGIN IMMEDIATE')
+    } catch (error: unknown) {
+      lock.close()
+      if (typeof error === 'object' && error !== null && 'errcode' in error
+        && typeof error.errcode === 'number' && (error.errcode & 0xff) === 5) {
+        this.mutationHeld(childId)
+      }
+      throw error
+    }
+    this.mutations.set(childId, lock)
+    return () => {
+      this.mutations.delete(childId)
+      try { lock.exec('ROLLBACK') } finally {
+        lock.close()
+        this.closeIfIdle()
+      }
+    }
+  }
+
+  private mutationHeld(childId: SessionId): never {
+    throw new SubagentActivationLeaseError(`subagent "${childId}" has an in-flight persistence mutation`, 'LEASE_HELD')
+  }
+
+  private invalidMutationPath(path: string): never {
+    throw new SubagentActivationLeaseError(`subagent mutation lock path is not an owned regular file or directory: ${path}`, 'LEASE_STORE_INVALID')
+  }
+
+  private assertOpen(): void {
+    if (this.closing) throw new SubagentActivationLeaseError('subagent activation lease store is closing', 'LEASE_STORE_INVALID')
+  }
+
+  private closeIfIdle(): void {
+    if (!this.closing || this.closed || this.mutations.size > 0) return
+    this.db.close()
+    this.closed = true
   }
 
   private row(childId: SessionId): LeaseRow | undefined {

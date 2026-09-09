@@ -29,3 +29,5 @@ None directly; this package neither assembles nor sends a provider request. Comm
 ## Known Limitations and Deferred Work
 
 - **Detached-result notices fall back to the console off-session** — the fire-and-forget paths route results to the triggering session's composer via `SessionInput.notify`; after session teardown the console line is the only remaining surface.
+
+The popup overlay receives `hooks.popup`, bound by the renderer into `usePopup`, plus explicit pick, search, navigation, confirmation and dismissal callbacks. It no longer receives the whole PopupSelectController or creates its own external subscription. The Session-scoped controller remains the sole state and operation owner.

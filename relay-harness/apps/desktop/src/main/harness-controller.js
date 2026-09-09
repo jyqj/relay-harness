@@ -1,3 +1,4 @@
+// @ts-check
 const EventEmitter = require('events');
 const { isPluginTreeFailure } = require('./plugin-tree-failure');
 
@@ -11,8 +12,7 @@ function errorMessage(error) {
 }
 
 function operationCancelled(message = 'Harness 启动已取消') {
-  const error = new Error(message);
-  error.code = 'HARNESS_OPERATION_CANCELLED';
+  const error = Object.assign(new Error(message), { code: 'HARNESS_OPERATION_CANCELLED' });
   return error;
 }
 

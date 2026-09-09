@@ -172,6 +172,73 @@ describe('web e2e: long Chat interaction contract', () => {
     if (failures.length > 1) throw new AggregateError(failures, 'long Chat interaction cleanup failed')
   })
 
+  it.skipIf(MODE === 'record')('bounds mounted rows while preserving expanded tools, selection and native find', async () => {
+    const scroll = page.locator('[data-conversation-scroll]')
+    const chat = page.locator('[data-chat-loaded-count]')
+    for (let pageNumber = 0; pageNumber < 20; pageNumber++) {
+      const older = page.getByRole('button', { name: 'Load earlier', exact: true })
+      if (await older.count() === 0) break
+      const before = Number(await chat.getAttribute('data-chat-loaded-count'))
+      await older.click()
+      await expect.poll(async () => Number(await chat.getAttribute('data-chat-loaded-count')), { timeout: 15_000 }).toBeGreaterThan(before)
+    }
+    expect(await page.getByRole('button', { name: 'Load earlier', exact: true }).count()).toBe(0)
+    const loaded = Number(await chat.getAttribute('data-chat-loaded-count'))
+    expect(loaded).toBeGreaterThan(150)
+    for (const edge of ['top', 'bottom', 'top', 'bottom'] as const) {
+      await scroll.evaluate((element, target) => { element.scrollTop = target === 'top' ? 0 : element.scrollHeight }, edge)
+      await nextPaint(page)
+      const pins = Number(await chat.getAttribute('data-chat-pinned-count'))
+      expect(await page.locator('[data-chat-flow-key]').count()).toBeLessThanOrEqual(120 + pins)
+    }
+    const tool = page.locator(`[data-chat-call-id="${TARGET_CALL_2}"] [data-sample="bash"]`)
+    await tool.focus()
+    await tool.press('Enter')
+    await expect.poll(() => tool.getAttribute('aria-expanded')).toBe('true')
+    await expect.poll(async () => Number(await chat.getAttribute('data-chat-pinned-count'))).toBeGreaterThan(0)
+    await scroll.evaluate((element) => { element.scrollTop = 0 })
+    await nextPaint(page)
+    expect(await tool.getAttribute('aria-expanded')).toBe('true')
+    const first = scroll.getByText(FIXTURE.markers.user(1), { exact: false }).first()
+    await first.waitFor()
+    const selected = await first.evaluate((element) => {
+      const range = document.createRange()
+      range.selectNodeContents(element)
+      const selection = window.getSelection()!
+      selection.removeAllRanges()
+      selection.addRange(range)
+      return selection.toString()
+    })
+    await nextPaint(page)
+    await scroll.evaluate((element) => { element.scrollTop = element.scrollHeight })
+    await nextPaint(page)
+    expect(await page.evaluate(() => window.getSelection()?.toString())).toBe(selected)
+    await page.evaluate(() => { window.getSelection()?.removeAllRanges() })
+    await page.getByRole('button', { name: 'Full loaded history (find/select)', exact: true }).click()
+    await expect.poll(() => page.locator('[data-chat-flow-key]').count()).toBe(loaded)
+    const found = await page.evaluate((text) => {
+      const browser = window as unknown as { find(text: string, caseSensitive: boolean, backwards: boolean, wrapAround: boolean): boolean }
+      // Native find starts at the current selection/scroll location; wrap to
+      // search the full explicitly mounted history, not merely its suffix.
+      const start = document.createRange()
+      start.selectNodeContents(document.querySelector('[data-chat-flow-key]')!)
+      start.collapse(true)
+      window.getSelection()?.removeAllRanges()
+      window.getSelection()?.addRange(start)
+      const matched = browser.find(text, false, false, true)
+      return { matched, selection: window.getSelection()?.toString(), inRow: Boolean(window.getSelection()?.anchorNode?.parentElement?.closest('[data-chat-flow-key]')), textPresent: [...document.querySelectorAll('[data-chat-flow-key]')].some(row => row.textContent?.includes(text)) }
+    }, FIXTURE.markers.user(1))
+    expect(found).toEqual({ matched: true, selection: FIXTURE.markers.user(1), inRow: true, textPresent: true })
+    await page.evaluate(() => { window.getSelection()?.removeAllRanges() })
+    await page.getByRole('button', { name: 'Return to windowed history', exact: true }).click()
+    await scroll.evaluate((element) => { element.scrollTop = element.scrollHeight })
+    await nextPaint(page)
+    if (await tool.getAttribute('aria-expanded') === 'true') await tool.press('Enter')
+    await page.locator('textarea:enabled').last().focus()
+    expect(await page.locator('[data-chat-flow-key]').count()).toBeLessThanOrEqual(120)
+    expect(tripwire.pageErrors).toEqual([])
+  }, 90_000)
+
   it.skipIf(MODE === 'record')('keeps heterogeneous rows and their actions bound to exact semantic identities', async () => {
     onTestFailed(() => saveFailureShot(page, 'web-e2e-chat-long-interactions'))
     const source = scaffold.ctx.agents.get(SessionId(SESSION_ID))
@@ -247,8 +314,28 @@ describe('web e2e: long Chat interaction contract', () => {
     expect(await userRow.textContent()).toContain(branchUserMarker)
     expect(await assistantRow.textContent()).toContain(branchAssistantMarker)
     await page.context().grantPermissions(['clipboard-read', 'clipboard-write'])
+    await page.bringToFront()
+    await page.evaluate(() => {
+      const state = window as typeof window & { clipboardAudit: { text: string; outcome: string }[] }
+      state.clipboardAudit = []
+      const writeText = navigator.clipboard.writeText.bind(navigator.clipboard)
+      navigator.clipboard.writeText = async (text) => {
+        const entry = { text, outcome: 'pending' }
+        state.clipboardAudit.push(entry)
+        try {
+          await writeText(text)
+          entry.outcome = 'written'
+        } catch (error) {
+          entry.outcome = error instanceof Error ? `${error.name}: ${error.message}` : String(error)
+          throw error
+        }
+      }
+    })
     await userRow.hover()
     await userRow.getByRole('button', { name: 'Copy', exact: true }).click()
+    await expect.poll(() => page.evaluate(() => (window as typeof window & {
+      clipboardAudit: { text: string; outcome: string }[]
+    }).clipboardAudit), { timeout: 5_000 }).toEqual([{ text: expectedUserText, outcome: 'written' }])
     await expect.poll(() => page.evaluate(() => navigator.clipboard.readText()), { timeout: 5_000 })
       .toBe(expectedUserText)
 
@@ -282,9 +369,13 @@ describe('web e2e: long Chat interaction contract', () => {
     expect(await composer.inputValue()).toBe('')
     expect(await composer.isEnabled()).toBe(true)
     expect(source.session.events.some(event => carries(event, CONTINUE_PROMPT))).toBe(false)
-    expect(child.session.events.filter(event => (
-      event.type === 'user/message' && carries(event, CONTINUE_PROMPT)
-    ))).toHaveLength(1)
+    // Code-index recall records the query in source metadata as well;
+    // it is not a second user submission. Assert the actual input owner and
+    // exact message content, rather than JSON-substring matching metadata.
+    const matchingInputs = child.session.events.filter(event => event.type === 'user/message'
+      && event.data.source.kind === 'user'
+      && event.data.content.some(block => block.type === 'text' && block.text === CONTINUE_PROMPT))
+    expect(matchingInputs).toHaveLength(1)
     const lastTurnEnd = child.session.events.findLast((event): event is SessionEvent<'turn/end'> => (
       event.type === 'turn/end'
     ))

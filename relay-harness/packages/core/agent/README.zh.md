@@ -6,6 +6,8 @@ Agent 接口、注册表、进程本地发起方作用域，以及 `agent/*` 事
 
 可选配套包 `@relay-harness/rlh-agent/invariant` 会向 `ctx.invariants` 注册此包的 agent（智能体）状态转换检查。根 agent 服务不会隐式加载诊断。
 
+`ResumeAgentOptions.persistenceFence` 是可选的确切存储 owner 证明，在 setup 前传入冷准备过程。setup 将同一证明安装到活动 Session，不创建替换身份。
+
 ## 服务：`AgentRegistry`（ctx 键：`agents`）
 
 跟踪实时 agent，并在异步驱动器工作中携带发起调用的 Agent，而无需导入具体循环包。

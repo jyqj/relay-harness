@@ -112,7 +112,7 @@
   height: 10px;
   border-radius: 5px;
   background: var(--rlw-alias-border-l2);
-  transition: background-color 120ms var(--rl-ease-in-out);
+  transition: background-color 120ms var(--rlw-ease-standard);
 }
 
 .controlThumb {
@@ -123,7 +123,7 @@
   height: 6px;
   border-radius: 50%;
   background: var(--rlw-alias-bg-layer-1);
-  transition: transform 120ms var(--rl-ease-in-out);
+  transition: transform 120ms var(--rlw-ease-standard);
 }
 
 .controlTrack[data-on='true'] {

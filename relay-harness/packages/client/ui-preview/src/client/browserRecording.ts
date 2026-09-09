@@ -1,6 +1,6 @@
 /** Host-renderer MediaRecorder for Browser preview (frames arrive over IPC). */
 
-/** How long a start waits for the first frame before giving up on a size. */
+/** How long a start waits for the first decoded, drawn frame. */
 export const BROWSER_RECORDING_FIRST_FRAME_SIZE_TIMEOUT_MS = 5_000
 
 /** How long a start waits for the frame size to stop changing before recording. */
@@ -46,26 +46,11 @@ export interface BrowserRecordingBridge {
   ) => Promise<{ ok: boolean; path?: string; message?: string }>
 }
 
-/** Thrown when the host cannot screencast the preview at all. */
-export class BrowserRecordingUnavailableError extends Error {
-  /** The preview the caller asked to record. */
-  readonly previewId: string
-
-  /**
-   * @param previewId - the preview the caller asked to record.
-   */
-  constructor(previewId: string) {
-    super('Browser recording is unavailable.')
-    this.name = 'BrowserRecordingUnavailableError'
-    this.previewId = previewId
-  }
-}
-
-/** Thrown when a second preview asks to record while one already is. */
+/** Thrown when the same preview is asked to start while starting or stopping. */
 export class BrowserRecordingConflictError extends Error {
   /** The preview whose request was refused. */
   readonly requestedId: string
-  /** The preview already recording. */
+  /** The preview whose startup or stop is still pending. */
   readonly activeId: string
 
   /**
@@ -147,6 +132,7 @@ interface ActiveRecording {
   readonly startupSettled: Promise<void>
   readonly firstFrameSize: Promise<'frame' | 'cancelled'>
   readonly settleFirstFrameSize: (outcome: 'frame' | 'cancelled') => void
+  stream: MediaStream | null
   recorder: MediaRecorder | null
   mimeType: string | null
   frameSizeEstablished: boolean
@@ -180,7 +166,6 @@ const drawFrame = (frame: PreviewRecordingFrame): void => {
     recording.canvas.width = width
     recording.canvas.height = height
     recording.frameSizeEstablished = true
-    recording.settleFirstFrameSize('frame')
   }
   const frameSequence = ++recording.frameSequence
   const image = new Image()
@@ -202,6 +187,7 @@ const drawFrame = (frame: PreviewRecordingFrame): void => {
       recording.context.fillStyle = '#000000'
       recording.context.fillRect(0, 0, recording.canvas.width, recording.canvas.height)
       recording.context.drawImage(image, targetX, targetY, targetWidth, targetHeight)
+      recording.settleFirstFrameSize('frame')
     },
     { once: true },
   )
@@ -221,6 +207,8 @@ const clearActiveRecording = (recording: ActiveRecording): void => {
   if (activeRecordings.get(recording.previewId) !== recording) return
   recording.settleFirstFrameSize('cancelled')
   activeRecordings.delete(recording.previewId)
+  for (const track of recording.stream?.getTracks() ?? []) track.stop()
+  recording.stream = null
   if (activeRecordings.size === 0) {
     unsubscribeFrames?.()
     unsubscribeFrames = null
@@ -228,7 +216,7 @@ const clearActiveRecording = (recording: ActiveRecording): void => {
 }
 
 const waitForFirstFrameSize = async (recording: ActiveRecording): Promise<boolean> => {
-  if (recording.frameSizeEstablished) return true
+  if (recording.lastDrawnFrameSequence > 0) return true
   // Cleared without a null test: the executor assigns the timer synchronously, and
   // clearTimeout tolerates an unset handle.
   let timeout: ReturnType<typeof setTimeout> | undefined
@@ -306,6 +294,7 @@ export async function startBrowserRecording(
     startupSettled,
     firstFrameSize,
     settleFirstFrameSize: outcome => settleFirstFrameSize?.(outcome),
+    stream: null,
     recorder: null,
     mimeType: null,
     frameSizeEstablished: false,
@@ -339,6 +328,13 @@ export async function startBrowserRecording(
       })
     }
     const hasFirstFrame = await waitForFirstFrameSize(recording)
+    if (activeRecordings.get(previewId) !== recording) {
+      throw new BrowserRecordingOperationError({
+        operation: 'wait-startup',
+        previewId,
+        cause: new Error('Browser recording startup was abandoned.'),
+      })
+    }
     if (!hasFirstFrame) {
       try {
         await bridge.previewStopRecording(previewId)
@@ -357,7 +353,8 @@ export async function startBrowserRecording(
     let recorder: MediaRecorder
     try {
       mimeType = preferredMimeType()
-      recorder = new MediaRecorder(canvas.captureStream(12), {
+      recording.stream = canvas.captureStream(12)
+      recorder = new MediaRecorder(recording.stream, {
         mimeType,
         videoBitsPerSecond: 4_000_000,
       })
@@ -408,9 +405,23 @@ const finalizeBrowserRecording = async (
 ): Promise<{ ok: boolean; path?: string; message?: string }> => {
   const { previewId, bridge } = recording
   try {
-    await waitForRecordingStartupToSettle(recording)
     try {
-      await bridge.previewStopRecording(previewId)
+      await waitForRecordingStartupToSettle(recording)
+    } catch (startupError) {
+      try {
+        const stopped = await bridge.previewStopRecording(previewId)
+        if (!stopped.ok) throw new Error(stopped.message ?? 'stop recording failed')
+      } catch (stopError) {
+        throw new BrowserRecordingOperationError({
+          operation: 'stop-screencast', previewId,
+          cause: new AggregateError([startupError, stopError], 'Startup and stop both failed.'),
+        })
+      }
+      throw startupError
+    }
+    try {
+      const stopped = await bridge.previewStopRecording(previewId)
+      if (!stopped.ok) throw new Error(stopped.message ?? 'stop recording failed')
     } catch (cause) {
       throw new BrowserRecordingOperationError({
         operation: 'stop-screencast',

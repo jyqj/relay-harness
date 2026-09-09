@@ -4,7 +4,8 @@
  */
 
 /* jscpd:ignore-start */
-import type { Context } from '@relay-harness/cordis'
+import { FiberState, type Context } from '@relay-harness/cordis'
+import { routeStateOf } from './route-state.ts'
 import type { InvariantInstaller } from '@relay-harness/rlh-invariants'
 
 const PACKAGE_NAME = '@relay-harness/rlh-host-webserver'
@@ -14,38 +15,25 @@ export const name = 'host-webserver-invariant'
 /** Service required before the companion can register. */
 export const inject = ['invariants']
 
-/**
- * Owned relation: HTTP and upgrade route registrations and their disposers must stay
- * symmetric — after the owning fiber of a registered route unloads, the
- * route table must no longer answer for its path (a stale route would keep
- * serving a disposed plugin's handler). Checked on every fiber teardown
- * (cordis 'internal/plugin'): the service's own registry state is compared
- * against the set of live fibers' registrations indirectly, by probing that
- * dispose really removed the entry — the register() disposer contract.
- */
+/** Actual dispatch tables cannot retain registrations after their owning activation has quiesced. */
 const install: InvariantInstaller = (ctx, fail) => {
-  ctx.on('internal/plugin', () => {
-    const server = ctx.get('webServer') as
-      | {
-        register(route: { kind: 'exact'; path: string; handler: () => void }): () => void
-        registerUpgrade(route: { path: string; handler: () => void }): () => void
+  // The effect fence distinguishes hot reloads even when the same Fiber object survives.
+  ctx.on('internal/status', (fiber) => {
+    if (fiber.state !== FiberState.UNLOADING) return
+    void (async () => {
+      await Promise.resolve()
+      while (fiber.inertia !== undefined) await fiber.inertia
+      const server = ctx.get('webServer')
+      if (server === undefined) return
+      const state = routeStateOf(server)
+      const rows = [
+        ...state.exact.values(), ...state.prefixes.values(), ...state.upgrades.values(),
+        ...state.indexTaps, ...state.fallback === undefined ? [] : [state.fallback],
+      ]
+      if (rows.some(row => row.owner === fiber && !row.active)) {
+        fail('webServer dispatch registry retained a registration after its owning activation quiesced')
       }
-      | undefined
-    if (server === undefined) return // no webserver row in this composition
-    // Register/dispose probe on a reserved path: if dispose leaves the route
-    // behind, a second register throws the duplicate error — the asymmetry.
-    // Each register(probe)() is one register+dispose cycle, so the probe never
-    // leaves residue; a leftover from the first cycle makes the second throw.
-    const probe = { kind: 'exact' as const, path: '/__rlh_invariant_probe__', handler: () => {} }
-    try {
-      server.register(probe)()
-      server.register(probe)()
-      const upgradeProbe = { path: '/__rlh_invariant_upgrade_probe__', handler: () => {} }
-      server.registerUpgrade(upgradeProbe)()
-      server.registerUpgrade(upgradeProbe)()
-    } catch {
-      fail('webServer route disposer left a route registered — route tables and fiber lifecycles diverged')
-    }
+    })().catch((error: unknown) => { ctx.logger.error(error) })
   }, { global: true })
 }
 

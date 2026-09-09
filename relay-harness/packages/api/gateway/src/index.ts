@@ -5,6 +5,7 @@
  */
 
 import { Context, Service, symbols } from '@relay-harness/cordis'
+import { AsyncLocalStorage } from 'node:async_hooks'
 import type { ConnectionRpcHandler } from '@relay-harness/rlh-client-connection'
 import {
   remoteMethods,
@@ -91,6 +92,7 @@ export class TypertGatewayService extends Service implements TypertGateway {
   static inject = ['typert']
 
   private srcClaims: ReadonlySet<string> | undefined
+  private readonly trustedRequests = new AsyncLocalStorage<{ endpoint: string; signal: AbortSignal; active: boolean }>()
 
   /**
    * Register the Gateway against the active Typert registry.
@@ -98,6 +100,7 @@ export class TypertGatewayService extends Service implements TypertGateway {
    */
   constructor(ctx: Context) {
     super(ctx, 'typertGateway')
+    ctx.effect(() => () => { this.trustedRequests.disable() }, 'gateway.trustedRequests')
     ctx.on('internal/service', () => {
       this.srcClaims = undefined
     })
@@ -109,6 +112,17 @@ export class TypertGatewayService extends Service implements TypertGateway {
         { authority: 'trusted-host' },
       )
     })
+  }
+
+  /**
+   * Read live carrier provenance without minting or extending its authority.
+   * @returns the active original endpoint and signal, or undefined outside trusted dispatch.
+   */
+  currentTrustedRequest(): { readonly endpoint: string; readonly signal: AbortSignal } | undefined {
+    const request = this.trustedRequests.getStore()
+    return request?.active === true && !request.signal.aborted
+      ? { endpoint: request.endpoint, signal: request.signal }
+      : undefined
   }
 
   private claimsEndpoint(endpoint: string): boolean {
@@ -188,7 +202,12 @@ export class TypertGatewayService extends Service implements TypertGateway {
     payload: unknown,
     signal: AbortSignal,
   ): Promise<ConnectionRpcResult> {
-    return this.invokeRpc(endpoint, payload, signal)
+    const request = { endpoint, signal, active: true }
+    try {
+      return await this.trustedRequests.run(request, () => this.invokeRpc(endpoint, payload, signal))
+    } finally {
+      request.active = false
+    }
   }
 
   private async invokeRpc(endpoint: string, payload: unknown, signal: AbortSignal): Promise<ConnectionRpcResult> {

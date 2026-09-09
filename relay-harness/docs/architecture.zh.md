@@ -93,6 +93,8 @@ turn/end
 
 `agent/pre-step` 决定模型看到什么。监听器可以改写已领取的消息，也可以直接拒绝它们；首次领取被拒绝或被改写为空时，仍会关闭一个不含步骤的持久轮次，因此日志会记录这次尝试。每个步骤都会在组装提示词前捕获 scope 工具定义与 Code Mode 后端，再把执行绑定到最终声明的名称；streaming 期间的注册变更影响下一步骤，而不是当前响应。在工具捕获与组装之前，可选的 `ctx.contextEngine` 服务（`@relay-harness/rlh-context-engine`）会解析 purpose 资格、Provider 本地 deadline 与配额，再在统一总预算下对来自已领取消息的带归属上下文做确定性去重和打包。选中消息作为已领取 user 消息追加在 runtime-context 快照之前。`agent/pre-step` 准入该步骤后，AgentLoop 先追加普通 `user/message` 事件，再追加一条仅存在于日志的 `context/prepared` trace，其中包含 retrieval plan、选中／拒绝 decisions、Evidence 与 Coverage，以及经准入后仍未改写消息的精确 seq 链接；仅含拒绝的 trace 不添加模型可见内容。请求仍只从 surface 消息重建，不从重复 trace 文本重建。全部合格 Provider 都主动放弃的请求与未部署该服务的部署完全一致。其他提示词片段与上下文仍是普通的逐组装贡献。
 
+成功根工具结果还会在模型内容之外保留执行时捕获的声明变更路径；交付文件投影从持久日志折叠该索引，不依赖浏览器历史分页。
+
 详情见[时序图](agent-lifecycle.md)、[工具流水线](tool-execution-pipeline.md)和[取消与错误恢复](subsystems/core.md#the-agent-handle)。
 
 ## 会话日志

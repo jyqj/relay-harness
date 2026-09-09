@@ -23,3 +23,5 @@ None; this package neither assembles nor sends a provider request.
 - **Global source layer only** — session-scope source registration (per-session shadowing, ScopedLayers-alike) is designed but not enabled; the ledger tracks the trigger condition (a real per-session source need).
 - **`InputTriggerCandidate.icon` renders as text** — MenuView drops the string into the icon slot verbatim; wiring to the design-system icon enum (iconFile five-variant family) lands when that enum ships.
 - **Overlay SlotMap merge home is split from slot ownership** — the sole `conversation.input.overlay` merge lives here, while ui-conversation owns its anchor, children declaration, and lifecycle because the dependency direction is ui-conversation → ui-input-trigger.
+
+Menu state travels through the registration's `hooks.menu` source and the renderer-provided `useMenu` selector hook. MenuView receives no raw store and owns no external subscription. Controller ownership, pointer picking, focus retention, and exit presence remain unchanged.

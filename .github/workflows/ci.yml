@@ -493,16 +493,8 @@ jobs:
           cp /var/cache/apt/archives/*.deb "$HOME/wine-debs/"
           du -sh "$HOME/wine-debs"
 
-  # Every pull request also gets a real Windows-kernel signal. This job keeps
-  # its own unmasked conclusion but is deliberately absent from
-  # all-checks-passed.needs, so it never delays or changes that required
-  # verdict. Under normal operation it runs on the hosted larger runner; under
-  # Windows failover (RLH_CI_FAILOVER_WINDOWS=selfhosted) it retargets onto the
-  # in-house self-hosted Windows pool. Dependabot PRs are excluded from the
-  # self-hosted pool and stay queued for the hosted runner — see the failover
-  # runbook. This Windows switch is independent of the Linux
-  # RLH_CI_FAILOVER_LINUX variable that retargets the three required Linux jobs
-  # and the all-checks-passed verdict above.
+  # Native Windows participates in the required aggregate: Wine alone cannot
+  # validate supported NT kernel, NTFS, process, and native-addon behavior.
   windows-native:
     if: github.event_name == 'pull_request'
     runs-on: windows-2025
@@ -893,17 +885,16 @@ jobs:
           RLH_GATE_CONCURRENCY: ${{ matrix.workers }}
         run: pnpm run check:ci:windows-blocking
 
-  # Single stable required check for branch protection: require "all checks
-  # passed" instead of enumerating matrix legs whose names change as lanes and
-  # node versions evolve. Every blocking job in THIS workflow must be listed in
-  # `needs`. The required Wine job is listed as `windows`; `windows-native` is
-  # deliberately absent so its independent result never delays or changes this
-  # verdict. (`needs` cannot reach across workflow files; e2e.yml stays its own
-  # check.)
-  # `if: always()` is load-bearing: without it a failed dependency
-  # would SKIP this job, and GitHub counts a skipped required check as passing
-  # — so this job always runs and fails on any non-success result, including
-  # 'cancelled' and 'skipped'.
+  sandbox-native:
+    if: github.event_name == 'pull_request'
+    uses: ./.github/workflows/sandbox.yml
+
+  desktop-release:
+    if: github.event_name == 'pull_request'
+    uses: ./.github/workflows/desktop-smoke.yml
+
+  # A stable merge verdict over source, artifacts, real kernels, and desktop execution.
+  # always() rejects failed, cancelled, and skipped dependencies instead of hiding them.
   all-checks-passed:
     name: all checks passed
     # This bookkeeping-only verdict must not depend on custom-pool
@@ -913,7 +904,7 @@ jobs:
     # (RLH_CI_FAILOVER_LINUX), not the Windows one, because it aggregates the
     # required Linux workers and runs on the vm-backup pool.
     runs-on: ubuntu-latest
-    needs: [repository-governance, node-24, node-24-coverage, node-24-consumers, node-compat, python-sdk, python-runtime, windows]
+    needs: [repository-governance, node-24, node-24-coverage, node-24-consumers, node-compat, python-sdk, python-runtime, windows, windows-native, sandbox-native, desktop-release]
     if: always() && github.event_name == 'pull_request'
     steps:
       - name: Fail if any needed job did not succeed

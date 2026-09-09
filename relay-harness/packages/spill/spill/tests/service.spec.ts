@@ -24,6 +24,8 @@ class StubStore extends SpillStore {
       retrievalHint: 'Use the stub reader.',
     }
   }
+
+  async disposeSession(): Promise<void> {}
 }
 
 function request(content: string): SaveTextSpill {

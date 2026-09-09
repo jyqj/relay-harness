@@ -16,13 +16,15 @@ Resume also cannot blindly trust call position. An edited or nondeterministic sc
 
 The versioned header carries the run id and a canonical SHA-256 fingerprint over script, validated meta, args, resolved subagent provider, and resolved total-agent cap. Loading the same run with any changed field fails synchronously with `JOURNAL_DIVERGENCE` before a worker starts.
 
-Each worker `agent()` call already has a deterministic one-based `callId`. After a live child reaches one terminal host outcome, the host fsyncs one JSON line containing the call sequence, canonical request hash, child id when published, and either the detached child result, start error, or infrastructure failure. Only after append succeeds does the host publish that outcome to the worker. Append failure becomes a fatal child infrastructure error; it never lets the script continue with an unrecorded result.
+Each worker `agent()` call has a deterministic one-based `callId`. The version-2 journal fsyncs an intent before provider startup, then fsyncs a terminal outcome before it is published to the worker. The intent carries the sequence and request hash; the outcome adds the published child id and detached result or stable failure. A terminal record requires its matching intent. Older journal formats are refused.
 
-On resume, the script starts from its first statement. A journal entry whose sequence and request hash match is replayed through the existing `child-started` plus terminal protocol without provider work; the worker therefore emits the same paired member lifecycle and computes later script values normally. A recorded start or result failure replays as the same failure. A missing entry marks the live suffix and starts a real child. A mismatched hash fails the run with replay divergence. Cancellation and other host teardown do not record an unfinished suffix, so later resume retries it.
+On resume, the script starts from its first statement. Matching terminal outcomes replay without provider work. A missing sequence begins a live suffix only after its intent reaches fsync. A matching unresolved intent fails with `JOURNAL_OUTCOME_UNKNOWN`, including after cancellation or a torn terminal append; a different request fails with replay divergence. Recovery requires inspecting possible side effects before explicitly starting a new run.
 
-The journal is capped at 64 MiB. Restore accepts only a non-symlink regular file under that cap, validates header and every complete row, rejects duplicate sequences and malformed outcomes, and truncates only a torn final JSON line. Calls may complete out of order, so physical JSONL order need not equal call order; sequence keys remain unique and replay is indexed by call id.
+The journal is capped at 64 MiB. Restore accepts only a non-symlink regular file under that cap, validates every complete row and each intent-to-outcome transition, and truncates only a torn final JSON line. Calls may complete out of order; each sequence has at most one intent and one matching terminal outcome.
 
 The model-facing `workflow` tool exposes optional `resumeRunId`, brands and forwards it, and never inspects storage or falls back to a fresh run. Every successful tool result already returns `runId`, which is the resume handle.
+
+Recovery validates request ownership, every complete record, finite JSON results, and contiguous call sequences before fsyncing a final-line repair. A divergent request never modifies the file, and a missing earlier call never becomes a live suffix. The writer claim rejects both ordinary and dangling symlinks. Every child interruption, including cancellation caused by worker death, preserves the unknown-outcome intent.
 
 ## Alternatives considered
 
@@ -32,9 +34,9 @@ The model-facing `workflow` tool exposes optional `resumeRunId`, brands and forw
 
 **Replay by sequence without a request hash.** Rejected because edited or nondeterministic scripts would silently bind old results to new requests. The header catches static input changes and each call hash catches dynamic divergence.
 
-**Record before child execution.** Rejected because an intent record cannot supply the terminal value after restart. Exactly-once external side effects require provider idempotency; this journal guarantees replay only after the terminal outcome reaches fsync.
+**Record only terminal outcomes.** Rejected because a missing terminal record cannot distinguish an unstarted call from one whose external effects already happened. A durable intent cannot reconstruct a result, but it prevents automatic repetition of an unknown outcome. Exactly-once external effects still require provider idempotency or reconciliation.
 
-**Record cancellation as a terminal call result.** Rejected because cancellation is an interruption of the run, not the child request's deterministic business outcome. Leaving the suffix absent lets resume retry useful work.
+**Record cancellation as a terminal call result.** Rejected because cancellation is an interruption, not a deterministic business outcome. The unresolved intent remains durable and prevents an automatic retry from repeating unknown side effects.
 
 **Use one mutable JSON document.** Rejected because rewriting grows crash windows and memory with run size. Bounded append-only JSONL permits per-call fsync and final-tail repair.
 
@@ -44,6 +46,10 @@ The model-facing `workflow` tool exposes optional `resumeRunId`, brands and forw
 
 Completed child calls can be reused after cancellation or process restart without recontacting providers. Failure outcomes are deterministic too, and edited scripts fail loud rather than consuming stale values. The default base engine remains stateless because no deployment storage path is invented.
 
-The design is at-least-once around the narrow crash window between an external child effect and journal fsync. It is single-process/single-writer: two hosts must not resume the same run concurrently until a durable lease protocol exists. Phase/log narration and arbitrary local variables recompute during replay; only host-call outcomes are durable.
+The journal prevents automatic repetition of calls with unknown outcomes; it does not roll back external effects or reconstruct arbitrary worker heap state. A run holds an exclusive SQLite writer transaction beside its journal before loading or repairing it. Competing hosts fail with `JOURNAL_BUSY`. The OS claim releases after worker exit and child quiescence; bounded disposal cannot release it while abandoned children remain active. Process death releases the lock without stale-pid deletion. The journal requires a local filesystem with reliable SQLite locking. Phase/log narration and local variables recompute during replay.
 
-Worker-engine tests cover settled, start-error, result-error and unserializable-result replay; cancellation retry; script and call divergence; append failure; unsafe files; final-tail repair; bounds; canonical hashes; and every journal validation branch. The worker-thread source retains per-file 100% statements, branches, functions, and lines.
+Worker-engine tests exercise terminal replay, cancellation with unresolved intent, divergence, append failure, unsafe files, torn-tail recovery, size bounds, and canonical hashes. Journal tests verify that a torn terminal append preserves the intent and that unresolved calls never replay as an unstarted suffix.
+
+The [real-Loader recovery snapshot](../../../../examples/acp-agent/tests/workflow-recovery.snapshot.ts) boots the checked-in workflow fixture, executes one real spawn child with a scripted model, resumes through a second host without another model request, and refuses replay after a simulated torn terminal append. Its expected output retains the stable error message rather than machine-specific stack paths.
+
+Request object keys use locale-independent UTF-16 code-unit ordering; array order remains significant. An English/Turkish locale subprocess regression prevents host collation from changing an otherwise identical request fingerprint.

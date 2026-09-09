@@ -1,5 +1,5 @@
 /**
- * Named wire types for the Relay Harness SDK runtime protocol: the three
+ * Named wire types for the Relay Harness SDK runtime protocol: the four
  * request/result pairs and the four server-to-client notification payloads
  * exchanged over the newline-delimited JSON-RPC stdio transport. The server
  * plugin (`@relay-harness/rlh-sdk-jsonrpc-server`) and SDK clients share these shapes;
@@ -42,6 +42,16 @@ export interface SessionPromptParams {
 export interface SessionPromptResult {
   /** Identity of the queued user message. */
   messageId: string
+}
+
+/** One session the client asks the runtime to reclaim. */
+export interface SessionCloseParams {
+  /**
+   * The SDK-side session id to close: the runtime disposes the session's
+   * agent and stops attributing the id; an unknown id answers a JSON-RPC
+   * error instead of silently succeeding.
+   */
+  sessionId: string
 }
 
 /** Deployment-mapped SDK outcome: `ok` for an accepted result, `error` otherwise. */
@@ -101,5 +111,6 @@ export interface HarnessSdkNotificationMap {
 export interface HarnessSdkRequestMap {
   'initialize': { params: InitializeParams; result: InitializeResult }
   'session/prompt': { params: SessionPromptParams; result: SessionPromptResult }
+  'session/close': { params: SessionCloseParams; result: Record<string, never> }
   'shutdown': { params: undefined; result: Record<string, never> }
 }

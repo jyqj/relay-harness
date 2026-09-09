@@ -1,11 +1,6 @@
 // @vitest-environment jsdom
-import { describe, expect, it, vi } from 'vitest'
-import {
-  FALLBACK_TERMINAL_FONT_FAMILY,
-  readXtermFont,
-  terminalFontOptions,
-  terminalThemeFromApp,
-} from '../src/client/terminal-theme.ts'
+import { describe,expect,it,vi } from 'vitest'
+import { FALLBACK_TERMINAL_FONT_FAMILY,readXtermFont,terminalFontOptions,terminalThemeFromApp } from '../src/client/terminal/terminal-theme.ts'
 
 function mockCanvasFromFillStyle(): void {
   vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(function mock(

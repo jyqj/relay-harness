@@ -364,9 +364,9 @@ describe('ToolRow', () => {
     const inspect = vi.fn()
     const view = render(<ToolRow {...rowProps} inspect={inspect} />)
     // Collapsed: no pill.
-    expect(view.queryByText('Inspect')).toBeNull()
+    expect(view.queryByText(zh['row.inspect'])).toBeNull()
     fireEvent.click(view.getByRole('button', { name: /Bash/ }))
-    const pill = view.getByText('Inspect')
+    const pill = view.getByText(zh['row.inspect'])
     fireEvent.click(pill)
     expect(inspect).toHaveBeenCalledTimes(1)
     // The pill click must not collapse the row (body is a .row sibling).
@@ -376,7 +376,7 @@ describe('ToolRow', () => {
   it('no inspect callback, no pill', () => {
     const view = render(<ToolRow {...rowProps} />)
     fireEvent.click(view.getByRole('button'))
-    expect(view.queryByText('Inspect')).toBeNull()
+    expect(view.queryByText(zh['row.inspect'])).toBeNull()
   })
 
   it('the expanded card gutter-labels each section it carries (IN / OUT)', () => {
@@ -450,7 +450,7 @@ describe('GenericToolCard', () => {
     const inspect = vi.fn()
     const view = render(<GenericToolCard {...props('bash', result())} inspect={inspect} />)
     fireEvent.click(view.getByRole('button', { name: /Bash/ }))
-    fireEvent.click(view.getByText('Inspect'))
+    fireEvent.click(view.getByText(zh['row.inspect']))
     expect(inspect).toHaveBeenCalledTimes(1)
   })
 

@@ -8,7 +8,7 @@
 import { createHash } from 'node:crypto'
 import { Buffer } from 'node:buffer'
 import type { Context } from '@relay-harness/cordis'
-import { EvidenceId, SourceId } from '@relay-harness/rlh-context-engine'
+import { ContextEngineError, EvidenceId, SourceId } from '@relay-harness/rlh-context-engine'
 import type {
   ContributedStepContext,
   Evidence,
@@ -80,7 +80,10 @@ export class FileReferenceContentContributor implements StepContextContributor {
     if (mentions.length === 0) return undefined
     const fs = this.ctx.get('fs')
     if (fs === undefined) {
-      throw new Error('file-reference-local: file-content injection requires a filesystem service')
+      throw new ContextEngineError(
+        'file-reference-local: file-content injection requires a filesystem service',
+        'CONTEXT_ENGINE_INVALID_CONTRIBUTOR',
+      )
     }
     const evidence: Evidence[] = []
     const admitted: AdmittedFile[] = []

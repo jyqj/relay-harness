@@ -1,3 +1,4 @@
+// @ts-check
 'use strict';
 
 /**
@@ -147,7 +148,7 @@ async function connectConfiguredWorkspace(wc, helpers, rec) {
   await pageEval(wc, () => {
     const item = Array.from(document.querySelectorAll('[role="menuitem"]')).find((el) =>
       rlhShown(el) && /add workspace|添加工作区/i.test(rlhLabel(el)));
-    if (!item) return false;
+    if (!(item instanceof HTMLElement)) return false;
     item.click();
     return true;
   });
@@ -203,8 +204,8 @@ async function connectConfiguredWorkspace(wc, helpers, rec) {
     pickerClosed = await waitUntil(() => pageEval(wc, () =>
       !rlhDialogNamed('select workspace directory|选择工作区目录')), 8_000);
   }
-  const connected = await waitUntil(() => pageEval(wc, () => {
-    const ta = document.querySelector('[data-composer-card] textarea');
+  let connected = await waitUntil(() => pageEval(wc, () => {
+    const ta = /** @type {HTMLTextAreaElement | null} */ (document.querySelector('[data-composer-card] textarea'));
     return Boolean(ta && !ta.disabled);
   }), 15_000);
   if (connected && !pickerClosed) {
@@ -230,6 +231,18 @@ async function connectConfiguredWorkspace(wc, helpers, rec) {
       !rlhDialogNamed('select workspace directory|选择工作区目录')), 5_000);
   }
   rec('workspace.pickerClosed', Boolean(pickerClosed), pickerClosed ? '' : 'picker stayed open', true);
+  // An editable unsent draft is not a selected Session. Git controls intentionally
+  // use the current Session cwd, so request and observe a real session first.
+  const sessionRequested = await clickNamed(wc, 'new session in|中新建会话')
+    || await clickNamed(wc, '^new session$|^新建会话$');
+  const sessionDetail = sessionRequested ? '' : await pageEval(wc, () =>
+    Array.from(document.querySelectorAll('button')).filter(rlhShown).map(rlhLabel).join(' | '));
+  rec('workspace.sessionRequested', Boolean(sessionRequested), sessionRequested ? '' : `new-session action unavailable: ${sessionDetail}`);
+  connected = sessionRequested && await waitUntil(() => pageEval(wc, () => {
+    const selected = document.querySelector('[role="treeitem"][aria-selected="true"]');
+    const ta = /** @type {HTMLTextAreaElement | null} */ (document.querySelector('[data-composer-card] textarea'));
+    return Boolean(selected && ta && !ta.disabled);
+  }), 15_000);
   rec(
     'workspace.connected',
     Boolean(connected),

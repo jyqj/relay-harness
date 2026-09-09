@@ -15,7 +15,7 @@
 | `readRaw(id, signal?): Promise<SessionRawArtifact \| undefined>` | 读取受支持后端自身的逐字工件文本；只解码物理编码，绝不从事件重建。`undefined` 仅表示所请求工件缺失；不支持的后端会拒绝。 |
 | `create(meta): Promise<void>` | 注册新会话元数据。可以将物理写入延迟到第一次 `append`（延迟实体化）。 |
 | `append(id, events): Promise<void>` | 持久保存一个批次。仅追加；任何修复后，第一个事件 `seq` == 已存储 next-seq；非 JSON 可序列化数据会被拒绝，并命名违规类型。 |
-| `prepare(id, signal?): Promise<SessionPreparation>` | 预留恢复所使用的那个未发布 Session。协调器会尽可能复用之前的检查结果、提交待处理恢复，并在 dispose（资源释放）时将未发布 reservation 释放回有界缓存。 |
+| `prepare(id, signal?, fence?): Promise<SessionPreparation>` | 预留恢复所使用的那个未发布 Session。协调器会尽可能复用之前的检查结果、提交待处理恢复，并在 dispose（资源释放）时将未发布 reservation 释放回有界缓存。 |
 | `load(id): Promise<{ meta; events }>` | 转换同一格式版本中受支持的旧记录后，返回不可变、平衡的逻辑日志，并提交冷恢复。实时 load 先 flush 其快照，并在轮次开放时拒绝；冷 load 保留中断的最终轮次，并用合成 `tool/result`/`step/end?`/`turn/end {interrupted}` 事件持久关闭它。只丢弃撕裂尾部碎片；已提交损坏和格式错误的记录以 `SessionPersistenceCorruptionError` 拒绝，不支持的格式 `version` 或本构建不认识且信封未带 `ignorable` 标记的事件类型以 `SessionFormatUnsupportedError` 拒绝，消息说明拒绝方向，并在后端为每个会话保留独立文件时给出原始日志路径。 |
 | `inspect(id, signal?): Promise<{ meta; events }>` | 返回已经升级、验证和深度冻结的逻辑视图，但不提交恢复或发布 Session。冷视图会获得仅存在于内存的合成恢复 closer，物理撕裂尾部保持不变；实时状态下的视图则是当前不可变快照，可能包含开放的轮次。基于协调器的实现会在有界 LRU 中保留该冷状态下未发布的 Session 本身，供后续 `prepare` 使用，但已存储修订值变化后会丢弃并重新读取。同 id 检查共享进行中的读取。 |
 | `readFrom(id, fromSeq, signal?): Promise<{ meta; events }>` | 返回 `seq >= fromSeq` 的有效已存储事件，不进入 preparation 缓存、不截断、不合成 closer，也不发布协调器状态。`fromSeq` 达到或超过已存储末尾时返回空事件列表；负数或非安全整数 `fromSeq` 会被拒绝。可寻址后端（SQLite）只读后缀，除非转换受支持的旧记录需要读取更早的记录；顺序后端（JSONL）解析整个产物并向前跳过。未知类型拒绝遵循同一读取方式：寻址读取只检查返回的后缀，顺序回退路径还会拒绝窗口以下的未知必需事件。供 checkpoint 消费方只应用已存序号之后的事件。 |
@@ -33,13 +33,15 @@
 
 `PersistenceCoordinator` 负责每 id 状态和串行化、每个活动会话各自的有界写入 controller、延迟实体化、崩溃尾部修复、会话接管和完全停稳的 dispose。第一方后端组合一个协调器，实现小型 `PersistenceBackend` 存储钩子接口，并委托其有状态方法。因此 JSONL 和 SQLite 共享生命周期正确性，同时保留不同存储原语；见[协调器 Agent Note](../../../.agents/notes/implemented/architecture/2026-06-18-shared-persistence-write-coordinator.md)、[flush controller 简化](../../../.agents/notes/implemented/simplification/2026-07-23-collapse-persistence-flush-state.md)和[有界批处理决策](../../../.agents/notes/implemented/architecture/2026-08-08-bounded-session-persistence-write-batching.md)。
 
-每个 `session/event` 将事件复制到会话 controller。第一个待处理事件会开启固定批处理窗口；后续事件会加入该批次，但不会重置截止时间。配置的 `writeBatchMaxDelayMs` 只限制这段有意等待，而不限制事件循环、初始化、串行化操作或后端延迟。写入期间接纳的事件会形成一个新的有界批次。`session/flush` 会取消等待，并作为共享的完全停稳屏障，排空屏障运行期间接纳的事件。后台写入失败只记录一次日志，保留顺序不变的批次，并暂停自动重试；新事件会开启新的固定窗口，而显式 flush 或后端拆卸会立即重试，并在失败再次发生时向调用方暴露失败。当在线 Session 携带 `SessionPersistenceFence` 时，协调器会在入队、显式 flush、初始化完成和串行化后端 append 前检查它；被取代的 owner 因此无法在接管后发布新事件或排空保留 batch。
+每个 `session/event` 将事件复制到会话 controller。第一个待处理事件会开启固定批处理窗口；后续事件会加入该批次，但不会重置截止时间。配置的 `writeBatchMaxDelayMs` 只限制这段有意等待，而不限制事件循环、初始化、串行化操作或后端延迟。写入期间接纳的事件会形成一个新的有界批次。`session/flush` 会取消等待，并作为共享的完全停稳屏障，排空屏障运行期间接纳的事件。后台写入失败只记录一次日志，保留顺序不变的批次，并暂停自动重试；新事件会开启新的固定窗口，而显式 flush 或后端拆卸会立即重试，并在失败再次发生时向调用方暴露失败。当在线 Session 携带 `SessionPersistenceFence` 时，协调器会在入队和显式 flush 前、初始化读取后、活动会话接管或修复前，以及缓冲 append 离开按 id 串行队列时检查它。公共 append 路径也会在调用后端前检查确切的活动 owner，包括对已有 owner 的 id 直接调用服务 append 的路径。检查失败会拒绝操作，而不会启动该存储变更；保留的 batch 重试时仍受相同检查约束。活动控制器在批处理、重试和退休期间保留已捕获的确切证明，即使其 Session 注册已退休也不例外。退休会关闭新的源日志 append；替换 Session 的终身证明会被拒绝，不会把旧写入转交给新 owner。带有 `runExclusive` 的证明会包住后端 append 或 repair 的完整过程，包括异步 I/O 和持久化；租约提供方必须在释放和接管时使用相同的排他机制。只有断言的证明仍仅提供分发前检查。`prepare(id, signal?, fence?)` 在活动会话 setup 安装证明之前，将这份确切证明传入冷恢复；调用方被中断不会提前释放在途变更。
+
+未发布的 preparation 一旦安装终身 `SessionPersistenceFence`，释放时就会丢弃，即使 setup 没有追加事件。重试会重新加载一个 Session 对象以安装继任 proof；普通未加 fence 的 preparation 在持久 revision 不变时仍可复用。
 
 崩溃修复只适用于冷状态。对于已有活动会话的 id，`load(id)` 为权威内存日志制作快照，等待该快照持久，并只在平衡时返回；活动会话中开放的轮次会被拒绝，而不会收到合成中断 closer。对于冷 id，检查只读取、验证、冻结并构造一次未发布 Session；只有来源修订值仍然是当前值时，重复检查才会复用该对象图。`prepare(id)` 在修复前执行相同校验，预留该 Session 本身，提交任何待处理的撕裂尾部或中断轮次修复，并将其返回用于发布。HMR（热模块替换）接管通过 `loadStored` 读取，应用协调器 cwd 检查，并绝不关闭活动轮次。
 
 后端读取会在验证当前记录前，转换同一格式版本中明确受支持的旧记录。消息标识机制引入前的消息会获得确定性的 id `legacy-message:<session-id>:<event-seq>`；工具结果的内容替换会继承其目标导入后的 id。react-loop 引入前的 `turn/start` 会移除过时的 trigger，已移除的 steering（中途引导）事件 `steering/message` 会转换为同一条带标识的 `user/message`；旧版 `turn/end` 会映射终止原因，但不会虚构旧记录中没有记载的调用方。协调器对 `load`、`inspect`、`readFrom`、无所有者状态的认领和 HMR 前缀接管使用同一份转换后视图。存储仍然仅追加：读取不会重写旧记录，此后追加的事件使用当前格式。这些是[消息标识机制引入前的消息](../../../.agents/notes/implemented/bug-fix/2026-07-28-load-pre-identity-session-messages.md)与 [react-loop 引入前会话](../../../.agents/notes/implemented/bug-fix/2026-08-04-load-pre-react-loop-sessions.md)决策所规定的范围受限的导入例外，并不构成通用的 v0 迁移承诺。
 
-活动会话发出 `session/disposed` 时，协调器等待其 controller，以串行方式执行最终 drain，然后释放该精确 `Session` 对象拥有的状态。失败退役会将 controller 保留在活动会话 map 中，使后端拆卸可重试。后端拆卸先停止事件接纳，flush 每个剩余 controller，等待每 id 操作，最后才关闭存储句柄。
+活动会话发出 `session/disposed` 时，协调器等待其 controller，以串行方式执行最终 drain，然后释放该精确 `Session` 对象拥有的状态。drain 失败会武装一次退避重试，期间 retirement 记录保持挂起；若重试同样失败，则释放搁置的生命周期（其缓冲事件随之丢失），同 id 重建会指名底层写失败而非碰撞，且后端拆卸不会第二次上报该失败。后端拆卸以同一个复合 effect 运行监听器与最终 drain，其串行链先移除全部监听器再启动 drain，flush 每个剩余 controller，等待每 id 操作，最后才关闭存储句柄。
 
 无副作用 `locate`、轻量 `listSnapshots` 和按 id 查询的 `readStoredRevision` 仍由后端负责，因为它们描述存储拓扑和修订身份，而非写入编排。`listSnapshots(signal?)` 将调用方传入的同一个信号传给后端发现流程，使观察者可在不脱离该工作的情况下取消。
 

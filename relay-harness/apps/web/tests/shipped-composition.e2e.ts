@@ -33,6 +33,7 @@ const FILE_REFERENCE_PROMPT = fileURLToPath(new URL(
  * `mcp_*` servers spawn outside `ctx.shell`. The composition Agent Note owns the
  * rationale and its sources.
  */
+// Standard exposes explicit memory management; the workflow tool is opt-in through the Cordis preset.
 const EXPECTED_TOOLS = [
   'ask_user_question',
   'bash',
@@ -45,6 +46,11 @@ const EXPECTED_TOOLS = [
   'job_list',
   'job_output',
   'list_agents',
+  'memory_forget',
+  'memory_read',
+  'memory_remember',
+  'memory_search',
+  'memory_update',
   'ralph',
   'read',
   'read_image',
@@ -55,7 +61,6 @@ const EXPECTED_TOOLS = [
   'todo_write',
   'update_goal',
   'web_search',
-  'workflow',
   'write',
 ]
 
@@ -74,7 +79,7 @@ afterEach(async () => {
   scaffold = undefined
 })
 
-it('assembles the shipped Web catalog, file-reference guidance, retry policy, and unrestricted access default', async () => {
+it('assembles the shipped Web catalog, file-reference guidance, retry policy, and standard access default', async () => {
   scaffold = await launchWebScaffold({ deepSeekMissingCredential: true })
   const ctx = scaffold.ctx
   expect(ctx.llm.providerRetryPolicy('deepseek-official')).toMatchInlineSnapshot(`
@@ -82,6 +87,7 @@ it('assembles the shipped Web catalog, file-reference guidance, retry policy, an
       "initialDelayMs": 500,
       "jitterRatio": 0.1,
       "maxDelayMs": 10000,
+      "maxProviderDelayMs": 60000,
       "maxRetries": 5,
       "mode": "normal",
       "retryableCodes": [
@@ -91,6 +97,7 @@ it('assembles the shipped Web catalog, file-reference guidance, retry policy, an
         "TIMEOUT",
         "TRANSPORT",
       ],
+      "scheduledCodes": [],
     }
   `)
   await ctx.settings.update(settingsNamespace('llm-deepseek'), {
@@ -101,6 +108,7 @@ it('assembles the shipped Web catalog, file-reference guidance, retry policy, an
       "initialDelayMs": 500,
       "jitterRatio": 0.1,
       "maxDelayMs": 10000,
+      "maxProviderDelayMs": 60000,
       "mode": "always",
     }
   `)
@@ -115,6 +123,7 @@ it('assembles the shipped Web catalog, file-reference guidance, retry policy, an
       "initialDelayMs": 500,
       "jitterRatio": 0.1,
       "maxDelayMs": 10000,
+      "maxProviderDelayMs": 60000,
       "maxRetries": 5,
       "mode": "normal",
       "retryableCodes": [
@@ -124,6 +133,7 @@ it('assembles the shipped Web catalog, file-reference guidance, retry policy, an
         "TIMEOUT",
         "TRANSPORT",
       ],
+      "scheduledCodes": [],
     }
   `)
   expect(ctx.llm.providerRetryPolicy('anthropic')).toMatchInlineSnapshot(`
@@ -131,6 +141,7 @@ it('assembles the shipped Web catalog, file-reference guidance, retry policy, an
       "initialDelayMs": 500,
       "jitterRatio": 0.1,
       "maxDelayMs": 10000,
+      "maxProviderDelayMs": 60000,
       "mode": "always",
     }
   `)
@@ -164,9 +175,9 @@ it('assembles the shipped Web catalog, file-reference guidance, retry policy, an
   expect(writableRoots(scaffold.ctx.sandboxPolicy.resolve({ mode: 'workspace-write' }))).toEqual(
     expect.arrayContaining([canonicalPath('/tmp'), canonicalPath(tmpdir())]),
   )
-  expect(scaffold.ctx.sandboxPolicy.defaultMode).toBe('danger-full-access')
-  expect(scaffold.ctx.approval.config.policy).toBe('never')
-  expect(scaffold.ctx.permissionPresets.defaultPreset).toBe('danger-full-access')
+  expect(scaffold.ctx.sandboxPolicy.defaultMode).toBe('workspace-write')
+  expect(scaffold.ctx.approval.config.policy).toBe('ask')
+  expect(scaffold.ctx.permissionPresets.defaultPreset).toBe('workspace-write')
 
   const commandHandle = await scaffold.ctx.agents.create({
     sessionId: SessionId('shipped-command-catalog'),

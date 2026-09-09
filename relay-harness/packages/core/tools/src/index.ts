@@ -28,6 +28,7 @@ import type { ToolSdkSchema } from './ts-types.ts'
 import { renderToolsSdkPy } from './py-types.ts'
 import { installToolRuntimeExecutionRequest } from './request-snapshot.ts'
 import { ToolResourceLockManager } from './resource-lock.ts'
+import { captureProducedFiles } from './produced-files.ts'
 
 /**
  * Language → SDK-section renderer. The registry looks up the loaded
@@ -630,6 +631,8 @@ export interface ToolExecutionSuccess {
   readonly error?: never
   readonly meta?: JsonValue
   readonly additionalContexts?: UserMessage[]
+  /** Execution-captured root mutation paths; absent means capture was unavailable, empty means no declared files. */
+  readonly producedFiles?: readonly string[]
   /** The agent loop stops after committing this successful result batch. */
   readonly concludesTurn?: true
 }
@@ -781,8 +784,9 @@ interface ToolRequestSnapshotState {
 }
 
 /**
- * A monotonic execution guard evaluated after every `tools/pre-execute`
- * listener and before the tool body. Returning a reason denies the call;
+ * A monotonic execution guard evaluated after the `tools/pre-execute`
+ * waterfall and again after resource acquisition, immediately before each
+ * tool body invocation. Returning a reason denies the call;
  * returning `undefined` leaves it unchanged. Because guards have no allow
  * result, listener ordering cannot turn a denial back into permission.
  * @param execution - the identity-protected call after extensible pre-execute policy completed.
@@ -1323,8 +1327,9 @@ export class ToolRuntime extends Service {
    * waterfall. A plain-context guard applies globally; one registered through
    * `agent.ctx` applies only to that agent. Any matching guard may deny by
    * returning a reason, while no guard can force-allow a call another guard
-   * denied. The exact effect disposer is returned for ordered ownership and
-   * HMR cleanup.
+   * denied. Guards run again after around-dispatch and resource waits, before
+   * each body invocation; they must support repeated synchronous checks.
+   * The exact effect disposer is returned for ordered ownership and HMR cleanup.
    * @param guard - synchronous check; a returned string denies the execution.
    * @returns the exact disposer that unregisters the guard.
    */
@@ -1753,11 +1758,7 @@ export class ToolRuntime extends Service {
         return await next({
           kind: 'post-result',
           exec,
-          result: this.materializeFinalResult({
-            content: [{ type: 'text', text: `Error: ${denialReason}` }],
-            isError: true,
-            error: { message: denialReason },
-          }),
+          result: this.materializeFinalResult(toolDeniedResult(denialReason)),
         })
       }
       if (this.callerCancelled(exec)) {
@@ -1812,6 +1813,8 @@ export class ToolRuntime extends Service {
    * Dispatch the registered body with the original caller signal fused back
    * into any around-wrapper replacement. Cancellation never abandons the body:
    * a started promise reaches quiescence before its outcome becomes `ABORTED`.
+   * Live guards revalidate admission while resource locks are held, without
+   * yielding between their decision and the body invocation.
    */
   private async dispatchToolBody(exec: MutableToolRunContext): Promise<ToolExecutionResult> {
     const state = this.cancellationStates.get(exec)
@@ -1830,11 +1833,16 @@ export class ToolRuntime extends Service {
       const tool = this.executionDefinition(exec)
       if (!tool) throw new ToolNotFoundError(exec.name)
       const intents = this.executionResourceIntents.get(exec) ?? []
-      const returned = await this.resourceLocks.run(intents, signal, async () => {
+      const result = await this.resourceLocks.run(intents, signal, async () => {
+        const denialReason = this.guardReason(exec)
+        if (denialReason !== undefined) {
+          return this.materializeFinalResult(toolDeniedResult(denialReason))
+        }
+        signal.throwIfAborted()
         state.bodyInvoked = true
-        return tool.execute(exec.arguments, exec)
+        const returned = await tool.execute(exec.arguments, exec)
+        return this.createSuccessResult(exec, tool, returned)
       })
-      const result = this.createSuccessResult(exec, tool, returned)
       return isAborted(signal)
         ? toolAbortedResult(result)
         : result
@@ -2101,11 +2109,15 @@ export class ToolRuntime extends Service {
       }
       meta = snapshotProjection(tool.name, 'presentationMeta', projected)
     }
+    const producedFiles = exec.parent === undefined
+      ? captureProducedFiles(tool.presentCall?.bind(tool), exec.arguments)
+      : undefined
     const concludesTurn = this.concludingExecutions.has(exec)
     return this.markCanonical(exec, this.materializeFinalResult({
       isError: false,
       value,
       content,
+      ...producedFiles !== undefined ? { producedFiles } : {},
       ...meta !== undefined ? { meta } : {},
       ...concludesTurn ? { concludesTurn: true as const } : {},
     }) as ToolExecutionSuccess)
@@ -2145,6 +2157,7 @@ export class ToolRuntime extends Service {
     const detached = materializePresentation({
       isError: false as const,
       ...presentation,
+      ...result.producedFiles !== undefined ? { producedFiles: result.producedFiles } : {},
       ...result.concludesTurn === true ? { concludesTurn: true as const } : {},
     })
     return deepFreeze({ ...detached, value: result.value })
@@ -2154,6 +2167,15 @@ export class ToolRuntime extends Service {
 /** Mint a same-process correlation token whose identity is its value. */
 function createExecutionToken(): ToolExecutionToken {
   return Symbol('rlh.tool.execution') as ToolExecutionToken
+}
+
+/** Preserve the same denial result at preparation and final body admission. */
+function toolDeniedResult(reason: string): ToolExecutionResult {
+  return {
+    content: [{ type: 'text', text: `Error: ${reason}` }],
+    isError: true,
+    error: { message: reason },
+  }
 }
 
 function toolErrorResult(error: unknown): ToolExecutionResult {

@@ -2,17 +2,8 @@
  * Terminal session store: one handle owns one session table. Split honors
  * MAX_TERMINALS_PER_GROUP. Separate handles do not share sessions.
  */
-import { describe, expect, it } from 'vitest'
-import {
-  acquireCreate,
-  BUFFER_REALIGN_WINDOW,
-  createTerminalSessionStore,
-  MAX_TERMINAL_BUFFER,
-  MAX_TERMINALS_PER_GROUP,
-  realignBufferStart,
-  releaseCreate,
-  sessionBuffer,
-} from '../src/client/stores.ts'
+import { describe,expect,it } from 'vitest'
+import { acquireCreate,BUFFER_REALIGN_WINDOW,createTerminalSessionStore,MAX_TERMINAL_BUFFER,MAX_TERMINALS_PER_GROUP,realignBufferStart,releaseCreate,sessionBuffer } from '../src/client/terminal/stores.ts'
 
 function sameHandleShells() {
   const instance = createTerminalSessionStore().create('session-1')

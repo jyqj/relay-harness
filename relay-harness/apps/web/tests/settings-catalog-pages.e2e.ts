@@ -15,6 +15,7 @@ import { connectFreshWorkspace, newEnglishPage, saveFailureShot } from './suppor
 const SNAPSHOT_DIR = fileURLToPath(new URL('./snapshots/settings-catalog-pages', import.meta.url))
 const MCP_EXPECTED = join(SNAPSHOT_DIR, 'mcp.expected.md')
 const SKILLS_EXPECTED = join(SNAPSHOT_DIR, 'skills.expected.md')
+const MEMORY_VALIDATION_EXPECTED = join(SNAPSHOT_DIR, 'memory-validation.expected.md')
 const FIXTURE_SKILL = 'settings-catalog-fixture'
 const SCAFFOLD_MODULE = './scaffold.ts'
 
@@ -185,6 +186,26 @@ describe('web e2e: shipped Settings catalogs and centers', () => {
       await memoryDetails.getByText('Active', { exact: true }).waitFor({ timeout: 10_000 })
       await expect.poll(async () => (await scaffold!.ctx.longTermMemory.read(memoryScope, candidate.id))?.status)
         .toBe('active')
+      const approved = await scaffold.ctx.longTermMemory.read(memoryScope, candidate.id)
+      expect(approved).toBeDefined()
+      await memoryDetails.getByRole('button', { name: 'Revise', exact: true }).click()
+      await memoryDetails.getByLabel('Confidence', { exact: true }).fill('')
+      await memoryDetails.getByRole('button', { name: 'Save revision', exact: true }).click()
+      await memoryDetails.getByRole('alert').getByText(
+        'Enter valid importance, confidence, and a future expiry time.', { exact: true },
+      ).waitFor({ timeout: 10_000 })
+      await scaffoldApi.compareOrRefreshGolden(
+        MEMORY_VALIDATION_EXPECTED, await memoryDetails.getByRole('alert').ariaSnapshot(), mode,
+      )
+      expect(await scaffold.ctx.longTermMemory.read(memoryScope, candidate.id)).toEqual(approved)
+      await memoryDetails.getByLabel('Confidence', { exact: true }).fill('0')
+      await expect.poll(() => memoryDetails.getByRole('alert').count()).toBe(0)
+      await memoryDetails.getByRole('button', { name: 'Save revision', exact: true }).click()
+      await memoryDetails.getByRole('button', { name: 'Revise', exact: true }).waitFor({ timeout: 10_000 })
+      await expect.poll(async () => (await scaffold!.ctx.longTermMemory.read(memoryScope, candidate.id))?.confidence)
+        .toBe(0)
+      expect((await scaffold.ctx.longTermMemory.read(memoryScope, candidate.id))?.revision)
+        .toBe((approved?.revision ?? 0) + 1)
       await memoryDetails.getByRole('button', { name: 'Close', exact: true }).last().click()
 
       await dialog.getByRole('button', { name: 'Code Index', exact: true }).click()
@@ -197,10 +218,23 @@ describe('web e2e: shipped Settings catalogs and centers', () => {
       await dialog.getByRole('button', { name: 'Run', exact: true }).click()
       await dialog.getByText(/only-code-index-center\.ts/u).waitFor({ timeout: 10_000 })
 
+      const forceRebuild = dialog.getByRole('button', { name: 'Force rebuild', exact: true })
+      await forceRebuild.click()
+      const confirmation = page.getByRole('dialog', { name: 'Confirm force rebuild', exact: true })
+      await confirmation.getByLabel('REBUILD', { exact: true }).fill('REBUILD')
+      expect(await confirmation.getByRole('button', { name: 'Confirm rebuild', exact: true }).isEnabled()).toBe(true)
+      await confirmation.getByRole('button', { name: 'Cancel', exact: true }).last().click()
+      await expect.poll(() => confirmation.count()).toBe(0)
+      await forceRebuild.click()
+      expect(await confirmation.getByLabel('REBUILD', { exact: true }).inputValue()).toBe('')
+      expect(await confirmation.getByRole('button', { name: 'Confirm rebuild', exact: true }).ariaSnapshot())
+        .toMatchInlineSnapshot('"- button \"Confirm rebuild\" [disabled]"')
+      await confirmation.getByRole('button', { name: 'Cancel', exact: true }).last().click()
+
       expect(tripwire.pageErrors).toEqual([])
       expect(tripwire.warnings).toEqual([])
       if (mode !== 'record') {
-        await scaffoldApi.assertFixtureInventory(SNAPSHOT_DIR, ['mcp.expected.md', 'skills.expected.md'])
+        await scaffoldApi.assertFixtureInventory(SNAPSHOT_DIR, ['mcp.expected.md', 'skills.expected.md', 'memory-validation.expected.md'])
       }
     } finally {
       await browser?.close()

@@ -12,6 +12,8 @@ The Host half registers `ui-onboarding` in the user-settings seam. The welcome s
 
 The General section's one built-in row is the desktop-only **Harness auto-restart** preference: whether a crashed Harness process restarts itself, and the bounded retry schedule behind it (max attempts 1/3/5, base delay 1/2/5 s). The row registers only when the desktop bridge exposes both `getConfig` and `saveConfig` — a plain browser has no Harness process to restart. It reads the persisted policy on mount and writes each change through `saveConfig`, applying the echoed (normalized) values to its controls, with reading/saving/error states exposed for accessibility.
 
+The About page enables installation only for `available`. `unavailable` displays the build authority or platform limitation, and an install-time verification rejection remains visible in the update dialog; the desktop main process owns publisher and artifact verification.
+
 ## Model Experience
 
 None, as the plugin renders browser settings UI; nothing here reaches a model request.

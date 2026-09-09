@@ -15,6 +15,8 @@ Relay Harness 本地代码索引能力的文件系统 Service Provider：为一�
 | `@relay-harness/rlh-code-index-search` | 检索领域引擎：预选、lane、融合、rerank |
 | `@relay-harness/rlh-tool-code-index` | Consumer：面向模型的 search/explore/status/refresh 工具 |
 
+已建立的原生 watcher 发出错误时，会关闭其句柄并取消待处理变更通知。watcher 与所属 Provider 会进入降级状态；手动刷新与工具结果失效仍可用。已退役句柄的晚到错误或变更事件不能改变新的生命周期状态，也不能再次安排刷新。
+
 ## 管线
 
 单次 pass（`runRefreshPass`）以有界并发 stat 按广度优先遍历工作区，用 mtime+size 快路径对照上一代分类每个文件；可疑候选以有界并发哈希做二次确认（抑制 touch 误报与 mtime 抖动）。运行时提供 resolver 与 graph facet 时，pass 跑五个阶段：变更文件以保持确定顺序的四路并发经 `parseFile` 解析（不支持或超限的文件回落通用层——至多 80 行的行窗、`generic` 解析层、置信度 0.5；无法解码的载荷按二进制跳过），新鲜的调用边在写入前对照常驻符号目录完成解析绑定，随后恰好提交一个携带逐文件导出指纹的 delta，执行 test-edge 重建决策，最后由脏传播阶段重解析每次导出面变化或删除的传递导入方。每个阶段的写入落在各自随写递增 epoch 的事务里，因此 pass 的 epoch 前进恰好等于其提交次数；全量构建不携带脏阶段。缺省 resolver 时退化为早期阶段的通用切片 delta。硬排除与显式 `exclude` 模式保持静态层。每次 pass 都会加载仓库本地 `.git/info/exclude`（包括 linked worktree 的 common Git 目录），并在遍历时发现根目录及嵌套 `.gitignore`；仓库本地文档优先级较低，随后 ignore 文档按根到叶顺序生效，因此更晚的否定规则可以恢复其路径。被排除的目录在下降前剪枝，symlink 一律不展开遍历。`RefreshOptions.paths` 将扫描、diff 与删除集合限制在规范化后的工作区相对文件或目录前缀。

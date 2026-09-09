@@ -27,8 +27,8 @@ declare module '@relay-harness/rlh-client-ui-slots' {
 
 /** Injected business face of the MenuView overlay entry (copy rides the standard locale seat, not this face). */
 export interface MenuViewInjected {
-  /** The service's menu state store (read-only here; MenuView subscribes). */
-  menu: SnapshotStore<MenuState>
+  /** The service's menu state source, bound into useMenu by the renderer. */
+  hooks: { menu: SnapshotStore<MenuState> }
   /**
    * Pointer pick routed back through the service pipeline.
    * @param source - source (group) name.

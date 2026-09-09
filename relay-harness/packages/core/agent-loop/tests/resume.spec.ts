@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import LlmRuntime from '@relay-harness/rlh-llm'
 import SessionStore, { SESSION_FORMAT_VERSION, Session, SessionId, SessionPreparation } from '@relay-harness/rlh-session'
-import type { SessionEvent, SessionHeader } from '@relay-harness/rlh-session'
+import type { SessionEvent, SessionHeader, SessionPersistenceFence } from '@relay-harness/rlh-session'
 import SystemPrompt from '@relay-harness/rlh-system-prompt'
 import ToolRuntime from '@relay-harness/rlh-tools'
 import AgentRegistry, { type Agent } from '@relay-harness/rlh-agent'
@@ -89,6 +89,31 @@ function throwUnknown(value: unknown): never {
 }
 
 describe('the session-persistence Agent Note: AgentLoop factory create/resume', () => {
+  it('passes the exact resume ownership proof to cold preparation before setup', async () => {
+    const id = SessionId('resume-proof')
+    const root = await persistSession(id)
+    const ctx = await mountPersistentHarness(root, new MockAdapter([textResponse('next')]))
+    let exclusions = 0
+    const proof: SessionPersistenceFence = {
+      token: 'resume-owner',
+      assertCurrent: () => {},
+      runExclusive: async (operation) => { exclusions += 1; return operation() },
+    }
+    const prepare = vi.spyOn(ctx.sessionPersistence, 'prepare')
+    try {
+      const handle = await ctx.agents.resume({
+        resumeSessionId: id,
+        persistenceFence: proof,
+        agentOptions: { provider: 'mock', model: 'mock' },
+        setup: () => { expect(exclusions).toBeGreaterThan(0) },
+      })
+      expect(prepare.mock.calls[0]?.[2]).toBe(proof)
+      await handle.dispose()
+    } finally {
+      await ctx.fiber.dispose()
+    }
+  })
+
   it('resumes a pre-react-loop session including pre-identity message events', async () => {
     const sessionId = SessionId('pre-identity-resume')
     const first = await persistentHarness(new MockAdapter([]))

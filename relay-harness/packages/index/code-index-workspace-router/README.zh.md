@@ -12,9 +12,9 @@
 
 ## 生命周期
 
-路由器在第一次操作时惰性打开 Workspace。`maxOpenWorkspaces` 限制保留的 runtime 数量；静止条目按 LRU 淘汰，`idleEvictMs` 关闭持续空闲的条目。活跃操作持有 lease。淘汰先从路由表删除条目，停止 invalidator 和 watcher，等待 Embedding drain，再关闭 SQLite；并发 reopen 会等待旧句柄关闭后再使用同一数据库路径。
+路由器在第一次操作时惰性打开 Workspace。`maxOpenWorkspaces` 限制保留的 runtime 数量；静止条目按 LRU 淘汰，`idleEvictMs` 关闭持续空闲的条目。活跃操作持有 lease。准入在获取条目后重新检查实例身份和关闭状态，并在不再 await 的情况下增加活跃计数；获取期间已被淘汰的条目会重新获取，而不会接收请求。淘汰先从路由表删除条目，停止 invalidator 和 watcher，等待 Embedding drain，再关闭 SQLite；并发 reopen 会等待旧句柄关闭后再使用同一数据库路径。
 
-工具结果失效按产生事件的 Session cwd 路由。可选递归 watcher 属于各自 Workspace 条目，不能调度其他条目的刷新。
+每次排队回收都带有拒绝观察器，因为定时器及操作清理调用方不会等待它。诊断不包含文件系统错误详情；显式 `evictIdleNow` 调用方仍收到原始拒绝，失败的回收也不会阻塞后续回收。已注册的 Cordis effect 负责关闭幂等性，每个路由器实例的私有清理只调用一次。关闭会拒绝新的准入，并等待全部工作区 disposer，即使其中一个失败。其他条目及正在关闭的 runtime 结算后，再汇总清理错误。工具结果失效按产生事件的 Session cwd 路由。可选递归 watcher 属于各自 Workspace 条目，不能调度其他条目的刷新。运行中的 watcher 错误会关闭故障句柄，并只将所属 runtime 标为降级；显式刷新仍可用。
 
 ## 配置
 

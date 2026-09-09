@@ -1,14 +1,14 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi } from 'vitest'
-import { act, cleanup, createEvent, fireEvent, render, screen } from '@testing-library/react'
-import type { SessionId, WorkspaceId } from '@relay-harness/rlh-client-runtime/client'
-import { makeTranslate } from '@relay-harness/rlh-client-test-runtime'
 import { zh as commonZh } from '@relay-harness/rlh-client-locale/src/locales/zh.ts'
+import type { SessionId,WorkspaceId } from '@relay-harness/rlh-client-runtime/client'
+import { makeTranslate } from '@relay-harness/rlh-client-test-runtime'
 import { PRESENCE_EXIT_MS } from '@relay-harness/rlh-client-ui-primitives'
-import type { RowDragProps } from '../src/client/rows/Rows.tsx'
-import { GroupSessionRun, ProjectRowItem, SearchResultItem, SessionNodeItem } from '../src/client/rows/Rows.tsx'
-import type { GroupNode, SearchResultNode, SessionNode } from '../src/client/tree.ts'
+import { act,cleanup,createEvent,fireEvent,render,screen } from '@testing-library/react'
+import { afterEach,describe,expect,it,vi } from 'vitest'
+import type { RowDragProps } from '../src/client/browser/rows/Rows.tsx'
+import { GroupSessionRun,ProjectRowItem,SearchResultItem,SessionNodeItem } from '../src/client/browser/rows/Rows.tsx'
 import { zh } from '../src/client/locales.ts'
+import type { GroupNode,SearchResultNode,SessionNode } from '../src/client/tree.ts'
 
 afterEach(cleanup)
 

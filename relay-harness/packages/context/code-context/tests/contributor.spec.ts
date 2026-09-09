@@ -333,50 +333,36 @@ describe('CodeContextContributor', () => {
     expect(contributed!.coverage?.notSearched).toEqual([stale.chunkId])
     expect(warn).toHaveBeenCalledWith(
       expect.stringContaining('stale or unavailable'),
-      expect.objectContaining({ chunkIds: [stale.chunkId] }),
+      expect.objectContaining({ rejectedCount: 1 }),
     )
     warn.mockRestore()
   })
 
-  it('contains a hydration failure and contributes no search-directory fallback', async () => {
+  it('classifies a hydration failure without leaking the provider error or query', async () => {
     const unit = await contributorHarness()
     scripted.search = searchResult([searchHit()])
-    scripted.hydrate = new Error('source unavailable')
+    scripted.hydrate = new Error(QUERY)
     const warn = vi.spyOn(unit.ctx.logger, 'warn')
-    await expect(contribute(unit, [userMessage(QUERY)])).resolves.toBeUndefined()
-    expect(warn).toHaveBeenCalledWith(
-      expect.stringContaining('hydration failed'),
-      expect.objectContaining({ reason: 'source unavailable' }),
-    )
+    await expect(contribute(unit, [userMessage(QUERY)])).rejects.toMatchObject({ outcome: 'error', reason: 'hydration_failed' })
+    expect(warn).not.toHaveBeenCalled()
     warn.mockRestore()
   })
 
-  it('drops a degraded answer with a structured warning instead of a fake no-hits message', async () => {
+  it('retains degraded search as a rejection-only trace without a fake no-hits message', async () => {
     const { ctx } = await harness()
-    const warn = vi.spyOn(ctx.logger, 'warn')
-    scripted.search = searchResult([], {
-      degraded: true,
-      readErrors: ['search: lane failed'],
+    scripted.search = searchResult([searchHit()], { degraded: true, readErrors: [QUERY] })
+    const prepared = await step(ctx, CWD, [userMessage(QUERY)])
+    expect(prepared).toMatchObject({
+      messages: [], evidence: [],
+      decisions: [{ contributorId: 'code-index-recall', outcome: 'rejected', reasons: ['degraded', 'search_degraded'] }],
     })
-    await expect(step(ctx, CWD, [userMessage(QUERY)])).resolves.toBeUndefined()
-    expect(warn).toHaveBeenCalledTimes(1)
-    expect(warn.mock.calls[0]?.[0]).toContain('degraded code-index answer')
-    expect(warn.mock.calls[0]?.[1]).toEqual({
-      query: QUERY,
-      epochs: { indexEpoch: 7, evidenceEpoch: 0 },
-      readErrors: ['search: lane failed'],
-    })
-    warn.mockRestore()
+    expect(JSON.stringify(prepared)).not.toContain(QUERY)
   })
 
-  it('treats read errors without the degraded flag the same way', async () => {
+  it('classifies read errors even without the degraded flag', async () => {
     const unit = await contributorHarness()
-    const warn = vi.spyOn(unit.ctx.logger, 'warn')
-    scripted.search = searchResult([searchHit()], { readErrors: ['grep: partial'] })
-    await expect(contribute(unit, [userMessage(QUERY)])).resolves.toBeUndefined()
-    expect(warn).toHaveBeenCalledTimes(1)
-    expect(warn.mock.calls[0]?.[1]).toMatchObject({ readErrors: ['grep: partial'] })
-    warn.mockRestore()
+    scripted.search = searchResult([searchHit()], { readErrors: [QUERY] })
+    await expect(contribute(unit, [userMessage(QUERY)])).rejects.toMatchObject({ outcome: 'degraded', reason: 'search_degraded' })
   })
 
   it('renders the bounded no-hits message with a coverage record and no evidence', async () => {
@@ -402,23 +388,12 @@ describe('CodeContextContributor', () => {
       .rejects.toThrow('aborted mid-flight')
   })
 
-  it('contains a failed search as a warning and contributes nothing', async () => {
+  it.each([new Error(QUERY), QUERY])('classifies failed search without raw error details', async (error) => {
     const unit = await contributorHarness()
-    const warn = vi.spyOn(unit.ctx.logger, 'warn')
-    scripted.search = new Error('store unavailable')
-    await expect(contribute(unit, [userMessage(QUERY)])).resolves.toBeUndefined()
-    expect(warn).toHaveBeenCalledTimes(1)
-    expect(warn.mock.calls[0]?.[1]).toMatchObject({ reason: 'store unavailable' })
-    warn.mockRestore()
-  })
-
-  it('names a non-error search rejection in the warning', async () => {
-    const unit = await contributorHarness()
-    const warn = vi.spyOn(unit.ctx.logger, 'warn')
-    scripted.throwValue = 'store unavailable'
-    await expect(contribute(unit, [userMessage(QUERY)])).resolves.toBeUndefined()
-    expect(warn.mock.calls[0]?.[1]).toMatchObject({ reason: 'store unavailable' })
-    warn.mockRestore()
+    scripted.throwValue = error
+    await expect(contribute(unit, [userMessage(QUERY)])).rejects.toMatchObject({
+      outcome: 'error', reason: 'search_failed', message: 'context provider error: search_failed',
+    })
   })
 
   it('fails loud when the enabled injection has no code-index provider', async () => {
@@ -426,7 +401,11 @@ describe('CodeContextContributor', () => {
     await ctx.plugin(ContextEngine)
     await ctx.plugin(CodeContext, {})
     await expect(step(ctx, CWD, [userMessage(QUERY)]))
-      .rejects.toThrow('code-context: code-index recall injection requires a code-index provider')
+      .rejects.toMatchObject({
+        code: 'CONTEXT_ENGINE_INVALID_CONTRIBUTOR',
+        message: 'code-context: code-index recall injection requires a code-index provider,'
+          + ' but no ctx.codeIndex service is loaded in this deployment',
+      })
   })
 
   it('registers the recall contributor once under its stable engine id', async () => {
@@ -471,5 +450,30 @@ describe('CodeContextContributor', () => {
     await expect(step(ctx, CWD, [userMessage(QUERY)])).resolves.toBeDefined()
     await service.dispose()
     await expect(step(ctx, CWD, [userMessage(QUERY)])).resolves.toBeUndefined()
+  })
+})
+
+describe('CodeContextContributor non-evidence outcomes', () => {
+  it('distinguishes complete hydration loss from a healthy no-hit search', async () => {
+    const unit = await contributorHarness()
+    const hit = searchHit()
+    scripted.search = searchResult([hit])
+    scripted.hydrate = { chunks: [], rejected: [], epochs: { indexEpoch: 7, evidenceEpoch: 0 } }
+    await expect(contribute(unit, [userMessage(QUERY)])).rejects.toMatchObject({ outcome: 'degraded', reason: 'hydration_unavailable' })
+  })
+
+  it('classifies source revision drift as unavailable hydration, not a verified hit', async () => {
+    const unit = await contributorHarness()
+    const hit = searchHit()
+    scripted.search = searchResult([hit])
+    const hydrated = hydrationFor([hit], ['source'])
+    scripted.hydrate = { ...hydrated, chunks: hydrated.chunks.map(chunk => ({ ...chunk, contentHash: 'changed' })) }
+    await expect(contribute(unit, [userMessage(QUERY)])).rejects.toMatchObject({ outcome: 'degraded', reason: 'hydration_unavailable' })
+  })
+
+  it('reports an exhausted snippet budget as declined rather than degraded retrieval', async () => {
+    const unit = await contributorHarness({ maxChars: 1 })
+    scripted.search = searchResult([searchHit()])
+    await expect(contribute(unit, [userMessage(QUERY)])).rejects.toMatchObject({ outcome: 'declined', reason: 'budget_exhausted' })
   })
 })

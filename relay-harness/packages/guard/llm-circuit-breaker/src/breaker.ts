@@ -25,6 +25,14 @@ interface Sample {
   readonly failed: boolean
 }
 
+/** Retained closed-state outcome count cap; excess drops oldest-first. A memory bound, not a deployment tunable. */
+const MAX_SAMPLES = 1000
+
+/** The breaker state a request was admitted under, returned by `check()` and consumed by `record()`. */
+export type CircuitBreakerAdmission =
+  | { readonly state: 'closed' }
+  | { readonly state: 'half-open'; /** Claimed probe lease timestamp identifying the slot to release. */ readonly probe: number }
+
 /** One provider-local circuit-breaker state machine. */
 export class CircuitBreaker {
   private current: CircuitBreakerState = 'closed'
@@ -42,11 +50,12 @@ export class CircuitBreaker {
   /**
    * Admit one request or throw with its retry delay.
    * @param now - monotonic-enough millisecond sample used for windows and leases.
+   * @returns the admission stamp the outcome must pass back to `record()`.
    */
-  check(now: number): void {
+  check(now: number): CircuitBreakerAdmission {
     switch (this.current) {
       case 'closed':
-        return
+        return { state: 'closed' }
       case 'open': {
         const elapsed = Math.max(0, now - this.openedAt)
         if (elapsed < this.policy.openMs) {
@@ -54,34 +63,40 @@ export class CircuitBreaker {
         }
         this.current = 'half-open'
         this.probes.length = 0
-        this.claimProbe(now)
-        return
+        return { state: 'half-open', probe: this.claimProbe(now) }
       }
       case 'half-open':
-        this.claimProbe(now)
-        return
+        return { state: 'half-open', probe: this.claimProbe(now) }
     }
   }
 
   /**
-   * Record one terminal request outcome.
+   * Record one terminal request outcome, routed by the admission stamp from
+   * `check()`: closed-admitted outcomes only touch the live window and can trip
+   * only from closed, while half-open-admitted outcomes release exactly the
+   * probe slot they claimed and alone can close or reopen the breaker. An
+   * outcome whose probe lease was reclaimed or reset is stale and changes no
+   * state. Unstamped outcomes are treated as closed-admitted.
    * @param failed - whether this outcome counts as provider failure.
    * @param now - millisecond sample used for the live window.
+   * @param admission - the stamp returned by the `check()` that admitted the request.
    */
-  record(failed: boolean, now: number): void {
-    switch (this.current) {
+  record(failed: boolean, now: number, admission: CircuitBreakerAdmission = { state: 'closed' }): void {
+    switch (admission.state) {
       case 'closed':
         this.samples.push({ at: now, failed })
         this.evict(now)
-        if (this.samples.length >= this.policy.minSamples
+        this.capSamples()
+        if (this.current === 'closed' && this.samples.length >= this.policy.minSamples
           && this.errorRate(now) >= this.policy.errorRateThreshold) this.trip(now)
         return
-      case 'open':
-        return
-      case 'half-open':
-        this.probes.shift()
+      case 'half-open': {
+        const index = this.probes.indexOf(admission.probe)
+        if (index < 0) return
+        this.probes.splice(index, 1)
         if (failed) this.trip(now)
         else this.close()
+      }
     }
   }
 
@@ -97,7 +112,7 @@ export class CircuitBreaker {
   }
 
   /** Admit one half-open probe, reclaiming abandoned slots after one open duration. */
-  private claimProbe(now: number): void {
+  private claimProbe(now: number): number {
     while (true) {
       const oldest = this.probes[0]
       if (oldest === undefined || now - oldest < this.policy.openMs) break
@@ -107,6 +122,7 @@ export class CircuitBreaker {
       throw new CircuitBreakerOpenError(Math.min(50, this.policy.openMs))
     }
     this.probes.push(now)
+    return now
   }
 
   private evict(now: number): void {
@@ -114,6 +130,12 @@ export class CircuitBreaker {
       const oldest = this.samples[0]
       if (oldest === undefined || now - oldest.at <= this.policy.windowMs) break
       this.samples.shift()
+    }
+  }
+
+  private capSamples(): void {
+    if (this.samples.length > MAX_SAMPLES) {
+      this.samples.splice(0, this.samples.length - MAX_SAMPLES)
     }
   }
 

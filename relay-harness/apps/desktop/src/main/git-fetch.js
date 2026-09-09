@@ -1,3 +1,4 @@
+// @ts-check
 const path = require('node:path');
 const { runGit, FETCH_TIMEOUT_MS } = require('./git-exec');
 const { resolveCurrentUpstream, resolvePrimaryRemoteName } = require('./git-remotes');
@@ -17,7 +18,7 @@ function resetFetchCooldowns() {
 /**
  * Background `git fetch --quiet --no-tags`. A failure must not hide local status.
  * @param {string} cwd
- * @returns {Promise<void>}
+ * @returns {Promise<string>}
  */
 async function fetchCooldownKey(cwd, remote) {
   const common = await runGit(cwd, ['rev-parse', '--git-common-dir']);

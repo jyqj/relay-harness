@@ -4,11 +4,11 @@
  * the settings section, so the literal never rides a response.
  */
 
-import type { InjectFace, PropsLocale, PropsRuntime } from '@relay-harness/rlh-client-ui-slots'
-import { SecretField, ValueField } from './fields.tsx'
+import type { InjectFace,PropsLocale,PropsRuntime } from '@relay-harness/rlh-client-ui-slots'
+import { SecretField,ValueField } from './fields.tsx'
 import { PluginCard } from './PluginCard.tsx'
 import type { WebSearchCardFace } from './web-search-card-controller.ts'
-import type {} from './slot-contract.ts'
+
 
 /** Props the renderer binds for the web-search card. */
 export type WebSearchCardProps =

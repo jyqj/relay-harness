@@ -307,7 +307,7 @@ beforeEach(() => {
       return {
         width: 0,
         height: 0,
-        captureStream: () => ({}),
+        captureStream: () => ({ getTracks: () => [] }),
         getContext: () => ({ drawImage: vi.fn(), fillRect: vi.fn(), fillStyle: '' }),
       } as unknown as HTMLCanvasElement
     }

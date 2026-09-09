@@ -8,27 +8,31 @@
 import { Context } from '@relay-harness/cordis'
 import {
   adoptSessionEvent,
-  assertSessionPersistenceFence,
+  captureSessionPersistenceFence,
   interruptedTurnClosers,
   KNOWN_SESSION_EVENT_TYPES,
   SESSION_FORMAT_VERSION,
   SessionPreparation,
   snapshotJsonValue,
-  snapshotSessionEvent,
 } from '@relay-harness/rlh-session'
-import type { Session, SessionEvent, SessionId, SessionHeader } from '@relay-harness/rlh-session'
+import type { Session, SessionEvent, SessionId, SessionHeader, SessionPersistenceFence } from '@relay-harness/rlh-session'
 import { MAX_TIMER_DELAY_MS } from '@relay-harness/rlh-timeout'
 import type { SessionInspection, SessionLocation } from './index.ts'
 import type { SessionPersistenceRevision } from './revision.ts'
 import { observeQueuedAbort, SessionPreparations } from './preparations.ts'
 import type { SessionPreparationReservation } from './preparations.ts'
 import { SessionWriteBehind } from './write-behind.ts'
+import { runPersistenceMutation } from './mutation.ts'
+import { adoptStoredEvents, assertSupportedEvents, needsLegacyPrefix, snapshotStoredEvents } from './stored-events.ts'
 
 /** Default number of detached session preparations retained by a coordinator. */
 export const DEFAULT_PREPARED_SESSION_CACHE_SIZE = 5
 
 /** Default maximum intentional wait before a live session batch starts writing. */
 export const DEFAULT_WRITE_BATCH_MAX_DELAY_MS = 200
+
+/** Default wait before the single armed retry of a failed session retirement. */
+export const DEFAULT_RETIREMENT_RETRY_DELAY_MS = 1_000
 
 /** Largest write batching delay accepted by Node's timer implementation. */
 export const MAX_WRITE_BATCH_DELAY_MS = MAX_TIMER_DELAY_MS
@@ -87,6 +91,12 @@ export interface PersistenceCoordinatorOptions {
   readonly preparedSessionCacheSize: number
   /** Maximum intentional batching wait after an idle live queue receives work. */
   readonly writeBatchMaxDelayMs: number
+  /**
+   * Wait before the single armed retry of a failed session retirement. The
+   * retirements record stays pending across the retry, so same-id reads wait
+   * for its outcome instead of observing a half-released lifecycle.
+   */
+  readonly retirementRetryDelayMs?: number
 }
 
 /**
@@ -239,6 +249,8 @@ interface SessionState {
 interface LiveSessionState {
   init: Promise<void>
   writes: SessionWriteBehind
+  /** Exact owner retained through queued writes, retries, and registration removal. */
+  fence: SessionPersistenceFence | undefined
 }
 
 /** One validated cold source and the exact unpublished Session built from it. */
@@ -271,308 +283,6 @@ function seedCoversPrefix(seed: readonly SessionEvent[], prefix: readonly Sessio
     })
 }
 
-/** Reject events from an obsolete v0 vocabulary that this build cannot replay. */
-function assertSupportedEvents(events: readonly SessionEvent[], id: SessionId): void {
-  const legacyType: string = 'request/header-delta'
-  const legacy = events.find(event => event.type === legacyType)
-  if (legacy !== undefined) {
-    throw new Error(`session "${id}" contains unsupported legacy request/header-delta event at seq ${legacy.seq}`)
-  }
-  const legacyModeType: string = 'mode/set'
-  const legacyMode = events.find(event => event.type === legacyModeType)
-  if (legacyMode !== undefined) {
-    throw new Error(`session "${id}" contains unsupported legacy mode/set event at seq ${legacyMode.seq}`)
-  }
-  const fallback = events.find(event => event.type === 'request/header'
-    && (event.data as { reason?: string }).reason === 'fallback')
-  if (fallback !== undefined) {
-    throw new Error(`session "${id}" contains unsupported legacy request/header reason "fallback" at seq ${fallback.seq}`)
-  }
-}
-
-/** Return an object record without widening arrays into message payloads. */
-function asRecord(value: unknown): Record<string, unknown> | undefined {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
-    ? value as Record<string, unknown>
-    : undefined
-}
-
-/** Whether a record contains every required key and no key outside the optional extension set. */
-function hasOnlyKeys(
-  record: Record<string, unknown>,
-  required: readonly string[],
-  optional: readonly string[] = [],
-): boolean {
-  const allowed = [...required, ...optional]
-  return Object.keys(record).every(key => allowed.includes(key))
-    && required.every(key => Object.hasOwn(record, key))
-}
-
-type PersistedMessageId = SessionEvent<'user/message'>['data']['id']
-
-/** Mint the stable import identity for a message persisted before identities existed. */
-function legacyMessageId(id: SessionId, seq: number): PersistedMessageId {
-  return `legacy-message:${id}:${seq}` as PersistedMessageId
-}
-
-/** Read a replacement target while leaving malformed surface metadata to the session validator. */
-function replacementStart(event: SessionEvent): number | undefined {
-  const op = asRecord((event as SessionEvent & { surfaceOp?: unknown }).surfaceOp)
-  return op?.['op'] === 'replace' && typeof op['start'] === 'number'
-    ? op['start']
-    : undefined
-}
-
-/** Whether one suffix event needs facts available only from the preceding stored prefix. */
-function needsLegacyPrefix(event: SessionEvent): boolean {
-  const data = asRecord(event.data)
-  const legacySteeringType: string = 'steering/message'
-  if (event.type === legacySteeringType) return true
-  if (data === undefined) return false
-  switch (event.type) {
-    case 'user/message':
-      return !Object.hasOwn(data, 'id') && Object.hasOwn(data, 'content')
-    case 'assistant/message':
-      return !Object.hasOwn(data, 'message') && Object.hasOwn(data, 'content')
-    case 'tool/result':
-      return !Object.hasOwn(data, 'message') && Object.hasOwn(data, 'callId')
-    default:
-      return false
-  }
-}
-
-/** Upgrade the removed steering surface event into its current user-message equivalent. */
-function migrateLegacySteeringEvent(event: SessionEvent, id: SessionId): SessionEvent {
-  const legacyType: string = 'steering/message'
-  if (event.type !== legacyType) return event
-  const data = asRecord(event.data)
-  if (data === undefined) {
-    throw new Error(`session "${id}" contains malformed pre-react-loop steering/message at seq ${event.seq}`)
-  }
-  const wrapped = asRecord(data['message'])
-  if (wrapped !== undefined && Number.isSafeInteger(data['turn'])
-    && hasOnlyKeys(data, ['turn', 'message'])) {
-    return { ...event, type: 'user/message', data: wrapped } as SessionEvent
-  }
-  if (!Number.isSafeInteger(data['turn']) || !hasOnlyKeys(data, ['turn', 'content', 'source'])) {
-    throw new Error(`session "${id}" contains malformed pre-react-loop steering/message at seq ${event.seq}`)
-  }
-  const { turn: _turn, ...message } = data
-  return {
-    ...event,
-    type: 'user/message',
-    data: {
-      ...message,
-      id: legacyMessageId(id, event.seq),
-      role: 'user',
-    },
-  } as SessionEvent
-}
-
-/** Remove the obsolete trigger after verifying the complete old turn-start envelope. */
-function migrateLegacyTurnStartEvent(event: SessionEvent, id: SessionId): SessionEvent {
-  if (event.type !== 'turn/start') return event
-  const data = asRecord(event.data)
-  if (data === undefined || !Object.hasOwn(data, 'trigger')) return event
-  const trigger = asRecord(data['trigger'])
-  if (!Number.isSafeInteger(data['turn']) || (data['turn'] as number) < 1
-    || !hasOnlyKeys(data, ['turn', 'trigger'])
-    || trigger === undefined || typeof trigger['kind'] !== 'string' || trigger['kind'].length === 0) {
-    throw new Error(`session "${id}" contains malformed pre-react-loop turn/start at seq ${event.seq}`)
-  }
-  return { ...event, data: { turn: data['turn'] } } as SessionEvent
-}
-
-/** Upgrade an obsolete turn ending while preserving the latest-master envelope. */
-function migrateLegacyTurnEndEvent(event: SessionEvent, id: SessionId): SessionEvent {
-  if (event.type !== 'turn/end') return event
-  const data = asRecord(event.data)
-  /* v8 ignore next -- a non-record current envelope cannot match a legacy shape. */
-  if (data === undefined) return event
-  const malformed = (): never => {
-    throw new Error(`session "${id}" contains malformed pre-react-loop turn/end at seq ${event.seq}`)
-  }
-  const reason = asRecord(data['reason'])
-  if (!Number.isSafeInteger(data['turn']) || (data['turn'] as number) < 1
-    || !hasOnlyKeys(data, ['turn', 'reason'])
-    || reason === undefined || typeof reason['kind'] !== 'string') return malformed()
-
-  let currentReason: Record<string, unknown> | undefined
-  switch (reason['kind']) {
-    case 'completed':
-    case 'blocked':
-    case 'max-tokens':
-    case 'interrupted':
-      if (!hasOnlyKeys(reason, ['kind'])) return malformed()
-      return event
-    case 'aborted':
-      if (Object.hasOwn(reason, 'reason')) return event
-      if (!hasOnlyKeys(reason, ['kind'])) return malformed()
-      currentReason = { kind: 'aborted', reason: { kind: 'legacy' } }
-      break
-    case 'disposed':
-      if (!hasOnlyKeys(reason, ['kind'])) return malformed()
-      currentReason = { kind: 'aborted', reason: { kind: 'disposed' } }
-      break
-    case 'error': {
-      if (Object.hasOwn(reason, 'error')) return event
-      if (!Number.isSafeInteger(reason['step']) || (reason['step'] as number) < 0) return malformed()
-      const failure = asRecord(reason['failure'])
-      if (failure !== undefined && hasOnlyKeys(reason, ['kind', 'step', 'failure'])
-        && hasOnlyKeys(failure, ['message', 'code'], ['status', 'providerRetryAfterMs', 'requestId'])
-        && typeof failure['message'] === 'string' && typeof failure['code'] === 'string'
-        && (failure['status'] === undefined || typeof failure['status'] === 'number')
-        && (failure['providerRetryAfterMs'] === undefined || typeof failure['providerRetryAfterMs'] === 'number')
-        && (failure['requestId'] === undefined || typeof failure['requestId'] === 'string')) {
-        currentReason = { kind: 'error', error: failure }
-        break
-      }
-      const messageKeys = reason['code'] === undefined
-        ? ['kind', 'step', 'message']
-        : ['kind', 'step', 'message', 'code']
-      if (!hasOnlyKeys(reason, messageKeys)
-        || typeof reason['message'] !== 'string'
-        || (reason['code'] !== undefined && typeof reason['code'] !== 'string')) return malformed()
-      currentReason = {
-        kind: 'error',
-        error: {
-          message: reason['message'],
-          code: typeof reason['code'] === 'string' ? reason['code'] : 'UNKNOWN',
-        },
-      }
-      break
-    }
-    default:
-      return event
-  }
-
-  return {
-    ...event,
-    data: {
-      ...data,
-      reason: currentReason,
-    },
-  } as SessionEvent
-}
-
-/**
- * Upgrade one pre-identity message event into the current wrapper shape.
- * Current-looking malformed events remain untouched so validation rejects them
- * instead of disguising corruption as legacy data.
- */
-function migrateLegacyMessageEvent(
-  event: SessionEvent,
-  id: SessionId,
-  messageIds: ReadonlyMap<number, PersistedMessageId>,
-): SessionEvent {
-  const data = asRecord(event.data)
-  if (data === undefined) return event
-  switch (event.type) {
-    case 'user/message': {
-      if (Object.hasOwn(data, 'id') || Object.hasOwn(data, 'role')
-        || Object.hasOwn(data, 'message')
-        || !Object.hasOwn(data, 'content') || !Object.hasOwn(data, 'source')) return event
-      return {
-        ...event,
-        data: {
-          ...data,
-          id: legacyMessageId(id, event.seq),
-          role: 'user',
-        },
-      } as SessionEvent
-    }
-    case 'assistant/message': {
-      if (Object.hasOwn(data, 'message')
-        || !Object.hasOwn(data, 'content') || !Object.hasOwn(data, 'provenance')) return event
-      const { content, provenance, ...eventData } = data
-      return {
-        ...event,
-        data: {
-          ...eventData,
-          message: {
-            id: legacyMessageId(id, event.seq),
-            role: 'assistant',
-            content,
-            source: {
-              ...asRecord(provenance),
-              kind: 'model',
-            },
-          },
-        },
-      } as SessionEvent
-    }
-    case 'tool/result': {
-      if (Object.hasOwn(data, 'message')
-        || !Object.hasOwn(data, 'callId') || !Object.hasOwn(data, 'content')
-        || !Object.hasOwn(data, 'isError')) return event
-      const { callId, content, isError, ...eventData } = data
-      const inheritedId = replacementStart(event)
-      return {
-        ...event,
-        data: {
-          ...eventData,
-          message: {
-            id: inheritedId === undefined
-              ? legacyMessageId(id, event.seq)
-              : messageIds.get(inheritedId),
-            role: 'user',
-            content: [{
-              type: 'tool-result',
-              toolCallId: callId,
-              content,
-              isError,
-            }],
-            source: {
-              kind: 'tool',
-              callId,
-            },
-          },
-        },
-      } as SessionEvent
-    }
-    default:
-      return event
-  }
-}
-
-/** Read the identified message carried by one validated current event. */
-function eventMessageId(event: SessionEvent): PersistedMessageId | undefined {
-  const data = asRecord(event.data)
-  const message = event.type === 'user/message' ? data : asRecord(data?.['message'])
-  return typeof message?.['id'] === 'string' ? message['id'] as PersistedMessageId : undefined
-}
-
-/** Materialize stored events as upgraded, validated snapshots with immutable messages. */
-function snapshotStoredEvents(events: readonly SessionEvent[], id: SessionId): SessionEvent[] {
-  assertSupportedEvents(events, id)
-  const messageIds = new Map<number, PersistedMessageId>()
-  return events.map((event) => {
-    const migratedStart = migrateLegacyTurnStartEvent(event, id)
-    const migratedTurn = migrateLegacyTurnEndEvent(migratedStart, id)
-    const migratedSteering = migrateLegacySteeringEvent(migratedTurn, id)
-    const snapshot = snapshotSessionEvent(migrateLegacyMessageEvent(migratedSteering, id, messageIds))
-    const messageId = eventMessageId(snapshot)
-    if (messageId !== undefined) messageIds.set(snapshot.seq, messageId)
-    return snapshot
-  })
-}
-
-/** Upgrade and validate an exclusively owned backend result without copying it. */
-function adoptStoredEvents(events: SessionEvent[], id: SessionId): SessionEvent[] {
-  assertSupportedEvents(events, id)
-  const messageIds = new Map<number, PersistedMessageId>()
-  for (const [index, event] of events.entries()) {
-    const migratedStart = migrateLegacyTurnStartEvent(event, id)
-    const migratedTurn = migrateLegacyTurnEndEvent(migratedStart, id)
-    const migratedSteering = migrateLegacySteeringEvent(migratedTurn, id)
-    const adopted = adoptSessionEvent(migrateLegacyMessageEvent(migratedSteering, id, messageIds))
-    events[index] = adopted
-    const messageId = eventMessageId(adopted)
-    if (messageId !== undefined) messageIds.set(adopted.seq, messageId)
-  }
-  return events
-}
-
 /**
  * Owns the backend-agnostic session write-path orchestration. A backend
  * constructs one (`new PersistenceCoordinator(ctx, this)`), implements
@@ -593,6 +303,16 @@ export class PersistenceCoordinator<TornMarker = unknown> {
   private live = new Map<Session, LiveSessionState>()
   /** Exact disposed lifecycles whose buffered tail is still draining. */
   private retirements = new Map<SessionId, Promise<void>>()
+  /** Recorded flush failure of a retirement whose backoff retry is armed. */
+  private retirementFailures = new Map<SessionId, unknown>()
+  /** Armed retry timers by session id; cleared when the dispose drain starts. */
+  private retirementRetryTimers = new Map<SessionId, ReturnType<typeof setTimeout>>()
+  /**
+   * Set once the dispose drain begins. Session/event admission treats it as
+   * closed: a listener that evades removal must not queue a batch whose only
+   * possible write lands after `backend.close()`.
+   */
+  private tearingDown = false
   /** Shared cold reads, unpublished reservations, and completed LRU entries. */
   private readonly preparations: SessionPreparations<PreparedSessionSource<TornMarker>, SessionState>
   /**
@@ -602,6 +322,8 @@ export class PersistenceCoordinator<TornMarker = unknown> {
   private chains = new Map<SessionId, Promise<unknown>>()
   /** Resolved fixed write-batching window shared by per-session controllers. */
   private readonly writeBatchMaxDelayMs: number
+  /** Resolved wait before a failed retirement's single armed retry. */
+  private readonly retirementRetryDelayMs: number
 
   constructor(
     private ctx: Context,
@@ -620,7 +342,12 @@ export class PersistenceCoordinator<TornMarker = unknown> {
       || options.writeBatchMaxDelayMs > MAX_WRITE_BATCH_DELAY_MS) {
       throw new TypeError(`writeBatchMaxDelayMs must be an integer between 1 and ${MAX_WRITE_BATCH_DELAY_MS}`)
     }
+    if (options.retirementRetryDelayMs !== undefined
+      && (!Number.isSafeInteger(options.retirementRetryDelayMs) || options.retirementRetryDelayMs < 1)) {
+      throw new TypeError('retirementRetryDelayMs must be a positive safe integer')
+    }
     this.writeBatchMaxDelayMs = options.writeBatchMaxDelayMs
+    this.retirementRetryDelayMs = options.retirementRetryDelayMs ?? DEFAULT_RETIREMENT_RETRY_DELAY_MS
     this.preparations = new SessionPreparations(options.preparedSessionCacheSize)
     this.installWritePath()
   }
@@ -694,6 +421,7 @@ export class PersistenceCoordinator<TornMarker = unknown> {
     this.preparations.assertWritable(id)
     let state = this.states.get(id)
     if (state === undefined) state = await this.adopt(id)
+    if (state.owner !== undefined) this.assertOwner(state.owner)
 
     // Contiguity contract: each event's seq must continue the stored log.
     for (const [i, event] of events.entries()) {
@@ -702,7 +430,8 @@ export class PersistenceCoordinator<TornMarker = unknown> {
       }
     }
 
-    await this.backend.appendBatch(state.meta, events, state.materialized)
+    const fence = state.owner === undefined ? undefined : this.assertOwner(state.owner)
+    await runPersistenceMutation(fence, () => this.backend.appendBatch(state.meta, events, state.materialized))
     // The durable write is the transaction: mark materialized + advance the
     // cursor as soon as it commits (uniform across backends).
     state.materialized = true
@@ -716,9 +445,10 @@ export class PersistenceCoordinator<TornMarker = unknown> {
    * read/check round trip; continuous external writers may delay completion.
    * @param id - persisted session to prepare.
    * @param signal - optional cancellation for reading and repair.
+   * @param fence - optional owner retained through cold repair before live setup.
    * @returns an owned preparation released after publication or rollback.
    */
-  async prepare(id: SessionId, signal?: AbortSignal): Promise<SessionPreparation> {
+  async prepare(id: SessionId, signal?: AbortSignal, fence?: SessionPersistenceFence): Promise<SessionPreparation> {
     for (;;) {
       await this.waitForRetirement(id, signal)
       if (this.ctx.sessions.get(id) !== undefined) {
@@ -727,7 +457,7 @@ export class PersistenceCoordinator<TornMarker = unknown> {
       const reservation = await this.preparations.reserve(
         id,
         () => this.serialize(id, () => this.prepareCore(id)),
-        source => this.serialize(id, () => this.commitPrepared(source), signal),
+        source => this.serialize(id, () => runPersistenceMutation(fence, () => this.commitPrepared(source)), signal),
         signal,
       )
       if (reservation === undefined) continue
@@ -737,9 +467,11 @@ export class PersistenceCoordinator<TornMarker = unknown> {
       }
       return SessionPreparation.create(reservation.source.session, {
         release: () => {
+          // Installing a lifetime proof makes this Session non-reusable even when setup appended no events.
           this.preparations.release(
             reservation,
             reservation.state.owner === undefined
+              && captureSessionPersistenceFence(reservation.source.session) === undefined
               && reservation.source.session.events.length === reservation.source.sessionLength,
           )
         },
@@ -1086,80 +818,166 @@ export class PersistenceCoordinator<TornMarker = unknown> {
 
   private installWritePath(): void {
     const ctx = this.ctx
+    // The composite effect below is a generator, which cannot be an arrow, so
+    // `this` must be captured to reach the coordinator inside it.
+    // oxlint-disable-next-line typescript/no-this-alias
+    const writePath = this
 
-    // Register the disposer BEFORE the listeners. Cordis tears effects down in
-    // reverse registration order, so event admission closes before this final
-    // drain reaches quiescence and closes the backend.
-    ctx.effect(() => async () => {
-      let disposeError: unknown
-      try {
-        const errors = await settledErrors([...this.live.keys()].map(session => this.flush(session)))
-        while (this.chains.size > 0) await Promise.allSettled([...this.chains.values()])
-        if (errors.length > 0) {
-          throw new AggregateError(errors, `${this.backend.name} dispose failed`)
-        }
-      } catch (error: unknown) {
-        disposeError = error
-        throw error
-      } finally {
-        try {
-          await this.backend.close?.()
-        } catch (closeError: unknown) {
-          // A close failure can only add teardown context; keep the already-
-          // captured drain AggregateError as the primary failure rather than
-          // masking it. Only surface the close error if the drain succeeded.
-          /* v8 ignore start -- close failure racing disposal is a defensive teardown edge */
-          if (disposeError === undefined) throw closeError
-          /* v8 ignore stop */
-        }
-      }
+    // One composite effect owns the whole write path. Cordis disposes a
+    // fiber's separate top-level effects in parallel (`Fiber._unload`), so
+    // registration order across effects carries no teardown ordering at all.
+    // Within one effect, teardown runs the collected disposables as a single
+    // serial chain in reverse collection order; the drain disposer is yielded
+    // FIRST, so it is collected first and runs LAST: the four listeners are
+    // always removed before the final drain reaches quiescence and closes the
+    // backend, even when an async disposer elsewhere on the fiber lags behind.
+    ctx.effect(function* () {
+      yield () => writePath.drainForDispose()
+
+      // Capture the header on creation and persist a fork's seed once.
+      yield ctx.on('session/created', (session) => {
+        void writePath.initFor(session)
+      })
+
+      // Keep a persistence-owned copy of each frozen event and start its
+      // bounded window. Once the drain has begun, admission is closed: a
+      // listener that evades removal queues nothing, because a batch admitted
+      // now could only ever be written after backend.close().
+      yield ctx.on('session/event', (session, event) => {
+        writePath.assertOwner(session)
+        if (writePath.tearingDown) return
+        const live = writePath.initFor(session)
+        live.writes.enqueue(event)
+      })
+
+      // Callers use flush as the immediate durability barrier for buffered writes.
+      yield ctx.on('session/flush', session => writePath.flush(session))
+
+      // Session disposal is observe-only, so retirement contains its own failure.
+      yield ctx.on('session/disposed', (session) => { writePath.retire(session) })
     }, `${this.backend.name} write path`)
-
-    // Capture the header on creation and persist a fork's seed once.
-    ctx.on('session/created', (session) => {
-      void this.initFor(session)
-    })
-
-    // Keep a persistence-owned copy of each frozen event and start its bounded window.
-    ctx.on('session/event', (session, event) => {
-      assertSessionPersistenceFence(session)
-      const live = this.initFor(session)
-      live.writes.enqueue(event)
-    })
-
-    // Callers use flush as the immediate durability barrier for buffered writes.
-    ctx.on('session/flush', session => this.flush(session))
-
-    // Session disposal is observe-only, so retirement contains its own failure.
-    ctx.on('session/disposed', (session) => { this.retire(session) })
 
     // HMR: a hot reload does not replay session/created, so seed existing live
     // sessions (mirrors rlh-invariants).
     for (const session of ctx.sessions.list()) void this.initFor(session)
   }
 
+  /**
+   * Final write-path teardown: flush every live session, wait the per-id
+   * chains, then close the backend. Runs only after all four listeners are
+   * removed (the composite effect's serial chain), so nothing can admit a new
+   * batch while this drains.
+   */
+  private async drainForDispose(): Promise<void> {
+    this.tearingDown = true
+    // An armed retirement retry must not fire against a closed backend; the
+    // drain below flushes the same stranded session itself and owns the final
+    // report. Its pending retirement promise stays pending for the remaining
+    // process lifetime, which no caller can observe past teardown.
+    for (const timer of this.retirementRetryTimers.values()) clearTimeout(timer)
+    this.retirementRetryTimers.clear()
+    let disposeError: unknown
+    try {
+      const errors = await settledErrors([...this.live.keys()].map(session => this.flush(session)))
+      while (this.chains.size > 0) await Promise.allSettled([...this.chains.values()])
+      if (errors.length > 0) {
+        throw new AggregateError(errors, `${this.backend.name} dispose failed`)
+      }
+    } catch (error: unknown) {
+      disposeError = error
+      throw error
+    } finally {
+      try {
+        await this.backend.close?.()
+      } catch (closeError: unknown) {
+        // A close failure can only add teardown context; keep the already-
+        // captured drain AggregateError as the primary failure rather than
+        // masking it. Only surface the close error if the drain succeeded.
+        /* v8 ignore start -- close failure racing disposal is a defensive teardown edge */
+        if (disposeError === undefined) throw closeError
+        /* v8 ignore stop */
+      }
+    }
+  }
+
   /** Start and observe one disposed session's final drain. */
   private retire(session: Session): void {
     if (!this.live.has(session)) return
-    const retirement = this.retireCore(session)
+    const retirement = this.retireWithRetry(session)
     this.retirements.set(session.id, retirement)
     const forget = (): void => {
       if (this.retirements.get(session.id) === retirement) this.retirements.delete(session.id)
     }
     void retirement.then(forget, forget)
-    void retirement.catch((error: unknown) => {
-      this.ctx.logger.warn(`${this.backend.name}: session "${session.id}" retirement failed: ${String(error)}`)
-    })
+  }
+
+  /**
+   * Drain one disposed lifecycle and release its id. A first-drain failure
+   * (e.g. one transient backend error) must not strand the buffered tail or
+   * block id reuse forever: the retirements record stays pending, the failure
+   * is recorded for same-id create diagnostics, and ONE backoff retry
+   * re-drains the stranded controller. The retry succeeding releases
+   * normally; the retry failing releases anyway — a permanently failing
+   * backend cannot keep the id hostage, and the failure is already reported
+   * here, so the dispose drain must not report it a second time. Always
+   * fulfills: the failure surfaces through {@link retirementFailures} and the
+   * log, never as an unobserved retirement rejection.
+   */
+  private async retireWithRetry(session: Session): Promise<void> {
+    const id = session.header.id
+    try {
+      await this.retireCore(session)
+      return
+    } catch (error: unknown) {
+      this.retirementFailures.set(id, error)
+      this.ctx.logger.warn(`${this.backend.name}: session "${id}" retirement failed; one retry is armed: ${String(error)}`)
+    }
+    try {
+      await new Promise<void>((resolve) => {
+        this.retirementRetryTimers.set(id, setTimeout(resolve, this.retirementRetryDelayMs))
+      })
+    } finally {
+      this.retirementRetryTimers.delete(id)
+    }
+    if (this.tearingDown) {
+      // The dispose drain owns the final drain and its error report once
+      // teardown has begun; retrying here could only write after
+      // backend.close(). The drain flushes this same stranded session.
+      return
+    }
+    try {
+      await this.retireCore(session)
+    } catch (retryError: unknown) {
+      this.ctx.logger.warn(`${this.backend.name}: session "${id}" retirement retry failed; releasing the stranded session and its buffered events: ${String(retryError)}`)
+      await this.releaseRetired(session)
+    } finally {
+      this.retirementFailures.delete(id)
+    }
   }
 
   /** Drain and release state owned by one exact disposed Session lifecycle. */
   private async retireCore(session: Session): Promise<void> {
     await this.flush(session)
+    await this.releaseRetired(session)
+  }
+
+  /** Release one disposed lifecycle's live entry and its owned id state. */
+  private releaseRetired(session: Session): Promise<void> {
     const id = session.header.id
-    await this.serialize(id, () => {
+    return this.serialize(id, () => {
       this.live.delete(session)
       if (this.states.get(id)?.owner === session) this.states.delete(id)
     })
+  }
+
+  /** Retain one exact ownership proof until the live write controller is retired. */
+  private assertOwner(session: Session): SessionPersistenceFence | undefined {
+    const live = this.live.get(session)
+    const installed = captureSessionPersistenceFence(session)
+    if (live !== undefined) live.fence ??= installed
+    const retained = live?.fence ?? installed
+    retained?.assertCurrent()
+    return retained
   }
 
   /** Return the one lifecycle controller for a live session, creating it if needed. */
@@ -1177,6 +995,7 @@ export class PersistenceCoordinator<TornMarker = unknown> {
     const live: LiveSessionState = {
       init: Promise.resolve(),
       writes: this.createWriteBehind(session, () => live.init),
+      fence: captureSessionPersistenceFence(session),
     }
     this.live.set(session, live)
     live.init = this.serialize(session.header.id, () => this.onCreated(session, seed))
@@ -1201,6 +1020,7 @@ export class PersistenceCoordinator<TornMarker = unknown> {
     const live: LiveSessionState = {
       init: Promise.resolve(),
       writes: this.createWriteBehind(session, () => live.init),
+      fence: captureSessionPersistenceFence(session),
     }
     if (suffix.length > 0) {
       live.init = this.serialize(session.id, () => this.appendCore(session.id, suffix))
@@ -1237,6 +1057,7 @@ export class PersistenceCoordinator<TornMarker = unknown> {
    *      (lazy) and persist its seed once.
    */
   private async onCreated(session: Session, seed: readonly SessionEvent[]): Promise<void> {
+    this.assertOwner(session)
     const id = session.header.id
     const tracked = this.states.get(id)
     if (tracked !== undefined) {
@@ -1257,6 +1078,7 @@ export class PersistenceCoordinator<TornMarker = unknown> {
         if (!await this.seedMatchesPersisted(id, seed, tracked.cursor)) {
           throw new Error(`session "${id}" is already persisted with ${tracked.cursor} event(s) that do not match this live session (id collision)`)
         }
+        this.assertOwner(session)
         tracked.owner = session
         // Persist the seed SUFFIX beyond the persisted prefix. Constructor seed
         // events never emit session/event, so the buffer never sees them.
@@ -1267,6 +1089,13 @@ export class PersistenceCoordinator<TornMarker = unknown> {
       const owner = this.live.get(tracked.owner)
       if (!tracked.materialized && !owner?.writes.hasWork) {
         this.states.delete(id)
+      } else if (owner?.writes.hasWork && this.retirementFailures.has(id)) {
+        // The previous lifecycle is disposed but its final write is stranded
+        // on a recorded flush failure (one backoff retirement retry is armed
+        // to re-drain it, and its exhaustion releases the id). Refuse with
+        // that write failure instead of a collision: the id is held by the
+        // stuck write, not bound to another live session.
+        throw new Error(`session "${id}" is held by its disposed predecessor's failed final write, one retirement retry pending: ${String(this.retirementFailures.get(id))}`)
       } else {
         throw new Error(`session "${id}" is already bound to a different live session in this backend (id collision)`)
       }
@@ -1275,6 +1104,7 @@ export class PersistenceCoordinator<TornMarker = unknown> {
     // case 2/3: resolve the id once across storage, then let adoption reject a
     // cwd mismatch before repair or state publication.
     const live = await this.backend.loadStored(id)
+    this.assertOwner(session)
     if (live !== undefined) {
       // Do NOT route through cold preparation: that crash-repairs open turns as
       // interrupted, which is wrong for HMR while the live Session is still the
@@ -1287,6 +1117,7 @@ export class PersistenceCoordinator<TornMarker = unknown> {
     // seed (events present at creation time) once.
     const meta: SessionHeader = { ...session.header }
     await this.createCore(meta)
+    this.assertOwner(session)
     // Bind this state to the live session so a later DIFFERENT session reusing
     // the id is detected as a collision (case 1) rather than silently no-opped.
     const created = this.states.get(id)
@@ -1314,7 +1145,11 @@ export class PersistenceCoordinator<TornMarker = unknown> {
       throw new Error(`session "${session.header.id}" already has a persisted log on disk that does not match this live session (id collision)`)
     }
     // Truncate-only repair (no closers): the open turn is NOT closed here.
-    if (tornMarker !== undefined) await this.backend.commitRepair(meta, tornMarker, [])
+    this.assertOwner(session)
+    if (tornMarker !== undefined) {
+      await runPersistenceMutation(this.assertOwner(session), () => this.backend.commitRepair(meta, tornMarker, []))
+    }
+    this.assertOwner(session)
     this.states.set(session.header.id, {
       meta: { ...meta },
       cursor: storedEvents.length,
@@ -1326,7 +1161,7 @@ export class PersistenceCoordinator<TornMarker = unknown> {
   }
 
   private async flush(session: Session): Promise<void> {
-    assertSessionPersistenceFence(session)
+    this.assertOwner(session)
     const live = this.initFor(session)
     live.writes.cancelAutomaticWait()
     try {
@@ -1345,10 +1180,13 @@ export class PersistenceCoordinator<TornMarker = unknown> {
     return new SessionWriteBehind({
       maxDelayMs: this.writeBatchMaxDelayMs,
       write: async (batch) => {
-        assertSessionPersistenceFence(session)
+        this.assertOwner(session)
         await ready()
-        assertSessionPersistenceFence(session)
-        await this.serialize(session.header.id, () => this.appendLiveBatch(session.header.id, batch))
+        this.assertOwner(session)
+        await this.serialize(session.header.id, () => {
+          this.assertOwner(session)
+          return this.appendLiveBatch(session.header.id, batch)
+        })
       },
       reportBackgroundFailure: (error) => {
         this.ctx.logger.warn(`${this.backend.name}: background write for session "${session.id}" failed (buffered events retained): ${String(error)}`)

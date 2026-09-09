@@ -70,7 +70,9 @@ interface ProviderGeneration {
 
 ## 步骤上下文 seam
 
-`ContextEngineService.registerContributor` 原子保留唯一 contributor id。`prepareStep` 根据请求 purpose 与每个 contributor 声明的 purposes 解析确定性 plan，分配局部字符／token／deadline 配额，再以隔离的子 abort signal 按注册顺序运行合格 Provider。显式引用候选优先于 Provider 发现的 recall 参与去重和总预算选择；选中消息返回注册顺序。`StepContextCaller` 提供 session／Agent／workspace identity、可选 owning turn／step、有效 preset 与 origin，而不会暴露 live Agent object。发布前，引擎会脱离、无损 JSON 校验并冻结 Provider 自有 contribution。父 abort 原子失败；timeout 或已释放注册代际会忽略迟到结果并继续后续 Provider。Provider 保留检索与 hydration policy；引擎拥有资格、预算、打包与决策 trace。
+`ContextEngineService.registerContributor` 原子保留唯一 contributor id。`prepareStep` 根据请求 purpose 与每个 contributor 声明的 purposes 解析确定性 plan，分配局部字符／token／deadline 配额，再以隔离的子 abort signal 在整次准备 deadline 内有界并发运行合格 Provider，排队等待也计入期限。显式引用候选优先于 Provider 发现的 recall 参与去重和总预算选择；选中消息返回注册顺序。`StepContextCaller` 提供 session／Agent／workspace identity、可选 owning turn／step、有效 preset 与 origin，而不会暴露 live Agent object。发布前，引擎会脱离、无损 JSON 校验并冻结 Provider 自有 contribution。父 abort 原子失败；timeout 或已释放注册代际会忽略迟到结果并继续后续 Provider。Provider 保留检索与 hydration policy；引擎拥有资格、预算、打包与决策 trace。
+
+`ContextProviderError` 把 Provider 的显式 declined、degraded 或 error 分类转换为拒绝 trace，不包含 query 或异常原文；未知 Provider 异常使用 `error/provider_failed`，内部 `ContextEngineError` 与非法 contribution 仍原子失败。注册释放立即取消该代际；引擎卸载等同整次准备取消。
 
 ## 持久准备 trace
 

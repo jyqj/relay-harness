@@ -316,6 +316,12 @@ export interface SessionEventMap {
     message: ToolResultMessage
     error?: { name: string; code: string }
     meta?: JsonValue
+    /**
+     * Successful root tool's declared mutation paths captured at execution time.
+     * Empty means captured with no declared output; absent means unindexed legacy or failed capture.
+     * This does not enumerate shell or nested Code Mode side effects. Presentation-only; never model input.
+     */
+    producedFiles?: readonly string[]
   }
   /** Whole-list snapshot; latest write wins on replay. Log-only UI state; never derived history. */
   'todo/write': { todos: TodoItem[] }

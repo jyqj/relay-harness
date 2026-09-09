@@ -32,9 +32,15 @@ export class TreeWatcher {
   private pendingPaths = new Set<string>()
   private fullRefreshPending = false
 
+  /**
+   * @param root - directory whose descendants are watched.
+   * @param onChange - receives debounced paths, or no paths for a full refresh.
+   * @param onDegraded - notifies the owner when an established watcher fails.
+   */
   constructor(
     private readonly root: string,
     private readonly onChange: (paths?: readonly string[]) => void,
+    private readonly onDegraded?: () => void,
   ) {}
 
   /**
@@ -43,8 +49,16 @@ export class TreeWatcher {
    */
   start(): Promise<TreeWatcherState> {
     try {
-      this.watcher = watch(this.root, { recursive: true }, (_eventType, filename) => {
+      const watcher = watch(this.root, { recursive: true }, (_eventType, filename) => {
+        if (this.watcher !== watcher) return
         this.schedule(filename === null ? undefined : filename.replaceAll('\\', '/'))
+      })
+      this.watcher = watcher
+      watcher.on('error', () => {
+        if (this.watcher !== watcher) return
+        this.dispose()
+        this.stateValue = 'degraded'
+        this.onDegraded?.()
       })
       this.stateValue = 'active'
     } catch {

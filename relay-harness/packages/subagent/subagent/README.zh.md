@@ -42,9 +42,11 @@ subagent seam 允许一个 agent（智能体）通过具名提供方把工作委
 
 ## 跨进程 Activation lease
 
-`activationLeasePath` 会启用 SQLite Activation-lease Adapter；省略时保留供嵌入／测试部署使用的进程内兼容模式。随发行版提供的 base 配置使用 `$RLH_HOME/subagent-activation-leases.sqlite3`、30 秒 lease 与 10 秒续约。获取过程在 `BEGIN IMMEDIATE` 下运行：不存在、已释放或已过期的行会取得随机 owner token 与单调递增 fence；尚未过期的外部 owner 会以 `ACTIVATION_LEASE_HELD` 失败。续约和释放同时比较 child id、owner token 与 fence，因此陈旧 owner 无法续约或清除后继 owner。崩溃进程会留下该行，直到明确过期后，另一个 Harness 才能接管。
+`activationLeasePath` 会启用 SQLite Activation-lease Adapter；省略时保留供嵌入／测试部署使用的进程内兼容模式。随发行版提供的 base 配置使用 `$RLH_HOME/subagent-activation-leases.sqlite3`、30 秒 lease 与 10 秒续约。获取过程在 `BEGIN IMMEDIATE` 下运行：不存在、已释放或已过期的行会取得随机 owner token 与单调递增 fence；尚未过期的外部 owner 会以 `ACTIVATION_LEASE_HELD` 失败。续约和释放同时比较 child id、owner token 与 fence，因此陈旧 owner 无法续约或清除后继 owner。崩溃进程会留下该行，直到明确过期后，另一个 Harness 才能接管。 负数或零续租时长会在修改租约行前被拒绝；获取与续租都要求时长为正安全整数，时钟为非负安全整数。
 
 管理器会在创建 Agent 前获取 lease，在驻留期间续约，并在 pre-step 及每次 continuation／report／interrupt 准入时检查 fence；续租丢失会取消并 dispose Agent。child 会把同一证明安装为 `SessionPersistenceFence`，使陈旧 owner 无法 append 或 flush child 历史；同时注册单调 tool guard，在授权完成后、工具主体执行前立即检查。lease 丢失会拒绝尚未启动的副作用；已经运行的调用会收到 Agent 取消，而外部系统若在观察到 abort 前已经提交，则继续遵循普通 outcome-unknown 约定。
+
+每个 child 还在 `<canonical-activationLeasePath>.mutation-locks/<sha256(childId)>.sqlite3` 下拥有 SQLite 变更锁文件。其独立的 `BEGIN IMMEDIATE` 区间覆盖完整等待的持久化提交；获取、接管和释放必须取得同一把锁，争用时以 `LEASE_HELD` 拒绝，而不阻塞事件循环。续租使用独立的租约数据库。同一证明既保护 setup 之前的冷准备，也保护后续活动写入。失败会释放锁；进程死亡时由操作系统释放锁。关闭 store 会停止新准入，但保留在途变更的句柄直到操作结束。锁文件数量与持久 child 身份数量同阶，运行时清理绝不 unlink 这些文件：只有所有可能访问这些身份的 host 都已停止时，保留策略才能删除它们。参见[提交排他决策](../../../.agents/notes/implemented/bug-fix/2026-09-05-persistence-commit-takeover-exclusion.md)。
 
 ## 能力
 

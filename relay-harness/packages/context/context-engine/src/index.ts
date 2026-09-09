@@ -72,6 +72,27 @@ declare module '@relay-harness/cordis' {
  */
 export class ContextEngineError extends HarnessError {}
 
+/** Provider-owned non-evidence outcome; only stable classifications enter the preparation trace. */
+export class ContextProviderError extends Error {
+  /**
+   * Classify a provider outcome without retaining its raw query or exception.
+   * @param outcome - whether retrieval declined, degraded, or failed.
+   * @param reason - stable provider-stage classification.
+   */
+  constructor(
+    readonly outcome: 'declined' | 'degraded' | 'error',
+    readonly reason: 'search_failed' | 'search_degraded'
+      | 'hydration_failed' | 'hydration_unavailable' | 'budget_exhausted',
+  ) {
+    super(`context provider ${outcome}: ${reason}`)
+  }
+}
+
+/** Default complete preparation wall-clock allowance. */
+export const DEFAULT_PREPARE_TIMEOUT_MS = 5_000
+/** Default maximum number of concurrent provider reads in one preparation. */
+export const DEFAULT_MAX_CONCURRENT_CONTRIBUTORS = 4
+
 /** Default complete model-visible context allowance per preparation. */
 export const DEFAULT_MAX_CONTEXT_CHARS = 64_000
 /** Default estimated-token allowance per preparation. */
@@ -97,6 +118,10 @@ export interface Config {
   readonly maxContributorTokens?: number
   /** Wall-clock allowance for one provider before its late result is ignored. */
   readonly contributorTimeoutMs?: number
+  /** Complete preparation allowance, including time waiting for a provider slot. */
+  readonly prepareTimeoutMs?: number
+  /** Maximum concurrent provider reads in one preparation. */
+  readonly maxConcurrentContributors?: number
 }
 
 interface ResolvedConfig {
@@ -105,11 +130,14 @@ interface ResolvedConfig {
   readonly maxContributorChars: number
   readonly maxContributorTokens: number
   readonly contributorTimeoutMs: number
+  readonly prepareTimeoutMs: number
+  readonly maxConcurrentContributors: number
 }
 
 interface Registration {
   readonly contributor: StepContextContributor
   readonly generation: number
+  readonly controller: AbortController
 }
 
 interface Candidate {
@@ -126,6 +154,8 @@ type ContributorRun =
   | { readonly kind: 'returned'; readonly value: ContributedStepContext | undefined }
   | { readonly kind: 'timeout' }
   | { readonly kind: 'disposed' }
+  | { readonly kind: 'deadline' }
+  | { readonly kind: 'unavailable'; readonly reasons: readonly string[] }
 
 /**
  * Detach one provider-owned result at the Context Engine boundary.
@@ -162,11 +192,14 @@ export class ContextEngine extends Service implements ContextEngineService {
     maxContributorTokens: z.natural().min(1).default(DEFAULT_MAX_CONTRIBUTOR_TOKENS),
     contributorTimeoutMs: z.natural().min(1).max(MAX_CONTRIBUTOR_TIMEOUT_MS)
       .default(DEFAULT_CONTRIBUTOR_TIMEOUT_MS),
+    prepareTimeoutMs: z.natural().min(1).max(MAX_CONTRIBUTOR_TIMEOUT_MS).default(DEFAULT_PREPARE_TIMEOUT_MS),
+    maxConcurrentContributors: z.natural().min(1).default(DEFAULT_MAX_CONCURRENT_CONTRIBUTORS),
   })
 
   private readonly contributors = new Map<string, Registration>()
   private readonly config: ResolvedConfig
   private nextGeneration = 1
+  private readonly lifetime = new AbortController()
 
   constructor(ctx: Context, config: Config = {}) {
     super(ctx, 'contextEngine')
@@ -176,8 +209,11 @@ export class ContextEngine extends Service implements ContextEngineService {
       maxContributorChars: config.maxContributorChars ?? DEFAULT_MAX_CONTRIBUTOR_CHARS,
       maxContributorTokens: config.maxContributorTokens ?? DEFAULT_MAX_CONTRIBUTOR_TOKENS,
       contributorTimeoutMs: config.contributorTimeoutMs ?? DEFAULT_CONTRIBUTOR_TIMEOUT_MS,
+      prepareTimeoutMs: config.prepareTimeoutMs ?? DEFAULT_PREPARE_TIMEOUT_MS,
+      maxConcurrentContributors: config.maxConcurrentContributors ?? DEFAULT_MAX_CONCURRENT_CONTRIBUTORS,
     }
     validateConfig(this.config)
+    ctx.effect(() => () => { this.lifetime.abort(new Error('context engine disposed')) })
   }
 
   registerContributor(contributor: StepContextContributor): () => void {
@@ -196,13 +232,14 @@ export class ContextEngine extends Service implements ContextEngineService {
         'CONTEXT_ENGINE_CONFLICT',
       )
     }
-    const registration: Registration = { contributor, generation: this.nextGeneration }
+    const registration: Registration = { contributor, generation: this.nextGeneration, controller: new AbortController() }
     this.nextGeneration += 1
     this.contributors.set(id, registration)
     let active = true
     return () => {
       if (!active) return
       active = false
+      registration.controller.abort()
       // The id may have been freed and re-used after this generation was
       // disposed. A stale/double disposer must never delete that successor.
       if (this.contributors.get(id) === registration) this.contributors.delete(id)
@@ -215,15 +252,42 @@ export class ContextEngine extends Service implements ContextEngineService {
     const plan = this.plan(input.purpose, registrations)
     const candidates: Candidate[] = []
     const decisions: ContextCandidateDecision[] = []
+    const operation = new AbortController()
+    const signal = AbortSignal.any([input.signal, this.lifetime.signal])
+    signal.throwIfAborted()
+    const deadlineAt = Date.now() + this.config.prepareTimeoutMs
+    const timer = setTimeout(() => { operation.abort() }, this.config.prepareTimeoutMs)
+    const runs = new Map<number, ContributorRun>()
+    const pending = registrations.entries()
+    const worker = async () => {
+      while (true) {
+        signal.throwIfAborted()
+        const item = pending.next()
+        if (item.done) return
+        const [order, registration] = item.value
+        const entry = plan.contributors[order]
+        if (entry?.eligible !== true || entry.budget === undefined) continue
+        runs.set(order, operation.signal.aborted || Date.now() >= deadlineAt
+          ? { kind: 'deadline' }
+          : await this.runContributor(registration, { ...input, signal }, entry.budget, operation.signal, deadlineAt))
+      }
+    }
+    try {
+      await Promise.all(Array.from({ length: Math.min(registrations.length, this.config.maxConcurrentContributors) }, worker))
+    } finally {
+      clearTimeout(timer)
+      operation.abort()
+    }
+    signal.throwIfAborted()
     for (const [registrationOrder, registration] of registrations.entries()) {
       const contributor = registration.contributor
-      const planEntry = plan.contributors[registrationOrder]
-      if (planEntry?.eligible !== true || planEntry.budget === undefined) continue
-      input.signal.throwIfAborted()
-      const run = await this.runContributor(registration, input, planEntry.budget)
-      input.signal.throwIfAborted()
+      const completed = runs.get(registrationOrder)
+      if (completed === undefined) continue
+      const run: ContributorRun = registration.controller.signal.aborted
+        ? { kind: 'disposed' } : completed
       if (run.kind !== 'returned') {
-        decisions.push({ contributorId: contributor.id, outcome: 'rejected', reasons: [run.kind] })
+        decisions.push({ contributorId: contributor.id, outcome: 'rejected', reasons:
+          run.kind === 'unavailable' ? run.reasons : [run.kind] })
         continue
       }
       const returned = run.value
@@ -231,7 +295,7 @@ export class ContextEngine extends Service implements ContextEngineService {
         decisions.push({ contributorId: contributor.id, outcome: 'rejected', reasons: ['declined'] })
         continue
       }
-      const contributed = snapshotContribution(contributor.id, returned)
+      const contributed = returned
       const contributorEvidenceIds = new Set<string>()
       for (const item of contributed.evidence ?? []) {
         if (item.evidenceId.trim() === '' || contributorEvidenceIds.has(item.evidenceId)) {
@@ -260,7 +324,7 @@ export class ContextEngine extends Service implements ContextEngineService {
     input.signal.throwIfAborted()
     const packed = packCandidates(candidates, plan, decisions)
     validateSelectedEvidenceIds(packed.contributions)
-    if (packed.contributions.length === 0 && decisions.every(decision => decision.reasons[0] === 'declined')) {
+    if (packed.contributions.length === 0 && decisions.every(decision => decision.reasons.length === 1 && decision.reasons[0] === 'declined')) {
       return undefined
     }
     return deepFreeze({ plan, decisions, ...packed })
@@ -288,62 +352,55 @@ export class ContextEngine extends Service implements ContextEngineService {
     })
   }
 
-  /** Bound one provider generation to a child signal and ignore timeout/disposal-late results. */
+  /** Bound one provider generation to the preparation, parent, registration, and local timeout. */
   private async runContributor(
     registration: Registration,
     input: ContextPrepareInput,
     budget: Omit<ContributorContextBudget, 'deadlineAt'>,
+    preparationSignal: AbortSignal,
+    preparationDeadlineAt: number,
   ): Promise<ContributorRun> {
     const controller = new AbortController()
-    let settleStepAbort: ((value: { readonly kind: 'step-aborted' }) => void) | undefined
-    const stepAbort = new Promise<{ readonly kind: 'step-aborted' }>((resolve) => {
-      settleStepAbort = resolve
-    })
-    const abortFromStep = () => {
-      controller.abort(input.signal.reason)
-      settleStepAbort?.({ kind: 'step-aborted' })
-    }
-    if (input.signal.aborted) abortFromStep()
-    else input.signal.addEventListener('abort', abortFromStep, { once: true })
-    const deadlineAt = Date.now() + budget.timeoutMs
-    const work = Promise.resolve()
-      .then(() => {
-        controller.signal.throwIfAborted()
-        return registration.contributor.contribute({
-          ...input,
-          signal: controller.signal,
-          budget: { ...budget, deadlineAt },
-        })
+    const signal = AbortSignal.any([input.signal, preparationSignal, registration.controller.signal, controller.signal])
+    const deadlineAt = Math.min(Date.now() + budget.timeoutMs, preparationDeadlineAt)
+    const abortResult = (): ContributorRun => registration.controller.signal.aborted
+      ? { kind: 'disposed' }
+      : preparationSignal.aborted ? { kind: 'deadline' } : { kind: 'timeout' }
+    input.signal.throwIfAborted()
+    if (registration.controller.signal.aborted || preparationSignal.aborted) return abortResult()
+    let settleAbort!: (result: ContributorRun) => void
+    const aborted = new Promise<ContributorRun>((resolve) => { settleAbort = resolve })
+    const onAbort = () => { settleAbort(abortResult()) }
+    signal.addEventListener('abort', onAbort, { once: true })
+    const timer = setTimeout(() => { controller.abort() }, budget.timeoutMs)
+    const work = Promise.resolve().then(() => {
+      signal.throwIfAborted()
+      return registration.contributor.contribute({
+        ...input, signal,
+        budget: { ...budget, timeoutMs: Math.max(0, deadlineAt - Date.now()), deadlineAt },
       })
-      .then(
-        value => ({ kind: 'returned' as const, value }),
-        (error: unknown) => ({ kind: 'error' as const, error }),
-      )
-    let timer: ReturnType<typeof setTimeout> | undefined
-    const timeout = new Promise<{ readonly kind: 'timeout' }>((resolve) => {
-      timer = setTimeout(() => {
-        resolve({ kind: 'timeout' })
-        controller.abort(new Error(
-          `context-engine contributor "${registration.contributor.id}" exceeded ${budget.timeoutMs}ms`,
-        ))
-      }, budget.timeoutMs)
-    })
+    }).then(
+      value => ({ kind: 'returned' as const, value }),
+      (error: unknown) => ({ kind: 'error' as const, error }),
+    )
     try {
-      const result = await Promise.race([work, timeout, stepAbort])
+      const result = await Promise.race([work, aborted])
       input.signal.throwIfAborted()
-      if (result.kind === 'timeout') return result
-      if (result.kind === 'error') throw result.error
-      if (result.kind === 'step-aborted') {
-        input.signal.throwIfAborted()
-        throw new Error('unreachable context-engine abort state')
+      if (signal.aborted) return abortResult()
+      if (Date.now() >= preparationDeadlineAt) return { kind: 'deadline' }
+      if (Date.now() >= deadlineAt) return { kind: 'timeout' }
+      if (result.kind === 'error') {
+        if (result.error instanceof ContextEngineError) throw result.error
+        return { kind: 'unavailable', reasons: result.error instanceof ContextProviderError
+          ? [result.error.outcome, result.error.reason] : ['error', 'provider_failed'] }
       }
-      if (this.contributors.get(registration.contributor.id) !== registration) {
-        return { kind: 'disposed' }
-      }
-      return result
+      return result.kind === 'returned' && result.value !== undefined
+        ? { kind: 'returned', value: snapshotContribution(registration.contributor.id, result.value) }
+        : result
     } finally {
-      if (timer !== undefined) clearTimeout(timer)
-      input.signal.removeEventListener('abort', abortFromStep)
+      clearTimeout(timer)
+      signal.removeEventListener('abort', onAbort)
+      controller.abort()
     }
   }
 }
@@ -464,9 +521,9 @@ function validateConfig(config: ResolvedConfig): void {
       )
     }
   }
-  if (config.contributorTimeoutMs > MAX_CONTRIBUTOR_TIMEOUT_MS) {
+  if (config.contributorTimeoutMs > MAX_CONTRIBUTOR_TIMEOUT_MS || config.prepareTimeoutMs > MAX_CONTRIBUTOR_TIMEOUT_MS) {
     throw new ContextEngineError(
-      `context-engine contributorTimeoutMs must not exceed ${MAX_CONTRIBUTOR_TIMEOUT_MS}`,
+      `context-engine timeouts must not exceed ${MAX_CONTRIBUTOR_TIMEOUT_MS}`,
       'CONTEXT_ENGINE_INVALID_CONFIG',
     )
   }

@@ -209,3 +209,49 @@ test('saveConfig never creates a new Desktop-owned API key', () => {
     else fs.writeFileSync(file, before, { mode: 0o600 });
   }
 });
+
+test('corrupt config.json fails loud, is quarantined, and falls back to defaults', () => {
+  const file = path.join(userData, 'config.json');
+  fs.writeFileSync(file, '{ not valid json', 'utf8');
+  const errors = [];
+  const originalError = console.error;
+  console.error = (message) => errors.push(String(message));
+  let loaded;
+  try {
+    loaded = loadConfig();
+  } finally {
+    console.error = originalError;
+  }
+  assert.equal(typeof loaded, 'object');
+  assert.equal(loaded.port, DEFAULTS.port, '损坏文件应回退到默认值');
+  assert.equal(loaded.host, DEFAULTS.host);
+  assert.ok(
+    errors.some((message) => message.includes('config.json') && message.includes('quarantined')),
+    '应向 stderr 响亮报告隔离',
+  );
+  const quarantined = fs.readdirSync(userData).filter((name) => name.startsWith('config.json.corrupt-'));
+  assert.equal(quarantined.length, 1, '原始字节必须被隔离保存，而不是被下一次 saveConfig 覆盖');
+  assert.ok(fs.readFileSync(path.join(userData, quarantined[0]), 'utf8').includes('not valid json'));
+});
+
+test('corrupt credentials.json fails loud, is quarantined, and credential fields fall back', () => {
+  const file = path.join(userData, 'credentials.json');
+  fs.writeFileSync(file, ']] not json [[', 'utf8');
+  const errors = [];
+  const originalError = console.error;
+  console.error = (message) => errors.push(String(message));
+  let loaded;
+  try {
+    loaded = loadConfig();
+  } finally {
+    console.error = originalError;
+  }
+  assert.equal(loaded.apiKey, '');
+  assert.equal(loaded.githubToken, '');
+  assert.ok(
+    errors.some((message) => message.includes('credentials.json') && message.includes('quarantined')),
+    '凭据文件损坏同样必须响亮报告隔离',
+  );
+  const quarantined = fs.readdirSync(userData).filter((name) => name.startsWith('credentials.json.corrupt-'));
+  assert.equal(quarantined.length, 1, '损坏的凭据原件必须被隔离保存');
+});

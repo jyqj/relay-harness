@@ -207,7 +207,7 @@ function contextOfContents(contents: readonly string[]): NormalizeContext {
   }
 }
 
-async function hydrateReplayFixtures(scenario: SdkScenario, cwd: string): Promise<string[]> {
+async function hydrateReplayFixtures(scenario: Pick<SdkScenario, 'name' | 'children'>, cwd: string): Promise<string[]> {
   const root = join(cwd, '.replay-fixtures')
   await mkdir(root, { recursive: true })
   return Promise.all(fixtureFiles(scenario).map(async (source) => {
@@ -255,19 +255,34 @@ function normalizeResult(result: RunResult, ctx: NormalizeContext): string {
   return normalizeStdout(`${JSON.stringify({
     sessionId: result.sessionId,
     finalResponse: result.finalResponse,
+    finishReason: result.finishReason,
   })}\n`, ctx)
 }
 
-/** One SDK turn against a fresh runtime subprocess in an isolated cwd. */
-async function runScenario(scenario: SdkScenario): Promise<{
-  result: RunResult
-  notifications: HarnessNotification[]
-  logs: PersistedLog[]
-  observedFiles: Record<string, string | MissingFile>
-  cwd: string
-}> {
+/** The scenario subset the runtime opener needs; close probes reuse it without a full {@link SdkScenario}. */
+type ScenarioRuntimeSpec = Pick<SdkScenario, 'name' | 'children' | 'configs' | 'environment'> & {
+  /** Optional replay override sidecar the runtime serves instead of the derived script. */
+  replayOverride?: string
+  /**
+   * Optional override written into the runtime's cwd before boot (the opener
+   * mints that cwd itself), for probes whose sidecar embeds cwd-local paths.
+   * Its return value becomes `replayOverride`.
+   */
+  writeOverride?: (cwd: string) => Promise<string>
+}
+
+/** A booted scenario runtime plus the isolated workspace it owns. */
+interface OpenRuntime {
+  readonly harness: RelayHarness
+  readonly cwd: string
+  readonly sessionsRoot: string
+}
+
+/** Boot the scenario's real runtime subprocess through the SDK client without driving a turn. */
+async function openRuntime(scenario: ScenarioRuntimeSpec): Promise<OpenRuntime> {
   const cwd = await mkdtemp(join(tmpdir(), `sdk-snapshot-${scenario.name}-`))
   const sessionsRoot = join(cwd, '.sessions')
+  const writtenOverride = scenario.writeOverride === undefined ? undefined : await scenario.writeOverride(cwd)
   const replayFixtures = recording ? [] : await hydrateReplayFixtures(scenario, cwd)
   const launch = resolveExampleLaunch({
     srcBin: runtimeBin,
@@ -289,6 +304,9 @@ async function runScenario(scenario: SdkScenario): Promise<{
       RLH_SNAPSHOT_FILE: parentFixture,
       ...childFixtures.length > 0 ? { RLH_SNAPSHOT_CHILD_FILES: childFixtures.join(delimiter) } : {},
     },
+    ...(scenario.replayOverride ?? writtenOverride) === undefined
+      ? {}
+      : { RLH_SNAPSHOT_OVERRIDE: (scenario.replayOverride ?? writtenOverride) as string },
     ...scenario.environment,
   }
 
@@ -304,6 +322,18 @@ async function runScenario(scenario: SdkScenario): Promise<{
     provider: 'deepseek-official',
     model: 'deepseek-v4-flash',
   })
+  return { harness, cwd, sessionsRoot }
+}
+
+/** One SDK turn against a fresh runtime subprocess in an isolated cwd. */
+async function runScenario(scenario: SdkScenario): Promise<{
+  result: RunResult
+  notifications: HarnessNotification[]
+  logs: PersistedLog[]
+  observedFiles: Record<string, string | MissingFile>
+  cwd: string
+}> {
+  const { harness, cwd, sessionsRoot } = await openRuntime(scenario)
   try {
     const notifications: HarnessNotification[] = []
     const result = await harness.run(scenario.prompt.replaceAll('{{cwd}}', cwd), {
@@ -335,7 +365,7 @@ function orderLogs(logs: PersistedLog[], scenario: SdkScenario): PersistedLog[] 
   return [...parents, ...children]
 }
 
-function fixtureFiles(scenario: SdkScenario): string[] {
+function fixtureFiles(scenario: Pick<SdkScenario, 'name' | 'children'>): string[] {
   const dir = join(snapshotsDir, scenario.name)
   return [
     join(dir, 'session.jsonl'),
@@ -463,4 +493,308 @@ describe('TypeScript SDK snapshots over the jsonrpc runtime', () => {
       }
     })
   }
+})
+
+/** The session-event envelope fields the close probes read. */
+interface CloseProbeEvent {
+  readonly type?: unknown
+  readonly seq?: number
+  readonly data?: {
+    readonly turn?: number
+    readonly reason?: { readonly kind?: unknown }
+    readonly message?: { readonly id?: string; readonly content?: readonly { readonly type?: string; readonly text?: string }[] }
+  }
+}
+
+/** Parse the final record of a persisted session log. */
+function lastLogEvent(log: PersistedLog): CloseProbeEvent {
+  const lines = log.content.trimEnd().split('\n')
+  return JSON.parse(lines[lines.length - 1] as string) as CloseProbeEvent
+}
+
+/** Poll for the exact streamed closing event, independently of the write-behind batch's timing. */
+async function waitForLogTurnEnd(sessionsRoot: string, sessionId: string, expected: CloseProbeEvent | undefined): Promise<PersistedLog> {
+  if (expected?.type !== 'turn/end' || typeof expected.seq !== 'number'
+    || typeof expected.data?.turn !== 'number' || typeof expected.data.reason?.kind !== 'string') {
+    throw new Error('close probe observed no identified turn/end')
+  }
+  const { seq } = expected
+  const { turn } = expected.data
+  const { kind } = expected.data.reason
+  const deadline = Date.now() + 10_000
+  for (;;) {
+    const logs = await persistedLogs(sessionsRoot)
+    const log = logs[0]
+    const last = log === undefined ? undefined : lastLogEvent(log)
+    if (logs.length === 1 && log?.header.id === sessionId && last?.type === 'turn/end'
+      && last.seq === seq && last.data?.turn === turn && last.data.reason?.kind === kind) return log
+    if (Date.now() > deadline) {
+      throw new Error(`session ${sessionId} never persisted turn/end ${turn} at seq ${seq} (${kind}): ${logs.length} log(s)`)
+    }
+    await new Promise(resolve => setTimeout(resolve, 25))
+  }
+}
+
+interface CompletedTurnIdentity {
+  readonly sessionId: string
+  readonly turn: number
+  readonly endSeq: number
+  readonly assistantSeq: number
+  readonly assistantId: string
+  readonly text: string
+}
+
+/** Bind the durable barrier to this run's exact assistant message and closing turn, not a prior completed tail. */
+function completedTurnOf(result: RunResult, text: string): CompletedTurnIdentity {
+  expect(result.finalResponse).toBe(text)
+  expect(result.finishReason).toBe('completed')
+  const assistant = result.events.findLast(event => event.type === 'assistant/message')
+  const end = result.events.findLast(event => event.type === 'turn/end')
+  if (assistant === undefined || end === undefined) throw new Error('completed SDK run has no assistant message or turn end')
+  expect(assistant.data.turn).toBe(end.data.turn)
+  expect(assistant.seq).toBeLessThan(end.seq)
+  return {
+    sessionId: result.sessionId, turn: end.data.turn, endSeq: end.seq,
+    assistantSeq: assistant.seq, assistantId: assistant.data.message.id, text,
+  }
+}
+
+function closeProbeEvents(log: PersistedLog): CloseProbeEvent[] {
+  // Only newline-terminated records have committed enough bytes to inspect.
+  return log.content.split('\n').slice(1, -1).map(line => JSON.parse(line) as CloseProbeEvent)
+}
+
+function persistedAssistantText(event: CloseProbeEvent): string {
+  return event.data?.message?.content?.filter(block => block.type === 'text').map(block => block.text ?? '').join('') ?? ''
+}
+
+function hasCompletedTurn(log: PersistedLog, expected: CompletedTurnIdentity): boolean {
+  if (log.header.id !== expected.sessionId || !log.content.endsWith('\n')) return false
+  const events = closeProbeEvents(log)
+  const last = events.at(-1)
+  if (last?.type !== 'turn/end' || last.seq !== expected.endSeq || last.data?.turn !== expected.turn
+    || last.data.reason?.kind !== 'completed') return false
+  return events.some(event => event.type === 'assistant/message' && event.seq === expected.assistantSeq
+    && event.data?.turn === expected.turn && event.data.message?.id === expected.assistantId
+    && persistedAssistantText(event) === expected.text)
+}
+
+/** Wait for the exact run's records; idle and agent disposal are not substitutes for observing its write-behind commit. */
+async function waitForCompletedTurn(sessionsRoot: string, expected: CompletedTurnIdentity): Promise<PersistedLog> {
+  const deadline = Date.now() + 10_000
+  for (;;) {
+    const logs = await persistedLogs(sessionsRoot)
+    const log = logs[0]
+    if (logs.length === 1 && log !== undefined && hasCompletedTurn(log, expected)) return log
+    if (Date.now() > deadline) throw new Error(`SDK turn was not persisted: ${JSON.stringify(expected)}; ${logs.length} log(s)`)
+    await new Promise(resolve => setTimeout(resolve, 25))
+  }
+}
+
+/** Collect the probe session's `session.event` payloads from a subscription until `stop`. */
+const isProbeSessionEvent = (notification: HarnessNotification, sessionId: string): boolean =>
+  notification.method === 'session.event' && notification.params.sessionId === sessionId
+
+describe('SDK durable completion barrier', () => {
+  it('does not accept an old completed turn while the exact second turn is still awaiting persistence', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'sdk-durable-barrier-'))
+    const path = join(root, 'session.jsonl')
+    const header = { type: 'session', version: 0, id: 'barrier-probe', createdAt: 0 }
+    const firstEvents = [
+      { type: 'turn/start', seq: 0, data: { turn: 1 } },
+      { type: 'assistant/message', seq: 1, data: { turn: 1, message: { id: 'assistant-first', content: [{ type: 'text', text: 'first response' }] } } },
+      { type: 'turn/end', seq: 2, data: { turn: 1, reason: { kind: 'completed' } } },
+    ]
+    const secondEvents = [
+      { type: 'turn/start', seq: 3, data: { turn: 2 } },
+      { type: 'assistant/message', seq: 4, data: { turn: 2, message: { id: 'assistant-second', content: [{ type: 'text', text: 'second response' }] } } },
+      { type: 'turn/end', seq: 5, data: { turn: 2, reason: { kind: 'completed' } } },
+    ]
+    const initial = [header, ...firstEvents].map(event => JSON.stringify(event)).join('\n') + '\n'
+    const final = initial + secondEvents.map(event => JSON.stringify(event)).join('\n') + '\n'
+    await writeFile(path, initial)
+    const expected: CompletedTurnIdentity = { sessionId: 'barrier-probe', turn: 2, endSeq: 5, assistantSeq: 4, assistantId: 'assistant-second', text: 'second response' }
+    const old = (await persistedLogs(root))[0]!
+    expect(lastLogEvent(old)).toMatchObject({ type: 'turn/end', data: { reason: { kind: 'completed' } } })
+    expect(hasCompletedTurn(old, expected)).toBe(false)
+    let completed = false
+    const pending = waitForCompletedTurn(root, expected).then((log) => { completed = true; return log })
+    try {
+      await new Promise(resolve => setTimeout(resolve, 75))
+      expect(completed).toBe(false)
+      await writeFile(path, final)
+      expect(hasCompletedTurn(await pending, expected)).toBe(true)
+      expect(hasCompletedTurn({ ...old, content: final, header: { ...header, id: 'wrong-session' } }, expected)).toBe(false)
+      expect(hasCompletedTurn({ ...old, content: final }, { ...expected, assistantId: 'wrong-message' })).toBe(false)
+    } finally {
+      await writeFile(path, final)
+      await pending
+      await rm(root, { recursive: true, force: true })
+    }
+  })
+})
+
+describe.skipIf(recording)('TypeScript SDK close paths over the jsonrpc runtime', () => {
+  it('replays close-auto-session: the auto-minted session closes when its run settles', async () => {
+    const { harness, cwd, sessionsRoot } = await openRuntime({ name: 'close-auto-session', children: 0 })
+    try {
+      const result = await harness.run('Reply with exactly: SDK snapshot OK')
+      const completed = completedTurnOf(result, 'SDK snapshot OK')
+      // Automatic close relinquishes the runtime id; independently observe this exact turn's durable commit.
+      await expect(harness.client.closeSession(result.sessionId)).rejects.toThrow('unknown session')
+      const log = await waitForCompletedTurn(sessionsRoot, completed)
+      expect(log.header.id).toBe(result.sessionId)
+      expect(closeProbeEvents(log).filter(event => event.type === 'turn/end')).toHaveLength(1)
+    } finally {
+      await harness.close()
+      await rm(cwd, { recursive: true, force: true })
+    }
+  })
+
+  it('replays close-named-session: an explicit close releases the named id and keeps its log', async () => {
+    const { harness, cwd, sessionsRoot } = await openRuntime({ name: 'close-named-session', children: 0 })
+    try {
+      const sessionId = 'sdk-snapshot-close-named'
+      const result = await harness.run('Reply with exactly: SDK snapshot OK', { sessionId })
+      expect(result.sessionId).toBe(sessionId)
+      const completed = completedTurnOf(result, 'SDK snapshot OK')
+      await harness.client.closeSession(sessionId)
+      await expect(harness.client.closeSession(sessionId)).rejects.toThrow('unknown session')
+      const log = await waitForCompletedTurn(sessionsRoot, completed)
+      expect(log.header.id).toBe(sessionId)
+      expect(closeProbeEvents(log).filter(event => event.type === 'turn/end')).toHaveLength(1)
+    } finally {
+      await harness.close()
+      await rm(cwd, { recursive: true, force: true })
+    }
+  })
+
+  it('replays close-reprompt: a prompt for a closed id completes durably', async () => {
+    const { harness, cwd, sessionsRoot } = await openRuntime({
+      name: 'close-reprompt',
+      children: 0,
+      replayOverride: join(snapshotsDir, 'close-reprompt', 'replay.override.json'),
+    })
+    try {
+      const sessionId = 'sdk-snapshot-close-reprompt'
+      // First turn on the named id, then close it: the id is released.
+      const first = await harness.run('Reply with exactly: SDK snapshot OK', { sessionId })
+      expect(first.sessionId).toBe(sessionId)
+      const firstTurn = completedTurnOf(first, 'SDK snapshot OK')
+      await harness.client.closeSession(sessionId)
+      await expect(harness.client.closeSession(sessionId)).rejects.toThrow('unknown session')
+      const firstLog = await waitForCompletedTurn(sessionsRoot, firstTurn)
+      // Close releases the Agent, not its persistence identity: the next prompt resumes this exact log.
+      const result = await harness.run('Reply with exactly: SDK re-prompt OK', { sessionId })
+      expect(result.sessionId).toBe(sessionId)
+      const secondTurn = completedTurnOf(result, 'SDK re-prompt OK')
+      expect(secondTurn.turn).toBe(firstTurn.turn + 1)
+      expect(secondTurn.endSeq).toBeGreaterThan(firstTurn.endSeq)
+      expect(secondTurn.assistantId).not.toBe(firstTurn.assistantId)
+      const log = await waitForCompletedTurn(sessionsRoot, secondTurn)
+      expect(log.path).toBe(firstLog.path)
+      expect(log.content.startsWith(firstLog.content)).toBe(true)
+      expect(closeProbeEvents(log).filter(event => event.type === 'assistant/message').map(persistedAssistantText))
+        .toEqual(['SDK snapshot OK', 'SDK re-prompt OK'])
+      expect(closeProbeEvents(log).filter(event => event.type === 'turn/end').map(event => event.data?.turn))
+        .toEqual([firstTurn.turn, secondTurn.turn])
+    } finally {
+      await harness.close()
+      await rm(cwd, { recursive: true, force: true })
+    }
+  })
+
+  it('replays close-mid-turn: closing mid-turn ends the turn aborted at terminal idle', async () => {
+    const { harness, cwd, sessionsRoot } = await openRuntime({
+      name: 'close-mid-turn',
+      children: 0,
+      replayOverride: join(snapshotsDir, 'close-mid-turn', 'replay.override.json'),
+    })
+    try {
+      const sessionId = 'sdk-snapshot-close-mid-turn'
+      await harness.start()
+      const events: CloseProbeEvent[] = []
+      const subscription = harness.client.subscribeSessionTree(sessionId)
+      try {
+        await harness.client.prompt(sessionId, [{ type: 'text', text: 'Reply with exactly: SDK snapshot OK' }])
+        // Deterministic mid-flight gate: the override script streams exactly one
+        // chunk, then stalls until the close cancels the model call.
+        while (!events.some(event => event.type === 'assistant/chunk')) {
+          const notification = await subscription.next()
+          if (isProbeSessionEvent(notification, sessionId)) events.push(notification.params.event as CloseProbeEvent)
+        }
+        await harness.client.closeSession(sessionId)
+        while (true) {
+          const notification = await subscription.next()
+          if (isProbeSessionEvent(notification, sessionId)) events.push(notification.params.event as CloseProbeEvent)
+          if (notification.method === 'session.status'
+            && notification.params.sessionId === sessionId
+            && notification.params.status === 'idle') break
+        }
+      } finally {
+        subscription.close()
+      }
+      const turnEnd = events.filter(event => event.type === 'turn/end').at(-1)
+      expect(turnEnd).toMatchObject({ type: 'turn/end', data: { reason: { kind: 'aborted' } } })
+      const log = await waitForLogTurnEnd(sessionsRoot, sessionId, turnEnd)
+      expect(lastLogEvent(log)).toMatchObject({
+        type: 'turn/end',
+        data: { reason: { kind: 'aborted' } },
+      })
+    } finally {
+      await harness.close()
+      await rm(cwd, { recursive: true, force: true })
+    }
+  })
+
+  it('replays close-pending: closing before the first streamed chunk still ends the turn aborted', async () => {
+    const { harness, cwd, sessionsRoot } = await openRuntime({
+      name: 'close-pending',
+      children: 0,
+      writeOverride: async (runtimeCwd) => {
+        // The override hangs BEFORE any streamed chunk, so the model request is
+        // still pending when the close lands; the ready file marks the moment
+        // the hang began, making the close window deterministic.
+        const ready = join(runtimeCwd, '.close-pending-hang-ready')
+        const overridePath = join(runtimeCwd, 'close-pending.override.json')
+        await writeFile(overridePath, JSON.stringify([{ kind: 'hang', beforeStart: true, readyFile: ready }]))
+        return overridePath
+      },
+    })
+    try {
+      const sessionId = 'sdk-snapshot-close-pending'
+      await harness.start()
+      const events: CloseProbeEvent[] = []
+      const subscription = harness.client.subscribeSessionTree(sessionId)
+      try {
+        await harness.client.prompt(sessionId, [{ type: 'text', text: 'Reply with exactly: SDK snapshot OK' }])
+        const readyFile = join(cwd, '.close-pending-hang-ready')
+        const deadline = Date.now() + 30_000
+        while (!existsSync(readyFile)) {
+          if (Date.now() > deadline) throw new Error('close-pending probe never reached the hanging model call')
+          await new Promise(resolve => setTimeout(resolve, 20))
+        }
+        await harness.client.closeSession(sessionId)
+        while (true) {
+          const notification = await subscription.next()
+          if (isProbeSessionEvent(notification, sessionId)) events.push(notification.params.event as CloseProbeEvent)
+          if (notification.method === 'session.status'
+            && notification.params.sessionId === sessionId
+            && notification.params.status === 'idle') break
+        }
+      } finally {
+        subscription.close()
+      }
+      const turnEnd = events.filter(event => event.type === 'turn/end').at(-1)
+      expect(turnEnd).toMatchObject({ type: 'turn/end', data: { reason: { kind: 'aborted' } } })
+      const log = await waitForLogTurnEnd(sessionsRoot, sessionId, turnEnd)
+      expect(lastLogEvent(log)).toMatchObject({
+        type: 'turn/end',
+        data: { reason: { kind: 'aborted' } },
+      })
+    } finally {
+      await harness.close()
+      await rm(cwd, { recursive: true, force: true })
+    }
+  })
 })

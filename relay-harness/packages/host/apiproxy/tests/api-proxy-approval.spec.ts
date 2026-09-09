@@ -6,18 +6,19 @@
  * question with a broadcast `cancelled`.
  */
 
-import { describe, expect, it } from 'vitest'
 import { Context } from '@relay-harness/cordis'
-import AgentRegistry from '@relay-harness/rlh-agent'
+import { describe,expect,it } from 'vitest'
+
 import type { Agent } from '@relay-harness/rlh-agent'
-import SessionStore from '@relay-harness/rlh-session'
-import SystemPrompt from '@relay-harness/rlh-system-prompt'
-import UserQuestionService from '@relay-harness/rlh-user-questions'
-import ApprovalService from '@relay-harness/rlh-user-approval'
-import type { ApprovalRequestId } from '@relay-harness/rlh-user-approval'
-import type { ApiProxy, MuxFrame, RpcRequest } from '@relay-harness/rlh-host-apiproxy/api'
+import AgentRegistry from '@relay-harness/rlh-agent'
+import type { ApiProxy,MuxFrame,RpcRequest } from '@relay-harness/rlh-host-apiproxy/api'
 import type { RpcId } from '@relay-harness/rlh-host-apiproxy/api/rpc'
 import { RpcId as mintRpcId } from '@relay-harness/rlh-host-apiproxy/api/rpc'
+import SessionStore from '@relay-harness/rlh-session'
+import SystemPrompt from '@relay-harness/rlh-system-prompt'
+import type { ApprovalRequestId } from '@relay-harness/rlh-user-approval'
+import ApprovalService from '@relay-harness/rlh-user-approval'
+import UserQuestionService from '@relay-harness/rlh-user-questions'
 import { createApiProxy } from '../src/api-proxy.ts'
 
 async function harness(): Promise<{ ctx: Context; api: ApiProxy }> {
@@ -327,4 +328,22 @@ describe('approval pending registry', () => {
     const outcome = await ctx.waterfall('approval/request', { agent, toolName: 'x' }, () => Promise.resolve('unavailable' as const))
     expect(outcome).toBe('unavailable')
   })
+})
+
+it('withdraws an approval without an explicit signal when its exact agent leaves the registry', async () => {
+  const { ctx, api } = await harness()
+  const base = agentOf(ctx)
+  // This ownership fixture only exercises registry identity, Session audit, and the mux inbox view, not an Agent driver.
+  const agent = { ...base, id: base.session.id, ctx, status: 'idle', inbox: { hasPending: false, nextTurn: [], nextStep: [] } } as unknown as Agent
+  const dispose = ctx.agents.register(agent)
+  const abort = new AbortController()
+  const mux = openMux(api, abort)
+  const pending = ctx.approval.request({ agent, toolName: 'bash' })
+  await mux.waitFor('approval/requested')
+  expect(ctx.hostInteractions.pendingFor(agent.id).approvals).toBe(1)
+  dispose()
+  await expect(pending).resolves.toBe('cancelled')
+  expect(ctx.hostInteractions.pendingFor(agent.id).approvals).toBe(0)
+  abort.abort()
+  await ctx.fiber.dispose()
 })

@@ -93,11 +93,16 @@ describe.skipIf(MODE === 'record')('web e2e: first-run DeepSeek credential setup
     const acknowledgedSettings = await readFile(join(scaffold.harnessHome, 'settings.yaml'), 'utf8')
     expect(acknowledgedSettings).toContain(`${WELCOME_NOTICE_ACK_FIELD}: ${WELCOME_NOTICE_VERSION}`)
 
-    // The ordinary Models surface reuses the refreshed join and exposes the
+    // The advanced Models surface reuses the refreshed join and exposes the
     // configured write-only placeholder without a reload.
     await page.getByRole('button', { name: '设置', exact: true }).click()
     const settings = page.getByRole('dialog', { name: '设置' })
     await settings.waitFor({ timeout: 10_000 })
+    const developerMode = settings.getByRole('switch', { name: '开发者模式' })
+    expect(await developerMode.isChecked()).toBe(false)
+    await developerMode.check()
+    await expect.poll(() => developerMode.isEnabled()).toBe(true)
+    expect(scaffold.ctx.productMode.get().mode).toBe('developer')
     await settings.getByRole('button', { name: '模型' }).click()
     const deepSeekRow = settings.getByText('DeepSeek', { exact: true }).first()
     await deepSeekRow.waitFor({ timeout: 10_000 })

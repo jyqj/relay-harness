@@ -1,0 +1,1501 @@
+{
+  "total": {
+    "lines": {
+      "total": 59395,
+      "covered": 58663,
+      "skipped": 0,
+      "pct": 98.76
+    },
+    "statements": {
+      "total": 67967,
+      "covered": 66732,
+      "skipped": 0,
+      "pct": 98.18
+    },
+    "functions": {
+      "total": 14614,
+      "covered": 14367,
+      "skipped": 0,
+      "pct": 98.3
+    },
+    "branches": {
+      "total": 42729,
+      "covered": 41130,
+      "skipped": 0,
+      "pct": 96.25
+    },
+    "branchesTrue": {
+      "total": 0,
+      "covered": 0,
+      "skipped": 0,
+      "pct": 100
+    }
+  },
+  "failingFiles": 162,
+  "clearedSinceMemory": [
+    "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-code-index-center/src/client/index.ts",
+    "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-code-index-center/src/client/locales.ts",
+    "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-code-index-center/src/client/store.ts"
+  ],
+  "newSinceMemory": [],
+  "remaining": [
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/automation/issue-orchestrator/src/index.ts",
+      "coverage": {
+        "lines": 99.32,
+        "functions": 100,
+        "statements": 99.41,
+        "branches": 99.41
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/client/connection/src/client/connection.ts",
+      "coverage": {
+        "lines": 95.6,
+        "functions": 100,
+        "statements": 95.09,
+        "branches": 88.23
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/client/connection/src/client/index.ts",
+      "coverage": {
+        "lines": 100,
+        "functions": 100,
+        "statements": 97.61,
+        "branches": 91.66
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-code-index-center/src/client/CodeIndexCenterSection.tsx",
+      "coverage": {
+        "lines": 100,
+        "functions": 100,
+        "statements": 98.63,
+        "branches": 96.29
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-code-index-center/src/index.ts",
+      "coverage": {
+        "lines": 100,
+        "functions": 0,
+        "statements": 100,
+        "branches": 100
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-context-inspector/src/client/ContextInspectorAction.tsx",
+      "coverage": {
+        "lines": 83.33,
+        "functions": 80,
+        "statements": 84.61,
+        "branches": 69.44
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-context-inspector/src/client/index.ts",
+      "coverage": {
+        "lines": 0,
+        "functions": 0,
+        "statements": 0,
+        "branches": 100
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-context-inspector/src/client/locales.ts",
+      "coverage": {
+        "lines": 0,
+        "functions": 100,
+        "statements": 0,
+        "branches": 100
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-context-inspector/src/index.ts",
+      "coverage": {
+        "lines": 100,
+        "functions": 0,
+        "statements": 100,
+        "branches": 100
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-diff/src/client/DiffPanel.tsx",
+      "coverage": {
+        "lines": 100,
+        "functions": 100,
+        "statements": 100,
+        "branches": 96.19
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-files/src/client/FilePreview.tsx",
+      "coverage": {
+        "lines": 96.79,
+        "functions": 96.82,
+        "statements": 94,
+        "branches": 89.95
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-files/src/client/FilesPanel.tsx",
+      "coverage": {
+        "lines": 91.74,
+        "functions": 87.5,
+        "statements": 88.28,
+        "branches": 80.48
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-files/src/client/fileLineReveal.ts",
+      "coverage": {
+        "lines": 100,
+        "functions": 100,
+        "statements": 100,
+        "branches": 90
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-files/src/client/filePreviewMode.ts",
+      "coverage": {
+        "lines": 100,
+        "functions": 100,
+        "statements": 100,
+        "branches": 87.5
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-files/src/client/fileSaveCoordinator.ts",
+      "coverage": {
+        "lines": 97.36,
+        "functions": 100,
+        "statements": 97.61,
+        "branches": 93.75
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-files/src/client/fileTreeDragMention.ts",
+      "coverage": {
+        "lines": 91.17,
+        "functions": 100,
+        "statements": 91.17,
+        "branches": 83.33
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-files/src/client/projectFilePicker.ts",
+      "coverage": {
+        "lines": 100,
+        "functions": 100,
+        "statements": 97.05,
+        "branches": 90.47
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-files/src/client/shell.ts",
+      "coverage": {
+        "lines": 69.23,
+        "functions": 69.23,
+        "statements": 69.23,
+        "branches": 50
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-files/src/client/workspacePreview.ts",
+      "coverage": {
+        "lines": 100,
+        "functions": 100,
+        "statements": 100,
+        "branches": 75
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-git/src/client/BranchMenu.tsx",
+      "coverage": {
+        "lines": 96.82,
+        "functions": 90.47,
+        "statements": 88,
+        "branches": 84.28
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-git/src/client/CreateBranchDialog.tsx",
+      "coverage": {
+        "lines": 100,
+        "functions": 100,
+        "statements": 100,
+        "branches": 83.33
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-git/src/client/GitActionsControl.tsx",
+      "coverage": {
+        "lines": 91.74,
+        "functions": 91.07,
+        "statements": 88.3,
+        "branches": 81.15
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-git/src/client/GitErrorDialog.tsx",
+      "coverage": {
+        "lines": 100,
+        "functions": 100,
+        "statements": 100,
+        "branches": 77.77
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-git/src/client/GitProgressToast.tsx",
+      "coverage": {
+        "lines": 100,
+        "functions": 88.88,
+        "statements": 96,
+        "branches": 96
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-git/src/client/PublishDialog.tsx",
+      "coverage": {
+        "lines": 83.33,
+        "functions": 80,
+        "statements": 83.33,
+        "branches": 100
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-git/src/client/apply.ts",
+      "coverage": {
+        "lines": 92.3,
+        "functions": 92.3,
+        "statements": 93.1,
+        "branches": 84.37
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-git/src/client/branches.ts",
+      "coverage": {
+        "lines": 100,
+        "functions": 100,
+        "statements": 100,
+        "branches": 87.5
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-git/src/client/git-logic.ts",
+      "coverage": {
+        "lines": 91.2,
+        "functions": 100,
+        "statements": 90.56,
+        "branches": 87.27
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-memory-center/src/client/MemoryCenterSection.tsx",
+      "coverage": {
+        "lines": 100,
+        "functions": 100,
+        "statements": 98.45,
+        "branches": 95.71
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-memory-center/src/index.ts",
+      "coverage": {
+        "lines": 100,
+        "functions": 0,
+        "statements": 100,
+        "branches": 100
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-preview/src/client/PreviewPanel.tsx",
+      "coverage": {
+        "lines": 100,
+        "functions": 100,
+        "statements": 100,
+        "branches": 98.9
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-preview/src/client/url.ts",
+      "coverage": {
+        "lines": 100,
+        "functions": 100,
+        "statements": 100,
+        "branches": 96.15
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-preview/src/client/zoom.ts",
+      "coverage": {
+        "lines": 100,
+        "functions": 100,
+        "statements": 100,
+        "branches": 85.71
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-preview/src/index.ts",
+      "coverage": {
+        "lines": 100,
+        "functions": 0,
+        "statements": 100,
+        "branches": 100
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-primitives/src/Tooltip.tsx",
+      "coverage": {
+        "lines": 100,
+        "functions": 100,
+        "statements": 100,
+        "branches": 97.22
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-primitives/src/markdown/render.tsx",
+      "coverage": {
+        "lines": 100,
+        "functions": 100,
+        "statements": 99.49,
+        "branches": 98.93
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-product-shell/src/client/LibraryPage.tsx",
+      "coverage": {
+        "lines": 87.5,
+        "functions": 85.71,
+        "statements": 87.67,
+        "branches": 78.84
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-product-shell/src/client/ProductModeRow.tsx",
+      "coverage": {
+        "lines": 0,
+        "functions": 0,
+        "statements": 0,
+        "branches": 0
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-product-shell/src/client/WorkPage.tsx",
+      "coverage": {
+        "lines": 98.86,
+        "functions": 95.23,
+        "statements": 90.82,
+        "branches": 86.86
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-product-shell/src/client/work-projection.ts",
+      "coverage": {
+        "lines": 100,
+        "functions": 93.75,
+        "statements": 98.38,
+        "branches": 88.4
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-product-shell/src/index.ts",
+      "coverage": {
+        "lines": 100,
+        "functions": 0,
+        "statements": 100,
+        "branches": 100
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-prompt-enhancement/src/client/EnhanceControl.tsx",
+      "coverage": {
+        "lines": 91.66,
+        "functions": 80,
+        "statements": 86.07,
+        "branches": 77.46
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-prompt-enhancement/src/client/contextTrace.ts",
+      "coverage": {
+        "lines": 95.91,
+        "functions": 100,
+        "statements": 93.65,
+        "branches": 90.41
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-prompt-enhancement/src/client/index.ts",
+      "coverage": {
+        "lines": 100,
+        "functions": 100,
+        "statements": 90.9,
+        "branches": 50
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-session-tree/src/client/model.ts",
+      "coverage": {
+        "lines": 100,
+        "functions": 100,
+        "statements": 100,
+        "branches": 99.39
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-settings-general/src/client/AboutSection.tsx",
+      "coverage": {
+        "lines": 69.23,
+        "functions": 50,
+        "statements": 61.25,
+        "branches": 50.72
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-settings-general/src/client/InterfaceSection.tsx",
+      "coverage": {
+        "lines": 0,
+        "functions": 0,
+        "statements": 0,
+        "branches": 100
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-settings-general/src/client/UpdateAction.tsx",
+      "coverage": {
+        "lines": 67.85,
+        "functions": 66.66,
+        "statements": 67.16,
+        "branches": 53.62
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-settings-mcp/src/client/McpSection.tsx",
+      "coverage": {
+        "lines": 88.97,
+        "functions": 80.53,
+        "statements": 83.33,
+        "branches": 74.8
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-settings-mcp/src/client/index.ts",
+      "coverage": {
+        "lines": 0,
+        "functions": 0,
+        "statements": 0,
+        "branches": 0
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-settings-models/src/client/ModelListEditor.tsx",
+      "coverage": {
+        "lines": 100,
+        "functions": 100,
+        "statements": 100,
+        "branches": 99.14
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-settings-models/src/client/ModelsSection.tsx",
+      "coverage": {
+        "lines": 99.02,
+        "functions": 97.36,
+        "statements": 99.16,
+        "branches": 100
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-settings-models/src/client/VisionModelPicker.tsx",
+      "coverage": {
+        "lines": 96.36,
+        "functions": 100,
+        "statements": 95.16,
+        "branches": 95.55
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-settings-remote/src/client/RemoteSection.tsx",
+      "coverage": {
+        "lines": 100,
+        "functions": 100,
+        "statements": 100,
+        "branches": 96.51
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-settings-skills/src/client/SkillsSection.tsx",
+      "coverage": {
+        "lines": 88.49,
+        "functions": 80,
+        "statements": 84.22,
+        "branches": 78.57
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-settings-skills/src/client/index.ts",
+      "coverage": {
+        "lines": 0,
+        "functions": 0,
+        "statements": 0,
+        "branches": 0
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-sidebar/src/client/SidebarRoot.tsx",
+      "coverage": {
+        "lines": 97.95,
+        "functions": 95.45,
+        "statements": 98.41,
+        "branches": 95.94
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-sidebar/src/client/stores.ts",
+      "coverage": {
+        "lines": 75,
+        "functions": 66.66,
+        "statements": 75,
+        "branches": 100
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-surfaces/src/client/EmptyState.tsx",
+      "coverage": {
+        "lines": 100,
+        "functions": 100,
+        "statements": 100,
+        "branches": 88.88
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-surfaces/src/client/SurfacesRoot.tsx",
+      "coverage": {
+        "lines": 98.87,
+        "functions": 96.77,
+        "statements": 95.83,
+        "branches": 90.47
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-surfaces/src/client/openpath-intercept.ts",
+      "coverage": {
+        "lines": 100,
+        "functions": 100,
+        "statements": 100,
+        "branches": 90
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-surfaces/src/client/persist.ts",
+      "coverage": {
+        "lines": 100,
+        "functions": 100,
+        "statements": 99.34,
+        "branches": 98.43
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-theme/src/client/ThemeLibrary.tsx",
+      "coverage": {
+        "lines": 100,
+        "functions": 100,
+        "statements": 98,
+        "branches": 95.65
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-theme/src/client/WallpaperCropModal.tsx",
+      "coverage": {
+        "lines": 69.62,
+        "functions": 60,
+        "statements": 69.41,
+        "branches": 62.5
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-theme/src/client/WallpaperGalleryModal.tsx",
+      "coverage": {
+        "lines": 71.42,
+        "functions": 66.66,
+        "statements": 77.77,
+        "branches": 61.53
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-theme/src/client/WallpaperRow.tsx",
+      "coverage": {
+        "lines": 66.66,
+        "functions": 81.25,
+        "statements": 61.44,
+        "branches": 54.34
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-theme/src/client/WallpaperSources.tsx",
+      "coverage": {
+        "lines": 82.6,
+        "functions": 88.88,
+        "statements": 76.36,
+        "branches": 69.64
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-theme/src/client/index.ts",
+      "coverage": {
+        "lines": 95.73,
+        "functions": 85.71,
+        "statements": 95.7,
+        "branches": 94.4
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-theme/src/client/slider.ts",
+      "coverage": {
+        "lines": 100,
+        "functions": 100,
+        "statements": 100,
+        "branches": 50
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-theme/src/theme-settings.ts",
+      "coverage": {
+        "lines": 99.16,
+        "functions": 100,
+        "statements": 93,
+        "branches": 86.2
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-theme/src/wallpaper.ts",
+      "coverage": {
+        "lines": 88.03,
+        "functions": 83.87,
+        "statements": 85.59,
+        "branches": 79.22
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-user-terminal/src/client/apply.ts",
+      "coverage": {
+        "lines": 88.88,
+        "functions": 86.66,
+        "statements": 91.42,
+        "branches": 83.33
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-user-terminal/src/client/terminal/TerminalPane.tsx",
+      "coverage": {
+        "lines": 98.88,
+        "functions": 96,
+        "statements": 98.98,
+        "branches": 100
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-user-terminal/src/client/terminal/TerminalWorkspace.tsx",
+      "coverage": {
+        "lines": 99.01,
+        "functions": 100,
+        "statements": 92.74,
+        "branches": 88.03
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-user-terminal/src/client/terminal/fit.ts",
+      "coverage": {
+        "lines": 100,
+        "functions": 100,
+        "statements": 100,
+        "branches": 78.57
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-user-terminal/src/client/terminal/height.ts",
+      "coverage": {
+        "lines": 100,
+        "functions": 100,
+        "statements": 100,
+        "branches": 50
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-user-terminal/src/client/terminal/links.ts",
+      "coverage": {
+        "lines": 100,
+        "functions": 100,
+        "statements": 94.55,
+        "branches": 88.17
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-user-terminal/src/client/terminal/shell.ts",
+      "coverage": {
+        "lines": 37.5,
+        "functions": 50,
+        "statements": 37.5,
+        "branches": 33.33
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-user-terminal/src/client/terminal/stores.ts",
+      "coverage": {
+        "lines": 96.38,
+        "functions": 100,
+        "statements": 92.45,
+        "branches": 79.31
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-user-terminal/src/client/terminal/terminal-theme.ts",
+      "coverage": {
+        "lines": 100,
+        "functions": 100,
+        "statements": 98.03,
+        "branches": 90.19
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-user-terminal/src/index.ts",
+      "coverage": {
+        "lines": 100,
+        "functions": 0,
+        "statements": 100,
+        "branches": 100
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/client/ui-workflow-run/src/client/WorkflowRunPanel.tsx",
+      "coverage": {
+        "lines": 99.25,
+        "functions": 100,
+        "statements": 99.34,
+        "branches": 98.41
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/context/agent-instructions/src/files.ts",
+      "coverage": {
+        "lines": 100,
+        "functions": 100,
+        "statements": 98.59,
+        "branches": 97.43
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/context/code-context/src/contributor.ts",
+      "coverage": {
+        "lines": 92.23,
+        "functions": 73.33,
+        "statements": 90.83,
+        "branches": 94.54
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/context/context-engine/src/index.ts",
+      "coverage": {
+        "lines": 97.71,
+        "functions": 100,
+        "statements": 95.52,
+        "branches": 92.08
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/context/context-engine/src/invariant.ts",
+      "coverage": {
+        "lines": 83.95,
+        "functions": 100,
+        "statements": 83.51,
+        "branches": 79.1
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/context/context-inspector/src/index.ts",
+      "coverage": {
+        "lines": 0,
+        "functions": 0,
+        "statements": 0,
+        "branches": 100
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/context/context-inspector/src/projection.ts",
+      "coverage": {
+        "lines": 92.85,
+        "functions": 100,
+        "statements": 88,
+        "branches": 60.97
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/context/file-reference-local/src/content.ts",
+      "coverage": {
+        "lines": 100,
+        "functions": 100,
+        "statements": 98.86,
+        "branches": 96.66
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/context/prompt-enhancement-context-engine/src/index.ts",
+      "coverage": {
+        "lines": 87.09,
+        "functions": 100,
+        "statements": 82.35,
+        "branches": 73.91
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/context/prompt-enhancement-context-none/src/index.ts",
+      "coverage": {
+        "lines": 80,
+        "functions": 50,
+        "statements": 80,
+        "branches": 100
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/context/prompt-enhancement-llm/src/index.ts",
+      "coverage": {
+        "lines": 88,
+        "functions": 92.85,
+        "statements": 87.65,
+        "branches": 82.66
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/context/prompt-enhancement-llm/src/prompt.ts",
+      "coverage": {
+        "lines": 100,
+        "functions": 100,
+        "statements": 93.54,
+        "branches": 85.71
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/context/prompt-enhancement/src/index.ts",
+      "coverage": {
+        "lines": 97.11,
+        "functions": 100,
+        "statements": 96.39,
+        "branches": 83.56
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/context/session-history-context/src/index.ts",
+      "coverage": {
+        "lines": 98.73,
+        "functions": 100,
+        "statements": 92.7,
+        "branches": 79.59
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/examples/agent-spine-demo/src/index.ts",
+      "coverage": {
+        "lines": 100,
+        "functions": 100,
+        "statements": 100,
+        "branches": 97.8
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/experimental/agent-team/src/mailbox.ts",
+      "coverage": {
+        "lines": 100,
+        "functions": 100,
+        "statements": 100,
+        "branches": 98.83
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/guard/llm-circuit-breaker/src/breaker.ts",
+      "coverage": {
+        "lines": 100,
+        "functions": 100,
+        "statements": 98.33,
+        "branches": 96.87
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/guard/llm-circuit-breaker/src/index.ts",
+      "coverage": {
+        "lines": 100,
+        "functions": 100,
+        "statements": 100,
+        "branches": 89.28
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/guard/token-budget-controller/src/index.ts",
+      "coverage": {
+        "lines": 100,
+        "functions": 100,
+        "statements": 98.24,
+        "branches": 97.77
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/host/apiproxy/src/approval-questions.ts",
+      "coverage": {
+        "lines": 100,
+        "functions": 100,
+        "statements": 83.33,
+        "branches": 80.76
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/host/apiproxy/src/prompt-content.ts",
+      "coverage": {
+        "lines": 85.29,
+        "functions": 100,
+        "statements": 81.25,
+        "branches": 68.42
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/host/code-index-center/src/index.ts",
+      "coverage": {
+        "lines": 84.21,
+        "functions": 77.77,
+        "statements": 81.81,
+        "branches": 82.6
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/host/directory-picker-browse/src/index.ts",
+      "coverage": {
+        "lines": 100,
+        "functions": 100,
+        "statements": 100,
+        "branches": 96.47
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/host/mcp-servers/src/index.ts",
+      "coverage": {
+        "lines": 87.69,
+        "functions": 76.19,
+        "statements": 82.27,
+        "branches": 77.19
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/host/memory-center/src/index.ts",
+      "coverage": {
+        "lines": 88.88,
+        "functions": 97.67,
+        "statements": 84.08,
+        "branches": 67.19
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/host/skill-inventory/src/frontmatter.ts",
+      "coverage": {
+        "lines": 100,
+        "functions": 100,
+        "statements": 100,
+        "branches": 94.73
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/host/skill-inventory/src/index.ts",
+      "coverage": {
+        "lines": 91.69,
+        "functions": 100,
+        "statements": 85.22,
+        "branches": 72.65
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/host/work-results/src/index.ts",
+      "coverage": {
+        "lines": 92.9,
+        "functions": 95.65,
+        "statements": 83.52,
+        "branches": 73.87
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/index/code-index-local/src/embed/worker.ts",
+      "coverage": {
+        "lines": 96,
+        "functions": 100,
+        "statements": 94.5,
+        "branches": 88.23
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/index/code-index-local/src/eval.ts",
+      "coverage": {
+        "lines": 91.66,
+        "functions": 100,
+        "statements": 83.87,
+        "branches": 64.28
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/index/code-index-local/src/gitignore.ts",
+      "coverage": {
+        "lines": 95.18,
+        "functions": 100,
+        "statements": 91.34,
+        "branches": 82.97
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/index/code-index-local/src/index.ts",
+      "coverage": {
+        "lines": 95.69,
+        "functions": 88,
+        "statements": 96.03,
+        "branches": 98.91
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/index/code-index-local/src/invalidate.ts",
+      "coverage": {
+        "lines": 100,
+        "functions": 100,
+        "statements": 100,
+        "branches": 91.66
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/index/code-index-local/src/provider.ts",
+      "coverage": {
+        "lines": 98.15,
+        "functions": 96.92,
+        "statements": 96.46,
+        "branches": 92.48
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/index/code-index-local/src/scanner.ts",
+      "coverage": {
+        "lines": 100,
+        "functions": 100,
+        "statements": 96.47,
+        "branches": 92.42
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/index/code-index-search/src/lanes.vector.ts",
+      "coverage": {
+        "lines": 100,
+        "functions": 100,
+        "statements": 96.87,
+        "branches": 95.83
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/index/code-index-search/src/plan.ts",
+      "coverage": {
+        "lines": 100,
+        "functions": 100,
+        "statements": 100,
+        "branches": 98.96
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/index/code-index-sqlite/src/embed-queue.ts",
+      "coverage": {
+        "lines": 97.82,
+        "functions": 100,
+        "statements": 98.03,
+        "branches": 100
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/index/code-index-sqlite/src/embedding-generation.ts",
+      "coverage": {
+        "lines": 80,
+        "functions": 100,
+        "statements": 80,
+        "branches": 66.66
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/index/code-index-sqlite/src/epoch.ts",
+      "coverage": {
+        "lines": 100,
+        "functions": 100,
+        "statements": 100,
+        "branches": 78.12
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/index/code-index-sqlite/src/reader.ts",
+      "coverage": {
+        "lines": 100,
+        "functions": 100,
+        "statements": 100,
+        "branches": 98.85
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/index/code-index/src/index.ts",
+      "coverage": {
+        "lines": 57.14,
+        "functions": 66.66,
+        "statements": 57.14,
+        "branches": 100
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/index/tool-code-index/src/errors.ts",
+      "coverage": {
+        "lines": 62.5,
+        "functions": 36.36,
+        "statements": 65.38,
+        "branches": 87.5
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/index/tool-code-index/src/refresh-tool.ts",
+      "coverage": {
+        "lines": 100,
+        "functions": 100,
+        "statements": 100,
+        "branches": 38.88
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/index/tool-code-index/src/status-tool.ts",
+      "coverage": {
+        "lines": 93.75,
+        "functions": 100,
+        "statements": 94.11,
+        "branches": 75
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/jobs/jobs-local/src/index.ts",
+      "coverage": {
+        "lines": 100,
+        "functions": 100,
+        "statements": 100,
+        "branches": 98.24
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/mcp/mcp-catalog/src/index.ts",
+      "coverage": {
+        "lines": 91.79,
+        "functions": 93.93,
+        "statements": 80.47,
+        "branches": 67.21
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/mcp/mcp-client/src/catalog.ts",
+      "coverage": {
+        "lines": 93.18,
+        "functions": 100,
+        "statements": 84.21,
+        "branches": 58.42
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/mcp/mcp-client/src/connection.ts",
+      "coverage": {
+        "lines": 88.61,
+        "functions": 73.8,
+        "statements": 84.21,
+        "branches": 82.8
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/mcp/mcp-client/src/index.ts",
+      "coverage": {
+        "lines": 97.29,
+        "functions": 100,
+        "statements": 93.61,
+        "branches": 90.62
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/mcp/mcp-client/src/status.ts",
+      "coverage": {
+        "lines": 100,
+        "functions": 100,
+        "statements": 90.9,
+        "branches": 83.33
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/mcp/mcp-client/src/tools.ts",
+      "coverage": {
+        "lines": 99.41,
+        "functions": 100,
+        "statements": 98.48,
+        "branches": 97.7
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/mcp/mcp-servers-file/src/document.ts",
+      "coverage": {
+        "lines": 91.15,
+        "functions": 100,
+        "statements": 88.82,
+        "branches": 84.69
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/mcp/mcp-servers-file/src/index.ts",
+      "coverage": {
+        "lines": 50,
+        "functions": 0,
+        "statements": 40,
+        "branches": 0
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/memory/memory-agent/src/index.ts",
+      "coverage": {
+        "lines": 89.92,
+        "functions": 95.34,
+        "statements": 85.8,
+        "branches": 71.07
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/memory/memory-extractor-llm/src/index.ts",
+      "coverage": {
+        "lines": 82.3,
+        "functions": 88.88,
+        "statements": 77.33,
+        "branches": 61.19
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/memory/memory-extractor-llm/src/prompt.ts",
+      "coverage": {
+        "lines": 97.22,
+        "functions": 100,
+        "statements": 95.23,
+        "branches": 92.3
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/memory/memory-extractor-llm/src/sources.ts",
+      "coverage": {
+        "lines": 98.24,
+        "functions": 100,
+        "statements": 96.05,
+        "branches": 89.39
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/memory/memory-outcome-reconciler/src/index.ts",
+      "coverage": {
+        "lines": 85.6,
+        "functions": 84.21,
+        "statements": 81.87,
+        "branches": 60.83
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/memory/memory-sqlite/src/index.ts",
+      "coverage": {
+        "lines": 92.16,
+        "functions": 99.11,
+        "statements": 88.01,
+        "branches": 77
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/memory/memory-sqlite/src/schema.ts",
+      "coverage": {
+        "lines": 89.36,
+        "functions": 100,
+        "statements": 87.75,
+        "branches": 85.1
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/memory/memory/src/index.ts",
+      "coverage": {
+        "lines": 80,
+        "functions": 80,
+        "statements": 87.5,
+        "branches": 100
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/memory/tool-memory/src/index.ts",
+      "coverage": {
+        "lines": 90.62,
+        "functions": 90.62,
+        "statements": 86.66,
+        "branches": 61.94
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/preset/agent-presets/src/index.ts",
+      "coverage": {
+        "lines": 97.41,
+        "functions": 92.5,
+        "statements": 93.4,
+        "branches": 85.29
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/sdk/client/src/api.ts",
+      "coverage": {
+        "lines": 100,
+        "functions": 100,
+        "statements": 100,
+        "branches": 98.52
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/sdk/client/src/client.ts",
+      "coverage": {
+        "lines": 100,
+        "functions": 100,
+        "statements": 100,
+        "branches": 98.23
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/sdk/protocol/src/transport.ts",
+      "coverage": {
+        "lines": 95.8,
+        "functions": 97.29,
+        "statements": 92.59,
+        "branches": 89.79
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/sdk/server/src/server.ts",
+      "coverage": {
+        "lines": 99.05,
+        "functions": 96.42,
+        "statements": 98.34,
+        "branches": 92.98
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/skill/skill-filesystem/src/index.ts",
+      "coverage": {
+        "lines": 99.3,
+        "functions": 100,
+        "statements": 98.8,
+        "branches": 98.16
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/spill/spill-local/src/store.ts",
+      "coverage": {
+        "lines": 93.18,
+        "functions": 100,
+        "statements": 94.11,
+        "branches": 100
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/storage/storage-sqlite/src/schema.ts",
+      "coverage": {
+        "lines": 97.72,
+        "functions": 100,
+        "statements": 97.95,
+        "branches": 96.42
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/subagent/subagent-claude-code/src/index.ts",
+      "coverage": {
+        "lines": 96.42,
+        "functions": 100,
+        "statements": 96.42,
+        "branches": 90
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/subagent/subagent-codex/src/index.ts",
+      "coverage": {
+        "lines": 96.15,
+        "functions": 100,
+        "statements": 96.15,
+        "branches": 90
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/subagent/subagent/src/continuation.ts",
+      "coverage": {
+        "lines": 100,
+        "functions": 100,
+        "statements": 100,
+        "branches": 99.3
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/subagent/tool-subagent-report/src/index.ts",
+      "coverage": {
+        "lines": 100,
+        "functions": 100,
+        "statements": 100,
+        "branches": 80
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/test-support/acp-snapshot/src/harness.ts",
+      "coverage": {
+        "lines": 99.13,
+        "functions": 100,
+        "statements": 98.87,
+        "branches": 98.82
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/test-support/client-runtime/src/workspaces.ts",
+      "coverage": {
+        "lines": 92.45,
+        "functions": 94.44,
+        "statements": 91.93,
+        "branches": 88.88
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/tracker/tracker-linear/src/index.ts",
+      "coverage": {
+        "lines": 100,
+        "functions": 100,
+        "statements": 100,
+        "branches": 99.29
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/util/atomic-write/src/index.ts",
+      "coverage": {
+        "lines": 97.77,
+        "functions": 100,
+        "statements": 96.15,
+        "branches": 94.44
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/workflow/workflow-worker-thread/src/host.ts",
+      "coverage": {
+        "lines": 99.61,
+        "functions": 98.21,
+        "statements": 99.65,
+        "branches": 100
+      }
+    },
+    {
+      "file": "/Users/jin/Desktop/Relay/relay-harness/packages/workflow/workflow-worker-thread/src/index.ts",
+      "coverage": {
+        "lines": 96.61,
+        "functions": 100,
+        "statements": 96.66,
+        "branches": 100
+      }
+    }
+  ]
+}

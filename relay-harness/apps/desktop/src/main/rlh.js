@@ -1,3 +1,4 @@
+// @ts-check
 const fs = require('fs');
 const net = require('net');
 const path = require('path');
@@ -247,56 +248,6 @@ function processImageName(pid) {
   }
 }
 
-function listeningPids(port) {
-  const wanted = Number(port);
-  if (!wanted) {
-    return [];
-  }
-  try {
-    const out = process.platform === 'win32'
-      ? execTimed('netstat', ['-ano'], 2500)
-      : execTimed('lsof', ['-nP', `-iTCP:${wanted}`, '-sTCP:LISTEN', '-t'], 2500);
-    if (process.platform !== 'win32') {
-      return [...new Set(out.split(/\s+/).map(Number).filter((pid) => pid > 0))];
-    }
-    const pids = new Set();
-    for (const raw of out.split(/\r?\n/)) {
-      const line = raw.trim();
-      if (!/LISTENING/i.test(line)) {
-        continue;
-      }
-      const parts = line.split(/\s+/);
-      const pid = Number(parts[parts.length - 1]);
-      const local = parts[1] || '';
-      const localPort = local.startsWith('[')
-        ? local.slice(local.lastIndexOf(']:') + 2)
-        : local.split(':').pop();
-      if (pid > 0 && Number(localPort) === wanted) {
-        pids.add(pid);
-      }
-    }
-    return [...pids];
-  } catch {
-    return [];
-  }
-}
-
-function killOwnedListeners(port) {
-  const self = process.pid;
-  let killed = 0;
-  for (const pid of listeningPids(port)) {
-    if (isSelfPid(pid) || pid === self) {
-      continue;
-    }
-    if (!isSafeToKill(pid)) {
-      continue;
-    }
-    killTree(pid);
-    killed += 1;
-  }
-  return killed;
-}
-
 function quoteWindowsCommand(command) {
   const value = String(command).trim();
   if (!value) {
@@ -311,11 +262,17 @@ function quoteWindowsCommand(command) {
   return value;
 }
 
+/**
+ * Spawn the harness child. On POSIX the child leads its own process group
+ * (`detached: true`) so `killTree`'s negative-pid signal reaches the whole
+ * descendant tree; Windows covers descendants via `taskkill /T /F`.
+ */
 function spawnHarness(command, args, options) {
   const isWin = process.platform === 'win32';
   const needsShell = isWin && /\.(cmd|bat)$/i.test(command);
   return spawn(needsShell ? quoteWindowsCommand(command) : command, args, {
     ...options,
+    detached: !isWin,
     windowsHide: true,
     shell: needsShell,
   });
@@ -350,80 +307,54 @@ async function findFreePort(host, startPort) {
 }
 
 async function probePort(host, port) {
-  const inUse = await isPortInUse(host, port);
-  if (!inUse) {
-    return { host, port, inUse: false, httpReady: false };
-  }
-  const baseUrl = `http://${host}:${port}`;
-  let httpReady = false;
-  try {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 800);
-    const response = await fetch(baseUrl, { signal: controller.signal });
-    clearTimeout(timer);
-    httpReady = response.ok;
-  } catch {
-    httpReady = false;
-  }
-  return { host, port, inUse: true, httpReady, baseUrl };
+  return { host, port, inUse: await isPortInUse(host, port) };
 }
 
 /**
- * Make `port` ours for this GUI process: stop a leftover rlh/node listener,
- * or hop to the next free port if something else is bound there.
+ * Make `port` ours for this GUI process. Kills only the pid recorded in
+ * `rlhd-web.pid`, and only while it is safe to kill; any other listener on the
+ * port causes a hop to the next free port, never a kill. `deps` overrides the
+ * process seams for tests.
  */
-async function ensureOwnedPort(host, wantedPort, log = () => {}) {
+async function ensureOwnedPort(host, wantedPort, log = (_message) => {}, deps = {}) {
+  const probePortFn = deps.probePort || probePort;
+  const readPidFileFn = deps.readPidFile || readPidFile;
+  const processAliveFn = deps.processAlive || processAlive;
+  const killTreeFn = deps.killTree || killTree;
+  const findFreePortFn = deps.findFreePort || findFreePort;
+  const clearPidFileFn = deps.clearPidFile || clearPidFile;
   const wanted = Number(wantedPort) || 3080;
-  let probe = await probePort(host, wanted);
+  let probe = await probePortFn(host, wanted);
   if (!probe.inUse) {
-    clearPidFile();
+    clearPidFileFn();
     log(`端口 ${wanted} 空闲`);
     return wanted;
   }
 
-  const previous = readPidFile();
-  if (previous && processAlive(previous) && isSafeToKill(previous)) {
+  const previous = readPidFileFn();
+  if (previous && processAliveFn(previous) && isSafeToKill(previous)) {
     log(`停止上次残留的 rlh（pid ${previous}）`);
-    killTree(previous);
+    killTreeFn(previous);
     await sleep(400);
-    probe = await probePort(host, wanted);
+    probe = await probePortFn(host, wanted);
     if (!probe.inUse) {
-      clearPidFile();
+      clearPidFileFn();
       return wanted;
     }
   }
-  clearPidFile();
+  clearPidFileFn();
 
-  if (probe.httpReady) {
-    const killed = killOwnedListeners(wanted);
-    if (killed) {
-      log(`已结束占用 ${wanted} 的残留服务（${killed} 个进程）`);
-      await sleep(400);
-      probe = await probePort(host, wanted);
-      if (!probe.inUse) {
-        return wanted;
-      }
-    }
-  }
-
-  const next = await findFreePort(host, wanted + 1);
+  const next = await findFreePortFn(host, wanted + 1);
   log(`端口 ${wanted} 仍被其他程序占用，改用 ${next}`);
   return next;
 }
 
 function deferred() {
-  let resolve;
-  let reject;
-  const promise = new Promise((res, rej) => {
-    resolve = res;
-    reject = rej;
-  });
-  return { promise, resolve, reject };
+  return Promise.withResolvers();
 }
 
 function cancelledError(message = '启动已取消') {
-  const error = new Error(message);
-  error.code = 'RLH_CANCELLED';
+  const error = Object.assign(new Error(message), { code: 'RLH_CANCELLED' });
   return error;
 }
 
@@ -460,7 +391,7 @@ class RlhManager extends EventEmitter {
   /**
    * @param {object} [options] 窄依赖注入；不传任何选项时全部使用生产默认实现。
    *   可注入：loadConfig、ensurePackagedHarness、spawnHarness、isReachable、
-   *   sleep、readPidFile、writePidFile、clearPidFile、killTree、killOwnedListeners、
+   *   sleep、readPidFile、writePidFile、clearPidFile、killTree、
    *   buildLaunch（测试需要绕过 electron 依赖时按需注入）。
    */
   constructor(options = {}) {
@@ -488,7 +419,6 @@ class RlhManager extends EventEmitter {
       writePidFile: options.writePidFile || writePidFile,
       clearPidFile: options.clearPidFile || clearPidFile,
       killTree: options.killTree || killTree,
-      killOwnedListeners: options.killOwnedListeners || killOwnedListeners,
       buildLaunch: options.buildLaunch || ((config) => this.buildLaunch(config)),
       sourceHarnessStatus: options.sourceHarnessStatus || sourceHarnessStatus,
       resolveRlhBin: options.resolveRlhBin || resolveRlhBin,
@@ -905,11 +835,6 @@ class RlhManager extends EventEmitter {
       this._killTree(pid);
     }
     this._clearPidFile();
-    const leftover = this._killOwnedListeners(this.port);
-    if (leftover) {
-      this.log(`已清理端口 ${this.port} 上的残留进程`);
-      await this._sleep(300);
-    }
     if (this.state !== 'idle') {
       this.setState('idle');
     }
@@ -958,10 +883,6 @@ class RlhManager extends EventEmitter {
     return this._deps.killTree(pid);
   }
 
-  _killOwnedListeners(port) {
-    return this._deps.killOwnedListeners(port);
-  }
-
   _buildLaunch(config) {
     return this._deps.buildLaunch(config);
   }
@@ -973,4 +894,5 @@ module.exports = {
   resolveRlhBin,
   sourceHarnessStatus,
   ensureOwnedPort,
+  spawnHarness,
 };

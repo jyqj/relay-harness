@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url'
 import type { Browser, Page } from 'playwright'
 import { chromium } from 'playwright'
 import { afterAll, beforeAll, describe, expect, it, onTestFailed } from 'vitest'
+import { settingsNamespace } from '@relay-harness/rlh-settings'
 import type { Session, SessionEvent, SessionId } from '@relay-harness/rlh-session'
 import {
   assertFixtureInventory, captureStableAria, compareOrRefreshGolden,
@@ -55,12 +56,17 @@ describe.skipIf(MODE === 'record')('web e2e: durable workflow run in Chat', () =
       replayChildFixtures: [CHILD_FIXTURE],
       paceMs: 50,
     })
+    // Workflow is opt-in through the shipped Cordis preset, not the ordinary Standard roster.
+    await scaffold.ctx.settings.update(settingsNamespace('agent-presets'), { default: 'cordis' })
     browser = await chromium.launch()
     page = await newEnglishPage(browser)
     tripwire = watchConsole(page)
     await page.goto(scaffold.baseUrl, { waitUntil: 'load' })
     await page.waitForSelector('[class*="frame"]', { timeout: 30_000 })
     await connectFreshWorkspace(page, scaffold.workspaceCwd)
+    const parent = scaffold.ctx.agents.list().find(agent => agent.session.header.cwd !== undefined)
+    if (parent === undefined) throw new Error('Workflow fixture did not attach its parent Agent')
+    expect(scaffold.ctx.tools.schemas(parent).map(tool => tool.name)).toContain('workflow')
   }, 120_000)
 
   afterAll(async () => {
@@ -99,9 +105,9 @@ describe.skipIf(MODE === 'record')('web e2e: durable workflow run in Chat', () =
     await member.waitFor()
     await runDisclosure.click()
     expect(await runDisclosure.getAttribute('aria-expanded')).toBe('false')
-    expect(await disclosures.count()).toBe(1)
+    await expect.poll(() => disclosures.count()).toBe(1)
     await runDisclosure.press('Space')
-    expect(await disclosures.count()).toBe(2)
+    await expect.poll(() => disclosures.count()).toBe(2)
     expect(await phaseDisclosure.getAttribute('aria-expanded')).toBe('true')
     await member.focus()
 

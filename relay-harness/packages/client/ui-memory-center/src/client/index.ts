@@ -10,7 +10,6 @@ import { en, zh, type MemoryCenterLocaleKey } from './locales.ts'
 
 export type { MemoryCenterSectionInjected, MemoryCenterSectionProps } from './MemoryCenterSection.tsx'
 export type { MemoryCenterLocaleKey } from './locales.ts'
-export { MemoryCenterStore } from './store.ts'
 
 declare module '@relay-harness/rlh-client-ui-slots' {
   interface LocaleNamespaceMap {
@@ -19,7 +18,7 @@ declare module '@relay-harness/rlh-client-ui-slots' {
 }
 
 /** Memory Center dictionary namespace. */
-export const NS = 'settings.memory'
+const NS = 'settings.memory'
 export const inject = ['slots', 'locale', 'remote', 'remote.memoryCenter', 'sessions']
 
 /** Register the Memory Center settings section and its scoped Client cache. */

@@ -4,6 +4,8 @@ English | [中文](README.zh.md)
 
 The JSONL durable session-persistence backend — a concrete `SessionPersistence` (the `rlh-session-persistence` seam). Each session has one append-only logical JSONL log, stored as `.jsonl.zstd` by default or raw `.jsonl` when compression is disabled.
 
+An optional ownership proof on `prepare(id, signal?, fence?)` protects cold recovery before live setup. The shared coordinator keeps its `runExclusive` interval across the complete file mutation and fsync, not merely before asynchronous file I/O; assertion-only or absent proofs do not add cross-process writer exclusion.
+
 ## On-disk layout
 
 ```

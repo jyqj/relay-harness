@@ -8,8 +8,6 @@ import type { CodeIndexCenterInjected } from './CodeIndexCenterSection.tsx'
 import { CodeIndexCenterStore } from './store.ts'
 import { en, zh, type CodeIndexCenterLocaleKey } from './locales.ts'
 
-export { CodeIndexCenterSection } from './CodeIndexCenterSection.tsx'
-export { CodeIndexCenterStore } from './store.ts'
 export type { CodeIndexCenterLocaleKey } from './locales.ts'
 
 declare module '@relay-harness/rlh-client-ui-slots' {
@@ -20,6 +18,7 @@ export const inject = ['slots', 'locale', 'remote', 'remote.codeIndexCenter', 's
 
 export function apply(ctx: ClientContext): void {
   const store = new CodeIndexCenterStore(ctx)
+  ctx.effect(() => () => { store.dispose() }, 'ui-code-index-center: cache lifetime')
   ctx.effect(() => ctx.on('connection/reset', () => {
     store.invalidate()
   }), 'ui-code-index-center: reset')
@@ -28,8 +27,6 @@ export function apply(ctx: ClientContext): void {
     'ui-code-index-center: dictionaries',
   )
   const t = ctx.locale.bind('settings.codeIndex') as CodeIndexCenterInjected['t']
-  const currentSessionId = () => ctx.sessions.list.getSnapshot().current
-  const subscribeSession = (listener: () => void) => ctx.sessions.list.subscribe(listener)
   ctx.slots.inject('settings.section', () => ctx.slots.register({
     name: 'settings.section',
     id: 'code-index',
@@ -38,8 +35,6 @@ export function apply(ctx: ClientContext): void {
     locale: 'settings.codeIndex',
     inject: (): CodeIndexCenterInjected => ({
       t,
-      currentSessionId,
-      subscribeSession,
       status: (sessionId, fresh) => store.status(sessionId, fresh),
       refresh: sessionId => store.refresh(sessionId),
       reconcile: sessionId => store.reconcile(sessionId),

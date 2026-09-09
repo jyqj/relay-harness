@@ -2,7 +2,7 @@
 /** Trajectory ledger selection, details, status, and fold behavior. */
 
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { TrajectoryTable } from '../src/client/TrajectoryTable.tsx'
 import type { TrajectoryTurnModel } from '../src/client/layout.ts'
 
@@ -345,7 +345,7 @@ describe('TrajectoryTable', () => {
     expect(request.closest('tr')?.getAttribute('aria-label')).toContain('ASSISTANT')
   })
 
-  it('follows appended records only while the ledger is already at the bottom', () => {
+  it('follows appended records only while the ledger is already at the bottom', async () => {
     const view = render(<TrajectoryTable turns={TURNS} {...FOLD_PROPS} />)
     const tablePane = screen.getByRole('table').parentElement as HTMLElement
     let scrollHeight = 200
@@ -369,7 +369,7 @@ describe('TrajectoryTable', () => {
         {...FOLD_PROPS}
       />,
     )
-    expect(tablePane.scrollTop).toBe(260)
+    await waitFor(() => { expect(tablePane.scrollTop).toBe(260) })
 
     tablePane.scrollTop = 20
     fireEvent.scroll(tablePane)
@@ -871,4 +871,41 @@ describe('TrajectoryTable', () => {
     expect(screen.getByRole('row', { name: /TOOL/ }).getAttribute('aria-selected')).toBe('false')
     expect(onInspectApplied).not.toHaveBeenCalled()
   })
+})
+
+
+it.each(['follow', 'scroll-away', 'unmount'] as const)('coalesces tail growth before a paint while respecting %s', (outcome) => {
+  const view = render(<TrajectoryTable turns={TURNS} {...FOLD_PROPS} />)
+  const pane = view.container.querySelector<HTMLDivElement>('[data-trajectory-scroll]')!
+  let height = 1000
+  let top = 900
+  const writes = vi.fn((value: number) => { top = value })
+  Object.defineProperties(pane, {
+    scrollHeight: { configurable: true, get: () => height },
+    clientHeight: { configurable: true, get: () => 100 },
+    scrollTop: { configurable: true, get: () => top, set: writes },
+  })
+  fireEvent.scroll(pane)
+  const frames: FrameRequestCallback[] = []
+  const cancel = vi.spyOn(window, 'cancelAnimationFrame')
+  vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => { frames.push(callback); return frames.length })
+  const next: TrajectoryTurnModel = { turn: 2, groups: [{ title: 'Step 1', cells: [{ index: 4, kind: 'message', text: 'new tail', timeSeconds: 1 }] }] }
+  height = 1100
+  view.rerender(<TrajectoryTable turns={[...TURNS, next]} {...FOLD_PROPS} />)
+  height = 1200
+  view.rerender(<TrajectoryTable turns={[...TURNS, next, { ...next, turn: 3 }]} {...FOLD_PROPS} />)
+  expect(writes).not.toHaveBeenCalled()
+  expect(frames).toHaveLength(1)
+  if (outcome === 'scroll-away') {
+    top = 0
+    fireEvent.scroll(pane)
+  } else if (outcome === 'unmount') {
+    view.unmount()
+    expect(cancel).toHaveBeenCalledWith(1)
+  }
+  act(() => { frames[0]!(0) })
+  if (outcome === 'follow') {
+    expect(writes).toHaveBeenCalledTimes(1)
+    expect(writes).toHaveBeenCalledWith(1200)
+  } else expect(writes).not.toHaveBeenCalled()
 })

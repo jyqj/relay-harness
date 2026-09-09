@@ -7,16 +7,16 @@
  * are mousedown-handled and the highlight is exposed via
  * aria-activedescendant on the listbox).
  */
-import { Fragment, useEffect, useRef, useSyncExternalStore } from 'react'
+import { Fragment, useEffect, useRef } from 'react'
 import clsx from 'clsx'
 import { useAnchoredMaxHeight, usePresence } from '@relay-harness/rlh-client-ui-primitives'
-import type { PropsLocale } from '@relay-harness/rlh-client-ui-slots'
+import type { InjectFace, PropsLocale } from '@relay-harness/rlh-client-ui-slots'
 import css from './MenuView.module.css'
 import type { MenuViewInjected } from './slots.ts'
 import type { MenuKey } from './locales.ts'
 
 /** Full menu props: injected face + the locale seat. */
-export type MenuViewProps = MenuViewInjected & PropsLocale<'slash.menu'>
+export type MenuViewProps = InjectFace<MenuViewInjected> & PropsLocale<'slash.menu'>
 
 /** Design cap on the list height (figma SLASH 39:26572 MenuDropdown). */
 const MAX_HEIGHT = 320
@@ -31,11 +31,8 @@ function optionId(source: string, index: number): string {
  * @param props - injected face (the menu store and the pick route); `t` rides the standard locale seat.
  * @returns the dropdown while open; null while closed.
  */
-export function MenuView({ menu, onPick, onDismiss, t }: MenuViewProps) {
-  const state = useSyncExternalStore(
-    fn => menu.subscribe(fn),
-    () => menu.getSnapshot(),
-  )
+export function MenuView({ useMenu, onPick, onDismiss, t }: MenuViewProps) {
+  const state = useMenu(value => value)
   const listRef = useRef<HTMLDivElement>(null)
   const lastOpen = useRef(state)
   if (state.open) lastOpen.current = state

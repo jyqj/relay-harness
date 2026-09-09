@@ -1,13 +1,33 @@
 {
   "extends": "../../../tsconfig.base.json",
-  "compilerOptions": { "rootDir": "src", "outDir": "lib/types" },
-  "include": ["src"],
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "lib/types"
+  },
+  "include": [
+    "src"
+  ],
   "references": [
-    { "path": "../../../vendor/cosmokit" },
-    { "path": "../../../vendor/cordis" },
-    { "path": "../../index/code-index" },
-    { "path": "../../index/code-index-search" },
-    { "path": "../../llm/llm" },
-    { "path": "../../runtime-diagnostics/invariants" }
+    {
+      "path": "../../../vendor/cosmokit"
+    },
+    {
+      "path": "../../../vendor/cordis"
+    },
+    {
+      "path": "../../index/code-index"
+    },
+    {
+      "path": "../../index/code-index-search"
+    },
+    {
+      "path": "../../llm/llm"
+    },
+    {
+      "path": "../../runtime-diagnostics/invariants"
+    },
+    {
+      "path": "../../util/sqlite-runtime"
+    }
   ]
 }

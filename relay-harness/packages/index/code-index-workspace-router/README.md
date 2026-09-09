@@ -12,9 +12,9 @@ Callers must use `await ctx.codeIndex.forWorkspace(session.header.cwd)`. Unscope
 
 ## Lifecycle
 
-The router lazily opens a workspace on its first operation. `maxOpenWorkspaces` bounds retained runtimes; quiescent entries are evicted least-recently-used, and `idleEvictMs` closes entries that remain unused. Active operations hold a lease. Eviction first removes the entry from routing, stops its invalidator and watcher, waits for the embedding drain, and only then closes SQLite. A concurrent reopen waits for that close before reusing the same database path.
+The router lazily opens a workspace on its first operation. `maxOpenWorkspaces` bounds retained runtimes; quiescent entries are evicted least-recently-used, and `idleEvictMs` closes entries that remain unused. Active operations hold a lease. Admission rechecks the entry identity and shutdown state after acquisition, then increments the active count without another await; an entry evicted during acquisition is reacquired instead of receiving the request. Eviction first removes the entry from routing, stops its invalidator and watcher, waits for the embedding drain, and only then closes SQLite. A concurrent reopen waits for that close before reusing the same database path.
 
-Tool-result invalidation is routed by the emitting Session's cwd. Optional recursive watchers belong to their workspace entry and cannot schedule another entry's refresh.
+Every queued eviction has a rejection observer because timer and operation-cleanup callers do not await it. Diagnostics omit filesystem error details; explicit `evictIdleNow` callers still receive the original rejection, and a failed collection does not poison later collections. The registered Cordis effect owns shutdown idempotence and invokes the private cleanup once per router instance. Shutdown closes admission and waits for all workspace disposers even if one fails. Cleanup errors are aggregated after the remaining entries and already-closing runtimes settle. Tool-result invalidation is routed by the emitting Session's cwd. Optional recursive watchers belong to their workspace entry and cannot schedule another entry's refresh. Runtime watcher errors close the failed handle and mark only its owning runtime degraded; explicit refresh remains available.
 
 ## Configuration
 

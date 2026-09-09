@@ -270,3 +270,43 @@ describe('healProfilesModuleFallback', () => {
     expect(lstatSync(join(fallback, 'rlh-app')).isSymbolicLink()).toBe(true)
   })
 })
+
+describe('profile recovery layer selection', () => {
+  it.each(['web', 'custom'])('reads template defaults for %s without rewriting the recorded manifest or parsing a broken user layer', (name) => {
+    const anchor = stageInstallation({
+      '@relay-harness/rlh-base': { patch: '[]\n' },
+      '@relay-harness/rlh-web-app': { patch: '[]\n' },
+    })
+    const home = tmp()
+    try {
+      const dir = resolveProfileDir(name, home)
+      initProfile(dir, ['uninstalled-user-bundle'])
+      const before = readFileSync(join(dir, 'package.json'), 'utf8')
+      writeFileSync(join(dir, PROFILE_PATCH_FILENAME), '[broken: [')
+      const loaded = loadProfile('t', name, anchor, home, { bundles: 'template', userLayer: false })
+      expect(loaded.layers.map(layer => layer.packageName))
+        .toEqual(name === 'web' ? PROFILE_TEMPLATES.web : ['@relay-harness/rlh-base'])
+      expect(loaded.patches).toEqual([])
+      expect(readFileSync(join(dir, 'package.json'), 'utf8')).toBe(before)
+    } finally {
+      rmSync(home, { recursive: true, force: true })
+      rmSync(join(anchor, '..', '..'), { recursive: true, force: true })
+    }
+  })
+
+  it.each([{}, { rlh: {} }, { rlh: { profile: {} } }])('accepts an explicitly created profile with no bundle declaration: %j', (manifest) => {
+    const anchor = stageInstallation({})
+    const home = tmp()
+    try {
+      const dir = resolveProfileDir('custom', home)
+      mkdirSync(dir, { recursive: true })
+      writeFileSync(join(dir, 'package.json'), JSON.stringify({ name: 'custom', ...manifest }))
+      const loaded = loadProfile('t', 'custom', anchor, home)
+      expect(loaded.layers).toEqual([])
+      expect(loaded.patches).toEqual([])
+    } finally {
+      rmSync(home, { recursive: true, force: true })
+      rmSync(join(anchor, '..', '..'), { recursive: true, force: true })
+    }
+  })
+})

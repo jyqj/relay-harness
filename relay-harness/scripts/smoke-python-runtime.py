@@ -47,6 +47,9 @@ SNAPSHOT_SESSION_ID = "advanced-executable"
 SNAPSHOT_DIRECT_CHILD_PROMPT = "Reply with exactly DIRECT_CHILD_OK and nothing else."
 SNAPSHOT_WORKFLOW_CHILD_PROMPT = "Reply with exactly WORKFLOW_CHILD_OK and nothing else."
 SNAPSHOT_FINAL_TEXT = "ADVANCED_EXECUTABLE_OK"
+CLOSE_MID_TURN_PROMPT = "Reply with the close-mid-turn probe marker."
+CLOSE_PENDING_PROMPT = "Reply with the close-pending probe marker."
+CLOSE_MID_TURN_DELAY_SECONDS = 3.0
 SNAPSHOT_PLUGIN_CODE = """\
 return (ctx) => {
   harness.registerTool(ctx, harness.defineTool({
@@ -269,14 +272,32 @@ class MockModelHandler(BaseHTTPRequestHandler):
         content_length = int(self.headers.get("content-length", "0"))
         body = json.loads(self.rfile.read(content_length))
         self.requests.append(body)
-        self.send_response(200)
-        self.send_header("content-type", "text/event-stream")
-        self.end_headers()
         chunks = completion_chunks(body)
-        for chunk in chunks:
-            self.wfile.write(f"data: {json.dumps(chunk)}\n\n".encode())
-        self.wfile.write(b"data: [DONE]\n\n")
-        self.wfile.flush()
+        # The mid-turn close probe's stream pauses after its first observable
+        # chunk, so the smoke can close while the model call is in flight; the
+        # pending close probe's response is withheld entirely, so its model
+        # request never starts streaming before the close lands.
+        streaming_cut = 2 if close_probe_body(body) else len(chunks)
+        try:
+            if close_pending_body(body):
+                time.sleep(CLOSE_MID_TURN_DELAY_SECONDS)
+            self.send_response(200)
+            self.send_header("content-type", "text/event-stream")
+            self.end_headers()
+            for chunk in chunks[:streaming_cut]:
+                self.wfile.write(f"data: {json.dumps(chunk)}\n\n".encode())
+            self.wfile.flush()
+            if close_probe_body(body):
+                time.sleep(CLOSE_MID_TURN_DELAY_SECONDS)
+                for chunk in chunks[streaming_cut:]:
+                    self.wfile.write(f"data: {json.dumps(chunk)}\n\n".encode())
+            self.wfile.write(b"data: [DONE]\n\n")
+            self.wfile.flush()
+        except BrokenPipeError:
+            # A close probe aborts its turn while this stream is paused or
+            # witheld; the abandoned HTTP connection cannot accept the rest,
+            # and the smoke has already moved on.
+            return
 
     def log_message(self, _format: str, *_args: object) -> None:
         return
@@ -400,6 +421,36 @@ def completion_chunks(body: dict[str, object]) -> list[dict[str, object]]:
             {"a": 19, "b": 23},
         )
     return text_chunks(EXPECTED_TEXT)
+
+
+def close_probe_body(body: dict[str, object]) -> bool:
+    """Return whether this model request belongs to the mid-turn close probe."""
+    messages = body.get("messages")
+    if not isinstance(messages, list) or not messages:
+        return False
+    latest = messages[-1]
+    text = message_text(latest.get("content") if isinstance(latest, dict) else None)
+    return CLOSE_MID_TURN_PROMPT in text
+
+
+def close_pending_body(body: dict[str, object]) -> bool:
+    """Return whether this model request belongs to the pending close probe."""
+    messages = body.get("messages")
+    if not isinstance(messages, list) or not messages:
+        return False
+    latest = messages[-1]
+    text = message_text(latest.get("content") if isinstance(latest, dict) else None)
+    return CLOSE_PENDING_PROMPT in text
+
+
+def mock_saw_prompt(prompt: str) -> bool:
+    """Return whether the mock model received any request carrying `prompt`."""
+    return any(
+        isinstance(message, dict) and prompt in message_text(message.get("content"))
+        for request in MockModelHandler.requests
+        if isinstance(request.get("messages"), list)
+        for message in request["messages"]
+    )
 
 
 def mcp_tool_followup(
@@ -679,13 +730,13 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--scenario",
-        choices=("all", "sdk-default", "sdk-custom", "sdk-minimal", "sdk-fs-search", "sdk-mcp", "sdk-snapshot", "direct"),
+        choices=("all", "sdk-default", "sdk-custom", "sdk-minimal", "sdk-fs-search", "sdk-mcp", "sdk-snapshot", "sdk-close", "direct"),
         default="all",
     )
     parser.add_argument("--exe", type=Path)
     parser.add_argument("--update-snapshots", action="store_true")
     args = parser.parse_args()
-    if args.scenario in {"all", "sdk-custom", "sdk-minimal", "sdk-fs-search", "sdk-snapshot", "direct"} and args.exe is None:
+    if args.scenario in {"all", "sdk-custom", "sdk-minimal", "sdk-fs-search", "sdk-snapshot", "sdk-close", "direct"} and args.exe is None:
         parser.error("--exe is required for custom, minimal, snapshot, and direct scenarios")
     if args.update_snapshots and args.scenario not in {"all", "sdk-minimal", "sdk-snapshot"}:
         parser.error("--update-snapshots requires --scenario sdk-minimal, sdk-snapshot, or all")
@@ -709,6 +760,9 @@ def main() -> None:
         if args.scenario in {"all", "sdk-snapshot"}:
             assert args.exe is not None
             smoke_sdk_snapshot(model.url, args.exe.resolve(), args.update_snapshots)
+        if args.scenario in {"all", "sdk-close"}:
+            assert args.exe is not None
+            smoke_sdk_close(model.url, args.exe.resolve())
         if args.scenario in {"all", "direct"}:
             assert args.exe is not None
             smoke_direct(model.url, args.exe.resolve())
@@ -907,6 +961,144 @@ def smoke_sdk_snapshot(base_url: str, executable: Path, update_snapshots: bool) 
         compare_snapshot_files(
             files, update_snapshots, ADVANCED_SNAPSHOT_DIRECTORY, ADVANCED_SNAPSHOT_FILENAMES,
         )
+
+
+def smoke_sdk_close(base_url: str, executable: Path) -> None:
+    """Drive real session/close traffic: auto-close, explicit close, re-prompt, mid-turn close, and pending close."""
+    from relay_harness import RelayHarness
+    from relay_harness.api import finish_reason
+    from relay_harness.errors import JsonRpcError
+
+    with tempfile.TemporaryDirectory(prefix="rlh-sdk-close-") as temporary:
+        root = Path(temporary).resolve()
+        sessions = root / "sessions"
+        cordis = root / "cordis.yml"
+        cordis.write_text(CUSTOM_CORDIS)
+        with RelayHarness(
+            provider="deepseek-official",
+            model="smoke-model",
+            cwd=str(root),
+            session_root=str(sessions),
+            cordis=str(cordis),
+            runtime_bin=str(executable),
+            api_key="sk-keyless-smoke",
+            base_url=base_url,
+            request_timeout_seconds=60,
+        ) as harness:
+            # (a) An auto-minted session is reclaimed when its run settles.
+            auto = harness.run("reply with the smoke text")
+            assert auto.finish_reason == "completed", auto.finish_reason
+            assert_log_ends_with_turn(sessions, auto.session_id, "completed")
+            try:
+                harness.client.session_close(auto.session_id)
+            except JsonRpcError as exc:
+                assert "unknown session" in exc.message, exc.message
+            else:
+                raise AssertionError("auto-minted session survived its run: session_close succeeded twice")
+
+            # (b) An explicit close releases a named session and keeps its log.
+            named_id = "close-named-smoke"
+            named = harness.run("reply with the smoke text", session_id=named_id)
+            assert named.finish_reason == "completed", named.finish_reason
+            harness.client.session_close(named_id)
+            try:
+                harness.client.session_close(named_id)
+            except JsonRpcError as exc:
+                assert "unknown session" in exc.message, exc.message
+            else:
+                raise AssertionError("closed named session stayed owned: session_close succeeded twice")
+            assert_log_ends_with_turn(sessions, named_id, "completed")
+
+            # (c) A later prompt for the closed id reattaches its durable log
+            #     and completes durably — never an (id collision) error turn.
+            reprompt = harness.run("reply with the smoke text", session_id=named_id)
+            assert reprompt.finish_reason == "completed", reprompt.finish_reason
+            assert_log_ends_with_turn(sessions, named_id, "completed")
+
+            # (d) A mid-turn close aborts the turn and settles at terminal idle.
+            mid_id = "close-mid-turn-smoke"
+            harness.start()
+            with harness.client.subscribe_session_notifications(mid_id) as subscription:
+                harness.client.session_prompt(mid_id, [{"type": "text", "text": CLOSE_MID_TURN_PROMPT}])
+                deadline = time.monotonic() + 30
+                while not mock_saw_prompt(CLOSE_MID_TURN_PROMPT):
+                    if time.monotonic() > deadline:
+                        raise AssertionError("mid-turn close probe never reached the mock model")
+                    time.sleep(0.05)
+                events: list[dict[str, object]] = []
+                streaming = False
+                while not streaming:
+                    notification = subscription.next()
+                    if notification.method == "session.event" and notification.payload.get("sessionId") == mid_id:
+                        event = notification.payload.get("event")
+                        events.append(event)
+                        streaming = isinstance(event, dict) and event.get("type") == "assistant/chunk"
+                harness.client.session_close(mid_id)
+                while True:
+                    notification = subscription.next()
+                    if notification.method == "session.event" and notification.payload.get("sessionId") == mid_id:
+                        events.append(notification.payload.get("event"))
+                    if (
+                        notification.method == "session.status"
+                        and notification.payload.get("sessionId") == mid_id
+                        and notification.payload.get("status") == "idle"
+                    ):
+                        break
+            turn_ends = [event for event in events if isinstance(event, dict) and event.get("type") == "turn/end"]
+            assert turn_ends, f"mid-turn close emitted no turn/end: {events}"
+            assert finish_reason(events) == "aborted", events[-1]
+            assert_log_ends_with_turn(sessions, mid_id, "aborted")
+
+            # (e) A close while the model request is still pending — no chunk
+            #     streamed yet — ends the turn aborted at terminal idle with
+            #     the same wire vocabulary as a mid-stream close.
+            pending_id = "close-pending-smoke"
+            with harness.client.subscribe_session_notifications(pending_id) as subscription:
+                harness.client.session_prompt(pending_id, [{"type": "text", "text": CLOSE_PENDING_PROMPT}])
+                deadline = time.monotonic() + 30
+                while not mock_saw_prompt(CLOSE_PENDING_PROMPT):
+                    if time.monotonic() > deadline:
+                        raise AssertionError("pending close probe never reached the mock model")
+                    time.sleep(0.05)
+                events = []
+                harness.client.session_close(pending_id)
+                while True:
+                    notification = subscription.next()
+                    if notification.method == "session.event" and notification.payload.get("sessionId") == pending_id:
+                        events.append(notification.payload.get("event"))
+                    if (
+                        notification.method == "session.status"
+                        and notification.payload.get("sessionId") == pending_id
+                        and notification.payload.get("status") == "idle"
+                    ):
+                        break
+            turn_ends = [event for event in events if isinstance(event, dict) and event.get("type") == "turn/end"]
+            assert turn_ends, f"pending close emitted no turn/end: {events}"
+            assert finish_reason(events) == "aborted", events[-1]
+            assert_log_ends_with_turn(sessions, pending_id, "aborted")
+
+
+def assert_log_ends_with_turn(sessions: Path, session_id: str, kind: str) -> None:
+    """Require `session_id`'s durable log to end with a `turn/end` of `kind`.
+
+    The runtime's write-behind batch may still be in flight when the SDK run
+    or its close settles, so the tail is polled briefly before failing.
+    """
+    deadline = time.monotonic() + 10
+    while True:
+        records = read_session_logs(sessions).get(session_id)
+        if records is not None:
+            tail = records[-1]
+            data = tail.get("data") if isinstance(tail.get("data"), dict) else {}
+            reason = data.get("reason") if isinstance(data.get("reason"), dict) else {}
+            if tail.get("type") == "turn/end" and reason.get("kind") == kind:
+                return
+        if time.monotonic() > deadline:
+            raise AssertionError(
+                f"session {session_id} log does not end with turn/end {kind}: "
+                f"{None if records is None else records[-1]}",
+            )
+        time.sleep(0.1)
 
 
 def smoke_direct(base_url: str, executable: Path) -> None:
@@ -1171,6 +1363,7 @@ def build_snapshot_files(
     result_value = {
         "session_id": result.session_id,
         "final_response": result.final_response,
+        "finish_reason": result.finish_reason,
         "events": result.events,
         "notifications": [
             {"method": notification.method, "payload": notification.payload}

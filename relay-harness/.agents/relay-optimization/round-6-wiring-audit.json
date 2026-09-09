@@ -1,0 +1,271 @@
+{
+ "audits": [
+  {
+   "dimension": "sdk-loop-parity",
+   "findings": [
+    {
+     "evidence": "scripts/smoke-python-runtime.py:735,759-761,790,826,855,887 — every harness.run passes an explicit session_id, so RelayHarness.run's finally session_close (python/sdk/src/relay_harness/api.py:165-166) never fires; examples/jsonrpc-agent/tests/sdk.snapshot.ts:88-106 — all SdkScenario sessionIds are fixed ('sdk-snapshot-text', etc.), likewise skipping the close path; packages/sdk/server/tests/built-scope-carrier.e2e.ts — real-runtime e2e with no session/close (grep: zero hits); the only close coverage is in-process with fake handles (packages/sdk/server/tests/server.spec.ts:212-253) and against fake runtime scripts (packages/sdk/client/tests/fake-runtime.ts:228-231, python/sdk/tests/test_client.py:1253,1532-1533).",
+     "fix_plan": "Add one close scenario to each real-runtime harness: (a) an auto-minted RelayHarness.run (no sessionId) that exercises the automatic session/close and observes via a fresh prompt that a brand-new session/log is created; (b) an explicit client.session_close(namedSessionId) followed by a prompt for the same id, asserting the fresh-session behavior and that the closed id's persisted log stays intact. Mirror in TS (examples/jsonrpc-agent/tests/sdk.snapshot.ts or a keyless e2e) and Python (scripts/smoke-python-runtime.py), and include one mid-turn close case (close while the turn runs) asserting the client observes turn/end aborted + terminal idle.",
+     "risk": "Low risk to add: keyless replay harnesses already spawn the real runtime; close adds no provider dependency. Only cost is one extra scenario per side and re-recording expectations.",
+     "severity": "high",
+     "summary": "The R5-C/D session/close path is only ever exercised in-process with fake agent handles or against scripted fake runtimes. No test or snapshot drives a real booted rlh-jsonrpc-agent through closeSession, so the interaction the method exists for — agent dispose quiescence, session-log flush, and persistence teardown ordering (R5-H) — is unproven on the wire on either SDK side. The prompt-then-close-immediately case (client sees turn/end aborted + idle, finishReason 'aborted') is likewise untested anywhere.",
+     "test_plan": "TS: run the new scenario via the existing keyless snapshot replay path (RLH_SNAPSHOT=replay default). Python: extend scripts/smoke-python-runtime.py's advanced scenario assertions plus a new assert block; run via the script's documented keyless invocation and `uv run --project python/sdk pytest`.",
+     "title": "session/close has zero real-runtime wire coverage on either SDK"
+    },
+    {
+     "evidence": "examples/jsonrpc-agent/tests/sdk.snapshot.ts:254-259 — normalizeResult serializes only { sessionId, finalResponse }; scripts/smoke-python-runtime.py:1171-1180 — build_snapshot_files' result_value omits finish_reason (verified in the committed fixture: scripts/snapshots/python-sdk-single-exe/advanced/result.json keys are [session_id, final_response, events, notifications, session_root]); both RunResult types advertise the field (packages/sdk/client/src/types.ts:73-74, python/sdk/src/relay_harness/api.py:59) and the Python README documents it as a first-class field (python/sdk/README.md:45).",
+     "fix_plan": "Add finishReason (TS, sdk.snapshot.ts:255-258) and finish_reason (Python, smoke-python-runtime.py:1171-1180) to the snapshot result projections and re-record both expected-output sets in one change, satisfying the AGENTS.md 'Both SDKs project the loop' requirement for turn endings. The replay fixtures already contain turn/end events, so no new scenarios are needed.",
+     "risk": "Re-recording both snapshot sets is mechanical; values are deterministic under the existing replay/normalization pipeline.",
+     "severity": "medium",
+     "summary": "finishReason is a first-class RunResult field on both SDKs (added to close the R4 parity gap), but neither keyless snapshot harness records it. A regression in the loop's turn-ending vocabulary or in the SDKs' turn/end projection (including the SdkProtocolError paths in finishReason/finish_reason) would pass both snapshot suites; only mock-event unit tests would catch it. This directly weakens the AGENTS.md 'Both SDKs project the loop' snapshot requirement on the exact surface R5-A just altered.",
+     "test_plan": "Re-run examples/jsonrpc-agent snapshot vitest (replay mode) and the python-sdk-single-exe smoke script; both must pass against the re-recorded fixtures without code changes.",
+     "title": "Neither SDK's expected-output snapshot pins finishReason/finish_reason"
+    },
+    {
+     "evidence": "packages/sdk/server/src/server.ts:153-158 — rec = sessions.get(); if undefined throw 'unknown session'; sessions.delete(); await rec.handle.dispose(); packages/sdk/server/src/server.ts:224-235 — getOrCreateSession reads only the live map and pending-creation map, with no closing-state guard; packages/core/agent/src/index.ts:482 — register() throws `agent \"${id}\" is already registered`, which surfaces as the new prompt's JSON-RPC error when publication races the old agent's unregister; both transports permit pipelining (packages/sdk/client/src/client.ts:340-372 concurrent request(); python/sdk/src/relay_harness/client.py:337-405 _request_raw waiter dict).",
+     "fix_plan": "Keep the record in the map until disposal completes: mark the record 'closing', route getOrCreateSession for a closing id onto a promise chained after the in-flight dispose (so a pipelined prompt waits and then creates the fresh session the contract promises), and only then delete the id. Alternatively serialize re-creation on the dispose promise inside closeSession before deleting. Add a server.spec.ts case: pipelined close+prompt for the same id resolves with a fresh agent rather than 'unknown session' or 'already registered'.",
+     "risk": "Serialization must not let a closeSession await an unbounded turn — dispose is quiescence-bounded abort, so the chain is bounded; the fake-handle spec pattern already covers deterministic ordering.",
+     "severity": "medium",
+     "summary": "closeSession removes the id from the sessions map and then awaits rec.handle.dispose(). Because both transports allow pipelined requests, a client may issue session/prompt for the same id without waiting for the close response. Depending on interleaving, the prompt either (a) hits 'unknown session' while its own earlier creation is still pending, or (b) builds a second agent on the same SessionId whose publication races the old agent's unregister and fails with 'agent \"X\" is already registered'. Both contradict the documented close contract ('a later prompt for the closed id creates a fresh session') for a client pattern the protocol does not forbid; the failing side is loud but the contract is timing-dependent.",
+     "test_plan": "New failing-first packages/sdk/server/tests/server.spec.ts case using the existing fake-handle harness: resolve close's dispose with a deferred promise, issue prompt before releasing it, assert the prompt settles only after dispose completes and creates a fresh handle (no 'already registered'/'unknown session').",
+     "title": "server closeSession releases the id before disposal completes; pipelined prompt for the just-closed id can fail or race the registry"
+    },
+    {
+     "evidence": "packages/sdk/client/src/client.ts:57-67 — SdkProtocolError docstring example 'a `session/prompt` response without `accepted: true`'; actual check is `typeof result.messageId !== 'string'` (client.ts:313) and SessionPromptResult is { messageId } (packages/sdk/protocol/src/types.ts:41-45); matching stale comments at packages/sdk/client/tests/fake-runtime.ts:16-17 ('no accepted'); packages/sdk/server/src/server.ts:39-42 — 'Deployment-specific status mapping for SDK turn and subagent outcomes' while successStatus's only call site is the subagent.finished payload (server.ts:99) and packages/sdk/server/README.md:13 states it 'affects only the deployment-mapped status on subagent.finished; root-session prompts have no prompt-level status'.",
+     "fix_plan": "Rewrite the SdkProtocolError example to the real failure ('a session/prompt response without messageId'), align fake-runtime.ts comments, and narrow the HarnessSdkJsonRpcServerOptions JSDoc to subagent outcomes only (matching the README's wording). Pure comment change, no behavior edit.",
+     "risk": "None — documentation-only.",
+     "severity": "low",
+     "summary": "Two SDK doc surfaces describe wire behavior that no longer (or never did) exist: (1) SdkProtocolError's JSDoc and the fake-runtime comments describe a `session/prompt` response checked for `accepted: true`, but the wire result is `{ messageId }` and the validation reads messageId; (2) HarnessSdkJsonRpcServerOptions claims its mapping covers 'SDK turn and subagent outcomes', but only subagent.finished statuses are mapped — root turns surface unmapped 'max-tokens' in RunResult.finishReason. Both mislead SDK consumers about error and wire surfaces on a protocol that just changed.",
+     "test_plan": "No runtime test needed; `pnpm run doc-sync` / lint JSDoc gates cover the edited files.",
+     "title": "Stale JSDoc contradicts the wire: 'accepted: true' prompt receipt and 'turn outcome' status mapping"
+    },
+    {
+     "evidence": "python/sdk/src/relay_harness/client.py:129-130 — `if self._closed: raise` executes before `with self._lock` (136-153) which owns the spawn; client.py:164-168 — close() sets _closed then snapshots proc; proc None → fail-waiters and return with no child teardown. TS equivalent is race-free: closeTask is memoized at entry (packages/sdk/client/src/client.ts:426-428) and start() rejects once it exists (client.ts:222), with the spawn synchronous inside start().",
+     "fix_plan": "Move the _closed check inside the spawn lock (re-validate after acquiring, mirroring the existing _proc re-check), and make close() either wait on an in-flight start or observe the spawned child after setting _closed (e.g. re-read _proc after the spawn critical section and tear it down). Simplest faithful mirror of TS: record a close-entered flag under the same lock the spawn uses, and have the spawn critical section abort itself if close-entered.",
+     "risk": "Low: lock scope widens over subprocess.Popen only; the concurrent-start test (test_client.py:1322) already exercises this critical section and guards regressions.",
+     "severity": "low",
+     "summary": "In the Python client, start() checks self._closed before acquiring the spawn lock, while close() sets _closed and then snapshots self._proc. If close() runs while a start() is between its closed-check and the lock, close() sees proc=None, fails waiters, and returns reporting a closed client — then start() completes the spawn. The resulting runtime child receives no shutdown request and no dispose ladder; it lives until externally killed while the client reports closed. The TypeScript twin cannot interleave this way (start() rejects on a memoized closeTask and spawns synchronously), so the shared 'close is terminal and reaps the child' contract holds on only one side.",
+     "test_plan": "Failing-first python/sdk/tests/test_client.py case: a launch_args script that blocks on a file marker before answering; start() on a thread, call close() after start passes its closed-check (gate via the marker), release, assert no surviving child process (proc.poll() is not None) and that a subsequent start() raises TransportClosedError.",
+     "title": "Python HarnessClient close-vs-start race can orphan a runtime; TS has no such window"
+    }
+   ],
+   "summary": "Verified session/close end-to-end after R5-C/D: TS SDK specs 3 files / 80 tests passed; Python SDK pytest 83 passed. Protocol docs mention session/close on both ends (protocol/server/client READMEs + python/sdk/README.md) and the SessionCloseParams re-export is fixed. The R4-deferred RunResult/finishReason parity items landed on both sides (TS finishReason + SdkProtocolError validation; Python finish_reason with the data.content fallback removed). The prompt-then-close-immediately probe does NOT strand prompts: server-side dispose aborts the turn, agent-loop records turn/end {kind:'aborted'} (packages/core/agent-loop/src/agent.ts:416-432), the driver finally publishes idle (agent.ts:276-278) which crosses the wire as session.status idle (packages/sdk/server/src/server.ts:76-78), so both SDKs' run loops terminate with finishReason 'aborted'. Real seams found: the new close method has no real-runtime wire coverage anywhere (both snapshot/e2e harnesses pin only named sessions); neither SDK's keyless snapshot records finishReason despite it being the headline R5 parity field; server closeSession releases the id before disposal completes so a pipelined prompt for the just-closed id can violate the documented fresh-session contract ('unknown session' or 'already registered'); two stale JSDoc surfaces describe wire behavior that does not exist ('accepted: true', 'turn outcome' status mapping); and the Python client has a close-vs-start race that orphans a runtime, asymmetric with the TS memoized closeTask."
+  },
+  {
+   "dimension": "input-send-path",
+   "findings": [
+    {
+     "evidence": "契约侧：packages/host/apiproxy/src/api/sessions.ts:336-341（\"it is never sent to the model... usage/state error is an RPC error with code command-error; an unrecognized name is an RPC error with code unknown-command\"）及 :380-386（返回类型 RpcResponse<{accepted:true; command?:{kind:'success'; text?:string}}>）；packages/host/apiproxy/src/api/sessions.schema.ts:311-318（sessionPromptValueSchema 仍建模 command? 槽，注释称 \"the command slot appears only when the prompt dispatched a slash command\"）；packages/host/apiproxy/src/api/rpc.ts:64-67（command-error/unknown-command 两个错误码）。实现侧：packages/host/apiproxy/src/api-proxy.ts:1875-1939（sessions.prompt 仅做时区校验 + turnAgentFor + durablePromptContent，随后 steer/followup 原样入 inbox；无任何 command 分支、从不返回 command 槽，api/rpc.ts 两个错误码在 packages/host 内无任何生产者）。客户端：packages/client/ui-commands/src/client/service.ts:402-417 表明命令真实通道是 ctx.remote.commands.execute（api-remotes），而非 session.prompt；packages/client/ui-conversation/src/client/input/facade.ts:538-543 在 slash pipeline 未挂载时把 '/' 行当普通消息发往 default sink → host 逐字收入模型上下文。",
+     "fix_plan": "1) 改写 sessions.ts 中 prompt 的 Service Definition JSDoc：删除 host 侧 slash 执行承诺，注明命令走 api-remotes 的 commands 通道；2) 从 ResponseValue<'session.prompt'>、sessions.ts:386、sessionPromptValueSchema、client 侧 UNARY_VALUE_SCHEMAS 与 fixture 同步删除死的 command? 槽（同仓无外部消费者，按 pre-release 立场直接删）；3) 对直连 wire 的 '/' 行为二选一并落地：admission 前拒绝（新增稳定错误码）或在契约中明确\"逐字入模\"，二者都写进 README/JSDoc；4) 若保留错误码，接通生产者，否则从 RpcErrorDetailsMap/rpc.schema.ts 闭合联合中移除。",
+     "risk": "删除 command? 槽会改动 wire value schema；需确认无第三方/Python SDK 消费者读取该槽（Python SDK 的 expected outputs 需同 PR 对照，AGENTS.md \"Both SDKs project the loop\"）。若选择'拒绝 / 行'方案，需评估 fixture 与 ui-commands detached 路径是否会误伤合法的以 / 开头的普通提问（用户可能真的想问以 / 开头的问题）。",
+     "severity": "high",
+     "summary": "session.prompt 的 Service Definition 仍承诺 host 侧 slash 命令分发（command 槽/command-error/unknown-command/\"never sent to the model\"），实现早已移到客户端 commands 通道且不存在，导致 '/' 开头的 prompt 被逐字送入模型",
+     "test_plan": "1) 更新 packages/host/apiproxy/tests/rpc-schemas.spec.ts:276 附近对 command 槽的断言（删除或反转为拒绝）；2) 新增 apiproxy 行为测试：content 为单个以 '/' 开头 text block 的 session.prompt，断言最终结果（逐字 admitted 或新错误码），并断言 /api/respond 之外无命令副作用；3) 若移除错误码：在 rpc-schemas.spec.ts 加负向断言 rpcErrorSchema.parse({code:'unknown-command'}) throws，证明闭合联合收紧生效；4) 现有基线：packages/host/apiproxy/tests/client-handler.spec.ts 40 passed（本轮已跑，作为回归参照）。",
+     "title": "session.prompt 契约承诺 host 侧 slash 命令分发，实现完全没有：command 槽/两个错误码是死代码，'/' 行为偏离契约"
+    },
+    {
+     "evidence": "客户端截止与保留：packages/host/apiproxy/src/fetch/client.ts:228（DEFAULT_TIMEOUT_MS=30_000）、:424（prompt: callUnary('session.prompt', payload, signal) 默认 bounded 策略，仅 host.pickDirectory:441-443 例外）、:313-316（AbortSignal.timeout 与 caller signal 合并）；packages/client/ui-conversation/src/client/input/machine.ts:593-596（release abort 在飞 attempt）、facade.ts:400-406（dispose abort image-only 直发；:215-216 注释声称\"shell dispose aborts the in-flight Host round-trip\"）、facade.ts:565-594（失败 settle 保留 draft/images，重试即重新 POST）；runtime 会把失败写入 promptError 横幅（packages/client/runtime/src/client/sessions/session.ts:242-248 + ui-conversation/skeleton/InputBar.tsx:95-102），但 host 侧无任何对账。host 侧不可取消且可变慢：packages/host/apiproxy/src/fetch/handler.ts:99（invoke: (api, r) => api.sessions.prompt(r) 丢弃 signal；对比 session.search:92、subagent.prompt:105 都转发）、packages/host/apiproxy/src/api/sessions.ts:380-386（SessionsApi.prompt 签名无 signal）、packages/host/apiproxy/src/api-proxy.ts:1897-1938（admit 内 await durablePromptContent（落盘 base64 图片字节）后同步入 inbox，整段包进 serializeSessionOperation），:1665（selectModel 含 ctx.llm.resolveModelInfo/resolveCallConfig）、:2530-2554（agentPreset.select 含 presets.recompose 插件重挂载）共用同一 per-session 槽——R5-B 串行化把 prompt 的 admission 排队窗口拉长到可触达 30s。",
+     "fix_plan": "1) 把 carrier signal 转发进 sessions.prompt（UNARY_ROUTES 行改为 (api, r, signal) => api.sessions.prompt(r, signal)，SessionsApi.prompt 增加 signal 参数），并只在提交点之前兑现取消：仍在 serializeSessionOperation 队列中排队、或 durablePromptContent 尚未开始时直接返回 code 'cancelled'，一旦开始落盘即照常 admit（admission 非 rolling）；2) composer 重试复用同一 rpcId 作为 UserMessage source.rpcId 已具备（request.rpcId 随消息持久化），host 可在 admit 前按 source.rpcId 幂等去重，杜绝 ghost 后的重试双投递；3) 若不做取消，至少修正 facade.ts:215-216 与 hub.ts 注释中\"abort 即终止 round-trip\"的错误前提，并让 promptError 文案表明\"发送可能已送达\"。",
+     "risk": "转发 signal 给 prompt 需要明确取消点语义：admit 内部 agent.steer/followup 是同步不可回滚的，signal 只能取消排队/落盘前阶段，否则会制造\"客户端收到 cancelled 但消息已入 inbox\"的新不对称。rpcId 去重需考虑 fork/resume 后 source.rpcId 碰撞面与 Python SDK 直发路径。",
+     "severity": "high",
+     "summary": "session.prompt 在客户端受 30s 默认超时与 attempt/dispose abort 约束，但 handler 丢弃 carrier signal、admission 又被 R5-B per-session 串行槽（可排在 selectModel/agentPreset.recompose 之后）拉长——客户端报失败并保留 draft，host 仍 admit 并开 turn，重试即双投递",
+     "test_plan": "1) apiproxy 测试一（取消生效）：用 serializeSessionOperation 预塞一个 pending 槽，携带已 abort 的 signal 发 session.prompt，断言返回 code 'cancelled' 且 agent.inbox 无新消息；2) apiproxy 测试二（提交后不可取消）：durablePromptContent 完成后 abort，断言 ok 且消息已入 inbox（防止半途回滚造成 durable/不一致）；3) 幂等重试测试：同一 source.rpcId 二次 admit 断言第二条被拒/去重；4) 客户端测试：ui-conversation 现有 input-machine/facade spec 增补\"超时 settle 后 draft 保留、再次 submit 使用相同 rpcId\"断言。",
+     "title": "prompt admission 无取消路径，而客户端有 30s 强截止 + R3-C dispose/release abort：失败方向两侧相反（客户端报错留稿，host 照常入 inbox 开 turn，重试产生重复消息）"
+    },
+    {
+     "evidence": "packages/client/ui-conversation/src/client/input/machine.ts:261-277（onDraftChanged 无 phase 守卫，adjudicating/submitting 下仍 adopt+reconcile occurrences）、:483-502（enter 时 beginAttempt 只快照 draftSnapshot）、:519-527（miss 路径 effect 携带 draft: attempt.draftSnapshot）；packages/client/ui-conversation/src/client/input/facade.ts:466-503（sinkSerialized 在调用时刻读取 this.core.state.occurrences（而非 attempt 携带），把 owner model form 按 live 表 offset 拼接到快照字符串 draft 上）；packages/client/ui-conversation/src/client/skeleton/InputBar.tsx:393-398 只挡住 textarea 的 onChange（machineBusy return），而 facade.ts:89-95 的 actions.setDraft 是公开 InputActions face、无 phase 守卫，任何插件/入口（如 mention 插入路径 InputBar.tsx:509 的 keyboard.setDraft）在异步窗口内写入即触发 offset 错位。",
+     "fix_plan": "1) 把 occurrence 表并入 enter 时的 SubmitAttempt（与 draftSnapshot 同一时刻捕获），sinkSerialized 改读 attempt 携带的表，做到 splice 基准自洽；2) 或在 machine.onDraftChanged 增加 phase 守卫（仅 plain/claimed 接受 draft 变更），同时给 facade.actions.setDraft 加同样的守卫，使 InputBar 的 UI 纪律成为机器强制而非调用方自觉。二选一即可，方案 1 改动面更小。",
+     "risk": "若加 phase 守卫需排查现有依赖\"busy 期仍可写 draft\"的调用方（如外部插件预填草稿、queue 编辑回填），避免把合法路径变成静默丢弃；机器守卫方案会改变 InputState 快照语义，需同步 ui-conversation 现有 365+ 用例。",
+     "severity": "low",
+     "summary": "机器在任意 phase 都接受 draft-changed 并实时 reconcile occurrence 表，而 sinkSerialized 用 live 表的 offset 去拼 attempt 时冻结的 draftSnapshot 字符串；InputBar 只在 UI 层挡了 busy 期编辑，actions.setDraft 公开面无守卫，异步窗口内的外部写稿会把错误的 model form 拼进发出的 prompt",
+     "test_plan": "1) machine spec（packages/client/ui-conversation/tests/input-machine.client.spec.ts）：进入 adjudicating/submitting 后 dispatch draft-changed，断言被拒（方案 2）或 attempt 携带 occurrences 快照（方案 1）；2) facade spec：含 1 个 chip 的 draft 在 default-sink 与 serializeReference resolve 之间调用 actions.setDraft 插入文本，断言最终 sendSession 收到的文本等于快照投影（不出现错位拼接）；3) 回归 ui-conversation runtime tests 全量（R3 基线 24 files/365 tests）。",
+     "title": "发送管线把 live occurrence 表的 offset 拼接到 attempt 冻结的 draftSnapshot 上：机器在 adjudicating/submitting 期不拒绝 draft 变更，异步窗口内外部 setDraft 会把 reference 的 model form 拼错位置"
+    }
+   ],
+   "summary": "追踪 composer → sink → session.prompt（R5-B per-session 串行 admission）→ inbox → 会话事件回流 UI 的全链路后，确认 /api/respond 的 approval/question 流向、pending 表 replay 与并发去重两侧一致（packages/host/apiproxy/tests/client-handler.spec.ts 40 passed 复核），但发现 3 处两侧契约真实相悖：session.prompt 的 Service Definition 仍承诺 host 侧 slash 命令分发而实现完全没有（含死的 command 槽与两个不可达错误码）；prompt admission 无取消路径而客户端有 30s 强截止 + abort，失败方向两侧相反，超时/中止后 host 仍会 admit 造成 ghost 消息与重试双投递；以及发送管线用 live occurrence 表 offset 拼接 attempt 冻结的 draftSnapshot，机器在 busy phase 不拒绝 draft 变更。未修改任何文件。"
+  },
+  {
+   "dimension": "wire-events",
+   "findings": [
+    {
+     "evidence": "生产顺序由 ConnectionController 固定：packages/client/connection/src/client/connection.ts:137-190 —— unary host.describe → `await this.callConnectedSink(...)`（onConnected 内部 await 全部 session.resync()，见 packages/client/runtime/src/client/index.ts:218-233）→ 之后才 `pumpStream(this.api.events.mux(...))`。因此：packages/client/runtime/src/client/sessions/session.ts:420-441 resync() 先把 `subscribedLastSeq = null`（:438）并同步 `await this.open()`，而补拉分支 session.ts:631-637（`if (this.subscribedLastSeq !== null && tailSeq !== null && this.subscribedLastSeq > tailSeq)`) 在此窗口内恒为 null——该分支只在「流已开、订阅帧先到、用户点击后才 open()」的懒加载路径可用。`session/subscribed` 帧到达后（session.ts:482-489）只回填字段、queueMirror.reset，没有任何尾检查；manager 侧同样没有（packages/client/runtime/src/client/sessions/manager.ts:739-760）。服务端事实：断流窗口内的事件不被重放——FrameQueue 预算触发的 end()（packages/host/apiproxy/src/frame-queue.ts:54-63，R5-B 新增强制断流）与 mux 重开后的基线循环（packages/host/apiproxy/src/api-proxy.ts:2849-2951，`session/event` 监听器在基线 push 之后才注册，且重开只重放 subscribed/queue/jobs/pending 基线，不重放事件）。唯一兜底是 repairGap（session.ts:688-701, 712-728），它需要该会话之后还有新事件才会触发；若丢的恰是本轮最后的事件（如 turn/end 前的尾部增量/结果），会话窗口保持陈旧尾部直到下一次 prompt。两条注释与生产顺序相反：packages/client/runtime/src/client/sessions/session.ts:421-425（\"onConnected … races the mux frames — the fresh generation's baseline may have landed already\"）与 packages/client/runtime/src/client/index.ts:226-227（\"reconnect replays flow from stream open, ahead of onConnected\"）——实际顺序由 connection.client.spec 锁定（packages/client/connection/tests/connection.client.spec.ts:25-39，已运行 18 passed；packages/client/runtime/tests/wire-events.client.spec.ts:131 注释同样确认 hydration 先于 downlink）。这直接回答审计项一：R5-B 强制断流后重连+基线重放整体成立（WS close → pumpStream 正常结束 → 全量 re-baseline，packages/client/connection/src/client/web-api-client.ts:76-89），但为该窗口写的修复分支在重连路径上是死代码。",
+     "fix_plan": "在 Session.handleMuxEnvelope 的 'session/subscribed' 分支补一次尾检查：openState==='open' 且 frame.lastSeq > windowTailSeq() 时调用现有 repairGap()（与 doOpen:633 同一谓词，复用 stitching 防重入）；或在 resync() 保留上一代 subscribedLastSeq 并在 doOpen 落窗后延迟到订阅帧到位再补检。同步修正 session.ts:421-425 与 runtime/src/client/index.ts:226-227 两条方向相反的注释，并在 frame-queue.ts 的保留契约注释里把\"termination loses no state\"改为\"依赖客户端尾检查/补拉\"。",
+     "risk": "低：修复只作用于 openState==='open' 的重连补拉，懒加载首开路径行为不变；repairGap 已有 stitching 与 openGeneration 双重防陈旧。若选择\"订阅帧先行\"方案则需动 ConnectionController 的 sink 等待点，波及面大，不推荐。",
+     "severity": "high",
+     "test_plan": "packages/client/runtime 新增用例（session.client.spec 或独立 spec）：mock history 首拉返回尾 seq=N → handleMuxEnvelope 投递 session/subscribed(lastSeq=N+2) → 断言触发一次 tail-page 补拉且窗口含 seq N+1/N+2（现实现该断言为红）。反向用例：lastSeq <= tailSeq 不触发补拉。回归：`pnpm exec vitest run packages/client/runtime/tests/session.client.spec.ts packages/client/runtime/tests/sessions-service.client.spec.ts packages/client/connection/tests/connection.client.spec.ts`（当前分别 99 passed / 18 passed）。",
+     "title": "重连基线缝：resync 路径的 subscribedLastSeq gap 补拉永不触发，断流窗口内丢失的会话尾部事件无守卫"
+    },
+    {
+     "evidence": "广播侧对任意 key 无差别推送：packages/host/apiproxy/src/api-proxy.ts:646-650 `sessionProjections.onChanged(... broadcast({type:'session/projection', key, ...}))`，而 sessionListMetadata 在 :654-663 注册（init {blank,lastPromptAt}，apply=applySessionListMetadata）——每次用户消息（lastPromptAt 变化）和 blank 翻转都会对每个 mux 订阅者各推一帧。消费侧：全仓 grep 无任何客户端读取 'sessionListMetadata'（客户端列表行的 blank/updatedAt 来自 host/session-added、host/session-status、user/message activity 帧，以及 refreshList 的 session.list 投影块：packages/client/runtime/src/client/sessions/manager.ts:486-492、823-831、711-720、1053-1055；该投影真正被消费的位置是 host 侧 session.list 组装，packages/host/apiproxy/src/api-proxy.ts:1146 与 src/session-list.ts:51,95,140）。对照同文件内 imageLimits 的处理（api-proxy.ts:665-687：明确文档化\"apply 恒等→永不 push，只由基线携带\"），sessionListMetadata 缺少同样的 baseline-only 声明，形成同层不对称。为逐字段核对过的 R3-D 守卫在此补充佐证：这些帧即使被消费也不影响正确性（rowUnchanged 覆盖投影行的全部 13 个字段，packages/client/runtime/src/client/sessions/service.ts:188-202），属于纯粹的无效线束流量而非数据错误。",
+     "fix_plan": "在 api-proxy 的 onChanged 广播处按 key allowlist 过滤：为投影注册增加 baseline-only 标记（镜像 imageLimits 的注释先例），sessionListMetadata 与 imageLimits 一并标注，广播跳过；或在 api-proxy README/key 表中明确声明该 key 的客户端消费面为空。改动限 api-proxy 一侧，客户端零改动。",
+     "risk": "极低：广播只减不增；需确认没有第三方 SDK 客户端暗中消费该 key（消费面 grep 已覆盖 packages/ 与 apps/，python/sdk 不消费投影帧）。",
+     "severity": "low",
+     "test_plan": "packages/host/apiproxy/tests/api-proxy-mux.spec.ts 增加断言：向已订阅 mux 的会话投递一条用户消息后，收到的 session/projection 帧集合不含 'sessionListMetadata'（改前为红）；保留现有 title 帧断言防止过滤过宽。回归：`pnpm exec vitest run packages/host/apiproxy/tests/api-proxy-mux.spec.ts packages/host/apiproxy/tests/api-proxy-projections.spec.ts`。",
+     "title": "host→client 投影帧不对称：sessionListMetadata 每次变更都广播给全部订阅者，但客户端零消费（列表元数据实际走 session.list）"
+    }
+   ],
+   "summary": "沿 api-proxy broadcast → FrameQueue(有界，可 END) → SSE/WebSocket → WebApiClient → ConnectionController → SessionManager/Session → projection store / ui-conversation 全链路核对。结论：帧词汇与字段两侧一致（session/projection、session/subscribed、session/queue、session/jobs 的字段与消费端读取完全对齐，higher-seq-wins 使投影 fold 对乱序免疫，R5-B per-session 串行化未破坏任何客户端顺序假设）；R3-D 的 rowUnchanged 守卫覆盖投影行全部字段（id 按 key 构造相等，manager 的 depth 不进投影行），未发现丢真变化的路径；FrameQueue END → WS 正常 close → pumpStream 结束 → 全量 re-baseline 的重连主链路成立。但发现一处真实对缝错误：客户端为重连窗口写的 subscribedLastSeq gap 补拉分支在 resync 路径上是死代码（ConnectionController 先 await onConnected 的全量 hydration、后开流，而 resync 把 subscribedLastSeq 置 null，订阅帧只能在开流后到达）——强制断流（R5-B FrameQueue END）后的重连正是走的这条路径；另有一处 host 单向广播了客户端零消费的 sessionListMetadata 投影帧。focused specs 已跑：connection.client.spec 18 passed、session/sessions-service 99 passed，均绿（说明缺陷是顺序性死角而非现有断言覆盖失败）。"
+  },
+  {
+   "dimension": "snapshot-e2e",
+   "summary": "Round-6 snapshot/e2e golden health audit. Ran 8 web/host lanes once each against the R3+R5 working tree (built libs from the 05:34 R5 build): built-boot.snapshot, details-session-lifecycle, seeded-history, composer-draft-scroll, question-composer, approval-composer (vitest.web.config.ts), plus frame-queue.spec and api-proxy-mux.spec. To separate new regressions from the documented pre-existing set (~106 lane fails, seeded-history x3, composer-tab-geometry x5), I built a HEAD-baseline git worktree (/tmp/rlh-r6-baseline, since removed) and re-ran the three ambiguous specs there, then bisected the one new failure inside the R5 apiproxy diff with surgical sandbox rebuilds. Verdict: exactly ONE new R3/R5-caused failure — details-session-lifecycle.e2e, caused by R5-B's per-session operation chain in packages/host/apiproxy (not by R3, not by the mux buffer cap). seeded-history reproduces its known pre-existing x3 unchanged; question-composer and built-boot failures reproduce identically at HEAD (pre-existing committed-chrome golden drift / stale spec assertion, not R3/R5); composer-draft-scroll, approval-composer, and both apiproxy host specs pass, so R3-C's input-shell lifecycle and R5-B's FrameQueue mux behavior itself are clean. Side correction: the memory note describes the golden-drift direction inverted — the committed goldens (ceb277f) contain the Trajectory tab / Select-model / Workspace-Write chrome, and it is the current served client that no longer renders them.",
+   "findings": [
+    {
+     "title": "R5-B per-session operation chain breaks seeded-session selection in the served web app (details-session-lifecycle e2e, new regression)",
+     "severity": "high",
+     "evidence": "Failing assertion: apps/web/tests/details-session-lifecycle.e2e.ts:146 `await page.getByText('DONE', { exact: true }).waitFor({ timeout: 15_000 })` — after clicking the runtime-seeded session treeitem, the seed row disappears from the sidebar 'Tasks' group and its conversation never mounts (failure screenshot: .artifacts/web-e2e-details-session-lifecycle.png in the removed worktree, reproduced identically in the main tree run /tmp/r6-web-batch1.log). Server side of the seam: packages/host/apiproxy/src/api-proxy.ts:486 `serializeSessionOperation` (new in R5-B) now routes session.prompt admission (api-proxy.ts:1938), image resolveCallConfig (1665) and agentPresets.select (2554) through one per-session promise slot. Isolation: (1) HEAD baseline worktree (8cef, no R3/R5) PASSES the spec (/tmp/r6-baseline-web.log: 2 failed | 2 passed — details is the passing file); (2) HEAD + working-tree apiproxy src only FAILS 4/4 deterministically (main-tree run, /tmp/r6-hybrid-run.log, /tmp/r6-det-1.log, /tmp/r6-det-2.log) — R3 is exonerated, the causing changeset is R5-B apiproxy; (3) sandbox variants that bypass the serialization chain (all three call sites direct, /tmp/r6-hybrid-run5.log; or only the agentPresets.select site direct, /tmp/r6-hybrid-run6.log) PASS 1/1 each, while reverting only the cold-probe isAttached recheck (session-list.ts:136) still FAILS — so the serialization chain is the necessary cause and the probe recheck alone is not sufficient. FrameQueue muxStreamBufferBytes is exonerated (present in the passing builds). Client side: the selection flow the chain reorders is the seat-store staged-preset apply on current-session change (packages/client/ui-agent-preset/src/client/seat-store.ts:151-176) interacting with the serialized admission path; the precise wire call whose deferral drops the seed row is the one remaining unknown for R7.",
+     "risk": "Fixing by simply de-serializing reopens the TOCTOU races R5-B closed (concurrent prompt/preset-swap interleave); the fix must keep the slot for real admission races while not deferring (or must fail-fast) on the session-switch path — hence the two-sided test plan before choosing.",
+     "fix_plan": "R7: (1) reproduce with apps/web/tests/details-session-lifecycle.e2e.ts against a tree carrying only api-proxy.ts:486/1938/2554 hunk; (2) pin which serialized call starves the switch (capture the client→host RPC sequence during the seed click — likely the seat-store apply()/admission slot interaction on current-session change); (3) either keep the shared slot but settle the queued tail before session-switch reads (run switch-critical reads outside the slot), or scope the slot to admission-only routes (prompt/steer/queue) and leave agentPresets.select on its own chain as pre-R5; (4) keep the preset-swap blank re-check (the TOCTOU fix) independent of the routing change. Update the R5-B Agent Note with the regression.",
+     "test_plan": "1) `pnpm exec vitest run --config vitest.web.config.ts apps/web/tests/details-session-lifecycle.e2e.ts` must pass (it is the committed witness and currently fails 4/4 on R5 trees). 2) Keep packages/host/apiproxy/tests/api-proxy-agent-preset.spec.ts (preset TOCTOU) and api-proxy-cold.spec.ts green to prove the original races stay closed. 3) Add an apiproxy-level test that a session.prompt admitted while a preset swap is queued still settles before a subsequent session.list/attach projection, mirroring the e2e sequence. 4) Re-run the deterministic pair from this audit: exact working-tree apiproxy (must now pass) and serialization-reverted control."
+    },
+    {
+     "title": "Golden/lane verdict: no other R3/R5-caused failures; pre-existing drift set confirmed at HEAD baseline (and memory note direction corrected)",
+     "severity": "low",
+     "evidence": "At the R3+R5 tree: seeded-history.e2e.ts fails exactly its known pre-existing 3 tests (/tmp/r6-web-batch2.log: aria golden, Access-chip switch, feedback correlation row); question-composer.e2e.ts fails 1 golden compare and built-boot.snapshot.ts fails its `svg[viewBox=\"26 0 156 24\"]` assertion (apps/web/tests/built-boot.snapshot.ts:45) — both reproduce IDENTICALLY at the HEAD (8cef) baseline worktree (/tmp/r6-baseline-web.log), so neither is caused by R3/R5. Root classes, both committed before R3/R5: (a) aria/UI goldens recorded at ceb277f expect Trajectory tablist + 'Select model' button + 'Workspace Write'/permission-preset chrome, while the current served client renders the Focus chrome ('Session Tree' button, 'Inspect context', 'Enhance prompt', 'Access mode: Standard') — note this is the OPPOSITE direction of the memory note in .claude/projects/-Users-jin-Desktop-Relay/memory/relay-focus-frontend-redesign.md, which claims the goldens lack the newer chrome; (b) built-boot.snapshot.ts:45 asserts a brand-mark SVG whose viewBox string no longer exists anywhere in HEAD source (removed by the brand/redraw line, spec untouched since ceb277f). Clean lanes: composer-draft-scroll.e2e.ts and approval-composer.e2e.ts PASS (R3-C input-shell and slice-1.5 composer changes are snapshot-safe), and packages/host/apiproxy/tests/frame-queue.spec.ts + api-proxy-mux.spec.ts pass 6/6 (R5-B mux behavior itself intact).",
+     "risk": "Until goldens are reconciled, every new lane failure in these files will be misattributed (as the memory note already is), masking real regressions like finding 1.",
+     "fix_plan": "R7/R8: (1) re-record the stale aria/UI goldens (seeded-history, question-composer, and the rest of the ~106-failure drift class) against the current Focus chrome via `pnpm run test:snapshot:record`-equivalent web mode, and review each diff deliberately since goldens are the model/user-output contract; (2) update built-boot.snapshot.ts:45 to assert the current brand mark instead of the removed viewBox; (3) correct the direction error in the memory note relay-focus-frontend-redesign.md so future audits attribute lane failures correctly.",
+     "test_plan": "After re-recording: `pnpm exec vitest run --config vitest.web.config.ts apps/web/tests/seeded-history.e2e.ts apps/web/tests/question-composer.e2e.ts apps/web/tests/built-boot.snapshot.ts` passes 7/7 tests locally; `grep -rn \"26 0 156 24\" apps packages` returns nothing outside history."
+    }
+   ]
+  }
+ ],
+ "plan": {
+  "slices": [
+   {
+    "objective": "修复 R5-B per-session 串行化导致 served web app 点击 runtime-seeded 会话后种子行从侧栏消失、会话窗口不挂载的回归，同时保住 R5-B 关闭的 admission TOCTOU 竞态。",
+    "changes": "先定位 starving 调用：在 seed click 期间捕获 client→host RPC 序列，确认是 seat-store staged-preset apply（packages/client/ui-agent-preset/src/client/seat-store.ts:151-176）与被 serializeSessionOperation（api-proxy.ts:486，调用点 :1665/:1938/:2554）推迟的那条调用交互。修复方向采用审计方案 3 的后者：把共享 per-session 槽收窄为 admission-only 路由（session.prompt admit/steer/queue，即 :1938 区域），将 agentPresets.select（:2554）改回 R5-B 之前的独立链路；:1665 的 resolveCallConfig 若定位证明同样饿死切换则一并移出。禁止整段 de-serialize。保留 session-list.ts:136 的 cold-probe isAttached 复核（TOCTOU 修复），使其与路由变更解耦。",
+    "docs": "更新 R5-B Agent Note 记录该回归与修复范围；在 api-proxy.ts serializeSessionOperation 处注明槽位只覆盖 admission 路由及其原因（TOCTOU 竞态面）。",
+    "effort": "L",
+    "files": [
+     "packages/host/apiproxy/src/api-proxy.ts",
+     "packages/host/apiproxy/src/session-list.ts",
+     "packages/client/ui-agent-preset/src/client/seat-store.ts",
+     "apps/web/tests/details-session-lifecycle.e2e.ts",
+     "packages/host/apiproxy/tests/api-proxy-agent-preset.spec.ts",
+     "packages/host/apiproxy/tests/api-proxy-cold.spec.ts"
+    ],
+    "id": "R7-A",
+    "tests": "failing-first：`apps/web/tests/details-session-lifecycle.e2e.ts` 即现成红测试（当前 4/4 fail）。新增 apiproxy 级测试：session.prompt 在 preset swap 排队时被 admit，断言其先于后续 session.list/attach 投影 settle（镜像 e2e 序列，改前为红）。",
+    "title": "R5-B 串行化链回归修复：把 per-session 槽收窄为 admission-only，解除 session-switch 被 agentPresets.select 饿死",
+    "verification": "1) `pnpm exec vitest run --config vitest.web.config.ts apps/web/tests/details-session-lifecycle.e2e.ts` 必须转绿；2) `pnpm exec vitest run packages/host/apiproxy/tests/api-proxy-agent-preset.spec.ts packages/host/apiproxy/tests/api-proxy-cold.spec.ts` 保持绿（证明 preset TOCTOU 与 cold-path 竞态未重开）；3) 复跑审计的确定性对照组：只带 R5-B apiproxy hunk 的树必须通过。"
+   },
+   {
+    "objective": "resync 强制断流重连路径上 subscribedLastSeq gap 补拉是死代码（resync 先置 null，订阅帧只能经 mux 流在 hydration 之后到达），导致断流窗口内丢失的会话尾部事件（如 turn/end 前的增量/结果）无守卫；补上订阅帧到达时的尾检查。",
+    "changes": "在 Session.handleMuxEnvelope 的 'session/subscribed' 分支（session.ts:482-489）补尾检查：openState==='open' 且 frame.lastSeq > windowTailSeq() 时调用现有 repairGap()（与 doOpen:633 同一谓词，复用 stitching 与 openGeneration 防陈旧/防重入）。懒加载首开路径（openState 非 open）行为不变。同步修正两条与生产顺序相反的注释：session.ts:421-425 与 packages/client/runtime/src/client/index.ts:226-227（实际顺序由 ConnectionController 锁定：unary describe → await onConnected 全量 hydration → pumpStream mux）。",
+    "docs": "packages/host/apiproxy/src/frame-queue.ts:54-63 的保留契约注释把 \"termination loses no state\" 改为 \"termination 依赖客户端尾检查/补拉（repairGap）\"；修正上述两条方向错误的注释。",
+    "effort": "M",
+    "files": [
+     "packages/client/runtime/src/client/sessions/session.ts",
+     "packages/client/runtime/src/client/index.ts",
+     "packages/host/apiproxy/src/frame-queue.ts",
+     "packages/client/runtime/tests/session.client.spec.ts"
+    ],
+    "id": "R7-B",
+    "tests": "failing-first（packages/client/runtime/tests/session.client.spec.ts 新增）：mock history 首拉返回尾 seq=N → handleMuxEnvelope 投递 session/subscribed(lastSeq=N+2) → 断言触发一次 tail-page 补拉且窗口含 seq N+1/N+2（现实现为红）；反向用例：lastSeq <= tailSeq 不触发补拉；第三个用例：懒加载首开（openState 非 open）路径不触发。",
+    "title": "重连基线缝：session/subscribed 分支补尾检查，激活 repairGap 补拉（R5-B 强制断流后丢失的尾部事件守卫）",
+    "verification": "`pnpm exec vitest run packages/client/runtime/tests/session.client.spec.ts packages/client/runtime/tests/sessions-service.client.spec.ts packages/client/connection/tests/connection.client.spec.ts`（基线 99/99 + 18 passed，全绿且新用例通过）。"
+   },
+   {
+    "objective": "session.prompt 两侧契约相悖处一次性对齐：(1) Service Definition 承诺 host 侧 slash 分发而实现完全没有——删除死的 command? 槽与不可达的 command-error/unknown-command 错误码，明确 '/' 行为；(2) 客户端有 30s 强截止 + abort 而 handler 丢弃 carrier signal、admission 被 R5-B 串行槽拉长——接通取消，只允许提交点之前取消，杜绝 ghost 消息与重试双投递。",
+    "changes": "契约侧：改写 packages/host/apiproxy/src/api/sessions.ts:336-341 JSDoc（删除 host 侧 slash 承诺，注明命令走 api-remotes commands 通道，'/' 行为选'逐字入模'并明文记录——不做 admission 拒绝，避免误伤以 / 开头的真实提问）；从 sessions.ts:386 返回类型、sessionPromptValueSchema（sessions.schema.ts:311-318）、fetch/client.ts 的 UNARY_VALUE_SCHEMAS 同步删除 command? 槽；从 rpc.ts:64-67 闭合联合移除 'command-error'/'unknown-command'（rpc.schema.ts/RpcErrorDetailsMap 同步收紧）。取消侧：UNARY_ROUTES 的 session.prompt 行改为 (api, r, signal) => api.sessions.prompt(r, signal)，SessionsApi.prompt 增加 signal 参数；api-proxy.ts admit（:1897-1938）只在提交点之前兑现取消——仍在 serializeSessionOperation 队列排队或 durablePromptContent 未开始时返回 code 'cancelled'，落盘一旦开始照常 admit；admit 前按 UserMessage source.rpcId 幂等去重（fork/resume 不跨会话去重），防超时后重试双投递。客户端：修正 facade.ts:215-216 与 hub.ts 中 \"abort 即终止 round-trip\" 的错误注释，promptError 文案注明发送可能已送达。",
+    "docs": "sessions.ts Service Definition JSDoc 重写；apiproxy README 的 prompt/route 表同步（command 槽删除、'/' 语义、cancelled 语义、signal 转发声明）；rpc.ts 错误码闭合联合注释更新。",
+    "effort": "L",
+    "files": [
+     "packages/host/apiproxy/src/api/sessions.ts",
+     "packages/host/apiproxy/src/api/sessions.schema.ts",
+     "packages/host/apiproxy/src/api/rpc.ts",
+     "packages/host/apiproxy/src/fetch/handler.ts",
+     "packages/host/apiproxy/src/fetch/client.ts",
+     "packages/host/apiproxy/src/api-proxy.ts",
+     "packages/client/ui-conversation/src/client/input/facade.ts",
+     "packages/host/apiproxy/tests/rpc-schemas.spec.ts",
+     "packages/host/apiproxy/tests/client-handler.spec.ts",
+     "packages/client/ui-conversation/tests/input-machine.client.spec.ts"
+    ],
+    "id": "R7-C",
+    "tests": "failing-first：1) rpc-schemas.spec.ts:275-277 反转——断言 sessionPromptValueSchema.parse({accepted:true, command:...}) throws，及 rpcErrorSchema.parse({code:'unknown-command'}) throws；2) apiproxy 取消测试一：预塞 pending 串行槽 + 携带已 abort 的 signal 发 session.prompt，断言返回 'cancelled' 且 inbox 无新消息；3) 测试二：durablePromptContent 完成后 abort，断言 ok 且消息已入 inbox；4) 幂等测试：同一 source.rpcId 二次 admit 断言去重；5) '/' 行为测试：单 '/' 开头 text block 的 prompt 断言逐字 admitted 且无命令副作用；6) ui-conversation spec 增补：超时 settle 后 draft 保留、再次 submit 使用相同 rpcId。",
+    "title": "session.prompt 缝对齐：删除死的 command 槽/错误码、document '/' 逐字入模、接通 carrier signal 的提交点前取消 + source.rpcId 幂等去重",
+    "verification": "`pnpm exec vitest run packages/host/apiproxy/tests/rpc-schemas.spec.ts packages/host/apiproxy/tests/client-handler.spec.ts packages/client/ui-conversation/tests/input-machine.client.spec.ts`；再跑 `pnpm exec vitest run packages/host/apiproxy/tests` 全量确认无 schema 删除的连带破坏；Python SDK 侧 `uv run --project python/sdk pytest` 确认不消费 command 槽。"
+   },
+   {
+    "objective": "发送管线用 live occurrence 表的 offset 拼接 attempt 冻结的 draftSnapshot 字符串：机器在 adjudicating/submitting 期仍接受 draft-changed 并实时 reconcile，InputBar 只在 UI 层挡 busy 编辑而 actions.setDraft 公开面无守卫，异步窗口内的外部写稿（如 mention 插入）会把 reference 的 model form 拼错位置。",
+    "changes": "采用改动面最小的方案 1：把 occurrence 表并入 enter 时的 SubmitAttempt（与 draftSnapshot 同一时刻捕获，machine.ts:483-502/519-527），sinkSerialized（facade.ts:466-503）改读 attempt 携带的表而非调用时刻的 this.core.state.occurrences，使 splice 基准自洽。不加 phase 守卫（方案 2 会破坏 busy 期合法写稿路径且需迁移 InputState 快照语义）。",
+    "docs": "machine.ts 的 SubmitAttempt 注释与 facade.ts:89-95 actions.setDraft 注释注明快照语义：attempt 冻结 draft + occurrences，busy 期外部写稿影响下一次发送而非当前发送。",
+    "effort": "M",
+    "files": [
+     "packages/client/ui-conversation/src/client/input/machine.ts",
+     "packages/client/ui-conversation/src/client/input/facade.ts",
+     "packages/client/ui-conversation/tests/input-machine.client.spec.ts",
+     "packages/client/ui-conversation/src/client/skeleton/InputBar.tsx"
+    ],
+    "id": "R7-D",
+    "tests": "failing-first：1) input-machine.client.spec：进入 adjudicating/submitting 后 dispatch draft-changed，断言 attempt 携带的是 enter 时刻的 occurrences 快照（现实现为红——attempt 只有 draftSnapshot）；2) facade spec：含 1 个 chip 的 draft 在 default-sink 与 serializeReference resolve 之间调用 actions.setDraft 插入文本，断言最终 sendSession 收到的文本等于快照投影（无错位拼接）。",
+    "title": "发送管线自洽：SubmitAttempt 在 enter 时刻同时快照 draft 与 occurrence 表，sinkSerialized 读 attempt 携带的表",
+    "verification": "`pnpm exec vitest run packages/client/ui-conversation/tests` 全量（R3 基线 24 files/365 tests 不回归，新用例绿）。"
+   },
+   {
+    "objective": "closeSession 先 sessions.delete 再 await dispose，双通道均允许 pipeline：刚 close 的 id 上立即 prompt 会命中 'unknown session' 或与旧 agent unregister 竞态抛 'already registered'，违反文档承诺的 fresh-session 契约。",
+    "changes": "server.ts:153-158 保持 record 在 map 中直至 dispose 完成：标记 'closing'，getOrCreateSession（:224-235）对 closing id 路由到链在 in-flight dispose 之后的 promise（pipelined prompt 等待后创建 fresh session）；dispose 完成（有界 abort 静默，非无限等 turn）后才 delete id。同步把 server.ts:39-42 的 HarnessSdkJsonRpcServerOptions JSDoc 收窄为仅 subagent outcomes（与 README:13 现有表述一致——root turns 的 'max-tokens' 以未映射形式出现在 RunResult.finishReason）。",
+    "docs": "packages/sdk/server/README.md 的 close 契约段补一句 pipelined prompt 语义（等待 dispose 后建 fresh session）；options JSDoc 收窄如上。",
+    "effort": "M",
+    "files": [
+     "packages/sdk/server/src/server.ts",
+     "packages/sdk/server/tests/server.spec.ts",
+     "packages/sdk/server/README.md"
+    ],
+    "id": "R7-E",
+    "tests": "failing-first（server.spec.ts，复用现有 fake-handle harness）：resolve close 的 dispose 为 deferred promise，在释放前对同一 id 发 prompt，断言该 prompt 仅在 dispose 完成后 settle 且创建 fresh handle（现实现抛 'unknown session' 或 'already registered'，为红）；补充断言 close 响应不被无界拉长（dispose 有界）。",
+    "title": "SDK server closeSession 顺序修复：record 存活至 dispose 完成，pipelined prompt 链在 dispose 之后建 fresh session",
+    "verification": "`pnpm exec vitest run packages/sdk/server/tests/server.spec.ts packages/sdk/client/tests`（TS SDK 基线 3 files/80 tests 全绿）。"
+   },
+   {
+    "objective": "session/close 在两侧真实运行时上零 wire 覆盖（所有 harness/snapshot 只 pin 具名 session，自动 close 与 mid-turn close 从未被真实验证）；且两侧 snapshot 均不记录 R5 头号 parity 字段 finishReason/finish_reason，turn-end 词汇回归将穿透两套快照套件。",
+    "changes": "1) examples/jsonrpc-agent/tests/sdk.snapshot.ts:254-259 normalizeResult 增加 finishReason；2) scripts/smoke-python-runtime.py:1171-1180 build_snapshot_files 的 result_value 增加 finish_reason；3) 两侧各增 close 场景：(a) 无 sessionId 的 RelayHarness.run 触发自动 session/close，用后续 prompt 断言新建 session/log；(b) 显式 client.session_close(namedSessionId) 后对同 id prompt，断言 fresh-session 行为且被关 id 的持久 log 完好；(c) mid-turn close：断言 client 观察到 turn/end aborted + terminal idle（finishReason 'aborted'）；4) 一并修正 SdkProtocolError JSDoc（client.ts:57-67 'accepted: true' → 实际校验 messageId）与 fake-runtime.ts:16-17 注释。一次性重录两套 expected-output fixtures。",
+    "docs": "python/sdk/README.md:45 finish_reason 与 TS types.ts:73-74 已是一等字段，无需改；SDK client/protocol 侧仅 JSDoc 修正（见 changes 4）。",
+    "effort": "M",
+    "files": [
+     "examples/jsonrpc-agent/tests/sdk.snapshot.ts",
+     "scripts/smoke-python-runtime.py",
+     "packages/sdk/client/src/client.ts",
+     "packages/sdk/client/tests/fake-runtime.ts",
+     "examples/jsonrpc-agent/tests/snapshots",
+     "scripts/snapshots/python-sdk-single-exe"
+    ],
+    "id": "R7-F",
+    "tests": "failing-first：close 场景新增即红（现无任何真实运行时 close 路径）；finishReason 断言对现有 fixtures 为红（fixture 缺字段），重录后转绿。",
+    "title": "SDK 关闭路径真实 wire 覆盖 + 快照钉住 finishReason/finish_reason（满足 AGENTS.md 'Both SDKs project the loop'）",
+    "verification": "1) `pnpm exec vitest run examples/jsonrpc-agent/tests/sdk.snapshot.ts`（replay 模式，RLH_SNAPSHOT=replay 默认）；2) 按 smoke-python-runtime.py 文档化的 keyless invocation 跑 python-sdk-single-exe 冒烟；3) `uv run --project python/sdk pytest`（基线 83 passed）。"
+   },
+   {
+    "objective": "python client 的 start() 在获取 spawn 锁之前检查 self._closed（client.py:129-130），close() 先置 _closed 再快照 proc（:164-168）：close 在 check 与锁之间运行时，close 看到 proc=None、fail-waiters 并以已关闭返回，随后 start() 完成 spawn——runtime 子进程收不到 shutdown/dispose ladder 成为孤儿。TS 侧无此窗口（closeTask memoized，client.ts:222/426-428），共享契约只在单侧成立。",
+    "changes": "把 _closed 检查移入 spawn 锁内并在获取后复验（镜像现有 _proc 复验模式）；close() 在置 _closed 后于 spawn 临界区结束再重读 _proc，若 spawn 已发生则对该子进程执行既有关闭梯子；fail-waiters 语义保持不变。",
+    "docs": "client.py close()/start() docstring 注明 close 对 in-flight start 的两种结局（spawn 前取消 / spawn 后收割），与 TS closeTask 语义对齐。",
+    "effort": "S",
+    "files": [
+     "python/sdk/src/relay_harness/client.py",
+     "python/sdk/tests/test_client.py"
+    ],
+    "id": "R7-G",
+    "tests": "failing-first（test_client.py）：launch_args 脚本阻塞在文件 marker 上才应答；线程上 start()，在 start 通过 closed-check 后（经 marker 门控）调 close()，放行 marker，断言无存活子进程（proc.poll() is not None）且后续 start() 抛 TransportClosedError（现实现为红：子进程存活）。",
+    "title": "Python HarnessClient close-vs-start 竞态修复：close 终态语义与 TS 对齐，不再孤儿化 runtime 子进程",
+    "verification": "`uv run --project python/sdk pytest python/sdk/tests/test_client.py`（含并发 start 既有用例 :1322 回归），随后全量 `uv run --project python/sdk pytest`（基线 83 passed）。"
+   },
+   {
+    "objective": "api-proxy.ts:646-650 对任意投影 key 无差别广播，sessionListMetadata（:654-663）每次用户消息（lastPromptAt）与 blank 翻转都对每个 mux 订阅者推一帧，而全仓客户端零消费（列表行数据实际来自 host/session-added、host/session-status、user/message 与 session.list 投影块，host 侧组装于 api-proxy.ts:1146 与 session-list.ts）。镜像同文件 imageLimits（:665-687）的 baseline-only 先例。",
+    "changes": "为投影注册增加 baseline-only 标记（复用 imageLimits 的注释先例与机制），sessionListMetadata 与 imageLimits 一并标注；onChanged 广播按该标记跳过；在 apiproxy README/key 表声明该 key 的客户端消费面为空。广播只减不增，客户端零改动。须在 R7-A 之后落地（同文件 api-proxy.ts，避免冲突）。",
+    "docs": "apiproxy README 的投影 key 表：sessionListMetadata/imageLimits 标注 baseline-only、仅由基线携带、无变更帧。",
+    "effort": "S",
+    "files": [
+     "packages/host/apiproxy/src/api-proxy.ts",
+     "packages/host/apiproxy/tests/api-proxy-mux.spec.ts",
+     "packages/host/apiproxy/README.md"
+    ],
+    "id": "R7-H",
+    "tests": "failing-first（api-proxy-mux.spec.ts）：向已订阅 mux 的会话投递一条用户消息后，断言收到的 session/projection 帧集合不含 'sessionListMetadata'（改前为红）；保留现有 title 帧断言防过滤过宽。",
+    "title": "host→client 投影帧卫生：sessionListMetadata 改为 baseline-only，停止向全部 mux 订阅者广播零消费帧",
+    "verification": "`pnpm exec vitest run packages/host/apiproxy/tests/api-proxy-mux.spec.ts packages/host/apiproxy/tests/api-proxy-projections.spec.ts`；grep 复核 packages/ 与 apps/ 无 'sessionListMetadata' 消费面新增。"
+   }
+  ],
+  "strategy": "R7 聚焦本轮四份审计中已证实的跨层契约相悖（front↔back wiring），全部经过仓库 file:line 复核，无推测项。排序原则：先修用户可见回归与静默数据丢失，再修契约死码与取消语义，最后收 SDK 侧一致性与线束卫生。同一文件的改动按序落盘避免冲突：api-proxy.ts 依次由 R7-A（:486/:2554 串行化路由）→ R7-C（:1897-1938 admit 取消点）→ R7-H（:646-663 广播过滤）触达，三者区域互不重叠且按此顺序执行；sessions.ts/schema 由 R7-C 独占；ui-conversation machine/facade 由 R7-D 独占；sdk/server/server.ts 由 R7-E 独占；SDK harness 快照由 R7-F 独占。R7-C 将 input-send-path 的两处 high（死 command 槽 + admission 无取消）合并为单一 seam slice：两者都改 session.prompt 这一条 wire route、共享 sessions.ts 与同一测试面（rpc-schemas/client-handler），拆开反而制造同文件排队。每片均 failing-first，验证命令聚焦本片 spec。已排除项：wire-events 的『订阅帧先行』重排 ConnectionController 方案（波及面大，采用 R7-B 的订阅帧侧补检）；R7-A 不做整段 de-serialize（会重开 R5-B 关闭的 TOCTOU）；R7-C 对 '/' 行不做 admission 拒绝（会误伤以 / 开头的真实提问），按 pre-release 立场直接删除死码并明文记录逐字入模语义。"
+ }
+}

@@ -12,11 +12,12 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 
-const { RlhManager } = require('./rlh');
+const { RlhManager, ensureOwnedPort, spawnHarness } = require('./rlh');
 const { readPin } = require('../shared/harness-upstream');
 
 const EXPECTED_URL = 'http://127.0.0.1:3080';
 const CHILD_PID = 4242;
+const FOREIGN_LISTENER_PID = 9999;
 
 test('spawn environment passes only the legacy credential path to Runtime migration', () => {
   const legacyPath = '/private/desktop/credentials.json';
@@ -349,7 +350,7 @@ test('stop 取消 in-flight start：最后 idle，绝不被旧 catch 改 error�
   assert.equal(h.manager.child, null);
   assert.equal(h.manager.failure, null);
   assert.deepEqual(h.calls.killTree, [CHILD_PID]);
-  assert.equal(h.calls.killOwned, 1);
+  assert.equal(h.calls.killOwned, 0, 'stop 不应清扫端口上的其他监听者');
   assert.ok(h.calls.clearPid >= 1);
 
   // 旧 catch 不得在 stop 之后把状态翻回 error
@@ -417,7 +418,7 @@ test('start 与 stop 重叠不死锁：start 等待 stop 完成后新起一代',
   assert.equal(rStop.status, 'fulfilled');
 });
 
-test('正常 stop：stopping→idle、killTree/clearPid/killOwnedListeners 被调用、幂等', async (t) => {
+test('正常 stop：stopping→idle、只杀 child pid、不清扫端口监听者、幂等', async (t) => {
   const h = makeHarness();
   t.after(h.cleanup);
   h.setReachable(true);
@@ -430,7 +431,7 @@ test('正常 stop：stopping→idle、killTree/clearPid/killOwnedListeners 被�
   assert.equal(h.manager.state, 'idle');
   assert.equal(h.manager.child, null);
   assert.deepEqual(h.calls.killTree, [CHILD_PID]);
-  assert.equal(h.calls.killOwned, 1);
+  assert.equal(h.calls.killOwned, 0, 'stop 不得清扫端口上的其他监听者');
   assert.ok(h.calls.clearPid >= 1);
   assert.ok(states.includes('stopping'));
   assert.ok(states.includes('idle'));
@@ -542,4 +543,58 @@ test('restart 不死锁：stop→start 完整往返，新 child 就绪', async (
   assert.equal(h.spawned.length, 2);
   assert.notEqual(h.lastChild(), childA);
   assert.equal(h.manager.baseUrl, EXPECTED_URL);
+});
+
+test('ensureOwnedPort：外部 node 监听不被击杀，跳端口而非 taskkill', async (_t) => {
+  const calls = { killTree: [], clearPid: 0, readPid: 0, killedOwned: [] };
+  const deps = {
+    probePort: async (host, port) => ({ host, port, inUse: true }),
+    readPidFile: () => {
+      calls.readPid += 1;
+      return FOREIGN_LISTENER_PID; // stale pid file: processAlive=false below
+    },
+    processAlive: () => false,
+    killTree: (pid) => {
+      calls.killTree.push(pid);
+    },
+    clearPidFile: () => {
+      calls.clearPid += 1;
+    },
+    findFreePort: async () => 3081,
+  };
+  const manager = new RlhManager({
+    // 依赖注入模式下 killOwnedListeners 已不再是 seam；此选项必须被忽略。
+    killOwnedListeners: (port) => {
+      calls.killedOwned.push(port);
+      return 1;
+    },
+  });
+  assert.equal(manager._deps.killOwnedListeners, undefined, 'killOwnedListeners 不再是依赖项');
+
+  const port = await ensureOwnedPort('127.0.0.1', 3080, () => {}, deps);
+
+  assert.equal(port, 3081, '外部监听者占用端口时应跳端口');
+  assert.ok(port > 3080);
+  assert.deepEqual(calls.killTree, [], '外来监听者（pid 9999）不得被击杀');
+  assert.deepEqual(calls.killedOwned, [], '端口清扫路径必须已被移除');
+});
+
+test('spawnHarness 在 POSIX 让子进程自 lead 进程组（detached:true）', async (t) => {
+  if (process.platform === 'win32') {
+    t.skip('Windows 由 taskkill /T /F 覆盖后代进程');
+    return;
+  }
+  const child = spawnHarness(process.execPath, ['-e', 'setTimeout(() => {}, 2000)'], { stdio: 'ignore' });
+  t.after(() => {
+    try {
+      child.kill('SIGKILL');
+    } catch {
+      // already exited
+    }
+  });
+  await tick(150);
+  assert.doesNotThrow(
+    () => process.kill(-child.pid, 0),
+    '子进程必须是进程组组长，killTree 的负 pid 组信号才能覆盖整树',
+  );
 });

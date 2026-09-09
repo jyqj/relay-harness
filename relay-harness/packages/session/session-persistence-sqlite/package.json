@@ -33,23 +33,25 @@
   ],
   "license": "MIT",
   "peerDependencies": {
+    "@relay-harness/cordis": "workspace:^",
     "@relay-harness/rlh-invariants": "workspace:^",
     "@relay-harness/rlh-llm": "workspace:^",
     "@relay-harness/rlh-session": "workspace:^",
     "@relay-harness/rlh-session-persistence": "workspace:^",
-    "@relay-harness/cordis": "workspace:^"
+    "@relay-harness/rlh-sqlite-runtime": "workspace:^"
   },
   "dependencies": {
     "@relay-harness/schemastery": "workspace:^"
   },
   "devDependencies": {
+    "@relay-harness/cordis": "workspace:^",
     "@relay-harness/cordis-plugin-include": "workspace:^",
     "@relay-harness/cordis-plugin-loader": "workspace:^",
     "@relay-harness/rlh-invariants": "workspace:^",
     "@relay-harness/rlh-llm": "workspace:^",
     "@relay-harness/rlh-session": "workspace:^",
     "@relay-harness/rlh-session-persistence": "workspace:^",
-    "@relay-harness/cordis": "workspace:^",
+    "@relay-harness/rlh-sqlite-runtime": "workspace:^",
     "typescript": "^6.0.3"
   }
 }

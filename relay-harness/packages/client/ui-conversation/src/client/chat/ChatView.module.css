@@ -243,3 +243,7 @@
 .modalAction {
   min-width: 72px;
 }
+
+.rows, .virtualRows { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.virtualRows { position: relative; flex: none; }
+.virtualRows .flowItem { animation: none; }

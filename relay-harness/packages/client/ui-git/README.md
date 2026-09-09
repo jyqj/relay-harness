@@ -10,6 +10,14 @@ The main-button and dropdown labels follow `resolveQuickAction` English (`Commit
 
 The `/client` exports are the plugin body (`apply`/`inject`) plus the contract types only; GitActionsControl remains package-internal behind the slot registration.
 
+Transport rejections are contained at the UI boundary. A failed initial status read settles into the existing unavailable state rather than leaving the control loading. Background fetch/PR enrichment preserves the known local status on failure. Action-call rejections use the existing failure toast and release busy state; post-action status refresh is best effort and cannot turn an acknowledged successful mutation into a failure report.
+
+Workspace changes clear workspace-specific dialogs, file selections, and branch-menu state before paint. Asynchronous status results can publish only to their captured current cwd; reads for an old action cannot invalidate a new workspace refresh. Already-started actions keep their original cwd and may retain completion feedback, but old follow-up actions are removed rather than being reinterpreted in the new workspace.
+
+Initialize, Pull, Publish, file opening, and external-link opening contain both synchronous adapter throws and rejected promises without postponing callback invocation. Publish failures reopen the dialog only in its original workspace; read-only opener errors from an old workspace or older Git action are ignored. An external opener returning false is reported as an unsuccessful hand-off rather than silently doing nothing.
+
+Stacked actions retain the displayed branch, or the exact branch named by an accepted confirmation. If preflight reports a different ref, the UI stops before invoking a mutation and asks the user to review the current branch. This is a client preflight check, not an atomic lock against another process changing Git state after that read.
+
 ## Model Experience
 
 None, as the titlebar Git control only drives desktop git IPC; nothing here reaches a model request.

@@ -178,6 +178,10 @@ class FakeSpill extends SpillStore {
       retrievalHint: 'Use the fake retrieval hint.',
     })
   }
+
+  override disposeSession(): Promise<void> {
+    return Promise.resolve()
+  }
 }
 
 interface SetupOptions {

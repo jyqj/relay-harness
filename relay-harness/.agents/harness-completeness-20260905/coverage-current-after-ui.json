@@ -1,0 +1,5126 @@
+{
+  "status": "ordinary Vitest tests PASS; unchanged per-file100 gate FAIL",
+  "log": "/tmp/relay-full-coverage-after-ui.log",
+  "summary": "/tmp/relay-full-coverage-after-ui/coverage-summary.json",
+  "details": "/tmp/relay-full-coverage-after-ui/coverage-final.json",
+  "testFiles": {
+    "passed": 1204,
+    "skipped": 9
+  },
+  "tests": {
+    "passed": 17880,
+    "failed": 0,
+    "skipped": 114
+  },
+  "seconds": 278.17,
+  "total": {
+    "lines": {
+      "total": 59292,
+      "covered": 58239,
+      "skipped": 0,
+      "pct": 98.22
+    },
+    "statements": {
+      "total": 67829,
+      "covered": 66163,
+      "skipped": 0,
+      "pct": 97.54
+    },
+    "functions": {
+      "total": 14588,
+      "covered": 14143,
+      "skipped": 0,
+      "pct": 96.94
+    },
+    "branches": {
+      "total": 42665,
+      "covered": 40726,
+      "skipped": 0,
+      "pct": 95.45
+    },
+    "branchesTrue": {
+      "total": 0,
+      "covered": 0,
+      "skipped": 0,
+      "pct": 100
+    }
+  },
+  "thresholdFailingFiles": 175,
+  "files": {
+    "packages/automation/issue-orchestrator/src/index.ts": {
+      "sourceSha256": "a6a8c32580de0406a72488575cc46645623d57a450e398bd015e17f5d13493d2",
+      "metrics": {
+        "statements": {
+          "total": 340,
+          "covered": 338,
+          "skipped": 0,
+          "pct": 99.41
+        },
+        "branches": {
+          "total": 171,
+          "covered": 170,
+          "skipped": 0,
+          "pct": 99.41
+        },
+        "functions": {
+          "total": 76,
+          "covered": 76,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 298,
+          "covered": 296,
+          "skipped": 0,
+          "pct": 99.32
+        }
+      }
+    },
+    "packages/client/connection/src/client/connection.ts": {
+      "sourceSha256": "6a2c62199311b9811c6947c641fc3312ee50df3c4cc2c07d7be547214b649c81",
+      "metrics": {
+        "statements": {
+          "total": 102,
+          "covered": 97,
+          "skipped": 0,
+          "pct": 95.09
+        },
+        "branches": {
+          "total": 34,
+          "covered": 30,
+          "skipped": 0,
+          "pct": 88.23
+        },
+        "functions": {
+          "total": 24,
+          "covered": 24,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 91,
+          "covered": 87,
+          "skipped": 0,
+          "pct": 95.6
+        }
+      }
+    },
+    "packages/client/connection/src/client/index.ts": {
+      "sourceSha256": "2289bd26f4653276f088c7390a4e1fe067ee9876b5a26b1a900db049518a8b24",
+      "metrics": {
+        "statements": {
+          "total": 42,
+          "covered": 41,
+          "skipped": 0,
+          "pct": 97.61
+        },
+        "branches": {
+          "total": 24,
+          "covered": 22,
+          "skipped": 0,
+          "pct": 91.66
+        },
+        "functions": {
+          "total": 9,
+          "covered": 9,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 37,
+          "covered": 37,
+          "skipped": 0,
+          "pct": 100
+        }
+      }
+    },
+    "packages/client/ui-code-index-center/src/client/CodeIndexCenterSection.tsx": {
+      "sourceSha256": "49d86b2b81b8c4305bd37b0618919d06ae3cdb32b237b7a5c092534f1271a480",
+      "metrics": {
+        "statements": {
+          "total": 69,
+          "covered": 53,
+          "skipped": 0,
+          "pct": 76.81
+        },
+        "branches": {
+          "total": 77,
+          "covered": 49,
+          "skipped": 0,
+          "pct": 63.63
+        },
+        "functions": {
+          "total": 26,
+          "covered": 17,
+          "skipped": 0,
+          "pct": 65.38
+        },
+        "lines": {
+          "total": 47,
+          "covered": 40,
+          "skipped": 0,
+          "pct": 85.1
+        }
+      }
+    },
+    "packages/client/ui-code-index-center/src/client/index.ts": {
+      "sourceSha256": "ce8faf63afd13b62ea839251bdf31b0730fe9ffd92ca38534eb38da2eb33a837",
+      "metrics": {
+        "statements": {
+          "total": 21,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 0
+        },
+        "branches": {
+          "total": 0,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 14,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 0
+        },
+        "lines": {
+          "total": 17,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 0
+        }
+      }
+    },
+    "packages/client/ui-code-index-center/src/client/locales.ts": {
+      "sourceSha256": "de2bbce7878e06c2992d88066a91ca2128f69ef7135a20ba08d8c160496119a6",
+      "metrics": {
+        "statements": {
+          "total": 2,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 0
+        },
+        "branches": {
+          "total": 0,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 0,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 2,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 0
+        }
+      }
+    },
+    "packages/client/ui-code-index-center/src/client/store.ts": {
+      "sourceSha256": "4aff379e50a8bbf010d69fffceb91cdcb362bc2f48e7d109b7000e7f27d6b422",
+      "metrics": {
+        "statements": {
+          "total": 16,
+          "covered": 13,
+          "skipped": 0,
+          "pct": 81.25
+        },
+        "branches": {
+          "total": 7,
+          "covered": 7,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 9,
+          "covered": 6,
+          "skipped": 0,
+          "pct": 66.66
+        },
+        "lines": {
+          "total": 13,
+          "covered": 10,
+          "skipped": 0,
+          "pct": 76.92
+        }
+      }
+    },
+    "packages/client/ui-code-index-center/src/index.ts": {
+      "sourceSha256": "220f71123d4ddaee01609b034090dadb8594e74b79780fa271882e25fab11d02",
+      "metrics": {
+        "statements": {
+          "total": 0,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 0,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 1,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 0
+        },
+        "lines": {
+          "total": 0,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 100
+        }
+      }
+    },
+    "packages/client/ui-context-inspector/src/client/ContextInspectorAction.tsx": {
+      "sourceSha256": "1d60bb5b00f4b766ab6a68c63ea2d4f3967e5dd350e56463f6f5e52c41ef58f2",
+      "metrics": {
+        "statements": {
+          "total": 13,
+          "covered": 11,
+          "skipped": 0,
+          "pct": 84.61
+        },
+        "branches": {
+          "total": 36,
+          "covered": 25,
+          "skipped": 0,
+          "pct": 69.44
+        },
+        "functions": {
+          "total": 10,
+          "covered": 8,
+          "skipped": 0,
+          "pct": 80
+        },
+        "lines": {
+          "total": 12,
+          "covered": 10,
+          "skipped": 0,
+          "pct": 83.33
+        }
+      }
+    },
+    "packages/client/ui-context-inspector/src/client/index.ts": {
+      "sourceSha256": "8b4cec52b4c5d156235b146d7bc41f25f56bbb9b91b0d7f807a9b5ee9e6f6ad5",
+      "metrics": {
+        "statements": {
+          "total": 5,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 0
+        },
+        "branches": {
+          "total": 0,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 3,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 0
+        },
+        "lines": {
+          "total": 3,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 0
+        }
+      }
+    },
+    "packages/client/ui-context-inspector/src/client/locales.ts": {
+      "sourceSha256": "6290e37014b13c49025e74eb74860a6f7dbdb9eefbfe3089af41557b5c4b5e28",
+      "metrics": {
+        "statements": {
+          "total": 2,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 0
+        },
+        "branches": {
+          "total": 0,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 0,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 2,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 0
+        }
+      }
+    },
+    "packages/client/ui-context-inspector/src/index.ts": {
+      "sourceSha256": "47accaf97b705c46420c6d1d92a04f1297ab7bb6811209e23d83aba88d35b760",
+      "metrics": {
+        "statements": {
+          "total": 0,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 0,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 1,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 0
+        },
+        "lines": {
+          "total": 0,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 100
+        }
+      }
+    },
+    "packages/client/ui-diff/src/client/DiffPanel.tsx": {
+      "sourceSha256": "9cb9e40f960b9a72e46bfc8444dc9ec3a69fa3e33f7e6593a90b30d32aad03e0",
+      "metrics": {
+        "statements": {
+          "total": 168,
+          "covered": 168,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 105,
+          "covered": 101,
+          "skipped": 0,
+          "pct": 96.19
+        },
+        "functions": {
+          "total": 48,
+          "covered": 48,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 146,
+          "covered": 146,
+          "skipped": 0,
+          "pct": 100
+        }
+      }
+    },
+    "packages/client/ui-files/src/client/FilePreview.tsx": {
+      "sourceSha256": "085c04d33b980339e9d63dd30508c4f563efb4e8da1e5f57fdea80aa3ddb3a20",
+      "metrics": {
+        "statements": {
+          "total": 317,
+          "covered": 298,
+          "skipped": 0,
+          "pct": 94
+        },
+        "branches": {
+          "total": 229,
+          "covered": 206,
+          "skipped": 0,
+          "pct": 89.95
+        },
+        "functions": {
+          "total": 63,
+          "covered": 61,
+          "skipped": 0,
+          "pct": 96.82
+        },
+        "lines": {
+          "total": 281,
+          "covered": 272,
+          "skipped": 0,
+          "pct": 96.79
+        }
+      }
+    },
+    "packages/client/ui-files/src/client/FilesPanel.tsx": {
+      "sourceSha256": "0a26d2572d898e45c4c3dc70728bfad911dfd1ccd16fe86deef67f2f2bc3f5b2",
+      "metrics": {
+        "statements": {
+          "total": 128,
+          "covered": 113,
+          "skipped": 0,
+          "pct": 88.28
+        },
+        "branches": {
+          "total": 82,
+          "covered": 66,
+          "skipped": 0,
+          "pct": 80.48
+        },
+        "functions": {
+          "total": 40,
+          "covered": 35,
+          "skipped": 0,
+          "pct": 87.5
+        },
+        "lines": {
+          "total": 109,
+          "covered": 100,
+          "skipped": 0,
+          "pct": 91.74
+        }
+      }
+    },
+    "packages/client/ui-files/src/client/fileLineReveal.ts": {
+      "sourceSha256": "e67941ffbdc83763be9751be0aaa3982b431fcccd6f38d650c898b0decd5e598",
+      "metrics": {
+        "statements": {
+          "total": 15,
+          "covered": 15,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 10,
+          "covered": 9,
+          "skipped": 0,
+          "pct": 90
+        },
+        "functions": {
+          "total": 2,
+          "covered": 2,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 13,
+          "covered": 13,
+          "skipped": 0,
+          "pct": 100
+        }
+      }
+    },
+    "packages/client/ui-files/src/client/filePreviewMode.ts": {
+      "sourceSha256": "5851c4560cc412d21841ed1f46bf620061c9e0e723f5cca4a51edee0947e0e39",
+      "metrics": {
+        "statements": {
+          "total": 5,
+          "covered": 5,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 8,
+          "covered": 7,
+          "skipped": 0,
+          "pct": 87.5
+        },
+        "functions": {
+          "total": 2,
+          "covered": 2,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 4,
+          "covered": 4,
+          "skipped": 0,
+          "pct": 100
+        }
+      }
+    },
+    "packages/client/ui-files/src/client/fileSaveCoordinator.ts": {
+      "sourceSha256": "edea4597e3d81de916ffe13e9b1239f4b7d976576b066c7be890b26374353068",
+      "metrics": {
+        "statements": {
+          "total": 42,
+          "covered": 41,
+          "skipped": 0,
+          "pct": 97.61
+        },
+        "branches": {
+          "total": 16,
+          "covered": 15,
+          "skipped": 0,
+          "pct": 93.75
+        },
+        "functions": {
+          "total": 7,
+          "covered": 7,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 38,
+          "covered": 37,
+          "skipped": 0,
+          "pct": 97.36
+        }
+      }
+    },
+    "packages/client/ui-files/src/client/fileTreeDragMention.ts": {
+      "sourceSha256": "2938fcd956c188e92a9356f855de2ca51342f14e5093e60b318495f728b718cd",
+      "metrics": {
+        "statements": {
+          "total": 34,
+          "covered": 31,
+          "skipped": 0,
+          "pct": 91.17
+        },
+        "branches": {
+          "total": 18,
+          "covered": 15,
+          "skipped": 0,
+          "pct": 83.33
+        },
+        "functions": {
+          "total": 8,
+          "covered": 8,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 34,
+          "covered": 31,
+          "skipped": 0,
+          "pct": 91.17
+        }
+      }
+    },
+    "packages/client/ui-files/src/client/projectFilePicker.ts": {
+      "sourceSha256": "fc597f92b9b4f1c898da5bb9559f7008de4c2ccaf0785801aeaab648e68ab533",
+      "metrics": {
+        "statements": {
+          "total": 34,
+          "covered": 33,
+          "skipped": 0,
+          "pct": 97.05
+        },
+        "branches": {
+          "total": 21,
+          "covered": 19,
+          "skipped": 0,
+          "pct": 90.47
+        },
+        "functions": {
+          "total": 4,
+          "covered": 4,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 26,
+          "covered": 26,
+          "skipped": 0,
+          "pct": 100
+        }
+      }
+    },
+    "packages/client/ui-files/src/client/shell.ts": {
+      "sourceSha256": "c5e34c9116c20603ab67672b13e25c2f45920ff7b246338049af9d6dcd7684ee",
+      "metrics": {
+        "statements": {
+          "total": 13,
+          "covered": 9,
+          "skipped": 0,
+          "pct": 69.23
+        },
+        "branches": {
+          "total": 16,
+          "covered": 8,
+          "skipped": 0,
+          "pct": 50
+        },
+        "functions": {
+          "total": 13,
+          "covered": 9,
+          "skipped": 0,
+          "pct": 69.23
+        },
+        "lines": {
+          "total": 13,
+          "covered": 9,
+          "skipped": 0,
+          "pct": 69.23
+        }
+      }
+    },
+    "packages/client/ui-files/src/client/workspacePreview.ts": {
+      "sourceSha256": "e4a9511f7390d4872c6070a27221128351f7384e8d62e4a8f2cbcbf6eabbba29",
+      "metrics": {
+        "statements": {
+          "total": 8,
+          "covered": 8,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 4,
+          "covered": 3,
+          "skipped": 0,
+          "pct": 75
+        },
+        "functions": {
+          "total": 5,
+          "covered": 5,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 7,
+          "covered": 7,
+          "skipped": 0,
+          "pct": 100
+        }
+      }
+    },
+    "packages/client/ui-git/src/client/BranchMenu.tsx": {
+      "sourceSha256": "1502adf32c81287a73cdb77f18c2adad409335999f7778e89cc5439ea3acc65c",
+      "metrics": {
+        "statements": {
+          "total": 75,
+          "covered": 66,
+          "skipped": 0,
+          "pct": 88
+        },
+        "branches": {
+          "total": 70,
+          "covered": 59,
+          "skipped": 0,
+          "pct": 84.28
+        },
+        "functions": {
+          "total": 21,
+          "covered": 19,
+          "skipped": 0,
+          "pct": 90.47
+        },
+        "lines": {
+          "total": 63,
+          "covered": 61,
+          "skipped": 0,
+          "pct": 96.82
+        }
+      }
+    },
+    "packages/client/ui-git/src/client/CreateBranchDialog.tsx": {
+      "sourceSha256": "88499cc0b4d2a1fc9e3775a6dbbde964d692c583ebac402681834193d427ad93",
+      "metrics": {
+        "statements": {
+          "total": 6,
+          "covered": 6,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 6,
+          "covered": 5,
+          "skipped": 0,
+          "pct": 83.33
+        },
+        "functions": {
+          "total": 3,
+          "covered": 3,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 5,
+          "covered": 5,
+          "skipped": 0,
+          "pct": 100
+        }
+      }
+    },
+    "packages/client/ui-git/src/client/GitActionsControl.tsx": {
+      "sourceSha256": "cbeaa0554be2c44cb07fb7e7b2fc60fcfee658b5bc406a7780d0d989c51d430d",
+      "metrics": {
+        "statements": {
+          "total": 496,
+          "covered": 438,
+          "skipped": 0,
+          "pct": 88.3
+        },
+        "branches": {
+          "total": 504,
+          "covered": 409,
+          "skipped": 0,
+          "pct": 81.15
+        },
+        "functions": {
+          "total": 112,
+          "covered": 102,
+          "skipped": 0,
+          "pct": 91.07
+        },
+        "lines": {
+          "total": 412,
+          "covered": 378,
+          "skipped": 0,
+          "pct": 91.74
+        }
+      }
+    },
+    "packages/client/ui-git/src/client/GitErrorDialog.tsx": {
+      "sourceSha256": "35dd3d596b2a862f94c8ac6e950702295f90ba7555b69fec2e4cd317d109594e",
+      "metrics": {
+        "statements": {
+          "total": 10,
+          "covered": 10,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 9,
+          "covered": 7,
+          "skipped": 0,
+          "pct": 77.77
+        },
+        "functions": {
+          "total": 4,
+          "covered": 4,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 7,
+          "covered": 7,
+          "skipped": 0,
+          "pct": 100
+        }
+      }
+    },
+    "packages/client/ui-git/src/client/GitProgressToast.tsx": {
+      "sourceSha256": "0a7eece505e115f1eddac7985062bb7b9f457cea875b6316dde243f3d8af1266",
+      "metrics": {
+        "statements": {
+          "total": 25,
+          "covered": 24,
+          "skipped": 0,
+          "pct": 96
+        },
+        "branches": {
+          "total": 50,
+          "covered": 48,
+          "skipped": 0,
+          "pct": 96
+        },
+        "functions": {
+          "total": 9,
+          "covered": 8,
+          "skipped": 0,
+          "pct": 88.88
+        },
+        "lines": {
+          "total": 19,
+          "covered": 19,
+          "skipped": 0,
+          "pct": 100
+        }
+      }
+    },
+    "packages/client/ui-git/src/client/PublishDialog.tsx": {
+      "sourceSha256": "95867677c4e89b0809f8bda855c0d7a0886826715e39088556c06e8e9dcf7f12",
+      "metrics": {
+        "statements": {
+          "total": 6,
+          "covered": 5,
+          "skipped": 0,
+          "pct": 83.33
+        },
+        "branches": {
+          "total": 6,
+          "covered": 6,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 5,
+          "covered": 4,
+          "skipped": 0,
+          "pct": 80
+        },
+        "lines": {
+          "total": 6,
+          "covered": 5,
+          "skipped": 0,
+          "pct": 83.33
+        }
+      }
+    },
+    "packages/client/ui-git/src/client/apply.ts": {
+      "sourceSha256": "c773300bfaf559e76b7a6937464164018dffac0665e4161af330a70cfffc770e",
+      "metrics": {
+        "statements": {
+          "total": 29,
+          "covered": 27,
+          "skipped": 0,
+          "pct": 93.1
+        },
+        "branches": {
+          "total": 32,
+          "covered": 27,
+          "skipped": 0,
+          "pct": 84.37
+        },
+        "functions": {
+          "total": 26,
+          "covered": 24,
+          "skipped": 0,
+          "pct": 92.3
+        },
+        "lines": {
+          "total": 26,
+          "covered": 24,
+          "skipped": 0,
+          "pct": 92.3
+        }
+      }
+    },
+    "packages/client/ui-git/src/client/branches.ts": {
+      "sourceSha256": "58c37b1914da8a9be3cf476a1c81b28e01bfa4e1e093706a21f1991f4b9dd3a7",
+      "metrics": {
+        "statements": {
+          "total": 51,
+          "covered": 51,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 40,
+          "covered": 35,
+          "skipped": 0,
+          "pct": 87.5
+        },
+        "functions": {
+          "total": 15,
+          "covered": 15,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 38,
+          "covered": 38,
+          "skipped": 0,
+          "pct": 100
+        }
+      }
+    },
+    "packages/client/ui-git/src/client/git-logic.ts": {
+      "sourceSha256": "c71e96f38a9f3a4fe4789a03341680772a279701aa07caa3876ce1652949928c",
+      "metrics": {
+        "statements": {
+          "total": 212,
+          "covered": 192,
+          "skipped": 0,
+          "pct": 90.56
+        },
+        "branches": {
+          "total": 275,
+          "covered": 240,
+          "skipped": 0,
+          "pct": 87.27
+        },
+        "functions": {
+          "total": 20,
+          "covered": 20,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 182,
+          "covered": 166,
+          "skipped": 0,
+          "pct": 91.2
+        }
+      }
+    },
+    "packages/client/ui-memory-center/src/client/MemoryCenterSection.tsx": {
+      "sourceSha256": "390edadeb1c321e64b21eb19fb13e5c122cbe2c8bbae512b5385325d70bcea5c",
+      "metrics": {
+        "statements": {
+          "total": 158,
+          "covered": 89,
+          "skipped": 0,
+          "pct": 56.32
+        },
+        "branches": {
+          "total": 194,
+          "covered": 93,
+          "skipped": 0,
+          "pct": 47.93
+        },
+        "functions": {
+          "total": 61,
+          "covered": 31,
+          "skipped": 0,
+          "pct": 50.81
+        },
+        "lines": {
+          "total": 119,
+          "covered": 73,
+          "skipped": 0,
+          "pct": 61.34
+        }
+      }
+    },
+    "packages/client/ui-memory-center/src/client/index.ts": {
+      "sourceSha256": "fde6068e731b30d89a0367e62f767cfeb0876c42e41119b9ab0cc9bb917f661c",
+      "metrics": {
+        "statements": {
+          "total": 21,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 0
+        },
+        "branches": {
+          "total": 0,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 13,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 0
+        },
+        "lines": {
+          "total": 17,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 0
+        }
+      }
+    },
+    "packages/client/ui-memory-center/src/client/store.ts": {
+      "sourceSha256": "cc79edee104131c183e283ff200985e81719fe56024b001d97f3c7d786860593",
+      "metrics": {
+        "statements": {
+          "total": 44,
+          "covered": 22,
+          "skipped": 0,
+          "pct": 50
+        },
+        "branches": {
+          "total": 20,
+          "covered": 9,
+          "skipped": 0,
+          "pct": 45
+        },
+        "functions": {
+          "total": 10,
+          "covered": 5,
+          "skipped": 0,
+          "pct": 50
+        },
+        "lines": {
+          "total": 39,
+          "covered": 20,
+          "skipped": 0,
+          "pct": 51.28
+        }
+      }
+    },
+    "packages/client/ui-memory-center/src/index.ts": {
+      "sourceSha256": "44584b1c436594924218759c1b70699ae6bbf1eaf7c419e38926db66a12fcdf7",
+      "metrics": {
+        "statements": {
+          "total": 0,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 0,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 1,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 0
+        },
+        "lines": {
+          "total": 0,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 100
+        }
+      }
+    },
+    "packages/client/ui-preview/src/client/PreviewPanel.tsx": {
+      "sourceSha256": "75ec2c3a58844c45556f0c0cde6ec4a60487f04d9dcc99e2c4d035f345ff105d",
+      "metrics": {
+        "statements": {
+          "total": 273,
+          "covered": 273,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 182,
+          "covered": 180,
+          "skipped": 0,
+          "pct": 98.9
+        },
+        "functions": {
+          "total": 56,
+          "covered": 56,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 244,
+          "covered": 244,
+          "skipped": 0,
+          "pct": 100
+        }
+      }
+    },
+    "packages/client/ui-preview/src/client/browserRecording.ts": {
+      "sourceSha256": "33caa27f8098737c1d9038ccff3db8242c3455ffe5112362c4fe3227ce534af3",
+      "metrics": {
+        "statements": {
+          "total": 173,
+          "covered": 122,
+          "skipped": 0,
+          "pct": 70.52
+        },
+        "branches": {
+          "total": 56,
+          "covered": 33,
+          "skipped": 0,
+          "pct": 58.92
+        },
+        "functions": {
+          "total": 26,
+          "covered": 18,
+          "skipped": 0,
+          "pct": 69.23
+        },
+        "lines": {
+          "total": 161,
+          "covered": 118,
+          "skipped": 0,
+          "pct": 73.29
+        }
+      }
+    },
+    "packages/client/ui-preview/src/client/shell.ts": {
+      "sourceSha256": "75befabd6f14c30e185d1c9b80f4e0a7b50b737edcb351b139081e4075a74392",
+      "metrics": {
+        "statements": {
+          "total": 44,
+          "covered": 1,
+          "skipped": 0,
+          "pct": 2.27
+        },
+        "branches": {
+          "total": 84,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 0
+        },
+        "functions": {
+          "total": 46,
+          "covered": 1,
+          "skipped": 0,
+          "pct": 2.17
+        },
+        "lines": {
+          "total": 44,
+          "covered": 1,
+          "skipped": 0,
+          "pct": 2.27
+        }
+      }
+    },
+    "packages/client/ui-preview/src/client/url.ts": {
+      "sourceSha256": "7723fc5dfb6958c80861381ba880f87ae79c60112b1ee58a3b57c62e8c9dc7ef",
+      "metrics": {
+        "statements": {
+          "total": 40,
+          "covered": 40,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 26,
+          "covered": 25,
+          "skipped": 0,
+          "pct": 96.15
+        },
+        "functions": {
+          "total": 6,
+          "covered": 6,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 35,
+          "covered": 35,
+          "skipped": 0,
+          "pct": 100
+        }
+      }
+    },
+    "packages/client/ui-preview/src/client/zoom.ts": {
+      "sourceSha256": "4dd0799f11e6c806c0318fe2551ba7a613b69e26978fbc2e642f6b8df4403f9c",
+      "metrics": {
+        "statements": {
+          "total": 13,
+          "covered": 13,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 14,
+          "covered": 12,
+          "skipped": 0,
+          "pct": 85.71
+        },
+        "functions": {
+          "total": 3,
+          "covered": 3,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 12,
+          "covered": 12,
+          "skipped": 0,
+          "pct": 100
+        }
+      }
+    },
+    "packages/client/ui-preview/src/index.ts": {
+      "sourceSha256": "bf7e908bd60472a2c9bdb7f8907bdef43fcd910dc25af8495fc95adc54745099",
+      "metrics": {
+        "statements": {
+          "total": 0,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 0,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 1,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 0
+        },
+        "lines": {
+          "total": 0,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 100
+        }
+      }
+    },
+    "packages/client/ui-primitives/src/Tooltip.tsx": {
+      "sourceSha256": "fad9615873b61309edd28549c7748fa12272858561d89e79b6914c0c1502368c",
+      "metrics": {
+        "statements": {
+          "total": 106,
+          "covered": 106,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 72,
+          "covered": 70,
+          "skipped": 0,
+          "pct": 97.22
+        },
+        "functions": {
+          "total": 19,
+          "covered": 19,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 79,
+          "covered": 79,
+          "skipped": 0,
+          "pct": 100
+        }
+      }
+    },
+    "packages/client/ui-primitives/src/markdown/render.tsx": {
+      "sourceSha256": "ffb8228daea4665425c6abe9a726b6af49e97f2998b57bb488764a442f42f926",
+      "metrics": {
+        "statements": {
+          "total": 197,
+          "covered": 196,
+          "skipped": 0,
+          "pct": 99.49
+        },
+        "branches": {
+          "total": 187,
+          "covered": 185,
+          "skipped": 0,
+          "pct": 98.93
+        },
+        "functions": {
+          "total": 35,
+          "covered": 35,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 169,
+          "covered": 169,
+          "skipped": 0,
+          "pct": 100
+        }
+      }
+    },
+    "packages/client/ui-product-shell/src/client/LibraryPage.tsx": {
+      "sourceSha256": "39d0af14293aa7b282fe31284e5bcaf83cfc7d6c49f10ac0259aa22d70c7585e",
+      "metrics": {
+        "statements": {
+          "total": 73,
+          "covered": 64,
+          "skipped": 0,
+          "pct": 87.67
+        },
+        "branches": {
+          "total": 52,
+          "covered": 41,
+          "skipped": 0,
+          "pct": 78.84
+        },
+        "functions": {
+          "total": 21,
+          "covered": 18,
+          "skipped": 0,
+          "pct": 85.71
+        },
+        "lines": {
+          "total": 56,
+          "covered": 49,
+          "skipped": 0,
+          "pct": 87.5
+        }
+      }
+    },
+    "packages/client/ui-product-shell/src/client/ProductModeRow.tsx": {
+      "sourceSha256": "fd56c5f163aa6132b2d0b7ff32a5f8c4b21f96405489616d8c3289c7bf977506",
+      "metrics": {
+        "statements": {
+          "total": 5,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 0
+        },
+        "branches": {
+          "total": 6,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 0
+        },
+        "functions": {
+          "total": 3,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 0
+        },
+        "lines": {
+          "total": 4,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 0
+        }
+      }
+    },
+    "packages/client/ui-product-shell/src/client/WorkPage.tsx": {
+      "sourceSha256": "dc3d9be392f08c1bf5179d152461f27ead0569b9f1894a3f953ca84e82b3fd02",
+      "metrics": {
+        "statements": {
+          "total": 109,
+          "covered": 99,
+          "skipped": 0,
+          "pct": 90.82
+        },
+        "branches": {
+          "total": 99,
+          "covered": 86,
+          "skipped": 0,
+          "pct": 86.86
+        },
+        "functions": {
+          "total": 21,
+          "covered": 20,
+          "skipped": 0,
+          "pct": 95.23
+        },
+        "lines": {
+          "total": 88,
+          "covered": 87,
+          "skipped": 0,
+          "pct": 98.86
+        }
+      }
+    },
+    "packages/client/ui-product-shell/src/client/index.ts": {
+      "sourceSha256": "6f19ca1a53ca1878bdc064ee2218dfb238565944d488946a2abb7958a8e7e576",
+      "metrics": {
+        "statements": {
+          "total": 69,
+          "covered": 2,
+          "skipped": 0,
+          "pct": 2.89
+        },
+        "branches": {
+          "total": 14,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 0
+        },
+        "functions": {
+          "total": 30,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 0
+        },
+        "lines": {
+          "total": 47,
+          "covered": 2,
+          "skipped": 0,
+          "pct": 4.25
+        }
+      }
+    },
+    "packages/client/ui-product-shell/src/client/mode.ts": {
+      "sourceSha256": "ca5c330597e19ae28ee642a35965e68c1f62d13da9489de31831e979377c21c8",
+      "metrics": {
+        "statements": {
+          "total": 54,
+          "covered": 49,
+          "skipped": 0,
+          "pct": 90.74
+        },
+        "branches": {
+          "total": 30,
+          "covered": 21,
+          "skipped": 0,
+          "pct": 70
+        },
+        "functions": {
+          "total": 6,
+          "covered": 6,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 44,
+          "covered": 44,
+          "skipped": 0,
+          "pct": 100
+        }
+      }
+    },
+    "packages/client/ui-product-shell/src/client/work-projection.ts": {
+      "sourceSha256": "92a5aed27ad5732258d3a9a5f42dc3b9d0bf2185a83118502653d12f323b0336",
+      "metrics": {
+        "statements": {
+          "total": 62,
+          "covered": 59,
+          "skipped": 0,
+          "pct": 95.16
+        },
+        "branches": {
+          "total": 69,
+          "covered": 59,
+          "skipped": 0,
+          "pct": 85.5
+        },
+        "functions": {
+          "total": 16,
+          "covered": 15,
+          "skipped": 0,
+          "pct": 93.75
+        },
+        "lines": {
+          "total": 49,
+          "covered": 49,
+          "skipped": 0,
+          "pct": 100
+        }
+      }
+    },
+    "packages/client/ui-product-shell/src/index.ts": {
+      "sourceSha256": "13d8e605917466959fcc4e6793607fc0adffde8d565d1a49cca27e0d1d1f9264",
+      "metrics": {
+        "statements": {
+          "total": 0,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 0,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 1,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 0
+        },
+        "lines": {
+          "total": 0,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 100
+        }
+      }
+    },
+    "packages/client/ui-prompt-enhancement/src/client/EnhanceControl.tsx": {
+      "sourceSha256": "701ecc28c13e311af060d941ebb2401efff4cbf84a9507a74009b925c24759a5",
+      "metrics": {
+        "statements": {
+          "total": 79,
+          "covered": 68,
+          "skipped": 0,
+          "pct": 86.07
+        },
+        "branches": {
+          "total": 71,
+          "covered": 55,
+          "skipped": 0,
+          "pct": 77.46
+        },
+        "functions": {
+          "total": 15,
+          "covered": 12,
+          "skipped": 0,
+          "pct": 80
+        },
+        "lines": {
+          "total": 72,
+          "covered": 66,
+          "skipped": 0,
+          "pct": 91.66
+        }
+      }
+    },
+    "packages/client/ui-prompt-enhancement/src/client/contextTrace.ts": {
+      "sourceSha256": "9a44b0b363cf2ac408baab88c7724672811fadbb4033371742dddaa9e2e96e02",
+      "metrics": {
+        "statements": {
+          "total": 63,
+          "covered": 59,
+          "skipped": 0,
+          "pct": 93.65
+        },
+        "branches": {
+          "total": 73,
+          "covered": 66,
+          "skipped": 0,
+          "pct": 90.41
+        },
+        "functions": {
+          "total": 7,
+          "covered": 7,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 49,
+          "covered": 47,
+          "skipped": 0,
+          "pct": 95.91
+        }
+      }
+    },
+    "packages/client/ui-prompt-enhancement/src/client/index.ts": {
+      "sourceSha256": "8406153530ceb9b5766629308f75c06c48240dc6a420faf73daaa339d88c69cb",
+      "metrics": {
+        "statements": {
+          "total": 11,
+          "covered": 10,
+          "skipped": 0,
+          "pct": 90.9
+        },
+        "branches": {
+          "total": 2,
+          "covered": 1,
+          "skipped": 0,
+          "pct": 50
+        },
+        "functions": {
+          "total": 5,
+          "covered": 5,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 8,
+          "covered": 8,
+          "skipped": 0,
+          "pct": 100
+        }
+      }
+    },
+    "packages/client/ui-session-tree/src/client/model.ts": {
+      "sourceSha256": "33a48c5756442b61e18cf5b03447cd68a4d6a9bac33cae8e4047ec107693317b",
+      "metrics": {
+        "statements": {
+          "total": 243,
+          "covered": 243,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 165,
+          "covered": 164,
+          "skipped": 0,
+          "pct": 99.39
+        },
+        "functions": {
+          "total": 30,
+          "covered": 30,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 201,
+          "covered": 201,
+          "skipped": 0,
+          "pct": 100
+        }
+      }
+    },
+    "packages/client/ui-settings-general/src/client/AboutSection.tsx": {
+      "sourceSha256": "655b8155673377353f3e435e696c11b5adc2ec6770d715aa3a8e40970cd07b46",
+      "metrics": {
+        "statements": {
+          "total": 80,
+          "covered": 49,
+          "skipped": 0,
+          "pct": 61.25
+        },
+        "branches": {
+          "total": 69,
+          "covered": 35,
+          "skipped": 0,
+          "pct": 50.72
+        },
+        "functions": {
+          "total": 12,
+          "covered": 6,
+          "skipped": 0,
+          "pct": 50
+        },
+        "lines": {
+          "total": 65,
+          "covered": 45,
+          "skipped": 0,
+          "pct": 69.23
+        }
+      }
+    },
+    "packages/client/ui-settings-general/src/client/HarnessRestartRow.tsx": {
+      "sourceSha256": "379761504da128ec4c7d8008507a78b3145492c6d559ee0f91983718c33658df",
+      "metrics": {
+        "statements": {
+          "total": 47,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 0
+        },
+        "branches": {
+          "total": 22,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 0
+        },
+        "functions": {
+          "total": 15,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 0
+        },
+        "lines": {
+          "total": 42,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 0
+        }
+      }
+    },
+    "packages/client/ui-settings-general/src/client/InterfaceSection.tsx": {
+      "sourceSha256": "47d23abd9d88f12ce80f5cdb53873546b53afc4bf7c71c4ff86d697486d81854",
+      "metrics": {
+        "statements": {
+          "total": 1,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 0
+        },
+        "branches": {
+          "total": 0,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 1,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 0
+        },
+        "lines": {
+          "total": 1,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 0
+        }
+      }
+    },
+    "packages/client/ui-settings-general/src/client/UpdateAction.tsx": {
+      "sourceSha256": "e0a27605707222f63cf34f9fa677db0eacf6537501a09a661972ca7afa43a568",
+      "metrics": {
+        "statements": {
+          "total": 67,
+          "covered": 45,
+          "skipped": 0,
+          "pct": 67.16
+        },
+        "branches": {
+          "total": 69,
+          "covered": 37,
+          "skipped": 0,
+          "pct": 53.62
+        },
+        "functions": {
+          "total": 15,
+          "covered": 10,
+          "skipped": 0,
+          "pct": 66.66
+        },
+        "lines": {
+          "total": 56,
+          "covered": 38,
+          "skipped": 0,
+          "pct": 67.85
+        }
+      }
+    },
+    "packages/client/ui-settings-general/src/client/desktop-shell.ts": {
+      "sourceSha256": "8e393b3c4c12bd533d42a7bc0c8522f8e57fc67e457549701e7aebbc9a393952",
+      "metrics": {
+        "statements": {
+          "total": 9,
+          "covered": 6,
+          "skipped": 0,
+          "pct": 66.66
+        },
+        "branches": {
+          "total": 19,
+          "covered": 7,
+          "skipped": 0,
+          "pct": 36.84
+        },
+        "functions": {
+          "total": 3,
+          "covered": 2,
+          "skipped": 0,
+          "pct": 66.66
+        },
+        "lines": {
+          "total": 9,
+          "covered": 6,
+          "skipped": 0,
+          "pct": 66.66
+        }
+      }
+    },
+    "packages/client/ui-settings-mcp/src/client/McpSection.tsx": {
+      "sourceSha256": "2c49b2ed850c4500a6d1a77265c3a69ff1e65bb1b0587a126657c33b6be60085",
+      "metrics": {
+        "statements": {
+          "total": 456,
+          "covered": 380,
+          "skipped": 0,
+          "pct": 83.33
+        },
+        "branches": {
+          "total": 393,
+          "covered": 294,
+          "skipped": 0,
+          "pct": 74.8
+        },
+        "functions": {
+          "total": 149,
+          "covered": 120,
+          "skipped": 0,
+          "pct": 80.53
+        },
+        "lines": {
+          "total": 372,
+          "covered": 331,
+          "skipped": 0,
+          "pct": 88.97
+        }
+      }
+    },
+    "packages/client/ui-settings-mcp/src/client/index.ts": {
+      "sourceSha256": "e9790ccdaf39ded965e69f582a39b6fae7c852f2f49e3b8ad3afda30020eb9c9",
+      "metrics": {
+        "statements": {
+          "total": 19,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 0
+        },
+        "branches": {
+          "total": 2,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 0
+        },
+        "functions": {
+          "total": 12,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 0
+        },
+        "lines": {
+          "total": 15,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 0
+        }
+      }
+    },
+    "packages/client/ui-settings-models/src/client/ModelListEditor.tsx": {
+      "sourceSha256": "e04331909e04c7d5fb7d3738925e0123d0d5b698dbd24c39c22b7f911f9c79de",
+      "metrics": {
+        "statements": {
+          "total": 151,
+          "covered": 151,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 117,
+          "covered": 116,
+          "skipped": 0,
+          "pct": 99.14
+        },
+        "functions": {
+          "total": 61,
+          "covered": 61,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 127,
+          "covered": 127,
+          "skipped": 0,
+          "pct": 100
+        }
+      }
+    },
+    "packages/client/ui-settings-models/src/client/ModelsSection.tsx": {
+      "sourceSha256": "bebc8a02a1885877e8fb3df36218e2e995cd8fe0f8d546ef5934bc6a2f09775d",
+      "metrics": {
+        "statements": {
+          "total": 120,
+          "covered": 119,
+          "skipped": 0,
+          "pct": 99.16
+        },
+        "branches": {
+          "total": 103,
+          "covered": 103,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 38,
+          "covered": 37,
+          "skipped": 0,
+          "pct": 97.36
+        },
+        "lines": {
+          "total": 103,
+          "covered": 102,
+          "skipped": 0,
+          "pct": 99.02
+        }
+      }
+    },
+    "packages/client/ui-settings-models/src/client/VisionModelPicker.tsx": {
+      "sourceSha256": "29a4860a6f44e06e8f36f39497035dee4eda676a5d86f77e672006df5ff724ef",
+      "metrics": {
+        "statements": {
+          "total": 62,
+          "covered": 59,
+          "skipped": 0,
+          "pct": 95.16
+        },
+        "branches": {
+          "total": 45,
+          "covered": 43,
+          "skipped": 0,
+          "pct": 95.55
+        },
+        "functions": {
+          "total": 20,
+          "covered": 20,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 55,
+          "covered": 53,
+          "skipped": 0,
+          "pct": 96.36
+        }
+      }
+    },
+    "packages/client/ui-settings-remote/src/client/RemoteSection.tsx": {
+      "sourceSha256": "7f58745f97e0844e31ad4df4f5d8eefca5ab088f7deff32e97ddaab0a4f5bef8",
+      "metrics": {
+        "statements": {
+          "total": 97,
+          "covered": 97,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 86,
+          "covered": 83,
+          "skipped": 0,
+          "pct": 96.51
+        },
+        "functions": {
+          "total": 29,
+          "covered": 29,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 84,
+          "covered": 84,
+          "skipped": 0,
+          "pct": 100
+        }
+      }
+    },
+    "packages/client/ui-settings-skills/src/client/SkillsSection.tsx": {
+      "sourceSha256": "e636353e380b43ac6e74a7d826459654df788457bb2ced29e453dda0eef931f0",
+      "metrics": {
+        "statements": {
+          "total": 279,
+          "covered": 235,
+          "skipped": 0,
+          "pct": 84.22
+        },
+        "branches": {
+          "total": 224,
+          "covered": 176,
+          "skipped": 0,
+          "pct": 78.57
+        },
+        "functions": {
+          "total": 90,
+          "covered": 72,
+          "skipped": 0,
+          "pct": 80
+        },
+        "lines": {
+          "total": 226,
+          "covered": 200,
+          "skipped": 0,
+          "pct": 88.49
+        }
+      }
+    },
+    "packages/client/ui-settings-skills/src/client/index.ts": {
+      "sourceSha256": "39d26a5f25bb4463cacc2fd5873aaf32a408c34f445b5a95a1ec3443ad24350f",
+      "metrics": {
+        "statements": {
+          "total": 20,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 0
+        },
+        "branches": {
+          "total": 2,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 0
+        },
+        "functions": {
+          "total": 13,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 0
+        },
+        "lines": {
+          "total": 16,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 0
+        }
+      }
+    },
+    "packages/client/ui-sidebar/src/client/SidebarRoot.tsx": {
+      "sourceSha256": "a93bdcc6a7dd87f9114a1b030a91880efa9a3b0c9d0edc8ac40b6408cded1f79",
+      "metrics": {
+        "statements": {
+          "total": 63,
+          "covered": 62,
+          "skipped": 0,
+          "pct": 98.41
+        },
+        "branches": {
+          "total": 74,
+          "covered": 71,
+          "skipped": 0,
+          "pct": 95.94
+        },
+        "functions": {
+          "total": 22,
+          "covered": 21,
+          "skipped": 0,
+          "pct": 95.45
+        },
+        "lines": {
+          "total": 49,
+          "covered": 48,
+          "skipped": 0,
+          "pct": 97.95
+        }
+      }
+    },
+    "packages/client/ui-sidebar/src/client/stores.ts": {
+      "sourceSha256": "75b7a45046b960eaf03122e18a2578c67a1b4c31d84a76071a8a1e84dd344d21",
+      "metrics": {
+        "statements": {
+          "total": 4,
+          "covered": 3,
+          "skipped": 0,
+          "pct": 75
+        },
+        "branches": {
+          "total": 0,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 3,
+          "covered": 2,
+          "skipped": 0,
+          "pct": 66.66
+        },
+        "lines": {
+          "total": 4,
+          "covered": 3,
+          "skipped": 0,
+          "pct": 75
+        }
+      }
+    },
+    "packages/client/ui-surfaces/src/client/EmptyState.tsx": {
+      "sourceSha256": "ac49c91e12f03fb5e3d8e4eacc4e06275abcad79eec15acfe6af72ea0274180c",
+      "metrics": {
+        "statements": {
+          "total": 10,
+          "covered": 10,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 18,
+          "covered": 16,
+          "skipped": 0,
+          "pct": 88.88
+        },
+        "functions": {
+          "total": 3,
+          "covered": 3,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 9,
+          "covered": 9,
+          "skipped": 0,
+          "pct": 100
+        }
+      }
+    },
+    "packages/client/ui-surfaces/src/client/SurfacesRoot.tsx": {
+      "sourceSha256": "0975db6b67e3dbd76ee5e15cbfe9b7145397fa8fc17e54f6f58c73cbc264d812",
+      "metrics": {
+        "statements": {
+          "total": 216,
+          "covered": 207,
+          "skipped": 0,
+          "pct": 95.83
+        },
+        "branches": {
+          "total": 105,
+          "covered": 95,
+          "skipped": 0,
+          "pct": 90.47
+        },
+        "functions": {
+          "total": 62,
+          "covered": 60,
+          "skipped": 0,
+          "pct": 96.77
+        },
+        "lines": {
+          "total": 178,
+          "covered": 176,
+          "skipped": 0,
+          "pct": 98.87
+        }
+      }
+    },
+    "packages/client/ui-surfaces/src/client/openpath-intercept.ts": {
+      "sourceSha256": "0ec79ad8dc43cc014e3f9d0988d5961d6c6aa5817c8d2a2bdb0201ab799169d1",
+      "metrics": {
+        "statements": {
+          "total": 14,
+          "covered": 14,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 10,
+          "covered": 9,
+          "skipped": 0,
+          "pct": 90
+        },
+        "functions": {
+          "total": 3,
+          "covered": 3,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 10,
+          "covered": 10,
+          "skipped": 0,
+          "pct": 100
+        }
+      }
+    },
+    "packages/client/ui-surfaces/src/client/persist.ts": {
+      "sourceSha256": "ce93eb4d55c9b9a51206b33620f528076a547e5b4b0066f8b6e78fda07e20d39",
+      "metrics": {
+        "statements": {
+          "total": 153,
+          "covered": 152,
+          "skipped": 0,
+          "pct": 99.34
+        },
+        "branches": {
+          "total": 128,
+          "covered": 126,
+          "skipped": 0,
+          "pct": 98.43
+        },
+        "functions": {
+          "total": 18,
+          "covered": 18,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 115,
+          "covered": 115,
+          "skipped": 0,
+          "pct": 100
+        }
+      }
+    },
+    "packages/client/ui-theme/src/client/ThemeLibrary.tsx": {
+      "sourceSha256": "1dfd9e01872bc4b4031d76df44bfdfc775c32d16fb78aeed26d5771985bd6916",
+      "metrics": {
+        "statements": {
+          "total": 50,
+          "covered": 49,
+          "skipped": 0,
+          "pct": 98
+        },
+        "branches": {
+          "total": 23,
+          "covered": 22,
+          "skipped": 0,
+          "pct": 95.65
+        },
+        "functions": {
+          "total": 20,
+          "covered": 20,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 44,
+          "covered": 44,
+          "skipped": 0,
+          "pct": 100
+        }
+      }
+    },
+    "packages/client/ui-theme/src/client/WallpaperCropModal.tsx": {
+      "sourceSha256": "bac7005f24a0e4576370c1f514c9f0b3f15e71fce25bb87f42f9e3f2c064f08b",
+      "metrics": {
+        "statements": {
+          "total": 85,
+          "covered": 59,
+          "skipped": 0,
+          "pct": 69.41
+        },
+        "branches": {
+          "total": 24,
+          "covered": 15,
+          "skipped": 0,
+          "pct": 62.5
+        },
+        "functions": {
+          "total": 15,
+          "covered": 9,
+          "skipped": 0,
+          "pct": 60
+        },
+        "lines": {
+          "total": 79,
+          "covered": 55,
+          "skipped": 0,
+          "pct": 69.62
+        }
+      }
+    },
+    "packages/client/ui-theme/src/client/WallpaperGalleryModal.tsx": {
+      "sourceSha256": "6569e6cb93f1c1988d7b47520405fb79105489416559908fa0c7a6efb01b6b3a",
+      "metrics": {
+        "statements": {
+          "total": 9,
+          "covered": 7,
+          "skipped": 0,
+          "pct": 77.77
+        },
+        "branches": {
+          "total": 26,
+          "covered": 16,
+          "skipped": 0,
+          "pct": 61.53
+        },
+        "functions": {
+          "total": 6,
+          "covered": 4,
+          "skipped": 0,
+          "pct": 66.66
+        },
+        "lines": {
+          "total": 7,
+          "covered": 5,
+          "skipped": 0,
+          "pct": 71.42
+        }
+      }
+    },
+    "packages/client/ui-theme/src/client/WallpaperRow.tsx": {
+      "sourceSha256": "5f7b43a0ce9f60e1085675b2eea757a214a9c5aa84d56e07f0949eb3f45f58cf",
+      "metrics": {
+        "statements": {
+          "total": 83,
+          "covered": 51,
+          "skipped": 0,
+          "pct": 61.44
+        },
+        "branches": {
+          "total": 46,
+          "covered": 25,
+          "skipped": 0,
+          "pct": 54.34
+        },
+        "functions": {
+          "total": 16,
+          "covered": 13,
+          "skipped": 0,
+          "pct": 81.25
+        },
+        "lines": {
+          "total": 75,
+          "covered": 50,
+          "skipped": 0,
+          "pct": 66.66
+        }
+      }
+    },
+    "packages/client/ui-theme/src/client/WallpaperSources.tsx": {
+      "sourceSha256": "0122678b8de9d8244e982cc5dca6d6293a8d68955e164227a8daf9d7c14e44e4",
+      "metrics": {
+        "statements": {
+          "total": 55,
+          "covered": 42,
+          "skipped": 0,
+          "pct": 76.36
+        },
+        "branches": {
+          "total": 56,
+          "covered": 39,
+          "skipped": 0,
+          "pct": 69.64
+        },
+        "functions": {
+          "total": 18,
+          "covered": 16,
+          "skipped": 0,
+          "pct": 88.88
+        },
+        "lines": {
+          "total": 46,
+          "covered": 38,
+          "skipped": 0,
+          "pct": 82.6
+        }
+      }
+    },
+    "packages/client/ui-theme/src/client/index.ts": {
+      "sourceSha256": "5a0ec829c895f2619d997bb47ba27c3692fd8c2cd753ed463b0f42e003fe02ec",
+      "metrics": {
+        "statements": {
+          "total": 256,
+          "covered": 245,
+          "skipped": 0,
+          "pct": 95.7
+        },
+        "branches": {
+          "total": 161,
+          "covered": 152,
+          "skipped": 0,
+          "pct": 94.4
+        },
+        "functions": {
+          "total": 63,
+          "covered": 54,
+          "skipped": 0,
+          "pct": 85.71
+        },
+        "lines": {
+          "total": 211,
+          "covered": 202,
+          "skipped": 0,
+          "pct": 95.73
+        }
+      }
+    },
+    "packages/client/ui-theme/src/client/slider.ts": {
+      "sourceSha256": "e45f3ca3e06c11b96a9c93477e440868b189fdcc346276f77785922ea9938ad3",
+      "metrics": {
+        "statements": {
+          "total": 3,
+          "covered": 3,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 2,
+          "covered": 1,
+          "skipped": 0,
+          "pct": 50
+        },
+        "functions": {
+          "total": 1,
+          "covered": 1,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 3,
+          "covered": 3,
+          "skipped": 0,
+          "pct": 100
+        }
+      }
+    },
+    "packages/client/ui-theme/src/theme-settings.ts": {
+      "sourceSha256": "653f6ad6343a5f134a368df1c01819eac5ec557b02abf21ee2bc20d34298f442",
+      "metrics": {
+        "statements": {
+          "total": 143,
+          "covered": 133,
+          "skipped": 0,
+          "pct": 93
+        },
+        "branches": {
+          "total": 87,
+          "covered": 75,
+          "skipped": 0,
+          "pct": 86.2
+        },
+        "functions": {
+          "total": 15,
+          "covered": 15,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 120,
+          "covered": 119,
+          "skipped": 0,
+          "pct": 99.16
+        }
+      }
+    },
+    "packages/client/ui-theme/src/wallpaper.ts": {
+      "sourceSha256": "a9e4e8d863f73b514b0ddfaeace9480694ba5e484066b1be451fe0821a45befc",
+      "metrics": {
+        "statements": {
+          "total": 236,
+          "covered": 202,
+          "skipped": 0,
+          "pct": 85.59
+        },
+        "branches": {
+          "total": 154,
+          "covered": 122,
+          "skipped": 0,
+          "pct": 79.22
+        },
+        "functions": {
+          "total": 31,
+          "covered": 26,
+          "skipped": 0,
+          "pct": 83.87
+        },
+        "lines": {
+          "total": 209,
+          "covered": 184,
+          "skipped": 0,
+          "pct": 88.03
+        }
+      }
+    },
+    "packages/client/ui-user-terminal/src/client/apply.ts": {
+      "sourceSha256": "1d862333a656dbc14ba7ae08a2d9d14e7b59b86f04431202a98bb77ad65b84e4",
+      "metrics": {
+        "statements": {
+          "total": 35,
+          "covered": 32,
+          "skipped": 0,
+          "pct": 91.42
+        },
+        "branches": {
+          "total": 6,
+          "covered": 5,
+          "skipped": 0,
+          "pct": 83.33
+        },
+        "functions": {
+          "total": 15,
+          "covered": 13,
+          "skipped": 0,
+          "pct": 86.66
+        },
+        "lines": {
+          "total": 27,
+          "covered": 24,
+          "skipped": 0,
+          "pct": 88.88
+        }
+      }
+    },
+    "packages/client/ui-user-terminal/src/client/terminal/TerminalPane.tsx": {
+      "sourceSha256": "8e7c7bf284198993c28faec94c10b06428796ae6c867dd09d4038db1652f05dc",
+      "metrics": {
+        "statements": {
+          "total": 99,
+          "covered": 98,
+          "skipped": 0,
+          "pct": 98.98
+        },
+        "branches": {
+          "total": 32,
+          "covered": 32,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 25,
+          "covered": 24,
+          "skipped": 0,
+          "pct": 96
+        },
+        "lines": {
+          "total": 90,
+          "covered": 89,
+          "skipped": 0,
+          "pct": 98.88
+        }
+      }
+    },
+    "packages/client/ui-user-terminal/src/client/terminal/TerminalWorkspace.tsx": {
+      "sourceSha256": "d56539384effdde5b5b683d32f5a325374e5ccf53a87088b736f716a2e0ff717",
+      "metrics": {
+        "statements": {
+          "total": 124,
+          "covered": 115,
+          "skipped": 0,
+          "pct": 92.74
+        },
+        "branches": {
+          "total": 117,
+          "covered": 103,
+          "skipped": 0,
+          "pct": 88.03
+        },
+        "functions": {
+          "total": 37,
+          "covered": 37,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 102,
+          "covered": 101,
+          "skipped": 0,
+          "pct": 99.01
+        }
+      }
+    },
+    "packages/client/ui-user-terminal/src/client/terminal/fit.ts": {
+      "sourceSha256": "814e7579853d0a00f29c613a6f2fe8f8f53cecabed221fd703b37cb286e180ae",
+      "metrics": {
+        "statements": {
+          "total": 16,
+          "covered": 16,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 14,
+          "covered": 11,
+          "skipped": 0,
+          "pct": 78.57
+        },
+        "functions": {
+          "total": 3,
+          "covered": 3,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 14,
+          "covered": 14,
+          "skipped": 0,
+          "pct": 100
+        }
+      }
+    },
+    "packages/client/ui-user-terminal/src/client/terminal/height.ts": {
+      "sourceSha256": "0598fd040855ce8d59d2479b6333058aa04a289c82e18e106ad19f330edf76fe",
+      "metrics": {
+        "statements": {
+          "total": 6,
+          "covered": 6,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 2,
+          "covered": 1,
+          "skipped": 0,
+          "pct": 50
+        },
+        "functions": {
+          "total": 2,
+          "covered": 2,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 6,
+          "covered": 6,
+          "skipped": 0,
+          "pct": 100
+        }
+      }
+    },
+    "packages/client/ui-user-terminal/src/client/terminal/links.ts": {
+      "sourceSha256": "271019f4ece95357d35396dbb346e6570e2953bb7e85ff5e20f292e06510fe3e",
+      "metrics": {
+        "statements": {
+          "total": 147,
+          "covered": 139,
+          "skipped": 0,
+          "pct": 94.55
+        },
+        "branches": {
+          "total": 93,
+          "covered": 82,
+          "skipped": 0,
+          "pct": 88.17
+        },
+        "functions": {
+          "total": 25,
+          "covered": 25,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 122,
+          "covered": 122,
+          "skipped": 0,
+          "pct": 100
+        }
+      }
+    },
+    "packages/client/ui-user-terminal/src/client/terminal/shell.ts": {
+      "sourceSha256": "7ab654c48ad7aee1a976875353e66295987f2e7b28b114d0fee16f38bc883ee7",
+      "metrics": {
+        "statements": {
+          "total": 8,
+          "covered": 3,
+          "skipped": 0,
+          "pct": 37.5
+        },
+        "branches": {
+          "total": 12,
+          "covered": 4,
+          "skipped": 0,
+          "pct": 33.33
+        },
+        "functions": {
+          "total": 10,
+          "covered": 5,
+          "skipped": 0,
+          "pct": 50
+        },
+        "lines": {
+          "total": 8,
+          "covered": 3,
+          "skipped": 0,
+          "pct": 37.5
+        }
+      }
+    },
+    "packages/client/ui-user-terminal/src/client/terminal/stores.ts": {
+      "sourceSha256": "6acddd102891d6131e51b0e51af92b9b94b864c9a80f7f3ff941d82259ee3760",
+      "metrics": {
+        "statements": {
+          "total": 106,
+          "covered": 98,
+          "skipped": 0,
+          "pct": 92.45
+        },
+        "branches": {
+          "total": 58,
+          "covered": 46,
+          "skipped": 0,
+          "pct": 79.31
+        },
+        "functions": {
+          "total": 28,
+          "covered": 28,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 83,
+          "covered": 80,
+          "skipped": 0,
+          "pct": 96.38
+        }
+      }
+    },
+    "packages/client/ui-user-terminal/src/client/terminal/terminal-theme.ts": {
+      "sourceSha256": "f699b29f0afaffe924ffd3714e11eddd176ed000dc6638c7224a90073fb40dc0",
+      "metrics": {
+        "statements": {
+          "total": 51,
+          "covered": 50,
+          "skipped": 0,
+          "pct": 98.03
+        },
+        "branches": {
+          "total": 51,
+          "covered": 46,
+          "skipped": 0,
+          "pct": 90.19
+        },
+        "functions": {
+          "total": 8,
+          "covered": 8,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 45,
+          "covered": 45,
+          "skipped": 0,
+          "pct": 100
+        }
+      }
+    },
+    "packages/client/ui-user-terminal/src/index.ts": {
+      "sourceSha256": "baf79203a1a395b71ce61e8ced01ec66dc8ae85d23fa61e96c3ad5ff8bd6917d",
+      "metrics": {
+        "statements": {
+          "total": 0,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 0,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 1,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 0
+        },
+        "lines": {
+          "total": 0,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 100
+        }
+      }
+    },
+    "packages/client/ui-workflow-run/src/client/WorkflowRunPanel.tsx": {
+      "sourceSha256": "bfc5d45ee4941d97400260e8f50e26dbae89a3637aa3eb185304944e55ad1476",
+      "metrics": {
+        "statements": {
+          "total": 153,
+          "covered": 152,
+          "skipped": 0,
+          "pct": 99.34
+        },
+        "branches": {
+          "total": 126,
+          "covered": 124,
+          "skipped": 0,
+          "pct": 98.41
+        },
+        "functions": {
+          "total": 53,
+          "covered": 53,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 134,
+          "covered": 133,
+          "skipped": 0,
+          "pct": 99.25
+        }
+      }
+    },
+    "packages/context/agent-instructions/src/files.ts": {
+      "sourceSha256": "f6a6490797c1769f67ebc0a315393baafccb58de660f464bdf2d2d1c6c71a37a",
+      "metrics": {
+        "statements": {
+          "total": 213,
+          "covered": 210,
+          "skipped": 0,
+          "pct": 98.59
+        },
+        "branches": {
+          "total": 117,
+          "covered": 114,
+          "skipped": 0,
+          "pct": 97.43
+        },
+        "functions": {
+          "total": 35,
+          "covered": 35,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 186,
+          "covered": 186,
+          "skipped": 0,
+          "pct": 100
+        }
+      }
+    },
+    "packages/context/code-context/src/contributor.ts": {
+      "sourceSha256": "a18c8f34054e798c5db2cec9647728329a3995a9a756378b067a2a7835818192",
+      "metrics": {
+        "statements": {
+          "total": 120,
+          "covered": 109,
+          "skipped": 0,
+          "pct": 90.83
+        },
+        "branches": {
+          "total": 55,
+          "covered": 52,
+          "skipped": 0,
+          "pct": 94.54
+        },
+        "functions": {
+          "total": 30,
+          "covered": 22,
+          "skipped": 0,
+          "pct": 73.33
+        },
+        "lines": {
+          "total": 103,
+          "covered": 95,
+          "skipped": 0,
+          "pct": 92.23
+        }
+      }
+    },
+    "packages/context/context-engine/src/index.ts": {
+      "sourceSha256": "cd097ce5e267ca4f475b17c7a5112d3164506bd9af725429f13afb34507bfedc",
+      "metrics": {
+        "statements": {
+          "total": 201,
+          "covered": 192,
+          "skipped": 0,
+          "pct": 95.52
+        },
+        "branches": {
+          "total": 139,
+          "covered": 128,
+          "skipped": 0,
+          "pct": 92.08
+        },
+        "functions": {
+          "total": 34,
+          "covered": 34,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 175,
+          "covered": 171,
+          "skipped": 0,
+          "pct": 97.71
+        }
+      }
+    },
+    "packages/context/context-engine/src/invariant.ts": {
+      "sourceSha256": "6b8d69869c9e4a77a277872da90db382a3a282d543b1959289e1a13a0ced12e7",
+      "metrics": {
+        "statements": {
+          "total": 91,
+          "covered": 76,
+          "skipped": 0,
+          "pct": 83.51
+        },
+        "branches": {
+          "total": 67,
+          "covered": 53,
+          "skipped": 0,
+          "pct": 79.1
+        },
+        "functions": {
+          "total": 13,
+          "covered": 13,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 81,
+          "covered": 68,
+          "skipped": 0,
+          "pct": 83.95
+        }
+      }
+    },
+    "packages/context/context-inspector/src/index.ts": {
+      "sourceSha256": "ffcdf6c13abef61d53552bc8a1661f7cbc71b1503755343f1955ea64156d9f59",
+      "metrics": {
+        "statements": {
+          "total": 3,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 0
+        },
+        "branches": {
+          "total": 0,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 1,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 0
+        },
+        "lines": {
+          "total": 3,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 0
+        }
+      }
+    },
+    "packages/context/context-inspector/src/projection.ts": {
+      "sourceSha256": "e28552248a5266940f6dbe933f29fec01c963e78f02d6a049f3a8f21bcd268c3",
+      "metrics": {
+        "statements": {
+          "total": 50,
+          "covered": 44,
+          "skipped": 0,
+          "pct": 88
+        },
+        "branches": {
+          "total": 41,
+          "covered": 25,
+          "skipped": 0,
+          "pct": 60.97
+        },
+        "functions": {
+          "total": 17,
+          "covered": 17,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 42,
+          "covered": 39,
+          "skipped": 0,
+          "pct": 92.85
+        }
+      }
+    },
+    "packages/context/file-reference-local/src/content.ts": {
+      "sourceSha256": "b94274ad649b8288fd32eecd5e3c5a2808f025bd1ca6dc1b96bd715f68b562a5",
+      "metrics": {
+        "statements": {
+          "total": 88,
+          "covered": 87,
+          "skipped": 0,
+          "pct": 98.86
+        },
+        "branches": {
+          "total": 30,
+          "covered": 29,
+          "skipped": 0,
+          "pct": 96.66
+        },
+        "functions": {
+          "total": 9,
+          "covered": 9,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 80,
+          "covered": 80,
+          "skipped": 0,
+          "pct": 100
+        }
+      }
+    },
+    "packages/context/prompt-enhancement-context-engine/src/index.ts": {
+      "sourceSha256": "ba9514081f6c870a19653d5c88e7a3615465124e257ba84b8c162a1b3d99bfe5",
+      "metrics": {
+        "statements": {
+          "total": 34,
+          "covered": 28,
+          "skipped": 0,
+          "pct": 82.35
+        },
+        "branches": {
+          "total": 46,
+          "covered": 34,
+          "skipped": 0,
+          "pct": 73.91
+        },
+        "functions": {
+          "total": 8,
+          "covered": 8,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 31,
+          "covered": 27,
+          "skipped": 0,
+          "pct": 87.09
+        }
+      }
+    },
+    "packages/context/prompt-enhancement-context-none/src/index.ts": {
+      "sourceSha256": "882ef8b093e45ccd7f2714e7cfeb410fee4b1c6ff8eb1d5050a4a7c6a4151c82",
+      "metrics": {
+        "statements": {
+          "total": 5,
+          "covered": 4,
+          "skipped": 0,
+          "pct": 80
+        },
+        "branches": {
+          "total": 0,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 2,
+          "covered": 1,
+          "skipped": 0,
+          "pct": 50
+        },
+        "lines": {
+          "total": 5,
+          "covered": 4,
+          "skipped": 0,
+          "pct": 80
+        }
+      }
+    },
+    "packages/context/prompt-enhancement-llm/src/index.ts": {
+      "sourceSha256": "15c02f1a3ca4670018c82ca1946ce383de1c2871747488b060e21d4b571af2ed",
+      "metrics": {
+        "statements": {
+          "total": 81,
+          "covered": 71,
+          "skipped": 0,
+          "pct": 87.65
+        },
+        "branches": {
+          "total": 75,
+          "covered": 62,
+          "skipped": 0,
+          "pct": 82.66
+        },
+        "functions": {
+          "total": 14,
+          "covered": 13,
+          "skipped": 0,
+          "pct": 92.85
+        },
+        "lines": {
+          "total": 75,
+          "covered": 66,
+          "skipped": 0,
+          "pct": 88
+        }
+      }
+    },
+    "packages/context/prompt-enhancement-llm/src/prompt.ts": {
+      "sourceSha256": "53391671d9704ef5388cde993df4128e427f2376595b7bf46bb1aef593d6aef2",
+      "metrics": {
+        "statements": {
+          "total": 31,
+          "covered": 29,
+          "skipped": 0,
+          "pct": 93.54
+        },
+        "branches": {
+          "total": 21,
+          "covered": 18,
+          "skipped": 0,
+          "pct": 85.71
+        },
+        "functions": {
+          "total": 7,
+          "covered": 7,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 24,
+          "covered": 24,
+          "skipped": 0,
+          "pct": 100
+        }
+      }
+    },
+    "packages/context/prompt-enhancement/src/index.ts": {
+      "sourceSha256": "141ff45f98f576db4277d049a1bb9592de32b3205898b997de5390d5a4f2b96e",
+      "metrics": {
+        "statements": {
+          "total": 111,
+          "covered": 107,
+          "skipped": 0,
+          "pct": 96.39
+        },
+        "branches": {
+          "total": 73,
+          "covered": 61,
+          "skipped": 0,
+          "pct": 83.56
+        },
+        "functions": {
+          "total": 20,
+          "covered": 20,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 104,
+          "covered": 101,
+          "skipped": 0,
+          "pct": 97.11
+        }
+      }
+    },
+    "packages/context/session-history-context/src/index.ts": {
+      "sourceSha256": "28a78d8678264f551d54482de6017427d0ae8e1137e927ada87b3fb1d0f14def",
+      "metrics": {
+        "statements": {
+          "total": 192,
+          "covered": 178,
+          "skipped": 0,
+          "pct": 92.7
+        },
+        "branches": {
+          "total": 147,
+          "covered": 117,
+          "skipped": 0,
+          "pct": 79.59
+        },
+        "functions": {
+          "total": 33,
+          "covered": 33,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 158,
+          "covered": 156,
+          "skipped": 0,
+          "pct": 98.73
+        }
+      }
+    },
+    "packages/examples/agent-spine-demo/src/index.ts": {
+      "sourceSha256": "dc5c6a128f091cfd5716a2ee2945fba57dc7b2978bdba7c7ca1a7bb33ac7b945",
+      "metrics": {
+        "statements": {
+          "total": 46,
+          "covered": 46,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 91,
+          "covered": 89,
+          "skipped": 0,
+          "pct": 97.8
+        },
+        "functions": {
+          "total": 2,
+          "covered": 2,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 44,
+          "covered": 44,
+          "skipped": 0,
+          "pct": 100
+        }
+      }
+    },
+    "packages/experimental/agent-team/src/mailbox.ts": {
+      "sourceSha256": "ccd0171801d9c66a1fd668d42854ac5dcf1da045bd870ec2e5cca978fec04da5",
+      "metrics": {
+        "statements": {
+          "total": 147,
+          "covered": 147,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 86,
+          "covered": 85,
+          "skipped": 0,
+          "pct": 98.83
+        },
+        "functions": {
+          "total": 30,
+          "covered": 30,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 130,
+          "covered": 130,
+          "skipped": 0,
+          "pct": 100
+        }
+      }
+    },
+    "packages/guard/llm-circuit-breaker/src/breaker.ts": {
+      "sourceSha256": "01afc191615d85a7df68e9b741e6c891f67b94335f8781487c3cde09d656ef82",
+      "metrics": {
+        "statements": {
+          "total": 60,
+          "covered": 59,
+          "skipped": 0,
+          "pct": 98.33
+        },
+        "branches": {
+          "total": 32,
+          "covered": 31,
+          "skipped": 0,
+          "pct": 96.87
+        },
+        "functions": {
+          "total": 12,
+          "covered": 12,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 54,
+          "covered": 54,
+          "skipped": 0,
+          "pct": 100
+        }
+      }
+    },
+    "packages/guard/llm-circuit-breaker/src/index.ts": {
+      "sourceSha256": "636173955481d24b3c1f48aac1fbcca6305ff50612ea6d37d82d6ba1e1c1b779",
+      "metrics": {
+        "statements": {
+          "total": 56,
+          "covered": 56,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 28,
+          "covered": 25,
+          "skipped": 0,
+          "pct": 89.28
+        },
+        "functions": {
+          "total": 8,
+          "covered": 8,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 52,
+          "covered": 52,
+          "skipped": 0,
+          "pct": 100
+        }
+      }
+    },
+    "packages/guard/token-budget-controller/src/index.ts": {
+      "sourceSha256": "ce31f12950a7d5af7747900348b1208df9477d9f3280cae998da21e6ae395d81",
+      "metrics": {
+        "statements": {
+          "total": 57,
+          "covered": 56,
+          "skipped": 0,
+          "pct": 98.24
+        },
+        "branches": {
+          "total": 45,
+          "covered": 44,
+          "skipped": 0,
+          "pct": 97.77
+        },
+        "functions": {
+          "total": 9,
+          "covered": 9,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 53,
+          "covered": 53,
+          "skipped": 0,
+          "pct": 100
+        }
+      }
+    },
+    "packages/host/apiproxy/src/approval-questions.ts": {
+      "sourceSha256": "371801085d4d717852847ad7e9d902fd073673749837856d76b7fc20c6a51c76",
+      "metrics": {
+        "statements": {
+          "total": 24,
+          "covered": 20,
+          "skipped": 0,
+          "pct": 83.33
+        },
+        "branches": {
+          "total": 26,
+          "covered": 21,
+          "skipped": 0,
+          "pct": 80.76
+        },
+        "functions": {
+          "total": 5,
+          "covered": 5,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 15,
+          "covered": 15,
+          "skipped": 0,
+          "pct": 100
+        }
+      }
+    },
+    "packages/host/apiproxy/src/prompt-content.ts": {
+      "sourceSha256": "8f0e1f92d0febabad4cc6dc725d0038d6bb86cef6c95da57cd151d8283efc55e",
+      "metrics": {
+        "statements": {
+          "total": 48,
+          "covered": 39,
+          "skipped": 0,
+          "pct": 81.25
+        },
+        "branches": {
+          "total": 38,
+          "covered": 26,
+          "skipped": 0,
+          "pct": 68.42
+        },
+        "functions": {
+          "total": 11,
+          "covered": 11,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 34,
+          "covered": 29,
+          "skipped": 0,
+          "pct": 85.29
+        }
+      }
+    },
+    "packages/host/code-index-center/src/index.ts": {
+      "sourceSha256": "46e5a7e7970d3c68901ae95fb3bc35eae213e33e89cfb919a167a794cebc164f",
+      "metrics": {
+        "statements": {
+          "total": 44,
+          "covered": 36,
+          "skipped": 0,
+          "pct": 81.81
+        },
+        "branches": {
+          "total": 23,
+          "covered": 19,
+          "skipped": 0,
+          "pct": 82.6
+        },
+        "functions": {
+          "total": 9,
+          "covered": 7,
+          "skipped": 0,
+          "pct": 77.77
+        },
+        "lines": {
+          "total": 38,
+          "covered": 32,
+          "skipped": 0,
+          "pct": 84.21
+        }
+      }
+    },
+    "packages/host/directory-picker-browse/src/index.ts": {
+      "sourceSha256": "302300d8dca477c964d3f7ad17d046c8b31c652ea4b1772a8b3c39358a252c40",
+      "metrics": {
+        "statements": {
+          "total": 138,
+          "covered": 138,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 85,
+          "covered": 82,
+          "skipped": 0,
+          "pct": 96.47
+        },
+        "functions": {
+          "total": 28,
+          "covered": 28,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 122,
+          "covered": 122,
+          "skipped": 0,
+          "pct": 100
+        }
+      }
+    },
+    "packages/host/mcp-servers/src/index.ts": {
+      "sourceSha256": "08aa46ae4450c778c2a8767b647064e5409d9dcc07652b261c6a00e97e675572",
+      "metrics": {
+        "statements": {
+          "total": 79,
+          "covered": 65,
+          "skipped": 0,
+          "pct": 82.27
+        },
+        "branches": {
+          "total": 57,
+          "covered": 44,
+          "skipped": 0,
+          "pct": 77.19
+        },
+        "functions": {
+          "total": 21,
+          "covered": 16,
+          "skipped": 0,
+          "pct": 76.19
+        },
+        "lines": {
+          "total": 65,
+          "covered": 57,
+          "skipped": 0,
+          "pct": 87.69
+        }
+      }
+    },
+    "packages/host/memory-center/src/index.ts": {
+      "sourceSha256": "cae7a46e11162ab1dccba191b44807ec4a2dbc8aeb4b7737ddfbe8d2b2a86a7a",
+      "metrics": {
+        "statements": {
+          "total": 245,
+          "covered": 206,
+          "skipped": 0,
+          "pct": 84.08
+        },
+        "branches": {
+          "total": 189,
+          "covered": 127,
+          "skipped": 0,
+          "pct": 67.19
+        },
+        "functions": {
+          "total": 43,
+          "covered": 42,
+          "skipped": 0,
+          "pct": 97.67
+        },
+        "lines": {
+          "total": 216,
+          "covered": 192,
+          "skipped": 0,
+          "pct": 88.88
+        }
+      }
+    },
+    "packages/host/skill-inventory/src/frontmatter.ts": {
+      "sourceSha256": "f7722248ce839be48e12a96a32cba1b17adfd7b1410d7200cc08585220868918",
+      "metrics": {
+        "statements": {
+          "total": 27,
+          "covered": 27,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 19,
+          "covered": 18,
+          "skipped": 0,
+          "pct": 94.73
+        },
+        "functions": {
+          "total": 5,
+          "covered": 5,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 24,
+          "covered": 24,
+          "skipped": 0,
+          "pct": 100
+        }
+      }
+    },
+    "packages/host/skill-inventory/src/index.ts": {
+      "sourceSha256": "ad552bbee0a1e0af94c1f5fdb0647d793452bb1fff3644b1c9c15d2688b7957f",
+      "metrics": {
+        "statements": {
+          "total": 318,
+          "covered": 271,
+          "skipped": 0,
+          "pct": 85.22
+        },
+        "branches": {
+          "total": 267,
+          "covered": 194,
+          "skipped": 0,
+          "pct": 72.65
+        },
+        "functions": {
+          "total": 41,
+          "covered": 41,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 277,
+          "covered": 254,
+          "skipped": 0,
+          "pct": 91.69
+        }
+      }
+    },
+    "packages/host/work-results/src/index.ts": {
+      "sourceSha256": "b488fb69f0f370f4a7a9a0bc6261c7ab18c6a9c9e7a3f50c1edfa73206c53bb4",
+      "metrics": {
+        "statements": {
+          "total": 176,
+          "covered": 147,
+          "skipped": 0,
+          "pct": 83.52
+        },
+        "branches": {
+          "total": 111,
+          "covered": 82,
+          "skipped": 0,
+          "pct": 73.87
+        },
+        "functions": {
+          "total": 23,
+          "covered": 22,
+          "skipped": 0,
+          "pct": 95.65
+        },
+        "lines": {
+          "total": 141,
+          "covered": 131,
+          "skipped": 0,
+          "pct": 92.9
+        }
+      }
+    },
+    "packages/index/code-index-local/src/embed/worker.ts": {
+      "sourceSha256": "4cc46e6d3ef133249dc34e39276774ccfee05370a1b2a581ce153f84301e5349",
+      "metrics": {
+        "statements": {
+          "total": 91,
+          "covered": 86,
+          "skipped": 0,
+          "pct": 94.5
+        },
+        "branches": {
+          "total": 68,
+          "covered": 60,
+          "skipped": 0,
+          "pct": 88.23
+        },
+        "functions": {
+          "total": 15,
+          "covered": 15,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 75,
+          "covered": 72,
+          "skipped": 0,
+          "pct": 96
+        }
+      }
+    },
+    "packages/index/code-index-local/src/eval.ts": {
+      "sourceSha256": "7e716be8c2b459be238ef557eb0224795c8a304104e93de9915753805a4c01c8",
+      "metrics": {
+        "statements": {
+          "total": 31,
+          "covered": 26,
+          "skipped": 0,
+          "pct": 83.87
+        },
+        "branches": {
+          "total": 14,
+          "covered": 9,
+          "skipped": 0,
+          "pct": 64.28
+        },
+        "functions": {
+          "total": 9,
+          "covered": 9,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 24,
+          "covered": 22,
+          "skipped": 0,
+          "pct": 91.66
+        }
+      }
+    },
+    "packages/index/code-index-local/src/gitignore.ts": {
+      "sourceSha256": "30f593a8d1122b3c6813740aa2cddf778021b54c31809a5465fdd0868ea5072f",
+      "metrics": {
+        "statements": {
+          "total": 104,
+          "covered": 95,
+          "skipped": 0,
+          "pct": 91.34
+        },
+        "branches": {
+          "total": 47,
+          "covered": 39,
+          "skipped": 0,
+          "pct": 82.97
+        },
+        "functions": {
+          "total": 18,
+          "covered": 18,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 83,
+          "covered": 79,
+          "skipped": 0,
+          "pct": 95.18
+        }
+      }
+    },
+    "packages/index/code-index-local/src/index.ts": {
+      "sourceSha256": "b4002c748b23747221e623030fb65294c52d61d819ec4f99fc20d5624b090d9a",
+      "metrics": {
+        "statements": {
+          "total": 100,
+          "covered": 96,
+          "skipped": 0,
+          "pct": 96
+        },
+        "branches": {
+          "total": 92,
+          "covered": 91,
+          "skipped": 0,
+          "pct": 98.91
+        },
+        "functions": {
+          "total": 24,
+          "covered": 21,
+          "skipped": 0,
+          "pct": 87.5
+        },
+        "lines": {
+          "total": 92,
+          "covered": 88,
+          "skipped": 0,
+          "pct": 95.65
+        }
+      }
+    },
+    "packages/index/code-index-local/src/invalidate.ts": {
+      "sourceSha256": "69232517f2c7a5bd3498f8c7dd47db823c8071facea6d1e576f070fa84723525",
+      "metrics": {
+        "statements": {
+          "total": 37,
+          "covered": 37,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 12,
+          "covered": 11,
+          "skipped": 0,
+          "pct": 91.66
+        },
+        "functions": {
+          "total": 11,
+          "covered": 11,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 32,
+          "covered": 32,
+          "skipped": 0,
+          "pct": 100
+        }
+      }
+    },
+    "packages/index/code-index-local/src/provider.ts": {
+      "sourceSha256": "8a77ead8cfb5ca8cd7e3c8cf7440a357047ab7d51d294f0760924d30cc1de5ae",
+      "metrics": {
+        "statements": {
+          "total": 368,
+          "covered": 350,
+          "skipped": 0,
+          "pct": 95.1
+        },
+        "branches": {
+          "total": 266,
+          "covered": 243,
+          "skipped": 0,
+          "pct": 91.35
+        },
+        "functions": {
+          "total": 65,
+          "covered": 62,
+          "skipped": 0,
+          "pct": 95.38
+        },
+        "lines": {
+          "total": 325,
+          "covered": 315,
+          "skipped": 0,
+          "pct": 96.92
+        }
+      }
+    },
+    "packages/index/code-index-local/src/scanner.ts": {
+      "sourceSha256": "99d0f10bdb7843bafbcef4fcf9a29ea1c2761a70157ff14221cd54b9f8bd47d4",
+      "metrics": {
+        "statements": {
+          "total": 85,
+          "covered": 82,
+          "skipped": 0,
+          "pct": 96.47
+        },
+        "branches": {
+          "total": 66,
+          "covered": 61,
+          "skipped": 0,
+          "pct": 92.42
+        },
+        "functions": {
+          "total": 14,
+          "covered": 14,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 65,
+          "covered": 65,
+          "skipped": 0,
+          "pct": 100
+        }
+      }
+    },
+    "packages/index/code-index-local/src/watcher.ts": {
+      "sourceSha256": "2d719f8022920b579b23a74f0819431ed672fac02b95edc052aa67d08ae2a15c",
+      "metrics": {
+        "statements": {
+          "total": 33,
+          "covered": 33,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 12,
+          "covered": 10,
+          "skipped": 0,
+          "pct": 83.33
+        },
+        "functions": {
+          "total": 7,
+          "covered": 7,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 30,
+          "covered": 30,
+          "skipped": 0,
+          "pct": 100
+        }
+      }
+    },
+    "packages/index/code-index-search/src/lanes.vector.ts": {
+      "sourceSha256": "873fb9ee0eed5a7c21045675e96efef05e908c8630802e27c7d25c47af3aa250",
+      "metrics": {
+        "statements": {
+          "total": 32,
+          "covered": 31,
+          "skipped": 0,
+          "pct": 96.87
+        },
+        "branches": {
+          "total": 24,
+          "covered": 23,
+          "skipped": 0,
+          "pct": 95.83
+        },
+        "functions": {
+          "total": 11,
+          "covered": 11,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 25,
+          "covered": 25,
+          "skipped": 0,
+          "pct": 100
+        }
+      }
+    },
+    "packages/index/code-index-search/src/plan.ts": {
+      "sourceSha256": "2bb65d257c8e260328878b1b7643c8155e274b337d9aee135e731ba802a91732",
+      "metrics": {
+        "statements": {
+          "total": 118,
+          "covered": 118,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 97,
+          "covered": 96,
+          "skipped": 0,
+          "pct": 98.96
+        },
+        "functions": {
+          "total": 29,
+          "covered": 29,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 113,
+          "covered": 113,
+          "skipped": 0,
+          "pct": 100
+        }
+      }
+    },
+    "packages/index/code-index-sqlite/src/embed-queue.ts": {
+      "sourceSha256": "89d6eab113f6dca6b3bf6c9d392600103b02d8ee0624ff61146a2563bd1fc7dd",
+      "metrics": {
+        "statements": {
+          "total": 102,
+          "covered": 100,
+          "skipped": 0,
+          "pct": 98.03
+        },
+        "branches": {
+          "total": 60,
+          "covered": 60,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 15,
+          "covered": 15,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 92,
+          "covered": 90,
+          "skipped": 0,
+          "pct": 97.82
+        }
+      }
+    },
+    "packages/index/code-index-sqlite/src/embedding-generation.ts": {
+      "sourceSha256": "7cea624d82b5b7ecbf8fc8661438c451ed79b56b7e24ab5329520b1d5de9192e",
+      "metrics": {
+        "statements": {
+          "total": 5,
+          "covered": 4,
+          "skipped": 0,
+          "pct": 80
+        },
+        "branches": {
+          "total": 3,
+          "covered": 2,
+          "skipped": 0,
+          "pct": 66.66
+        },
+        "functions": {
+          "total": 1,
+          "covered": 1,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 5,
+          "covered": 4,
+          "skipped": 0,
+          "pct": 80
+        }
+      }
+    },
+    "packages/index/code-index-sqlite/src/epoch.ts": {
+      "sourceSha256": "d427fdd6af59cc9620a2ccf98d50af93f2d9ee335a1a24d04d20ea5fcb4855b7",
+      "metrics": {
+        "statements": {
+          "total": 47,
+          "covered": 47,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 32,
+          "covered": 25,
+          "skipped": 0,
+          "pct": 78.12
+        },
+        "functions": {
+          "total": 10,
+          "covered": 10,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 45,
+          "covered": 45,
+          "skipped": 0,
+          "pct": 100
+        }
+      }
+    },
+    "packages/index/code-index-sqlite/src/reader.ts": {
+      "sourceSha256": "1dfe795b9183fcf9e48161540d6bbb0a86091e9270313af32ac48e382a0627b1",
+      "metrics": {
+        "statements": {
+          "total": 260,
+          "covered": 260,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 87,
+          "covered": 86,
+          "skipped": 0,
+          "pct": 98.85
+        },
+        "functions": {
+          "total": 64,
+          "covered": 64,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 225,
+          "covered": 225,
+          "skipped": 0,
+          "pct": 100
+        }
+      }
+    },
+    "packages/index/code-index-workspace-router/src/index.ts": {
+      "sourceSha256": "8771b072b803237ee185e5f102edd69568775711ab7649c77e862e48a217f523",
+      "metrics": {
+        "statements": {
+          "total": 215,
+          "covered": 157,
+          "skipped": 0,
+          "pct": 73.02
+        },
+        "branches": {
+          "total": 104,
+          "covered": 63,
+          "skipped": 0,
+          "pct": 60.57
+        },
+        "functions": {
+          "total": 63,
+          "covered": 39,
+          "skipped": 0,
+          "pct": 61.9
+        },
+        "lines": {
+          "total": 163,
+          "covered": 133,
+          "skipped": 0,
+          "pct": 81.59
+        }
+      }
+    },
+    "packages/index/code-index/src/index.ts": {
+      "sourceSha256": "5fa606442b09028a6c6a29a2807ec47aa55e86b7c7ee1fa037043078a11c6ac3",
+      "metrics": {
+        "statements": {
+          "total": 14,
+          "covered": 8,
+          "skipped": 0,
+          "pct": 57.14
+        },
+        "branches": {
+          "total": 0,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 12,
+          "covered": 8,
+          "skipped": 0,
+          "pct": 66.66
+        },
+        "lines": {
+          "total": 14,
+          "covered": 8,
+          "skipped": 0,
+          "pct": 57.14
+        }
+      }
+    },
+    "packages/index/tool-code-index/src/errors.ts": {
+      "sourceSha256": "705e1c25500fba83e527569adf9077481818d78aadafc47471e472f82708ca22",
+      "metrics": {
+        "statements": {
+          "total": 26,
+          "covered": 17,
+          "skipped": 0,
+          "pct": 65.38
+        },
+        "branches": {
+          "total": 8,
+          "covered": 7,
+          "skipped": 0,
+          "pct": 87.5
+        },
+        "functions": {
+          "total": 11,
+          "covered": 4,
+          "skipped": 0,
+          "pct": 36.36
+        },
+        "lines": {
+          "total": 24,
+          "covered": 15,
+          "skipped": 0,
+          "pct": 62.5
+        }
+      }
+    },
+    "packages/index/tool-code-index/src/refresh-tool.ts": {
+      "sourceSha256": "cd1b69842fb7abfe0a920d0faaeb43a9163e871c81d57ed7667911329f599aa9",
+      "metrics": {
+        "statements": {
+          "total": 17,
+          "covered": 17,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 18,
+          "covered": 7,
+          "skipped": 0,
+          "pct": 38.88
+        },
+        "functions": {
+          "total": 6,
+          "covered": 6,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 16,
+          "covered": 16,
+          "skipped": 0,
+          "pct": 100
+        }
+      }
+    },
+    "packages/index/tool-code-index/src/status-tool.ts": {
+      "sourceSha256": "b7d73c6bf91b5239c68ba9007c544fb7a63cd8322912ef280e5969fe6ea23456",
+      "metrics": {
+        "statements": {
+          "total": 17,
+          "covered": 16,
+          "skipped": 0,
+          "pct": 94.11
+        },
+        "branches": {
+          "total": 8,
+          "covered": 6,
+          "skipped": 0,
+          "pct": 75
+        },
+        "functions": {
+          "total": 6,
+          "covered": 6,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 16,
+          "covered": 15,
+          "skipped": 0,
+          "pct": 93.75
+        }
+      }
+    },
+    "packages/jobs/jobs-local/src/index.ts": {
+      "sourceSha256": "4c61d46d6c43737c77ed182b12dfde6cd5bea59de77c0ec006e56f7c0946af08",
+      "metrics": {
+        "statements": {
+          "total": 249,
+          "covered": 249,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 114,
+          "covered": 112,
+          "skipped": 0,
+          "pct": 98.24
+        },
+        "functions": {
+          "total": 52,
+          "covered": 52,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 212,
+          "covered": 212,
+          "skipped": 0,
+          "pct": 100
+        }
+      }
+    },
+    "packages/mcp/mcp-catalog/src/index.ts": {
+      "sourceSha256": "2441ccbebdf881d0c895305341fd15101011cbb8b3897fa7622480b23865a937",
+      "metrics": {
+        "statements": {
+          "total": 169,
+          "covered": 136,
+          "skipped": 0,
+          "pct": 80.47
+        },
+        "branches": {
+          "total": 122,
+          "covered": 82,
+          "skipped": 0,
+          "pct": 67.21
+        },
+        "functions": {
+          "total": 33,
+          "covered": 31,
+          "skipped": 0,
+          "pct": 93.93
+        },
+        "lines": {
+          "total": 134,
+          "covered": 123,
+          "skipped": 0,
+          "pct": 91.79
+        }
+      }
+    },
+    "packages/mcp/mcp-client/src/catalog.ts": {
+      "sourceSha256": "0ead1db732b49119ff5a5c9730b5a0da9a1320b77abe158771f0db261b98fa07",
+      "metrics": {
+        "statements": {
+          "total": 57,
+          "covered": 48,
+          "skipped": 0,
+          "pct": 84.21
+        },
+        "branches": {
+          "total": 89,
+          "covered": 52,
+          "skipped": 0,
+          "pct": 58.42
+        },
+        "functions": {
+          "total": 15,
+          "covered": 15,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 44,
+          "covered": 41,
+          "skipped": 0,
+          "pct": 93.18
+        }
+      }
+    },
+    "packages/mcp/mcp-client/src/connection.ts": {
+      "sourceSha256": "cf9135f1a85d52b9046cbdac854df58bdb62765f212d254175ac202ad12ad07e",
+      "metrics": {
+        "statements": {
+          "total": 247,
+          "covered": 208,
+          "skipped": 0,
+          "pct": 84.21
+        },
+        "branches": {
+          "total": 157,
+          "covered": 130,
+          "skipped": 0,
+          "pct": 82.8
+        },
+        "functions": {
+          "total": 42,
+          "covered": 31,
+          "skipped": 0,
+          "pct": 73.8
+        },
+        "lines": {
+          "total": 202,
+          "covered": 179,
+          "skipped": 0,
+          "pct": 88.61
+        }
+      }
+    },
+    "packages/mcp/mcp-client/src/index.ts": {
+      "sourceSha256": "41b48d60a884437678cc6c433db880484b43d34b7f569928374f177c8270d361",
+      "metrics": {
+        "statements": {
+          "total": 47,
+          "covered": 44,
+          "skipped": 0,
+          "pct": 93.61
+        },
+        "branches": {
+          "total": 32,
+          "covered": 29,
+          "skipped": 0,
+          "pct": 90.62
+        },
+        "functions": {
+          "total": 6,
+          "covered": 6,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 37,
+          "covered": 36,
+          "skipped": 0,
+          "pct": 97.29
+        }
+      }
+    },
+    "packages/mcp/mcp-client/src/status.ts": {
+      "sourceSha256": "daa9cd7dfc824e1dd4cc208f64ede7c8bf5253b2761572434ce1db72d15254fd",
+      "metrics": {
+        "statements": {
+          "total": 11,
+          "covered": 10,
+          "skipped": 0,
+          "pct": 90.9
+        },
+        "branches": {
+          "total": 6,
+          "covered": 5,
+          "skipped": 0,
+          "pct": 83.33
+        },
+        "functions": {
+          "total": 2,
+          "covered": 2,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 9,
+          "covered": 9,
+          "skipped": 0,
+          "pct": 100
+        }
+      }
+    },
+    "packages/mcp/mcp-client/src/tools.ts": {
+      "sourceSha256": "a0930a7ae1940c8edba149852c7fc15255f117b634c2d8923c18806ae2c0d235",
+      "metrics": {
+        "statements": {
+          "total": 198,
+          "covered": 195,
+          "skipped": 0,
+          "pct": 98.48
+        },
+        "branches": {
+          "total": 131,
+          "covered": 128,
+          "skipped": 0,
+          "pct": 97.7
+        },
+        "functions": {
+          "total": 30,
+          "covered": 30,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 172,
+          "covered": 171,
+          "skipped": 0,
+          "pct": 99.41
+        }
+      }
+    },
+    "packages/mcp/mcp-servers-file/src/document.ts": {
+      "sourceSha256": "57c03e49bf426538320fba0bd003a23578239cdbacd21ca910ec2a577556b65f",
+      "metrics": {
+        "statements": {
+          "total": 170,
+          "covered": 151,
+          "skipped": 0,
+          "pct": 88.82
+        },
+        "branches": {
+          "total": 183,
+          "covered": 155,
+          "skipped": 0,
+          "pct": 84.69
+        },
+        "functions": {
+          "total": 35,
+          "covered": 35,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 147,
+          "covered": 134,
+          "skipped": 0,
+          "pct": 91.15
+        }
+      }
+    },
+    "packages/mcp/mcp-servers-file/src/index.ts": {
+      "sourceSha256": "2b03e865d3100312542e1a3d7b6775382dc7f5eafee12b99563d60e6be723e8e",
+      "metrics": {
+        "statements": {
+          "total": 5,
+          "covered": 2,
+          "skipped": 0,
+          "pct": 40
+        },
+        "branches": {
+          "total": 1,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 0
+        },
+        "functions": {
+          "total": 2,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 0
+        },
+        "lines": {
+          "total": 4,
+          "covered": 2,
+          "skipped": 0,
+          "pct": 50
+        }
+      }
+    },
+    "packages/memory/memory-agent/src/index.ts": {
+      "sourceSha256": "0e78c4960fec7063726445774271a0ee65e61a496f5e83eb6c36be83ec3404c1",
+      "metrics": {
+        "statements": {
+          "total": 162,
+          "covered": 139,
+          "skipped": 0,
+          "pct": 85.8
+        },
+        "branches": {
+          "total": 121,
+          "covered": 86,
+          "skipped": 0,
+          "pct": 71.07
+        },
+        "functions": {
+          "total": 43,
+          "covered": 41,
+          "skipped": 0,
+          "pct": 95.34
+        },
+        "lines": {
+          "total": 139,
+          "covered": 125,
+          "skipped": 0,
+          "pct": 89.92
+        }
+      }
+    },
+    "packages/memory/memory-extractor-llm/src/index.ts": {
+      "sourceSha256": "e45d43d66e30a6f9d634ad4cac68aa141fc31ffc707c3170ad7dbcf0b36f561a",
+      "metrics": {
+        "statements": {
+          "total": 150,
+          "covered": 116,
+          "skipped": 0,
+          "pct": 77.33
+        },
+        "branches": {
+          "total": 134,
+          "covered": 82,
+          "skipped": 0,
+          "pct": 61.19
+        },
+        "functions": {
+          "total": 27,
+          "covered": 24,
+          "skipped": 0,
+          "pct": 88.88
+        },
+        "lines": {
+          "total": 130,
+          "covered": 107,
+          "skipped": 0,
+          "pct": 82.3
+        }
+      }
+    },
+    "packages/memory/memory-extractor-llm/src/prompt.ts": {
+      "sourceSha256": "60d697c363842dcf04b659d91006808cd5cf7b269c93059d9f0d53398246b1e6",
+      "metrics": {
+        "statements": {
+          "total": 42,
+          "covered": 40,
+          "skipped": 0,
+          "pct": 95.23
+        },
+        "branches": {
+          "total": 39,
+          "covered": 36,
+          "skipped": 0,
+          "pct": 92.3
+        },
+        "functions": {
+          "total": 8,
+          "covered": 8,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 36,
+          "covered": 35,
+          "skipped": 0,
+          "pct": 97.22
+        }
+      }
+    },
+    "packages/memory/memory-extractor-llm/src/sources.ts": {
+      "sourceSha256": "51e6f92aa103fa8551b83793875ea54c98112d578cd2bbdf71cbfcc4ca9b7bb9",
+      "metrics": {
+        "statements": {
+          "total": 76,
+          "covered": 73,
+          "skipped": 0,
+          "pct": 96.05
+        },
+        "branches": {
+          "total": 66,
+          "covered": 59,
+          "skipped": 0,
+          "pct": 89.39
+        },
+        "functions": {
+          "total": 15,
+          "covered": 15,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 57,
+          "covered": 56,
+          "skipped": 0,
+          "pct": 98.24
+        }
+      }
+    },
+    "packages/memory/memory-outcome-reconciler/src/index.ts": {
+      "sourceSha256": "fd7537035f9a0ed9f81f653d1140cb15cb8544e1697eac21a6d0a54afb9806f3",
+      "metrics": {
+        "statements": {
+          "total": 160,
+          "covered": 131,
+          "skipped": 0,
+          "pct": 81.87
+        },
+        "branches": {
+          "total": 120,
+          "covered": 73,
+          "skipped": 0,
+          "pct": 60.83
+        },
+        "functions": {
+          "total": 38,
+          "covered": 32,
+          "skipped": 0,
+          "pct": 84.21
+        },
+        "lines": {
+          "total": 132,
+          "covered": 113,
+          "skipped": 0,
+          "pct": 85.6
+        }
+      }
+    },
+    "packages/memory/memory-sqlite/src/index.ts": {
+      "sourceSha256": "75bf986ee4b96a8b38c83bb421934196a7771c8c7e9291d7d91136044580d758",
+      "metrics": {
+        "statements": {
+          "total": 559,
+          "covered": 492,
+          "skipped": 0,
+          "pct": 88.01
+        },
+        "branches": {
+          "total": 387,
+          "covered": 298,
+          "skipped": 0,
+          "pct": 77
+        },
+        "functions": {
+          "total": 113,
+          "covered": 112,
+          "skipped": 0,
+          "pct": 99.11
+        },
+        "lines": {
+          "total": 498,
+          "covered": 459,
+          "skipped": 0,
+          "pct": 92.16
+        }
+      }
+    },
+    "packages/memory/memory-sqlite/src/schema.ts": {
+      "sourceSha256": "7c444086f96a4c1a9dbb547937ceb25da450c94059dfcf7ebfb0783fb7aa2fbd",
+      "metrics": {
+        "statements": {
+          "total": 98,
+          "covered": 86,
+          "skipped": 0,
+          "pct": 87.75
+        },
+        "branches": {
+          "total": 47,
+          "covered": 40,
+          "skipped": 0,
+          "pct": 85.1
+        },
+        "functions": {
+          "total": 14,
+          "covered": 14,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 94,
+          "covered": 84,
+          "skipped": 0,
+          "pct": 89.36
+        }
+      }
+    },
+    "packages/memory/memory/src/index.ts": {
+      "sourceSha256": "94a9aef886eb0caebb5d4d80f8a061e1a0e141d0559f44d33d0dfb088a5f0573",
+      "metrics": {
+        "statements": {
+          "total": 8,
+          "covered": 7,
+          "skipped": 0,
+          "pct": 87.5
+        },
+        "branches": {
+          "total": 0,
+          "covered": 0,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 5,
+          "covered": 4,
+          "skipped": 0,
+          "pct": 80
+        },
+        "lines": {
+          "total": 5,
+          "covered": 4,
+          "skipped": 0,
+          "pct": 80
+        }
+      }
+    },
+    "packages/memory/tool-memory/src/index.ts": {
+      "sourceSha256": "45717ad9d43e895e1543c53758ca2a4f466f661bb501599ef1df0b73e4c11302",
+      "metrics": {
+        "statements": {
+          "total": 105,
+          "covered": 91,
+          "skipped": 0,
+          "pct": 86.66
+        },
+        "branches": {
+          "total": 113,
+          "covered": 70,
+          "skipped": 0,
+          "pct": 61.94
+        },
+        "functions": {
+          "total": 32,
+          "covered": 29,
+          "skipped": 0,
+          "pct": 90.62
+        },
+        "lines": {
+          "total": 96,
+          "covered": 87,
+          "skipped": 0,
+          "pct": 90.62
+        }
+      }
+    },
+    "packages/preset/agent-presets/src/index.ts": {
+      "sourceSha256": "b7c1d4dd457fbedd749a2a095fd146b4b0baa93675953ca7b7623c90aa68b0fb",
+      "metrics": {
+        "statements": {
+          "total": 182,
+          "covered": 170,
+          "skipped": 0,
+          "pct": 93.4
+        },
+        "branches": {
+          "total": 68,
+          "covered": 58,
+          "skipped": 0,
+          "pct": 85.29
+        },
+        "functions": {
+          "total": 40,
+          "covered": 37,
+          "skipped": 0,
+          "pct": 92.5
+        },
+        "lines": {
+          "total": 155,
+          "covered": 151,
+          "skipped": 0,
+          "pct": 97.41
+        }
+      }
+    },
+    "packages/sdk/client/src/api.ts": {
+      "sourceSha256": "f1eb6425f7e029cdfa288abc62b5978911016b9830ebafdfc03d465e495a48be",
+      "metrics": {
+        "statements": {
+          "total": 94,
+          "covered": 94,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 68,
+          "covered": 67,
+          "skipped": 0,
+          "pct": 98.52
+        },
+        "functions": {
+          "total": 20,
+          "covered": 20,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 84,
+          "covered": 84,
+          "skipped": 0,
+          "pct": 100
+        }
+      }
+    },
+    "packages/sdk/client/src/client.ts": {
+      "sourceSha256": "fece0a61e22de1df5efe92725eff8c9da1c1c1090400c3b142c6aa04e1b1ccad",
+      "metrics": {
+        "statements": {
+          "total": 195,
+          "covered": 195,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 113,
+          "covered": 111,
+          "skipped": 0,
+          "pct": 98.23
+        },
+        "functions": {
+          "total": 46,
+          "covered": 46,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 170,
+          "covered": 170,
+          "skipped": 0,
+          "pct": 100
+        }
+      }
+    },
+    "packages/sdk/protocol/src/transport.ts": {
+      "sourceSha256": "46b2c21dd11b5f967d7fab11f8d9146a2fc626491eeb8acacbd2c871a3d098d0",
+      "metrics": {
+        "statements": {
+          "total": 189,
+          "covered": 175,
+          "skipped": 0,
+          "pct": 92.59
+        },
+        "branches": {
+          "total": 98,
+          "covered": 88,
+          "skipped": 0,
+          "pct": 89.79
+        },
+        "functions": {
+          "total": 37,
+          "covered": 36,
+          "skipped": 0,
+          "pct": 97.29
+        },
+        "lines": {
+          "total": 167,
+          "covered": 160,
+          "skipped": 0,
+          "pct": 95.8
+        }
+      }
+    },
+    "packages/sdk/server/src/server.ts": {
+      "sourceSha256": "fff68fcc9fd0fbdc96e974757ca76c1f103f0e6f7b9bddd482046d6cb143f340",
+      "metrics": {
+        "statements": {
+          "total": 121,
+          "covered": 119,
+          "skipped": 0,
+          "pct": 98.34
+        },
+        "branches": {
+          "total": 57,
+          "covered": 53,
+          "skipped": 0,
+          "pct": 92.98
+        },
+        "functions": {
+          "total": 28,
+          "covered": 27,
+          "skipped": 0,
+          "pct": 96.42
+        },
+        "lines": {
+          "total": 106,
+          "covered": 105,
+          "skipped": 0,
+          "pct": 99.05
+        }
+      }
+    },
+    "packages/skill/skill-filesystem/src/index.ts": {
+      "sourceSha256": "1eef1c89e3930a0540d9bc228f69a242dff2c7c6f47469f07e039419a1354a45",
+      "metrics": {
+        "statements": {
+          "total": 501,
+          "covered": 495,
+          "skipped": 0,
+          "pct": 98.8
+        },
+        "branches": {
+          "total": 327,
+          "covered": 321,
+          "skipped": 0,
+          "pct": 98.16
+        },
+        "functions": {
+          "total": 84,
+          "covered": 84,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 430,
+          "covered": 427,
+          "skipped": 0,
+          "pct": 99.3
+        }
+      }
+    },
+    "packages/spill/spill-local/src/store.ts": {
+      "sourceSha256": "5e33396ae71407e0cf16a34afed4f2794b72fc8907623f3469ca4f601d4f55df",
+      "metrics": {
+        "statements": {
+          "total": 51,
+          "covered": 48,
+          "skipped": 0,
+          "pct": 94.11
+        },
+        "branches": {
+          "total": 18,
+          "covered": 18,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 6,
+          "covered": 6,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 44,
+          "covered": 41,
+          "skipped": 0,
+          "pct": 93.18
+        }
+      }
+    },
+    "packages/storage/storage-sqlite/src/schema.ts": {
+      "sourceSha256": "29886908b3831f61622d748d8dc66c0af1e0560296e7c45702faa9b8711c023c",
+      "metrics": {
+        "statements": {
+          "total": 49,
+          "covered": 48,
+          "skipped": 0,
+          "pct": 97.95
+        },
+        "branches": {
+          "total": 28,
+          "covered": 27,
+          "skipped": 0,
+          "pct": 96.42
+        },
+        "functions": {
+          "total": 9,
+          "covered": 9,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 44,
+          "covered": 43,
+          "skipped": 0,
+          "pct": 97.72
+        }
+      }
+    },
+    "packages/subagent/subagent-claude-code/src/index.ts": {
+      "sourceSha256": "5984d70ffbfc351e9284d6376756726f11702853ba2c35f83554a195272aa272",
+      "metrics": {
+        "statements": {
+          "total": 28,
+          "covered": 27,
+          "skipped": 0,
+          "pct": 96.42
+        },
+        "branches": {
+          "total": 10,
+          "covered": 9,
+          "skipped": 0,
+          "pct": 90
+        },
+        "functions": {
+          "total": 5,
+          "covered": 5,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 28,
+          "covered": 27,
+          "skipped": 0,
+          "pct": 96.42
+        }
+      }
+    },
+    "packages/subagent/subagent-codex/src/index.ts": {
+      "sourceSha256": "81f5c3041d4f3c64016660a585f156e24010d7ff6244d007bf64417ac8cafbca",
+      "metrics": {
+        "statements": {
+          "total": 26,
+          "covered": 25,
+          "skipped": 0,
+          "pct": 96.15
+        },
+        "branches": {
+          "total": 10,
+          "covered": 9,
+          "skipped": 0,
+          "pct": 90
+        },
+        "functions": {
+          "total": 5,
+          "covered": 5,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 26,
+          "covered": 25,
+          "skipped": 0,
+          "pct": 96.15
+        }
+      }
+    },
+    "packages/subagent/subagent/src/continuation.ts": {
+      "sourceSha256": "74a7f17708a0aef5c04cb2c9277db5f2559904c5105275013e3ab443014e1640",
+      "metrics": {
+        "statements": {
+          "total": 566,
+          "covered": 566,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 287,
+          "covered": 285,
+          "skipped": 0,
+          "pct": 99.3
+        },
+        "functions": {
+          "total": 105,
+          "covered": 105,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 500,
+          "covered": 500,
+          "skipped": 0,
+          "pct": 100
+        }
+      }
+    },
+    "packages/subagent/tool-subagent-report/src/index.ts": {
+      "sourceSha256": "2b5945886b0f4a2c27c6711f926fa06bb3e9bd06635910497f1946c5b8c37c0b",
+      "metrics": {
+        "statements": {
+          "total": 26,
+          "covered": 26,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 5,
+          "covered": 4,
+          "skipped": 0,
+          "pct": 80
+        },
+        "functions": {
+          "total": 6,
+          "covered": 6,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 26,
+          "covered": 26,
+          "skipped": 0,
+          "pct": 100
+        }
+      }
+    },
+    "packages/test-support/acp-snapshot/src/harness.ts": {
+      "sourceSha256": "eda8e63683ea1b4f1279f199426e2f542ce9ecd5eac78ab6322308d3c6dadbc8",
+      "metrics": {
+        "statements": {
+          "total": 267,
+          "covered": 264,
+          "skipped": 0,
+          "pct": 98.87
+        },
+        "branches": {
+          "total": 170,
+          "covered": 168,
+          "skipped": 0,
+          "pct": 98.82
+        },
+        "functions": {
+          "total": 79,
+          "covered": 79,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 231,
+          "covered": 229,
+          "skipped": 0,
+          "pct": 99.13
+        }
+      }
+    },
+    "packages/test-support/client-runtime/src/workspaces.ts": {
+      "sourceSha256": "232bbbb463a215adc486feb63e0b500fe9ef5a0e16954dfbff87c66981922dee",
+      "metrics": {
+        "statements": {
+          "total": 62,
+          "covered": 57,
+          "skipped": 0,
+          "pct": 91.93
+        },
+        "branches": {
+          "total": 18,
+          "covered": 16,
+          "skipped": 0,
+          "pct": 88.88
+        },
+        "functions": {
+          "total": 18,
+          "covered": 17,
+          "skipped": 0,
+          "pct": 94.44
+        },
+        "lines": {
+          "total": 53,
+          "covered": 49,
+          "skipped": 0,
+          "pct": 92.45
+        }
+      }
+    },
+    "packages/tracker/tracker-linear/src/index.ts": {
+      "sourceSha256": "8259dad4a8d83f55998c9f8b84d70143bc2f1c1f8924e8550987f4cb0addaa11",
+      "metrics": {
+        "statements": {
+          "total": 163,
+          "covered": 163,
+          "skipped": 0,
+          "pct": 100
+        },
+        "branches": {
+          "total": 142,
+          "covered": 141,
+          "skipped": 0,
+          "pct": 99.29
+        },
+        "functions": {
+          "total": 22,
+          "covered": 22,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 131,
+          "covered": 131,
+          "skipped": 0,
+          "pct": 100
+        }
+      }
+    },
+    "packages/util/atomic-write/src/index.ts": {
+      "sourceSha256": "fb532130a3a775c316007967a6314c154a2c2c01b44490667b8acbb5514375c3",
+      "metrics": {
+        "statements": {
+          "total": 52,
+          "covered": 50,
+          "skipped": 0,
+          "pct": 96.15
+        },
+        "branches": {
+          "total": 18,
+          "covered": 17,
+          "skipped": 0,
+          "pct": 94.44
+        },
+        "functions": {
+          "total": 5,
+          "covered": 5,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 45,
+          "covered": 44,
+          "skipped": 0,
+          "pct": 97.77
+        }
+      }
+    },
+    "packages/workflow/workflow-worker-thread/src/host.ts": {
+      "sourceSha256": "bfa43f73640e5e546cb52b5c134ddb6ed6a9f4d49095baf1e1558ff357c8774f",
+      "metrics": {
+        "statements": {
+          "total": 290,
+          "covered": 289,
+          "skipped": 0,
+          "pct": 99.65
+        },
+        "branches": {
+          "total": 124,
+          "covered": 124,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 56,
+          "covered": 55,
+          "skipped": 0,
+          "pct": 98.21
+        },
+        "lines": {
+          "total": 261,
+          "covered": 260,
+          "skipped": 0,
+          "pct": 99.61
+        }
+      }
+    },
+    "packages/workflow/workflow-worker-thread/src/index.ts": {
+      "sourceSha256": "64708f045ee6bdd2808d5d70afba16d68d2329bf2f4826d49a75ad92335b71ae",
+      "metrics": {
+        "statements": {
+          "total": 60,
+          "covered": 58,
+          "skipped": 0,
+          "pct": 96.66
+        },
+        "branches": {
+          "total": 41,
+          "covered": 41,
+          "skipped": 0,
+          "pct": 100
+        },
+        "functions": {
+          "total": 10,
+          "covered": 10,
+          "skipped": 0,
+          "pct": 100
+        },
+        "lines": {
+          "total": 59,
+          "covered": 57,
+          "skipped": 0,
+          "pct": 96.61
+        }
+      }
+    }
+  }
+}

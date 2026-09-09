@@ -114,7 +114,7 @@ describe('gate graph validation', () => {
     },
   )
 
-  it('keeps native Windows coverage blocking while retaining the observational inventory', () => {
+  it('keeps the complete native Windows inventory blocking with its dependency ordering', () => {
     const complete = withPnpmEntrypoint(() => gatesForMode('ci-windows-complete'))
     const observational = withPnpmEntrypoint(() => gatesForMode('ci-windows-observational'))
       .filter(gate => gate.id !== 'build' && gate.id !== 'docs-site-build')
@@ -126,7 +126,7 @@ describe('gate graph validation', () => {
     expect(observational).not.toHaveLength(0)
     for (const gate of observational) {
       const completeGate = byId.get(gate.id)
-      expect(completeGate?.allowFailure).toBe(true)
+      expect(completeGate?.allowFailure).not.toBe(true)
       expect(completeGate?.after).toEqual(expect.arrayContaining([
         'coverage',
         'coverage-exempt-heavy',

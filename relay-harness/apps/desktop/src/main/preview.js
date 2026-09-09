@@ -1,3 +1,4 @@
+// @ts-check
 const { randomUUID } = require('node:crypto');
 const fs = require('node:fs/promises');
 const net = require('node:net');
@@ -292,11 +293,13 @@ function createPreviewController(options = {}) {
   /** @type {Map<string, { timer: ReturnType<typeof setInterval> | null, consumers: Set<string> }>} */
   const frameCaptureSessions = new Map();
 
+  /** @returns {{ok: false, message: string}} */
   function unknownPreviewId() {
     return { ok: false, message: 'unknown preview id' };
   }
 
-  function failClosed(error) {
+  /** @returns {{ok: false, message: string}} */
+function failClosed(error) {
     return { ok: false, message: error instanceof Error ? error.message : String(error) };
   }
 

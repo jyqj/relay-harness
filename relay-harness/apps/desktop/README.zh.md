@@ -28,7 +28,9 @@ macOS 构建未签名：右键选择“打开”，或执行 `xattr -cr /Applica
 - **模型** — 支持第三方模型思考强度、视觉兜底，以及编辑并重新发送最新用户消息。
 - **外观** — 支持浅色/深色主题，并可按分类、搜索、收藏和窗口比例选择壁纸。
 - **扩展** — 在设置中管理 MCP、Skills 和插件；市场由内置 `rlhmarket` 插件提供，其源码 vendored 自 [dsh-market](https://github.com/dsh-market/dsh-market)。
-- **桌面能力** — 支持关闭到托盘、自动更新、Harness 崩溃恢复，以及跳过故障用户插件树的启动路径。
+- **桌面能力** — 支持关闭到托盘、发布者验签更新协议、Harness 崩溃恢复，以及跳过故障用户插件树的启动路径。
+
+打包构建配置 Ed25519 发布者信任来源之前，自动更新明确不可用；本 checkout 没有配置该来源。目前只实现 Windows x64 NSIS 签名更新协议，并对资产验证失败关闭；详见[可信桌面更新](docs/trusted-updates.md)。`src` 下所有已打包生产 JavaScript 均启用 `@ts-check`，测试拒绝缺失 pragma 或新增排除项。这是既有非 strict JavaScript 配置下的完整生产源码检查，不代表严格 TypeScript 覆盖；两个不打包的 QA walker 仍被排除。
 
 `Ctrl+,` 打开设置。
 

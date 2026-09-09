@@ -105,15 +105,16 @@ export function summarize(session: Session, running: boolean): SessionSummary {
 /**
  * Verify a possibly blank cold Session only when its physical artifact passes
  * the configured per-Session size check. A stale `blank: true`, an
- * absent cache row, a large or location-less artifact, and read failures all
- * resolve to visible (`false`); listing must never hide a conversation on a
- * cache hint or an unavailable optimization.
+ * absent cache row, a large or location-less artifact, an attached owner, and
+ * read failures all resolve to visible (`false`); listing must never hide a
+ * conversation on a cache hint or an unavailable optimization.
  */
 async function probeColdSessionMetadata(
   ctx: Context,
   persistence: SessionPersistence,
   meta: SessionHeader,
   maxBytes: number,
+  isAttached: (id: SessionId) => boolean,
   signal?: AbortSignal,
 ): Promise<SessionListMetadata | undefined> {
   if (maxBytes === 0) return undefined
@@ -129,6 +130,10 @@ async function probeColdSessionMetadata(
     return undefined
   }
   if (size > maxBytes) return undefined
+  // The size gate is advisory against concurrent growth: re-check ownership
+  // immediately before the read so an attach that landed during the stat never
+  // turns the probe into an unbounded artifact read.
+  if (isAttached(meta.id)) return undefined
   try {
     const { events } = await persistence.readFrom(meta.id, 0, signal)
     signal?.throwIfAborted()
@@ -147,6 +152,8 @@ async function probeColdSessionMetadata(
  * @param meta - the session's durable header.
  * @param metadata - the cached list metadata, when one exists.
  * @param blankProbeMaxBytes - artifact size ceiling for the blank probe; 0 disables probing.
+ * @param isAttached - ownership re-check run immediately before the probe read;
+ * an attached session re-reads live, so the probe skips it.
  * @param signal - aborts the probe read.
  * @returns the list row for the cold session, never running.
  */
@@ -156,11 +163,12 @@ export async function summarizeCold(
   meta: SessionHeader,
   metadata: SessionListMetadata | undefined,
   blankProbeMaxBytes: number,
+  isAttached: (id: SessionId) => boolean,
   signal?: AbortSignal,
 ): Promise<SessionSummary> {
   const probed = metadata?.blank === false
     ? undefined
-    : await probeColdSessionMetadata(ctx, persistence, meta, blankProbeMaxBytes, signal)
+    : await probeColdSessionMetadata(ctx, persistence, meta, blankProbeMaxBytes, isAttached, signal)
   return {
     sessionId: meta.id,
     updatedAt: sessionListUpdatedAt(meta, probed ?? metadata),

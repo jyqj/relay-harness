@@ -11,8 +11,8 @@
 import type { ClientContext, ISessions, SessionBinding, SessionFace, SessionId } from '@relay-harness/rlh-client-runtime/client'
 import type { InputTriggerController, SubmitImageAttachment, SubmitOutcome } from '@relay-harness/rlh-client-ui-input-trigger/client'
 import type { TranslateNS } from '@relay-harness/rlh-client-locale/client'
-import { queueReadFaceOf } from '../queue/store.ts'
-import type { ComposerKeyboard, DraftAttachmentId, SessionInputResolver, SessionInput } from './contract.ts'
+import { queueReadFaceOf } from './queue-read-face.ts'
+import type { ComposerKeyboard, DraftAttachmentId, SessionInputResolver, SessionInput } from '../contract/input.ts'
 import type { InputSubmitMode } from '../contract/composer-submission.ts'
 import type { PopupDismissFace } from './facade.ts'
 import { SessionInputShell } from './facade.ts'
@@ -33,6 +33,11 @@ interface ConversationAttachmentFace {
   ): Promise<SubmitOutcome>
   serializeDraftImages(imageIds: readonly DraftAttachmentId[]): Promise<readonly SubmitImageAttachment[]>
   releaseDraftImage(id: DraftAttachmentId): void
+  /** Session-scoped composer-block store face (per-session stores die with the scope). */
+  blocks: {
+    /** Drop one session's composer-block store. */
+    forget(sessionId: SessionId): void
+  }
 }
 
 /** Session-addressed input facade registry (SessionInputResolver face + composer-layer extras). */
@@ -115,6 +120,9 @@ export class InputHub implements SessionInputResolver {
         this.shells.delete(id)
         const conversation = this.rootCtx.get('conversation') as ConversationAttachmentFace | undefined
         for (const imageId of drafts) conversation?.releaseDraftImage(imageId)
+        // The block store is per-session and re-created on first read: drop it
+        // here so a torn-down session stops reserving a registry entry.
+        conversation?.blocks.forget(id)
       }
     }, 'conversation.input: session shell')
     return shell

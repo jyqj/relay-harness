@@ -11,7 +11,7 @@ import { AsyncLocalStorage } from 'node:async_hooks'
 import { isPromise } from 'node:util/types'
 import { scopeTarget } from '@relay-harness/rlh-scope'
 import type { Scoped } from '@relay-harness/rlh-scope'
-import type { SessionEvent, SessionId, SessionOrigin } from '@relay-harness/rlh-session'
+import type { SessionEvent, SessionId, SessionOrigin, SessionPersistenceFence } from '@relay-harness/rlh-session'
 import type { TypertContext, TypertLookup } from '@relay-harness/rlh-typert-protocol'
 import type { Agent, AgentOptions } from './runtime-types.ts'
 
@@ -137,6 +137,8 @@ export interface CreateAgentOptions {
  * ({@link AgentRegistry.resume}).
  */
 export interface ResumeAgentOptions {
+  /** Exact owner excluding takeover during cold recovery, before live setup installs the same proof. */
+  readonly persistenceFence?: SessionPersistenceFence
   /** The persisted session id to load and use as the live agent/session identity. */
   readonly resumeSessionId: SessionId
   /** Per-agent options (model, …). */

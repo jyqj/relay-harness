@@ -7,6 +7,7 @@
     "bwrap",
     "icacls",
     "musl-gcc",
+    "ps",
     "python3",
     "sandbox-exec",
     "tar",
@@ -156,9 +157,7 @@
         "src/**/*.ts",
         "tests/**/*.ts"
       ],
-      "ignoreDependencies": [
-        "@relay-harness/rlh-api-gateway"
-      ]
+      "ignoreDependencies": []
     },
     "packages/client/ui-primitives": {
       "entry": [
@@ -739,12 +738,7 @@
         "tests/**/*.ts"
       ],
       "ignoreDependencies": [
-        "@relay-harness/rlh-client-ui-primitives",
-        "@relay-harness/rlh-client-ui-slots",
-        "@types/react",
-        "@types/react-dom",
-        "react",
-        "react-dom"
+        "@relay-harness/rlh-client-ui-slots"
       ]
     },
     "apps/cli": {
@@ -945,6 +939,501 @@
     "packages/client/ui-product-shell": {
       "entry": [
         "tests/**/*.spec.{ts,tsx}"
+      ],
+      "project": [
+        "src/**/*.{ts,tsx}",
+        "tests/**/*.{ts,tsx}"
+      ]
+    },
+    "packages/client/locale": {
+      "entry": [
+        "tests/**/*.spec.tsx"
+      ],
+      "project": [
+        "src/**/*.{ts,tsx}",
+        "tests/**/*.{ts,tsx}"
+      ]
+    },
+    "packages/client/ui-agent-preset": {
+      "entry": [
+        "tests/**/*.spec.tsx"
+      ],
+      "project": [
+        "src/**/*.{ts,tsx}",
+        "tests/**/*.{ts,tsx}"
+      ]
+    },
+    "packages/client/ui-agents-panel": {
+      "entry": [
+        "tests/**/*.spec.tsx"
+      ],
+      "project": [
+        "src/**/*.{ts,tsx}",
+        "tests/**/*.{ts,tsx}"
+      ]
+    },
+    "packages/client/ui-attachment": {
+      "entry": [
+        "tests/**/*.spec.tsx"
+      ],
+      "project": [
+        "src/**/*.{ts,tsx}",
+        "tests/**/*.{ts,tsx}"
+      ]
+    },
+    "packages/client/ui-brand-official": {
+      "entry": [
+        "tests/**/*.spec.tsx"
+      ],
+      "project": [
+        "src/**/*.{ts,tsx}",
+        "tests/**/*.{ts,tsx}"
+      ]
+    },
+    "packages/client/ui-code-index-center": {
+      "entry": [
+        "tests/**/*.spec.tsx"
+      ],
+      "project": [
+        "src/**/*.{ts,tsx}",
+        "tests/**/*.{ts,tsx}"
+      ]
+    },
+    "packages/client/ui-commands": {
+      "entry": [
+        "tests/**/*.spec.tsx"
+      ],
+      "project": [
+        "src/**/*.{ts,tsx}",
+        "tests/**/*.{ts,tsx}"
+      ]
+    },
+    "packages/client/ui-context-inspector": {
+      "entry": [
+        "tests/**/*.spec.tsx"
+      ],
+      "project": [
+        "src/**/*.{ts,tsx}",
+        "tests/**/*.{ts,tsx}"
+      ]
+    },
+    "packages/client/ui-conversation": {
+      "entry": [
+        "tests/**/*.spec.tsx"
+      ],
+      "project": [
+        "src/**/*.{ts,tsx}",
+        "tests/**/*.{ts,tsx}"
+      ]
+    },
+    "packages/client/ui-deliverables": {
+      "entry": [
+        "tests/**/*.spec.tsx"
+      ],
+      "project": [
+        "src/**/*.{ts,tsx}",
+        "tests/**/*.{ts,tsx}"
+      ]
+    },
+    "packages/client/ui-diff": {
+      "entry": [
+        "tests/**/*.spec.tsx"
+      ],
+      "project": [
+        "src/**/*.{ts,tsx}",
+        "tests/**/*.{ts,tsx}"
+      ]
+    },
+    "packages/client/ui-directory-picker-browse": {
+      "entry": [
+        "tests/**/*.spec.tsx"
+      ],
+      "project": [
+        "src/**/*.{ts,tsx}",
+        "tests/**/*.{ts,tsx}"
+      ]
+    },
+    "packages/client/ui-directory-picker-native": {
+      "entry": [
+        "tests/**/*.spec.tsx"
+      ],
+      "project": [
+        "src/**/*.{ts,tsx}",
+        "tests/**/*.{ts,tsx}"
+      ]
+    },
+    "packages/client/ui-files": {
+      "entry": [
+        "tests/**/*.spec.tsx"
+      ],
+      "project": [
+        "src/**/*.{ts,tsx}",
+        "tests/**/*.{ts,tsx}"
+      ]
+    },
+    "packages/client/ui-git": {
+      "entry": [
+        "tests/**/*.spec.tsx"
+      ],
+      "project": [
+        "src/**/*.{ts,tsx}",
+        "tests/**/*.{ts,tsx}"
+      ]
+    },
+    "packages/client/ui-goal": {
+      "entry": [
+        "tests/**/*.spec.tsx"
+      ],
+      "project": [
+        "src/**/*.{ts,tsx}",
+        "tests/**/*.{ts,tsx}"
+      ]
+    },
+    "packages/client/ui-input-trigger": {
+      "entry": [
+        "tests/**/*.spec.tsx"
+      ],
+      "project": [
+        "src/**/*.{ts,tsx}",
+        "tests/**/*.{ts,tsx}"
+      ]
+    },
+    "packages/client/ui-issue-orchestration": {
+      "entry": [
+        "tests/**/*.spec.tsx"
+      ],
+      "project": [
+        "src/**/*.{ts,tsx}",
+        "tests/**/*.{ts,tsx}"
+      ]
+    },
+    "packages/client/ui-jobs": {
+      "entry": [
+        "tests/**/*.spec.tsx"
+      ],
+      "project": [
+        "src/**/*.{ts,tsx}",
+        "tests/**/*.{ts,tsx}"
+      ]
+    },
+    "packages/client/ui-layout": {
+      "entry": [
+        "tests/**/*.spec.tsx"
+      ],
+      "project": [
+        "src/**/*.{ts,tsx}",
+        "tests/**/*.{ts,tsx}"
+      ]
+    },
+    "packages/client/ui-memory-center": {
+      "entry": [
+        "tests/**/*.spec.tsx"
+      ],
+      "project": [
+        "src/**/*.{ts,tsx}",
+        "tests/**/*.{ts,tsx}"
+      ]
+    },
+    "packages/client/ui-message-edit": {
+      "entry": [
+        "tests/**/*.spec.tsx"
+      ],
+      "project": [
+        "src/**/*.{ts,tsx}",
+        "tests/**/*.{ts,tsx}"
+      ]
+    },
+    "packages/client/ui-message-feedback": {
+      "entry": [
+        "tests/**/*.spec.tsx"
+      ],
+      "project": [
+        "src/**/*.{ts,tsx}",
+        "tests/**/*.{ts,tsx}"
+      ]
+    },
+    "packages/client/ui-model-selection": {
+      "entry": [
+        "tests/**/*.spec.tsx"
+      ],
+      "project": [
+        "src/**/*.{ts,tsx}",
+        "tests/**/*.{ts,tsx}"
+      ]
+    },
+    "packages/client/ui-permission-presets": {
+      "entry": [
+        "tests/**/*.spec.tsx"
+      ],
+      "project": [
+        "src/**/*.{ts,tsx}",
+        "tests/**/*.{ts,tsx}"
+      ]
+    },
+    "packages/client/ui-plan": {
+      "entry": [
+        "tests/**/*.spec.tsx"
+      ],
+      "project": [
+        "src/**/*.{ts,tsx}",
+        "tests/**/*.{ts,tsx}"
+      ]
+    },
+    "packages/client/ui-preview": {
+      "entry": [
+        "tests/**/*.spec.tsx"
+      ],
+      "project": [
+        "src/**/*.{ts,tsx}",
+        "tests/**/*.{ts,tsx}"
+      ]
+    },
+    "packages/client/ui-primitives": {
+      "entry": [
+        "tests/**/*.spec.tsx"
+      ],
+      "project": [
+        "src/**/*.{ts,tsx}",
+        "tests/**/*.{ts,tsx}"
+      ]
+    },
+    "packages/client/ui-product-shell": {
+      "entry": [
+        "tests/**/*.spec.tsx"
+      ],
+      "project": [
+        "src/**/*.{ts,tsx}",
+        "tests/**/*.{ts,tsx}"
+      ]
+    },
+    "packages/client/ui-prompt-enhancement": {
+      "entry": [
+        "tests/**/*.spec.tsx"
+      ],
+      "project": [
+        "src/**/*.{ts,tsx}",
+        "tests/**/*.{ts,tsx}"
+      ]
+    },
+    "packages/client/ui-renderer": {
+      "entry": [
+        "tests/**/*.spec.tsx"
+      ],
+      "project": [
+        "src/**/*.{ts,tsx}",
+        "tests/**/*.{ts,tsx}"
+      ]
+    },
+    "packages/client/ui-session-tree": {
+      "entry": [
+        "tests/**/*.spec.tsx"
+      ],
+      "project": [
+        "src/**/*.{ts,tsx}",
+        "tests/**/*.{ts,tsx}"
+      ]
+    },
+    "packages/client/ui-settings-general": {
+      "entry": [
+        "tests/**/*.spec.tsx"
+      ],
+      "project": [
+        "src/**/*.{ts,tsx}",
+        "tests/**/*.{ts,tsx}"
+      ]
+    },
+    "packages/client/ui-settings-mcp": {
+      "entry": [
+        "tests/**/*.spec.tsx"
+      ],
+      "project": [
+        "src/**/*.{ts,tsx}",
+        "tests/**/*.{ts,tsx}"
+      ]
+    },
+    "packages/client/ui-settings-models": {
+      "entry": [
+        "tests/**/*.spec.tsx"
+      ],
+      "project": [
+        "src/**/*.{ts,tsx}",
+        "tests/**/*.{ts,tsx}"
+      ]
+    },
+    "packages/client/ui-settings-plugin-inventory": {
+      "entry": [
+        "tests/**/*.spec.tsx"
+      ],
+      "project": [
+        "src/**/*.{ts,tsx}",
+        "tests/**/*.{ts,tsx}"
+      ]
+    },
+    "packages/client/ui-settings-plugins": {
+      "entry": [
+        "tests/**/*.spec.tsx"
+      ],
+      "project": [
+        "src/**/*.{ts,tsx}",
+        "tests/**/*.{ts,tsx}"
+      ]
+    },
+    "packages/client/ui-settings-remote": {
+      "entry": [
+        "tests/**/*.spec.tsx"
+      ],
+      "project": [
+        "src/**/*.{ts,tsx}",
+        "tests/**/*.{ts,tsx}"
+      ]
+    },
+    "packages/client/ui-settings-skills": {
+      "entry": [
+        "tests/**/*.spec.tsx"
+      ],
+      "project": [
+        "src/**/*.{ts,tsx}",
+        "tests/**/*.{ts,tsx}"
+      ]
+    },
+    "packages/client/ui-sidebar": {
+      "entry": [
+        "tests/**/*.spec.tsx"
+      ],
+      "project": [
+        "src/**/*.{ts,tsx}",
+        "tests/**/*.{ts,tsx}"
+      ]
+    },
+    "packages/client/ui-skill": {
+      "entry": [
+        "tests/**/*.spec.tsx"
+      ],
+      "project": [
+        "src/**/*.{ts,tsx}",
+        "tests/**/*.{ts,tsx}"
+      ]
+    },
+    "packages/client/ui-slots": {
+      "entry": [
+        "tests/**/*.spec.tsx"
+      ],
+      "project": [
+        "src/**/*.{ts,tsx}",
+        "tests/**/*.{ts,tsx}"
+      ]
+    },
+    "packages/client/ui-subagent": {
+      "entry": [
+        "tests/**/*.spec.tsx"
+      ],
+      "project": [
+        "src/**/*.{ts,tsx}",
+        "tests/**/*.{ts,tsx}"
+      ]
+    },
+    "packages/client/ui-surfaces": {
+      "entry": [
+        "tests/**/*.spec.tsx"
+      ],
+      "project": [
+        "src/**/*.{ts,tsx}",
+        "tests/**/*.{ts,tsx}"
+      ]
+    },
+    "packages/client/ui-theme": {
+      "entry": [
+        "tests/**/*.spec.tsx"
+      ],
+      "project": [
+        "src/**/*.{ts,tsx}",
+        "tests/**/*.{ts,tsx}"
+      ]
+    },
+    "packages/client/ui-titlebar": {
+      "entry": [
+        "tests/**/*.spec.tsx"
+      ],
+      "project": [
+        "src/**/*.{ts,tsx}",
+        "tests/**/*.{ts,tsx}"
+      ]
+    },
+    "packages/client/ui-tool": {
+      "entry": [
+        "tests/**/*.spec.tsx"
+      ],
+      "project": [
+        "src/**/*.{ts,tsx}",
+        "tests/**/*.{ts,tsx}"
+      ]
+    },
+    "packages/client/ui-trajectory": {
+      "entry": [
+        "tests/**/*.spec.tsx"
+      ],
+      "project": [
+        "src/**/*.{ts,tsx}",
+        "tests/**/*.{ts,tsx}"
+      ]
+    },
+    "packages/client/ui-user-questions": {
+      "entry": [
+        "tests/**/*.spec.tsx"
+      ],
+      "project": [
+        "src/**/*.{ts,tsx}",
+        "tests/**/*.{ts,tsx}"
+      ]
+    },
+    "packages/client/ui-user-terminal": {
+      "entry": [
+        "tests/**/*.spec.tsx"
+      ],
+      "project": [
+        "src/**/*.{ts,tsx}",
+        "tests/**/*.{ts,tsx}"
+      ]
+    },
+    "packages/client/ui-workflow-run": {
+      "entry": [
+        "tests/**/*.spec.tsx"
+      ],
+      "project": [
+        "src/**/*.{ts,tsx}",
+        "tests/**/*.{ts,tsx}"
+      ]
+    },
+    "packages/client/ui-workspace": {
+      "entry": [
+        "tests/**/*.spec.tsx"
+      ],
+      "project": [
+        "src/**/*.{ts,tsx}",
+        "tests/**/*.{ts,tsx}"
+      ]
+    },
+    "packages/extensions/ui-cordis": {
+      "entry": [
+        "tests/**/*.spec.ts"
+      ],
+      "project": [
+        "src/**/*.{ts,tsx}",
+        "tests/**/*.ts"
+      ]
+    },
+    "packages/session-query/session-log-export": {
+      "entry": [
+        "tests/**/*.spec.tsx"
+      ],
+      "project": [
+        "src/**/*.{ts,tsx}",
+        "tests/**/*.{ts,tsx}"
+      ]
+    },
+    "packages/test-support/client-runtime": {
+      "entry": [
+        "tests/**/*.spec.tsx"
       ],
       "project": [
         "src/**/*.{ts,tsx}",

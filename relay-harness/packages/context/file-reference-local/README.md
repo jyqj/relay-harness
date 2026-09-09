@@ -59,7 +59,7 @@ The recall message sits after the step's claimed user messages, so its content d
 
 ## Known Limitations and Deferred Work
 
-- **Host-local namespace** — the provider scans the Harness host filesystem, so remote or virtual `read` implementations require a provider whose namespace matches the tool. Content injection reads through `ctx.fs` and fails loud when no filesystem service is present.
+- **Host-local namespace** — the provider scans the Harness host filesystem, so remote or virtual `read` implementations require a provider whose namespace matches the tool. Content injection reads through `ctx.fs`; a missing required filesystem throws `ContextEngineError` with `CONTEXT_ENGINE_INVALID_CONTRIBUTOR`, rather than becoming a declined or degraded retrieval trace.
 - **Bounded advisory index** — very large workspaces may omit paths after `maxEntries`, and excluded or unreadable directories do not appear.
 - **No ignore-file semantics** — `.gitignore` and other project ignore files do not influence discovery; only configured directory basenames are excluded.
 - **Text-only snapshots** — binary mentions are recorded as `unavailable: FS_NOT_TEXT`, and injected content is not re-read after the step begins; the model still uses `read` for fresh or full contents.

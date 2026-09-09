@@ -2,7 +2,8 @@
  * Process plumbing for the local subprocess service: detached process-tree
  * spawn with per-stream stdio dispositions, tail-keep collection with spill
  * files, tree-scoped signalling (POSIX groups; Windows taskkill), and the
- * SIGTERM→SIGKILL escalation. This layer reacts to an abort signal; callers
+ * SIGTERM→SIGKILL escalation. Spill I/O failure degrades the stream to
+ * tail-only collection; this layer reacts to an abort signal; callers
  * own deadlines, teardown ladders, and cause classification.
  * @module rlh-subprocess-local/spawn
  */
@@ -108,6 +109,8 @@ export class OutputCollector {
   private spillFd: number | undefined
   private spillFile: string | undefined
   private spillDisabled: boolean
+  /** Set once a spill I/O failure disabled spilling; reads report lossy even inside the retained window. */
+  private spillFailed = false
   /** Total bytes ever pushed (not just retained). */
   private total = 0
 
@@ -126,12 +129,25 @@ export class OutputCollector {
    * is enabled) and every chunk (already-collected ones included) is appended
    * there from then on; the in-memory tail then drops whole chunks from its
    * head (or the head of a single over-cap chunk) until it fits the cap again.
+   * A spill I/O failure (ENOSPC, EMFILE, a removed spill directory) disables
+   * spilling and the stream degrades to the lossy tail — this runs inside a
+   * stream 'data' callback, where a throw would crash the process.
    * @param chunk - the raw bytes from one stream 'data' event.
    */
   push(chunk: Buffer): void {
     this.total += chunk.length
     const overflows = this.bytes + chunk.length > this.maxBytes
-    if (!this.spillDisabled && (overflows || this.spillFd !== undefined)) this.spillAll(chunk)
+    if (!this.spillDisabled && (overflows || this.spillFd !== undefined)) {
+      try {
+        this.spillAll(chunk)
+      } catch {
+        // Swallow spill I/O errors: the chunk is still appended to the tail
+        // below, so output degrades to the lossy tail instead of crashing the
+        // process from inside the stream 'data' callback.
+        this.spillFailed = true
+        this.discardSpill()
+      }
+    }
     this.chunks.push(chunk)
     this.bytes += chunk.length
     while (this.bytes > this.maxBytes) {
@@ -199,15 +215,16 @@ export class OutputCollector {
   /**
    * Incremental read in whole-stream byte coordinates: returns everything
    * pushed since `fromByte`. When `fromByte` has already slid out of the
-   * in-memory tail window, the read is `lossy` — it returns the whole
-   * retained tail and the gap is only recoverable from the spill file.
+   * in-memory tail window — or a spill I/O failure disabled spilling, so
+   * dropped head bytes have no spill file to recover them from — the read is
+   * `lossy`: it returns the whole retained tail.
    * @param fromByte - whole-stream offset to resume from (a prior read's `nextOffset`; 0 for the first read).
    * @returns the delta text, the offset for the next read, the `lossy` flag, and the spill path when one was created.
    */
   readFrom(fromByte: number): { text: string; nextOffset: number; lossy: boolean; spillPath?: string } {
     const windowStart = this.total - this.bytes
     const buffer = Buffer.concat(this.chunks)
-    const lossy = fromByte < windowStart
+    const lossy = this.spillFailed || fromByte < windowStart
     const slice = lossy ? buffer : buffer.subarray(fromByte - windowStart)
     return {
       text: slice.toString('utf8'),

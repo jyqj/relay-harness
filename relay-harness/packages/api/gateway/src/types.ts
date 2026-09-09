@@ -38,6 +38,13 @@ export type TypertGatewayErrorCode =
 /** Host dispatcher consumed by Connection adapters. */
 export interface TypertGateway {
   /**
+   * Observe the original active trusted Connection request, never direct invocation.
+   * The returned snapshot is not a transferable authority; consumers re-read it
+   * at final mutation admission, matching the expected original endpoint.
+   * @returns current original endpoint and carrier signal, or undefined outside its live dispatch.
+   */
+  currentTrustedRequest(): { readonly endpoint: string; readonly signal: AbortSignal } | undefined
+  /**
    * Invoke one live Remote method without assuming a carrier or response envelope.
    * @param request - decoded endpoint and named wire arguments.
    * @returns the validated business result.

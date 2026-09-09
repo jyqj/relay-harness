@@ -2,19 +2,39 @@
   "name": "@relay-harness/rlh-client-ui-product-shell",
   "description": "Shared Chat, Work, and Library navigation with Host-persisted Simple/Developer mode policy",
   "version": "0.1.0-rc.8",
-  "publishConfig": { "access": "public" },
-  "repository": { "type": "git", "url": "git+https://github.com/jyqj/relay-harness.git", "directory": "relay-harness/packages/client/ui-product-shell" },
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jyqj/relay-harness.git",
+    "directory": "relay-harness/packages/client/ui-product-shell"
+  },
   "type": "module",
   "main": "lib/index.js",
   "types": "lib/types/index.d.ts",
   "exports": {
-    ".": { "types": "./lib/types/index.d.ts", "default": "./lib/index.js" },
-    "./client": { "types": "./lib/types/client/index.d.ts", "default": "./lib/client.js" },
-    "./invariant": { "types": "./lib/types/invariant.d.ts", "default": "./lib/invariant.js" },
+    ".": {
+      "types": "./lib/types/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./client": {
+      "types": "./lib/types/client/index.d.ts",
+      "default": "./lib/client.js"
+    },
+    "./invariant": {
+      "types": "./lib/types/invariant.d.ts",
+      "default": "./lib/invariant.js"
+    },
     "./src/*": "./src/*",
     "./package.json": "./package.json"
   },
-  "files": ["lib/index.js", "lib/invariant.js", "lib/client.js", "lib/types/**/*.d.ts"],
+  "files": [
+    "lib/index.js",
+    "lib/invariant.js",
+    "lib/client.js",
+    "lib/types/**/*.d.ts"
+  ],
   "license": "MIT",
   "rlh": {
     "client": {
@@ -30,7 +50,10 @@
       "platform": "web"
     }
   },
-  "scripts": { "bundle": "tsdown", "watch": "tsdown --watch" },
+  "scripts": {
+    "bundle": "tsdown",
+    "watch": "tsdown --watch"
+  },
   "peerDependencies": {
     "@relay-harness/cordis": "workspace:^",
     "@relay-harness/rlh-api-remotes": "workspace:^",
@@ -40,7 +63,8 @@
     "@relay-harness/rlh-client-ui-settings": "workspace:^",
     "@relay-harness/rlh-client-ui-settings-general": "workspace:^",
     "@relay-harness/rlh-client-ui-sidebar": "workspace:^",
-    "@relay-harness/rlh-invariants": "workspace:^"
+    "@relay-harness/rlh-invariants": "workspace:^",
+    "@relay-harness/rlh-host-work-results": "workspace:^"
   },
   "devDependencies": {
     "@relay-harness/cordis": "workspace:^",
@@ -56,6 +80,7 @@
     "@testing-library/react": "^16.1.0",
     "@types/react": "~18.3.1",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "react-dom": "^18.2.0",
+    "@relay-harness/rlh-host-work-results": "workspace:^"
   }
 }

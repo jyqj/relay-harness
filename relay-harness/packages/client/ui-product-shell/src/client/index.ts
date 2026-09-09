@@ -1,5 +1,5 @@
 /** Shared Chat / Work / Library product shell and Simple-mode visibility policy. */
-import type { ClientContext } from '@relay-harness/rlh-client-runtime/client'
+import type { ClientContext, SessionId } from '@relay-harness/rlh-client-runtime/client'
 import type {} from '@relay-harness/rlh-api-remotes/client'
 import type {} from '@relay-harness/rlh-client-ui-sidebar/client'
 import type {} from '@relay-harness/rlh-client-ui-settings/client'
@@ -21,7 +21,7 @@ export type { ProductModeView } from './mode.ts'
 export type { WorkSummary } from './work-projection.ts'
 
 /** Advanced-only surfaces hidden by Simple Mode; provenance inspection deliberately remains visible. */
-export const SIMPLE_MODE_SUPPRESSIONS = [
+const SIMPLE_MODE_SUPPRESSIONS = [
   ['settings.section', 'models'],
   ['settings.section', 'agent-presets'],
   ['settings.section', 'plugins'],
@@ -32,32 +32,7 @@ export const SIMPLE_MODE_SUPPRESSIONS = [
   ['conversation.view', 'trajectory'],
 ] as const
 
-/** Resolve a model-produced deliverable path without allowing it outside the Session workspace.
- * @param cwd - owning Session workspace root.
- * @param path - model-produced absolute or workspace-relative deliverable path.
- * @returns normalized contained path, or undefined for an escape/invalid path.
- */
-export function resolveWorkspaceDeliverable(cwd: string, path: string): string | undefined {
-  const normalize = (value: string): string => {
-    const input = value.replaceAll('\\', '/')
-    const drive = /^[A-Za-z]:/u.exec(input)?.[0]
-    const absolute = input.startsWith('/') || drive !== undefined
-    const segments: string[] = []
-    for (const segment of input.replace(/^[A-Za-z]:/u, '').split('/')) {
-      if (segment === '' || segment === '.') continue
-      if (segment === '..') { if (segments.length === 0) return ''; segments.pop(); continue }
-      segments.push(segment)
-    }
-    return `${drive ?? (absolute ? '/' : '')}${drive === undefined ? '' : '/'}${segments.join('/')}`.replace(/\/$/u, '')
-  }
-  const root = normalize(cwd)
-  const rawAbsolute = /^(?:\/|[A-Za-z]:[\\/])/u.test(path)
-  const candidate = normalize(rawAbsolute ? path : `${root}/${path}`)
-  if (root === '' || candidate === '' || (candidate !== root && !candidate.startsWith(`${root}/`))) return undefined
-  return candidate
-}
-
-export const inject = ['slots', 'sessions', 'workspaces', 'remote', 'remote.productMode', 'locale', 'settingsNavigation']
+export const inject = ['slots', 'sessions', 'workspaces', 'remote', 'remote.productMode', 'remote.workResults', 'locale', 'settingsNavigation']
 
 /** Install navigation pages, persisted mode control, and reversible advanced-entry suppression. */
 export function apply(ctx: ClientContext): void {
@@ -102,13 +77,19 @@ export function apply(ctx: ClientContext): void {
       inject: (): WorkPageInjected => ({
         hooks: { work },
         openFiles: () => { window.dispatchEvent(new CustomEvent('rlhd-open-surface', { detail: { kind: 'files' } })) },
-        openDeliverable: async (path) => {
-          const state = ctx.sessions.list.getSnapshot()
-          const cwd = state.current === undefined ? undefined : state.byId[state.current]?.cwd
-          if (cwd === undefined) return
-          const absolute = resolveWorkspaceDeliverable(cwd, path)
-          if (absolute === undefined) return
-          await ctx.workspaces.openPath(absolute)
+        openDeliverable: async (sessionId, path) => {
+          const result = await ctx.remote.workResults.open({ sessionId: sessionId as SessionId, path })
+          if (!result.ok) throw new Error(result.error.message)
+        },
+        verifyWork: async (sessionId, signal) => {
+          const result = await ctx.remote.workResults.get(sessionId as SessionId, signal)
+          if (!result.ok) throw new Error(result.error.message)
+          return result.value
+        },
+        acceptWork: async (sessionId, reviewRevision) => {
+          const result = await ctx.remote.workResults.accept(sessionId as SessionId, { reviewRevision })
+          if (!result.ok) throw new Error(result.error.message)
+          return result.value
         },
       }),
     }, WorkPage),
@@ -117,6 +98,15 @@ export function apply(ctx: ClientContext): void {
       inject: (): LibraryPageInjected => ({
         openFiles: () => { window.dispatchEvent(new CustomEvent('rlhd-open-surface', { detail: { kind: 'files' } })) },
         openSettings: (section) => { ctx.settingsNavigation.open(section) },
+        queryLibrary: async (request, signal) => {
+          const result = await ctx.remote.workResults.list(request, signal)
+          if (!result.ok) throw new Error(result.error.message)
+          return result.value
+        },
+        openLibraryOutput: async (entry) => {
+          const result = await ctx.remote.workResults.open({ sessionId: entry.sessionId, path: entry.path })
+          if (!result.ok) throw new Error(result.error.message)
+        },
       }),
     }, LibraryPage),
   ])

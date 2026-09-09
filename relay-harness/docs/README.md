@@ -9,7 +9,7 @@ This directory describes Relay's **current design** rather than retaining a comp
 1. [`CONTEXT.md`](CONTEXT.md) — product definition, system boundaries, and terminology
 2. [`product/vision-and-positioning.md`](product/vision-and-positioning.md) — positioning, target users, and value proposition
 3. [`product/product-experience.md`](product/product-experience.md) — simple experience, Chat/Work, and Prompt Enhancement
-4. [`feature-status.json`](feature-status.json) — current feature status and verifiable evidence
+4. [`feature-status.json`](feature-status.json) — implementation scope and evidence references, separate from executed validation results
 5. [`repository-governance.md`](repository-governance.md) — GitHub workflow authority, branch protection, and the outer-container/runtime-root split
 6. [`agent/overview.md`](agent/overview.md) — overall TypeScript Relay Harness architecture
 7. [`agent/agent-runtime.md`](agent/agent-runtime.md) — agent loop, state, recovery, and local verification

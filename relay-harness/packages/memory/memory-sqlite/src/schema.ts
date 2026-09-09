@@ -1,3 +1,4 @@
+import { loadNodeSqlite } from '@relay-harness/rlh-sqlite-runtime'
 /** Canonical SQLite schema for append-only long-term-memory revisions. */
 
 import type { DatabaseSync } from 'node:sqlite'
@@ -36,7 +37,7 @@ export async function openMemoryDatabase(path: string, journalMode: JournalMode)
     await mkdir(dirname(actual), { recursive: true, mode: 0o700 })
     await createDatabaseFile(actual)
   }
-  const { DatabaseSync } = await import('node:sqlite')
+  const { DatabaseSync } = loadNodeSqlite()
   const db = new DatabaseSync(actual)
   try {
     const applicationId = pragmaNumber(db, 'application_id')

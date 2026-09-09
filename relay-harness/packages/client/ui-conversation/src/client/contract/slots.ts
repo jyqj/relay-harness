@@ -13,10 +13,10 @@ import type {
 import type { MarkdownFileMentions } from '@relay-harness/rlh-client-ui-primitives'
 import type { MessageId } from '@relay-harness/rlh-client-connection/client'
 import type {} from '@relay-harness/rlh-client-ui-layout/client'
-import type { ComposerBlock } from '../input/blocks.ts'
+import type { ComposerBlock } from './composer-blocks.ts'
 import type {
   ComposerKeyboard, DraftAttachmentId, EditSelection, InputActions, InputNotice, InputState,
-} from '../input/contract.ts'
+} from './input.ts'
 import type { createChatStore } from '../stores.ts'
 import type { ComposerSubmitGesture, InputSubmitMode } from './composer-submission.ts'
 import type { ChatNode, ChatNodeKind } from './chat-nodes.ts'
@@ -833,6 +833,8 @@ export type ApprovalComposerProps =
 export interface ChatScrollPosition {
   /** Stable rendered node/call identity nearest the visible reading edge. */
   readonly anchorKey: string
+  /** Owning conversation row when the semantic anchor is a nested tool call. */
+  readonly nodeKey?: string
   /** Anchor top relative to the transcript scrollport when saved. */
   readonly anchorTop: number
   /** Approximate offset used before the semantic anchor is measured. */

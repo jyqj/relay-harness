@@ -737,6 +737,49 @@ describe('tool-call scheduler: abort handling', () => {
 })
 
 describe('tool-call scheduler: failure quiescence', () => {
+  it.each(['c1', 'c2'])('pairs every unstarted call when classification fails at %s', async (failedId) => {
+    const adapter = new MockAdapter([multiCall([
+      { id: 'c1', name: 'exclusive', args: { id: 'first' } },
+      { id: 'c2', name: 'exclusive', args: { id: 'second' } },
+      { id: 'c3', name: 'exclusive', args: { id: 'third' } },
+    ])])
+    const ctx = await harness(adapter)
+    const started: string[] = []
+    try {
+      ctx.tools.register(defineContentToolFixture({
+        name: 'exclusive', description: 'ordered mutation', parameters: { id: { type: 'string', required: true } },
+        execute: async (args) => {
+          started.push(args.id)
+          return [{ type: 'text', text: `done-${args.id}` }]
+        },
+      }))
+      mutateNextToolSnapshot(ctx, (snapshot) => {
+        const classify = snapshot.executionMode.bind(snapshot)
+        snapshot.executionMode = (exec) => {
+          if (exec.callId === CallId(failedId)) throw new Error('classification failed')
+          return classify(exec)
+        }
+      })
+      const agent = ctx.agentLoop.create(SessionId(`classification-${failedId}`), { provider: 'mock', model: 'mock' })
+      const idle = waitForIdle(ctx, agent)
+      agent.followup(createUserMessage({ content: [{ type: 'text', text: 'go' }], source: { kind: 'user' } }))
+      await idle
+      await agent.whenIdle()
+      expect(started).toEqual(failedId === 'c1' ? [] : ['first'])
+      const results = events(agent).filter(event => event.type === 'tool/result')
+      expect(results.map(event => event.data.message.source.callId)).toEqual(['c1', 'c2', 'c3'])
+      expect(results.filter(event => event.data.error?.code === TOOL_NOT_STARTED)
+        .map(event => event.data.message.source.callId)).toEqual(failedId === 'c1' ? ['c1', 'c2', 'c3'] : ['c2', 'c3'])
+      expect(() => { assertToolTranscriptValid(agent.session.deriveMessages()) }).not.toThrow()
+      const ending = events(agent).findLast(event => event.type === 'turn/end')
+      expect(ending?.data.reason.kind).toBe('error')
+      if (ending?.data.reason.kind !== 'error') throw new Error('scheduler failure did not end the turn as an error')
+      expect(ending.data.reason.error.message).toContain('classification failed')
+    } finally {
+      await ctx.fiber.dispose()
+    }
+  })
+
   it('stops new dispatches and drains started bodies before surfacing the first failure', async () => {
     const adapter = new MockAdapter([
       multiCall([
@@ -1224,5 +1267,33 @@ describe('code-mode native-tool denial through the agent loop', () => {
     expect(initialCalls).toEqual(['1'])
     expect(replacementCalls).toEqual([])
     expect(events(agent).find(event => event.type === 'tool/code-dispatch')?.data.name).toBe('x')
+  })
+})
+
+describe('tool-call scheduler: durable produced-file capture', () => {
+  it('logs the captured successful mutation locations, including empty non-mutation capture, before presenter replacement', async () => {
+    const adapter = new MockAdapter([
+      multiCall([{ id: 'write-1', name: 'write', args: {} }, { id: 'read-1', name: 'read', args: {} }]),
+      textResponse('done'),
+    ])
+    const ctx = await harness(adapter)
+    const release = ctx.tools.register(defineContentToolFixture({
+      name: 'write', description: 'write output', parameters: {},
+      execute: async () => [{ type: 'text', text: 'done' }],
+      presentCall: () => ({ card: 'generic', title: 'write', kind: 'edit', locations: [{ path: 'output.md' }] }),
+    }))
+    ctx.tools.register(defineContentToolFixture({
+      name: 'read', description: 'read input', parameters: {},
+      execute: async () => [{ type: 'text', text: 'read' }],
+      presentCall: () => ({ card: 'generic', title: 'read', kind: 'read', locations: [{ path: 'input.md' }] }),
+    }))
+    const agent = ctx.agentLoop.create(SessionId('durable-capture'), { provider: 'mock', model: 'mock' })
+    agent.followup(createUserMessage({ content: [{ type: 'text', text: 'go' }], source: { kind: 'user' } }))
+    await waitForIdle(ctx, agent)
+    release()
+    const results = events(agent).filter(event => event.type === 'tool/result')
+    expect(results.map(event => event.data.producedFiles)).toEqual([['output.md'], []])
+    expect(results.map(event => event.data.message.content[0].content)).toEqual([[{ type: 'text', text: 'done' }], [{ type: 'text', text: 'read' }]])
+    await ctx.fiber.dispose()
   })
 })

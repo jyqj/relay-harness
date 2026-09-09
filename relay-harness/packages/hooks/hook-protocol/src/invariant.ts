@@ -1,9 +1,9 @@
 /** Package-owned hook invocation/result stream invariants. @module @relay-harness/rlh-hook-protocol/invariant */
 
 import type { Context } from '@relay-harness/cordis'
-import type { Session, SessionEvent } from '@relay-harness/rlh-session'
-import type { InvariantFailure, InvariantInstaller } from '@relay-harness/rlh-invariants'
-import type {} from './types.ts'
+import type { InvariantFailure,InvariantInstaller } from '@relay-harness/rlh-invariants'
+import type { Session,SessionEvent } from '@relay-harness/rlh-session'
+
 
 const PACKAGE_NAME = '@relay-harness/rlh-hook-protocol'
 

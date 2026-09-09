@@ -1,6 +1,4 @@
-# Sandbox CI: the keyless real-kernel confinement proofs. This master-only
-# reference stays outside the pull-request verdict; rationale lives in
-# .agents/notes/implemented/process/2026-07-21-serial-cross-platform-ci-reference.md.
+# Keyless real-kernel confinement, reusable by the required pull-request verdict.
 # A separate workflow from ci.yml because the axis is different — these jobs
 # fan out over OS×runner (kernel capabilities), not node versions. The Landlock
 # launcher is built from native/landlock-run on each Landlock leg and installed
@@ -8,11 +6,12 @@
 name: Sandbox
 
 on:
+  workflow_call: {}
   push:
     branches: [master]
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: sandbox-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
@@ -62,8 +61,12 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
 
       - uses: pnpm/action-setup@v4
+        with:
+          dest: ${{ runner.temp }}/setup-pnpm
 
       - uses: actions/setup-node@v6
         with:
@@ -112,7 +115,7 @@ jobs:
             packages/sandbox/sandbox-local/tests/${{ matrix.runner }}.e2e.ts \
             packages/shell/bash-sandbox/tests/${{ matrix.runner }}.e2e.ts 2>&1); status=$?
           echo "$out"
-          [ "$status" -eq 0 ]
+          [ "$status" -eq 0 ] || exit "$status"
           # Both platform files must have RUN — a self-skip (runner missing on
           # the very platform that exists to prove it) is a failure, not a pass.
           echo "$out" | grep -qE 'Test Files[[:space:]]+2 passed \(2\)'
@@ -133,5 +136,5 @@ jobs:
           out=$(pnpm exec vitest run --config vitest.e2e.config.ts \
             packages/sandbox/sandbox-local/tests/packed-install.e2e.ts 2>&1); status=$?
           echo "$out"
-          [ "$status" -eq 0 ]
+          [ "$status" -eq 0 ] || exit "$status"
           echo "$out" | grep -qE 'Test Files[[:space:]]+1 passed \(1\)'

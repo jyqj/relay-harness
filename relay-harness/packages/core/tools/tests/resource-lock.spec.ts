@@ -161,6 +161,46 @@ describe('tool resource intents', () => {
     await holder
   })
 
+  it('refuses a revoked guard after acquiring a queued resource and releases the resource', async () => {
+    const ctx = await setup()
+    const started: string[] = []
+    const release = Promise.withResolvers<undefined>()
+    let denyWaiting = false
+    let waitingPrepared = false
+    ctx.tools.guard(exec => denyWaiting && (exec.arguments as { id: string }).id === 'waiting' ? 'lease lost' : undefined)
+    ctx.on('tools/execute', (exec, next) => {
+      if ((exec.arguments as { id: string }).id === 'waiting') waitingPrepared = true
+      return next()
+    })
+    ctx.tools.register(defineTool({
+      name: 'locked',
+      description: 'resource locked',
+      parameters: {
+        id: { type: 'string', required: true },
+        key: { type: 'string', required: true },
+        access: { type: 'string', required: true, enum: ['read', 'write'] },
+      },
+      output: { schema: { type: 'string' }, render: (_args, value) => [{ type: 'text', text: value }] },
+      resourceIntents: args => [{ key: args.key, access: args.access }],
+      async execute(args) {
+        started.push(args.id)
+        if (args.id === 'holder') await release.promise
+        return args.id
+      },
+    }))
+    const holder = call(ctx, 'c1', { id: 'holder', key: 'file:a', access: 'write' })
+    await until(() => started.includes('holder'))
+    const waiting = call(ctx, 'c2', { id: 'waiting', key: 'file:a', access: 'write' })
+    await until(() => waitingPrepared)
+    denyWaiting = true
+    release.resolve(undefined)
+    await holder
+    expect(await waiting).toMatchObject({ isError: true, error: { message: 'lease lost' } })
+    expect(started).toEqual(['holder'])
+    expect(await call(ctx, 'c3', { id: 'successor', key: 'file:a', access: 'write' })).toMatchObject({ isError: false })
+    expect(started).toEqual(['holder', 'successor'])
+  })
+
   it.each([
     [[{ key: '', access: 'read' }], 'key must be a non-empty string'],
     [[{ key: 'file:a', access: 'invalid' }], 'invalid access'],

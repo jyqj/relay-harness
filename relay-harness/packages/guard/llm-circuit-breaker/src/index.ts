@@ -6,13 +6,13 @@
 import type { Context } from '@relay-harness/cordis'
 import z from '@relay-harness/schemastery'
 import { LlmError } from '@relay-harness/rlh-llm'
-import type {} from '@relay-harness/rlh-agent'
+import type { Agent } from '@relay-harness/rlh-agent'
 import type {} from '@relay-harness/rlh-session'
 import { CircuitBreaker, CircuitBreakerOpenError } from './breaker.ts'
-import type { CircuitBreakerPolicy } from './breaker.ts'
+import type { CircuitBreakerAdmission, CircuitBreakerPolicy } from './breaker.ts'
 
 export { CircuitBreaker, CircuitBreakerOpenError } from './breaker.ts'
-export type { CircuitBreakerPolicy, CircuitBreakerState } from './breaker.ts'
+export type { CircuitBreakerAdmission, CircuitBreakerPolicy, CircuitBreakerState } from './breaker.ts'
 
 export const name = 'llm-circuit-breaker'
 export const inject = ['agents', 'sessions']
@@ -90,11 +90,31 @@ export function apply(ctx: Context, input: Config): void {
     breakers.set(provider, breaker)
     return breaker
   }
+  // One agent drives at most one model request at a time, so the per-agent
+  // per-provider admission queue is FIFO-exact: each outcome settles the stamp
+  // of the request that preceded it. Shed requests admit nothing, and an
+  // outcome with no pending stamp (never admitted, or an untracked source)
+  // records as closed-admitted or not at all.
+  const pending = new WeakMap<Agent, Map<string, CircuitBreakerAdmission[]>>()
+  const admit = (agent: Agent, provider: string, admission: CircuitBreakerAdmission): void => {
+    let perAgent = pending.get(agent)
+    if (perAgent === undefined) {
+      perAgent = new Map()
+      pending.set(agent, perAgent)
+    }
+    const queue = perAgent.get(provider)
+    if (queue === undefined) perAgent.set(provider, [admission])
+    else queue.push(admission)
+  }
+  const settle = (agent: Agent | undefined, provider: string): CircuitBreakerAdmission | undefined => {
+    return agent === undefined ? undefined : pending.get(agent)?.get(provider)?.shift()
+  }
 
-  ctx.on('agent/request', async (_payload, next) => {
+  ctx.on('agent/request', async (payload, next) => {
     const request = await next()
+    let admission: CircuitBreakerAdmission
     try {
-      breakerFor(request.provider).check(Date.now())
+      admission = breakerFor(request.provider).check(Date.now())
     } catch (error: unknown) {
       const open = error as CircuitBreakerOpenError
       throw new LlmError(
@@ -103,16 +123,22 @@ export function apply(ctx: Context, input: Config): void {
         { providerRetryAfterMs: open.retryAfterMs, cause: open },
       )
     }
+    admit(payload.agent, request.provider, admission)
     return request
   }, { global: true })
 
-  ctx.on('agent/request-error', async ({ provider, failure }, next) => {
-    breakerFor(provider).record(failureCodes.has(failure.code), Date.now())
+  ctx.on('agent/request-error', async ({ agent, provider, failure }, next) => {
+    const admission = settle(agent, provider)
+    if (admission !== undefined) {
+      breakerFor(provider).record(failureCodes.has(failure.code), Date.now(), admission)
+    }
     return await next()
   }, { global: true })
 
-  ctx.on('session/event', (_session, event) => {
+  ctx.on('session/event', (session, event) => {
     if (event.type !== 'assistant/message') return
-    breakerFor(event.data.message.source.provider).record(false, Date.now())
+    const provider = event.data.message.source.provider
+    breakerFor(provider).record(false, Date.now(), settle(ctx.agents.get(session.id), provider)
+      ?? { state: 'closed' })
   }, { global: true })
 }

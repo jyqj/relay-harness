@@ -2,7 +2,7 @@ import { useState } from 'react'
 import type { ContextMessageNode } from '@relay-harness/rlh-client-runtime/client'
 import type { ChatViewSlotProps } from '../contract/slots.ts'
 import { DisclosureRow, IconBrowseOutline16 } from '@relay-harness/rlh-client-ui-primitives'
-import { ReferenceIcon } from '../reference/ReferenceIcon.tsx'
+import { ReferenceIcon } from '../ReferenceIcon.tsx'
 import { contextBody } from './ContextBody.tsx'
 import css from './ContextInjectionRow.module.css'
 

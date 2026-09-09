@@ -14,7 +14,7 @@ Its architecture treats **everything as a plugin** and is powered by [Cordis](ht
 - **Prompt Enhancement:** users may improve an unsent draft from its current context, review the diff and sources, accept or undo it, and remain in control of submission.
 - **Local governance:** permission, memory, context evidence, checkpoints, and verification remain explicit and auditable.
 
-Current shipped, partial, and planned status is defined only by the machine-readable [feature status](docs/feature-status.json), whose verifier checks default composition, Remote/API, UI, e2e, and documentation evidence.
+The machine-readable [feature status](docs/feature-status.json) indexes implementation scope and evidence references. Its verifier checks paths and markers, not execution results; current tests, builds, platform runs, and provider runs establish validation separately.
 
 ## Developer preview
 

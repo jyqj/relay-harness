@@ -11,7 +11,8 @@ import { connect } from 'node:net'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import type { Server } from 'node:http'
 import { Context } from '@relay-harness/cordis'
 import Loader from '@relay-harness/cordis-plugin-loader'
 import Include from '@relay-harness/cordis-plugin-include'
@@ -223,4 +224,101 @@ describe('real Loader composition', () => {
       root = firstRoot
     }
   })
+})
+
+describe('webserver registration generation ownership', () => {
+  it.each(['exact', 'prefix'] as const)('does not remove a successor %s route through an old disposer', async (kind) => {
+    const { webServer: server } = await loadComposition()
+    const route: Parameters<typeof server.register>[0] = {
+      kind, path: '/reused', handler: (_req, res) => { res.end('owned') },
+    }
+    const release = server.register(route)
+    release()
+    server.register(route)
+    release()
+    expect(await request(server.port, '/reused')).toMatchObject({ status: 200, body: 'owned' })
+  })
+
+  it('keeps a successor upgrade route after repeated disposal of its predecessor', async () => {
+    const { webServer: server } = await loadComposition()
+    const route = { path: '/upgrade-owner', handler: () => {} }
+    const release = server.registerUpgrade(route)
+    release()
+    server.registerUpgrade(route)
+    release()
+    expect(() => server.registerUpgrade(route)).toThrow(/duplicate upgrade/)
+  })
+
+  it('keeps the current fallback when an earlier owner disposes again', async () => {
+    const { webServer: server } = await loadComposition()
+    const release = server.registerFallback((_req, res) => { res.end('old') })
+    release()
+    server.registerFallback((_req, res) => { res.end('current') })
+    release()
+    expect(await request(server.port, '/fallback')).toMatchObject({ status: 200, body: 'current' })
+  })
+
+  it('removes only the index tap occurrence owned by its disposer', async () => {
+    const { webServer: server } = await loadComposition()
+    const transform = (html: string): string => `${html}!`
+    const release = server.tapIndex(transform)
+    release()
+    server.tapIndex(transform)
+    release()
+    expect(server.applyIndexTaps('body')).toBe('body!')
+  })
+})
+
+
+/** Send an upgrade that must be refused or fail without publishing a live socket. */
+async function rejectedUpgrade(port: number, target: string): Promise<void> {
+  const socket = connect(port, '127.0.0.1')
+  socket.on('error', () => { /* A refused upgrade may reset the TCP connection. */ })
+  await once(socket, 'connect')
+  const closed = new Promise<void>((resolve) => { socket.once('close', () => { resolve() }) })
+  socket.write(`GET ${target} HTTP/1.1\r\nHost: localhost\r\nConnection: Upgrade\r\nUpgrade: test\r\n\r\n`)
+  await closed
+}
+
+it('contains HTTP failures after headers and non-Error throws while keeping the server usable', async () => {
+  const { webServer: server } = await loadComposition()
+  expect(server.host).toBe('127.0.0.1')
+  server.register({ kind: 'exact', path: '/non-error', handler: () => { throw 'handler rejected' } })
+  server.register({ kind: 'exact', path: '/headers', handler: (_req, res) => { res.writeHead(200); res.flushHeaders(); throw new Error('after headers') } })
+  expect((await request(server.port, '/non-error')).status).toBe(400)
+  await expect(request(server.port, '/headers')).rejects.toThrow()
+  expect((await request(server.port, '/missing')).status).toBe(404)
+})
+
+it('contains malformed, unmatched, synchronous, and asynchronous upgrade failures', async () => {
+  const { webServer: server } = await loadComposition()
+  server.registerUpgrade({ path: '/sync', handler: () => { throw new Error('sync upgrade failed') } })
+  server.registerUpgrade({ path: '/async', handler: async () => { throw 'async upgrade failed' } })
+  for (const target of ['http://[', '/missing', '/sync', '/async']) await rejectedUpgrade(server.port, target)
+  expect((await request(server.port, '/still-live')).status).toBe(404)
+})
+
+it('reports a post-listen transport error through the logger instead of an unhandled error event', async () => {
+  const loaded = await loadComposition()
+  const logged = vi.spyOn(loaded.logger, 'error').mockImplementation(() => {})
+  const raw = loaded.webServer as unknown as { server: Server }
+  const failure = new Error('injected node:http transport failure')
+  raw.server.emit('error', failure)
+  expect(logged).toHaveBeenCalledWith(failure)
+  logged.mockRestore()
+})
+
+it('captures path descriptors and preserves exact index-tap occurrence ordering', async () => {
+  const { webServer: server } = await loadComposition()
+  const deep = { kind: 'prefix' as const, path: '/api/deep', handler: (_req: unknown, res: import('node:http').ServerResponse) => { res.end('deep') } }
+  server.register(deep)
+  server.register({ kind: 'prefix', path: '/api', handler: (_req, res) => { res.end('short') } })
+  deep.path = '/x'
+  expect((await request(server.port, '/api/deep/leaf')).body).toBe('deep')
+  const repeated = (html: string) => `${html}A`
+  server.tapIndex(repeated)
+  server.tapIndex(html => `${html}B`)
+  const last = server.tapIndex(repeated)
+  last()
+  expect(server.applyIndexTaps('')).toBe('AB')
 })

@@ -102,7 +102,7 @@ export function deriveThemeTokens(seeds: ThemeSeeds): ThemeTokens {
     '--rlw-alias-brand-primary': seeds.accent,
     '--rlw-alias-brand-primary-invert': onAccent,
     '--rlw-alias-brand-text': seeds.accent,
-    '--rlw-alias-brand-primary-new-colorprimary-new-color': seeds.accent,
+    '--rlw-alias-brand-primary-new': seeds.accent,
     '--rlw-alias-button-primary-fill': seeds.accent,
     '--rlw-alias-button-primary-hover': accentHover,
     '--rlw-alias-button-info-fill': seeds.accent,

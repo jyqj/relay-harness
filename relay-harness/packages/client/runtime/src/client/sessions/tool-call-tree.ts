@@ -1,8 +1,6 @@
 import type { SessionEvent } from '@relay-harness/rlh-session/types'
-import type {} from '@relay-harness/rlh-tools/types'
-import type {
-  ConversationNode, RunningToolCall, ToolCallBlock, ToolResultNode,
-} from './conversation.ts'
+import type { } from '@relay-harness/rlh-tools/types'
+import type { ConversationNode,RunningToolCall,ToolCallBlock,ToolResultNode } from '../contract/session-snapshot.ts'
 
 interface ProjectedBlock {
   source: ToolCallBlock

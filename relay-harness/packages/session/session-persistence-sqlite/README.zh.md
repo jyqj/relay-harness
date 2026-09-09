@@ -6,6 +6,8 @@
 
 `locate(meta)` 返回 `undefined`，因为所有会话共享同一个数据库。该提供方不暴露逐会话原始产物。
 
+`prepare(id, signal?, fence?)` 上可选的所有权证明会在活动 setup 前保护冷恢复。共享协调器使 `runExclusive` 区间覆盖数据库打开和完整存储事务；会话数据库事务本身不会串行化另一个租约数据库中的接管。
+
 ## 存储模型
 
 Schema 17 保留普通 ROWID 表以及复合主键索引 `events(session_id, seq)`。标量行存储一个逻辑事件。打包行把 `text-chunks`、`reasoning-chunks` 或 `tool-call-chunks` 用作物理 `type`；`seq` 与 `time` 标识所表示的第一个事件，`data` 保存共享的分片打包 payload。打包行把 `ignorable=0` 用作物理判别值，并让 `source_event_seqs` 与 `surface_op` 保持 `NULL`；标量行仅在逻辑事件可忽略时使用 `ignorable=1`，否则使用 `NULL`。因此，未来的可忽略逻辑事件即使复用了某个存储标签名称，也不会被解码为打包行。这些标签属于存储记录，而不是 `SessionEventMap` 成员。

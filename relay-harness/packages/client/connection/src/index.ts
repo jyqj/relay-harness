@@ -130,6 +130,10 @@ const PRIVILEGED_METHODS = new Set([
   'skillInventory/update',
   'skillInventory/delete',
   'skillInventory/setInvocation',
+  'workResults/get',
+  'workResults/accept',
+  'workResults/list',
+  'workResults/open',
 ])
 
 /**

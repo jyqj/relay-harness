@@ -133,3 +133,9 @@ skill/@subagent 引用不走占位符 + occurrence 身份链——纯文本引�
 - 输入面对命令零知识 + 可选依赖：无命令包时纯输入可用；`@` 引用与 skill 引用免费复用同一菜单/pick 流水线。代价是空格/回车裁决是逐 source 轮询协议，其应答语义（同步/异步、undefined 含义）为冻结约定。
 - 提交事务化（attempt seq + 漂移守卫）使晚到结果回灌、会话切换、concurrent 重放三类缺陷结构性不可能，由矩阵测试钉住。
 - 已知欠账：chip 跨刷新保真（可复用粘贴匹配）未立项；subagent 引用的模型表示待业务立项。
+
+## 渲染器拥有的菜单订阅
+
+斜杠菜单注册项通过 `hooks.menu` 传递现有的 Session 级控制器菜单。`InjectFace<MenuViewInjected>` 推导组件的 `useMenu` 席位，MenuView 不再调用 `useSyncExternalStore`，也不接收原始可观察对象。这复用已有渲染器绑定机制，不新增服务、重复 store 或生产自定义 hook。控制器仍拥有菜单 generation、分组、高亮及选择和关闭操作；本地退场动画状态不变。
+
+注册测试验证注入数据源就是所选 Session 控制器的菜单。组件测试使用共享 test-runtime selector 绑定器，验证响应式打开、高亮变化、指针及焦点行为，以及重渲染期间始终只有一次订阅、卸载后释放一次。组装浏览器验证仍是独立的必需测试面。

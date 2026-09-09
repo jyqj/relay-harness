@@ -26,6 +26,8 @@ type ScopeKey = object
 type Scoped<T extends object> = object & { readonly [ScopedBrand]: T }
 ```
 
+`ScopeReadView` is an opaque immutable ancestry captured by `captureScopeReadView(key)`. Its chain contains the original registration identities, so registry overlays and exact-scope restrictions survive a later parent rebind. It does not snapshot registry values or retain effects; the reader separately holds its owners. Mutation and dispatch APIs reject a read view.
+
 ## Owned registration context
 
 `Scope` pairs the tagged registration context with two teardown paths. `rawDispose` preserves the exact Cordis disposer identity needed by an ordered composite effect; `dispose()` is the public shared quiescence boundary for direct and racing callers.

@@ -14,7 +14,7 @@
 
 - `ctx.sessions.create(id?, { seed?, meta? }?)` 校验持久种子／头部数据并生成脱离副本，补齐版本和 id，在未提供 `createdAt` 时使用当前时间，发布会话并将其绑定到调用方 fiber。持久化重建会提供原始的 `createdAt`、`seedLength` 和 `delegationDepth`。
 - `ctx.sessions.flush(session)` 通过会话捕获的作用域分发一个需等待完成的并行持久性检查点。每个监听器都会启动；调用会等待全部结算后才报告失败。未发布、已脱离和陈旧的对象会被拒绝。
-- `installSessionPersistenceFence(session, fence)` 附加一份精确的跨进程 owner 证明。陈旧证明会在新 append 或持久化排空修改持久状态之前拒绝操作；移除这份精确 fence 后恢复普通单进程行为。
+- `installSessionPersistenceFence(session, fence)` 附加一份精确的跨进程 owner 证明。陈旧证明会拒绝新的 append。`captureSessionPersistenceFence(session)` 为延后执行的持久化工作保留这份确切的证明：退休注册会永久关闭该 Session 对象的源日志 append 准入，而已接受写入在排空期间保留其证明。后继 owner 使用新的 Session 对象，绝不在已退休对象上替换证明。存储分发会重新检查已捕获的证明。可选的 `runExclusive(operation)` 使完整存储提交与租约释放或接管互斥；只有断言的证明不提供这种排他性。两种形式都不会回滚已经完成的外部副作用。
 - `ctx.sessions.fork(source, boundary?, childSessionId?): Session`：解析实时会话对象或 id，选取截至 `boundary` 事件序号（含该事件）的种子（默认为当前最后一个事件），要求所选前缀结束时没有开放轮次，再创建带谱系元数据的实时子会话。
 - `ctx.sessions.get(id: SessionId): Session | undefined`
 - `ctx.sessions.list(): Session[]`

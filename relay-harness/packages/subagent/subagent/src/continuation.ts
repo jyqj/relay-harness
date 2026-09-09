@@ -22,6 +22,7 @@
  */
 
 import { randomUUID } from 'node:crypto'
+import { isDeepStrictEqual } from 'node:util'
 import type { Context } from '@relay-harness/cordis'
 import type {
   Agent,
@@ -33,7 +34,7 @@ import type {
 import { boundContextSummary, createUserMessage, errorChain } from '@relay-harness/rlh-llm'
 import type { ContentBlock, MessageId, MessageSource } from '@relay-harness/rlh-llm'
 import { installSessionPersistenceFence, SessionId } from '@relay-harness/rlh-session'
-import type { SessionEvent } from '@relay-harness/rlh-session'
+import type { SessionEvent, SessionPersistenceFence } from '@relay-harness/rlh-session'
 import type { SessionPersistence } from '@relay-harness/rlh-session-persistence'
 import type { ToolRestriction } from '@relay-harness/rlh-tools'
 import { foldSubagentDescriptor, snapshotSubagentDescriptor } from './descriptor.ts'
@@ -680,13 +681,13 @@ export class SubagentContinuationManager {
 
   /**
    * Deliver explicitly selected content from one resident continuable child to
-   * its durable direct parent. Sender authorization, parent resolution, and
-   * send acceptance share one no-await span. Reporting neither concludes the
-   * child's turn nor changes its Activation lifetime.
+   * its durable direct parent. After the durability barrier, a still-resident
+   * Activation rechecks its lease and resolves the live parent before sending.
+   * Reporting neither concludes the child's turn nor changes its Activation lifetime.
    * @param child - exact live reporting child; this is the authority credential.
    * @param content - selected model-facing content.
    * @param options - scheduling policy and pre-acceptance cancellation.
-   * @returns the stable identity of the message accepted by the parent.
+   * @returns the durable report identity, retained for cold recovery if disposal has begun.
    * @throws {SubagentError} when the sender is unauthorized, the parent is not
    *   live, or continuation admission is closing.
    */
@@ -699,7 +700,7 @@ export class SubagentContinuationManager {
     this.assertAdmitting(child)
     const activation = this.authorizeReporter(child)
     this.assertLease(activation)
-    const parent = this.resolveReportParent(child)
+    this.resolveReportParent(child)
     if (options.idempotencyKey !== undefined
       && (options.idempotencyKey.trim() === '' || Array.from(options.idempotencyKey).length > 256)) {
       throw new SubagentError('subagent report idempotencyKey must be 1-256 Unicode code points', 'INVALID_ARGUMENT')
@@ -709,28 +710,31 @@ export class SubagentContinuationManager {
     const ownEvents = child.session.events.slice(child.session.header.seedLength ?? 0)
     const existing = acceptedSubagentReport(ownEvents, key)
     if (existing !== undefined) {
-      if (JSON.stringify(existing.message.content) !== JSON.stringify(message.content)
+      if (!isDeepStrictEqual(existing.message.content, message.content)
         || existing.delivery !== options.delivery) {
         throw new SubagentError(
           `subagent report idempotency key ${JSON.stringify(key)} was reused with different content`,
           'DUPLICATE_DELIVERY',
         )
       }
-      if (!this.parentHasMessage(parent, existing.message.id)) {
-        this.deliverReport(parent, existing.message, existing.delivery)
-      }
-      return existing.message.id
+    } else {
+      child.session.append('subagent/report-accepted', {
+        version: SUBAGENT_DELIVERY_VERSION,
+        idempotencyKey: key,
+        delivery: options.delivery,
+        message,
+      })
     }
-    child.session.append('subagent/report-accepted', {
-      version: SUBAGENT_DELIVERY_VERSION,
-      idempotencyKey: key,
-      delivery: options.delivery,
-      message,
-    })
+    const accepted = existing?.message ?? message
+    // A previous caller may have failed after append but before durability.
     const durable = await this.ctx.get('sessions')?.flush(child.session) ?? false
     if (!durable) throw new SubagentError('subagent reporting requires durable session persistence', 'CONTINUATION_UNAVAILABLE')
-    if (disposalOf(activation) === undefined) this.deliverReport(parent, message, options.delivery)
-    return message.id
+    if (disposalOf(activation) === undefined) {
+      this.assertLease(activation)
+      const parent = this.resolveReportParent(child)
+      if (!this.agentHasMessage(parent, accepted.id)) this.deliverReport(parent, accepted, options.delivery)
+    }
+    return accepted.id
   }
 
   /** Authorize only the exact Agent of one resident Activation. */
@@ -799,11 +803,11 @@ export class SubagentContinuationManager {
     return message.id
   }
 
-  /** Whether the parent durable surface already contains one report receipt. */
-  private parentHasMessage(parent: Agent, messageId: MessageId): boolean {
-    return parent.session.events.some(event => event.type === 'user/message' && event.data.id === messageId)
-      || parent.inbox.nextStep.some(message => message.id === messageId)
-      || parent.inbox.nextTurn.some(message => message.id === messageId)
+  /** Whether an Agent's authoritative log or inbox already contains this message identity. */
+  private agentHasMessage(agent: Agent, messageId: MessageId): boolean {
+    return agent.session.events.some(event => event.type === 'user/message' && event.data.id === messageId)
+      || agent.inbox.nextStep.some(message => message.id === messageId)
+      || agent.inbox.nextTurn.some(message => message.id === messageId)
   }
 
   /**
@@ -1202,6 +1206,11 @@ export class SubagentContinuationManager {
       }
       throw error
     }
+    const persistenceFence: SessionPersistenceFence | undefined = lease === undefined ? undefined : {
+      token: `${lease.ownerToken}:${lease.fence}`,
+      assertCurrent: () => { lease.assertCurrent() },
+      runExclusive: operation => lease.runExclusive(operation),
+    }
     let acquisitionLeaseFailure: Error | undefined
     let persistenceFenceDispose: (() => void) | undefined
     const acquisitionTimer = lease === undefined ? undefined : setInterval(() => {
@@ -1213,11 +1222,8 @@ export class SubagentContinuationManager {
     const setup = (childCtx: Context): AgentSetupCommit => {
       if (acquisitionLeaseFailure !== undefined) throw acquisitionLeaseFailure
       lease?.assertCurrent()
-      if (lease !== undefined && persistenceFenceDispose === undefined) {
-        persistenceFenceDispose = installSessionPersistenceFence((childCtx.agent as Agent).session, {
-          token: `${lease.ownerToken}:${lease.fence}`,
-          assertCurrent: () => { lease.assertCurrent() },
-        })
+      if (lease !== undefined && persistenceFence !== undefined && persistenceFenceDispose === undefined) {
+        persistenceFenceDispose = installSessionPersistenceFence((childCtx.agent as Agent).session, persistenceFence)
         childCtx.tools.guard(() => {
           try {
             lease.assertCurrent()
@@ -1250,6 +1256,7 @@ export class SubagentContinuationManager {
       handle = create === undefined
         ? await this.ownerCtx.agents.resume({
           resumeSessionId: childId,
+          ...persistenceFence === undefined ? {} : { persistenceFence },
           agentOptions: inputs.agentOptions,
           signal: inputs.signal,
           setup,
@@ -1355,7 +1362,7 @@ export class SubagentContinuationManager {
       for (const report of pendingSubagentReports(
         handle.agent.session.events.slice(handle.agent.session.header.seedLength ?? 0),
       )) {
-        if (this.parentHasMessage(parent, report.message.id)) {
+        if (this.agentHasMessage(parent, report.message.id)) {
           handle.agent.session.append('subagent/report-delivered', {
             version: SUBAGENT_DELIVERY_VERSION,
             messageId: report.message.id,
@@ -1495,35 +1502,39 @@ export class SubagentContinuationManager {
       key,
     )
     if (existing !== undefined) {
-      if (JSON.stringify(existing.message.content) !== JSON.stringify(message.content)
-        || JSON.stringify(existing.message.source) !== JSON.stringify(message.source)) {
+      if (!isDeepStrictEqual(existing.message.content, message.content)
+        || !isDeepStrictEqual(existing.message.source, message.source)) {
         throw new SubagentError(
           `subagent delivery idempotency key ${JSON.stringify(key)} was reused with different content`,
           'DUPLICATE_DELIVERY',
         )
       }
-      return existing.message.id
+    } else {
+      activation.handle.agent.session.append('subagent/delivery-accepted', {
+        version: SUBAGENT_DELIVERY_VERSION,
+        idempotencyKey: key,
+        message,
+      })
     }
-    activation.handle.agent.session.append('subagent/delivery-accepted', {
-      version: SUBAGENT_DELIVERY_VERSION,
-      idempotencyKey: key,
-      message,
-    })
-    const durable = await this.ctx.get('sessions')?.flush(activation.handle.agent.session) ?? false
+    const acceptedMessage = existing?.message ?? message
+    const child = activation.handle.agent
+    // In-memory acceptance alone is not a receipt, including on retries.
+    const durable = await this.ctx.get('sessions')?.flush(child.session) ?? false
     if (!durable) {
       throw new SubagentError('continuable subagent delivery requires durable session persistence', 'CONTINUATION_UNAVAILABLE')
     }
     if (disposalOf(activation) !== undefined) {
       activation.announced = true
-      return message.id
+      return acceptedMessage.id
     }
-    const accepted = this.admitWaking(activation, message.id, () => {
-      activation.handle.agent.followup(message)
-    })
-    // Past this point the caller has an id for this child, so its eventual
-    // settlement is something the parent is owed an account of.
+    this.assertLease(activation)
+    const pending = pendingSubagentDeliveries(child.session.events.slice(child.session.header.seedLength ?? 0))
+      .some(delivery => delivery.message.id === acceptedMessage.id)
+    if (pending && !this.agentHasMessage(child, acceptedMessage.id)) {
+      this.admitWaking(activation, acceptedMessage.id, () => { child.followup(acceptedMessage) })
+    }
     activation.announced = true
-    return accepted
+    return acceptedMessage.id
   }
 
   /**

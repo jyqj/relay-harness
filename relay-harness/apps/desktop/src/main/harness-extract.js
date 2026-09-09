@@ -1,3 +1,4 @@
+// @ts-check
 'use strict';
 
 const { spawn } = require('child_process');
@@ -71,6 +72,7 @@ function runTar(args) {
   });
 }
 
+/** @param {(message: string) => void} [log] Runtime extraction progress observer. */
 async function ensurePackagedHarness(log = () => {}) {
   if (!app.isPackaged) {
     return null;

@@ -9,8 +9,6 @@ const path = require('node:path');
 const {
   assertHarnessRuntime,
   assertVendoredPluginRuntimeDeps,
-  collectFiles,
-  deployCliEntries,
   nodePtyPrebuildRelative,
   resolveDeployDir,
   resolveResourcesDir,
@@ -19,6 +17,23 @@ const {
 } = require('../../scripts/after-pack');
 
 const RC7_PIN = { npm: '0.1.0-rc.7' };
+
+/** Runtime-file tests reuse real release lock metadata while supplying minimal non-executed module fixtures. */
+function prepareLockedPluginFixture(packageDir) {
+  const vendor = path.resolve(__dirname, '../../vendor/rlhmarket');
+  fs.copyFileSync(path.join(vendor, 'package.json'), path.join(packageDir, 'package.json'));
+  fs.copyFileSync(path.join(vendor, 'package-lock.json'), path.join(packageDir, 'package-lock.json'));
+  const lock = JSON.parse(fs.readFileSync(path.join(vendor, 'package-lock.json'), 'utf8'));
+  for (const name of ['js-yaml', 'argparse', 'undici']) {
+    const dir = path.join(packageDir, 'node_modules', name);
+    fs.mkdirSync(dir, { recursive: true });
+    const file = path.join(dir, 'package.json');
+    const existing = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : { name, main: 'index.js' };
+    fs.writeFileSync(file, JSON.stringify({ ...existing, version: lock.packages[`node_modules/${name}`].version }));
+    if (name !== 'js-yaml') fs.writeFileSync(path.join(dir, 'index.js'), 'module.exports = {}\n');
+  }
+}
+
 
 function writeRuntimeVersions(root, npm) {
   fs.writeFileSync(path.join(root, 'package.json'), `${JSON.stringify({ version: npm })}\n`);
@@ -33,149 +48,6 @@ function writeNodePtyPrebuild(root, platform = process.platform, arch = process.
   fs.writeFileSync(path.join(root, 'node_modules', 'node-pty', 'package.json'), '{"name":"node-pty"}\n');
   fs.writeFileSync(file, 'native');
 }
-
-function makeFixture(t) {
-  const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'after-pack-test-'));
-  const source = path.join(workspace, 'source');
-  const shared = path.join(workspace, 'shared');
-  const destination = path.join(workspace, 'destination');
-  fs.mkdirSync(source, { recursive: true });
-  fs.mkdirSync(shared, { recursive: true });
-  fs.writeFileSync(path.join(shared, 'package.json'), '{"name":"shared"}\n');
-  fs.writeFileSync(path.join(shared, 'index.js'), 'module.exports = true;\n');
-  t.after(() => fs.rmSync(workspace, { recursive: true, force: true }));
-  return { source, shared, destination };
-}
-
-function linkPackage(source, shared, branch) {
-  const nodeModules = path.join(source, branch, 'node_modules');
-  fs.mkdirSync(nodeModules, { recursive: true });
-  fs.symlinkSync(shared, path.join(nodeModules, 'shared'), 'junction');
-}
-
-test('deployCliEntries excludes runtime state and separately assembled directories', (t) => {
-  const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'after-pack-entries-'));
-  for (const name of ['.rlh-home', '.cache', 'node_modules', 'vendor', 'config', 'lib']) {
-    fs.mkdirSync(path.join(workspace, name), { recursive: true });
-  }
-  fs.writeFileSync(path.join(workspace, 'package.json'), '{}\n');
-  t.after(() => fs.rmSync(workspace, { recursive: true, force: true }));
-
-  assert.deepEqual(
-    deployCliEntries(workspace).map(({ name }) => name).sort(),
-    ['config', 'lib', 'package.json'],
-  );
-});
-
-test('collectFiles deduplicates a linked package flattened to the same destination', (t) => {
-  const fixture = makeFixture(t);
-  linkPackage(fixture.source, fixture.shared, 'a');
-  linkPackage(fixture.source, fixture.shared, 'b');
-
-  const files = collectFiles(fixture.source, fixture.destination, false, true);
-  const destinations = files.map(({ dest }) => path.relative(fixture.destination, dest)).sort();
-
-  assert.deepEqual(
-    destinations,
-    [path.join('node_modules', 'shared', 'index.js'), path.join('node_modules', 'shared', 'package.json')],
-  );
-});
-
-test('collectFiles keeps shipped preset SKILL.md while stripping other markdown', (t) => {
-  const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'after-pack-skills-'));
-  t.after(() => fs.rmSync(workspace, { recursive: true, force: true }));
-  const source = path.join(workspace, 'source');
-  const destination = path.join(workspace, 'destination');
-  const skill = path.join(
-    source,
-    'apps',
-    'cli',
-    'config',
-    'agent-presets',
-    '@relay-harness/cordis',
-    'skills',
-    'editing-cordis-compositions',
-    'SKILL.md',
-  );
-  const readme = path.join(source, 'apps', 'cli', 'README.md');
-  const preset = path.join(source, 'apps', 'cli', 'config', 'agent-presets', '@relay-harness/cordis', 'preset.yml');
-  fs.mkdirSync(path.dirname(skill), { recursive: true });
-  fs.mkdirSync(path.dirname(readme), { recursive: true });
-  fs.writeFileSync(skill, '# editing cordis compositions\n');
-  fs.writeFileSync(readme, '# cli docs\n');
-  fs.writeFileSync(preset, 'id: cordis\n');
-
-  const files = collectFiles(source, destination, false, true);
-  const destinations = files.map(({ dest }) => path.relative(destination, dest)).sort();
-
-  assert.deepEqual(
-    destinations,
-    [
-      path.join('apps', 'cli', 'config', 'agent-presets', '@relay-harness/cordis', 'preset.yml'),
-      path.join(
-        'apps',
-        'cli',
-        'config',
-        'agent-presets',
-        '@relay-harness/cordis',
-        'skills',
-        'editing-cordis-compositions',
-        'SKILL.md',
-      ),
-    ],
-  );
-});
-
-test('collectFiles keeps preset SKILL.md when rooted at the deploy config directory', (t) => {
-  const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'after-pack-deploy-skills-'));
-  t.after(() => fs.rmSync(workspace, { recursive: true, force: true }));
-  const source = path.join(workspace, 'config');
-  const destination = path.join(workspace, 'destination');
-  const skill = path.join(
-    source,
-    'agent-presets',
-    '@relay-harness/cordis',
-    'skills',
-    'cordis-plugin-development',
-    'SKILL.md',
-  );
-  const readme = path.join(source, 'README.md');
-  const preset = path.join(source, 'agent-presets', '@relay-harness/cordis', 'preset.yml');
-  fs.mkdirSync(path.dirname(skill), { recursive: true });
-  fs.writeFileSync(skill, '# cordis plugin development\n');
-  fs.writeFileSync(readme, '# config docs\n');
-  fs.writeFileSync(preset, 'id: cordis\n');
-
-  const files = collectFiles(source, destination, true, false);
-  const destinations = files.map(({ dest }) => path.relative(destination, dest)).sort();
-
-  assert.deepEqual(
-    destinations,
-    [
-      path.join('agent-presets', '@relay-harness/cordis', 'preset.yml'),
-      path.join('agent-presets', '@relay-harness/cordis', 'skills', 'cordis-plugin-development', 'SKILL.md'),
-    ],
-  );
-});
-
-test('collectFiles preserves a linked package copied to distinct destinations', (t) => {
-  const fixture = makeFixture(t);
-  linkPackage(fixture.source, fixture.shared, 'a');
-  linkPackage(fixture.source, fixture.shared, 'b');
-
-  const files = collectFiles(fixture.source, fixture.destination, false, false);
-  const destinations = files.map(({ dest }) => path.relative(fixture.destination, dest)).sort();
-
-  assert.deepEqual(
-    destinations,
-    [
-      path.join('a', 'node_modules', 'shared', 'index.js'),
-      path.join('a', 'node_modules', 'shared', 'package.json'),
-      path.join('b', 'node_modules', 'shared', 'index.js'),
-      path.join('b', 'node_modules', 'shared', 'package.json'),
-    ],
-  );
-});
 
 test('resolveDeployDir ignores local caches unless a deploy directory is explicit', () => {
   assert.equal(resolveDeployDir(undefined), null);
@@ -507,7 +379,7 @@ test('assertVendoredPluginRuntimeDeps rejects a dependency whose export file is 
   );
 });
 
-test('installPluginRuntimeDeps runs npm install when export files are missing', (t) => {
+test('installPluginRuntimeDeps repairs missing exports through a locked install', (t) => {
   const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'after-pack-plugin-npm-'));
   t.after(() => fs.rmSync(workspace, { recursive: true, force: true }));
   const destPkg = path.join(workspace, 'vendor', 'rlhmarket');
@@ -521,6 +393,7 @@ test('installPluginRuntimeDeps runs npm install when export files are missing', 
     name: 'js-yaml',
     exports: { '.': { import: './dist/js-yaml.mjs' } },
   })}\n`);
+  prepareLockedPluginFixture(destPkg);
   let ran = '';
   const result = installPluginRuntimeDeps(destPkg, {
     skipIfComplete: true,
@@ -582,6 +455,7 @@ test('installPluginRuntimeDeps skipIfComplete does not run npm when export files
     })}\n`,
   );
   fs.writeFileSync(path.join(yamlDir, 'js-yaml.mjs'), 'export default {}\n');
+  prepareLockedPluginFixture(destPkg);
   let ran = false;
   const result = installPluginRuntimeDeps(destPkg, {
     skipIfComplete: true,
@@ -591,4 +465,59 @@ test('installPluginRuntimeDeps skipIfComplete does not run npm when export files
   });
   assert.equal(result.installed, false);
   assert.equal(ran, false);
+});
+
+
+test('missing vendor lock fails before touching an existing install or invoking npm', (t) => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'after-pack-missing-lock-'));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ name: 'fixture', version: '1.0.0' }));
+  fs.mkdirSync(path.join(root, 'node_modules'));
+  const sentinel = path.join(root, 'node_modules', 'keep.txt');
+  fs.writeFileSync(sentinel, 'original install');
+  let invoked = false;
+  assert.throws(() => installPluginRuntimeDeps(root, { run: () => { invoked = true; } }), /requires a regular package-lock/);
+  assert.equal(invoked, false);
+  assert.equal(fs.readFileSync(sentinel, 'utf8'), 'original install');
+});
+
+test('a complete but version-drifted install cannot bypass its lock', (t) => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'after-pack-drift-lock-'));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  prepareLockedPluginFixture(root);
+  const yaml = path.join(root, 'node_modules/js-yaml');
+  fs.writeFileSync(path.join(yaml, 'index.js'), 'module.exports = {}\n');
+  fs.writeFileSync(path.join(yaml, 'package.json'), JSON.stringify({ name: 'js-yaml', version: '0.0.0', main: 'index.js' }));
+  let invoked = false;
+  const result = installPluginRuntimeDeps(root, { skipIfComplete: true, run: () => { invoked = true; } });
+  assert.equal(result.installed, true);
+  assert.equal(invoked, true);
+});
+
+test('afterPack rejects cross-architecture assembly before reading or mutating packaged resources', async () => {
+  const afterPack = require('../../scripts/after-pack');
+  const { Arch } = require('electron-builder');
+  await assert.rejects(afterPack({
+    electronPlatformName: process.platform,
+    arch: process.arch === 'arm64' ? Arch.x64 : Arch.arm64,
+    get packager() { throw new Error('packaged resources were accessed before target validation'); },
+  }), /native platform and architecture runner/);
+});
+
+test('native runtime target validation covers all supported build architectures and rejects unspecified targets', () => {
+  const { assertNativeRuntimeTarget } = require('../../scripts/after-pack');
+  const { Arch } = require('electron-builder');
+  for (const [arch, runnerArch] of [['x64', 'x64'], ['arm64', 'arm64'], ['ia32', 'ia32'], ['armv7l', 'arm']]) {
+    assert.doesNotThrow(() => assertNativeRuntimeTarget({ electronPlatformName: 'linux', arch: Arch[arch] }, { platform: 'linux', arch: runnerArch }));
+  }
+  const runner = { platform: 'darwin', arch: 'arm64' };
+  for (const target of [
+    { electronPlatformName: 'win32', arch: Arch.arm64 },
+    { electronPlatformName: 'darwin', arch: Arch.x64 },
+    { electronPlatformName: 'darwin', arch: Arch.universal },
+    { electronPlatformName: 'darwin', arch: 999 },
+    { electronPlatformName: 'darwin', arch: 'arm64' },
+    { electronPlatformName: 'darwin' },
+    { arch: Arch.arm64 },
+  ]) assert.throws(() => assertNativeRuntimeTarget(target, runner), /native platform and architecture runner/);
 });

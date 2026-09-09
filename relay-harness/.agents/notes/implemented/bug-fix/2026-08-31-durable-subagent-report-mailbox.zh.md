@@ -14,6 +14,10 @@ Status: implemented
 
 parent 追加匹配的 `user/message` 时，在线管理器会向 child 追加 `subagent/report-delivered`。child 冷物化时也会把 parent 持久日志或当前 inbox 当作权威确认，因此 parent 已准入消息之后、child 确认之前崩溃不会重复 report。其余已接受 report 会按提交顺序回放，然后恢复的 child 才接收新工作。
 
+重试身份比较规范化后的消息结构，而非 JSON 属性插入顺序。调整对象字段顺序会保留原回执；修改内容、来源归属或报告投递方式仍然构成冲突。数组顺序仍有意义。
+
+每次同键重试都会再次跨过持久化屏障：内存中的 accepted 事件可能来自此前 flush 失败的调用。恢复保留原消息身份，仅在权威日志与 inbox 尚未包含消息时补投。活动投递会在异步屏障后重新核对 child 租约；报告在修改父级 inbox 前还会重新解析活动父级。
+
 ## Alternatives considered
 
 **发送前把 report 存入 parent。** 未采用，因为 report 从 child authority 发起，而 child Session 是接受时唯一保证在线的持久对象；不存在跨 Session 原子追加。

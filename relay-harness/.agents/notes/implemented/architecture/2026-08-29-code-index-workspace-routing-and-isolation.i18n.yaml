@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-08-29-code-index-workspace-routing-and-isolation.md
-2026-08-29-code-index-workspace-routing-and-isolation.md: a5504dc0272c837420e25064a9a63cb059f73093
-2026-08-29-code-index-workspace-routing-and-isolation.zh.md: 28c25be8a5d9570f1e21bd62cf17008c65e6706e
+2026-08-29-code-index-workspace-routing-and-isolation.md: 373f7cc26d0cb274ff7ed91942f57b73386872ed
+2026-08-29-code-index-workspace-routing-and-isolation.zh.md: c285ab621ce74722d7d1fd17f831a84979d21e5a

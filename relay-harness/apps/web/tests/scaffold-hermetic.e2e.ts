@@ -72,3 +72,25 @@ it('isolates replay skill discovery from every ambient host root', async () => {
     }
   }
 })
+
+it('retires pending turn barriers when the scaffold closes without pretending they completed', async () => {
+  const scaffold = await launchWebScaffold()
+  const settled = scaffold.whenTurnSettled(1)
+  const observed = settled.then(() => 'unexpected completion', (error: unknown) => error instanceof Error ? error.message : String(error))
+  await expect(scaffold.close()).rejects.toThrow('web scaffold teardown failed')
+  expect(await observed).toBe('Web scaffold closed before turn settled')
+})
+
+it('keeps timeout rejection visible to callers while observing abandoned waits', async () => {
+  const scaffold = await launchWebScaffold()
+  try {
+    await expect(scaffold.whenTurnSettled(1)).rejects.toThrow('no turn/end within 1ms')
+    void scaffold.whenTurnSettled(1)
+    await new Promise(resolve => setTimeout(resolve, 10))
+  } finally {
+    const failure: unknown = await scaffold.close().catch((error: unknown) => error)
+    expect(failure).toBeInstanceOf(AggregateError)
+    expect((failure as AggregateError).errors).toHaveLength(2)
+  }
+  await expect(scaffold.whenTurnSettled()).rejects.toThrow('Web scaffold closed before turn settled')
+})

@@ -1,3 +1,4 @@
+import { loadNodeSqlite } from '@relay-harness/rlh-sqlite-runtime'
 /**
  * SQLite storage primitives: transactional append-batch packing, physical
  * reads, schema validation, revisions, repair, and lifecycle closure.
@@ -99,7 +100,7 @@ export class SqliteStore implements PersistenceBackend<number> {
       await createDatabaseFile(this.databasePath)
       await validateDatabaseFile(this.databasePath)
     }
-    const { DatabaseSync } = await loadNodeSqlite()
+    const { DatabaseSync } = loadNodeSqlite()
     this.databaseConstructor = DatabaseSync
     this.db = await openDatabase(
       DatabaseSync,
@@ -432,39 +433,4 @@ async function validateDatabaseFileIfPresent(path: string): Promise<void> {
   } catch (error: unknown) {
     if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
   }
-}
-
-let nodeSqlite: Promise<typeof import('node:sqlite')> | undefined
-
-/** Load Node SQLite once so concurrent stores share one warning-filter lifetime. */
-function loadNodeSqlite(): Promise<typeof import('node:sqlite')> {
-  nodeSqlite ??= importNodeSqlite()
-  return nodeSqlite
-}
-
-/** Import Node 22's SQLite dependency without its process-wide experimental warning. */
-async function importNodeSqlite(): Promise<typeof import('node:sqlite')> {
-  const emitWarning = Reflect.get(process, 'emitWarning')
-  /* v8 ignore start -- Node 22 alone emits this warning; primary coverage runs on Node 24. */
-  const filteredEmitWarning = (warning: string | Error, ...args: unknown[]): void => {
-    const message = warning instanceof Error ? warning.message : warning
-    const first = args[0]
-    const type = warning instanceof Error
-      ? warning.name
-      : typeof first === 'string'
-        ? first
-        : typeof first === 'object' && first !== null && 'type' in first
-          ? first.type
-          : undefined
-    if (message === 'SQLite is an experimental feature and might change at any time'
-      && type === 'ExperimentalWarning') return
-    Reflect.apply(emitWarning, process, [warning, ...args])
-  }
-  Reflect.set(process, 'emitWarning', filteredEmitWarning)
-  try {
-    return await import('node:sqlite')
-  } finally {
-    Reflect.set(process, 'emitWarning', emitWarning)
-  }
-  /* v8 ignore stop */
 }

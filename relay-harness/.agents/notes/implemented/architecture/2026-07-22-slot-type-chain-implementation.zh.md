@@ -119,3 +119,9 @@ register 签名里的两条硬化裁定之所以存在，是因为显然的替�
 | 注册位用 `FC` / 从组件推断 `I` | FC 静态位产生协变噪音、拒绝合法组件；组件侧推断静默吸收 props 漂移（见上文裁定） |
 | 接管 slot 用 keyed 分派 + owner 侧路由 | owner 会不断攒下逐 entry 约定与硬编码路由表（每种接管一份 `find` + `entryKey`）；chain 货币让新增接管注册保持 owner 零改动 |
 | 组件靠渲染 null 表示不接 | 不接也得先挂载——钩子与 effect 白跑，挂载/卸载抖动破坏 memo 化与 key 语义；纯选择器无需组件实例即可裁决 |
+
+## 策略空状态与实现耗尽
+
+Simple Mode 隐藏策略最初只从胜出项中移除注册，渲染器的空单元崩溃检测仍读取原始注册台账。这使主动隐藏的 single/list 项在组件并未崩溃时也产生 `data-slot-error`。工作区删除和重新注册的浏览器检查暴露了这些错误标记。
+
+SlotCore 现在拥有 `renderCandidates` 投影：single/list/keyed 的隐藏策略先于退位和胜出选择应用，chain 选举保持不变。SlotRegistry 让 renderer host 的 `entriesOf` 读取该候选投影；原始 `entries()` 仍是检查和卸载权威。已退位候选仍参与实现耗尽检测。真实 core 渲染器回归覆盖三种隐藏类型、恢复后的实现、未改变的原始注册数量，以及真实崩溃单元在解除隐藏后重新出现的错误状态。

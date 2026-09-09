@@ -9,10 +9,13 @@
  */
 
 import { createHash, randomBytes } from 'node:crypto'
-import { mkdtempSync } from 'node:fs'
-import { mkdir, open } from 'node:fs/promises'
+import { mkdtempSync, readdirSync, rmSync, statSync } from 'node:fs'
+import { mkdir, open, rm } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
+
+/** Root-name prefix that marks a temp-dir directory as this backend's per-process spill root. */
+export const SPILL_ROOT_PREFIX = 'rlh-spill-'
 
 let defaultRoot: string | undefined
 
@@ -25,7 +28,7 @@ let defaultRoot: string | undefined
  * @returns The lazily-created private spill root.
  */
 export function privateRoot(): string {
-  defaultRoot ??= mkdtempSync(join(tmpdir(), 'rlh-spill-'))
+  defaultRoot ??= mkdtempSync(join(tmpdir(), SPILL_ROOT_PREFIX))
   return defaultRoot
 }
 
@@ -117,4 +120,71 @@ export async function saveTextFile(options: SaveTextOptions): Promise<SavedText>
     await handle.close()
   }
   return { path, bytes }
+}
+
+/**
+ * Delete a session's entire spill directory. Missing directories resolve —
+ * disposal is idempotent and a session may have spilled nothing.
+ *
+ * @param root The spill root directory.
+ * @param sessionId The session whose spill directory should be removed.
+ */
+export async function deleteSessionFiles(root: string, sessionId: string): Promise<void> {
+  await rm(sessionDir(root, sessionId), { recursive: true, force: true })
+}
+
+/** Options for {@link pruneOrphanRoots} — what to watch, what to keep, and how old is expired. */
+export interface PruneOrphanRootsOptions {
+  /** Directory holding the backend's per-process roots (the OS temp dir). */
+  parent: string
+  /** Root-name prefix identifying this backend's roots. */
+  prefix: string
+  /** A root that must never be removed (this process's own), even when expired. */
+  keep?: string
+  /** Roots whose mtime is at least this many ms in the past are reclaimable. */
+  retentionMs: number
+  /** The current time; overridable for deterministic tests. */
+  now?: number
+}
+
+/**
+ * One bounded startup sweep: remove this backend's roots under `parent` that
+ * have not been touched for `retentionMs`. Every process restart orphans the
+ * previous per-process root, so expired roots from earlier runs are otherwise
+ * permanent residue. The current process's root (`keep`) and anything younger
+ * stay, unrelated entries are never touched, and a root that cannot be
+ * stat'd or removed is left for the next start.
+ *
+ * @param options The watched parent, root prefix, kept root, and retention age.
+ * @returns The roots that were removed.
+ */
+export function pruneOrphanRoots(options: PruneOrphanRootsOptions): string[] {
+  const now = options.now ?? Date.now()
+  let entries: string[]
+  try {
+    entries = readdirSync(options.parent)
+  } catch {
+    // An unreadable parent has nothing to sweep; the live root is unaffected.
+    return []
+  }
+  const removed: string[] = []
+  for (const entry of entries) {
+    if (!entry.startsWith(options.prefix)) continue
+    const candidate = join(options.parent, entry)
+    if (candidate === options.keep) continue
+    try {
+      if (now - statSync(candidate).mtimeMs < options.retentionMs) continue
+    } catch {
+      // The entry vanished mid-sweep: nothing to reclaim.
+      continue
+    }
+    try {
+      rmSync(candidate, { recursive: true, force: true })
+    } catch {
+      // An unlinkable root (EBUSY, EPERM, race) stays behind; the next start retries.
+      continue
+    }
+    removed.push(candidate)
+  }
+  return removed
 }

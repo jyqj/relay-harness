@@ -1,3 +1,4 @@
+// @ts-check
 const { spawn: nodeSpawn, execFile: nodeExecFile } = require('node:child_process');
 const { loadWorkspaceAuthority } = require('./workspace-authority');
 
@@ -109,7 +110,7 @@ async function listAvailableEditors(deps = {}) {
 
 /**
  * Launch a workspace file in a probed editor.
- * @param {{ editor: string, cwd: string, relativePath: string, line?: number, column?: number }} input
+ * @param {{ editor?: string, cwd?: string, relativePath?: string, line?: number, column?: number }} input
  * @param {{ spawn?: Function, execFile?: Function, platform?: NodeJS.Platform, env?: NodeJS.ProcessEnv }} [deps]
  */
 async function openInEditor(input = {}, deps = {}) {
@@ -164,7 +165,7 @@ function revealInFolder(cwd, relativePath, deps = {}) {
 
 /**
  * Open a workspace file with the OS default handler (`shell.openPath`).
- * @param {{ cwd: string, relativePath: string }} input
+ * @param {{ cwd?: string, relativePath?: string }} input
  * @param {{ shell?: { openPath: Function } }} [deps]
  */
 async function openWithSystemDefault(input = {}, deps = {}) {

@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest'
+import { describe,expect,it } from 'vitest'
 
-import { ghosttyKeyForCode, ghosttyUnshiftedCodepoint } from '../../src/client/ghostty/keyCodes.ts'
+import { ghosttyKeyForCode,ghosttyUnshiftedCodepoint } from '../../src/client/terminal/ghostty/keyCodes.ts'
 
 describe('ghosttyKeyForCode', () => {
   it('keeps the tail of the pinned Ghostty key enum in order', () => {

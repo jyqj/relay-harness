@@ -1,0 +1,6 @@
+# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
+# side as of the last confirmed-consistent state. Both languages carry equal authority;
+# after editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write .agents/notes/implemented/bug-fix/2026-09-03-sqlite-live-observation-cache-and-medium-ownership.md
+2026-09-03-sqlite-live-observation-cache-and-medium-ownership.md: a94db03ab098d82040f1c39058ce11ed5cf84a76
+2026-09-03-sqlite-live-observation-cache-and-medium-ownership.zh.md: 4d035509521ed1e773e9a861afc9be5ca82faeff

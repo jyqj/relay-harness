@@ -719,7 +719,7 @@ export class AgentLoop extends Service implements AgentFactory {
       try {
         try {
           preparation = await raceAbortCall(
-            () => persistence.prepare(id, fused),
+            () => persistence.prepare(id, fused, options.persistenceFence),
             fused,
             id,
             (abandoned) => { abandoned[Symbol.dispose]() },

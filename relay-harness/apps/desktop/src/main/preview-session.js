@@ -123,8 +123,9 @@ function previewGuestPreloadPath() {
 /**
  * Guest BrowserView webPreferences. The isolated preload exposes only the
  * annotation/human-input interface declared by preview-guest-protocol.
- * @param {{ session: unknown, preload?: string }} options
- * @returns {{ sandbox: true, contextIsolation: true, nodeIntegration: false, session: unknown, preload: string }}
+ * @template T
+ * @param {{ session: T, preload?: string }} options
+ * @returns {{ sandbox: true, contextIsolation: true, nodeIntegration: false, session: T, preload: string }}
  */
 function previewGuestWebPreferences(options) {
   return {

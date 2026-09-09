@@ -23,6 +23,8 @@ import UserQuestionService from '@relay-harness/rlh-user-questions'
 import type { RpcRequest } from '@relay-harness/rlh-host-apiproxy/api/rpc'
 import { RpcId } from '@relay-harness/rlh-host-apiproxy/api/rpc'
 import { createApiProxy } from '../src/api-proxy.ts'
+import AgentDefaultModel from '@relay-harness/rlh-agent-default-model'
+import { ApiProxyService, type Config as GatewayConfig } from '../src/index.ts'
 
 let nextRpc = 1
 function request<P>(payload: P): RpcRequest<P> {
@@ -130,6 +132,58 @@ function registerTextOnly(ctx: Context): void {
 }
 
 describe('Web session model selection', () => {
+  it('retains reasoning descriptions without inventing a default and contains non-Error catalog failures', async () => {
+    const { ctx } = await harness()
+    try {
+      ctx.llm.registerAdapter(['described'], new CatalogAdapter('Described', [
+        { provider: 'described', id: 'model', name: 'Model' },
+      ], { efforts: [{ id: ReasoningEffortId('off'), name: 'Off', description: 'No reasoning tokens' }] }))
+      const failed = new CatalogAdapter('Plain refusal', [])
+      vi.spyOn(failed, 'listModels').mockRejectedValue('catalog refused')
+      ctx.llm.registerAdapter(['plain-failure'], failed)
+      const api = createApiProxy(ctx, {
+        defaultModelSelection: () => ({ provider: 'described', model: 'model' }), cwd: '/tmp',
+      })
+      const catalog = expectValue(await api.llm.models(request({})))
+      expect(catalog.groups.find(group => group.id === 'described')).toEqual({
+        id: 'described', name: 'Described', models: [{
+          id: 'model', name: 'Model', reasoning: {
+            efforts: [{ id: 'off', name: 'Off', description: 'No reasoning tokens' }],
+          },
+        }],
+      })
+      expect(catalog.failures).toContainEqual({ id: 'plain-failure', name: 'Plain refusal', message: 'catalog refused' })
+    } finally {
+      await ctx.fiber.dispose()
+    }
+  })
+
+  const gatewayConfigurations: GatewayConfig[] = [
+    {},
+    { nativeOpen: false, sessionExportCompressionLevel: 0, coldBlankProbeMaxBytes: 0, muxStreamBufferBytes: 128 },
+  ]
+  it.each(gatewayConfigurations)('the gateway service forwards its composed defaults and model writes with %j', async (config) => {
+    const { ctx, sessionId } = await harness()
+    try {
+      await ctx.plugin(AgentDefaultModel, { provider: 'deepseek-official', model: 'deepseek-chat' })
+      const save = vi.spyOn(ctx.agentDefaultModel, 'saveSelection')
+      const api = new ApiProxyService(ctx, config)
+      const description = expectValue(await api.host.describe(request({})))
+      expect(description).toMatchObject({ provider: 'deepseek-official', model: 'deepseek-chat', cwd: process.cwd() })
+      if (config.nativeOpen !== undefined) expect(description.canOpenPath).toBe(config.nativeOpen)
+      const switched = expectValue(await api.sessions.selectModel(request({
+        sessionId, provider: 'deepseek-official', model: 'deepseek-reasoner', reasoningEffort: 'max',
+      })))
+      expect(switched.selected).toEqual({
+        provider: 'deepseek-official', model: 'deepseek-reasoner', reasoningEffort: 'max',
+      })
+      expect(save).toHaveBeenCalledExactlyOnceWith(switched.selected)
+      expect(expectValue(await api.sessions.models(request({ sessionId }))).current).toEqual(switched.selected)
+    } finally {
+      await ctx.fiber.dispose()
+    }
+  })
+
   it('validates an ordered image batch before persisting any member', async () => {
     const { ctx, agent, sessionId } = await harness()
     const validateImage = vi.fn((_input: { data: Uint8Array }) => Promise.resolve())

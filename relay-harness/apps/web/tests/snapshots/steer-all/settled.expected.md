@@ -1,16 +1,17 @@
 - banner:
   - navigation "Session hierarchy":
     - button "Use the ask_user_question tool to" [disabled]
-  - img
-  - text: Standard mode
-  - tablist:
-    - tab "Chat" [selected]
-    - tab "Trajectory"
+  - button "Session Tree"
+  - button "Inspect context used for this session": Context 2
 - text: Use the ask_user_question tool to ask me exactly one question with id "checkpoint", question "Ready to continue?", header "Checkpoint", and options labeled "Yes" and "No". After I answer, reply with one short sentence acknowledging my answer and stop. {{clock}}
 - button "Copy":
   - img
 - button "Edit":
   - img
+- button "Context injection code-index":
+  - img
+  - img
+  - text: Context injection code-index
 - button "Context injection @relay-harness/rlh-system-prompt":
   - img
   - img
@@ -29,6 +30,10 @@
 - text: "Interjection: include the word ORANGE in your final reply. {{clock}}"
 - button "Copy":
   - img
+- button "Context injection code-index":
+  - img
+  - img
+  - text: Context injection code-index
 - paragraph: "Got it: BANANA and ORANGE."
 - button "Copy":
   - img
@@ -42,9 +47,8 @@
 - textbox "Message the agent"
 - button "Commands":
   - img
-- 'button "Access mode, current: Workspace Write"': Workspace Write
-- button "Select model, current DeepSeek-V4-Flash":
-  - text: DeepSeek-V4-Flash
+- 'button "Access mode, current: Standard"': Standard
+- button "Enhance prompt" [disabled]:
   - img
 - button "0% of context used"
 - button "Send message" [disabled]

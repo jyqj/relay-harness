@@ -6,11 +6,37 @@ import type {
 } from '@relay-harness/rlh-api-remotes/client'
 import type { ClientContext } from '@relay-harness/rlh-client-runtime/client'
 
+/** Per-key request ownership prevents an older reply from replacing a newer read. */
+class ReadCache<T> {
+  private readonly values = new Map<string, T>()
+  private readonly pending = new Map<string, object>()
+
+  async read(key: string, fresh: boolean, load: () => Promise<T>): Promise<T> {
+    if (!fresh) {
+      const cached = this.values.get(key)
+      if (cached !== undefined) return cached
+    }
+    const owner = {}
+    this.pending.set(key, owner)
+    try {
+      const value = await load()
+      if (this.pending.get(key) === owner) this.values.set(key, value)
+      return value
+    } finally {
+      if (this.pending.get(key) === owner) this.pending.delete(key)
+    }
+  }
+
+  clear(): void {
+    this.values.clear()
+    this.pending.clear()
+  }
+}
+
 /** Exact-request cache for Memory Center list/search pages and details. */
 export class MemoryCenterStore {
-  private readonly pages = new Map<string, MemoryCenterSnapshot>()
-  private readonly details = new Map<string, MemoryCenterDetail>()
-  private generation = 0
+  private readonly pages = new ReadCache<MemoryCenterSnapshot>()
+  private readonly details = new ReadCache<MemoryCenterDetail>()
 
   constructor(private readonly ctx: ClientContext) {}
 
@@ -21,18 +47,12 @@ export class MemoryCenterStore {
    * @returns the matching snapshot.
    */
   async list(request: MemoryCenterListRequest, fresh = false): Promise<MemoryCenterSnapshot> {
-    const key = JSON.stringify(request)
-    if (!fresh) {
-      const cached = this.pages.get(key)
-      if (cached !== undefined) return cached
-    }
-    const generation = this.generation
-    const result = request.query === undefined
-      ? await this.ctx.remote.memoryCenter.list(request)
-      : await this.ctx.remote.memoryCenter.search({ ...request, query: request.query })
-    const snapshot = unwrap(result, request.query === undefined ? 'memoryCenter.list' : 'memoryCenter.search')
-    if (this.generation === generation) this.pages.set(key, snapshot)
-    return snapshot
+    return this.pages.read(JSON.stringify(request), fresh, async () => {
+      const result = request.query === undefined
+        ? await this.ctx.remote.memoryCenter.list(request)
+        : await this.ctx.remote.memoryCenter.search({ ...request, query: request.query })
+      return unwrap(result, request.query === undefined ? 'memoryCenter.list' : 'memoryCenter.search')
+    })
   }
 
   /**
@@ -42,15 +62,9 @@ export class MemoryCenterStore {
    * @returns the governed detail.
    */
   async read(request: { workspaceId: string; sessionId: string; id: string }, fresh = false): Promise<MemoryCenterDetail> {
-    const key = detailKey(request.workspaceId, request.sessionId, request.id)
-    if (!fresh) {
-      const cached = this.details.get(key)
-      if (cached !== undefined) return cached
-    }
-    const generation = this.generation
-    const detail = unwrap(await this.ctx.remote.memoryCenter.read(request), 'memoryCenter.read')
-    if (this.generation === generation) this.details.set(key, detail)
-    return detail
+    return this.details.read(detailKey(request.workspaceId, request.sessionId, request.id), fresh, async () => (
+      unwrap(await this.ctx.remote.memoryCenter.read(request), 'memoryCenter.read')
+    ))
   }
 
   /**
@@ -116,7 +130,6 @@ export class MemoryCenterStore {
 
   /** Drop every page and detail after connection or provider state changes. */
   invalidate(): void {
-    this.generation += 1
     this.pages.clear()
     this.details.clear()
   }

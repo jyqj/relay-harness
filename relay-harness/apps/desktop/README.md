@@ -28,7 +28,9 @@ The macOS build is unsigned: right-click → Open, or run `xattr -cr /Applicatio
 - **Models** — Thinking intensity for third-party models, vision fallback; the latest user message can be edited and resent.
 - **Appearance** — Light / dark themes. Pick a wallpaper or browse the gallery with categories, search, favorites, and window-aware cropping.
 - **Extensions** — Manage MCP, Skills, and plugins in Settings. The marketplace is the bundled `rlhmarket` plugin, vendored from [dsh-market](https://github.com/dsh-market/dsh-market).
-- **Desktop** — Minimize to tray, auto-update, Harness crash recovery, and a startup path that can skip a broken user plugin tree.
+- **Desktop** — Minimize to tray, publisher-verified update protocol, Harness crash recovery, and a startup path that can skip a broken user plugin tree.
+
+Automatic updating is unavailable until the packaged build carries a configured Ed25519 publisher authority; this checkout does not configure one. Only signed Windows x64 NSIS updates are implemented, with fail-closed artifact verification; see [trusted desktop updates](docs/trusted-updates.md). All packaged production JavaScript under `src` opts into `@ts-check`; a test rejects missing pragmas or extra exclusions. This is full production-source checking under the existing non-strict JavaScript configuration, not a claim of strict TypeScript coverage; the two non-packaged QA walkers remain excluded.
 
 `Ctrl+,` opens Settings.
 

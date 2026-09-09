@@ -1,3 +1,4 @@
+// @ts-check
 const { spawn } = require('node:child_process');
 const { loadWorkspaceAuthority } = require('./workspace-authority');
 
@@ -159,7 +160,7 @@ function run(command, args, cwd, limits = {}) {
         code: -1,
         stdout: decoded.stdout,
         stderr: error.message,
-        missing: error.code === 'ENOENT',
+        missing: /** @type {NodeJS.ErrnoException} */ (error).code === 'ENOENT',
         timedOut: false,
         truncated,
       });
@@ -225,12 +226,18 @@ function inferHookName(line) {
   return null;
 }
 
+/** @returns {{ok: false, message: string}} */
 function fail(message) {
   return { ok: false, message };
 }
 
-function ok(extra = {}) {
-  return { ok: true, ...extra };
+/**
+ * @template {object} T
+ * @param {T} [extra]
+ * @returns {{ok: true} & T}
+ */
+function ok(extra) {
+  return /** @type {{ok: true} & T} */ (Object.assign({ ok: true }, extra));
 }
 
 /** Ref names git accepts on the command line; blocks option-like and traversal-ish values. */

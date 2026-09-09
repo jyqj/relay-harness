@@ -1,11 +1,8 @@
 - banner:
   - navigation "Session hierarchy":
     - button "workspace" [disabled]
-  - img
-  - text: Standard mode
-  - tablist:
-    - tab "Chat" [selected]
-    - tab "Trajectory"
+  - button "Session Tree"
+  - button "Inspect context used for this session": Context 0
 - group "Command input": /goal
 - 'button "goal No goal is currently set. Usage: /goal [<objective>|clear|edit <objective>|pause|resume]"':
   - img
@@ -14,8 +11,7 @@
 - textbox "Message the agent"
 - button "Commands":
   - img
-- 'button "Access mode, current: Workspace Write"': Workspace Write
-- button "Select model, current DeepSeek-V4-Flash":
-  - text: DeepSeek-V4-Flash
+- 'button "Access mode, current: Standard"': Standard
+- button "Enhance prompt" [disabled]:
   - img
 - button "Send message" [disabled]

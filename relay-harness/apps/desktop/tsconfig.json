@@ -14,7 +14,7 @@
     "noEmit": true,
     "target": "ES2023",
     // Renderer, preload, and injected-page sources run in Chromium.
-    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "lib": ["ES2024", "DOM", "DOM.Iterable"],
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "resolveJsonModule": true,
@@ -22,7 +22,7 @@
     "skipLibCheck": true,
     "types": ["node"]
   },
-  "include": ["src/**/*.js", "mobile/web/**/*.js"],
+  "include": ["src/**/*.js", "src/**/*.d.ts", "mobile/web/**/*.js"],
   "exclude": [
     "node_modules",
     // Vendored plugin trees are pinned upstream source; see vendor/README.md.

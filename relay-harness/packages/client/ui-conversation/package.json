@@ -49,7 +49,8 @@
   "license": "MIT",
   "dependencies": {
     "clsx": "^2.0.0",
-    "@relay-harness/schemastery": "workspace:^"
+    "@relay-harness/schemastery": "workspace:^",
+    "@tanstack/react-virtual": "^3.14.10"
   },
   "peerDependencies": {
     "@relay-harness/cordis": "workspace:^",

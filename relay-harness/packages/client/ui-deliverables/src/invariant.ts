@@ -17,7 +17,7 @@ export const inject = ['invariants']
 /**
  * No runtime invariant: the prompt section, slot, dictionary, event
  * definition, and optional service registrations are effect-owned with
- * disposal proven by their plugin specs; this package owns no mutable state.
+ * disposal proven by their plugin specs. The whole-session inventory belongs to the Host work-results owner.
  */
 const install: InvariantInstaller = () => {}
 

@@ -1,6 +1,7 @@
 - button "Session log":
   - text: Session log
   - img
+- button "Open Session Tree"
 - button "Switch branch":
   - img
   - text: Select branch

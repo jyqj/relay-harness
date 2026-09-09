@@ -1,7 +1,10 @@
 /* Shared overlay / popover / fade / swap / flip recipes. A surface sets
  * `data-rlh-motion` and `data-state` from `usePresence`; only opacity and
- * transform move. `prefers-reduced-motion` zeros the duration tokens in
- * base.css, so these rules become instantaneous without a second copy. */
+ * transform move. Recipe durations are pinned here because `usePresence`
+ * (200ms overlay exit) and `FlipText` (400ms flip) hold matching JS
+ * constants; new component transitions use the `--rlw-motion-*` ladder in
+ * base.css instead. `prefers-reduced-motion` zeros that ladder and disables
+ * the recipe transitions below. */
 
 [data-rlh-motion][data-state='closed'] {
   pointer-events: none;
@@ -9,45 +12,45 @@
 
 [data-rlh-motion='overlay'] [data-rlh-motion-part='mask'] {
   opacity: 1;
-  transition: opacity var(--rl-motion-duration-overlay) var(--rl-ease-in-out);
+  transition: opacity 200ms var(--rlw-ease-standard);
 }
 
 [data-rlh-motion='overlay'][data-state='closed'] [data-rlh-motion-part='mask'] {
   opacity: 0;
-  transition-duration: var(--rl-motion-duration-overlay-out);
+  transition-duration: 100ms;
 }
 
 [data-rlh-motion='overlay'] [data-rlh-motion-part='panel'] {
   opacity: 1;
   transform: none;
   transition:
-    opacity var(--rl-motion-duration-overlay) var(--rl-ease-in-out),
-    transform var(--rl-motion-duration-overlay) var(--rl-ease-in-out);
+    opacity 200ms var(--rlw-ease-standard),
+    transform 200ms var(--rlw-ease-standard);
 }
 
 [data-rlh-motion='overlay'][data-state='closed'] [data-rlh-motion-part='panel'] {
   opacity: 0;
-  transform: translateY(var(--rl-motion-distance-overlay)) scale(var(--rl-motion-scale-overlay));
-  transition-duration: var(--rl-motion-duration-overlay-out);
+  transform: translateY(8px) scale(0.96);
+  transition-duration: 100ms;
 }
 
 [data-rlh-motion='popover'] {
   opacity: 1;
   transform: none;
   transition:
-    opacity var(--rl-motion-duration-popover) var(--rl-ease-in-out),
-    transform var(--rl-motion-duration-popover) var(--rl-ease-in-out);
+    opacity 160ms var(--rlw-ease-standard),
+    transform 160ms var(--rlw-ease-standard);
 }
 
 [data-rlh-motion='popover'][data-state='closed'] {
   opacity: 0;
-  transform: translateY(var(--rl-motion-distance-popover));
+  transform: translateY(4px);
 }
 
 /* Opacity only: the marked node already uses transform for placement. */
 [data-rlh-motion='fade'] {
   opacity: 1;
-  transition: opacity var(--rl-motion-duration-swap) var(--rl-ease-in-out);
+  transition: opacity 100ms var(--rlw-ease-standard);
 }
 
 [data-rlh-motion='fade'][data-state='closed'] {
@@ -55,7 +58,7 @@
 }
 
 [data-rlh-motion='swap'] {
-  animation: rlh-motion-swap-in var(--rl-motion-duration-swap) var(--rl-ease-in-out);
+  animation: rlh-motion-swap-in 100ms var(--rlw-ease-standard);
 }
 
 @keyframes rlh-motion-swap-in {
@@ -80,7 +83,7 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  animation: rlh-motion-flip-out var(--rl-motion-duration-flip) var(--rl-ease-in-out) forwards;
+  animation: rlh-motion-flip-out 400ms var(--rlw-ease-standard) forwards;
 }
 
 [data-rlh-motion='flip'] > [data-rlh-motion-part='current'] {
@@ -91,7 +94,7 @@
 }
 
 [data-rlh-motion='flip']:has([data-rlh-motion-part='outgoing']) > [data-rlh-motion-part='current'] {
-  animation: rlh-motion-flip-in var(--rl-motion-duration-flip) var(--rl-ease-in-out) both;
+  animation: rlh-motion-flip-in 400ms var(--rlw-ease-standard) both;
 }
 
 @keyframes rlh-motion-flip-out {
@@ -109,6 +112,13 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  [data-rlh-motion='overlay'] [data-rlh-motion-part],
+  [data-rlh-motion='overlay'][data-state='closed'] [data-rlh-motion-part],
+  [data-rlh-motion='popover'],
+  [data-rlh-motion='fade'] {
+    transition: none;
+  }
+
   [data-rlh-motion='swap'],
   [data-rlh-motion='flip'] > [data-rlh-motion-part] {
     animation: none;

@@ -8,12 +8,12 @@
  * @module @relay-harness/rlh-client-ui-message-edit/client/slots
  */
 
+import type { } from '@relay-harness/rlh-client-ui-conversation/client'
 import type {
-  InjectFace, PropsLocale, PropsRuntime,
+  InjectFace,PropsLocale,PropsRuntime,
 } from '@relay-harness/rlh-client-ui-slots'
-import type {} from '@relay-harness/rlh-client-ui-conversation/client'
 // Type-only: pulls this package's LocaleNamespaceMap merge (the 'messageEdit' seat).
-import type {} from './locales.ts'
+
 
 /** Injected business face of the inline user-message editor. */
 export interface MessageEditInjected {

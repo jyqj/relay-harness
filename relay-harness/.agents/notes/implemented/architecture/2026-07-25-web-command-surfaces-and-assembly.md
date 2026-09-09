@@ -60,3 +60,9 @@ The pipeline was ready but command knowledge had no landing spot: host-side `ctx
 - The resident directory cache plus push invalidation buys zero-latency menus and reliable enter adjudication; the cost is three invalidation paths (the change frame, reconnect, the epoch guard) that all need tests pinning them.
 - sessionId addressing puts the host's per-agent effective directory (global + scoped shadows) straight on the wire, with the client presenting it as-is.
 - Known gaps: the popupSelect shell has no shipped business consumer yet (model selection and its kin arrive with the host `selectModel` work in live-mutation shape, serving as the onboarding template then); the queue's second cut (per-item Inbox operations), rich result cards, and roster configurability sit in the ledger awaiting their triggers.
+
+## Renderer-owned popup subscription
+
+The popupSelect overlay inject face now supplies its existing controller state through `hooks.popup`; `InjectFace` derives `usePopup` for the component. The whole controller is replaced by explicit bound callbacks for dismiss, move, select, search, retry, highlight and the three risk-confirmation actions. This removes subscription machinery and private controller capability exposure from the business component without duplicating state or changing the controller's captured open context.
+
+Real Cordis registration tests check controller state identity and forwarding of every action through the narrowed face. Component tests use the shared test-runtime hook binder and retain search focus, filtering, keyboard/pointer selection, risk confirmation and composer-focus assertions. Built-browser replay remains a separate validation requirement.

@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { Context } from '@relay-harness/cordis'
 import {
   AnonymousEntries,
+  captureScopeReadView,
   createScope,
   NamedEntries,
   ScopedLayers,
@@ -122,6 +123,10 @@ describe('ScopedLayers', () => {
 
     expect(created).toEqual([undefined])
     expect(layers.peek(undefined)).toBeUndefined()
+    const capturedGlobal = captureScopeReadView(undefined)
+    expect(layers.peek(capturedGlobal)).toBeUndefined()
+    expect(layers.chainLayers(capturedGlobal)).toEqual([])
+    expect([...layers.merge(capturedGlobal, layer => layer.named)]).toEqual([['a', 1], ['shared', 2]])
     expect(layers.peek(key)).toBeUndefined()
     expect([...layers.merge(key, layer => layer.named)]).toEqual([['a', 1], ['shared', 2]])
     expect(created).toEqual([undefined])

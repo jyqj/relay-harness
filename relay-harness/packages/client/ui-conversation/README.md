@@ -46,6 +46,12 @@ The chat stats line takes its token accounting from the generic token-meter `tok
 
 A finished turn materializes one ordered `turn-tail` Conversation Node. Its engine-owned `TurnLocation` supplies the closing Assistant and Turn data; the renderer places the `conversation.chat.turnTail` chain before that node's IconActions and dispatches `TurnTailOwnerProps` containing the Turn, closing seq, and `openFile`. This package owns only the hole; `@relay-harness/rlh-client-ui-deliverables` accumulates mutation-tool `locations` into Turn data and owns the produced-files row, chip cap, and copy, so composing that plugin out of cordis.yml turns the surface off while the hole renders empty at zero cost. The closing prose participates through the same off switch: the chat view asks the optional `chatFileMentions` service (ctx.get; provided by the same plugin) for a closing message's inline-code vocabulary and threads the result into MarkdownText's `fileMentions` seam — an absent service leaves the prose inert.
 
+## History window
+
+Long loaded histories use variable-height viewport recycling with stable per-Session row keys. Scrolling works in both directions and earlier server pages remain loadable; DOM row count is independent of total loaded history. Expanded tools, keyboard-focused rows, and selected text remain mounted while that explicit interaction persists. These user-held rows are a visible exception to the default viewport budget, not silent background retention. Retargeting clears interaction and size caches; remount restoration uses the semantic anchor and its containing node for nested tool calls.
+
+Full loaded history mode mounts every loaded row for native browser find and long selection. The control and Ctrl/Cmd+F activate it explicitly; the UI explains that unloaded server history is not included and still offers Load earlier. Returning to windowed mode resumes recycling without discarding loaded history. Diagnostic loaded-row/turn counts describe the data window, not the mounted viewport. `chat-long-interactions.e2e.ts` and the performance benchmark assert a default mounted-row limit plus explicitly pinned rows; the browser scenarios also exercise selection, expanded tools, native find, paging, and reflow restoration.
+
 ## Model Experience
 
 None, as the conversation UI renders session history and streams in the browser; nothing here reaches a model request.

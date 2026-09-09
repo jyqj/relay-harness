@@ -117,12 +117,14 @@ describe('web e2e: whole-session stats survive history paging', () => {
     // 加载更早: prepending the older page must not move ANY strip figure —
     // counts, wall times, or token groups.
     await page.getByRole('button', { name: 'Load earlier' }).click()
-    await expect.poll(() => page.getByText('m1', { exact: true }).count(), { timeout: 10_000 }).toBe(1)
+    await expect.poll(async () => Number(await page.locator('[data-chat-loaded-turn-count]').getAttribute('data-chat-loaded-turn-count')), { timeout: 10_000 }).toBe(TURNS)
+    // This golden intentionally covers all loaded content, not just the
+    // viewport. Enter the product's explicit native find/select mode.
+    await page.getByRole('button', { name: 'Full loaded history (find/select)', exact: true }).click()
+    await expect.poll(() => page.getByText('m1', { exact: true }).count()).toBe(1)
     expect(await strip.textContent()).toBe(stripBeforePaging)
-    // With the whole log loaded, the window mounts one turn-tail footer per
-    // settled turn — the loaded-window probe the scroll/perf lanes count now
-    // that the strip is whole-log-scoped.
-    expect(await page.locator('[data-chat-flow-key^="9:turn-tail"]').count()).toBe(TURNS)
+    // Whole-log strip totals remain independent of paging and mount mode.
+    expect(Number(await page.locator('[data-chat-loaded-turn-count]').getAttribute('data-chat-loaded-turn-count'))).toBe(TURNS)
   }, 60_000)
 
   it('matches the paged-stats aria golden', async () => {

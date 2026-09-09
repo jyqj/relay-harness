@@ -1,0 +1,6 @@
+# Bilingual-pair consistency record (docs/i18n/README.md): the git blob hash of each
+# side as of the last confirmed-consistent state. Both languages carry equal authority;
+# after editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write .agents/notes/implemented/bug-fix/2026-09-06-sqlite-load-warning-owner.md
+2026-09-06-sqlite-load-warning-owner.md: 284120ef3e7bd20efbaa9245a47f3a287b3b232e
+2026-09-06-sqlite-load-warning-owner.zh.md: 285f576ea3ad12f3a61109b0913b278a541c16a4

@@ -27,6 +27,12 @@ export const TASK_WAIT_TIMEOUT = 'TASK_WAIT_TIMEOUT'
 /** Default maximum number of active jobs in one exact-owner bucket. */
 const DEFAULT_MAX_CONCURRENT_TASKS_PER_OWNER = 10
 
+/** Default grace period after a reported terminal record becomes prunable. */
+const DEFAULT_TERMINAL_RETENTION_MS = 60_000
+
+/** Default maximum number of retained terminal records in one owner bucket. */
+const DEFAULT_MAX_TERMINAL_RECORDS = 100
+
 /** Configuration for the process-local job registry. */
 export interface Config {
   /**
@@ -34,6 +40,17 @@ export interface Config {
    * omission defaults to 10.
    */
   maxConcurrentJobsPerOwner?: number
+  /**
+   * Grace period in milliseconds between a terminal record becoming reported
+   * (its completion notice deliverable) and its prunability; omission
+   * defaults to 60_000.
+   */
+  terminalRetentionMs?: number
+  /**
+   * Maximum retained terminal records per owner bucket; the retention sweep
+   * drops the oldest-finished beyond it. Omission defaults to 100.
+   */
+  maxTerminalRecords?: number
 }
 
 /** The registry's mutable per-job record (never handed out — see {@link LocalJobRegistry.snapshot}). */
@@ -87,6 +104,14 @@ class JobLayer implements ScopeLayer {
  * The in-memory `jobs` registry. See the Service Definition contract in
  * `@relay-harness/rlh-jobs` for the ownership, isolation, and lifecycle
  * semantics this implementation honors.
+ *
+ * Retention contract: a terminal record stays readable until it is reported —
+ * its completion notice deliverable — plus {@link Config.terminalRetentionMs}
+ * of grace, and each owner bucket keeps at most
+ * {@link Config.maxTerminalRecords} terminal records, oldest-finished first.
+ * Sweeps run at `start()`/`list()` time only, never on a timer; an unreported
+ * terminal record is never pruned, so completion notices stay at-least-once,
+ * and a pruned id reads as `unknown job <id>` from every access path.
  */
 export class LocalJobRegistry extends JobRegistry {
   static Config: z<Config> = z.object({
@@ -95,10 +120,24 @@ export class LocalJobRegistry extends JobRegistry {
       .min(1)
       .max(Number.MAX_SAFE_INTEGER)
       .default(DEFAULT_MAX_CONCURRENT_TASKS_PER_OWNER),
+    terminalRetentionMs: z.number()
+      .step(1)
+      .min(1)
+      .max(Number.MAX_SAFE_INTEGER)
+      .default(DEFAULT_TERMINAL_RETENTION_MS),
+    maxTerminalRecords: z.number()
+      .step(1)
+      .min(1)
+      .max(Number.MAX_SAFE_INTEGER)
+      .default(DEFAULT_MAX_TERMINAL_RECORDS),
   })
 
   /** Schemastery-defaulted active-job limit. */
   private readonly maxConcurrentJobsPerOwner: number
+  /** Schemastery-defaulted grace before a reported terminal record is prunable. */
+  private readonly terminalRetentionMs: number
+  /** Schemastery-defaulted per-bucket cap on retained terminal records. */
+  private readonly maxTerminalRecords: number
   private store = new Map<JobId, TrackedTask>()
   private counters = new Map<string, number>()
   /**
@@ -123,12 +162,16 @@ export class LocalJobRegistry extends JobRegistry {
   constructor(ctx: Context, config: Config) {
     super(ctx)
     // Schemastery validates and fills the default before constructing the service.
-    this.maxConcurrentJobsPerOwner = (config as Required<Config>).maxConcurrentJobsPerOwner
+    const resolved = config as Required<Config>
+    this.maxConcurrentJobsPerOwner = resolved.maxConcurrentJobsPerOwner
+    this.terminalRetentionMs = resolved.terminalRetentionMs
+    this.maxTerminalRecords = resolved.maxTerminalRecords
     this.selfCtx = ctx
     ctx.effect(() => () => this.disposeAll(), 'jobs teardown')
   }
 
   start(spec: JobStart): JobId {
+    this.pruneTerminal(Date.now())
     if (!this.servesOwner(spec.owner)) {
       throw new Error('background jobs unavailable: no job controller serves this agent (load @relay-harness/rlh-tool-jobs in its composition)')
     }
@@ -190,6 +233,7 @@ export class LocalJobRegistry extends JobRegistry {
   }
 
   list(caller?: Agent): JobSnapshot[] {
+    this.pruneTerminal(Date.now())
     const session = caller?.id
     return [...this.store.values()]
       .filter(job => job.owner === undefined || job.owner.id === session)
@@ -325,6 +369,56 @@ export class LocalJobRegistry extends JobRegistry {
       if (job.owner === owner && (job.status === 'running' || job.status === 'stopping')) count += 1
     }
     return count
+  }
+
+  /**
+   * Drop reported terminal records past {@link terminalRetentionMs} of grace,
+   * then cap each owner bucket — an exact owner's session id, or the shared
+   * unowned bucket — at {@link maxTerminalRecords} by dropping the
+   * oldest-finished. Only reported records are droppable, so an undelivered
+   * completion notice never dies with its record. Called at the top of
+   * `start()` and `list()`, which already traverse the store; there is no
+   * timer and no background task.
+   */
+  private pruneTerminal(now: number): void {
+    const expired = new Map<JobId, TrackedTask>()
+    for (const job of this.store.values()) {
+      if (isTerminal(job.status) && job.reported && job.finishedAt !== undefined
+        && now - job.finishedAt >= this.terminalRetentionMs) {
+        expired.set(job.id, job)
+      }
+    }
+    // Bucket the surviving terminal records so the cap holds even when no
+    // single record is old enough to expire.
+    const buckets = new Map<string | undefined, TrackedTask[]>()
+    for (const job of this.store.values()) {
+      if (!isTerminal(job.status) || expired.has(job.id)) continue
+      const key = job.owner?.id
+      const bucket = buckets.get(key)
+      if (bucket === undefined) buckets.set(key, [job])
+      else bucket.push(job)
+    }
+    for (const bucket of buckets.values()) {
+      let excess = bucket.length - this.maxTerminalRecords
+      if (excess <= 0) continue
+      const droppable = bucket
+        .filter(job => job.reported)
+        .sort((a, b) => (a.finishedAt ?? 0) - (b.finishedAt ?? 0))
+      for (const job of droppable) {
+        if (excess <= 0) break
+        expired.set(job.id, job)
+        excess -= 1
+      }
+    }
+    if (expired.size === 0) return
+    const affected = new Set<Agent | undefined>()
+    for (const job of expired.values()) {
+      this.store.delete(job.id)
+      affected.add(job.owner)
+    }
+    // Removal is the one visible-set change no per-job record carries, so it
+    // must be announced here or an observer keeps the dropped rows forever.
+    for (const owner of affected) this.notifyChanged(owner)
   }
 
   /**

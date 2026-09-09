@@ -16,7 +16,7 @@
 
 .selected {
   border-color: transparent;
-  box-shadow: inset 0 0 0 2px var(--rlw-alias-brand-primary-new-colorprimary-new-color);
+  box-shadow: inset 0 0 0 2px var(--rlw-alias-brand-primary-new);
 }
 
 .index {
@@ -68,14 +68,14 @@
 .tagMessage {
   color: color-mix(
     in srgb,
-    var(--rlw-alias-brand-primary-new-colorprimary-new-color) 60%,
+    var(--rlw-alias-brand-primary-new) 60%,
     var(--rlw-alias-state-error-secondary)
   );
   background: color-mix(
     in srgb,
     color-mix(
       in srgb,
-      var(--rlw-alias-brand-primary-new-colorprimary-new-color) 55%,
+      var(--rlw-alias-brand-primary-new) 55%,
       var(--rlw-alias-state-error-secondary)
     ) 15%,
     var(--rlw-alias-bg-layer-1)

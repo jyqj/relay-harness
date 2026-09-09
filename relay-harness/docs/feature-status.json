@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "authority": "This file is the machine-readable authority for Relay product completion claims. A feature is shipped only when every evidence category passes scripts/verify-feature-status.mjs.",
+  "authority": "Implementation-scope index for Relay product features. Shipped identifies composed implementation with reference evidence; path and marker validation does not prove test execution, CI success, coverage, or release approval.",
   "runtimeRoot": "relay-harness",
   "repositoryGovernance": {
     "sourceLayout": "nested-monorepo",
@@ -97,8 +97,14 @@
           {
             "path": "packages/client/ui-context-inspector/src/client/ContextInspectorAction.tsx",
             "contains": [
-              "context/prepared #",
+              "t('tracePrepared')",
               "evidence.whyUsed"
+            ]
+          },
+          {
+            "path": "packages/client/ui-context-inspector/src/client/locales.ts",
+            "contains": [
+              "context/prepared #{seq}"
             ]
           }
         ],

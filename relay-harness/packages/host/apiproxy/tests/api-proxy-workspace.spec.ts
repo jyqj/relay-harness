@@ -335,6 +335,30 @@ describe('workspace.create', () => {
   })
 })
 
+describe('workspace.rename ownership', () => {
+  it('serializes competing names and preserves the losing workspace', async () => {
+    const { api, ctx, root } = await harness()
+    try {
+      const first = expectOk(await api.workspace.create(request({ path: stageDir(root, 'first') }))).workspace
+      const second = expectOk(await api.workspace.create(request({ path: stageDir(root, 'second') }))).workspace
+      const [winner, loser] = await Promise.all([
+        api.workspace.rename(request({ workspaceId: first.workspaceId, title: ' shared ' })),
+        api.workspace.rename(request({ workspaceId: second.workspaceId, title: 'shared' })),
+      ])
+      expect(expectOk(winner).workspace.title).toBe('shared')
+      expect(loser.result).toMatchObject({
+        ok: false, error: { code: 'workspace-name-conflict', details: { name: 'shared' } },
+      })
+      const unchanged = expectOk(await api.workspace.rename(request({ workspaceId: second.workspaceId, title: 'second' })))
+      expect(unchanged.workspace.title).toBe('second')
+      const missing = await api.workspace.rename(request({ workspaceId: 'missing' as WorkspaceId, title: 'other' }))
+      expect(missing.result).toMatchObject({ ok: false, error: { code: 'workspace-not-found' } })
+    } finally {
+      await ctx.fiber.dispose()
+    }
+  })
+})
+
 describe('workspace.insertBefore', () => {
   it('commits the complete order, streams one order frame, and maps unknown ids', async () => {
     const { api, ctx, root } = await harness()

@@ -6,6 +6,8 @@ THE concrete agent plugin and loop driver. Its package-internal implementation s
 
 This is the only package in the harness that contains concrete loop logic. Everything else is an abstract service or a plugin against extension points — new behavior goes into plugins, not here.
 
+Resume forwards an optional `persistenceFence` to `SessionPersistence.prepare(id, signal, fence)` before unpublished setup. The persistence provider holds its exclusion through cold repair; the owner installs the same proof during setup for later live writes.
+
 ## Service: `AgentLoop` (ctx key: `agentLoop`)
 
 ### Public API
@@ -21,7 +23,7 @@ Each agent and its session share one caller-chosen `SessionId`, assumed globally
 `AgentLoop` also implements the `AgentFactory` contract and registers itself via `ctx.agents.setFactory(this)`, so plugins create/resume agents through `ctx.agents`:
 
 - `ctx.agents.create({ sessionId, meta?, seed?, agentOptions?, setup?, signal? }): Promise<AgentHandle>` — programmatic create under the caller-supplied shared id. It awaits the unpublished setup transaction before returning; `meta` carries cwd/lineage/seed-boundary metadata and `seed` reconstructs a forked child prefix after the session boundary validates and snapshots the durable values. `signal` applies only until this promise settles. The resolved [`AgentHandle`](../agent/README.md) owns exact teardown.
-- `ctx.agents.resume({ resumeSessionId, agentOptions?, setup?, signal? }): Promise<AgentHandle>` — load a persisted session via `ctx.sessionPersistence` ([session persistence](../../../.agents/notes/implemented/architecture/2026-06-14-session-persistence.md)), register the agent under that same id, reconstruct its history, then await setup against a fresh unpublished agent scope before rollback-covered publication. Turn numbering and derived history continue from the loaded log. Requires a session-persistence backend (NOT hard-injected — non-persistent demos still work; `resume` rejects with a clear error when persistence is absent). `signal` is creation-only. Returns an `AgentHandle`.
+- `ctx.agents.resume({ resumeSessionId, agentOptions?, setup?, signal?, persistenceFence? }): Promise<AgentHandle>` — load a persisted session via `ctx.sessionPersistence` ([session persistence](../../../.agents/notes/implemented/architecture/2026-06-14-session-persistence.md)), register the agent under that same id, reconstruct its history, then await setup against a fresh unpublished agent scope before rollback-covered publication. Turn numbering and derived history continue from the loaded log. Requires a session-persistence backend (NOT hard-injected — non-persistent demos still work; `resume` rejects with a clear error when persistence is absent). `signal` is creation-only. Returns an `AgentHandle`.
 
 The config-driven `ctx.agentLoop.create()` path keeps its agent owned by the loop fiber (it discards the handle). For a programmatic agent, the handle holder is the only consumer-facing teardown capability; AgentLoop provider unload is the independent structural teardown edge, not another handle exposed to application code.
 

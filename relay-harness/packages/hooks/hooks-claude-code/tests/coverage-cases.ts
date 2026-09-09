@@ -241,6 +241,44 @@ export function defineCoverageCases(group: CoverageGroup): void {
       expect(JSON.stringify(adapter.requests[1]!.messages)).toContain('blocked by Stop hook')
     })
 
+    it('reports stop_hook_active=true on the repeat same-turn Stop check (CC loop-guard protocol)', async () => {
+    // The once-per-turn guard mirrors Claude Code's stop_hook_active contract: the
+    // first Stop check runs with the flag false; the forced continuation's repeat
+    // check must see it true so a still-blocking hook can self-limit.
+      const d = dir()
+      const log = join(d, 'payloads')
+      const s = sh(d, 'stop.sh', `#!/usr/bin/env bash\ncat >> "${log}"\ncount=$(grep -c . "${log}")\nif [ "$count" -ge 2 ]; then exit 0; fi\necho "continue please" >&2\nexit 2\n`)
+      const path = hooks(d, { Stop: [{ hooks: [{ type: 'command', command: s }] }] })
+      const adapter = new MockAdapter([textResponse('one'), textResponse('two')])
+      const ctx = await harness(path, adapter)
+      const agent = ctx.agentLoop.create(SessionId('a1'), { provider: 'mock', model: 'mock' })
+      agent.followup(createUserMessage({ content: [{ type: 'text', text: 'go' }], source: { kind: 'user' } }))
+      await waitForIdle(ctx, agent)
+      const payloads = readFileSync(log, 'utf8').trim().split('\n')
+        .map(line => JSON.parse(line) as { stop_hook_active: boolean })
+      expect(payloads).toHaveLength(2)
+      expect(payloads[0]!.stop_hook_active).toBe(false)
+      expect(payloads[1]!.stop_hook_active).toBe(true)
+    }, 15_000)
+
+    it('closes the turn when the Stop hook keeps blocking after its forced continuation', async () => {
+    // The second same-turn deny must NOT force another model request: the bridge
+    // warns and lets the turn close (two requests total, not an unbounded loop).
+      const d = dir()
+      const log = join(d, 'payloads')
+      const s = sh(d, 'stop.sh', `#!/usr/bin/env bash\ncat >> "${log}"\ncount=$(grep -c . "${log}")\nif [ "$count" -ge 3 ]; then exit 0; fi\necho "keep going" >&2\nexit 2\n`)
+      const path = hooks(d, { Stop: [{ hooks: [{ type: 'command', command: s }] }] })
+      const warn = vi.fn()
+      const adapter = new MockAdapter([textResponse('one'), textResponse('two'), textResponse('three')])
+      const ctx = await harness(path, adapter)
+      ctx.logger.warn = warn as never
+      const agent = ctx.agentLoop.create(SessionId('a1'), { provider: 'mock', model: 'mock' })
+      agent.followup(createUserMessage({ content: [{ type: 'text', text: 'go' }], source: { kind: 'user' } }))
+      await waitForIdle(ctx, agent)
+      expect(adapter.requests).toHaveLength(2) // initial request + one forced continuation
+      expect(warn).toHaveBeenCalledWith(expect.stringContaining('remained blocking'))
+    }, 15_000)
+
     it('SubagentStart additionalContext is injected into a REGISTERED live child', async () => {
       const d = dir()
       const s = sh(d, 'sa.sh', '#!/usr/bin/env bash\necho \'{"hookSpecificOutput":{"hookEventName":"SubagentStart","additionalContext":"child guidance"}}\'\n')

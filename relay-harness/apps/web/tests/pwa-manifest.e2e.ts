@@ -2,6 +2,7 @@ import { readFile } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
 import { join } from 'node:path'
 import { expect, it } from 'vitest'
+import { chromium } from 'playwright'
 
 const DIST_ROOT = fileURLToPath(new URL('../dist', import.meta.url))
 
@@ -26,10 +27,21 @@ it('ships install metadata with the built web application', async () => {
   })
 })
 
-it('ships a favicon that switches to a light mark under dark color scheme', async () => {
+it.each([
+  { scheme: 'light' as const, color: 'rgb(0, 0, 0)' },
+  { scheme: 'dark' as const, color: 'rgb(255, 255, 255)' },
+])('paints the shipped favicon with contrasting fill and strokes in $scheme mode', async ({ scheme, color }) => {
   const favicon = await readFile(join(DIST_ROOT, 'favicon.svg'), 'utf8')
-  // The light fill must live inside the dark-scheme media query, so the icon
-  // stays black in light mode and only turns white under a dark scheme.
-  expect(favicon).toMatch(/@media \(prefers-color-scheme: dark\)\s*{\s*path\s*{[^}]*fill:\s*#fff/i)
-  expect(favicon).toContain('fill="#000"')
+  const browser = await chromium.launch()
+  try {
+    const page = await browser.newPage({ colorScheme: scheme })
+    await page.goto(`data:image/svg+xml;base64,${Buffer.from(favicon).toString('base64')}`)
+    const fills = await page.locator('svg circle').evaluateAll(elements =>
+      elements.map(element => getComputedStyle(element).fill))
+    const strokes = await page.locator('svg path').evaluateAll(elements =>
+      elements.map(element => getComputedStyle(element).stroke))
+    expect(fills).toEqual([color])
+    expect(strokes).toEqual([color, color])
+    expect(await page.locator('svg').getAttribute('viewBox')).toBe('0 0 50 50')
+  } finally { await browser.close() }
 })

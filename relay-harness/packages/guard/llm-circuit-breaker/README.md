@@ -21,7 +21,9 @@ The timing and threshold defaults follow the imported client-side prior-art pres
 
 Closed requests pass. Each terminal request outcome enters the live window; after `minSamples`, a failure ratio at or above the threshold opens the provider. Open requests are shed without transport work and report the remaining cool-down. After `openMs`, one caller atomically enters half-open and claims a probe. Probe success closes and clears history; probe failure reopens. Additional probes receive a 50 ms bounded backoff. A probe that never reports an outcome is reclaimed after one `openMs` lease, so cancellation cannot strand half-open forever.
 
-Breakers are keyed by the resolved `LlmCallConfig.provider`, after later `agent/request` listeners return their route. `agent/request-error` records configured codes as failure and other codes as connectivity success, while committed assistant messages record success from their durable provider source. Provider routes never share windows.
+Every admission returns the breaker state it was granted under, and every outcome settles under that stamp: a closed-admitted outcome only enters the live window and can trip only from closed, while a half-open-admitted outcome releases exactly the probe slot it claimed and alone can close or reopen the breaker. A request admitted before a trip therefore cannot close or reopen half-open, and no outcome consumes a probe slot it never claimed; an outcome whose probe lease was reclaimed is stale and changes no state. The live window also retains at most 1000 outcomes and drops the oldest beyond that.
+
+Breakers are keyed by the resolved `LlmCallConfig.provider`, after later `agent/request` listeners return their route. `agent/request` keeps each admission stamp per agent and provider; because one agent drives at most one model request at a time, `agent/request-error` and committed assistant messages settle exactly the stamp of the request that preceded them, and a shed request admits nothing and records no outcome. `agent/request-error` records configured codes as failure and other codes as connectivity success, while committed assistant messages record success from their durable provider source. Provider routes never share windows.
 
 ## Model Experience
 
@@ -42,5 +44,5 @@ No request is sent while open, so no cache entry changes.
 ## Known Limitations and Deferred Work
 
 - State is process-local and resets on plugin reload; it is not a distributed provider-health service.
-- Requests already in flight when another outcome trips the breaker continue and report normally.
+- Requests already in flight when another outcome trips the breaker continue and report normally; their outcomes settle under their admission stamp and cannot close or reopen half-open.
 - A non-configured failure code counts as successful connectivity, which keeps authentication or caller-invalid failures from opening a transport/provider availability circuit.

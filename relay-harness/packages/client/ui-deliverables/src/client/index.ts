@@ -1,3 +1,4 @@
+export type { DeliverablesProjection } from '@relay-harness/rlh-host-work-results/types'
 /**
  * Deliverables plugin, browser half: registers the produced-files row into
  * the chat view's turn-tail chain, and provides the `chatFileMentions`

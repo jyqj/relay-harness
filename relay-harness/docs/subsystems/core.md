@@ -518,7 +518,7 @@ serviceFor<K extends string & keyof Context>(agent: { ctx: Context }, name: K): 
  * history.
  *
  * The swap is a parent re-link, not an unmount: standing mounts are shared
- * and permanent, so the old composition stays for its other agents and the
+ * and reference-held, so the old composition stays for its other agents and the
  * new one is ensured BEFORE the link moves. An unknown or unusable preset
  * therefore throws with the agent exactly as it was — there is no torn-down
  * state to restore. The re-link runs through the binding this roster kept
@@ -540,15 +540,20 @@ async recompose(agentCtx: Context, id: string): Promise<AgentPreset>
  * resuming anything: ensuring the mount composes plugins but starts no
  * agent, no session, and no turn.
  * @param id - the preset id, or `undefined` for {@link defaultId}.
- * @returns the standing scope key readers pass as a registry view scope.
+ * @returns a held standing scope; release it after all asynchronous registry reads.
  * @throws when the preset is unknown or its composition is unusable.
  */
-async standingKeyFor(id?: string): Promise<ScopeKey>
+async acquireStandingScope(id?: string): Promise<PresetScopeLease>
+
+/**
+ * Hold the exact joined generation and snapshot all live-agent registration layers for an asynchronous read.
+ * @param agentCtx - agent whose current composition and ancestry the read observes.
+ * @returns held immutable registry ancestry, or undefined for an unjoined agent; release after the read settles.
+ */
+acquireAgentScope(agentCtx: Context): PresetScopeLease | undefined
 ```
 
-Types: [ScopeKey](scope.md)
-
-Source: [`packages/preset/agent-presets/src/index.ts:82`](../../packages/preset/agent-presets/src/index.ts)
+Source: [`packages/preset/agent-presets/src/index.ts:90`](../../packages/preset/agent-presets/src/index.ts)
 
 <a id="ctxagents--agentregistry"></a>
 
@@ -720,7 +725,7 @@ list(): Agent[]
 roots(): Agent[]
 ```
 
-Source: [`packages/core/agent/src/index.ts:256`](../../packages/core/agent/src/index.ts)
+Source: [`packages/core/agent/src/index.ts:258`](../../packages/core/agent/src/index.ts)
 
 <a id="agent-events"></a>
 
@@ -1068,3 +1073,15 @@ One session committed a different agent preset to its durable log. Consumers inv
 
 Source: [`packages/preset/agent-presets/src/types.ts:13`](../../packages/preset/agent-presets/src/types.ts)
 <!-- END GENERATED cordis-surface -->
+
+## PresetScopeLease
+
+```ts type-equiv
+/** A cold reader's hold on one standing generation; release after all asynchronous registry reads. */
+interface PresetScopeLease {
+  /** Scope used for registry views while the lease is held. */
+  readonly key: ScopeKey
+  /** Release this hold exactly once; repeated calls await the same disposal. */
+  release(): Promise<void>
+}
+```

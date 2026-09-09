@@ -74,6 +74,14 @@ export function UpdateAction({ wide, t }: UpdateActionProps): ReactNode {
         return
       }
       if (next.launched) setPhase('install')
+      else {
+        setPhase('error')
+        setMessage(next.status === 'unavailable'
+          ? t('about.updateUnavailable', { message: next.message || '' })
+          : next.status === 'current'
+            ? t('about.updateCurrent', { latest: next.latest || next.current || '' })
+            : t('about.updateError', { message: next.message || '' }))
+      }
     } catch (error) {
       setPhase('error')
       setMessage(t('about.updateError', { message: error instanceof Error ? error.message : String(error) }))

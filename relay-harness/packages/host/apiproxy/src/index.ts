@@ -12,11 +12,13 @@
  * service; sessions that have already logged a selection remain unchanged.
  */
 
+export type { HostInteractions } from './host-interactions.ts'
 import { Context, Service } from '@relay-harness/cordis'
 import z from '@relay-harness/schemastery'
 import type {} from '@relay-harness/rlh-agent-default-model'
 import type { ApiProxy } from './api/index.ts'
 import { createApiProxy } from './api-proxy.ts'
+import { DEFAULT_MUX_STREAM_BUFFER_BYTES } from './frame-queue.ts'
 import { DEFAULT_COLD_BLANK_PROBE_MAX_BYTES } from './session-list.ts'
 import {
   DEFAULT_SESSION_LOG_COMPRESSION_LEVEL,
@@ -60,6 +62,13 @@ export interface Config {
    * @default 1024
    */
   coldBlankProbeMaxBytes?: number
+  /**
+   * Serialized-byte ceiling on one SSE subscriber's buffered event frames.
+   * A consumer whose queue passes it is disconnected; shipped clients
+   * reconnect and the mux reopens replay the full baseline.
+   * @default 8388608
+   */
+  muxStreamBufferBytes?: number
 }
 
 /**
@@ -78,6 +87,7 @@ export class ApiProxyService extends Service implements ApiProxy {
     sessionExportCompressionLevel: z.number().step(1).min(0).max(9)
       .default(DEFAULT_SESSION_LOG_COMPRESSION_LEVEL) as z<SessionLogCompressionLevel>,
     coldBlankProbeMaxBytes: z.natural().default(DEFAULT_COLD_BLANK_PROBE_MAX_BYTES),
+    muxStreamBufferBytes: z.natural().default(DEFAULT_MUX_STREAM_BUFFER_BYTES),
   })
 
   readonly sessions: ApiProxy['sessions']
@@ -107,6 +117,9 @@ export class ApiProxyService extends Service implements ApiProxy {
       ...(config.coldBlankProbeMaxBytes === undefined
         ? {}
         : { coldBlankProbeMaxBytes: config.coldBlankProbeMaxBytes }),
+      ...(config.muxStreamBufferBytes === undefined
+        ? {}
+        : { muxStreamBufferBytes: config.muxStreamBufferBytes }),
     })
     this.sessions = api.sessions
     this.subagents = api.subagents

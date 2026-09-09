@@ -11,7 +11,7 @@ import type {
 import { JsonBlock, MessageText, StateDot } from '@relay-harness/rlh-client-ui-primitives'
 import type { PropsRenderSlots } from '@relay-harness/rlh-client-ui-slots'
 import type { ChatNodeOwnerProps, ChatNodeViewProps, ChatViewSlotProps } from '../contract/slots.ts'
-import { ReferenceIcon } from '../reference/ReferenceIcon.tsx'
+import { ReferenceIcon } from '../ReferenceIcon.tsx'
 import { CompactionItem } from './CompactionItem.tsx'
 import { ContextInjectionRow } from './ContextInjectionRow.tsx'
 import { MessageIconActions } from './MessageIconActions.tsx'

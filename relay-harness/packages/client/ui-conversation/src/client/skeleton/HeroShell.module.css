@@ -94,7 +94,7 @@
 
 @media (hover: hover) and (prefers-reduced-motion: no-preference) {
   .markHitbox:hover .mark {
-    animation: hero-mark-nudge var(--rl-transition-duration-slow) var(--rl-ease-in-out);
+    animation: hero-mark-nudge 300ms var(--rlw-ease-standard);
   }
 }
 

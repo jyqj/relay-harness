@@ -18,7 +18,7 @@ import type { InputSubmitMode } from '../contract/composer-submission.ts'
 import type {
   ConsumeTokenGuard, EditRange, EditSelection, InputEffect, InputEvent, InputMachineOptions,
   InputState, Occurrence, PasteAttemptState, PasteComponent, SubmitAttempt,
-} from './contract.ts'
+} from '../contract/input.ts'
 
 /** Legacy fixed-width object replacement character rejected from pasted text. */
 export const PLACEHOLDER = '￼'
@@ -471,11 +471,23 @@ export class InputMachine {
 
   // ---- submit plane ----
 
-  /** Mint the next SubmitAttempt and take the in-flight slot. */
+  /**
+   * Mint the next SubmitAttempt and take the in-flight slot. The attempt
+   * freezes BOTH the draft and the occurrence table at enter time: the sink
+   * splices against the frozen table, so external busy-period draft writes
+   * (draft-changed stays accepted while adjudicating/submitting) affect only
+   * the next send.
+   */
   private beginAttempt(mode: InputSubmitMode): SubmitAttempt {
     const controller = new AbortController()
     this.seq += 1
-    const attempt: SubmitAttempt = { seq: this.seq, signal: controller.signal, draftSnapshot: this.draft, mode }
+    const attempt: SubmitAttempt = {
+      seq: this.seq,
+      signal: controller.signal,
+      draftSnapshot: this.draft,
+      occurrences: this.occurrences,
+      mode,
+    }
     this.inflight = { attempt, controller }
     return attempt
   }

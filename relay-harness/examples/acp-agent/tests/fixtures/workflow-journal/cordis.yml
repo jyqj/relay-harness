@@ -1,0 +1,16 @@
+- name: '@relay-harness/rlh-llm'
+- name: '@relay-harness/rlh-session'
+- name: '@relay-harness/rlh-system-prompt'
+- name: '@relay-harness/rlh-tools'
+- name: '@relay-harness/rlh-agent'
+- name: '@relay-harness/rlh-agent-loop'
+  config:
+    agents: []
+- name: '@relay-harness/rlh-subagent'
+- name: '@relay-harness/rlh-subagent-spawn-in-process'
+  config:
+    providerName: spawn
+- name: '@relay-harness/rlh-workflow-worker-thread'
+  config:
+    provider: spawn
+    journalRoot: !!js process.env.RLH_WORKFLOW_FIXTURE_JOURNAL

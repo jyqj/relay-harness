@@ -162,7 +162,8 @@ export function apply(ctx: ClientContext): void {
         const available = sessions.subagentAddress(sessionId) === undefined
         return {
           available,
-          directory: directory.store,
+          hooks: { modelDirectory: directory.store },
+          selectionError: () => directory.store.getSnapshot().error,
           load: () => {
             if (available) directory.load().catch(() => { /* surfaced on the store */ })
           },

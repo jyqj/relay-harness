@@ -1,32 +1,30 @@
 // Sessions remain resident after creation so they continue consuming mux frames off-screen.
 
 import type { Context } from '@relay-harness/cordis'
-import type { AttachmentIdType, ImageAttachmentRef } from '@relay-harness/rlh-attachment'
-import type { SessionEvent } from '@relay-harness/rlh-session/types'
 import type {
-  HistoryEntry, IApiClient, MessageId, MuxFrame, PromptContentPart, QueueAction, RpcError,
-  RpcId, RpcResponse, RpcResult, SessionId, SubagentAddress, ToolEventView,
+  HistoryEntry,IApiClient,MessageId,MuxFrame,PromptContentPart,QueueAction,RpcError,
+  RpcId,RpcResponse,RpcResult,SessionId,SubagentAddress,ToolEventView,
 } from '@relay-harness/rlh-api-remotes/client'
+import type { AttachmentIdType,ImageAttachmentRef } from '@relay-harness/rlh-attachment'
+import type { SessionEvent } from '@relay-harness/rlh-session/types'
 // Value import from the inline-safe wire layer (not the connection plugin):
 // plugin-to-plugin value imports are a bundle purity error.
 import { transportError } from '@relay-harness/rlh-host-apiproxy/api'
-import type { SessionFace } from '../contract/session.ts'
-import { ConversationNodeAssembler } from './conversation-assembler.ts'
-import type { ConversationRuntime } from './conversation-assembler.ts'
-import type { ConversationEventInput, ConversationPublication } from '../contract/conversation.ts'
-import type {
-  ChatSnapshot, ComposerPhase, ConversationSnapshot, OpenState, PromptError,
-} from './conversation.ts'
-import { EMPTY_CHAT_SNAPSHOT } from './conversation.ts'
-import type { PendingInteraction } from './pending.ts'
-import { PendingWait } from './pending.ts'
-import { Notifier } from './notifier.ts'
 import type { RemoteResult } from '@relay-harness/rlh-typert-protocol'
-import type { SessionRemotes } from './remotes.ts'
-import { ProjectionValueStore } from './projection-store.ts'
-import type { ProjectionsBaseline } from './projection-store.ts'
+import type { ConversationEventInput,ConversationPublication } from '../contract/conversation.ts'
+import type { ChatSnapshot,ComposerPhase,ConversationSnapshot,OpenState,PromptError } from '../contract/session-snapshot.ts'
+import { EMPTY_CHAT_SNAPSHOT } from '../contract/session-snapshot.ts'
+import type { SessionFace } from '../contract/session.ts'
+import { Notifier } from '../notifier.ts'
+import type { PendingInteraction } from '../pending.ts'
+import { PendingWait } from '../pending.ts'
 import { resolvedClientTimeZone } from '../time-zone.ts'
+import type { ConversationRuntime } from './conversation-assembler.ts'
+import { ConversationNodeAssembler } from './conversation-assembler.ts'
+import type { ProjectionsBaseline } from './projection-store.ts'
+import { ProjectionValueStore } from './projection-store.ts'
 import { SessionQueueMirror } from './queue-mirror.ts'
+import type { SessionRemotes } from './remotes.ts'
 
 /** Messages requested per history page. */
 export const PAGE_MESSAGES = 50
@@ -418,11 +416,13 @@ export class Session implements SessionFace {
    *  in-flight open first — its history request rode the dead connection and must not settle
    *  the fresh generation into 'error'. */
   async resync(): Promise<void> {
-    // The queue mirror is NOT cleared here: onConnected (which drives resync)
-    // races the mux frames — the fresh generation's baseline may have landed
-    // already, and the host never resends it. The mirror re-baselines on the
-    // session/subscribed frame instead (same stream as the queue snapshot
-    // that follows it, so ordering is guaranteed).
+    // The queue mirror is NOT cleared here: ConnectionController awaits
+    // onConnected (which drives resync) before opening the mux stream, so no
+    // fresh-generation baseline can have landed yet, and the host never
+    // resends one. The mirror re-baselines on the session/subscribed frame
+    // instead (same stream as the queue snapshot that follows it, so ordering
+    // is guaranteed); that frame's tail check also backfills events lost
+    // inside the closed-stream window.
     if (this.openState === 'cold') return // never opened: no window to rebuild (doOpen flips to 'loading' synchronously, so cold implies no in-flight open)
     this.openGeneration++
     this.openPromise = null
@@ -486,6 +486,16 @@ export class Session implements SessionFace {
         // stale mirror clears here — race-free against onConnected/resync
         // timing (clearing there could wipe a baseline that already landed).
         if (this.queueMirror.reset()) this.notifier.markDirty()
+        // Reconnect tail check (same predicate as doOpen's stitch pull): a
+        // fresh generation's subscribed frame arrives only after onConnected
+        // hydration has reopened the window, so doOpen ran with
+        // subscribedLastSeq === null and its gap branch was blind. Events
+        // lost inside the closed-stream window are never replayed by the
+        // host — the baseline-only reopen makes this check the guard.
+        if (this.openState === 'open') {
+          const tailSeq = this.windowTailSeq()
+          if (tailSeq !== null && frame.lastSeq > tailSeq) void this.repairGap()
+        }
         return
       }
       case 'approval/requested': {

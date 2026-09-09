@@ -14,6 +14,7 @@ import type { AddressInfo } from 'node:net'
 import type { Duplex } from 'node:stream'
 import { Context, Service } from '@relay-harness/cordis'
 import z from '@relay-harness/schemastery'
+import { registration, routeStateKey, type RouteState } from './route-state.ts'
 
 declare module '@relay-harness/cordis' {
   interface Context {
@@ -62,12 +63,10 @@ export class WebServer extends Service {
     port: z.natural().max(65535).required(),
   })
 
-  private readonly exact = new Map<string, WebRoute>()
-  private readonly prefixes = new Map<string, WebRoute>()
-  private readonly upgrades = new Map<string, WebUpgradeRoute>()
+  private readonly [routeStateKey]: RouteState = {
+    exact: new Map(), prefixes: new Map(), upgrades: new Map(), indexTaps: [], fallback: undefined,
+  }
   private readonly upgradedSockets = new Set<Duplex>()
-  private readonly indexTaps: ((html: string) => string)[] = []
-  private fallback: WebRoute['handler'] | undefined
   private server!: Server
   private listenedPort!: number
 
@@ -92,12 +91,14 @@ export class WebServer extends Service {
    * @returns the disposer removing the route.
    */
   register(route: WebRoute): () => void {
-    const table = route.kind === 'exact' ? this.exact : this.prefixes
+    const table = route.kind === 'exact' ? this[routeStateKey].exact : this[routeStateKey].prefixes
     if (table.has(route.path)) {
       throw new Error(`webserver: duplicate ${route.kind} route "${route.path}"`)
     }
-    table.set(route.path, route)
-    return () => { table.delete(route.path) }
+    const row = registration(this.ctx, { ...route })
+    const path = route.path
+    table.set(path, row)
+    return onceDisposal(() => { table.delete(path); row.releaseOwner() })
   }
 
   /**
@@ -107,11 +108,13 @@ export class WebServer extends Service {
    * @returns the disposer removing the route.
    */
   registerUpgrade(route: WebUpgradeRoute): () => void {
-    if (this.upgrades.has(route.path)) {
+    if (this[routeStateKey].upgrades.has(route.path)) {
       throw new Error(`webserver: duplicate upgrade route "${route.path}"`)
     }
-    this.upgrades.set(route.path, route)
-    return () => { this.upgrades.delete(route.path) }
+    const row = registration(this.ctx, { ...route })
+    const path = route.path
+    this[routeStateKey].upgrades.set(path, row)
+    return onceDisposal(() => { this[routeStateKey].upgrades.delete(path); row.releaseOwner() })
   }
 
   /**
@@ -123,11 +126,12 @@ export class WebServer extends Service {
    * @returns the disposer releasing the seat.
    */
   registerFallback(handler: WebRoute['handler']): () => void {
-    if (this.fallback !== undefined) {
+    if (this[routeStateKey].fallback !== undefined) {
       throw new Error('webserver: fallback already registered')
     }
-    this.fallback = handler
-    return () => { this.fallback = undefined }
+    const row = registration(this.ctx, handler)
+    this[routeStateKey].fallback = row
+    return onceDisposal(() => { this[routeStateKey].fallback = undefined; row.releaseOwner() })
   }
 
   /**
@@ -137,11 +141,13 @@ export class WebServer extends Service {
    * @returns the disposer removing the transform.
    */
   tapIndex(transform: (html: string) => string): () => void {
-    this.indexTaps.push(transform)
-    return () => {
-      const at = this.indexTaps.indexOf(transform)
-      if (at !== -1) this.indexTaps.splice(at, 1)
-    }
+    const row = registration(this.ctx, transform)
+    this[routeStateKey].indexTaps.push(row)
+    return onceDisposal(() => {
+      const at = this[routeStateKey].indexTaps.indexOf(row)
+      this[routeStateKey].indexTaps.splice(at, 1)
+      row.releaseOwner()
+    })
   }
 
   /** Listen; resolves once the socket is bound (rejection = FAILED fiber). */
@@ -155,13 +161,13 @@ export class WebServer extends Service {
         await route.handler(req, res)
         return
       }
-      const fallback = this.fallback
+      const fallback = this[routeStateKey].fallback
       if (fallback === undefined) {
         res.writeHead(404)
         res.end()
         return
       }
-      await fallback(req, res)
+      await fallback.value(req, res)
     }
     // Last-resort guard: handle() rejecting would otherwise be an unhandled
     // rejection killing the process on one malformed request (bad %-escape,
@@ -169,7 +175,7 @@ export class WebServer extends Service {
     // never a process exit.
     this.server = createServer((req, res) => {
       handle(req, res).catch((err: unknown) => {
-        this.ctx.logger.warn(err instanceof Error ? err : new Error(String(err)))
+        this.ctx.logger.warn(asError(err))
         if (res.headersSent) {
           res.destroy()
           return
@@ -191,9 +197,9 @@ export class WebServer extends Service {
       let route: WebUpgradeRoute | undefined
       try {
         /* v8 ignore next -- node:http always sets url on server requests. */
-        route = this.upgrades.get(new URL(req.url ?? '/', 'http://x').pathname)
+        route = this[routeStateKey].upgrades.get(new URL(req.url ?? '/', 'http://x').pathname)?.value
       } catch (error) {
-        this.ctx.logger.warn(error instanceof Error ? error : new Error(String(error)))
+        this.ctx.logger.warn(asError(error))
         socket.destroy()
         return
       }
@@ -204,11 +210,11 @@ export class WebServer extends Service {
       this.upgradedSockets.add(socket)
       try {
         Promise.resolve(route.handler(req, socket, head)).catch((error: unknown) => {
-          this.ctx.logger.warn(error instanceof Error ? error : new Error(String(error)))
+          this.ctx.logger.warn(asError(error))
           socket.destroy()
         })
       } catch (error) {
-        this.ctx.logger.warn(error instanceof Error ? error : new Error(String(error)))
+        this.ctx.logger.warn(asError(error))
         socket.destroy()
       }
     })
@@ -240,10 +246,11 @@ export class WebServer extends Service {
 
   /** Longest-prefix-wins over the prefix table after an exact-table miss. */
   private match(pathname: string): WebRoute | undefined {
-    const exact = this.exact.get(pathname)
-    if (exact !== undefined) return exact
+    const exact = this[routeStateKey].exact.get(pathname)
+    if (exact !== undefined) return exact.value
     let best: WebRoute | undefined
-    for (const [prefix, route] of this.prefixes) {
+    for (const [prefix, row] of this[routeStateKey].prefixes) {
+      const route = row.value
       if (pathname !== prefix && !pathname.startsWith(`${prefix}/`)) continue
       if (best === undefined || prefix.length > best.path.length) best = route
     }
@@ -258,8 +265,23 @@ export class WebServer extends Service {
    */
   applyIndexTaps(html: string): string {
     let out = html
-    for (const transform of this.indexTaps) out = transform(out)
+    for (const row of this[routeStateKey].indexTaps) out = row.value(out)
     return out
+  }
+}
+
+/** Normalize failures thrown by third-party route handlers for the server logger. */
+function asError(error: unknown): Error {
+  return error instanceof Error ? error : new Error(String(error))
+}
+
+/** Retire one registration occurrence before cleanup can reenter its disposer. */
+function onceDisposal(dispose: () => void): () => void {
+  let active = true
+  return () => {
+    if (!active) return
+    active = false
+    dispose()
   }
 }
 

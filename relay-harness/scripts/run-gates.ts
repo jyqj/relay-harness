@@ -521,7 +521,6 @@ function ciWindowsCompleteGates(): Gate[] {
     .filter(gate => gate.id !== 'build' && gate.id !== 'docs-site-build')
     .map(gate => ({
       ...gate,
-      allowFailure: true,
       after: [...new Set([...coverageAfter, ...(gate.after ?? [])])],
     }))
   return [

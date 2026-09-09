@@ -12,6 +12,9 @@
 // Render economics: order changes only when rows enter, leave or move. Each
 // ChatNodeSeat subscribes to one Node key, so Assistant deltas and Tool
 // lifecycle updates replace only their own row without remounting it.
+// Variable-height rows use a recyclable viewport. Explicit full-history mode
+// supports browser find and long text selection; focused, selected and expanded
+// rows remain mounted while virtualized.
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { ConversationTimelineSnapshot } from '@relay-harness/rlh-client-runtime/client'
@@ -19,11 +22,11 @@ import { Button, IconChevronDownOutline14, Modal } from '@relay-harness/rlh-clie
 import type { ChatViewSlotProps, RenderMessageImages } from '../contract/slots.ts'
 import { PendingSteeringBubble } from './MessageItem.tsx'
 import { ChatNodeSeat } from './ChatNodeSeat.tsx'
+import { useChatWindow } from './use-chat-window.ts'
 import { formatRunDuration } from './message-chrome.ts'
 import css from './ChatView.module.css'
 
 const FOLLOW_THRESHOLD = 24
-
 /** Active column host when present; otherwise the view-local scroller. */
 function scrollerOf(from: HTMLElement): HTMLElement {
   return (from.closest('[data-conversation-scroll]')) ?? from
@@ -89,8 +92,10 @@ function scrollPosition(list: HTMLElement, scrollport: HTMLElement): ChatScrollP
   const row = pagingAnchor(list, scrollport)
   const anchorKey = row?.dataset.chatAnchorKey
   if (row === null || anchorKey === undefined) return null
+  const nodeKey = row.closest<HTMLElement>('[data-chat-flow-key]')?.dataset.chatFlowKey
   return {
     anchorKey,
+    ...nodeKey === undefined || nodeKey === anchorKey ? {} : { nodeKey },
     anchorTop: flowTop(row, scrollport),
     scrollTop: scrollport.scrollTop,
   }
@@ -141,7 +146,7 @@ function TurnStatus({ startTime, t }: {
   const showClock = elapsedMs >= 15_000
   return (
     <div className={css.turnStatus} role="status" aria-live="polite">
-      Deep diving...
+      {t('chat.turnStatus.working')}
       {showClock && (
         <span className={css.turnStatusClock} aria-hidden>
           {formatRunDuration(elapsedMs, t)}
@@ -214,6 +219,10 @@ export function ChatView({
       return kind !== 'context' && kind !== 'turn-tail'
     })
   }, [order, nodeStore, hideRoomChrome])
+  const listRef = useRef<HTMLDivElement | null>(null)
+  const columnRef = useRef<HTMLDivElement | null>(null)
+  const window = useChatWindow(visibleOrder, sessionId, listRef, chatScroll.read)
+  const loadedTurns = useMemo(() => visibleOrder.filter(key => nodeStore.get(key)?.kind === 'turn-tail').length, [visibleOrder, nodeStore])
   const pendingSteering = useMemo(
     () => inbox.filter(item => item.placement === 'steering'),
     [inbox],
@@ -224,17 +233,23 @@ export function ChatView({
   )
   const runningTurnStart = useMemo(() => runningTurnStartTime(timeline), [timeline])
 
-  const listRef = useRef<HTMLDivElement | null>(null)
-  const columnRef = useRef<HTMLDivElement | null>(null)
   const atBottomRef = useRef(true)
   const [atBottom, setAtBottom] = useState(true)
   /** Last position delivered or written on the main thread. */
   const observedTopRef = useRef(0)
+  const readerCutPendingRef = useRef(false)
   /** Paging anchor: semantic row/position at click, updated by reader scrolls
    * while the request is pending and restored after the prepend lands. */
   const anchorRef = useRef<PagingAnchor | null>(null)
   const firstSeqRef = useRef<number | null>(null)
   const openedRef = useRef(false)
+  const openedSession = useRef(sessionId)
+  if (openedSession.current !== sessionId) { openedSession.current = sessionId; openedRef.current = false }
+  const virtualMode = useRef(window.enabled)
+  if (virtualMode.current !== window.enabled) {
+    virtualMode.current = window.enabled
+    openedRef.current = false
+  }
   const lastKeyRef = useRef<string | null>(null)
   const lastSteeringIdRef = useRef<string | null>(null)
   /** Flow tip signature — follow-scroll only when this moves, never on a
@@ -289,6 +304,15 @@ export function ChatView({
       followSigRef.current = followSig
       return
     }
+    // A large reader jump can arrive before its new virtual range mounts.
+    // Capture that range after commit rather than anchoring to an offscreen
+    // fallback from the previous range (including retained tool rows).
+    if (readerCutPendingRef.current) {
+      readerCutPendingRef.current = false
+      const position = atBottomRef.current ? null : scrollPosition(local, el)
+      chatScroll.save(position)
+      if (anchorRef.current !== null && position !== null) anchorRef.current = { key: position.anchorKey, top: position.anchorTop }
+    }
     // Prepend (head seq decreased): preserve the same settled row at the
     // position established by the reader's latest scroll. This excludes
     // unrelated tail/composer growth while the request was in flight.
@@ -298,12 +322,26 @@ export function ChatView({
       const row = anchorElement(local, anchor.key)
       if (row !== null) el.scrollTop += flowTop(row, el) - anchor.top
       observedTopRef.current = el.scrollTop
+      const position = scrollPosition(local, el)
+      if (position !== null) chatScroll.save(position)
       firstSeqRef.current = firstSeq
       /* v8 ignore next -- ?? arm: a prepend adds nodes, so the flow list here is never empty. */
       lastKeyRef.current = lastKey
       lastSteeringIdRef.current = lastSteeringId
       followSigRef.current = followSig
       return
+    }
+    // Virtual measurements settle over multiple commits. Preserve the same
+    // semantic reader cut through every estimate-to-height update, not just
+    // the initial prepend commit. The virtualizer never writes corrections;
+    // this ledger is the sole owner of both geometry and follow attribution.
+    if (window.enabled && !atBottomRef.current) {
+      const saved = chatScroll.read()
+      const row = saved === null ? null : anchorElement(local, saved.anchorKey)
+      if (saved !== null && row !== null) {
+        el.scrollTop += flowTop(row, el) - saved.anchorTop
+        observedTopRef.current = el.scrollTop
+      }
     }
     firstSeqRef.current = firstSeq
     // Own words must be visible: a new trailing user node force-scrolls
@@ -334,6 +372,7 @@ export function ChatView({
     // the current ownership state.
     const floor = Math.max(0, el.scrollHeight - el.clientHeight)
     const movedByReader = Math.abs(el.scrollTop - Math.min(observedTopRef.current, floor)) > 0.5
+    if (movedByReader && window.enabled) readerCutPendingRef.current = true
     const isAtBottom = movedByReader
       ? floor - el.scrollTop <= FOLLOW_THRESHOLD + 1
       : atBottomRef.current
@@ -365,9 +404,11 @@ export function ChatView({
     if (local === null) return
     const el = scrollerOf(local)
     const onScroll = (): void => { onScrollRef.current() }
-    el.addEventListener('scroll', onScroll, { passive: true })
+    // Capture precedes the virtualizer's range update/render listener, so
+    // genuine reader movement replaces the semantic cut before layout.
+    el.addEventListener('scroll', onScroll, { passive: true, capture: true })
     return () => {
-      el.removeEventListener('scroll', onScroll)
+      el.removeEventListener('scroll', onScroll, { capture: true })
     }
   }, [])
 
@@ -420,9 +461,37 @@ export function ChatView({
     loadOlder()
   }
 
+  const claimReaderControl = (target: EventTarget): void => {
+    if (!(target instanceof Element) || target.closest('button, [role="button"], summary, a, input, textarea, select') === null) return
+    const row = target.closest<HTMLElement>('[data-chat-anchor-key]')
+    const local = listRef.current
+    const key = row?.dataset.chatAnchorKey
+    if (row === null || local === null || key === undefined) return
+    // The row under an active control owns the viewport through focus and layout changes.
+    const el = scrollerOf(local)
+    const nodeKey = row.closest<HTMLElement>('[data-chat-flow-key]')?.dataset.chatFlowKey
+    atBottomRef.current = false
+    setAtBottom(false)
+    observedTopRef.current = el.scrollTop
+    readerCutPendingRef.current = false
+    chatScroll.save({
+      anchorKey: key,
+      ...nodeKey === undefined || nodeKey === key ? {} : { nodeKey },
+      anchorTop: flowTop(row, el),
+      scrollTop: el.scrollTop,
+    })
+  }
+
   return (
-    <div className={css.root}>
-      <div ref={listRef} className={css.scroll}>
+    <div className={css.root} data-chat-window-mode={window.enabled ? 'virtual' : window.fullHistory ? 'full' : 'flow'} data-chat-pinned-count={window.pinnedCount} data-chat-loaded-count={visibleOrder.length} data-chat-loaded-turn-count={loadedTurns}>
+      <div ref={listRef} className={css.scroll}
+        onPointerDownCapture={(event) => { claimReaderControl(event.target) }}
+        onFocusCapture={(event) => { claimReaderControl(event.target) }}
+        onClickCapture={(event) => {
+          if (event.target instanceof Element && event.target.closest('[aria-expanded="false"]') !== null) {
+            claimReaderControl(event.target)
+          }
+        }}>
         <div ref={columnRef} className={css.column} data-chat-flow="">
           {openState === 'loading' && <div className={css.hint}>{t('chat.loadingHistory')}</div>}
           {openState === 'error' && openError !== null && (
@@ -435,6 +504,15 @@ export function ChatView({
               {renderSlot('conversation.chat.empty', {})}
             </div>
           )}
+          {visibleOrder.length > 80 && (
+            <div className={css.older}>
+              <button type="button" onClick={() => { window.setFullHistory(!window.fullHistory) }}>
+                {t(window.fullHistory ? 'chat.windowedHistory' : 'chat.fullHistory')}
+              </button>
+              {window.fullHistory && <span>{t('chat.fullHistoryHint')}</span>}
+              {window.pinnedCount > 0 && <span>{t('chat.retainedRows', { n: window.pinnedCount })}</span>}
+            </div>
+          )}
           {hasMore && (
             <div className={css.older}>
               <button type="button" disabled={loadingOlder} onClick={loadOlderAnchored}>
@@ -442,22 +520,28 @@ export function ChatView({
               </button>
             </div>
           )}
-          {visibleOrder.map(nodeKey => (
-            <ChatNodeSeat
-              key={nodeKey}
-              nodeKey={nodeKey}
-              useSession={useSession}
-              selectedCallId={selectedCallId}
-              cwd={cwd}
-              openFile={requestOpenFile}
-              inspectCall={inspectCall}
-              forkAt={forkAt}
-              renderMessageImages={renderMessageImages}
-              fileMentions={fileMentions}
-              renderSlot={renderSlot}
-              t={t}
-            />
-          ))}
+          <div ref={window.rowsRef} className={window.enabled ? css.virtualRows : css.rows}
+            style={window.enabled ? { height: window.virtualizer.getTotalSize() } : undefined}>
+            {window.items.map(({ key: nodeKey, index, top }) => (
+              <ChatNodeSeat
+                key={`${sessionId}:${nodeKey}`}
+                nodeKey={nodeKey}
+                virtualIndex={window.enabled ? index : undefined}
+                measure={window.enabled ? window.virtualizer.measureElement : undefined}
+                top={top}
+                useSession={useSession}
+                selectedCallId={selectedCallId}
+                cwd={cwd}
+                openFile={requestOpenFile}
+                inspectCall={inspectCall}
+                forkAt={forkAt}
+                renderMessageImages={renderMessageImages}
+                fileMentions={fileMentions}
+                renderSlot={renderSlot}
+                t={t}
+              />
+            ))}
+          </div>
           {/* No pending placeholders: questions (ui-user-questions) and approvals
               (ApprovalPanel) both take over the composer, so a flow card would
               double-render the same wait. */}

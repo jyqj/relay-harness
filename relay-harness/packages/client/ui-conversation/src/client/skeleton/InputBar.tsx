@@ -22,10 +22,10 @@ import type {} from '@relay-harness/rlh-goal/client'
 // api-remotes import already places it in every client program.
 import type { Translate } from '@relay-harness/rlh-client-ui-slots'
 import type { ComposerBarProps } from '../contract/slots.ts'
-import { deriveDecorations } from '../input/decorations.ts'
-import type { DraftDecorations } from '../input/decorations.ts'
+import { deriveDecorations } from '../draft-decorations.ts'
+import type { DraftDecorations } from '../draft-decorations.ts'
 import { attachmentErrorText, imageSizeText } from '../image-labels.ts'
-import { ReferenceIcon } from '../reference/ReferenceIcon.tsx'
+import { ReferenceIcon } from '../ReferenceIcon.tsx'
 import { ContextMeter } from './ContextMeter.tsx'
 import { PermissionSelect } from './PermissionSelect.tsx'
 import { isSafariBrowser, repairSafariTextareaLayout } from './safari.ts'
@@ -152,6 +152,11 @@ export function InputBar({
   // the composer asking for the only thing it prevents. The other reasons to
   // be disabled do lock it — there is no session to choose a model for.
   const modelSeatLocked = removed || inert || !live
+  // Presentation-layer guard only: it blocks interactive editing while an
+  // attempt is adjudicating/submitting. The machine itself still accepts
+  // busy-period draft writes (external actions.setDraft callers) — they land
+  // on the next send, since the in-flight attempt froze its own draft and
+  // occurrence table at enter time.
   const machineBusy = input?.phase === 'adjudicating' || input?.phase === 'submitting'
   // The no-workspace textarea remains the resident DOM node but acts as the
   // existing picker trigger. Message controls stay locked until a Session

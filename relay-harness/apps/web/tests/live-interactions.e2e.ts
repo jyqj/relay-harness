@@ -74,7 +74,7 @@ describe('web e2e: live-turn interactions (cancel / error / retry)', () => {
   })
 
   /** Boot scaffold + page with an optional override doc materialized per run. */
-  async function launch(buildOverride?: (sidecarHome: string) => ReplayOverrideDoc): Promise<void> {
+  async function launch(buildOverride?: (sidecarHome: string) => ReplayOverrideDoc, developer = false): Promise<void> {
     sessionEvents = []
     let overridePath: string | undefined
     if (buildOverride !== undefined) {
@@ -89,6 +89,7 @@ describe('web e2e: live-turn interactions (cancel / error / retry)', () => {
       replayFixture: FIXTURE,
       ...(overridePath === undefined ? {} : { replayOverride: overridePath }),
     })
+    if (developer) await scaffold.ctx.productMode.set({ mode: 'developer' })
     scaffold.ctx.on('session/event', (_session, event: SessionEvent) => { sessionEvents.push(event) })
     browser = await chromium.launch()
     page = await newEnglishPage(browser)
@@ -175,7 +176,12 @@ describe('web e2e: live-turn interactions (cancel / error / retry)', () => {
     expect(await page.locator('body').textContent()).not.toContain('sk-preview-secret')
     const snapshot = await captureStableAria(page, '[class*="centerCol"]', scaffold!.workspaceCwd)
     await compareOrRefreshGolden(ERROR_EXPECTED, snapshot, MODE)
-    await page.getByRole('tab', { name: 'Trajectory' }).click()
+    await page.getByRole('button', { name: 'Settings', exact: true }).click()
+    const developerMode = page.getByRole('dialog', { name: 'Settings' }).getByRole('switch', { name: 'Developer Mode' })
+    await developerMode.check()
+    await expect.poll(() => developerMode.isEnabled()).toBe(true)
+    await page.keyboard.press('Escape')
+    await page.getByRole('banner').getByRole('tab', { name: 'Trajectory' }).click()
     const requestMarker = page.locator('tr[data-request-only="true"]').last()
       .getByRole('button', { name: /Request #/ })
     await requestMarker.click()
@@ -188,10 +194,10 @@ describe('web e2e: live-turn interactions (cancel / error / retry)', () => {
   it.skipIf(MODE === 'record')('keeps a terminal request marker inside the trajectory table', async () => {
     await launch(() => ({
       patches: [{ at: 0, entry: { kind: 'throw', chunks: [], message: AUTH_PROVIDER_MESSAGE, code: 'AUTH' } }],
-    }))
+    }), true)
     const { settled } = await sendPrompt()
     await settled
-    await page.getByRole('tab', { name: 'Trajectory' }).click()
+    await page.getByRole('banner').getByRole('tab', { name: 'Trajectory' }).click()
     // The boundary marker row itself is a 0-height hairline except at the
     // table tail; the marker button is absolutely positioned and stays
     // visible, so wait on it directly.

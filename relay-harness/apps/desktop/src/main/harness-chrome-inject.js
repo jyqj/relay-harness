@@ -1,3 +1,4 @@
+// @ts-check
 (() => {
   const STYLE_ID = 'rlhd-shell-integrated-chrome';
   const CONTROLS_ID = 'rlhd-shell-controls';

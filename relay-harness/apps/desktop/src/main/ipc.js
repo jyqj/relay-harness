@@ -1,3 +1,4 @@
+// @ts-check
 const fs = require('node:fs');
 const { ipcMain, dialog, app, shell, nativeTheme } = require('electron');
 const { formatBootLogDump, saveBootLog } = require('./boot-log-dump');
@@ -115,7 +116,9 @@ function registerIpc({ rlh, harness, startHarness, remote }) {
   handle('shell:save-config', CONFIG_SURFACES, async (_event, patch) => {
     const safePatch = normalizeRendererConfigPatch(patch || {});
     const next = saveConfig(safePatch);
-    app.setLoginItemSettings({ openAtLogin: Boolean(next.openAtLogin) });
+    if (Object.prototype.hasOwnProperty.call(safePatch, 'openAtLogin') && process.env.RLH_SMOKE !== '1') {
+      app.setLoginItemSettings({ openAtLogin: Boolean(next.openAtLogin) });
+    }
     if (Object.prototype.hasOwnProperty.call(safePatch, 'theme')) {
       applyAppTheme();
     }

@@ -11,7 +11,8 @@
  */
 
 import { randomBytes } from 'node:crypto'
-import { lstat, mkdir, rename, rm, writeFile } from 'node:fs/promises'
+import { lstat, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
+import { hostname } from 'node:os'
 import { dirname } from 'node:path'
 
 /**
@@ -88,16 +89,52 @@ const LOCK_RETRY_MAX_MS = 200
 const LOCK_TIMEOUT_MS = 2_000
 
 /**
+ * Remove the lock only when this host owns it and its recorded owner pid
+ * provably died: hostname equality confines recovery to this machine, and
+ * `ESRCH` from `process.kill(pid, 0)` proves the owner no longer exists. Every
+ * other outcome — an unreadable or malformed payload, a foreign host, an alive
+ * owner (`EPERM` means the pid exists under another user), or another contender
+ * having replaced the lock — keeps the lock in place for the caller's backoff,
+ * so contention still fails loud at the deadline. A pid reused after a reboot
+ * is treated as alive and stays an operator action.
+ * @param lockPath - the lock sibling to inspect and maybe remove.
+ * @returns whether the lock was removed; the caller retries immediately.
+ */
+async function removeStaleSelfHostedLock(lockPath: string): Promise<boolean> {
+  let payload: string
+  try {
+    payload = await readFile(lockPath, 'utf8')
+  } catch {
+    // The lock vanished between contention and this read; just retry the create.
+    return false
+  }
+  const [pidText, lockHost] = payload.split('\n')
+  const pid = Number(pidText)
+  if (lockHost !== hostname() || !Number.isInteger(pid)) return false
+  try {
+    process.kill(pid, 0)
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'ESRCH') return false
+    await rm(lockPath, { force: true })
+    return true
+  }
+  return false
+}
+
+/**
  * Hold the cross-process writer lock for `filename` around one operation. The
- * lock is a `wx`-created sibling (`<filename>.lock`); paired with the
- * rename-based commit of {@link writeFileAtomic}, readers stay lock-free and
- * only writers contend. `EEXIST` is contention directly; an `EPERM` is
- * contention only when a fresh `lstat` confirms the lock path exists, covering
- * Windows exclusive-create behavior without hiding an unrelated permission
- * failure. Contention backs off exponentially and fails with a timed-out error
- * after the deadline. The contender never removes an existing lock because
- * file age cannot prove that its owner stopped; orphan recovery is an operator
- * action. The parent directory must exist.
+ * lock is a `wx`-created sibling (`<filename>.lock`) recording the owner pid
+ * and host; paired with the rename-based commit of {@link writeFileAtomic},
+ * readers stay lock-free and only writers contend. `EEXIST` is contention
+ * directly; an `EPERM` is contention only when a fresh `lstat` confirms the
+ * lock path exists, covering Windows exclusive-create behavior without hiding
+ * an unrelated permission failure. Contention backs off exponentially and
+ * fails with a timed-out error after the deadline. A contender removes the
+ * existing lock only for the one provably stale form — same-host hostname
+ * with a dead owner pid (see {@link removeStaleSelfHostedLock}) — and
+ * otherwise never guesses: a lock it cannot prove abandoned keeps failing
+ * acquisition until the deadline, leaving recovery to an operator. The parent
+ * directory must exist.
  * @param filename - the file whose writers this lock serializes.
  * @param operation - the read-render-commit cycle to run while holding the lock.
  * @returns the operation's result; the lock releases on both outcomes.
@@ -111,11 +148,12 @@ export async function withFileLock<T>(
   let delay = LOCK_RETRY_INITIAL_MS
   for (;;) {
     try {
-      await writeFile(lockPath, `${process.pid}\n`, { mode: 0o600, flag: 'wx' })
+      await writeFile(lockPath, `${process.pid}\n${hostname()}\n`, { mode: 0o600, flag: 'wx' })
       break
     } catch (error) {
       if (!await isLockContention(error, lockPath)) throw error
     }
+    if (await removeStaleSelfHostedLock(lockPath)) continue
     if (Date.now() >= deadline) {
       throw new Error(`atomic-write: timed out waiting for the writer lock at ${lockPath}`)
     }

@@ -76,9 +76,7 @@ for (const [name, record] of Object.entries(manifest)) {
     assert.deepEqual(broken, [], `${name} declares entry points that are not vendored: ${broken.join(', ')}`);
   });
 
-  test(`vendored ${name}'s lockfile resolves every dependency it declares`, {
-    skip: installablePlugins().includes(name) ? false : `${name} vendors no package-lock.json`,
-  }, () => {
+  test(`vendored ${name}'s lockfile resolves every dependency it declares`, () => {
     const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
     const resolved = new Set(lockedProductionInstall(name).map(entry => entry.slice(0, entry.lastIndexOf('@'))));
     const unresolved = Object.keys(pkg.dependencies ?? {}).filter(dependency => !resolved.has(dependency));
@@ -100,3 +98,10 @@ for (const [name, record] of Object.entries(manifest)) {
     }
   });
 }
+
+
+test('a lock does not make a vendored plugin with an explicitly absent Host half installable', () => {
+  assert.ok(fs.existsSync(path.join(vendorDir, 'rlhbot', 'package-lock.json')));
+  assert.ok(missingSubtrees('rlhbot').includes('lib'));
+  assert.equal(installablePlugins().includes('rlhbot'), false);
+});

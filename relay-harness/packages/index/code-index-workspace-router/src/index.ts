@@ -233,9 +233,20 @@ export class CodeIndexWorkspaceRouter extends CodeIndex {
     return databasePathFor(this.resolved.databaseDirectory, workspaceRoot)
   }
 
-  private async run<T>(root: string, operation: (runtime: LocalCodeIndexRuntime) => T | Promise<T>): Promise<T> {
+  /** Check current shutdown state across acquisition awaits. */
+  private assertNotDisposed(): void {
     if (this.disposed) throw new Error('code-index-workspace-router is disposed')
-    const entry = await this.acquire(root)
+  }
+
+  private async run<T>(root: string, operation: (runtime: LocalCodeIndexRuntime) => T | Promise<T>): Promise<T> {
+    this.assertNotDisposed()
+    let entry: WorkspaceEntry
+    do {
+      entry = await this.acquire(root)
+      this.assertNotDisposed()
+      // Eviction may win the await continuation after acquire found a live entry.
+      // Reserve only an entry still published by this router, without another await.
+    } while (entry.closing || this.entries.get(root) !== entry)
     entry.active += 1
     entry.lastUsedAt = Date.now()
     try {
@@ -275,7 +286,7 @@ export class CodeIndexWorkspaceRouter extends CodeIndex {
     })
     const watcher = new TreeWatcher(root, (paths) => {
       invalidator.schedule(paths?.some(path => path.split('/').at(-1) === '.gitignore') === true ? undefined : paths)
-    })
+    }, () => { runtime.setWatcherDegraded(true) })
     Object.assign(entry, {
       root,
       databasePath: this.databasePathFor(root),
@@ -332,6 +343,9 @@ export class CodeIndexWorkspaceRouter extends CodeIndex {
 
   private queueEviction(forceIdle: boolean): Promise<void> {
     this.evictionChain = this.evictionChain.then(() => this.collect(forceIdle), () => this.collect(forceIdle))
+    // Timer and operation-finally callers do not await collection. Observe their
+    // failures while preserving the rejecting promise for explicit callers.
+    void this.evictionChain.catch(() => { this.ctx.logger.warn('code-index-workspace-router: eviction failed') })
     return this.evictionChain
   }
 
@@ -380,18 +394,20 @@ export class CodeIndexWorkspaceRouter extends CodeIndex {
     this.evictionTimer.unref()
   }
 
+  /** The owning Cordis effect invokes this private disposer once per instance. */
   private async disposeRouter(): Promise<void> {
-    if (this.disposed) return
     this.disposed = true
     if (this.evictionTimer !== undefined) clearTimeout(this.evictionTimer)
     this.evictionTimer = undefined
     await Promise.allSettled(this.opening.values())
     const entries = [...this.entries.values()]
-    for (const entry of entries) {
+    const settled = await Promise.allSettled(entries.map(async (entry) => {
       while (entry.active > 0) await new Promise(resolve => setTimeout(resolve, 1))
       await this.closeEntryForDispose(entry)
-    }
-    await Promise.allSettled(this.closing.values())
+    }))
+    const closing = await Promise.allSettled(this.closing.values())
+    const failures = [...settled, ...closing].flatMap(result => result.status === 'rejected' ? [result.reason as unknown] : [])
+    if (failures.length > 0) throw new AggregateError(failures, 'code-index-workspace-router shutdown failed')
   }
 
   private async closeEntryForDispose(entry: WorkspaceEntry): Promise<void> {

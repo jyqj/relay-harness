@@ -1,32 +1,28 @@
 - banner:
   - navigation "Session hierarchy":
     - button "Reply with a one-sentence description" [disabled]
-  - img
-  - text: Standard mode
-  - tablist:
-    - tab "Chat" [selected]
-    - tab "Trajectory"
+  - button "Session Tree"
+  - button "Inspect context used for this session": Context 1
 - text: Reply with a one-sentence description of event sourcing, then stop. {{clock}}
 - button "Copy":
   - img
 - button "Edit" [disabled]:
   - img
 - text: Wait for the current response to finish before editing
+- button "Context injection code-index":
+  - img
+  - img
+  - text: Context injection code-index
 - button "Context injection @relay-harness/rlh-system-prompt":
   - img
   - img
   - text: Context injection @relay-harness/rlh-system-prompt
-- button "Context injection skill-catalog":
-  - img
-  - img
-  - text: Context injection skill-catalog
 - paragraph: partial
 - status: Deep diving...
 - textbox "Message the agent"
 - button "Commands":
   - img
-- 'button "Access mode, current: Workspace Write"': Workspace Write
-- button "Select model, current DeepSeek-V4-Flash":
-  - text: DeepSeek-V4-Flash
+- 'button "Access mode, current: Standard"': Standard
+- button "Enhance prompt" [disabled]:
   - img
 - button "Stop generating"

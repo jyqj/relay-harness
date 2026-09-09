@@ -364,7 +364,7 @@ describe('composing from a broken preset', () => {
   it('refuses the standing key a cold reader would mount by', async () => {
     const scoped = await rosterWith('rows: not-a-list\n')
 
-    await expect(scoped.agentPresets.standingKeyFor('damaged'))
+    await expect(scoped.agentPresets.acquireStandingScope('damaged'))
       .rejects.toThrow(/top-level list of plugin rows/)
   })
 
@@ -690,14 +690,18 @@ describe('editing a composition file', () => {
   it('hands a host reader the standing key without starting an agent', async () => {
     const { scoped } = await editable('cold-read')
 
-    const key = await scoped.agentPresets.standingKeyFor('cold-read')
+    const lease = await scoped.agentPresets.acquireStandingScope('cold-read')
+    const key = lease.key
 
     // The mount exists for the reader; no agent, session, or turn started.
     expect(key).toEqual({ agentPreset: 'cold-read' })
     expect(livePresetMounts().filter(mount => mount.presetId === 'cold-read')).toHaveLength(1)
     expect(scoped.agents.get(SessionId('cold-read'))).toBeUndefined()
     // A second reader resolves the same generation, not a new mount.
-    expect(await scoped.agentPresets.standingKeyFor('cold-read')).toBe(key)
+    const second = await scoped.agentPresets.acquireStandingScope('cold-read')
+    expect(second.key).toBe(key)
+    await second.release()
+    await lease.release()
   })
 
   it('refuses to mount a generation it cannot stamp', async () => {
@@ -733,4 +737,134 @@ describe('editing a composition file', () => {
 
     expect(livePresetMounts().filter(mount => mount.presetId === 'stale')).toHaveLength(1)
   })
+
+  it('reclaims a superseded generation only after parent, child, and cold reader release it', async () => {
+    const { scoped, path } = await editable('held-generation')
+    const closed = join(dirname(path), 'watcher-closed.txt')
+    await writeFile(closed, '')
+    const watched = (generation: string) => rowFor(generation)
+      + `- id: watcher\n  name: ${join(FIXTURES, 'plugins', 'watched.js')}\n  config:\n    directory: ${dirname(path)}\n    closed: ${closed}\n    generation: ${generation}\n`
+    await writeFile(path, watched('old'))
+    const parent = await scoped.agents.create({ sessionId: SessionId('held-parent'), setup: async (agentCtx: Context) => {
+      await scoped.agentPresets.mount(agentCtx, 'held-generation')
+    } })
+    const child = await scoped.agents.create({ sessionId: SessionId('held-child'), setup: (agentCtx: Context) => {
+      scoped.agentPresets.composeFrom(agentCtx, parent.agent.ctx)
+    } })
+    const reader = await scoped.agentPresets.acquireStandingScope('held-generation')
+    await writeFile(path, watched('newer'))
+    const successor = await scoped.agentPresets.acquireStandingScope('held-generation')
+    expect(successor.key).not.toBe(reader.key)
+    expect(livePresetMounts().filter(mount => mount.presetId === 'held-generation')).toHaveLength(2)
+    await parent.dispose()
+    expect(toolNames(scoped, child.agent)).toEqual(['old'])
+    expect(await readFile(closed, 'utf8')).toBe('')
+    await scoped.agentPresets.recompose(child.agent.ctx, 'held-generation')
+    expect(toolNames(scoped, child.agent)).toEqual(['newer'])
+    expect(await readFile(closed, 'utf8')).toBe('')
+    await reader.release()
+    await reader.release()
+    expect(await readFile(closed, 'utf8')).toBe('old\n')
+    expect(livePresetMounts().filter(mount => mount.presetId === 'held-generation')).toHaveLength(1)
+    await successor.release()
+    await child.dispose()
+    await scoped.fiber.dispose()
+    expect(await readFile(closed, 'utf8')).toBe('old\nnewer\n')
+  })
+
+  it('keeps one cached generation across repeated cold-read edit cycles', async () => {
+    const { scoped, path } = await editable('cold-edit-loop')
+    for (let index = 0; index < 5; index += 1) {
+      await writeFile(path, rowFor(`version-${'x'.repeat(index)}`))
+      const [left, right] = await Promise.all([
+        scoped.agentPresets.acquireStandingScope('cold-edit-loop'),
+        scoped.agentPresets.acquireStandingScope('cold-edit-loop'),
+      ])
+      expect(left.key).toBe(right.key)
+      expect(livePresetMounts().filter(mount => mount.presetId === 'cold-edit-loop')).toHaveLength(1)
+      await left.release()
+      await right.release()
+    }
+    await scoped.fiber.dispose()
+  })
+
+  it('retains an inherited retired generation independently after the parent exits', async () => {
+    const { scoped, path } = await editable('retired-inherited')
+    const parent = await scoped.agents.create({ sessionId: SessionId('retired-parent'), setup: async (agentCtx: Context) => {
+      await scoped.agentPresets.mount(agentCtx, 'retired-inherited')
+    } })
+    await writeFile(path, rowFor('replacement'))
+    const current = await scoped.agentPresets.acquireStandingScope('retired-inherited')
+    const child = await scoped.agents.create({ sessionId: SessionId('retired-child'), setup: (agentCtx: Context) => {
+      scoped.agentPresets.composeFrom(agentCtx, parent.agent.ctx)
+    } })
+    await parent.dispose()
+    expect(toolNames(scoped, child.agent)).toEqual(['before'])
+    expect(livePresetMounts().filter(mount => mount.presetId === 'retired-inherited')).toHaveLength(2)
+    await child.dispose()
+    expect(livePresetMounts().filter(mount => mount.presetId === 'retired-inherited')).toHaveLength(1)
+    await current.release()
+    await scoped.fiber.dispose()
+  })
+
+  it.each(['mount', 'composeFrom'] as const)('a rejected duplicate %s releases its temporary generation hold', async (operation) => {
+    const id = `failed-join-${operation.toLowerCase()}`
+    const { scoped, path } = await editable(id)
+    const parent = await scoped.agents.create({ sessionId: SessionId(`parent-${operation}`), setup: async (agentCtx: Context) => {
+      await scoped.agentPresets.mount(agentCtx, id)
+    } })
+    if (operation === 'mount') await expect(scoped.agentPresets.mount(parent.agent.ctx, id)).rejects.toThrow(/already bound/)
+    else expect(() => scoped.agentPresets.composeFrom(parent.agent.ctx, parent.agent.ctx)).toThrow(/already bound/)
+    expect(toolNames(scoped, parent.agent)).toEqual(['before'])
+    await writeFile(path, rowFor('after-failed-join'))
+    const next = await scoped.agentPresets.acquireStandingScope(id)
+    expect(livePresetMounts().filter(mount => mount.presetId === id)).toHaveLength(2)
+    await parent.dispose()
+    expect(livePresetMounts().filter(mount => mount.presetId === id)).toHaveLength(1)
+    await next.release()
+    await scoped.fiber.dispose()
+  })
+
+  it('removing a preset while a cold reader holds it retires only after the exact reader releases', async () => {
+    const { scoped } = await editable('removed-held')
+    const lease = await scoped.agentPresets.acquireStandingScope('removed-held')
+    await scoped.agentPresets.remove('removed-held')
+    expect(livePresetMounts().filter(mount => mount.presetId === 'removed-held')).toHaveLength(1)
+    expect(scoped.tools.schemas(lease.key).map(tool => tool.name)).toEqual(['before'])
+    await expect(scoped.agentPresets.acquireStandingScope('removed-held')).rejects.toThrow()
+    await lease.release()
+    await lease.release()
+    expect(livePresetMounts().filter(mount => mount.presetId === 'removed-held')).toHaveLength(0)
+    await scoped.fiber.dispose()
+  })
+
+  it('a live read retains the old generation and original exact layer across recompose and agent disposal', async () => {
+    const id = 'live-read-retained'
+    const { scoped, path } = await editable(id)
+    const handle = await scoped.agents.create({ sessionId: SessionId('live-reading-agent'), setup: async (agentCtx: Context) => {
+      await scoped.agentPresets.mount(agentCtx, id)
+      agentCtx.tools.register({
+        name: 'agent-only', description: 'exact-scope tool', parameters: { type: 'object', properties: {} },
+        output: { schema: { type: 'string' }, render: (_args, value) => [{ type: 'text', text: JSON.stringify(value) }] },
+        execute: async () => 'own',
+      })
+      agentCtx.tools.restrict({ allow: ['before'] })
+    } })
+    const read = scoped.agentPresets.acquireAgentScope(handle.agent.ctx)
+    if (read === undefined) throw new Error('live generation was not held')
+    expect(scoped.tools.schemas(read.key).map(tool => tool.name).sort()).toEqual(['agent-only', 'before'])
+    await writeFile(path, rowFor('after-live-read'))
+    await scoped.agentPresets.recompose(handle.agent.ctx, id)
+    expect(toolNames(scoped, handle.agent)).toEqual(['agent-only'])
+    expect(scoped.tools.schemas(read.key).map(tool => tool.name).sort()).toEqual(['agent-only', 'before'])
+    await handle.dispose()
+    // Agent-owned entries may disappear; the held ancestry never switches to the new preset.
+    expect(scoped.tools.schemas(read.key).map(tool => tool.name)).toEqual(['before'])
+    expect(livePresetMounts().filter(mount => mount.presetId === id)).toHaveLength(2)
+    await read.release()
+    await read.release()
+    expect(livePresetMounts().filter(mount => mount.presetId === id)).toHaveLength(1)
+    await scoped.fiber.dispose()
+  })
+
 })

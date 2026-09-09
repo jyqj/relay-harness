@@ -16,6 +16,8 @@ Open entries are bounded by `maxOpenWorkspaces` and `idleEvictMs`. An operation 
 
 Code Context binds once with `StepContextInput.cwd` and uses the same face for candidate search and hydration. Every code-index model tool binds from `exec.agent.session.header.cwd`; the refresh busy set is workspace-keyed. Code Index Center Remote accepts `sessionId`, resolves the attached Host Session and its durable cwd, and never accepts a Client filesystem path. The Client status cache is Session-keyed and the Settings page subscribes to Session selection changes.
 
+The single registered Cordis effect owns repeated-disposal suppression; the router’s disposed flag closes operation admission rather than acting as a second cleanup owner. Workspace cleanup failures are independent: one failing disposer must not keep other SQLite handles and watchers alive. Shutdown aggregates failures after all selected entries settle. Acquiring an entry and reserving its lease are separated by an asynchronous continuation. The router therefore verifies the published instance and shutdown state at reservation, retrying acquisition after a concurrent eviction. Finding an entry earlier does not authorize use after it leaves routing.
+
 ## Alternatives considered
 
 - **Add `workspaceRoot` to every search/status/refresh payload** — rejected because it duplicates scope across the vocabulary and would let browser Clients submit filesystem roots; one immutable bound face makes cross-call hydration drift harder.

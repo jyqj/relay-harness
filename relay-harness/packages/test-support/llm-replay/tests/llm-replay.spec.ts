@@ -463,6 +463,7 @@ describe('loadReplayScript', () => {
       { doc: [{ kind: 'throw', chunks: [], message: 'nope', code: '' }], message: /code must be a non-empty string/ },
       { doc: [{ kind: 'hang', extra: true }], message: /invalid hang-entry fields/ },
       { doc: [{ kind: 'hang', readyFile: 1 }], message: /readyFile must be a non-empty string/ },
+      { doc: [{ kind: 'hang', beforeStart: 'yes' }], message: /beforeStart must be a boolean/ },
       { doc: [{ kind: 'bogus' }], message: /unknown kind/ },
     ]
     for (const { doc, message } of invalid) {
@@ -716,6 +717,24 @@ describe('installLlmReplay (through the real LlmRuntime)', () => {
     expect((await iterator.next()).value).toMatchObject({ type: 'text-delta' })
     controller.abort()
     await expect(iterator.next()).rejects.toThrow('aborted')
+  })
+
+  it('a beforeStart hang yields nothing: the request stays pending until aborted', async () => {
+    writeFileSync(file, sessionJsonl([]), 'utf8')
+    const overrideFile = join(dir, 'replay.override.json')
+    writeFileSync(overrideFile, JSON.stringify([{ kind: 'hang', beforeStart: true }]), 'utf8')
+    const ctx = new Context()
+    await ctx.plugin(LlmRuntime)
+    installLlmReplay(ctx, { file, overrideFile })
+
+    const controller = new AbortController()
+    const iterator = ctx.llm.stream({ provider: 'm', model: 'm', messages: [], signal: controller.signal })[Symbol.asyncIterator]()
+    // The FIRST pull must be the hang itself: if any prefix chunk existed it
+    // would resolve with a chunk, so a rejection here proves the stream stayed
+    // pending with no output until the abort.
+    const firstPull = iterator.next()
+    controller.abort()
+    await expect(firstPull).rejects.toThrow('aborted')
   })
 
   it('fails loud when the script is exhausted', async () => {

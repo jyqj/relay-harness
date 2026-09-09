@@ -90,7 +90,7 @@ export type SessionEvent<T extends SessionEventType = SessionEventType> = {
 }[T]
 ```
 
-Sources: [`packages/core/session/src/types.ts:358`](../packages/core/session/src/types.ts) · [`packages/core/session/src/types.ts:365`](../packages/core/session/src/types.ts) · [`packages/core/session/src/types.ts:394`](../packages/core/session/src/types.ts) · [`packages/core/session/src/types.ts:426`](../packages/core/session/src/types.ts)
+Sources: [`packages/core/session/src/types.ts:364`](../packages/core/session/src/types.ts) · [`packages/core/session/src/types.ts:371`](../packages/core/session/src/types.ts) · [`packages/core/session/src/types.ts:400`](../packages/core/session/src/types.ts) · [`packages/core/session/src/types.ts:432`](../packages/core/session/src/types.ts)
 
 ## Events
 
@@ -591,7 +591,7 @@ Source: [`packages/context/prompt-enhancement-llm/src/index.ts:57`](../packages/
 'request/context': RequestContext
 ```
 
-Source: [`packages/core/session/src/types.ts:331`](../packages/core/session/src/types.ts)
+Source: [`packages/core/session/src/types.ts:337`](../packages/core/session/src/types.ts)
 
 <a id="requestheader--log-only"></a>
 
@@ -605,7 +605,7 @@ Source: [`packages/core/session/src/types.ts:331`](../packages/core/session/src/
 'request/header': { header: EpochHeader; reason: RequestHeaderReason }
 ```
 
-Source: [`packages/core/session/src/types.ts:326`](../packages/core/session/src/types.ts)
+Source: [`packages/core/session/src/types.ts:332`](../packages/core/session/src/types.ts)
 
 ### `sandbox/*`
 
@@ -680,7 +680,7 @@ Source: [`packages/schedule/schedule/src/types.ts:219`](../packages/schedule/sch
 'session/end-seed': Record<string, never>
 ```
 
-Source: [`packages/core/session/src/types.ts:354`](../packages/core/session/src/types.ts)
+Source: [`packages/core/session/src/types.ts:360`](../packages/core/session/src/types.ts)
 
 <a id="sessiontitle--log-only"></a>
 
@@ -746,7 +746,7 @@ Source: [`packages/core/session/src/types.ts:272`](../packages/core/session/src/
 'subagent/delivery-accepted': SubagentDeliveryAcceptedData
 ```
 
-Source: [`packages/subagent/subagent/src/continuation.ts:120`](../packages/subagent/subagent/src/continuation.ts)
+Source: [`packages/subagent/subagent/src/continuation.ts:121`](../packages/subagent/subagent/src/continuation.ts)
 
 <a id="subagentdelivery-claimed--log-only"></a>
 
@@ -757,7 +757,7 @@ Source: [`packages/subagent/subagent/src/continuation.ts:120`](../packages/subag
 'subagent/delivery-claimed': SubagentDeliveryClaimedData
 ```
 
-Source: [`packages/subagent/subagent/src/continuation.ts:122`](../packages/subagent/subagent/src/continuation.ts)
+Source: [`packages/subagent/subagent/src/continuation.ts:123`](../packages/subagent/subagent/src/continuation.ts)
 
 <a id="subagentdescriptor--log-only"></a>
 
@@ -785,7 +785,7 @@ Source: [`packages/subagent/subagent/src/descriptor.ts:37`](../packages/subagent
 'subagent/report-accepted': SubagentReportAcceptedData
 ```
 
-Source: [`packages/subagent/subagent/src/continuation.ts:124`](../packages/subagent/subagent/src/continuation.ts)
+Source: [`packages/subagent/subagent/src/continuation.ts:125`](../packages/subagent/subagent/src/continuation.ts)
 
 <a id="subagentreport-delivered--log-only"></a>
 
@@ -796,7 +796,7 @@ Source: [`packages/subagent/subagent/src/continuation.ts:124`](../packages/subag
 'subagent/report-delivered': SubagentReportDeliveredData
 ```
 
-Source: [`packages/subagent/subagent/src/continuation.ts:126`](../packages/subagent/subagent/src/continuation.ts)
+Source: [`packages/subagent/subagent/src/continuation.ts:127`](../packages/subagent/subagent/src/continuation.ts)
 
 ### `team/*`
 
@@ -870,7 +870,7 @@ Source: [`packages/experimental/agent-team/src/types.ts:208`](../packages/experi
 
 Types: [TodoItem](subsystems/session.md)
 
-Source: [`packages/core/session/src/types.ts:321`](../packages/core/session/src/types.ts)
+Source: [`packages/core/session/src/types.ts:327`](../packages/core/session/src/types.ts)
 
 ### `tool/*`
 
@@ -961,6 +961,12 @@ Source: [`packages/core/tools/src/types.ts:40`](../packages/core/tools/src/types
   message: ToolResultMessage
   error?: { name: string; code: string }
   meta?: JsonValue
+  /**
+   * Successful root tool's declared mutation paths captured at execution time.
+   * Empty means captured with no declared output; absent means unindexed legacy or failed capture.
+   * This does not enumerate shell or nested Code Mode side effects. Presentation-only; never model input.
+   */
+  producedFiles?: readonly string[]
 }
 ```
 
@@ -1111,3 +1117,16 @@ Source: [`packages/llm/llm-vision-fallback/src/index.ts:54`](../packages/llm/llm
 ```
 
 Source: [`packages/web/web-search-deepseek/src/provider.ts:83`](../packages/web/web-search-deepseek/src/provider.ts)
+
+### `work/*`
+
+<a id="workaccepted--log-only"></a>
+
+#### `work/accepted` — log-only
+
+```ts persistence-catalog
+/** User acceptance of an exact prior log prefix, never model verification. */
+'work/accepted': { readonly reviewedThroughSeq: number; readonly actor: 'host-client' }
+```
+
+Source: [`packages/host/work-results/src/types.ts:79`](../packages/host/work-results/src/types.ts)

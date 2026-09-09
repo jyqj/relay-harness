@@ -1,6 +1,6 @@
 import { describe, expect, expectTypeOf, it } from 'vitest'
 import { Context } from '@relay-harness/cordis'
-import { bindScopeParent, carrierKeyOf, createScope, isScopeCarrier, scopeChainOf, scopeOf, scopeParentOf, scopeTarget } from '@relay-harness/rlh-scope'
+import { bindScopeParent, captureScopeReadView, carrierKeyOf, createScope, isScopeCarrier, scopeChainOf, scopeOf, scopeParentOf, scopeTarget } from '@relay-harness/rlh-scope'
 import type { Scope, Scoped } from '@relay-harness/rlh-scope'
 
 declare module '@relay-harness/cordis' {
@@ -218,5 +218,34 @@ describe('scope parent chain', () => {
     seen.length = 0
     emit.emit(scopeTarget({}, preset), 'probe/event')
     expect(seen.sort()).toEqual(['preset', 'untagged'])
+  })
+})
+
+
+describe('immutable registry read ancestry', () => {
+  it('retains original identities without following later rebindings or leaking its stored array', () => {
+    const agent = {}, previous = {}, next = {}
+    const binding = bindScopeParent(agent, previous)
+    const view = captureScopeReadView(agent)
+    binding.rebind(next)
+    expect(scopeChainOf(view)).toEqual([agent, previous])
+    expect(scopeParentOf(view)).toBe(previous)
+    scopeChainOf(view).pop()
+    expect(scopeChainOf(view)).toEqual([agent, previous])
+    expect(scopeChainOf(agent)).toEqual([agent, next])
+    expect(scopeChainOf(captureScopeReadView(view))).toEqual([agent, previous])
+    expect(scopeChainOf(captureScopeReadView(undefined))).toEqual([])
+    expect(Object.isFrozen(view)).toBe(true)
+  })
+
+  it('refuses a read token as a registration, parent, rebind target or dispatch identity', () => {
+    const ctx = new Context()
+    const view = captureScopeReadView({})
+    expect(() => createScope(ctx, view)).toThrow(/read view/)
+    expect(() => bindScopeParent(view, {})).toThrow(/read view/)
+    expect(() => bindScopeParent({}, view)).toThrow(/read view/)
+    const binding = bindScopeParent({}, {})
+    expect(() =>{  binding.rebind(view) }).toThrow(/read view/)
+    expect(() => scopeTarget({}, view)).toThrow(/read view/)
   })
 })

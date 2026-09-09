@@ -29,3 +29,5 @@
 ## 已知限制与暂缓事项
 
 - **脱离会话后，detached result 的 notice 回退到 console**：fire-and-forget 路径经 `SessionInput.notify` 把结果送到触发会话的 composer；会话销毁后，console 输出行是仅剩的呈现面。
+
+选择弹窗通过 `hooks.popup` 由渲染器绑定成 `usePopup`，另接收明确的选择、搜索、导航、确认及关闭回调。组件不再接收完整 PopupSelectController，也不自行创建外部订阅。Session 级控制器仍是状态和操作的唯一所有者。

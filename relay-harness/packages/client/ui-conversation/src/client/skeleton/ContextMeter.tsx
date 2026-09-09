@@ -10,7 +10,7 @@ import type { UseProjection } from '@relay-harness/rlh-client-runtime/client'
 import type {} from '@relay-harness/rlh-token-meter/client'
 import { Tooltip, usePresence } from '@relay-harness/rlh-client-ui-primitives'
 import type { ComposerBarProps } from '../contract/slots.ts'
-import { contextOccupancy, formatTokens } from '../chat/StatsLine.tsx'
+import { contextOccupancy, formatTokens } from '../context-metrics.ts'
 import css from './ContextMeter.module.css'
 
 /** Ring geometry: 14px viewBox, 2px stroke. */
