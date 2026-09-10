@@ -1,0 +1,42 @@
+name: Context development snapshot
+on:
+  push:
+    branches: [feat/native-context-tool-first]
+    paths: [.github/workflows/context-development-bootstrap.yml]
+permissions:
+  contents: read
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      RLH_TELEMETRY_DISABLED: '1'
+      ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.22.0
+          dest: ${{ runner.temp }}/setup-pnpm
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+      - name: Install locked development dependencies
+        working-directory: relay-harness
+        run: pnpm install --frozen-lockfile
+      - name: Package source and keyless development dependencies
+        run: |
+          mkdir -p /tmp/context-development-runtime
+          cp "$(command -v node)" /tmp/context-development-runtime/node
+          tar --exclude='./.git' --exclude='*/.env' --exclude='*/.env.local' -czf /tmp/context-development-source.tgz .
+          tar -czf /tmp/context-development-runtime.tgz -C /tmp/context-development-runtime .
+      - uses: actions/upload-artifact@v4
+        with:
+          name: context-development-snapshot
+          path: |
+            /tmp/context-development-source.tgz
+            /tmp/context-development-runtime.tgz
+          retention-days: 1
+          compression-level: 0
