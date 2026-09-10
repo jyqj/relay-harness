@@ -67,12 +67,12 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Install pinned Chromium
         run: pnpm --filter @relay-harness/rlh-web-frontend exec playwright install --with-deps chromium
-      - name: Build Host and Client with the installed configuration loader
+      - name: Build Host and Client through the ESM TypeScript hook
         run: |
           pnpm exec tsc -b tsconfig.host.json
-          pnpm exec tsdown --config-loader tsx --env.RLH_BUILD_FACE host
+          node --import tsx/esm node_modules/tsdown/dist/run.mjs --config-loader native --env.RLH_BUILD_FACE host
           pnpm exec tsc -b tsconfig.client.json
-          pnpm exec tsdown --config-loader tsx --env.RLH_BUILD_FACE client
+          node --import tsx/esm node_modules/tsdown/dist/run.mjs --config-loader native --env.RLH_BUILD_FACE client
           node packages/client/ui-user-terminal/scripts/copy-ghostty-assets.mjs
           pnpm run build:web
           node --import tsx/esm --input-type=module -e "import { writeClientBuildRecord, resolveClientBuildEnvironment } from './scripts/client-build-environment.ts'; writeClientBuildRecord(process.cwd(), resolveClientBuildEnvironment(process.env))"

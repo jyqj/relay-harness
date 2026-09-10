@@ -2,6 +2,8 @@
 
 Status: implemented
 
+[English](2026-09-10-work-facts-library-coverage.md) | 中文
+
 ## 问题
 
 Goal 阶段不能决定 Agent 或后台 Job 是否正在运行、人类输入是否待处理，以及结果是否已审核。单一完成标签会隐藏“Goal 已暂停但 Job 仍运行”等有效组合。资料库的多个分页可能重复扫描同一个 Session，所以页面计数不能累加为完整语料覆盖；最终页面正常也不能证明此前不可读的 Session 或未采集产物已经修复。

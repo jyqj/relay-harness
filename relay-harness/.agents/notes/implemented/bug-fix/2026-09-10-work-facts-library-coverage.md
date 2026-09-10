@@ -2,6 +2,8 @@
 
 Status: implemented
 
+English | [中文](2026-09-10-work-facts-library-coverage.zh.md)
+
 ## Problem
 
 A Goal phase does not determine whether an Agent or background Job is running, whether human input is pending, or whether a result has been reviewed. A single completion label conceals valid combinations such as a paused Goal with a running Job. Library pages can revisit the same Session, so their counts are not additive corpus coverage; a clean final page cannot establish that earlier unreadable Sessions or missing output capture were repaired.
