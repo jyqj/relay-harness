@@ -1,14 +1,20 @@
 /** Current-session Work summary derived only from existing client projections. */
 import type { HostObservable } from '@relay-harness/rlh-client-ui-slots'
 import type { WorkAcceptanceProjection } from '@relay-harness/rlh-host-work-results/types'
+import type { ConnectionHandle } from '@relay-harness/rlh-api-remotes/client'
+import { workAvailability } from './work-availability.ts'
 import type { ISessions } from '@relay-harness/rlh-client-runtime/client'
 
 /** Compact product projection rendered by the Work sidebar page. */
 export interface WorkSummary {
   readonly sessionId: string | undefined
+  /** Connection identity and local history readiness, independent from execution outcome. */
+  readonly epoch: number
+  readonly availability: ReturnType<typeof workAvailability>
   readonly goal: { readonly objective: string; readonly phase: string } | null
   readonly plan: { readonly active: boolean; readonly pending: boolean } | null
-  readonly jobs: { readonly total: number; readonly running: number }
+  /** Counts in the current Job snapshot, not an outcome for the overall task. */
+  readonly jobs: { readonly total: number; readonly running: number; readonly failed: number; readonly killed: number }
   readonly trajectoryRecords: number
   readonly deliverables: readonly string[]
   /** Null means the Host projection is unavailable; positive means older successes lacked capture. */
@@ -16,22 +22,25 @@ export interface WorkSummary {
   readonly acceptance: WorkAcceptanceProjection | null
   readonly approvals: number
   readonly questions: number
-  readonly completion: 'complete' | 'running' | 'idle' | 'paused' | 'blocked'
+  /** Independent of Goal phase; unknown means no loaded execution snapshot. */
+  readonly execution: 'running' | 'idle' | 'unknown'
   readonly cwd: string | undefined
 }
 
 const EMPTY: WorkSummary = {
   sessionId: undefined,
+  epoch: 0,
+  availability: 'disconnected',
   goal: null,
   plan: null,
-  jobs: { total: 0, running: 0 },
+  jobs: { total: 0, running: 0, failed: 0, killed: 0 },
   trajectoryRecords: 0,
   deliverables: [],
   unindexedResults: null,
   acceptance: null,
   approvals: 0,
   questions: 0,
-  completion: 'idle',
+  execution: 'unknown',
   cwd: undefined,
 }
 
@@ -43,8 +52,13 @@ export class CurrentWorkProjection implements HostObservable<WorkSummary> {
   private inputs: readonly unknown[] | undefined
   private offSession: (() => void) | undefined
   private readonly offList: () => void
+  private readonly offReadiness: () => void
 
-  constructor(private readonly sessions: ISessions) {
+  constructor(
+    private readonly sessions: ISessions,
+    private readonly readiness: ConnectionHandle['readiness'],
+  ) {
+    this.offReadiness = readiness.subscribe(() => { this.publish() })
     this.offList = sessions.list.subscribe(() => { this.rebind() })
     this.rebind()
   }
@@ -63,6 +77,7 @@ export class CurrentWorkProjection implements HostObservable<WorkSummary> {
   /** Release current-session and list subscriptions. */
   dispose(): void {
     this.offList()
+    this.offReadiness()
     this.offSession?.()
     this.offSession = undefined
     this.listeners.clear()
@@ -100,10 +115,14 @@ export class CurrentWorkProjection implements HostObservable<WorkSummary> {
       ?.get('trajectory') as { eventNodes?: readonly unknown[] } | undefined
     const inventory = summary?.projectionValues?.deliverables
     const executing = conversation?.running === true || jobs.some(job => job.status === 'running' || job.status === 'stopping')
-    const acceptance = executing ? null : summary?.projectionValues?.workAcceptance ?? null
+    const connection = this.readiness.getSnapshot()
+    const availability = workAvailability(connection, conversation)
+    const execution = availability !== 'ready' ? 'unknown' : executing ? 'running' : 'idle'
+    // Only a loaded, idle execution snapshot permits review; Goal completion is unrelated.
+    const acceptance = execution === 'idle' ? summary?.projectionValues?.workAcceptance ?? null : null
     const trajectoryRecords = trajectory?.eventNodes?.length ?? 0
     const inputs = [sessionId, summary?.cwd, goalValue, planValue, jobs, inventory, acceptance,
-      conversation?.pending, conversation?.running, trajectoryRecords]
+      conversation?.pending, execution, availability, connection.epoch, trajectoryRecords]
     if (this.inputs !== undefined && inputs.every((value, index) => Object.is(value, this.inputs?.[index]))) return this.snapshot
     this.inputs = inputs
     const goal = goalValue?.goal !== undefined
@@ -121,11 +140,15 @@ export class CurrentWorkProjection implements HostObservable<WorkSummary> {
     const runningJobs = jobs.filter(job => job.status === 'running' || job.status === 'stopping').length
     return {
       sessionId,
+      epoch: connection.epoch,
+      availability,
       goal,
       plan,
       jobs: {
         total: jobs.length,
         running: runningJobs,
+        failed: jobs.filter(job => job.status === 'failed').length,
+        killed: jobs.filter(job => job.status === 'killed').length,
       },
       trajectoryRecords,
       deliverables: inventory?.paths ?? EMPTY.deliverables,
@@ -133,9 +156,7 @@ export class CurrentWorkProjection implements HostObservable<WorkSummary> {
       acceptance,
       approvals,
       questions,
-      completion: executing
-        ? 'running'
-        : goal?.phase === 'complete' || goal?.phase === 'paused' || goal?.phase === 'blocked' ? goal.phase : 'idle',
+      execution,
       cwd: summary?.cwd,
     }
   }
@@ -147,11 +168,13 @@ const EMPTY_JOBS: readonly { status: string }[] = []
 /** Publish only changed Work facts even when a carrier repeats equivalent whole values. */
 function sameWork(left: WorkSummary, right: WorkSummary): boolean {
   return left === right || (left.sessionId === right.sessionId && left.cwd === right.cwd
+    && left.epoch === right.epoch && left.availability === right.availability
     && left.goal?.objective === right.goal?.objective && left.goal?.phase === right.goal?.phase
     && left.plan?.active === right.plan?.active && left.plan?.pending === right.plan?.pending
     && left.jobs.total === right.jobs.total && left.jobs.running === right.jobs.running
+    && left.jobs.failed === right.jobs.failed && left.jobs.killed === right.jobs.killed
     && left.trajectoryRecords === right.trajectoryRecords && left.approvals === right.approvals
-    && left.questions === right.questions && left.completion === right.completion
+    && left.questions === right.questions && left.execution === right.execution
     && left.unindexedResults === right.unindexedResults
     && left.acceptance?.reviewRevision === right.acceptance?.reviewRevision
     && left.acceptance?.acceptedRevision === right.acceptance?.acceptedRevision

@@ -73,6 +73,7 @@ jobs:
           persist-credentials: false
       - uses: pnpm/action-setup@v4
         with:
+          package_json_file: relay-harness/package.json
           dest: ${{ runner.temp }}/setup-pnpm
       - uses: actions/setup-node@v6
         with:
@@ -130,6 +131,7 @@ jobs:
 
       - uses: pnpm/action-setup@v4
         with:
+          package_json_file: relay-harness/package.json
           dest: ${{ runner.temp }}/setup-pnpm
 
       - uses: actions/setup-node@v6
@@ -180,6 +182,7 @@ jobs:
 
       - uses: pnpm/action-setup@v4
         with:
+          package_json_file: relay-harness/package.json
           dest: ${{ runner.temp }}/setup-pnpm
 
       - uses: actions/setup-node@v6
@@ -240,6 +243,7 @@ jobs:
 
       - uses: pnpm/action-setup@v4
         with:
+          package_json_file: relay-harness/package.json
           dest: ${{ runner.temp }}/setup-pnpm
 
       - uses: actions/setup-node@v6
@@ -328,6 +332,7 @@ jobs:
 
       - uses: pnpm/action-setup@v4
         with:
+          package_json_file: relay-harness/package.json
           dest: ${{ runner.temp }}/setup-pnpm
 
       - uses: actions/setup-node@v6
@@ -396,6 +401,7 @@ jobs:
 
       - uses: pnpm/action-setup@v4
         with:
+          package_json_file: relay-harness/package.json
           dest: ${{ runner.temp }}/setup-pnpm
 
       - uses: actions/setup-node@v6
@@ -521,6 +527,7 @@ jobs:
 
       - uses: pnpm/action-setup@v4
         with:
+          package_json_file: relay-harness/package.json
           dest: ${{ runner.temp }}/setup-pnpm
 
       - uses: actions/setup-node@v6
@@ -567,6 +574,7 @@ jobs:
 
       - uses: pnpm/action-setup@v4
         with:
+          package_json_file: relay-harness/package.json
           dest: ${{ runner.temp }}/setup-pnpm
 
       - uses: actions/setup-node@v6
@@ -609,6 +617,7 @@ jobs:
 
       - uses: pnpm/action-setup@v4
         with:
+          package_json_file: relay-harness/package.json
           dest: ${{ runner.temp }}/setup-pnpm
 
       - uses: actions/setup-node@v6
@@ -654,6 +663,7 @@ jobs:
 
       - uses: pnpm/action-setup@v4
         with:
+          package_json_file: relay-harness/package.json
           dest: ${{ runner.temp }}/setup-pnpm
 
       - uses: actions/setup-node@v6
@@ -742,6 +752,7 @@ jobs:
 
       - uses: pnpm/action-setup@v4
         with:
+          package_json_file: relay-harness/package.json
           dest: ${{ runner.temp }}/setup-pnpm
 
       # The benchmark's Windows lanes deliberately skip the store cache like
@@ -833,6 +844,7 @@ jobs:
 
       - uses: pnpm/action-setup@v4
         with:
+          package_json_file: relay-harness/package.json
           dest: ${{ runner.temp }}/setup-pnpm
 
       # Unlike the larger-runner suite, both platforms cache the store here:

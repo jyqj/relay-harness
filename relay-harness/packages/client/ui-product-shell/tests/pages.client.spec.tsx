@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { useReadyConnection } from './connection-fixture.client.ts'
 import { cleanup,fireEvent,render,screen,waitFor } from '@testing-library/react'
 import { afterEach,describe,expect,it,vi } from 'vitest'
 
@@ -15,7 +16,7 @@ describe('product navigation pages', () => {
     const openFiles = vi.fn()
     const openSettings = vi.fn()
     const page = {
-      wide: true,
+      wide: true, useConnection: useReadyConnection,
       expandSidebar: vi.fn(),
       useSessions: ((select: (value: unknown) => unknown) => select({ current: 's1' })) as never,
       useWorkspaces: unused,
@@ -38,21 +39,21 @@ describe('product navigation pages', () => {
   it('Work renders every composed projection family from one live summary', async () => {
     const openDeliverable = vi.fn().mockResolvedValue(undefined)
     const summary: WorkSummary = {
-      sessionId: 's1',
+      sessionId: 's1', epoch: 1, availability: 'ready',
       goal: { objective: 'Ship', phase: 'active' },
       plan: { active: true, pending: false },
-      jobs: { total: 2, running: 1 },
+      jobs: { total: 2, running: 1, failed: 0, killed: 0 },
       trajectoryRecords: 8,
       deliverables: ['out.md'],
       unindexedResults: 0,
       acceptance: null,
       approvals: 1,
       questions: 2,
-      completion: 'running',
+      execution: 'running',
       cwd: '/work',
     }
     const page = {
-      wide: true,
+      wide: true, useConnection: useReadyConnection,
       expandSidebar: vi.fn(),
       useSessions: unused,
       useWorkspaces: unused,
@@ -63,7 +64,7 @@ describe('product navigation pages', () => {
     } as unknown as WorkPageProps
     render(<WorkPage {...page} />)
     expect(screen.getByText('Ship')).toBeTruthy()
-    expect(screen.getByText('work.completion.running')).toBeTruthy()
+    expect(screen.getByText('work.execution.running')).toBeTruthy()
     expect(screen.getByText('1/2')).toBeTruthy()
     expect(screen.getByText('8')).toBeTruthy()
     expect(screen.getAllByText('1')).toHaveLength(2)
@@ -75,10 +76,10 @@ describe('product navigation pages', () => {
 
 function workPage(summary: Partial<WorkSummary>, opener: WorkPageProps['openDeliverable']): WorkPageProps {
   const work: WorkSummary = {
-    sessionId: 's1', goal: null, plan: null, jobs: { total: 0, running: 0 }, trajectoryRecords: 0,
-    deliverables: ['out.md'], unindexedResults: 0, acceptance: null, approvals: 0, questions: 0, completion: 'idle', cwd: '/work', ...summary,
+    sessionId: 's1', epoch: 1, availability: 'ready', goal: null, plan: null, jobs: { total: 0, running: 0, failed: 0, killed: 0 }, trajectoryRecords: 0,
+    deliverables: ['out.md'], unindexedResults: 0, acceptance: null, approvals: 0, questions: 0, execution: 'idle', cwd: '/work', ...summary,
   }
-  return { wide: true, useWork: (select: (value: WorkSummary) => unknown) => select(work), openDeliverable: opener, openFiles: vi.fn(), verifyWork: vi.fn().mockRejectedValue(new Error('not yet verified')), t } as unknown as WorkPageProps
+  return { wide: true, useConnection: useReadyConnection, useWork: (select: (value: WorkSummary) => unknown) => select(work), openDeliverable: opener, openFiles: vi.fn(), verifyWork: vi.fn().mockRejectedValue(new Error('not yet verified')), t } as unknown as WorkPageProps
 }
 
 describe('Work interactions and status', () => {
@@ -104,9 +105,10 @@ describe('Work interactions and status', () => {
     expect(screen.queryByRole('alert')).toBeNull()
   })
 
-  it.each(['paused', 'blocked', 'running', 'complete'] as const)('shows %s without collapsing it to idle', (completion) => {
-    render(<WorkPage {...workPage({ completion }, async () => {})} />)
-    expect(screen.getByText(`work.completion.${completion}`)).toBeTruthy()
+  it.each(['active', 'paused', 'blocked', 'complete'] as const)('shows %s Goal phase independently from execution', (phase) => {
+    render(<WorkPage {...workPage({ goal: { objective: 'Ship', phase }, execution: 'running' }, async () => {})} />)
+    expect(screen.getByText(`work.goal.phase.${phase}`)).toBeTruthy()
+    expect(screen.getByText('work.execution.running')).toBeTruthy()
   })
 
   it.each([null, 3])('marks unavailable or incomplete inventory (%s)', (unindexedResults) => {
@@ -135,12 +137,12 @@ describe('revision-bound user confirmation', () => {
   })
 
   it('separates a model-complete goal from an explicit current user receipt', async () => {
-    const props = workPage({ completion: 'complete', acceptance: { reviewRevision: 8, acceptedRevision: 3, reviewable: true } }, vi.fn())
+    const props = workPage({ goal: { objective: 'Ship', phase: 'complete' }, acceptance: { reviewRevision: 8, acceptedRevision: 3, reviewable: true } }, vi.fn())
     const verifyWork = vi.fn().mockResolvedValue({
       reviewRevision: 8, acceptedRevision: 3, reviewable: true, verifiedThroughSeq: 9, current: true,
     })
     render(<WorkPage {...props} acceptWork={vi.fn()} verifyWork={verifyWork} />)
-    expect(screen.getByText('work.completion.complete')).toBeTruthy()
+    expect(screen.getByText('work.goal.phase.complete')).toBeTruthy()
     expect(await screen.findByText('work.acceptance.stale')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'work.acceptance.confirm' }).hasAttribute('disabled')).toBe(false)
   })
@@ -157,7 +159,7 @@ describe('cross-session Library', () => {
       })
     const openLibraryOutput = vi.fn().mockResolvedValue(undefined)
     render(<LibraryPage {...{
-      wide: true, useSessions: ((select: (state: { current?: string }) => unknown) => select({})) as never,
+      wide: true, useConnection: useReadyConnection, useSessions: ((select: (state: { current?: string }) => unknown) => select({})) as never,
       expandSidebar: vi.fn(), useWorkspaces: unused,
       queryLibrary, openLibraryOutput, openFiles: vi.fn(), openSettings: vi.fn(), t,
     } as LibraryPageProps} />)
@@ -168,6 +170,109 @@ describe('cross-session Library', () => {
     expect(queryLibrary.mock.calls[1]?.[0]).toEqual({ query: '', sessionOffset: 1, pathOffset: 0, corpusRevision: 'generation' })
     fireEvent.click(screen.getByRole('button', { name: 'one.txt' }))
     await waitFor(() => { expect(openLibraryOutput).toHaveBeenCalledWith(first) })
+    expect(screen.getByText(/library.endIncomplete/)).toBeTruthy()
+    expect(screen.getByText('library.priorUnindexed')).toBeTruthy()
+  })
+})
+
+function libraryPage(queryLibrary: LibraryPageProps['queryLibrary']): LibraryPageProps {
+  return {
+    wide: true, useConnection: useReadyConnection, useSessions: ((select: (state: { current?: string }) => unknown) => select({})) as never,
+    expandSidebar: vi.fn(), useWorkspaces: unused, queryLibrary,
+    openLibraryOutput: vi.fn().mockResolvedValue(undefined), openFiles: vi.fn(), openSettings: vi.fn(), t,
+  } as LibraryPageProps
+}
+
+const emptyLibraryPage = {
+  entries: [], scannedSessions: 1, totalSessions: 1, unindexedResults: 0, unavailableSessions: 0, next: null,
+}
+
+describe('Work review readiness and independent facts', () => {
+  it('makes a result without a Goal discoverable for review', () => {
+    render(<WorkPage {...workPage({ acceptance: { reviewRevision: 8, acceptedRevision: null, reviewable: true } }, vi.fn())} acceptWork={vi.fn()} />)
+    expect(screen.getByText('work.reviewReady')).toBeTruthy()
+    expect(screen.getByText('work.execution.idle')).toBeTruthy()
+    expect(screen.getByText('work.scope')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'work.acceptance.confirm' }).hasAttribute('disabled')).toBe(false)
+  })
+
+  it.each([
+    { execution: 'unknown' }, { execution: 'running' }, { approvals: 1 }, { questions: 1 },
+  ] as const)('withholds review when execution or human input is unsettled (%j)', (facts) => {
+    const acceptWork = vi.fn()
+    const verifyWork = vi.fn()
+    render(<WorkPage {...workPage({ ...facts, acceptance: { reviewRevision: 8, acceptedRevision: null, reviewable: true } }, vi.fn())} acceptWork={acceptWork} verifyWork={verifyWork} />)
+    fireEvent.click(screen.getByRole('button', { name: 'work.acceptance.confirm' }))
+    expect(acceptWork).not.toHaveBeenCalled()
+    expect(verifyWork).not.toHaveBeenCalled()
+    expect(screen.queryByText('work.reviewReady')).toBeNull()
+  })
+
+  it('shows recorded Job failures without changing a completed Goal or declaring overall failure', () => {
+    render(<WorkPage {...workPage({
+      goal: { objective: 'Ship', phase: 'complete' }, jobs: { total: 3, running: 0, failed: 1, killed: 1 },
+    }, vi.fn())} />)
+    expect(screen.getByText('work.goal.phase.complete')).toBeTruthy()
+    expect(screen.getByText('work.execution.idle')).toBeTruthy()
+    expect(screen.getByText('work.jobOutcomes')).toBeTruthy()
+    expect(screen.queryByText('work.goal.phase.blocked')).toBeNull()
+  })
+
+  it('preserves an unrecognized Goal phase instead of labeling it as successful', () => {
+    render(<WorkPage {...workPage({ goal: { objective: 'Ship', phase: 'provider-specific' } }, vi.fn())} />)
+    expect(screen.getByText('provider-specific')).toBeTruthy()
+    expect(screen.queryByText('work.goal.phase.complete')).toBeNull()
+  })
+})
+
+describe('Library scan recovery', () => {
+  it('handles a synchronous query refusal and retries the submitted query', async () => {
+    const queryLibrary = vi.fn().mockImplementationOnce(() => { throw new Error('service unavailable') }).mockResolvedValue(emptyLibraryPage)
+    render(<LibraryPage {...libraryPage(queryLibrary)} />)
+    expect(await screen.findByRole('alert')).toBeTruthy()
+    fireEvent.change(screen.getByRole('textbox', { name: 'library.search' }), { target: { value: 'unsent draft' } })
+    fireEvent.click(screen.getByRole('button', { name: 'library.retryPage' }))
+    await waitFor(() => { expect(screen.queryByRole('alert')).toBeNull() })
+    expect(queryLibrary.mock.calls[1]?.[0]).toEqual({ query: '' })
+  })
+
+  it('keeps prior coverage gaps across a failed continuation and its successful retry', async () => {
+    const next = { sessionOffset: 0, pathOffset: 1, corpusRevision: 'generation' }
+    const queryLibrary = vi.fn()
+      .mockResolvedValueOnce({ ...emptyLibraryPage, entries: [{ sessionId: 'first', path: 'one.txt' }], unindexedResults: 1, unavailableSessions: 1, next })
+      .mockRejectedValueOnce(new Error('temporary read failure'))
+      .mockResolvedValueOnce({ ...emptyLibraryPage, entries: [{ sessionId: 'second', path: 'two.txt' }] })
+    render(<LibraryPage {...libraryPage(queryLibrary)} />)
+    expect(await screen.findByText('one.txt')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'library.more' }))
+    expect(await screen.findByRole('alert')).toBeTruthy()
+    expect(screen.getByText('one.txt')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'library.retryPage' }))
+    expect(await screen.findByText('two.txt')).toBeTruthy()
+    expect(queryLibrary.mock.calls[2]?.[0]).toEqual({ query: '', ...next })
+    expect(screen.getByText('library.priorUnindexed')).toBeTruthy()
+    expect(screen.getByText('library.priorUnavailable')).toBeTruthy()
+    expect(screen.getByText(/library.endIncomplete/)).toBeTruthy()
+    expect(screen.queryByRole('alert')).toBeNull()
+  })
+
+  it('restarts a stale continuation without its cursor and clears old results and gap flags', async () => {
+    const next = { sessionOffset: 1, pathOffset: 0, corpusRevision: 'old-generation' }
+    const queryLibrary = vi.fn()
+      .mockResolvedValueOnce({ ...emptyLibraryPage, entries: [{ sessionId: 'first', path: 'old.txt' }], unindexedResults: 1, unavailableSessions: 1, next })
+      .mockRejectedValueOnce(new Error('corpus changed'))
+      .mockResolvedValueOnce(emptyLibraryPage)
+    render(<LibraryPage {...libraryPage(queryLibrary)} />)
+    expect(await screen.findByText('old.txt')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'library.more' }))
+    expect(await screen.findByRole('alert')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'library.restart' }))
+    await waitFor(() => { expect(screen.queryByRole('alert')).toBeNull() })
+    expect(queryLibrary.mock.calls[2]?.[0]).toEqual({ query: '' })
+    expect(screen.queryByText('old.txt')).toBeNull()
+    expect(screen.queryByText('library.priorUnindexed')).toBeNull()
+    expect(screen.queryByText('library.priorUnavailable')).toBeNull()
+    expect(screen.queryByText(/library.endIncomplete/)).toBeNull()
     expect(screen.getByText(/library.complete/)).toBeTruthy()
   })
 })

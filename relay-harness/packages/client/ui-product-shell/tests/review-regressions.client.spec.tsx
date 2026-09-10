@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { useReadyConnection } from './connection-fixture.client.ts'
 /** Non-author regressions for confirmation durability and Library operation lifetimes. */
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
@@ -12,9 +13,9 @@ const t = ((key: string) => key) as never
 
 function summary(sessionId = 'work-a', acceptedRevision: number | null = null): WorkSummary {
   return {
-    sessionId, goal: null, plan: null, jobs: { total: 0, running: 0 }, trajectoryRecords: 0,
+    sessionId, epoch: 1, availability: 'ready', goal: null, plan: null, jobs: { total: 0, running: 0, failed: 0, killed: 0 }, trajectoryRecords: 0,
     deliverables: ['result.txt'], unindexedResults: 0, approvals: 0, questions: 0,
-    acceptance: { reviewRevision: 10, acceptedRevision, reviewable: true }, completion: 'idle', cwd: '/workspace',
+    acceptance: { reviewRevision: 10, acceptedRevision, reviewable: true }, execution: 'idle', cwd: '/workspace',
   }
 }
 
@@ -28,7 +29,7 @@ function workProps(
   acceptWork: WorkPageProps['acceptWork'] = vi.fn().mockResolvedValue({ reviewedThroughSeq: 10, recordedSeq: 11, current: true }),
 ): WorkPageProps {
   return {
-    wide: true, useWork: (select: (value: WorkSummary) => unknown) => select(work),
+    wide: true, useConnection: useReadyConnection, useWork: (select: (value: WorkSummary) => unknown) => select(work),
     verifyWork, acceptWork, openDeliverable: vi.fn().mockResolvedValue(undefined), openFiles: vi.fn(), t,
   } as unknown as WorkPageProps
 }
@@ -44,7 +45,7 @@ function libraryProps(
   wide = true,
 ): LibraryPageProps {
   return {
-    wide, queryLibrary, openLibraryOutput, openFiles: vi.fn(), openSettings: vi.fn(),
+    wide, useConnection: useReadyConnection, queryLibrary, openLibraryOutput, openFiles: vi.fn(), openSettings: vi.fn(),
     useSessions: (select: (value: unknown) => unknown) => select({ current: 'work-a' }), t,
   } as unknown as LibraryPageProps
 }
@@ -179,4 +180,19 @@ describe('Library operation lifetimes', () => {
     await act(async () => { opening.reject(new Error('old result no longer exists')); await Promise.resolve() })
     expect(screen.queryByRole('alert')).toBeNull()
   })
+})
+
+it('allows a successfully re-confirmed same revision to replace a superseded receipt', async () => {
+  const verify = vi.fn<WorkPageProps['verifyWork']>().mockResolvedValue(verified())
+  const accept = vi.fn<WorkPageProps['acceptWork']>()
+    .mockResolvedValueOnce({ reviewedThroughSeq: 10, recordedSeq: 11, current: false })
+    .mockResolvedValueOnce({ reviewedThroughSeq: 10, recordedSeq: 12, current: true })
+  const view = render(<WorkPage {...workProps(summary(), verify, accept)} />)
+  fireEvent.click(screen.getByRole('button', { name: 'work.acceptance.confirm' }))
+  await waitFor(() => { expect(screen.queryByText('work.acceptance.saving')).toBeNull() })
+  view.rerender(<WorkPage {...workProps(summary('work-a', 10), verify, accept)} />)
+  expect(await screen.findByText('work.acceptance.stale')).toBeTruthy()
+  fireEvent.click(screen.getByRole('button', { name: 'work.acceptance.confirm' }))
+  expect(await screen.findByText('work.acceptance.current')).toBeTruthy()
+  expect(accept).toHaveBeenCalledTimes(2)
 })

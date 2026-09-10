@@ -1,4 +1,5 @@
 /** Shared Chat / Work / Library product shell and Simple-mode visibility policy. */
+import type { ConnectionHandle } from '@relay-harness/rlh-api-remotes/client'
 import type { ClientContext, SessionId } from '@relay-harness/rlh-client-runtime/client'
 import type {} from '@relay-harness/rlh-api-remotes/client'
 import type {} from '@relay-harness/rlh-client-ui-sidebar/client'
@@ -32,12 +33,13 @@ const SIMPLE_MODE_SUPPRESSIONS = [
   ['conversation.view', 'trajectory'],
 ] as const
 
-export const inject = ['slots', 'sessions', 'workspaces', 'remote', 'remote.productMode', 'remote.workResults', 'locale', 'settingsNavigation']
+export const inject = ['connection', 'slots', 'sessions', 'workspaces', 'remote', 'remote.productMode', 'remote.workResults', 'locale', 'settingsNavigation']
 
 /** Install navigation pages, persisted mode control, and reversible advanced-entry suppression. */
 export function apply(ctx: ClientContext): void {
   const product = new ProductShellService(ctx)
-  const work = new CurrentWorkProjection(ctx.sessions)
+  const connection = ctx.get('connection') as ConnectionHandle
+  const work = new CurrentWorkProjection(ctx.sessions, connection.readiness)
   ctx.effect(() => () => { work.dispose() }, 'ui-product-shell: Work projection')
   ctx.effect(() => ctx.locale.register('productShell', { zh, en }), 'ui-product-shell: dictionaries')
   const t = ctx.locale.bind('productShell')
@@ -96,6 +98,7 @@ export function apply(ctx: ClientContext): void {
     ctx.slots.register({
       name: 'sidebar.page', key: 'library', locale: 'productShell',
       inject: (): LibraryPageInjected => ({
+        hooks: { connection: connection.readiness },
         openFiles: () => { window.dispatchEvent(new CustomEvent('rlhd-open-surface', { detail: { kind: 'files' } })) },
         openSettings: (section) => { ctx.settingsNavigation.open(section) },
         queryLibrary: async (request, signal) => {

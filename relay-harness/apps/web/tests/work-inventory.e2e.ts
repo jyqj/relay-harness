@@ -105,6 +105,17 @@ describe('web e2e: whole-session Work inventory', () => {
     page = await newEnglishPage(browser)
     await page.setViewportSize({ width: 1280, height: 900 })
     tripwire = watchConsole(page)
+    await page.addInitScript(() => {
+      const Native = window.WebSocket
+      const sockets: WebSocket[] = []
+      ;(window as unknown as { __workTestSockets: WebSocket[] }).__workTestSockets = sockets
+      window.WebSocket = class extends Native {
+        constructor(url: string | URL, protocols?: string | string[]) {
+          super(url, protocols)
+          sockets.push(this)
+        }
+      }
+    })
     await page.goto(scaffold.baseUrl, { waitUntil: 'load' })
     await page.waitForSelector('[class*="frame"]', { timeout: 30_000 })
     await selectSeed(page, ID, LAST)
@@ -144,6 +155,41 @@ describe('web e2e: whole-session Work inventory', () => {
       expect(open).toHaveBeenCalledTimes(1)
       expect(open.mock.calls[0]?.[0].payload).toEqual({ path: await realpath(join(scaffold.workspaceCwd, 'early.md')) })
     } finally { open.mockRestore() }
+    expect(tripwire.pageErrors).toEqual([])
+  }, 90_000)
+
+  it('withdraws review on a real downlink loss and rehydrates before enabling the unchanged result', async () => {
+    await selectSeed(page, ID, LAST)
+    await page.getByRole('tab', { name: 'Work', exact: true }).click()
+    const confirm = page.getByRole('button', { name: 'Confirm current result', exact: true })
+    await expect.poll(() => confirm.isEnabled()).toBe(true)
+    const before = await scaffold.ctx.sessionPersistence.readFrom(SessionId(ID), 0)
+    const client = await page.context().newCDPSession(page)
+    try {
+      await client.send('Network.enable')
+      await client.send('Network.emulateNetworkConditions', {
+        offline: true, latency: 0, downloadThroughput: -1, uploadThroughput: -1,
+      })
+      // Existing sockets must end as well as new HTTP requests failing. This
+      // exercises the real carrier rather than a component fixture source.
+      await page.evaluate(() => {
+        const sockets = (window as unknown as { __workTestSockets: WebSocket[] }).__workTestSockets
+        for (const socket of sockets) socket.close()
+      })
+      await page.getByText('Disconnected', { exact: true }).waitFor({ timeout: 15_000 })
+      expect(await confirm.isEnabled()).toBe(false)
+      expect(await page.getByRole('button', { name: 'early.md', exact: true }).isEnabled()).toBe(false)
+      expect(await confirm.ariaSnapshot()).toMatchInlineSnapshot('"- button \"Confirm current result\" [disabled]"')
+    } finally {
+      await client.send('Network.emulateNetworkConditions', {
+        offline: false, latency: 0, downloadThroughput: -1, uploadThroughput: -1,
+      })
+      await client.detach()
+    }
+    await expect.poll(() => confirm.isEnabled(), { timeout: 30_000 }).toBe(true)
+    expect(await page.getByRole('button', { name: 'early.md', exact: true }).isEnabled()).toBe(true)
+    const after = await scaffold.ctx.sessionPersistence.readFrom(SessionId(ID), 0)
+    expect(after.events.filter(event => event.type === 'work/accepted')).toEqual(before.events.filter(event => event.type === 'work/accepted'))
     expect(tripwire.pageErrors).toEqual([])
   }, 90_000)
 
