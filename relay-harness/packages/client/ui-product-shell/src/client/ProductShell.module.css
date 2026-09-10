@@ -25,3 +25,5 @@
 .librarySearch button { border: 1px solid var(--rlw-alias-border-l2); border-radius: 8px; background: var(--rlw-alias-bg-module-platform); color: var(--rlw-alias-label-primary); cursor: pointer; }
 .deliverables small { display: block; padding: 0 7px 5px; overflow-wrap: anywhere; color: var(--rlw-alias-label-secondary); font-size: 10px; }
 .filesButton:disabled { cursor: default; opacity: .5; }
+.scope { overflow-wrap: anywhere; }
+.openError button:disabled { cursor: default; opacity: .5; }
