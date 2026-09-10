@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { useReadyConnection } from './connection-fixture.client.ts'
 import { cleanup,fireEvent,render,screen,waitFor } from '@testing-library/react'
 import { afterEach,describe,expect,it,vi } from 'vitest'
 
@@ -15,7 +16,7 @@ describe('product navigation pages', () => {
     const openFiles = vi.fn()
     const openSettings = vi.fn()
     const page = {
-      wide: true,
+      wide: true, useConnection: useReadyConnection,
       expandSidebar: vi.fn(),
       useSessions: ((select: (value: unknown) => unknown) => select({ current: 's1' })) as never,
       useWorkspaces: unused,
@@ -38,7 +39,7 @@ describe('product navigation pages', () => {
   it('Work renders every composed projection family from one live summary', async () => {
     const openDeliverable = vi.fn().mockResolvedValue(undefined)
     const summary: WorkSummary = {
-      sessionId: 's1',
+      sessionId: 's1', epoch: 1, availability: 'ready',
       goal: { objective: 'Ship', phase: 'active' },
       plan: { active: true, pending: false },
       jobs: { total: 2, running: 1, failed: 0, killed: 0 },
@@ -52,7 +53,7 @@ describe('product navigation pages', () => {
       cwd: '/work',
     }
     const page = {
-      wide: true,
+      wide: true, useConnection: useReadyConnection,
       expandSidebar: vi.fn(),
       useSessions: unused,
       useWorkspaces: unused,
@@ -75,10 +76,10 @@ describe('product navigation pages', () => {
 
 function workPage(summary: Partial<WorkSummary>, opener: WorkPageProps['openDeliverable']): WorkPageProps {
   const work: WorkSummary = {
-    sessionId: 's1', goal: null, plan: null, jobs: { total: 0, running: 0, failed: 0, killed: 0 }, trajectoryRecords: 0,
+    sessionId: 's1', epoch: 1, availability: 'ready', goal: null, plan: null, jobs: { total: 0, running: 0, failed: 0, killed: 0 }, trajectoryRecords: 0,
     deliverables: ['out.md'], unindexedResults: 0, acceptance: null, approvals: 0, questions: 0, execution: 'idle', cwd: '/work', ...summary,
   }
-  return { wide: true, useWork: (select: (value: WorkSummary) => unknown) => select(work), openDeliverable: opener, openFiles: vi.fn(), verifyWork: vi.fn().mockRejectedValue(new Error('not yet verified')), t } as unknown as WorkPageProps
+  return { wide: true, useConnection: useReadyConnection, useWork: (select: (value: WorkSummary) => unknown) => select(work), openDeliverable: opener, openFiles: vi.fn(), verifyWork: vi.fn().mockRejectedValue(new Error('not yet verified')), t } as unknown as WorkPageProps
 }
 
 describe('Work interactions and status', () => {
@@ -158,7 +159,7 @@ describe('cross-session Library', () => {
       })
     const openLibraryOutput = vi.fn().mockResolvedValue(undefined)
     render(<LibraryPage {...{
-      wide: true, useSessions: ((select: (state: { current?: string }) => unknown) => select({})) as never,
+      wide: true, useConnection: useReadyConnection, useSessions: ((select: (state: { current?: string }) => unknown) => select({})) as never,
       expandSidebar: vi.fn(), useWorkspaces: unused,
       queryLibrary, openLibraryOutput, openFiles: vi.fn(), openSettings: vi.fn(), t,
     } as LibraryPageProps} />)
@@ -176,7 +177,7 @@ describe('cross-session Library', () => {
 
 function libraryPage(queryLibrary: LibraryPageProps['queryLibrary']): LibraryPageProps {
   return {
-    wide: true, useSessions: ((select: (state: { current?: string }) => unknown) => select({})) as never,
+    wide: true, useConnection: useReadyConnection, useSessions: ((select: (state: { current?: string }) => unknown) => select({})) as never,
     expandSidebar: vi.fn(), useWorkspaces: unused, queryLibrary,
     openLibraryOutput: vi.fn().mockResolvedValue(undefined), openFiles: vi.fn(), openSettings: vi.fn(), t,
   } as LibraryPageProps

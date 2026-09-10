@@ -1,5 +1,14 @@
 /** Simplified-Chinese product-shell dictionary. */
 export const zh = {
+  'work.availability': '数据状态',
+  'work.availability.ready': '会话已同步',
+  'work.availability.disconnected': '连接中断',
+  'work.availability.synchronizing': '正在同步会话',
+  'work.availability.loading': '正在加载历史',
+  'work.availability.error': '同步或历史读取失败',
+  'work.availability.removed': '会话已移除',
+  'work.staleFacts': '以下是已有记录，不代表当前实时状态；同步恢复前不能打开或确认结果。',
+  'library.reconnecting': '连接尚未同步，当前列表可能已过期；恢复后会重新检索已提交的查询。',
   'nav.chat': '对话',
   'nav.work': '工作',
   'nav.library': '资料库',
@@ -79,6 +88,15 @@ export const zh = {
 export type ProductShellKey = keyof typeof zh
 /** English product-shell dictionary. */
 export const en = {
+  'work.availability': 'Data readiness',
+  'work.availability.ready': 'Session synchronized',
+  'work.availability.disconnected': 'Disconnected',
+  'work.availability.synchronizing': 'Synchronizing session',
+  'work.availability.loading': 'Loading history',
+  'work.availability.error': 'Synchronization or history failed',
+  'work.availability.removed': 'Session removed',
+  'work.staleFacts': 'Retained records are not live state. Opening and confirmation require a synchronized session.',
+  'library.reconnecting': 'Connection is not synchronized; retained results may be stale. The submitted query will refresh after recovery.',
   'nav.chat': 'Chat',
   'nav.work': 'Work',
   'nav.library': 'Library',

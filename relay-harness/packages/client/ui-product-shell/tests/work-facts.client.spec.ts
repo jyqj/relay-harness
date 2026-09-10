@@ -1,11 +1,12 @@
+import { connectionFixture } from './connection-fixture.client.ts'
 import { describe, expect, it } from 'vitest'
-import type { ISessions } from '@relay-harness/rlh-client-runtime/client'
+import type { ConversationSnapshot, ISessions } from '@relay-harness/rlh-client-runtime/client'
 import { CurrentWorkProjection } from '../src/client/work-projection.ts'
 
 function harness() {
   const listListeners = new Set<() => void>()
   const sessionListeners = new Set<() => void>()
-  const snapshot = { running: false, pending: [] as { kind: 'approval' | 'question' }[], views: { get: () => undefined } }
+  const snapshot = { openState: 'open' as ConversationSnapshot['openState'], removed: false, running: false, pending: [] as { kind: 'approval' | 'question' }[], views: { get: () => undefined } }
   const state = {
     current: 's1' as string | undefined,
     byId: { s1: { cwd: '/one', projectionValues: {
@@ -27,9 +28,10 @@ function harness() {
     },
     binding: (id: string) => loaded && id === 's1' ? { session } : undefined,
   } as unknown as ISessions
-  const projection = new CurrentWorkProjection(sessions)
+  const connection = connectionFixture()
+  const projection = new CurrentWorkProjection(sessions, connection.source)
   const publishList = () => { for (const listener of listListeners) listener() }
-  return { projection, state, snapshot, sessionListeners, listListeners, publishList,
+  return { projection, connection, state, snapshot, sessionListeners, listListeners, publishList,
     setLoaded: (value: boolean) => { loaded = value; publishList() } }
 }
 
@@ -97,11 +99,11 @@ describe('independent Work facts', () => {
     h.projection.dispose()
   })
 
-  it('retains known running jobs even before the conversation snapshot loads', () => {
+  it('retains job records without claiming live execution before history loads', () => {
     const h = harness()
     h.state.jobsBySession.s1 = [{ status: 'stopping' }]
     h.setLoaded(false)
-    expect(h.projection.getSnapshot().execution).toBe('running')
+    expect(h.projection.getSnapshot().execution).toBe('unknown')
     expect(h.projection.getSnapshot().jobs.running).toBe(1)
     expect(h.projection.getSnapshot().acceptance).toBeNull()
     h.projection.dispose()
@@ -126,5 +128,49 @@ describe('independent Work facts', () => {
     expect(h.projection.getSnapshot().sessionId).toBe(undefined)
     h.projection.dispose()
     expect(h.listListeners.size).toBe(0)
+  })
+})
+
+
+describe('Work connection and history lifetimes', () => {
+  it('withdraws review on disconnect and republishes the same log revision with a new handshake identity', () => {
+    const h = harness()
+    h.connection.publish('reconnecting')
+    expect(h.projection.getSnapshot()).toMatchObject({ epoch: 1, availability: 'disconnected', execution: 'unknown', acceptance: null })
+    expect(h.projection.getSnapshot().deliverables).toEqual(['out.md'])
+    h.connection.publish('synchronizing', 2)
+    expect(h.projection.getSnapshot().availability).toBe('synchronizing')
+    expect(h.projection.getSnapshot().acceptance).toBeNull()
+    h.connection.publish('ready')
+    expect(h.projection.getSnapshot()).toMatchObject({ epoch: 2, availability: 'ready', execution: 'idle' })
+    expect(h.projection.getSnapshot().acceptance?.reviewRevision).toBe(8)
+    h.projection.dispose()
+    expect(h.connection.listeners.size).toBe(0)
+    const last = h.projection.getSnapshot()
+    h.connection.publish('reconnecting')
+    expect(h.projection.getSnapshot()).toBe(last)
+  })
+
+  it.each(['cold', 'loading', 'error'] as const)('does not call a %s history idle despite a live binding', (openState) => {
+    const h = harness()
+    h.snapshot.openState = openState
+    h.publishList()
+    expect(h.projection.getSnapshot().execution).toBe('unknown')
+    expect(h.projection.getSnapshot().acceptance).toBeNull()
+    expect(h.projection.getSnapshot().availability).toBe(openState === 'error' ? 'error' : 'loading')
+    h.snapshot.openState = 'open'
+    h.publishList()
+    expect(h.projection.getSnapshot().acceptance?.reviewRevision).toBe(8)
+    h.projection.dispose()
+  })
+
+  it('withdraws review for a removed Session without discarding its last read outputs', () => {
+    const h = harness()
+    h.snapshot.removed = true
+    h.publishList()
+    expect(h.projection.getSnapshot().availability).toBe('removed')
+    expect(h.projection.getSnapshot().acceptance).toBeNull()
+    expect(h.projection.getSnapshot().deliverables).toEqual(['out.md'])
+    h.projection.dispose()
   })
 })

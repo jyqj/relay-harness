@@ -5,6 +5,8 @@ import { dirname, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { promisify } from 'node:util'
 
+import { verifyWorkflowPnpm } from './verify-workflow-pnpm.mjs'
+
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const REPOSITORY_ROOT = resolve(ROOT, '..')
 const STATUS = resolve(ROOT, 'docs/feature-status.json')
@@ -227,6 +229,7 @@ async function verifyRootMarkdownLinks() {
 export async function main() {
   await verifyFeatures()
   await verifyWorkflowDiscovery()
+  await verifyWorkflowPnpm(resolve(REPOSITORY_ROOT, '.github/workflows'))
   await verifyDocsAuthority()
   await verifyRootMarkdownLinks()
   console.log('feature-status: PASS')

@@ -1,3 +1,4 @@
+import { connectionFixture } from './connection-fixture.client.ts'
 import { describe, expect, it } from 'vitest'
 import type { ISessions } from '@relay-harness/rlh-client-runtime/client'
 import { CurrentWorkProjection } from '../src/client/work-projection.ts'
@@ -7,7 +8,7 @@ describe('CurrentWorkProjection', () => {
     const listListeners = new Set<() => void>()
     const sessionListeners = new Set<() => void>()
     const sessionId = 'session-1'
-    const snapshot = {
+    const snapshot = { openState: 'open' as const, removed: false,
       views: { get: (key: string) => key === 'trajectory' ? { eventNodes: [{}, {}, {}] } : undefined },
       chat: { timeline: { turns: new Map([[1, { data: new Map([['deliverables', { produced: [
         { path: 'a.md' }, { path: 'a.md' }, { path: 'b.ts' },
@@ -37,9 +38,11 @@ describe('CurrentWorkProjection', () => {
       },
       binding: () => ({ session }),
     } as unknown as ISessions
-    const projection = new CurrentWorkProjection(sessions)
+    const projection = new CurrentWorkProjection(sessions, connectionFixture().source)
     expect(projection.getSnapshot()).toEqual({
       sessionId,
+      epoch: 1,
+      availability: 'ready',
       goal: { objective: 'Deliver product shell', phase: 'active' },
       plan: { active: true, pending: false },
       jobs: { total: 3, running: 2, failed: 0, killed: 0 },
@@ -61,7 +64,7 @@ describe('CurrentWorkProjection', () => {
 function workHarness(phase: string, running = false, jobStatus?: string) {
   const listListeners = new Set<() => void>()
   const sessionListeners = new Set<() => void>()
-  const snapshot = {
+  const snapshot = { openState: 'open' as const, removed: false,
     views: { get: () => undefined }, pending: [], running,
     get chat(): never { throw new Error('Work must not scan the paged chat timeline') },
   }
@@ -81,7 +84,7 @@ function workHarness(phase: string, running = false, jobStatus?: string) {
     list: { getSnapshot: () => state, subscribe: (fn: () => void) => { listListeners.add(fn); return () => { listListeners.delete(fn) } } },
     binding: () => ({ session }),
   } as unknown as ISessions
-  return { projection: new CurrentWorkProjection(sessions), snapshot, state, sessionListeners, listListeners }
+  return { projection: new CurrentWorkProjection(sessions, connectionFixture().source), snapshot, state, sessionListeners, listListeners }
 }
 
 describe('Work fact invalidation', () => {

@@ -10,6 +10,9 @@ on:
       - 'relay-harness/package.json'
       - 'relay-harness/pnpm-lock.yaml'
       - 'relay-harness/vitest*.ts'
+      - 'relay-harness/apps/web/tests/work-inventory.e2e.ts'
+      - 'relay-harness/scripts/verify-workflow-pnpm*'
+      - 'relay-harness/scripts/verify-feature-status.mjs'
   workflow_dispatch:
 
 permissions:
@@ -44,16 +47,34 @@ jobs:
       - name: Install immutable workspace
         run: pnpm install --frozen-lockfile
       - name: Run product shell regressions
-        run: pnpm exec vitest run packages/client/ui-product-shell/tests
-      - name: Export installed validation tools for the offline sandbox
-        run: |
-          find . -name node_modules -type d -prune -print0 > "${{ runner.temp }}/frontend-module-paths"
-          tar --null -czf "${{ runner.temp }}/frontend-tools.tar.gz" -T "${{ runner.temp }}/frontend-module-paths"
-          cp "$(command -v node)" "${{ runner.temp }}/node24"
-      - uses: actions/upload-artifact@v7
+        run: pnpm exec vitest run packages/client/ui-product-shell/tests packages/client/connection/tests packages/client/runtime/tests scripts/verify-workflow-pnpm.spec.ts
+
+  work-browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v6
         with:
-          name: frontend-tools-${{ github.run_id }}
-          path: |
-            ${{ runner.temp }}/frontend-tools.tar.gz
-            ${{ runner.temp }}/node24
-          retention-days: 1
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: relay-harness/package.json
+          dest: ${{ runner.temp }}/setup-pnpm
+      - name: Install immutable workspace
+        run: pnpm install --frozen-lockfile
+      - name: Install pinned Chromium
+        run: pnpm --filter @relay-harness/rlh-web-frontend exec playwright install --with-deps chromium
+      - name: Build Host and Client with the installed configuration loader
+        run: |
+          pnpm exec tsc -b tsconfig.host.json
+          pnpm exec tsdown --config-loader tsx --env.RLH_BUILD_FACE host
+          pnpm exec tsc -b tsconfig.client.json
+          pnpm exec tsdown --config-loader tsx --env.RLH_BUILD_FACE client
+          node packages/client/ui-user-terminal/scripts/copy-ghostty-assets.mjs
+          pnpm run build:web
+          node --import tsx/esm --input-type=module -e "import { writeClientBuildRecord, resolveClientBuildEnvironment } from './scripts/client-build-environment.ts'; writeClientBuildRecord(process.cwd(), resolveClientBuildEnvironment(process.env))"
+      - name: Exercise assembled Work and Library
+        run: pnpm exec vitest run --config vitest.web.config.ts apps/web/tests/work-inventory.e2e.ts

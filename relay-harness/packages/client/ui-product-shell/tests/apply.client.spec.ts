@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { connectionFixture } from './connection-fixture.client.ts'
 import { createElement, type ComponentType } from 'react'
 import { cleanup, render } from '@testing-library/react'
 import { Context } from '@relay-harness/cordis'
@@ -26,6 +27,7 @@ async function bench(install = true) {
     getSnapshot: () => ({ current: undefined }),
     subscribe: (listener: () => void) => { listeners.add(listener); return () => { listeners.delete(listener) } },
   } } as never)
+  ctx.provide('connection', { readiness: connectionFixture().source } as never)
   const workResults = { open: vi.fn(), get: vi.fn(), accept: vi.fn(), list: vi.fn() }
   const getMode = vi.fn(async () => ({ ok: true, value: { mode: 'simple' } }))
   const openSettings = vi.fn()
