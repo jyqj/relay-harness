@@ -44,7 +44,7 @@ export function WorkPage({ wide, useWork, openDeliverable, acceptWork, verifyWor
     setVerification(null)
     setVerificationError(null)
     const sessionId = work.sessionId
-    if (sessionId === undefined || work.completion === 'running' || acceptedRevision === null || acceptedRevision === undefined) {
+    if (sessionId === undefined || work.execution !== 'idle' || acceptedRevision === null || acceptedRevision === undefined) {
       setChecking(false)
       return
     }
@@ -61,7 +61,7 @@ export function WorkPage({ wide, useWork, openDeliverable, acceptWork, verifyWor
       setVerificationError(error instanceof Error ? error.message : String(error))
     })
     return () => { controller.abort() }
-  }, [work.sessionId, work.completion, reviewRevision, acceptedRevision, refresh, verifyWork])
+  }, [work.sessionId, work.execution, reviewRevision, acceptedRevision, refresh, verifyWork])
   const open = (path: string): void => {
     const id = ++request.current
     const sessionId = work.sessionId
@@ -80,7 +80,9 @@ export function WorkPage({ wide, useWork, openDeliverable, acceptWork, verifyWor
   const accept = (): void => {
     const sessionId = work.sessionId
     const revision = work.acceptance?.reviewRevision
-    if (sessionId === undefined || revision === undefined || acceptanceFlight.current) return
+    if (sessionId === undefined || revision === undefined || acceptanceFlight.current
+      || work.execution !== 'idle' || work.acceptance?.reviewable !== true
+      || work.approvals > 0 || work.questions > 0) return
     acceptanceFlight.current = true
     const id = ++acceptanceRequest.current
     setAccepting(true)
@@ -89,7 +91,7 @@ export function WorkPage({ wide, useWork, openDeliverable, acceptWork, verifyWor
       if (id !== acceptanceRequest.current) return
       acceptanceFlight.current = false
       setAccepting(false)
-      if (!receipt.current) setSuperseded({ sessionId, revision })
+      setSuperseded(receipt.current ? null : { sessionId, revision })
       setRefresh(value => value + 1)
     }, (error: unknown) => {
       if (id !== acceptanceRequest.current) return
@@ -102,30 +104,39 @@ export function WorkPage({ wide, useWork, openDeliverable, acceptWork, verifyWor
   if (!wide) return <div className={css.railMark} aria-label={t('nav.work')}>W</div>
   if (work.sessionId === undefined) return <section className={css.page}><h2>{t('work.title')}</h2><p>{t('work.empty')}</p></section>
   const plan = work.plan?.pending ? t('work.plan.pending') : work.plan?.active ? t('work.plan.on') : t('work.plan.off')
-  const completion = t(`work.completion.${work.completion}`)
+  const execution = t(`work.execution.${work.execution}`)
+  const phase = work.goal?.phase
+  const goalPhase = phase === undefined ? t('work.goal.empty')
+    : phase === 'active' || phase === 'paused' || phase === 'blocked' || phase === 'complete'
+      ? t(`work.goal.phase.${phase}`) : phase
   const receipt = work.acceptance
   const failedAcceptance = acceptanceError?.sessionId === work.sessionId && acceptanceError.revision === receipt?.reviewRevision
   const verified = verification?.sessionId === work.sessionId ? verification.value : undefined
   const supersededCut = superseded?.sessionId === work.sessionId && superseded.revision === receipt?.reviewRevision
-  const accepted = receipt !== null && verified?.current === true && verified.reviewRevision === receipt.reviewRevision
+  const accepted = work.execution === 'idle' && receipt !== null && verified?.current === true && verified.reviewRevision === receipt.reviewRevision
     && verified.acceptedRevision === receipt.reviewRevision && !supersededCut && !failedAcceptance && !accepting
   const acceptanceLabel = accepting ? t('work.acceptance.saving') : checking ? t('work.acceptance.checking') : receipt === null ? t('work.acceptance.unavailable') : accepted ? t('work.acceptance.current')
     : receipt.acceptedRevision === null || failedAcceptance || verificationError !== null ? t('work.acceptance.unreviewed') : t('work.acceptance.stale')
-  const canAccept = receipt?.reviewable === true && work.completion !== 'running' && work.approvals === 0 && work.questions === 0
+  const canAccept = receipt?.reviewable === true && work.execution === 'idle' && work.approvals === 0 && work.questions === 0
   const rows: readonly [ProductShellKey, string][] = [
     ['work.goal', work.goal === null ? t('work.goal.empty') : work.goal.objective],
+    ['work.goal.phase', goalPhase],
     ['work.plan', plan],
     ['work.jobs', `${work.jobs.running}/${work.jobs.total}`],
     ['work.trajectory', String(work.trajectoryRecords)],
     ['work.deliverables', String(work.deliverables.length)],
     ['work.approvals', String(work.approvals)],
     ['work.questions', String(work.questions)],
-    ['work.completion', completion],
+    ['work.execution', execution],
     ['work.acceptance', acceptanceLabel],
   ]
   return <section className={css.page}>
     <h2>{t('work.title')}</h2>
-    <dl className={css.metrics}>{rows.map(([key, value]) => <div key={key}><dt>{t(key)}</dt><dd>{value}</dd></div>)}</dl>
+    <p className={css.scope}>{t('work.scope', { workspace: work.cwd ?? t('work.noWorkspace'), session: work.sessionId })}</p>
+    {work.approvals > 0 || work.questions > 0 ? <p role="status">{t('work.attention', { approvals: work.approvals, questions: work.questions })}</p> : null}
+    {canAccept && !accepted && !accepting && !checking ? <p role="status">{t('work.reviewReady')}</p> : null}
+    {work.jobs.failed > 0 || work.jobs.killed > 0 ? <p role="status">{t('work.jobOutcomes', { failed: work.jobs.failed, killed: work.jobs.killed })}</p> : null}
+    <dl className={css.metrics}>{rows.map(([key, value]) => <div key={key}><dt>{t(key)}</dt><dd title={value}>{value}</dd></div>)}</dl>
     <p>{t('work.acceptance.description')}</p>
     <button type="button" className={css.filesButton} disabled={!canAccept || accepting || accepted} onClick={accept}>{accepting ? t('work.acceptance.saving') : t('work.acceptance.confirm')}</button>
     {verificationError !== null ? <p role="alert">{t('work.acceptance.checkFailed', { message: verificationError })}</p> : null}
