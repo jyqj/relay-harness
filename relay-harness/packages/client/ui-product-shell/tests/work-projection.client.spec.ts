@@ -42,14 +42,14 @@ describe('CurrentWorkProjection', () => {
       sessionId,
       goal: { objective: 'Deliver product shell', phase: 'active' },
       plan: { active: true, pending: false },
-      jobs: { total: 3, running: 2 },
+      jobs: { total: 3, running: 2, failed: 0, killed: 0 },
       trajectoryRecords: 3,
       deliverables: ['a.md', 'b.ts'],
       unindexedResults: 0,
       acceptance: null,
       approvals: 1,
       questions: 1,
-      completion: 'running',
+      execution: 'running',
       cwd: '/work',
     })
     projection.dispose()
@@ -86,12 +86,13 @@ function workHarness(phase: string, running = false, jobStatus?: string) {
 
 describe('Work fact invalidation', () => {
   it.each([
-    ['paused', false, undefined, 'paused'], ['blocked', false, undefined, 'blocked'],
+    ['paused', false, undefined, 'idle'], ['blocked', false, undefined, 'idle'],
     ['complete', true, undefined, 'running'], ['complete', false, 'running', 'running'],
-    ['complete', false, 'stopping', 'running'], ['complete', false, undefined, 'complete'],
+    ['complete', false, 'stopping', 'running'], ['complete', false, undefined, 'idle'], ['paused', false, 'running', 'running'],
   ] as const)('derives %s with running=%s and job=%s as %s', (phase, running, jobStatus, expected) => {
     const { projection } = workHarness(phase, running, jobStatus)
-    expect(projection.getSnapshot().completion).toBe(expected)
+    expect(projection.getSnapshot().execution).toBe(expected)
+    expect(projection.getSnapshot().goal?.phase).toBe(phase)
     expect(projection.getSnapshot().deliverables).toEqual(['older-than-page.md'])
     projection.dispose()
   })
@@ -108,7 +109,7 @@ describe('Work fact invalidation', () => {
     expect(calls).toBe(0)
     snapshot.running = false
     for (const fn of sessionListeners) fn()
-    expect(projection.getSnapshot().completion).toBe('idle')
+    expect(projection.getSnapshot().execution).toBe('idle')
     expect(calls).toBe(1)
     projection.dispose()
   })
