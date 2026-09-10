@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { InjectFace, PropsLocale, PropsRuntime } from '@relay-harness/rlh-client-ui-slots'
 import type {} from '@relay-harness/rlh-client-ui-sidebar/client'
 import type { WorkLibraryEntry, WorkLibraryPage, WorkLibraryRequest } from '@relay-harness/rlh-host-work-results/types'
+import { mergeLibraryPage, type LibraryScan } from './library-scan.ts'
 import css from './ProductShell.module.css'
 
 export interface LibraryPageInjected {
@@ -17,10 +18,12 @@ export function LibraryPage({ wide, useSessions, openFiles, openSettings, queryL
   const hasSession = useSessions(state => state.current !== undefined)
   const [query, setQuery] = useState('')
   const [submitted, setSubmitted] = useState('')
-  const [entries, setEntries] = useState<readonly WorkLibraryEntry[]>([])
-  const [page, setPage] = useState<WorkLibraryPage | null>(null)
+  const [scan, setScan] = useState<LibraryScan | null>(null)
+  const entries = scan?.entries ?? []
+  const page = scan?.page ?? null
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [opening, setOpening] = useState<string | null>(null)
   const generation = useRef(0)
   const openGeneration = useRef(0)
@@ -32,21 +35,17 @@ export function LibraryPage({ wide, useSessions, openFiles, openSettings, queryL
     const id = ++generation.current
     setLoading(true)
     setError(null)
+    setLoadError(null)
     openGeneration.current += 1
     setOpening(null)
-    if (next === null) { setEntries([]); setPage(null); setSubmitted(text) }
-    void queryLibrary({ query: text, ...next ?? {} }, controller.signal).then((value) => {
+    if (next === null) { setScan(null); setSubmitted(text) }
+    void (async () => queryLibrary({ query: text, ...next ?? {} }, controller.signal))().then((value) => {
       if (id !== generation.current) return
-      setPage(value)
-      setEntries((previous) => {
-        if (next === null) return value.entries
-        const byPath = new Map([...previous, ...value.entries].map(entry => [JSON.stringify([entry.sessionId, entry.path]), entry]))
-        return [...byPath.values()]
-      })
+      setScan(previous => mergeLibraryPage(next === null ? null : previous, value))
       setLoading(false)
     }, (failure: unknown) => {
       if (id !== generation.current) return
-      setError(failure instanceof Error ? failure.message : String(failure))
+      setLoadError(failure instanceof Error ? failure.message : String(failure))
       setLoading(false)
     })
   }, [queryLibrary])
@@ -59,7 +58,7 @@ export function LibraryPage({ wide, useSessions, openFiles, openSettings, queryL
     const id = ++openGeneration.current
     setOpening(JSON.stringify([entry.sessionId, entry.path]))
     setError(null)
-    void openLibraryOutput(entry).then(() => {
+    void (async () => openLibraryOutput(entry))().then(() => {
       if (id === openGeneration.current) setOpening(null)
     }, (failure: unknown) => {
       if (id !== openGeneration.current) return
@@ -67,6 +66,7 @@ export function LibraryPage({ wide, useSessions, openFiles, openSettings, queryL
       setError(failure instanceof Error ? failure.message : String(failure))
     })
   }
+  const hasGaps = scan?.hadUnindexedResults === true || scan?.hadUnavailableSessions === true
   if (!wide) return <div className={css.railMark} aria-label={t('nav.library')}>L</div>
   return <section className={css.page}>
     <h2>{t('library.title')}</h2>
@@ -76,16 +76,23 @@ export function LibraryPage({ wide, useSessions, openFiles, openSettings, queryL
     </form>
     <p>{t('library.scope')}</p>
     {loading ? <p role="status">{t('library.loading')}</p> : null}
-    {page !== null ? <p role="status">{t('library.coverage', { scanned: page.scannedSessions, total: page.totalSessions })} {page.next === null ? t('library.complete') : t('library.partial')}</p> : null}
-    {page !== null && page.unindexedResults > 0 ? <p>{t('work.inventoryIncomplete', { count: page.unindexedResults })}</p> : null}
+    {page !== null ? <p role="status">{t('library.coverage', { scanned: page.scannedSessions, total: page.totalSessions })} {page.next === null ? t(hasGaps ? 'library.endIncomplete' : 'library.complete') : t('library.partial')}</p> : null}
+    {page !== null && page.unindexedResults > 0 ? <p>{t('library.pageUnindexed', { count: page.unindexedResults })}</p> : null}
     {page !== null && page.unavailableSessions > 0 ? <p>{t('library.unavailable', { count: page.unavailableSessions })}</p> : null}
+    {scan?.hadUnindexedResults && page?.unindexedResults === 0 ? <p>{t('library.priorUnindexed')}</p> : null}
+    {scan?.hadUnavailableSessions && page?.unavailableSessions === 0 ? <p>{t('library.priorUnavailable')}</p> : null}
+    {loadError !== null ? <div role="alert" className={css.openError}>
+      <p>{loadError}</p>
+      <button type="button" disabled={loading} onClick={() => { load(submitted, page?.next ?? null) }}>{t('library.retryPage')}</button>
+      {page !== null ? <button type="button" disabled={loading} onClick={() => { load(submitted) }}>{t('library.restart')}</button> : null}
+    </div> : null}
     {error !== null ? <p role="alert">{error}</p> : null}
     <ul className={css.deliverables}>{entries.map((entry) => {
       const key = JSON.stringify([entry.sessionId, entry.path])
       return <li key={key}><button type="button" title={entry.path} disabled={opening === key} onClick={() => { open(entry) }}>{entry.path}</button><small>{entry.cwd ?? entry.sessionId}</small></li>
     })}</ul>
     {!loading && entries.length === 0 && page !== null ? <p>{t('library.empty')}</p> : null}
-    {page?.next !== null && page?.next !== undefined ? <button type="button" className={css.filesButton} disabled={loading} onClick={() => { load(submitted, page.next) }}>{t('library.more')}</button> : null}
+    {page?.next !== null && page?.next !== undefined ? <button type="button" className={css.filesButton} disabled={loading || loadError !== null} onClick={() => { load(submitted, page.next) }}>{t('library.more')}</button> : null}
     <div className={css.libraryGrid}>
       <button type="button" disabled={!hasSession} onClick={openFiles}>{t('library.files')}</button>
       <button type="button" onClick={() => { openSettings('memory') }}>{t('library.memory')}</button>
