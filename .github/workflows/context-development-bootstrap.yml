@@ -15,6 +15,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
+          fetch-depth: 0
           persist-credentials: false
       - uses: pnpm/action-setup@v4
         with:
@@ -25,18 +26,25 @@ jobs:
           node-version: '24'
       - name: Install locked development dependencies
         working-directory: relay-harness
-        run: pnpm install --frozen-lockfile
-      - name: Package source and keyless development dependencies
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm --filter @relay-harness/rlh-code-index-local add --save-exact @lancedb/lancedb@0.38.0 apache-arrow@18.1.0
+      - name: Package keyless development dependencies and history
         run: |
           mkdir -p /tmp/context-development-runtime
           cp "$(command -v node)" /tmp/context-development-runtime/node
-          tar --exclude='./.git' --exclude='*/.env' --exclude='*/.env.local' -czf /tmp/context-development-source.tgz .
+          cp -a "$(dirname "$(dirname "$(realpath "$(command -v pnpm)")")")" /tmp/context-development-runtime/pnpm-package
+          git bundle create /tmp/context-development-history.bundle --all
+          find relay-harness -type d -name node_modules -prune -print0 > /tmp/dependency-paths
+          printf '%s\0' relay-harness/pnpm-lock.yaml relay-harness/packages/index/code-index-local/package.json >> /tmp/dependency-paths
+          tar --null -T /tmp/dependency-paths -czf /tmp/context-development-dependencies.tgz
           tar -czf /tmp/context-development-runtime.tgz -C /tmp/context-development-runtime .
       - uses: actions/upload-artifact@v4
         with:
-          name: context-development-snapshot
+          name: context-development-dependencies
           path: |
-            /tmp/context-development-source.tgz
+            /tmp/context-development-dependencies.tgz
             /tmp/context-development-runtime.tgz
+            /tmp/context-development-history.bundle
           retention-days: 1
           compression-level: 0
