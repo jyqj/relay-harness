@@ -1,0 +1,64 @@
+name: Context keyless test environment
+on:
+  push:
+    branches: [chore/context-test-env-20260910]
+    paths: [.github/workflows/context-test-environment.yml]
+permissions:
+  contents: read
+jobs:
+  dependencies:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+      RLH_TELEMETRY_DISABLED: '1'
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.22.0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+      - name: Install pinned keyless dependencies
+        working-directory: relay-harness
+        run: pnpm install --frozen-lockfile
+      - name: Package dependencies without source, credentials, or caches
+        run: |
+          find relay-harness -type d -name node_modules -prune -print0 > /tmp/context-dependency-paths
+          tar --null -T /tmp/context-dependency-paths -czf /tmp/context-dependencies.tgz
+          split -b 400M -d /tmp/context-dependencies.tgz /tmp/context-dependencies.part-
+          sha256sum /tmp/context-dependencies.tgz /tmp/context-dependencies.part-* > /tmp/context-dependencies.sha256
+          ls -lh /tmp/context-dependencies*
+      - uses: actions/upload-artifact@v4
+        with:
+          name: context-dependencies-00
+          path: |
+            /tmp/context-dependencies.part-00
+            /tmp/context-dependencies.sha256
+          retention-days: 1
+          compression-level: 0
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
+          name: context-dependencies-01
+          path: /tmp/context-dependencies.part-01
+          retention-days: 1
+          compression-level: 0
+          if-no-files-found: ignore
+      - uses: actions/upload-artifact@v4
+        with:
+          name: context-dependencies-02
+          path: /tmp/context-dependencies.part-02
+          retention-days: 1
+          compression-level: 0
+          if-no-files-found: ignore
+      - uses: actions/upload-artifact@v4
+        with:
+          name: context-dependencies-03
+          path: /tmp/context-dependencies.part-03
+          retention-days: 1
+          compression-level: 0
+          if-no-files-found: ignore
