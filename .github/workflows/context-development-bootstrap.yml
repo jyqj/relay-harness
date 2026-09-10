@@ -28,6 +28,11 @@ jobs:
         working-directory: relay-harness
         run: |
           pnpm install --frozen-lockfile
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('pnpm-workspace.yaml')
+          p.write_text(p.read_text().replace('allowBuilds:\n', 'allowBuilds:\n  # LanceDB storage never invokes its optional HuggingFace model adapters.\n  onnxruntime-node: false\n  sharp: false\n'))
+          PY
           pnpm --filter @relay-harness/rlh-code-index-local add --save-exact @lancedb/lancedb@0.38.0 apache-arrow@18.1.0
       - name: Package keyless development dependencies and history
         run: |
@@ -36,7 +41,7 @@ jobs:
           cp -a "$(dirname "$(dirname "$(realpath "$(command -v pnpm)")")")" /tmp/context-development-runtime/pnpm-package
           git bundle create /tmp/context-development-history.bundle --all
           find relay-harness -type d -name node_modules -prune -print0 > /tmp/dependency-paths
-          printf '%s\0' relay-harness/pnpm-lock.yaml relay-harness/packages/index/code-index-local/package.json >> /tmp/dependency-paths
+          printf '%s\0' relay-harness/pnpm-lock.yaml relay-harness/pnpm-workspace.yaml relay-harness/packages/index/code-index-local/package.json >> /tmp/dependency-paths
           tar --null -T /tmp/dependency-paths -czf /tmp/context-development-dependencies.tgz
           tar -czf /tmp/context-development-runtime.tgz -C /tmp/context-development-runtime .
       - uses: actions/upload-artifact@v4
