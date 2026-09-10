@@ -12,9 +12,9 @@ const t = ((key: string) => key) as never
 
 function summary(sessionId = 'work-a', acceptedRevision: number | null = null): WorkSummary {
   return {
-    sessionId, goal: null, plan: null, jobs: { total: 0, running: 0 }, trajectoryRecords: 0,
+    sessionId, goal: null, plan: null, jobs: { total: 0, running: 0, failed: 0, killed: 0 }, trajectoryRecords: 0,
     deliverables: ['result.txt'], unindexedResults: 0, approvals: 0, questions: 0,
-    acceptance: { reviewRevision: 10, acceptedRevision, reviewable: true }, completion: 'idle', cwd: '/workspace',
+    acceptance: { reviewRevision: 10, acceptedRevision, reviewable: true }, execution: 'idle', cwd: '/workspace',
   }
 }
 
@@ -179,4 +179,19 @@ describe('Library operation lifetimes', () => {
     await act(async () => { opening.reject(new Error('old result no longer exists')); await Promise.resolve() })
     expect(screen.queryByRole('alert')).toBeNull()
   })
+})
+
+it('allows a successfully re-confirmed same revision to replace a superseded receipt', async () => {
+  const verify = vi.fn<WorkPageProps['verifyWork']>().mockResolvedValue(verified())
+  const accept = vi.fn<WorkPageProps['acceptWork']>()
+    .mockResolvedValueOnce({ reviewedThroughSeq: 10, recordedSeq: 11, current: false })
+    .mockResolvedValueOnce({ reviewedThroughSeq: 10, recordedSeq: 12, current: true })
+  const view = render(<WorkPage {...workProps(summary(), verify, accept)} />)
+  fireEvent.click(screen.getByRole('button', { name: 'work.acceptance.confirm' }))
+  await waitFor(() => { expect(screen.queryByText('work.acceptance.saving')).toBeNull() })
+  view.rerender(<WorkPage {...workProps(summary('work-a', 10), verify, accept)} />)
+  expect(await screen.findByText('work.acceptance.stale')).toBeTruthy()
+  fireEvent.click(screen.getByRole('button', { name: 'work.acceptance.confirm' }))
+  expect(await screen.findByText('work.acceptance.current')).toBeTruthy()
+  expect(accept).toHaveBeenCalledTimes(2)
 })
