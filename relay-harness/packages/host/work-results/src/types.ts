@@ -24,8 +24,13 @@ export interface WorkAcceptanceProjection {
   readonly acceptedRevision: number | null
 }
 
+/** Host-observed reasons a log-prefix confirmation cannot currently be submitted. */
+export type WorkConfirmationBlocker = 'not-root' | 'turn-open' | 'running' | 'queued-input' | 'approval' | 'question' | 'background-job'
+
 /** A captured review cut whose receipt is confirmed in durable storage. */
 export interface WorkVerifiedReview extends WorkAcceptanceProjection {
+  /** Advisory live eligibility; accept always rechecks the same policy under maintenance. */
+  readonly confirmationBlockedBy: readonly WorkConfirmationBlocker[]
   /** Durable cut verified by the Host; -1 when there is no receipt to verify. */
   readonly verifiedThroughSeq: number
   /** False when later live log facts superseded the captured cut during verification. */

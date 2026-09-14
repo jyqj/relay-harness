@@ -177,7 +177,7 @@ describe('web e2e: live-turn interactions (cancel / error / retry)', () => {
     const snapshot = await captureStableAria(page, '[class*="centerCol"]', scaffold!.workspaceCwd)
     await compareOrRefreshGolden(ERROR_EXPECTED, snapshot, MODE)
     await page.getByRole('button', { name: 'Settings', exact: true }).click()
-    const developerMode = page.getByRole('dialog', { name: 'Settings' }).getByRole('switch', { name: 'Developer Mode' })
+    const developerMode = page.getByRole('dialog', { name: 'Settings' }).getByRole('switch', { name: 'Detailed view' })
     await developerMode.check()
     await expect.poll(() => developerMode.isEnabled()).toBe(true)
     await page.keyboard.press('Escape')

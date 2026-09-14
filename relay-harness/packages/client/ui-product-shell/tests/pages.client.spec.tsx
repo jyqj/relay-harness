@@ -16,7 +16,7 @@ describe('product navigation pages', () => {
     const openFiles = vi.fn()
     const openSettings = vi.fn()
     const page = {
-      wide: true, useConnection: useReadyConnection,
+      active: true, renderSlot: () => null, openConversation: vi.fn(), startWork: vi.fn(), openSource: vi.fn(), useConnection: useReadyConnection,
       expandSidebar: vi.fn(),
       useSessions: ((select: (value: unknown) => unknown) => select({ current: 's1' })) as never,
       useWorkspaces: unused,
@@ -53,7 +53,7 @@ describe('product navigation pages', () => {
       cwd: '/work',
     }
     const page = {
-      wide: true, useConnection: useReadyConnection,
+      active: true, renderSlot: () => null, openConversation: vi.fn(), startWork: vi.fn(), openSource: vi.fn(), useConnection: useReadyConnection,
       expandSidebar: vi.fn(),
       useSessions: unused,
       useWorkspaces: unused,
@@ -65,9 +65,8 @@ describe('product navigation pages', () => {
     render(<WorkPage {...page} />)
     expect(screen.getByText('Ship')).toBeTruthy()
     expect(screen.getByText('work.execution.running')).toBeTruthy()
-    expect(screen.getByText('1/2')).toBeTruthy()
-    expect(screen.getByText('8')).toBeTruthy()
-    expect(screen.getAllByText('1')).toHaveLength(2)
+    expect(screen.getByRole('button', { name: 'work.attention.resolve' })).toBeTruthy()
+    expect(screen.getByRole('region', { name: 'work.results.title' })).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'out.md' }))
     expect(openDeliverable).toHaveBeenCalledWith('s1', 'out.md')
     await waitFor(() => { expect(screen.getByRole('button', { name: 'out.md' }).hasAttribute('disabled')).toBe(false) })
@@ -79,7 +78,7 @@ function workPage(summary: Partial<WorkSummary>, opener: WorkPageProps['openDeli
     sessionId: 's1', epoch: 1, availability: 'ready', goal: null, plan: null, jobs: { total: 0, running: 0, failed: 0, killed: 0 }, trajectoryRecords: 0,
     deliverables: ['out.md'], unindexedResults: 0, acceptance: null, approvals: 0, questions: 0, execution: 'idle', cwd: '/work', ...summary,
   }
-  return { wide: true, useConnection: useReadyConnection, useWork: (select: (value: WorkSummary) => unknown) => select(work), openDeliverable: opener, openFiles: vi.fn(), verifyWork: vi.fn().mockRejectedValue(new Error('not yet verified')), t } as unknown as WorkPageProps
+  return { active: true, renderSlot: () => null, openConversation: vi.fn(), startWork: vi.fn(), openSource: vi.fn(), useConnection: useReadyConnection, useWork: (select: (value: WorkSummary) => unknown) => select(work), openDeliverable: opener, openFiles: vi.fn(), verifyWork: vi.fn().mockResolvedValue({ ...work.acceptance, confirmationBlockedBy: [], verifiedThroughSeq: -1, current: true }), t } as unknown as WorkPageProps
 }
 
 describe('Work interactions and status', () => {
@@ -122,24 +121,26 @@ describe('revision-bound user confirmation', () => {
     const settled = Promise.withResolvers<import('@relay-harness/rlh-host-work-results/types').WorkAcceptReceipt>()
     const acceptWork = vi.fn(() => settled.promise)
     const initial = workPage({ acceptance: { reviewRevision: 4, acceptedRevision: null, reviewable: true } }, vi.fn())
-    const page = render(<WorkPage {...initial} acceptWork={acceptWork} />)
+    const verifyWork = vi.fn().mockResolvedValueOnce({ ...initial.useWork(value => value).acceptance, confirmationBlockedBy: [], verifiedThroughSeq: -1, current: true }).mockRejectedValue(new Error('disk unavailable'))
+    const page = render(<WorkPage {...initial} acceptWork={acceptWork} verifyWork={verifyWork} />)
+    await waitFor(() => { expect(screen.getByRole('button', { name: 'work.acceptance.confirm' }).hasAttribute('disabled')).toBe(false) })
     fireEvent.click(screen.getByRole('button', { name: 'work.acceptance.confirm' }))
     fireEvent.click(screen.getByRole('button', { name: 'work.acceptance.saving' }))
     expect(acceptWork).toHaveBeenCalledTimes(1)
     expect(acceptWork).toHaveBeenCalledWith('s1', 4)
     const incoming = workPage({ acceptance: { reviewRevision: 4, acceptedRevision: 4, reviewable: true } }, vi.fn())
-    page.rerender(<WorkPage {...incoming} acceptWork={acceptWork} />)
+    page.rerender(<WorkPage {...incoming} acceptWork={acceptWork} verifyWork={verifyWork} />)
     expect(screen.queryByText('work.acceptance.current')).toBeNull()
     settled.reject(new Error('disk unavailable'))
     await waitFor(() => { expect(screen.getAllByRole('alert').length).toBeGreaterThan(0) })
     expect(screen.queryByText('work.acceptance.current')).toBeNull()
-    expect(screen.getByRole('button', { name: 'work.acceptance.confirm' }).hasAttribute('disabled')).toBe(false)
+    await waitFor(() => { expect(screen.getByRole('button', { name: 'work.acceptance.confirm' }).hasAttribute('disabled')).toBe(true) })
   })
 
   it('separates a model-complete goal from an explicit current user receipt', async () => {
     const props = workPage({ goal: { objective: 'Ship', phase: 'complete' }, acceptance: { reviewRevision: 8, acceptedRevision: 3, reviewable: true } }, vi.fn())
     const verifyWork = vi.fn().mockResolvedValue({
-      reviewRevision: 8, acceptedRevision: 3, reviewable: true, verifiedThroughSeq: 9, current: true,
+      reviewRevision: 8, acceptedRevision: 3, reviewable: true, confirmationBlockedBy: [], verifiedThroughSeq: 9, current: true,
     })
     render(<WorkPage {...props} acceptWork={vi.fn()} verifyWork={verifyWork} />)
     expect(screen.getByText('work.goal.phase.complete')).toBeTruthy()
@@ -159,7 +160,7 @@ describe('cross-session Library', () => {
       })
     const openLibraryOutput = vi.fn().mockResolvedValue(undefined)
     render(<LibraryPage {...{
-      wide: true, useConnection: useReadyConnection, useSessions: ((select: (state: { current?: string }) => unknown) => select({})) as never,
+      active: true, renderSlot: () => null, openConversation: vi.fn(), startWork: vi.fn(), openSource: vi.fn(), useConnection: useReadyConnection, useSessions: ((select: (state: { current?: string }) => unknown) => select({})) as never,
       expandSidebar: vi.fn(), useWorkspaces: unused,
       queryLibrary, openLibraryOutput, openFiles: vi.fn(), openSettings: vi.fn(), t,
     } as LibraryPageProps} />)
@@ -177,7 +178,7 @@ describe('cross-session Library', () => {
 
 function libraryPage(queryLibrary: LibraryPageProps['queryLibrary']): LibraryPageProps {
   return {
-    wide: true, useConnection: useReadyConnection, useSessions: ((select: (state: { current?: string }) => unknown) => select({})) as never,
+    active: true, renderSlot: () => null, openConversation: vi.fn(), startWork: vi.fn(), openSource: vi.fn(), useConnection: useReadyConnection, useSessions: ((select: (state: { current?: string }) => unknown) => select({})) as never,
     expandSidebar: vi.fn(), useWorkspaces: unused, queryLibrary,
     openLibraryOutput: vi.fn().mockResolvedValue(undefined), openFiles: vi.fn(), openSettings: vi.fn(), t,
   } as LibraryPageProps
@@ -188,9 +189,9 @@ const emptyLibraryPage = {
 }
 
 describe('Work review readiness and independent facts', () => {
-  it('makes a result without a Goal discoverable for review', () => {
+  it('makes a result without a Goal discoverable for review', async () => {
     render(<WorkPage {...workPage({ acceptance: { reviewRevision: 8, acceptedRevision: null, reviewable: true } }, vi.fn())} acceptWork={vi.fn()} />)
-    expect(screen.getByText('work.reviewReady')).toBeTruthy()
+    expect(await screen.findByText('work.reviewReady')).toBeTruthy()
     expect(screen.getByText('work.execution.idle')).toBeTruthy()
     expect(screen.getByText('work.scope')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'work.acceptance.confirm' }).hasAttribute('disabled')).toBe(false)
@@ -274,5 +275,44 @@ describe('Library scan recovery', () => {
     expect(screen.queryByText('library.priorUnavailable')).toBeNull()
     expect(screen.queryByText(/library.endIncomplete/)).toBeNull()
     expect(screen.getByText(/library.complete/)).toBeTruthy()
+  })
+})
+
+
+describe('workbench actions', () => {
+  it('offers a new work action without requiring a Goal or existing Session', () => {
+    const startWork = vi.fn()
+    render(<WorkPage {...workPage({ sessionId: undefined }, vi.fn())} startWork={startWork} />)
+    fireEvent.click(screen.getByRole('button', { name: 'work.start' }))
+    expect(startWork).toHaveBeenCalledOnce()
+  })
+
+  it('routes attention to the exact source conversation without granting approval', () => {
+    const openConversation = vi.fn()
+    const acceptWork = vi.fn()
+    render(<WorkPage {...workPage({ sessionId: 'source', approvals: 2, questions: 1 }, vi.fn())} openConversation={openConversation} acceptWork={acceptWork} />)
+    fireEvent.click(screen.getByRole('button', { name: 'work.attention.resolve' }))
+    expect(openConversation).toHaveBeenCalledWith('source')
+    expect(acceptWork).not.toHaveBeenCalled()
+  })
+
+  it.each(['not-root', 'queued-input', 'background-job'] as const)('displays the Host reason %s and prevents an invalid confirmation', async reason => {
+    const acceptWork = vi.fn()
+    const props = workPage({ acceptance: { reviewRevision: 4, acceptedRevision: null, reviewable: true } }, vi.fn())
+    const verifyWork = vi.fn().mockResolvedValue({ reviewRevision: 4, acceptedRevision: null, reviewable: true, current: true, verifiedThroughSeq: -1, confirmationBlockedBy: [reason] })
+    render(<WorkPage {...props} acceptWork={acceptWork} verifyWork={verifyWork} />)
+    expect(await screen.findByText(`work.confirm.blocked.${reason}`)).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'work.acceptance.confirm' }))
+    expect(acceptWork).not.toHaveBeenCalled()
+    const description = screen.getByRole('button', { name: 'work.acceptance.confirm' }).getAttribute('aria-describedby')
+    expect(document.getElementById(description ?? '')?.textContent).toBe(`work.confirm.blocked.${reason}`)
+  })
+
+  it('does not reuse a verified current record from a different log revision', async () => {
+    const props = workPage({ acceptance: { reviewRevision: 5, acceptedRevision: null, reviewable: true } }, vi.fn())
+    const verifyWork = vi.fn().mockResolvedValue({ reviewRevision: 4, acceptedRevision: null, reviewable: true, current: true, verifiedThroughSeq: -1, confirmationBlockedBy: [] })
+    render(<WorkPage {...props} verifyWork={verifyWork} />)
+    expect(await screen.findByText('work.confirm.blocked.unverified')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'work.acceptance.confirm' }).hasAttribute('disabled')).toBe(true)
   })
 })

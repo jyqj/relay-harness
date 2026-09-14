@@ -18,9 +18,9 @@ function summary(changes: Partial<WorkSummary> = {}): WorkSummary {
     acceptance: { reviewRevision: 8, acceptedRevision: 8, reviewable: true }, ...changes,
   }
 }
-const verified: WorkVerifiedReview = { reviewRevision: 8, acceptedRevision: 8, reviewable: true, current: true, verifiedThroughSeq: 9 }
+const verified: WorkVerifiedReview = { reviewRevision: 8, acceptedRevision: 8, reviewable: true, current: true, confirmationBlockedBy: [], verifiedThroughSeq: 9 }
 function workProps(work: WorkSummary, verifyWork: WorkPageProps['verifyWork'], acceptWork = vi.fn(), openDeliverable = vi.fn()): WorkPageProps {
-  return { wide: true, useWork: (select: (value: WorkSummary) => unknown) => select(work), verifyWork, acceptWork, openDeliverable, openFiles: vi.fn(), t } as unknown as WorkPageProps
+  return { active: true, renderSlot: () => null, openConversation: vi.fn(), startWork: vi.fn(), openSource: vi.fn(), useWork: (select: (value: WorkSummary) => unknown) => select(work), verifyWork, acceptWork, openDeliverable, openFiles: vi.fn(), t } as unknown as WorkPageProps
 }
 
 describe('Work generation-bound actions', () => {
@@ -54,9 +54,10 @@ describe('Work generation-bound actions', () => {
   it.each(['resolve', 'reject'] as const)('retires a pending confirmation on disconnect before its %s', async (settlement) => {
     const pending = Promise.withResolvers<WorkAcceptReceipt>()
     const accept = vi.fn().mockReturnValue(pending.promise)
-    const verifyWork = vi.fn().mockResolvedValue(verified)
+    const verifyWork = vi.fn().mockResolvedValue({ ...verified, acceptedRevision: null })
     const work = summary({ acceptance: { reviewRevision: 8, acceptedRevision: null, reviewable: true } })
     const view = render(<WorkPage {...workProps(work, verifyWork, accept)} />)
+    await waitFor(() => { expect(screen.getByRole('button', { name: 'work.acceptance.confirm' }).hasAttribute('disabled')).toBe(false) })
     fireEvent.click(screen.getByRole('button', { name: 'work.acceptance.confirm' }))
     view.rerender(<WorkPage {...workProps({ ...work, availability: 'disconnected' }, verifyWork, accept)} />)
     await act(async () => {
@@ -66,13 +67,21 @@ describe('Work generation-bound actions', () => {
     })
     expect(screen.queryByRole('alert')).toBeNull()
     expect(screen.queryByText('work.acceptance.current')).toBeNull()
-    expect(verifyWork).not.toHaveBeenCalled()
+    expect(verifyWork).toHaveBeenCalledOnce()
+    expect(accept).toHaveBeenCalledOnce()
   })
 
   it('captures synchronous verification, confirmation, and file-open failures as page errors', async () => {
     const throwing = () => { throw new Error('synchronous refusal') }
-    const view = render(<WorkPage {...workProps(summary(), throwing, vi.fn(throwing), vi.fn(throwing))} />)
+    const accept = vi.fn(throwing)
+    const work = summary({ acceptance: { reviewRevision: 8, acceptedRevision: null, reviewable: true } })
+    const view = render(<WorkPage {...workProps(work, throwing, accept, vi.fn(throwing))} />)
     expect(await screen.findByText('work.acceptance.checkFailed')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'work.acceptance.confirm' }))
+    expect(accept).not.toHaveBeenCalled()
+    const verify = vi.fn().mockResolvedValue({ ...verified, acceptedRevision: null })
+    view.rerender(<WorkPage {...workProps(work, verify, accept, vi.fn(throwing))} />)
+    await waitFor(() => { expect(screen.getByRole('button', { name: 'work.acceptance.confirm' }).hasAttribute('disabled')).toBe(false) })
     fireEvent.click(screen.getByRole('button', { name: 'work.acceptance.confirm' }))
     expect(await screen.findByText('work.acceptance.failed')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'out.md' }))
@@ -85,6 +94,7 @@ describe('Work generation-bound actions', () => {
     const accept = vi.fn().mockResolvedValue({ reviewedThroughSeq: 8, recordedSeq: 9, current: false })
     const work = summary({ acceptance: { reviewRevision: 8, acceptedRevision: null, reviewable: true } })
     const view = render(<WorkPage {...workProps(work, verifyWork, accept)} />)
+    await waitFor(() => { expect(screen.getByRole('button', { name: 'work.acceptance.confirm' }).hasAttribute('disabled')).toBe(false) })
     fireEvent.click(screen.getByRole('button', { name: 'work.acceptance.confirm' }))
     await waitFor(() => { expect(screen.queryByText('work.acceptance.saving')).toBeNull() })
     view.rerender(<WorkPage {...workProps(summary({ epoch: 2 }), verifyWork, accept)} />)
@@ -100,7 +110,7 @@ const page: WorkLibraryPage = {
 }
 function libraryProps(connection: Readiness, queryLibrary: LibraryPageProps['queryLibrary'], opener = vi.fn()): LibraryPageProps {
   return {
-    wide: true, useConnection: (select: (value: Readiness) => unknown) => select(connection),
+    active: true, renderSlot: () => null, openConversation: vi.fn(), startWork: vi.fn(), openSource: vi.fn(), useConnection: (select: (value: Readiness) => unknown) => select(connection),
     useSessions: (select: (value: { current: string }) => unknown) => select({ current: 's1' }),
     queryLibrary, openLibraryOutput: opener, openFiles: vi.fn(), openSettings: vi.fn(), t,
   } as unknown as LibraryPageProps

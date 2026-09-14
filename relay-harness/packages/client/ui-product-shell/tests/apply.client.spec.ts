@@ -1,14 +1,12 @@
 // @vitest-environment jsdom
 import { connectionFixture } from './connection-fixture.client.ts'
-import { createElement, type ComponentType } from 'react'
-import { cleanup, render } from '@testing-library/react'
+import { cleanup } from '@testing-library/react'
 import { Context } from '@relay-harness/cordis'
 import { SlotRegistry } from '@relay-harness/rlh-client-runtime/client'
 import { LocaleRuntime } from '@relay-harness/rlh-client-locale/client'
 import { afterEach, expect, it, vi } from 'vitest'
 import { apply } from '../src/client/index.ts'
 import * as entrypoint from '../src/client/index.ts'
-import { resolveSlotLabel } from '@relay-harness/rlh-client-ui-slots'
 import type { ProductModeRowInjected } from '../src/client/ProductModeRow.tsx'
 import type { WorkPageInjected } from '../src/client/WorkPage.tsx'
 import type { LibraryPageInjected } from '../src/client/LibraryPage.tsx'
@@ -39,9 +37,12 @@ async function bench(install = true) {
   ctx.provide('remote', { workResults, productMode } as never)
   ctx.provide('remote.productMode', productMode)
   ctx.provide('remote.workResults', workResults)
+  ctx.provide('layout', { mainNavigation: { getSnapshot: () => ({ page: 'conversation', revision: 0 }), subscribe: () => () => {} }, openMain: vi.fn() })
   ctx.provide('workspaces', {} as never)
   const slots = ctx.get('slots') as SlotRegistry
   slots.register({ name: 'root', children: {
+    'sidebar.primary': { kind: 'list', scope: 'root' },
+    'shell.page': { kind: 'keyed', scope: 'root' },
     'sidebar.chat.label': { kind: 'single', scope: 'root' },
     'sidebar.nav.tab': { kind: 'list', scope: 'root' },
     'sidebar.page': { kind: 'keyed', scope: 'root' },
@@ -65,8 +66,9 @@ it('registers product navigation, switches suppression, and releases subscriptio
   const { ctx, slots, listeners, Advanced, Provenance, Trajectory } = await bench()
   try {
     await vi.waitFor(() => { expect(ctx.productShell.store.getSnapshot().status).toBe('ready') })
-    expect(slots.entries('sidebar.nav.tab').map(entry => entry.options.id)).toEqual(['work', 'library'])
-    expect(slots.entries('sidebar.page').map(entry => entry.options.key)).toEqual(['work', 'library'])
+    expect(slots.entries('sidebar.primary').map(entry => entry.options.id)).toEqual(['product'])
+    expect(slots.entries('sidebar.nav.tab')).toHaveLength(0)
+    expect(slots.entries('shell.page').map(entry => entry.options.key)).toEqual(['work', 'library'])
     expect(slots.entries('settings.general.item').map(entry => entry.options.id)).toEqual(['product-mode'])
     expect(slots.entriesOfSlot('settings.section')).toEqual([])
     expect(slots.entries('settings.section')).toHaveLength(1)
@@ -84,10 +86,10 @@ it('registers product navigation, switches suppression, and releases subscriptio
 
 it.each([false, true])('forwards registered Work and Library callbacks; remote failure=%s', async (fails) => {
   const { ctx, slots, workResults } = await bench()
-  const work = slots.entries('sidebar.page').find(entry => entry.options.key === 'work')!.inject!() as unknown as WorkPageInjected
-  const library = slots.entries('sidebar.page').find(entry => entry.options.key === 'library')!.inject!() as unknown as LibraryPageInjected
+  const work = slots.entries('shell.page').find(entry => entry.options.key === 'work')!.inject!() as unknown as WorkPageInjected
+  const library = slots.entries('shell.page').find(entry => entry.options.key === 'library')!.inject!() as unknown as LibraryPageInjected
   const verified: WorkVerifiedReview = {
-    reviewRevision: 7, acceptedRevision: null, reviewable: true, verifiedThroughSeq: 8, current: true,
+    reviewRevision: 7, acceptedRevision: null, reviewable: true, confirmationBlockedBy: [], verifiedThroughSeq: 8, current: true,
   }
   const receipt: WorkAcceptReceipt = { reviewedThroughSeq: 7, recordedSeq: 8, current: true }
   const entry: WorkLibraryEntry = { sessionId: 'source-session' as WorkLibraryEntry['sessionId'], path: 'result.md' }
@@ -127,27 +129,27 @@ it.each([false, true])('forwards registered Work and Library callbacks; remote f
 })
 
 it('connects registered file/settings actions and reloads mode on connection reset', async () => {
-  const { ctx, slots, getMode, openSettings, locale } = await bench()
+  const { ctx, slots, getMode, openSettings } = await bench()
   const target = window
   const events: unknown[] = []
   const onFiles = (event: Event): void => { events.push((event as CustomEvent<unknown>).detail) }
   target.addEventListener('rlhd-open-surface', onFiles)
-  const work = slots.entries('sidebar.page').find(entry => entry.options.key === 'work')!.inject!() as unknown as WorkPageInjected
-  const library = slots.entries('sidebar.page').find(entry => entry.options.key === 'library')!.inject!() as unknown as LibraryPageInjected
+  const work = slots.entries('shell.page').find(entry => entry.options.key === 'work')!.inject!() as unknown as WorkPageInjected
+  const library = slots.entries('shell.page').find(entry => entry.options.key === 'library')!.inject!() as unknown as LibraryPageInjected
   const mode = slots.entries('settings.general.item').find(entry => entry.options.id === 'product-mode')!.inject!() as unknown as ProductModeRowInjected
   try {
     await vi.waitFor(() => { expect(ctx.productShell.store.getSnapshot().status).toBe('ready') })
     work.openFiles()
     library.openFiles()
-    expect(events).toEqual([{ kind: 'files' }, { kind: 'files' }])
+    expect(events).toEqual([])
+    vi.spyOn(ctx.sessions.list, 'getSnapshot').mockReturnValue({ current: 'source-session' } as never)
+    work.openFiles()
+    library.openFiles()
+    expect(events).toEqual([{ kind: 'files', sessionId: 'source-session' }, { kind: 'files', sessionId: 'source-session' }])
     for (const section of ['memory', 'skills', 'mcp', 'code-index'] as const) library.openSettings(section)
     expect(openSettings.mock.calls).toEqual([['memory'], ['skills'], ['mcp'], ['code-index']])
-    expect(slots.entries('sidebar.nav.tab').map(entry => resolveSlotLabel(entry.options.label))).toEqual(['Work', 'Library'])
-    for (const entry of slots.entries('sidebar.nav.tab')) {
-      expect(render(createElement(entry.component as ComponentType)).container.innerHTML).toBe('')
-    }
-    const chat = slots.entries('sidebar.chat.label')[0]!.component as (props: { t: ReturnType<typeof locale.bind> }) => string
-    expect(chat({ t: locale.bind('productShell') })).toBe('Chat')
+    expect(slots.entries('sidebar.primary').map(entry => entry.options.id)).toEqual(['product'])
+    expect(slots.entries('sidebar.nav.tab')).toEqual([])
     await mode.setMode('developer')
     expect(mode.hooks.productMode.getSnapshot().mode).toBe('developer')
     ctx.emit('connection/reset')
@@ -178,7 +180,7 @@ it('removes scoped registrations and restores parent controls across plugin relo
     await fork.dispose()
     expect(listeners.size).toBe(0)
     expect(slots.entries('sidebar.nav.tab')).toEqual([])
-    expect(slots.entries('sidebar.page')).toEqual([])
+    expect(slots.entries('shell.page')).toEqual([])
     expect(slots.entries('settings.general.item')).toEqual([])
     expect(slots.entriesOfSlot('settings.section').map(entry => entry.component)).toEqual([Advanced])
     expect(slots.entriesOfSlot('conversation.view').map(entry => entry.component)).toEqual([Trajectory])
@@ -187,7 +189,8 @@ it('removes scoped registrations and restores parent controls across plugin relo
     await fork.await()
     await vi.waitFor(() => { expect(ctx.productShell.store.getSnapshot().status).toBe('ready') })
     expect(listeners.size).toBe(1)
-    expect(slots.entries('sidebar.nav.tab').map(entry => entry.options.id)).toEqual(['work', 'library'])
+    expect(slots.entries('sidebar.primary').map(entry => entry.options.id)).toEqual(['product'])
+    expect(slots.entries('sidebar.nav.tab')).toHaveLength(0)
     expect(slots.entriesOfSlot('settings.section')).toEqual([])
   } finally { await ctx.fiber.dispose() }
   expect(listeners.size).toBe(0)

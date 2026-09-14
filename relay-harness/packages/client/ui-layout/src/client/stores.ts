@@ -95,7 +95,11 @@ export function createLayoutStore(): EngineStoreHandle<LayoutState, LayoutAction
       // Session switch on phone/tablet: drop the overlay/re-expanded drawer
       // without rewriting the wide-window width preference.
       closeNarrowSidebar: (d) => { d.narrowExpanded = false },
-      openDetails: (d) => { if (d.details === 0) d.details = DETAILS_DEFAULT },
+      openDetails: (d) => {
+        d.surfaces = 0
+        writeLayoutPersist({ surfaces: 0 })
+        if (d.details === 0) d.details = DETAILS_DEFAULT
+      },
       closeDetails: (d) => { d.details = 0 },
       setSurfaces: (d, px: number) => {
         d.surfaces = clampWidth(px, SURFACES_MIN, SURFACES_MAX)
@@ -103,12 +107,14 @@ export function createLayoutStore(): EngineStoreHandle<LayoutState, LayoutAction
       },
       toggleSurfaces: (d) => {
         d.surfaces = d.surfaces === 0 ? lastSurfacesWidth() : 0
+        if (d.surfaces > 0) d.details = 0
         writeLayoutPersist({
           surfaces: d.surfaces,
           ...(d.surfaces > 0 ? { lastSurfaces: d.surfaces } : {}),
         })
       },
       openSurfaces: (d) => {
+        d.details = 0
         if (d.surfaces === 0) d.surfaces = lastSurfacesWidth()
         writeLayoutPersist({ surfaces: d.surfaces, lastSurfaces: d.surfaces })
       },

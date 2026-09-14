@@ -20,6 +20,8 @@ import type { createSidebarNavStore, SidebarNavTabRow } from '../stores.ts'
 
 declare module '@relay-harness/rlh-client-ui-slots' {
   interface SlotMap {
+    /** Primary product navigation; does not replace workspace/session browsing. */
+    'sidebar.primary': { kind: 'list'; scope: 'root'; owner: { wide: boolean } }
     /**
      * Brand mark rendered in the expanded brand row and collapsed rail.
      * Declared by this package's `sidebar` entry; deployments may replace
@@ -154,6 +156,7 @@ export type SidebarRootInjected = {
 export type SidebarRootComponentProps =
   PropsRuntime<'sidebar'>
   & PropsRenderSlots<
+    | 'sidebar.primary'
     | 'sidebar.brand.mark'
     | 'sidebar.brand.name'
     | 'sidebar.chat.label'

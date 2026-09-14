@@ -4,6 +4,8 @@ English | [中文](README.zh.md)
 
 Host adapter for explicit result-record confirmation and cross-session output discovery. Session logs remain the only durable authority; this package creates no Work database and never changes a goal's phase. It owns the pure `deliverables` and `workAcceptance` projections; the existing carriers publish them and `ui-product-shell` consumes them. `ui-deliverables` owns only response guidance and per-turn presentation.
 
+`workResults/get` also returns `confirmationBlockedBy`, sampled from live root membership, closed-turn state, Agent status, queued input, Host approvals/questions, and owned background Jobs. These read-time reasons are advisory, not authorization or persistence evidence. The same pure policy is applied again by the maintenance-protected confirmation path; a client cannot convert a previous eligible read into a grant.
+
 ## Confirmation
 
 `workResults/accept` requires the original active trusted Connection request for that exact endpoint and no agent initiator. The client supplies the reviewed non-acceptance log sequence. The Host requires the exact live root agent, a closed turn, no pending inbox, no owned running/stopping jobs, and no pending ApiProxy approval/question. The existing Agent maintenance transaction serializes confirmation with other maintenance and queues new driving input; after the initial flush, the Host rechecks caller, cancellation, eligibility, and revision immediately before appending `work/accepted`.

@@ -129,13 +129,13 @@ describe('ui-permission browser plugin', () => {
     expect(again.find(option => option.id === 'workspace-write')?.active).toBe(true)
     expect(again.find(option => option.id === 'read-only')?.detail).toBe('Reads only.')
     // Kebab-case names title-case; non-kebab host-configured names pass through.
-    expect(again.map(option => option.label)).toEqual(['Read Only', 'Workspace Write', 'Developer Mode'])
+    expect(again.map(option => option.label)).toEqual(['Read Only', 'Workspace Write', 'Full access (high risk)'])
     expect(again.find(option => option.id === 'danger-full-access')?.confirmation).toEqual({
-      title: 'Enable Developer Mode?',
+      title: 'Enable Full access (high risk)?',
       description: accessEn['confirm.description'],
       acknowledgeLabel: 'I understand the risks and want to continue',
       cancelLabel: 'Cancel',
-      confirmLabel: 'Enable Developer Mode',
+      confirmLabel: 'Enable Full access (high risk)',
     })
     b.values.set(sid('s1'), { ...SELECT, options: [{ value: 'plain', name: 'Ask Every Time' }] })
     const passthrough = await c.ui.options(proj, new AbortController().signal)

@@ -4,6 +4,8 @@
 
 用于显式确认结果记录和跨会话发现产物的 Host 适配器。Session 日志仍是唯一持久权威；本包不创建 Work 数据库，也不改变 goal 的 phase。它拥有纯 `deliverables` 与 `workAcceptance` 投影，既有承载通道发布这些投影，`ui-product-shell` 负责消费。`ui-deliverables` 只拥有回复指导和逐轮呈现。
 
+`workResults/get` 还返回 `confirmationBlockedBy`，根据实时根会话身份、回合关闭状态、Agent 状态、排队输入、Host 审批／提问以及所属后台 Job 采样。读取时的原因仅供解释，不是授权或持久化证明。maintenance 保护的确认路径会再次应用同一纯策略，客户端不能把此前的可用读取转变成授权。
+
 ## 确认
 
 `workResults/accept` 要求原始、仍活动的可信 Connection 请求恰好对应此端点，且不存在 agent initiator。客户端提交所审阅的最后一个非确认日志序号。Host 要求确切的活动根 agent、已结束的轮次、空待处理 inbox、没有所属的 running/stopping job，以及没有待处理的 ApiProxy 审批或问题。既有 Agent maintenance 事务使确认与其他维护串行，并将新的驱动输入排队；初次 flush 后，Host 在追加 `work/accepted` 前立即重新检查调用方、取消、资格和修订值。

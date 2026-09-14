@@ -341,7 +341,7 @@
     {
       "id": "ordinary-user-safe-defaults",
       "status": "shipped",
-      "summary": "Fresh sessions default to workspace-write plus ask; danger-full-access plus never is an explicit Developer Mode preset.",
+      "summary": "Fresh sessions default to workspace-write plus ask; danger-full-access plus never is an explicit Full access (high risk) preset.",
       "evidence": {
         "composition": [
           {
@@ -384,7 +384,7 @@
             "path": "apps/web/tests/settings-chrome.e2e.ts",
             "contains": [
               "stores Permission as the default for future sessions without changing an existing session",
-              "Developer Mode"
+              "Full access (high risk)"
             ]
           }
         ],

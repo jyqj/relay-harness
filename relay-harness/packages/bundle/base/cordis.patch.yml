@@ -294,7 +294,7 @@
             sandbox: workspace-write
             approval: ask
           danger-full-access:
-            name: Developer Mode
+            name: Full access (high risk)
             description: Unrestricted host access without approval prompts.
             sandbox: danger-full-access
             approval: never
