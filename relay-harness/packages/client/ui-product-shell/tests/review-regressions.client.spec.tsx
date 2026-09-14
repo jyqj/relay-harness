@@ -20,7 +20,7 @@ function summary(sessionId = 'work-a', acceptedRevision: number | null = null): 
 }
 
 function verified(reviewRevision = 10): WorkVerifiedReview {
-  return { reviewRevision, acceptedRevision: reviewRevision, reviewable: true, verifiedThroughSeq: reviewRevision + 1, current: true }
+  return { reviewRevision, acceptedRevision: reviewRevision, reviewable: true, confirmationBlockedBy: [], verifiedThroughSeq: reviewRevision + 1, current: true }
 }
 
 function workProps(
@@ -29,7 +29,7 @@ function workProps(
   acceptWork: WorkPageProps['acceptWork'] = vi.fn().mockResolvedValue({ reviewedThroughSeq: 10, recordedSeq: 11, current: true }),
 ): WorkPageProps {
   return {
-    wide: true, useConnection: useReadyConnection, useWork: (select: (value: WorkSummary) => unknown) => select(work),
+    active: true, renderSlot: () => null, openConversation: vi.fn(), startWork: vi.fn(), openSource: vi.fn(), useConnection: useReadyConnection, useWork: (select: (value: WorkSummary) => unknown) => select(work),
     verifyWork, acceptWork, openDeliverable: vi.fn().mockResolvedValue(undefined), openFiles: vi.fn(), t,
   } as unknown as WorkPageProps
 }
@@ -45,7 +45,7 @@ function libraryProps(
   wide = true,
 ): LibraryPageProps {
   return {
-    wide, useConnection: useReadyConnection, queryLibrary, openLibraryOutput, openFiles: vi.fn(), openSettings: vi.fn(),
+    active: wide, openSource: vi.fn(), useConnection: useReadyConnection, queryLibrary, openLibraryOutput, openFiles: vi.fn(), openSettings: vi.fn(),
     useSessions: (select: (value: unknown) => unknown) => select({ current: 'work-a' }), t,
   } as unknown as LibraryPageProps
 }
@@ -54,8 +54,9 @@ describe('verified Work confirmation', () => {
   it('does not resurrect a failed receipt from the raw projection after unmount and remount', async () => {
     const acceptance = Promise.withResolvers<WorkAcceptReceipt>()
     const accept = vi.fn<WorkPageProps['acceptWork']>().mockReturnValue(acceptance.promise)
-    const verify = vi.fn<WorkPageProps['verifyWork']>().mockRejectedValue(new Error('disk is unavailable'))
+    const verify = vi.fn<WorkPageProps['verifyWork']>().mockResolvedValueOnce({ ...verified(), acceptedRevision: null }).mockRejectedValue(new Error('disk is unavailable'))
     const view = render(<WorkPage {...workProps(summary(), verify, accept)} />)
+    await waitFor(() => { expect(screen.getByRole('button', { name: 'work.acceptance.confirm' }).hasAttribute('disabled')).toBe(false) })
     fireEvent.click(screen.getByRole('button', { name: 'work.acceptance.confirm' }))
     view.rerender(<WorkPage {...workProps(summary('work-a', 10), verify, accept)} />)
     expect(screen.queryByText('work.acceptance.current')).toBeNull()
@@ -114,17 +115,18 @@ describe('verified Work confirmation', () => {
   it('keeps current:false authoritative while an old raw receipt and verified cut arrive late', async () => {
     const acceptance = Promise.withResolvers<WorkAcceptReceipt>()
     const staleCheck = Promise.withResolvers<WorkVerifiedReview>()
-    const verify = vi.fn<WorkPageProps['verifyWork']>().mockReturnValueOnce(staleCheck.promise).mockResolvedValue(verified())
+    const verify = vi.fn<WorkPageProps['verifyWork']>().mockResolvedValueOnce({ ...verified(), acceptedRevision: null }).mockReturnValueOnce(staleCheck.promise).mockResolvedValue(verified())
     const accept = vi.fn<WorkPageProps['acceptWork']>().mockReturnValue(acceptance.promise)
     const view = render(<WorkPage {...workProps(summary(), verify, accept)} />)
+    await waitFor(() => { expect(screen.getByRole('button', { name: 'work.acceptance.confirm' }).hasAttribute('disabled')).toBe(false) })
     fireEvent.click(screen.getByRole('button', { name: 'work.acceptance.confirm' }))
     view.rerender(<WorkPage {...workProps(summary('work-a', 10), verify, accept)} />)
     await act(async () => {
       acceptance.resolve({ reviewedThroughSeq: 10, recordedSeq: 11, current: false })
       await Promise.resolve()
     })
-    await waitFor(() => { expect(verify).toHaveBeenCalledTimes(2) })
-    expect(verify.mock.calls[0]?.[1].aborted).toBe(true)
+    await waitFor(() => { expect(verify).toHaveBeenCalledTimes(3) })
+    expect(verify.mock.calls[1]?.[1].aborted).toBe(true)
     await act(async () => { staleCheck.resolve(verified()); await Promise.resolve() })
     await waitFor(() => { expect(screen.getByText('work.acceptance.stale')).toBeTruthy() })
     expect(screen.queryByText('work.acceptance.current')).toBeNull()
@@ -188,10 +190,12 @@ it('allows a successfully re-confirmed same revision to replace a superseded rec
     .mockResolvedValueOnce({ reviewedThroughSeq: 10, recordedSeq: 11, current: false })
     .mockResolvedValueOnce({ reviewedThroughSeq: 10, recordedSeq: 12, current: true })
   const view = render(<WorkPage {...workProps(summary(), verify, accept)} />)
+  await waitFor(() => { expect(screen.getByRole('button', { name: 'work.acceptance.confirm' }).hasAttribute('disabled')).toBe(false) })
   fireEvent.click(screen.getByRole('button', { name: 'work.acceptance.confirm' }))
   await waitFor(() => { expect(screen.queryByText('work.acceptance.saving')).toBeNull() })
   view.rerender(<WorkPage {...workProps(summary('work-a', 10), verify, accept)} />)
   expect(await screen.findByText('work.acceptance.stale')).toBeTruthy()
+  await waitFor(() => { expect(screen.getByRole('button', { name: 'work.acceptance.confirm' }).hasAttribute('disabled')).toBe(false) })
   fireEvent.click(screen.getByRole('button', { name: 'work.acceptance.confirm' }))
   expect(await screen.findByText('work.acceptance.current')).toBeTruthy()
   expect(accept).toHaveBeenCalledTimes(2)

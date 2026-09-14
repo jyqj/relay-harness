@@ -41,6 +41,6 @@
   - button "Queue":
     - text: Queue
     - img
-  - text: Developer Mode
-  - paragraph: Show model, Agent preset, plugin, trajectory, and raw tool diagnostics.
-  - switch "Developer Mode"
+  - text: Detailed view
+  - paragraph: Show advanced configuration and diagnostics. This does not change execution permissions.
+  - switch "Detailed view"

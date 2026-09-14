@@ -7,7 +7,9 @@ import type {} from '@relay-harness/rlh-client-ui-settings/client'
 import type {} from '@relay-harness/rlh-client-ui-settings-general/client'
 import type {} from '@relay-harness/rlh-client-ui-conversation/client'
 import type {} from '@relay-harness/rlh-client-locale/client'
-import type { PropsLocale, PropsRuntime } from '@relay-harness/rlh-client-ui-slots'
+import type {} from '@relay-harness/rlh-client-ui-layout/client'
+import { ProductNavigation, type ProductNavigationInjected } from './ProductNavigation.tsx'
+import { WorkActivity, type WorkActivityInjected } from './WorkActivity.tsx'
 import { ProductShellService } from './mode.ts'
 import { CurrentWorkProjection } from './work-projection.ts'
 import { WorkPage, type WorkPageInjected } from './WorkPage.tsx'
@@ -15,8 +17,12 @@ import { LibraryPage, type LibraryPageInjected } from './LibraryPage.tsx'
 import { ProductModeRow, type ProductModeRowInjected } from './ProductModeRow.tsx'
 import { en, zh } from './locales.ts'
 
-/** Product copy occupant for the sidebar's built-in session-browser tab. */
-function ChatLabel({ t }: PropsRuntime<'sidebar.chat.label'> & PropsLocale<'productShell'>) { return t('nav.chat') }
+declare module '@relay-harness/rlh-client-ui-slots' {
+  interface SlotMap {
+    /** Execution relationships in the current Work main page. */
+    'work.activity': { kind: 'single'; scope: 'root' }
+  }
+}
 
 export type { ProductModeView } from './mode.ts'
 export type { WorkSummary } from './work-projection.ts'
@@ -33,7 +39,7 @@ const SIMPLE_MODE_SUPPRESSIONS = [
   ['conversation.view', 'trajectory'],
 ] as const
 
-export const inject = ['connection', 'slots', 'sessions', 'workspaces', 'remote', 'remote.productMode', 'remote.workResults', 'locale', 'settingsNavigation']
+export const inject = ['layout', 'connection', 'slots', 'sessions', 'workspaces', 'remote', 'remote.productMode', 'remote.workResults', 'locale', 'settingsNavigation']
 
 /** Install navigation pages, persisted mode control, and reversible advanced-entry suppression. */
 export function apply(ctx: ClientContext): void {
@@ -42,11 +48,24 @@ export function apply(ctx: ClientContext): void {
   const work = new CurrentWorkProjection(ctx.sessions, connection.readiness)
   ctx.effect(() => () => { work.dispose() }, 'ui-product-shell: Work projection')
   ctx.effect(() => ctx.locale.register('productShell', { zh, en }), 'ui-product-shell: dictionaries')
-  const t = ctx.locale.bind('productShell')
-
-  ctx.slots.inject('sidebar.chat.label', () => ctx.slots.register({
-    name: 'sidebar.chat.label', locale: 'productShell',
-  }, ChatLabel))
+  const openConversation = (sessionId: SessionId): void => {
+    const address = ctx.sessions.subagentAddress(sessionId)
+    if (address === undefined) ctx.sessions.open(sessionId)
+    else ctx.sessions.openSubagent(address)
+    ctx.layout.openMain('conversation')
+  }
+  const openFiles = (): void => {
+    const sessionId = ctx.sessions.list.getSnapshot().current
+    if (sessionId === undefined) return
+    window.dispatchEvent(new CustomEvent('rlhd-open-surface', { detail: { kind: 'files', sessionId } }))
+  }
+  ctx.slots.inject('sidebar.primary', () => ctx.slots.register({
+    name: 'sidebar.primary', id: 'product', locale: 'productShell',
+    inject: (): ProductNavigationInjected => ({
+      hooks: { mainNavigation: ctx.layout.mainNavigation, work },
+      openPage: page => { ctx.layout.openMain(page) },
+    }),
+  }, ProductNavigation))
 
   ctx.effect(() => {
     let releases: Array<() => void> = []
@@ -69,16 +88,15 @@ export function apply(ctx: ClientContext): void {
     return off
   }, 'ui-product-shell: mode refresh')
 
-  ctx.slots.inject('sidebar.nav.tab', () => [
-    ctx.slots.register({ name: 'sidebar.nav.tab', id: 'work', order: 10, label: () => t('nav.work'), locale: 'productShell' }, () => null),
-    ctx.slots.register({ name: 'sidebar.nav.tab', id: 'library', order: 20, label: () => t('nav.library'), locale: 'productShell' }, () => null),
-  ])
-  ctx.slots.inject('sidebar.page', () => [
+  ctx.slots.inject('shell.page', () => [
     ctx.slots.register({
-      name: 'sidebar.page', key: 'work', locale: 'productShell',
+      name: 'shell.page', key: 'work', locale: 'productShell',
+      children: { 'work.activity': { kind: 'single', scope: 'root' } },
       inject: (): WorkPageInjected => ({
         hooks: { work },
-        openFiles: () => { window.dispatchEvent(new CustomEvent('rlhd-open-surface', { detail: { kind: 'files' } })) },
+        openConversation: sessionId => { openConversation(sessionId as SessionId) },
+        startWork: () => { ctx.layout.openMain('conversation'); ctx.workspaces.startSession() },
+        openFiles,
         openDeliverable: async (sessionId, path) => {
           const result = await ctx.remote.workResults.open({ sessionId: sessionId as SessionId, path })
           if (!result.ok) throw new Error(result.error.message)
@@ -96,10 +114,11 @@ export function apply(ctx: ClientContext): void {
       }),
     }, WorkPage),
     ctx.slots.register({
-      name: 'sidebar.page', key: 'library', locale: 'productShell',
+      name: 'shell.page', key: 'library', locale: 'productShell',
       inject: (): LibraryPageInjected => ({
         hooks: { connection: connection.readiness },
-        openFiles: () => { window.dispatchEvent(new CustomEvent('rlhd-open-surface', { detail: { kind: 'files' } })) },
+        openSource: entry => { openConversation(entry.sessionId) },
+        openFiles,
         openSettings: (section) => { ctx.settingsNavigation.open(section) },
         queryLibrary: async (request, signal) => {
           const result = await ctx.remote.workResults.list(request, signal)
@@ -113,6 +132,10 @@ export function apply(ctx: ClientContext): void {
       }),
     }, LibraryPage),
   ])
+  ctx.slots.inject('work.activity', () => ctx.slots.register({
+    name: 'work.activity', locale: 'productShell',
+    inject: (): WorkActivityInjected => ({ openConversation }),
+  }, WorkActivity))
   ctx.slots.inject('settings.general.item', () => ctx.slots.register({
     name: 'settings.general.item', id: 'product-mode', order: 30, locale: 'productShell',
     inject: (): ProductModeRowInjected => ({ hooks: { productMode: product.store }, setMode: mode => product.set(mode) }),

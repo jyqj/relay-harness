@@ -81,7 +81,7 @@ describe('web e2e: settings modal and General preferences', () => {
     expect(await trigger.getAttribute('aria-expanded')).toBe('true')
     // General is active by default; Permission, Language and Appearance are functional.
     expect(await dialog.getByRole('button', { name: '通用设置' }).getAttribute('aria-current')).toBe('true')
-    const developerMode = dialog.getByRole('switch', { name: '开发者模式' })
+    const developerMode = dialog.getByRole('switch', { name: '详细视图' })
     await developerMode.waitFor({ timeout: 10_000 })
     expect(await developerMode.isChecked()).toBe(false)
     // Simple mode keeps advanced entries out of both the nav projection and
@@ -192,13 +192,13 @@ describe('web e2e: settings modal and General preferences', () => {
     ])
 
     await dialog.getByRole('button', { name: 'Read Only' }).click()
-    await page.getByRole('menuitem', { name: 'Developer Mode' }).click()
-    const confirmation = page.getByRole('dialog', { name: '确认启用 Developer Mode？' })
-    const enable = confirmation.getByRole('button', { name: '启用 Developer Mode' })
+    await page.getByRole('menuitem', { name: 'Full access (high risk)' }).click()
+    const confirmation = page.getByRole('dialog', { name: '确认启用 Full access (high risk)？' })
+    const enable = confirmation.getByRole('button', { name: '启用 Full access (high risk)' })
     expect(await enable.isDisabled()).toBe(true)
     await confirmation.getByRole('checkbox').click()
     await enable.click()
-    await dialog.getByRole('button', { name: 'Developer Mode' }).waitFor({ timeout: 10_000 })
+    await dialog.getByRole('button', { name: 'Full access (high risk)' }).waitFor({ timeout: 10_000 })
     const confirmedDocument = await readFile(join(scaffold.harnessHome, 'settings.yaml'), 'utf8')
     expect(confirmedDocument).toContain('defaultPreset: danger-full-access')
     const confirmed = scaffold.ctx.sessions.create(SessionId('settings-permission-confirmed'))

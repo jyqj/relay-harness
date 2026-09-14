@@ -13,6 +13,7 @@ import type {} from '@relay-harness/rlh-api-gateway'
 import type {} from '@relay-harness/rlh-host-apiproxy'
 import { RpcId } from '@relay-harness/rlh-host-apiproxy/api'
 import { Remote, TypertRemoteService } from '@relay-harness/rlh-typert-protocol'
+import { confirmationBlockers } from './confirmation-policy.ts'
 import { deliverablesProjection, workAcceptanceProjection, readAcceptedRevision } from './projection.ts'
 import type {
   WorkAcceptanceProjection, WorkVerifiedReview, WorkAcceptRequest, WorkAcceptReceipt,
@@ -63,7 +64,7 @@ export class WorkResultsService extends TypertRemoteService {
     const cut = this.acceptance(agent.session)
     const through = agent.session.seq - 1
     const receipt = agent.session.events.findLast(event => event.type === 'work/accepted')
-    if (receipt === undefined) return { ...cut, verifiedThroughSeq: -1, current: true }
+    if (receipt === undefined) return { ...cut, confirmationBlockedBy: this.confirmationBlockedBy(agent), verifiedThroughSeq: -1, current: true }
     if (!await this.ctx.sessions.flush(agent.session)) throw new Error('workResults persistence checkpoint is unavailable')
     this.userRequest('get')
     signal.throwIfAborted()
@@ -74,7 +75,7 @@ export class WorkResultsService extends TypertRemoteService {
     const persisted = stored.events.find(event => event.seq === receipt.seq)
     if (persisted?.type !== 'work/accepted' || readAcceptedRevision(persisted.data) !== cut.acceptedRevision
       || (stored.events.at(-1)?.seq ?? -1) < through) throw new Error('workResults confirmation is not durably recorded')
-    return { ...cut, verifiedThroughSeq: through, current: this.acceptance(agent.session).reviewRevision === cut.reviewRevision }
+    return { ...cut, confirmationBlockedBy: this.confirmationBlockedBy(agent), verifiedThroughSeq: through, current: this.acceptance(agent.session).reviewRevision === cut.reviewRevision }
   }
 
   /**
@@ -229,13 +230,23 @@ export class WorkResultsService extends TypertRemoteService {
 
   private assertReviewable(agent: Agent, revision: number): void {
     this.assertLive(agent)
-    if (!this.ctx.agents.roots().includes(agent)) throw new Error('workResults only accepts a root Work')
-    const pending = this.ctx.hostInteractions.pendingFor(agent.id)
-    if (!this.acceptance(agent.session).reviewable || agent.status !== 'idle' || agent.inbox.hasPending || pending.approvals > 0 || pending.questions > 0
-      || this.ctx.jobs.list(agent).some(job => job.ownerSession === agent.id && (job.status === 'running' || job.status === 'stopping'))) {
-      throw new Error('workResults cannot accept while work or human interactions remain pending')
-    }
+    const blockers = this.confirmationBlockedBy(agent)
+    if (blockers.includes('not-root')) throw new Error('workResults only accepts a root Work')
+    if (blockers.length > 0) throw new Error('workResults cannot accept while work or human interactions remain pending')
     if (!Number.isSafeInteger(revision) || revision < 0 || this.acceptance(agent.session).reviewRevision !== revision) throw new Error('workResults review revision changed; refresh before accepting')
+  }
+
+  private confirmationBlockedBy(agent: Agent): WorkVerifiedReview['confirmationBlockedBy'] {
+    const pending = this.ctx.hostInteractions.pendingFor(agent.id)
+    return confirmationBlockers({
+      root: this.ctx.agents.roots().includes(agent),
+      reviewable: this.acceptance(agent.session).reviewable,
+      idle: agent.status === 'idle',
+      queuedInput: agent.inbox.hasPending,
+      approvals: pending.approvals,
+      questions: pending.questions,
+      runningJobs: this.ctx.jobs.list(agent).some(job => job.ownerSession === agent.id && (job.status === 'running' || job.status === 'stopping')),
+    })
   }
 
   private acceptance(session: Session): WorkAcceptanceProjection {

@@ -1160,3 +1160,13 @@ describe('SurfacesRoot', () => {
     }
   })
 })
+
+
+it('ignores an addressed file request from another Session rather than opening the selected workspace', () => {
+  const { instance, openSurfaces } = mount({ cwd: '/workspace' })
+  act(() => { window.dispatchEvent(new CustomEvent('rlhd-open-surface', { detail: { kind: 'files', sessionId: 'other-session' } })) })
+  expect(openSurfaces).not.toHaveBeenCalled()
+  act(() => { window.dispatchEvent(new CustomEvent('rlhd-open-surface', { detail: { kind: 'files', sessionId: 'session-1' } })) })
+  expect(openSurfaces).toHaveBeenCalledOnce()
+  expect(instance.getSnapshot().bySession['session-1']?.surfaces.some(surface => surface.kind === 'files')).toBe(true)
+})
