@@ -44,7 +44,7 @@ export function InputBar({
   useSession, useSessions, useInput, inputActions, keyboard, addImages, removeImage, draftImages,
   resolveSubmitMode, toggleCommandMenu, stop, command, t,
   renderSlot, useNotices, useLexicon, useMenuLauncher, useComposerBeam, useComposerResize,
-  useComposerResizeHeight, useComposerResizeWidth, setComposerResizeSize,
+  useComposerResizeHeight, useComposerResizeWidth, useConnected, setComposerResizeSize,
   useProjection, sessionId, variant, disabled: inert = false, blocked,
   workspacePickerOpen = false, onRequestWorkspace,
   placeholder, accessory, overlay, leftItems, rightItems, footer,
@@ -57,6 +57,11 @@ export function InputBar({
   const composerResize = useComposerResize(value => value)
   const composerResizeHeight = useComposerResizeHeight(value => value)
   const composerResizeWidth = useComposerResizeWidth(value => value)
+  // Draft lifecycle: a connection epoch change never wipes the draft, but
+  // submission stays inert until the target is writable again — the send
+  // button and Enter hold instead of failing at the sink.
+  const connected = useConnected(value => value)
+  const offline = !connected
   const promptError = useSession(s => s.promptError) ?? null
   const running = useSession(s => s.running) ?? false
   const subagent = useSession(s => s.subagent) ?? null
@@ -377,7 +382,7 @@ export function InputBar({
     }
     e.preventDefault()
     if (e.repeat) return // held-down Enter must not machine-gun sends
-    if (locked || machineBusy) return
+    if (locked || machineBusy || offline) return // offline: the draft stays inert until the target is writable again
     const accelerated = e.ctrlKey || e.metaKey
     // Empty-draft accelerated Enter acts on the queue instead of the (empty)
     // draft: the machine rejects empty drafts, so the gesture steers every
@@ -555,7 +560,7 @@ export function InputBar({
     }
     if (inputActions === undefined) return // absent machine: the button is disabled
     /* v8 ignore next -- defensive: the primary button is disabled while empty||disabled, so a click cannot reach the false arm. */
-    if (!empty && !disabled && !machineBusy) inputActions.submit()
+    if (!empty && !disabled && !machineBusy && connected) inputActions.submit()
   }
 
   // The Access seat: the projection-fed permission chip (renders nothing
@@ -816,7 +821,7 @@ export function InputBar({
                 type="button"
                 className={css.primary}
                 aria-label={primaryLabel}
-                disabled={primaryStops ? stop === undefined : empty || disabled || machineBusy}
+                disabled={primaryStops ? stop === undefined : empty || disabled || machineBusy || offline}
                 onMouseDown={keepFocus}
                 onClick={onPrimary}
               >

@@ -241,6 +241,41 @@
   gap: var(--rlh-composer-stack-gap);
 }
 
+/* Discarded-draft notice: unsent input retained from a disposed session
+   scope, announced above the composer until restored or dropped. */
+.discardedDraft {
+  align-self: center;
+  width: 100%;
+  max-width: var(--rlh-composer-card-max-width);
+  padding: 8px 12px;
+  border: 1px solid var(--rlw-alias-border-l2);
+  border-radius: 10px;
+}
+
+.discardedDraft p {
+  margin: 0;
+  color: var(--rlw-alias-label-caption);
+}
+
+.discardedDraft blockquote {
+  margin: 4px 0;
+  color: var(--rlw-alias-label-tertiary);
+  overflow-wrap: anywhere;
+}
+
+.discardedActions {
+  display: flex;
+  gap: 8px;
+}
+
+.discardedActions button {
+  cursor: pointer;
+}
+
+.discardedActions button:hover {
+  background: var(--rlw-alias-interactive-bg-hover);
+}
+
 /* Common seat for the composer chain (fallback + elected overlay siblings). */
 .composerSeat {
   display: flex;

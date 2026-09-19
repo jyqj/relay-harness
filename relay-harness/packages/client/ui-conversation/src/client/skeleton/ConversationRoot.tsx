@@ -14,6 +14,7 @@ export type ConversationRootProps = ConversationSlotProps
 
 export function ConversationRoot({
   sessionId, useSession, useSessions, useWorkspaces, useInput, inputActions, useComposerBlock,
+  useDiscardedDraft, restoreDiscardedDraft, dismissDiscardedDraft,
   renderSlot, renderSlotChain, selectWorkspace, selectNoDirectory, t,
 }: ConversationRootProps) {
   const openState = useSession(s => s.openState)
@@ -28,6 +29,10 @@ export function ConversationRoot({
   // A plugin this package cannot import (ui-model-selection) says this session cannot
   // send; its reason is already localized by whoever raised it.
   const composerBlock = useComposerBlock(block => block)
+  // Draft lifecycle surfacing: a previous scope of this session was disposed
+  // with unsent input. The tombstone is announced here — never seeded into
+  // the composer as live text — until the user restores or discards it.
+  const discardedDraft = useDiscardedDraft(entry => entry)
 
   const [pickerOpen, setPickerOpen] = useState(false)
   const [pendingWorkspaceId, setPendingWorkspaceId] = useState<WorkspaceId | undefined>()
@@ -218,6 +223,16 @@ export function ConversationRoot({
       )}
       {hero && heroWorkspaceRow}
       {zone !== undefined && renderSlot('conversation.input.dock', zone)}
+      {discardedDraft !== undefined && (
+        <div className={css.discardedDraft} role="status" data-discarded-draft>
+          <p>{t('draft.discarded')}</p>
+          <blockquote>{discardedDraft.text.length > 120 ? `${discardedDraft.text.slice(0, 120)}…` : discardedDraft.text}</blockquote>
+          <div className={css.discardedActions}>
+            <button type="button" onClick={restoreDiscardedDraft}>{t('draft.restore')}</button>
+            <button type="button" onClick={dismissDiscardedDraft}>{t('draft.discard')}</button>
+          </div>
+        </div>
+      )}
       {inputBar}
     </div>
   )

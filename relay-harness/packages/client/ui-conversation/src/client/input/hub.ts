@@ -11,11 +11,13 @@
 import type { ClientContext, ISessions, SessionBinding, SessionFace, SessionId } from '@relay-harness/rlh-client-runtime/client'
 import type { InputTriggerController, SubmitImageAttachment, SubmitOutcome } from '@relay-harness/rlh-client-ui-input-trigger/client'
 import type { TranslateNS } from '@relay-harness/rlh-client-locale/client'
+import type { DiscardedDraftRegistry } from './drafts.ts'
 import { queueReadFaceOf } from './queue-read-face.ts'
 import type { ComposerKeyboard, DraftAttachmentId, SessionInputResolver, SessionInput } from '../contract/input.ts'
 import type { InputSubmitMode } from '../contract/composer-submission.ts'
 import type { PopupDismissFace } from './facade.ts'
 import { SessionInputShell } from './facade.ts'
+import { projectClipboard } from './machine.ts'
 
 /** Structural command face for per-session popup resolution. */
 interface CommandFace {
@@ -47,10 +49,13 @@ export class InputHub implements SessionInputResolver {
   /**
    * @param ctx - client root context (services resolved lazily per call — boot order stays free).
    * @param t - conversation-namespace translate thunk (reads the active locale at call time).
+   * @param drafts - discarded-draft registry; a scope teardown with unsent
+   * input records a tombstone here instead of silently destroying user text.
    */
   constructor(
     private readonly rootCtx: ClientContext,
     private readonly t: TranslateNS<'conversation'>,
+    private readonly drafts?: DiscardedDraftRegistry,
   ) {}
 
   /**
@@ -116,7 +121,13 @@ export class InputHub implements SessionInputResolver {
       return () => {
         for (const off of offs) off()
         const drafts = shell.snapshot.imageIds
+        // Draft lifecycle: unsent input at scope teardown becomes a discarded
+        // tombstone (surfaced on reopen) instead of vanishing. Workspace
+        // switches carry or clear the draft first (carryDraft), so a live
+        // carry never lands here.
+        const unsent = projectClipboard(shell.snapshot)
         shell.dispose()
+        if (unsent !== '') this.drafts?.discard(id, unsent)
         this.shells.delete(id)
         const conversation = this.rootCtx.get('conversation') as ConversationAttachmentFace | undefined
         for (const imageId of drafts) conversation?.releaseDraftImage(imageId)
