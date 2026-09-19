@@ -712,7 +712,7 @@ export interface Config {
 }
 ```
 
-Source: [`packages/context/context-engine/src/index.ts:118`](../packages/context/context-engine/src/index.ts)
+Source: [`packages/context/context-engine/src/index.ts:117`](../packages/context/context-engine/src/index.ts)
 
 <a id="relay-harnessrlh-cordis-host-runner"></a>
 
@@ -1114,7 +1114,7 @@ export interface Config {
 }
 ```
 
-Source: [`packages/host/work-results/src/index.ts:31`](../packages/host/work-results/src/index.ts)
+Source: [`packages/host/work-results/src/index.ts:33`](../packages/host/work-results/src/index.ts)
 
 <a id="relay-harnessrlh-invariants"></a>
 
@@ -1221,10 +1221,25 @@ export interface Config {
    * drops the oldest-finished beyond it. Omission defaults to 100.
    */
   maxTerminalRecords?: number
+  /**
+   * Bounded stop window in milliseconds: how long a stop request waits for
+   * producer settlement before escalating to `JobHooks.terminate` (one more
+   * window) or — without a terminate hook — recording `control-lost-unknown`.
+   * A per-job `JobStart.stopGraceMs` overrides it. Omission defaults to 5_000.
+   */
+  stopGraceMs?: number
+  /**
+   * Maximum `control-lost-unknown` records kept per exact owner or in the
+   * shared unowned bucket. Unknown jobs keep occupying admission capacity, so
+   * beyond this cap the reconciliation drops the oldest-finished unknown
+   * record (releasing its capacity explicitly) and warns; the work itself may
+   * still be running. Omission defaults to 5.
+   */
+  maxUnconfirmedJobsPerOwner?: number
 }
 ```
 
-Source: [`packages/jobs/jobs-local/src/index.ts:37`](../packages/jobs/jobs-local/src/index.ts)
+Source: [`packages/jobs/jobs-local/src/index.ts:45`](../packages/jobs/jobs-local/src/index.ts)
 
 <a id="relay-harnessrlh-llm-circuit-breaker"></a>
 
