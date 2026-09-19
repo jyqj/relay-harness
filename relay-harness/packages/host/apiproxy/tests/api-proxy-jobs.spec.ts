@@ -44,13 +44,16 @@ function producer(label = 'sleep 60') {
   return { spec, reads, settle: (outcome: JobOutcome) => { settle(outcome) } }
 }
 
-async function harness(withRegistry: boolean): Promise<{ ctx: Context; session: Session; agent: Agent }> {
+async function harness(
+  withRegistry: boolean,
+  jobsConfig: { stopGraceMs?: number } = {},
+): Promise<{ ctx: Context; session: Session; agent: Agent }> {
   const ctx = new Context()
   await ctx.plugin(SessionStore)
   await ctx.plugin(UserQuestionService)
   await ctx.plugin(AgentRegistry)
   if (withRegistry) {
-    await ctx.plugin(LocalJobRegistry)
+    await ctx.plugin(LocalJobRegistry, jobsConfig)
     ctx.jobs.attachController('api-proxy-test')
   }
   const session = ctx.sessions.create()
@@ -138,6 +141,30 @@ describe('session/jobs change pushes', () => {
     // Terminal detail rides the same whole-set push; no separate signal.
     expect(frames[2]?.jobs[0]?.detail).toBe('signal: SIGTERM')
     expect(frames[2]?.jobs[0]?.finishedAt).toBeTypeOf('number')
+  })
+
+  it('pushes control-lost-unknown — distinct from killed — when a stop is never confirmed', async () => {
+    const { ctx, session, agent } = await harness(true, { stopGraceMs: 20 })
+    const proxy = api(ctx)
+    const abort = new AbortController()
+    const stream = proxy.events.mux({ rpcId: RpcId('t-tasks-control-lost'), payload: {} }, abort.signal)
+    const collected = collect(stream, 3, abort)
+
+    // The producer ignores cancellation and never settles `done`.
+    const id = ctx.jobs.start({
+      kind: 'bash',
+      label: 'unstopable work',
+      owner: agent,
+      run: () => ({ cancel: () => {}, done: new Promise<JobOutcome>(() => {}) }),
+    })
+    ctx.jobs.kill(id, agent, 'test')
+
+    const frames = await collected
+    expect(frames.map(frame => frame.sessionId)).toEqual([session.id, session.id, session.id])
+    expect(frames.map(frame => frame.jobs[0]?.status)).toEqual(['running', 'stopping', 'control-lost-unknown'])
+    const [job] = frames[2]?.jobs ?? []
+    expect(job?.finishedAt).toBeTypeOf('number')
+    expect(job?.detail).toContain('outcome unknown')
   })
 
   it('drops ownerSession, reported, and outputLimitBytes from the wire view', async () => {

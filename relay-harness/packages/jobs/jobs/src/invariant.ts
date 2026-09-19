@@ -6,7 +6,8 @@ import type { InvariantFailure, InvariantInstaller } from '@relay-harness/rlh-in
 import type { JobSnapshot } from './types.ts'
 
 const PACKAGE_NAME = '@relay-harness/rlh-jobs'
-const TERMINAL_STATUSES = new Set(['completed', 'killed', 'failed'])
+/** The closed statuses — producer-confirmed terminals plus the registry-declared control-lost record — that carry `finishedAt`. */
+const CLOSED_STATUSES = new Set(['completed', 'killed', 'failed', 'control-lost-unknown'])
 
 /** Cordis companion plugin name. */
 export const name = 'jobs-invariant'
@@ -27,9 +28,9 @@ function validateSnapshot(snapshot: JobSnapshot, owner: Agent | undefined, fail:
     fail(`job ${JSON.stringify(id)} startedAt must be a non-negative epoch integer`)
   }
 
-  const terminal = TERMINAL_STATUSES.has(snapshot.status)
-  if (terminal !== (snapshot.finishedAt !== undefined)) {
-    fail(`job ${JSON.stringify(id)} finishedAt must be present exactly for a terminal status`)
+  const closed = CLOSED_STATUSES.has(snapshot.status)
+  if (closed !== (snapshot.finishedAt !== undefined)) {
+    fail(`job ${JSON.stringify(id)} finishedAt must be present exactly for a closed status`)
   }
   if (snapshot.finishedAt !== undefined
     && (!Number.isSafeInteger(snapshot.finishedAt) || snapshot.finishedAt < snapshot.startedAt)) {

@@ -40,10 +40,14 @@ declare module '@relay-harness/cordis' {
  *
  * Implementations must honor these semantics:
  * - Registrations outlive producer and controller fibers. Owner and
- *   service disposal cancel live work and await compliant producers; a
- *   throwing teardown cancel force-fails only the record. Teardown
- *   cancellation also marks the record reported, because a record its owner
- *   is being destroyed for has no reader left.
+ *   service disposal cancel live work and await producers only for a
+ *   bounded stop window: a producer that has not settled after the grace
+ *   (and one escalation to {@link JobHooks.terminate} when the producer
+ *   provides it) is recorded as `control-lost-unknown` — never as a
+ *   producer-confirmed terminal — and teardown proceeds. A throwing
+ *   teardown cancel force-fails only the record. Teardown cancellation
+ *   also marks the record reported, because a record its owner is being
+ *   destroyed for has no reader left.
  * - Owned-job access is fenced by the owner's session id. Ids are
  *   predictable, so authorization — not secrecy — is the boundary.
  * - Settlement is first-wins: one terminal record, released waiters, and one
@@ -115,8 +119,11 @@ export abstract class JobRegistry extends Service {
 
   /**
    * Request cancellation, then mark the job stopping and reported. A producer
-   * throw propagates without changing job state. Throws for an unknown or
-   * foreign job.
+   * throw propagates without changing job state. If the producer does not
+   * settle within the bounded stop grace, the stop protocol escalates to
+   * {@link JobHooks.terminate} when the producer provides one and otherwise
+   * records `control-lost-unknown` — the record never claims a terminal the
+   * producer did not confirm. Throws for an unknown or foreign job.
    * @param id - job to cancel.
    * @param caller - killing agent checked against the owner.
    * @param reason - logged reason forwarded to the producer.

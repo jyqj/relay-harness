@@ -19,7 +19,7 @@ interface JobKindMap {
 }
 ```
 
-`JobStatus` 为 `'running' | 'stopping' | 'completed' | 'killed' | 'failed'`；生产方特有的事实归入 `JobSnapshot.detail`。
+`JobStatus` 为 `'running' | 'stopping' | 'completed' | 'killed' | 'failed' | 'control-lost-unknown'`；生产方特有的事实归入 `JobSnapshot.detail`。`control-lost-unknown` 是注册表对生产方从未确认的停止请求所作的记录：记录已关闭，但工作本身的结果保持未知。
 
 ## 生产方约定
 
@@ -49,6 +49,14 @@ interface JobStart {
    */
   owner?: Agent
   /**
+   * Per-job override of the registry's bounded stop grace, in milliseconds: how
+   * long a stop request waits for {@link JobHooks.done} settlement before the
+   * registry escalates to {@link JobHooks.terminate} (one more grace) and then
+   * declares `control-lost-unknown`. Must be a positive safe integer; omission
+   * uses the implementation's configured default.
+   */
+  stopGraceMs?: number
+  /**
    * Start the work after preflight and synchronously return its hooks. Called
    * once; a throw leaves nothing registered, and the producer must clean up any
    * partially started resources.
@@ -67,6 +75,14 @@ interface JobHooks {
    * {@link done}; throws propagate. The optional reason is forwarded verbatim.
    */
   cancel(reason?: string): void
+  /**
+   * Optional harder stop the registry escalates to when {@link cancel} has not
+   * produced a {@link done} settlement within the stop grace. Same contract as
+   * `cancel` — synchronous, idempotent, throws propagate — but it may abandon
+   * graceful cleanup; the registry still bounds its wait and declares
+   * `control-lost-unknown` if `done` never settles.
+   */
+  terminate?(reason?: string): void
   /**
    * Resolves after the producer releases its resources, not merely when work
    * finishes. Must not reject; the runtime converts a rejection to `failed`.
@@ -125,7 +141,7 @@ interface JobSnapshot {
   detail?: string
   /** Epoch ms when the job was registered. */
   startedAt: number
-  /** Epoch ms when the job settled; absent while `running`/`stopping`. */
+  /** Epoch ms when the job settled; for `control-lost-unknown`, when the bounded stop gave up. Absent while `running`/`stopping`. */
   finishedAt?: number
   /**
    * True when a kill, read, wait, or teardown cancel has reported or committed
@@ -154,7 +170,7 @@ interface JobRead {
 
 ## 服务行为
 
-抽象的 [`JobRegistry`](../../packages/jobs/jobs/src/index.ts) Service Definition 规定原子 `start`、限定调用方作用域的 `get` 和 `list`、`read`、`kill`、有界 `wait`、故障隔离的 `onJobDone` 与 `onJobsChanged` 监听器，以及 `attachController` 何时可用；[`LocalJobRegistry`](../../packages/jobs/jobs-local/src/index.ts) 是其进程局部 Service Provider。授权会比较拥有者会话；拥有者清理与准入会使用确切的已注册 `Agent` 实例。本地 Service Provider 的 `maxConcurrentJobsPerOwner` 配置必须是正的安全整数，默认值为 `10`；它按确切 owner 统计 `running` 与 `stopping` 记录，所有无 owner 任务共享一个服务级桶，并在生产方终止结算后释放容量。Service Definition 约定见 [`rlh-jobs`](../../packages/jobs/jobs/README.md)，注册表生命周期与准入策略见 [`rlh-jobs-local`](../../packages/jobs/jobs-local/README.md)，面向模型的 Consumer 见 [`rlh-tool-jobs`](../../packages/jobs/tool-jobs/README.md)。
+抽象的 [`JobRegistry`](../../packages/jobs/jobs/src/index.ts) Service Definition 规定原子 `start`、限定调用方作用域的 `get` 和 `list`、`read`、`kill`、有界 `wait`、故障隔离的 `onJobDone` 与 `onJobsChanged` 监听器，以及 `attachController` 何时可用；[`LocalJobRegistry`](../../packages/jobs/jobs-local/src/index.ts) 是其进程局部 Service Provider。授权会比较拥有者会话；拥有者清理与准入会使用确切的已注册 `Agent` 实例。本地 Service Provider 的 `maxConcurrentJobsPerOwner` 配置必须是正的安全整数，默认值为 `10`；它按确切 owner 统计 `running`、`stopping` 与 `control-lost-unknown` 记录，所有无 owner 任务共享一个服务级桶，并在生产方终止结算后释放容量。超出有界停止窗口（`stopGraceMs`，默认 `5000`，可按任务覆盖；会升级到可选的生产方 `terminate` 钩子）仍未确认的停止请求会把记录关闭为 `control-lost-unknown`；每个桶最多累积 `maxUnconfirmedJobsPerOwner`（默认 `5`）条此类记录，超出后由 reconciliation 丢弃最早者。Service Definition 约定见 [`rlh-jobs`](../../packages/jobs/jobs/README.md)，注册表生命周期与准入策略见 [`rlh-jobs-local`](../../packages/jobs/jobs-local/README.md)，面向模型的 Consumer 见 [`rlh-tool-jobs`](../../packages/jobs/tool-jobs/README.md)。
 
 <!-- BEGIN GENERATED cordis-surface (gen-cordis-catalog.ts) — do not edit between markers -->
 
