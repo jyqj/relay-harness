@@ -17,10 +17,12 @@ import { LibraryQueries } from './library-query.ts'
 import { readWorkView, readWorkHistory } from './work-view.ts'
 import { confirmationBlockers } from './confirmation-policy.ts'
 import { deliverablesProjection, workAcceptanceProjection, readAcceptedRevision } from './projection.ts'
+import { latestContentReviewRead, readContentReview, sameContentSubject, workContentReviewProjection } from './content-review.ts'
 import type {
   WorkAcceptanceProjection, WorkVerifiedReview, WorkAcceptRequest, WorkAcceptReceipt,
   WorkLibraryRequest, WorkLibraryPage, WorkOpenRequest,
   WorkReadRequest, WorkView, WorkHistoryRequest, WorkHistoryPage,
+  WorkContentReview, WorkContentReviewRead, WorkContentReviewRequest, WorkContentReviewsProjection,
 } from './types.ts'
 
 export type * from './types.ts'
@@ -72,6 +74,7 @@ export class WorkResultsService extends TypertRemoteService {
     if (this.config.defaultResultsPerPage > this.config.maxResultsPerPage) throw new Error('workResults defaultResultsPerPage exceeds maxResultsPerPage')
     ctx.sessionProjections.register(deliverablesProjection)
     ctx.sessionProjections.register(workAcceptanceProjection)
+    ctx.sessionProjections.register(workContentReviewProjection)
     this.library = new LibraryQueries(ctx, this.config)
   }
 
@@ -201,6 +204,69 @@ export class WorkResultsService extends TypertRemoteService {
   }
 
   /**
+   * Read the latest explicit content review with its confirmed-vs-current comparison.
+   * @param request - exact source Session address.
+   * @param signal - cancellation through the non-activating source read.
+   * @returns The latest review and per-version currency; the Host performs no fresh
+   * re-reads, so every confirmed version reads `not-reverified` until a caller with a
+   * fresh observation applies {@link contentCurrency}.
+   */
+  @Remote('contentReview') async contentReview(request: WorkReadRequest, signal: AbortSignal): Promise<WorkContentReviewRead> {
+    this.userRequest('contentReview')
+    const agent = this.ctx.agents.get(request.sessionId)
+    let latest: WorkContentReview | null
+    if (agent !== undefined) {
+      this.assertLive(agent)
+      latest = this.contentReviews(agent.session).latest
+    } else {
+      const source = await this.ctx.sessionQuery.readSession(request.sessionId)
+      this.userRequest('contentReview')
+      signal.throwIfAborted()
+      latest = source.events.reduce((state, event) => workContentReviewProjection.apply(state, event), workContentReviewProjection.init()).latest
+    }
+    this.userRequest('contentReview')
+    return latestContentReviewRead(latest)
+  }
+
+  /**
+   * Record an explicit user content review bound to versions and check records, never to a log prefix.
+   * @param agent - exact live Session receiving the durable `work/reviewed` event.
+   * @param request - decision, observed content versions and check records.
+   * @param signal - trusted carrier cancellation through the durability barrier.
+   * @returns the recorded review; a byte-identical resubmission reuses the latest record.
+   */
+  @Remote('recordContentReview') async recordContentReview(agent: Agent, request: WorkContentReviewRequest, signal: AbortSignal): Promise<WorkContentReview> {
+    this.userRequest('recordContentReview')
+    signal.throwIfAborted()
+    this.assertLive(agent)
+    // Host-stamped fields; caller-supplied facts are validated by the same durable decoder.
+    const candidate = readContentReview({
+      reviewId: randomUUID(), decision: request.decision, contentVersions: request.contentVersions,
+      contentVersionRefs: request.contentVersionRefs, checkRecords: request.checkRecords,
+      checkRecordRefs: request.checkRecordRefs, actor: 'host-client', reviewedAt: Date.now(),
+    })
+    return agent.runMaintenance(async (maintenanceSignal) => {
+      if (!await this.ctx.sessions.flush(agent.session)) throw new Error('workResults persistence checkpoint is unavailable')
+      this.userRequest('recordContentReview')
+      signal.throwIfAborted()
+      maintenanceSignal.throwIfAborted()
+      this.assertLive(agent)
+      const latestEvent = agent.session.events.findLast(event => event.type === 'work/reviewed')
+      const prior = latestEvent === undefined ? null : readContentReview(latestEvent.data)
+      const recordedSeq = latestEvent !== undefined && prior !== null && sameContentSubject(prior, candidate)
+        ? latestEvent.seq
+        : agent.session.append('work/reviewed', candidate).seq
+      if (!await this.ctx.sessions.flush(agent.session)) throw new Error('workResults persistence checkpoint is unavailable')
+      this.userRequest('recordContentReview')
+      const stored = await this.ctx.sessionPersistence.readFrom(agent.id, recordedSeq, signal)
+      this.userRequest('recordContentReview')
+      const persisted = stored.events.find(event => event.seq === recordedSeq)
+      if (persisted?.type !== 'work/reviewed') throw new Error('workResults content review is not durably recorded')
+      return readContentReview(persisted.data)
+    })
+  }
+
+  /**
    * Validate a captured output against its source Session and open it on the Host.
    * @param request - source Session identity and exact execution-recorded path.
    * @param signal - carrier cancellation through native-open completion.
@@ -276,6 +342,12 @@ export class WorkResultsService extends TypertRemoteService {
   private acceptance(session: Session): WorkAcceptanceProjection {
     const value = this.ctx.sessionProjections.snapshot(session).values.workAcceptance
     if (value === undefined) throw new Error('workResults acceptance projection is unavailable')
+    return value
+  }
+
+  private contentReviews(session: Session): WorkContentReviewsProjection {
+    const value = this.ctx.sessionProjections.snapshot(session).values.workContentReviews
+    if (value === undefined) throw new Error('workResults content review projection is unavailable')
     return value
   }
 

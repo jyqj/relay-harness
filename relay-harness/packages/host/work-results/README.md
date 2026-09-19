@@ -2,7 +2,7 @@
 
 English | [中文](README.zh.md)
 
-Host adapter for explicit result-record confirmation and cross-session output discovery. Session logs remain the only durable authority; this package creates no Work database and never changes a goal's phase. It owns the pure `deliverables` and `workAcceptance` projections; the existing carriers publish them and `ui-product-shell` consumes them. `ui-deliverables` owns only response guidance and per-turn presentation.
+Host adapter for explicit result-record confirmation and cross-session output discovery. Session logs remain the only durable authority; this package creates no Work database and never changes a goal's phase. It owns the pure `deliverables`, `workAcceptance` and `workContentReviews` projections; the existing carriers publish them and `ui-product-shell` consumes them. `ui-deliverables` owns only response guidance and per-turn presentation.
 
 `workResults/get` also returns `confirmationBlockedBy`, sampled from live root membership, closed-turn state, Agent status, queued input, Host approvals/questions, and owned background Jobs. These read-time reasons are advisory, not authorization or persistence evidence. The same pure policy is applied again by the maintenance-protected confirmation path; a client cannot convert a previous eligible read into a grant.
 
@@ -15,6 +15,12 @@ The receipt records `reviewedThroughSeq` and `actor: 'host-client'`. It does not
 `workResults/get` captures one review cut before awaiting, flushes accepted work, and checks the physical receipt and stored tail covering that cut. It returns `verifiedThroughSeq` and whether the captured cut is still current, never promotes a later in-memory sequence into a durability claim. A raw projection is not proof of persistence. Clients verify only at quiet review points; streaming changes invalidate earlier confirmation without causing per-chunk flushes.
 
 These are confirmations submitted by the existing trusted Host client, not cryptographic evidence of a physical human click. All endpoints are loopback-only under the existing Connection policy. Confirmation grants no agent permission, proves no test result, and does not attest unchanged files or a completed subagent tree.
+
+## Content review
+
+`workResults/recordContentReview` appends `work/reviewed`: a user decision bound to explicit `WorkContentVersion` identities (execution environment, source cut, locator, sha-256 digest of the bytes actually read, observation time) and `WorkCheckRecord` facts (checker identity, version and config digest, consumed version digests, exit code and verdict, durable log location, and evidence level `agent-claimed` | `host-captured` | `user-reviewed`). Every reference must resolve inside its own event. The durability barrier and physical re-read match the existing receipt path; a byte-identical resubmission reuses the latest record, and the same trusted-request fence applies.
+
+Unlike `work/accepted`, the event names no log prefix and the record-confirmation policy is untouched: later log facts neither invalidate a content review nor mark it stale. `workResults/contentReview` reads the latest review with per-version currency. Without a fresh Host re-read, every confirmed version reports `not-reverified`; a caller holding a fresh host-side observation applies the pure comparison to report `matches-confirmed` or `changed-unreviewed` with the currently observed identity. This is explicit current-vs-confirmed separation, not a file watcher or a re-verification promise.
 
 ## Library and native opening
 
@@ -46,9 +52,24 @@ Zero additional model tokens.
 
 Existing model-visible prefixes are unchanged.
 
+### Explicit content review
+
+#### What the model sees
+
+No new prompt, tool, or model-visible message. `work/reviewed` is log-only, like `work/accepted`.
+
+#### Token effect
+
+Zero additional model tokens.
+
+#### KV Cache effect
+
+Existing model-visible prefixes are unchanged.
+
 ## Known Limitations and Deferred Work
 
 - Confirmation binds a Session log prefix, not file hashes. External file edits need not append events; resume bookkeeping can conservatively make a receipt stale without a new model turn.
+- A content review binds declared digests, not device files. The read API reports `not-reverified` until an actual re-read; nothing watches files between reviews.
 - Native opening requires Host-visible files. Remote execution worlds need their own export/locator adapter; this feature does not download or read remote output bytes.
 - Library pages are bounded observations, not retained immutable corpus snapshots. Unavailable history and legacy uncaptured results are reported, and concurrent relevant changes can require retry.
 - Host-client provenance inherits the existing loopback/browser trust boundary, not an independent authentication or physical-user attestation system.

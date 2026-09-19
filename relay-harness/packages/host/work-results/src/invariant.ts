@@ -3,6 +3,7 @@ import type { Context } from '@relay-harness/cordis'
 import type { InvariantFailure, InvariantInstaller } from '@relay-harness/rlh-invariants'
 import type { Session, SessionEvent } from '@relay-harness/rlh-session'
 import { readAcceptedRevision } from './projection.ts'
+import { readContentReview } from './content-review.ts'
 
 /** Cordis companion name. */
 export const name = 'host-work-results-invariant'
@@ -11,13 +12,23 @@ export const inject = ['invariants']
 
 /** Check only the rare acceptance edge against its authoritative preceding events. */
 function check(session: Session, event: SessionEvent, fail: InvariantFailure): void {
-  if (event.type !== 'work/accepted') return
-  const prior = session.events.findLast(item => item.seq < event.seq && item.type !== 'work/accepted')?.seq ?? -1
-  try {
-    // The decoder already requires a non-negative cut; equality also excludes an empty prefix.
-    if (readAcceptedRevision(event.data) !== prior) throw new Error('receipt does not name its prior revision')
-  } catch (error) {
-    fail(`work acceptance at seq ${event.seq}: ${String(error)}`)
+  if (event.type === 'work/accepted') {
+    const prior = session.events.findLast(item => item.seq < event.seq && item.type !== 'work/accepted')?.seq ?? -1
+    try {
+      // The decoder already requires a non-negative cut; equality also excludes an empty prefix.
+      if (readAcceptedRevision(event.data) !== prior) throw new Error('receipt does not name its prior revision')
+    } catch (error) {
+      fail(`work acceptance at seq ${event.seq}: ${String(error)}`)
+    }
+    return
+  }
+  if (event.type === 'work/reviewed') {
+    try {
+      // The decoder rejects malformed payloads and any unresolved content-version or check-record ref.
+      readContentReview(event.data)
+    } catch (error) {
+      fail(`work content review at seq ${event.seq}: ${String(error)}`)
+    }
   }
 }
 

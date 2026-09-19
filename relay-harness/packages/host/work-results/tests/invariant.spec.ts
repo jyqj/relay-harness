@@ -69,6 +69,15 @@ describe('Work receipt relationships', () => {
     expect(ctx.sessions.get(source.id)).toBeUndefined()
   })
 
+  it('rejects a content review whose references do not resolve inside its own event', async () => {
+    const ctx = await harness()
+    await ctx.plugin(companion)
+    const session = ctx.sessions.create(SessionId('content-refs'))
+    const corrupt = { reviewId: 'r1', decision: 'approved', contentVersions: [], contentVersionRefs: ['a'.repeat(64)],
+      checkRecords: [], checkRecordRefs: [], actor: 'host-client', reviewedAt: 1 }
+    expect(() => session.append('work/reviewed', corrupt as never)).toThrow(/unconfirmed content-version ref/)
+  })
+
   it('rejects negative receipt cuts and a cached cut at or beyond the receipt sequence', () => {
     expect(() => readAcceptedRevision({ actor: 'host-client', reviewedThroughSeq: -1 })).toThrow()
     const source = Session.create(SessionId('projection-cut'))

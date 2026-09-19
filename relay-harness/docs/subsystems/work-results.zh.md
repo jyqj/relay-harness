@@ -6,6 +6,8 @@
 
 已验证读取与成功确认响应要求对应日志前缀已持久化。原始投影可以使显示的确认失效，但不能证明持久化完成。打开记录中的产物时，授权由既有 Host opener 决定；来源归属不授予访问权限。
 
+显式内容审核与日志前缀确认相互独立：`work/reviewed` 事件把用户决定绑定到声明的内容版本摘要和检查记录，绝不绑定日志前缀；读取在真正重读之前报告 `not-reverified` currency。既有 `work/accepted` 语义保持不变。
+
 ## DeliverablesProjection
 
 ```ts type-equiv
@@ -108,13 +110,88 @@ interface WorkLibraryPage {
 }
 ```
 
-## WorkOpenRequest
+## WorkContentVersion
 
 ```ts type-equiv
-/** Exact output to open; paths must belong to the addressed source log. */
-interface WorkOpenRequest {
-  readonly sessionId: import('@relay-harness/rlh-session/types').SessionId
-  readonly path: string
+/** What was actually read: environment, source, locator, hash and observation time. */
+interface WorkContentVersion {
+  readonly execution: WorkContentExecution
+  readonly source: WorkContentSource
+  /** Execution-recorded locator the bytes were read from. */
+  readonly locator: string
+  readonly contentHash: { readonly algorithm: 'sha256'; readonly digest: string }
+  /** Non-negative epoch milliseconds when the bytes were read. */
+  readonly observedAt: number
+}
+```
+
+## WorkCheckRecord
+
+```ts type-equiv
+/** One checker execution attached to a content review; facts, not success claims. */
+interface WorkCheckRecord {
+  readonly checkId: WorkCheckId
+  readonly checker: { readonly name: string; readonly version?: string; readonly configDigest?: string }
+  /** Content-version digests consumed; each must resolve in the owning review. */
+  readonly contentVersionRefs: readonly string[]
+  readonly exitCode?: number
+  readonly verdict: 'pass' | 'fail' | 'unknown'
+  /** Durable location of the checker's own output, when captured. */
+  readonly log?: { readonly sessionId: import('@relay-harness/rlh-session/types').SessionId; readonly seq: number }
+  readonly evidence: WorkCheckEvidence
+}
+```
+
+## WorkContentReview
+
+```ts type-equiv
+/** A user decision bound to explicit content versions and check records — never to a log prefix. */
+interface WorkContentReview {
+  readonly reviewId: WorkContentReviewId
+  readonly decision: WorkContentDecision
+  /** All observed versions this review carries. */
+  readonly contentVersions: readonly WorkContentVersion[]
+  /** Version digests the decision applies to; each must resolve in `contentVersions`. */
+  readonly contentVersionRefs: readonly string[]
+  readonly checkRecords: readonly WorkCheckRecord[]
+  /** Check ids the decision relies on; each must resolve in `checkRecords`. */
+  readonly checkRecordRefs: readonly string[]
+  readonly actor: 'host-client'
+  /** Non-negative epoch milliseconds when the Host recorded the review. */
+  readonly reviewedAt: number
+}
+```
+
+## WorkContentCurrency
+
+```ts type-equiv
+/** Honest confirmed-vs-current state of one confirmed version. */
+type WorkContentCurrency =
+  | { readonly ref: string; readonly state: 'matches-confirmed' }
+  | { readonly ref: string; readonly state: 'changed-unreviewed'; readonly current: WorkContentVersion }
+  | { readonly ref: string; readonly state: 'not-reverified' }
+```
+
+## WorkContentReviewRead
+
+```ts type-equiv
+/** Latest durable content review plus its read-side confirmed-vs-current comparison. */
+interface WorkContentReviewRead {
+  readonly review: WorkContentReview | null
+  readonly currency: readonly WorkContentCurrency[]
+}
+```
+
+## WorkContentReviewRequest
+
+```ts type-equiv
+/** Explicit content review submission; caller identity is established by the Host carrier. */
+interface WorkContentReviewRequest {
+  readonly decision: WorkContentDecision
+  readonly contentVersions: readonly WorkContentVersion[]
+  readonly contentVersionRefs: readonly string[]
+  readonly checkRecords: readonly WorkCheckRecord[]
+  readonly checkRecordRefs: readonly string[]
 }
 ```
 
