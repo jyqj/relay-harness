@@ -3,7 +3,7 @@ import { Context } from '@relay-harness/cordis'
 import SessionStore, { Session, SessionId } from '@relay-harness/rlh-session'
 import SessionProjectionRegistry from '@relay-harness/rlh-session-projection'
 import { contentCurrency, latestContentReviewRead, readContentReview, workContentReviewProjection } from '../src/content-review.ts'
-import type { WorkContentReview, WorkContentVersion } from '../src/types.ts'
+import type { WorkCheckId, WorkContentReview, WorkContentReviewId, WorkContentVersion } from '../src/types.ts'
 
 let ctx: Context | undefined
 afterEach(async () => { await ctx?.fiber.dispose(); ctx = undefined })
@@ -28,11 +28,11 @@ function version(digest: string, locator = 'report.md'): WorkContentVersion {
 
 function review(overrides: Partial<WorkContentReview> = {}): WorkContentReview {
   return {
-    reviewId: 'review-1', decision: 'approved',
+    reviewId: 'review-1' as WorkContentReviewId, decision: 'approved',
     contentVersions: [version('a'.repeat(64))],
     contentVersionRefs: ['a'.repeat(64)],
     checkRecords: [{
-      checkId: 'check-1', checker: { name: 'vitest', version: '1.0' },
+      checkId: 'check-1' as WorkCheckId, checker: { name: 'vitest', version: '1.0' },
       contentVersionRefs: ['a'.repeat(64)], exitCode: 0, verdict: 'pass',
       evidence: 'host-captured',
     }],
@@ -50,12 +50,12 @@ describe('explicit content reviews', () => {
   it('folds the latest review from the durable log and survives restore', async () => {
     const host = await harness()
     const session = host.sessions.create(SessionId('reviewed-work'))
-    record(session, review({ reviewId: 'review-1', decision: 'rejected' }))
-    record(session, review({ reviewId: 'review-2' }))
+    record(session, review({ reviewId: 'review-1' as WorkContentReviewId, decision: 'rejected' }))
+    record(session, review({ reviewId: 'review-2' as WorkContentReviewId }))
     const restored = Session.fromRestore(session.id, structuredClone(session.events), structuredClone(session.header))
     const folded = restored.events.reduce((state, event) => workContentReviewProjection.apply(state, event), workContentReviewProjection.init())
-    expect(folded).toEqual({ latest: review({ reviewId: 'review-2' }), total: 2 })
-    expect(host.sessionProjections.snapshot(session).values.workContentReviews).toEqual({ latest: review({ reviewId: 'review-2' }), total: 2 })
+    expect(folded).toEqual({ latest: review({ reviewId: 'review-2' as WorkContentReviewId }), total: 2 })
+    expect(host.sessionProjections.snapshot(session).values.workContentReviews).toEqual({ latest: review({ reviewId: 'review-2' as WorkContentReviewId }), total: 2 })
     expect(workContentReviewProjection.apply({ latest: null, total: 0 }, { type: 'turn/start', seq: 9, time: 1, data: { turn: 1 } } as never)).toEqual({ latest: null, total: 0 })
   })
 

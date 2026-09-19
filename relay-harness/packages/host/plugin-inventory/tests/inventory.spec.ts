@@ -92,7 +92,6 @@ describe('PluginInventoryGateway', () => {
     const { ctx, inventory } = await harness()
     ctx.loader.builtins['code-index-workspace-router'] = activePlugin
     await ctx.loader.create({
-      id: 'code-index-workspace-router',
       name: 'cordis:code-index-workspace-router',
       config: { watcherEnabled: true },
     })

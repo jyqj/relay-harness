@@ -7,7 +7,7 @@
 import { describe, expect, it } from 'vitest'
 import { DEFAULT_CAPABILITY_CATALOG } from '../src/catalog.ts'
 import { buildCapabilityReport } from '../src/report.ts'
-import type { CapabilityComposedEntry, CapabilityRuntimeEvidence, PluginInventoryEntry } from '../src/types.ts'
+import type { CapabilityComposedEntry, CapabilityReport, CapabilityReportEntry, CapabilityRuntimeEvidence, PluginEntryId, PluginInventoryEntry } from '../src/types.ts'
 
 const routerRow = (config: unknown, disabled = false): CapabilityComposedEntry => ({
   entryId: 'code-index-workspace-router',
@@ -29,11 +29,12 @@ const sessionSearchRow = (openAt: unknown): CapabilityComposedEntry => ({
   config: { openAt },
 })
 
-const inventoryEntry = (overrides: Partial<PluginInventoryEntry> & { entryId: string }): PluginInventoryEntry => ({
+const inventoryEntry = (overrides: Omit<Partial<PluginInventoryEntry>, 'entryId'> & { entryId: string }): PluginInventoryEntry => ({
   moduleName: `module:${overrides.entryId}`,
   enabled: true,
   fiberPhase: 'active',
   ...overrides,
+  entryId: overrides.entryId as PluginEntryId,
 })
 
 const runtime = (overrides: {
@@ -44,9 +45,11 @@ const runtime = (overrides: {
   ...(overrides.toolNames === null ? {} : { toolNames: overrides.toolNames ?? [] }),
 })
 
-const find = (report: { capabilities: { capabilityId: string }[] }, id: string): (
-  { capabilityId: string } & Record<string, unknown>
-) => report.capabilities.find(capability => capability.capabilityId === id) as never
+const find = (report: CapabilityReport, id: string): CapabilityReportEntry => {
+  const entry = report.capabilities.find(capability => capability.capabilityId === id)
+  if (entry === undefined) throw new Error(`capability not in report: ${id}`)
+  return entry
+}
 
 describe('buildCapabilityReport', () => {
   it('reports a capability absent from the composed bundle as absent', () => {
@@ -170,7 +173,7 @@ describe('buildCapabilityReport', () => {
     expect(webSearch.sessionAvailable.status).toBe('yes')
     const noTools = buildCapabilityReport({
       composed: webSearchRows('DEEPSEEK_API_KEY'),
-      runtime: runtime({ inventory: runtime().inventory.entries, toolNames: null }),
+      runtime: runtime({ inventory: [...runtime().inventory.entries], toolNames: null }),
     })
     expect(find(noTools, 'web-search').sessionAvailable.status).toBe('unknown')
   })
