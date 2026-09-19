@@ -1,0 +1,69 @@
+name: Renewal recovery transfer
+on:
+  push:
+    branches: [feat/architecture-renewal-completion-20260919]
+    paths: [.github/workflows/renewal-recovery-transfer.yml]
+permissions:
+  contents: read
+jobs:
+  recover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: 31c46269f39bb4993c3d98af5139057dd486394b
+          persist-credentials: false
+      - name: Verify and export existing source delta
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const fs = require('node:fs');
+            const path = require('node:path');
+            const crypto = require('node:crypto');
+            const zlib = require('node:zlib');
+            const { execFileSync } = require('node:child_process');
+            const shas = ['4097389d9c73b43b96eacb56e055c9c818c9c91b','3009eb52a9b54831482664b51fd50588a2d85d99','7beee3e4b021192f72bd6691eb7982150838947d','2371627613436937e6281857bfe9ade01da8a8e1','9f1d8a258ec37b121072251cbf220dd8b387927c','ab6febbe7f2b2fe0814e6bc6235cf2f8d6fd5ecf','951cc3c7055ef4b41207ecf05cfd6b946a6cd1ae','caa6611fc090e31db2fd69c8cb59fc18c83dbc05','d03d5f29607afdbdf366bcdb83173c56de618173','d8e49e8a68c63c510b99f519b6ef0a3b4cb34476','4e6e5956a9d2e0f63dd24399040cc7fc9520fd37'];
+            const parts = [];
+            for (const file_sha of shas) {
+              const { data } = await github.rest.git.getBlob({ owner: context.repo.owner, repo: context.repo.repo, file_sha });
+              if (data.encoding !== 'base64') throw new Error('Unexpected encoding');
+              parts.push(Buffer.from(data.content, 'base64'));
+            }
+            const payload = Buffer.concat(parts);
+            if (crypto.createHash('sha256').update(payload).digest('hex') !== 'f3395ff56dd26d19b4445132070499fa0fec64c1a6d922be89b3c19333356b39') throw new Error('Delta digest mismatch');
+            const delta = JSON.parse(zlib.brotliDecompressSync(payload, { maxOutputLength: 4 * 1024 * 1024 }).toString('utf8'));
+            if (delta.format !== 1 || delta.base !== '31c46269f39bb4993c3d98af5139057dd486394b' || delta.operations.length !== 107) throw new Error('Unexpected delta');
+            const seen = new Set();
+            for (const op of delta.operations) {
+              if (typeof op.path !== 'string' || path.posix.normalize(op.path) !== op.path || path.isAbsolute(op.path) || op.path.split('/').some(x => ['..','.git','node_modules'].includes(x)) || (!op.path.startsWith('relay-harness/') && !op.path.startsWith('.github/workflows/')) || seen.has(op.path) || !['100644','100755'].includes(op.mode)) throw new Error('Invalid path');
+              seen.add(op.path);
+              const original = fs.existsSync(op.path) ? fs.readFileSync(op.path, 'utf8') : '';
+              const lines = original.match(/[^\n]*\n|[^\n]+$/g) ?? [];
+              const output = op.edits.map(edit => {
+                if (typeof edit === 'string') return edit;
+                if (!Array.isArray(edit) || edit.length !== 2 || !edit.every(Number.isSafeInteger) || edit[0] < 0 || edit[1] < edit[0] || edit[1] > lines.length) throw new Error('Invalid copy');
+                return lines.slice(edit[0],edit[1]).join('');
+              }).join('');
+              fs.mkdirSync(path.dirname(op.path),{recursive:true});
+              fs.writeFileSync(op.path,output,{mode:op.mode === '100755' ? 0o755 : 0o644});
+              fs.chmodSync(op.path,op.mode === '100755' ? 0o755 : 0o644);
+            }
+            fs.unlinkSync('.github/workflows/architecture-renewal.yml');
+            execFileSync('git',['add','--',...seen,'.github/workflows/architecture-renewal.yml']);
+            execFileSync('git',['diff','--cached','--check']);
+            const tree = execFileSync('git',['write-tree'],{encoding:'utf8'}).trim();
+            if (tree !== '16217895342489b22010dc097aaffd160a620d8a') throw new Error('Tree mismatch: '+tree);
+            const out = path.join(process.env.RUNNER_TEMP,'recovered');
+            fs.mkdirSync(out,{recursive:true});
+            execFileSync('git',['archive','--format=tar.gz','-o',path.join(out,'source.tar.gz'),tree]);
+            fs.writeFileSync(path.join(out,'source.tree'),tree+'\n');
+            fs.writeFileSync(path.join(out,'delta.json'),JSON.stringify(delta));
+            fs.writeFileSync(path.join(out,'tree-entries.txt'),execFileSync('git',['ls-files','-s'],{encoding:'utf8'}));
+            core.info('Verified and exported source tree '+tree+'; no commits or refs changed.');
+      - uses: actions/upload-artifact@v4
+        with:
+          name: renewal-recovered-${{ github.run_id }}
+          path: ${{ runner.temp }}/recovered/
+          retention-days: 1
+          if-no-files-found: error
