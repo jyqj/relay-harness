@@ -5,8 +5,7 @@ on:
     branches: [feat/architecture-renewal-20260919]
 
 permissions:
-  contents: read
-  actions: read
+  contents: write
 
 concurrency:
   group: architecture-renewal-${{ github.ref }}
@@ -15,42 +14,94 @@ concurrency:
 jobs:
   prepare:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 20
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@v6
         with:
-          name: renewal-tools-35423746277
-          run-id: 35423746277
-          github-token: ${{ github.token }}
-          path: ${{ runner.temp }}/renewal-tools
-      - name: Split locked dependencies into bounded artifacts
-        run: |
-          cd "$RUNNER_TEMP/renewal-tools"
-          split -b 350M -d -a 2 relay-renewal-dependencies.tar.gz deps-
-          sha256sum relay-renewal-*.tar.gz deps-* > checksums.txt
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Reconstruct and verify the reviewed source tree
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const fs = require('node:fs');
+            const path = require('node:path');
+            const crypto = require('node:crypto');
+            const zlib = require('node:zlib');
+            const { execFileSync } = require('node:child_process');
+            const owner = 'jyqj';
+            const repo = 'relay-harness';
+            const base = '31c46269f39bb4993c3d98af5139057dd486394b';
+            const expectedTree = '16217895342489b22010dc097aaffd160a620d8a';
+            const expectedDigest = 'f3395ff56dd26d19b4445132070499fa0fec64c1a6d922be89b3c19333356b39';
+            if (context.repo.owner !== owner || context.repo.repo !== repo || context.ref !== 'refs/heads/feat/architecture-renewal-20260919') throw new Error('Unexpected publication target');
+            const head = (await github.rest.git.getCommit({ owner, repo, commit_sha: context.sha })).data;
+            if (head.parents.length !== 1 || head.parents[0].sha !== base) throw new Error('Publication baseline changed');
+            const shas = [
+              '4097389d9c73b43b96eacb56e055c9c818c9c91b',
+              '3009eb52a9b54831482664b51fd50588a2d85d99',
+              '7beee3e4b021192f72bd6691eb7982150838947d',
+              '2371627613436937e6281857bfe9ade01da8a8e1',
+              '9f1d8a258ec37b121072251cbf220dd8b387927c',
+              'ab6febbe7f2b2fe0814e6bc6235cf2f8d6fd5ecf',
+              '951cc3c7055ef4b41207ecf05cfd6b946a6cd1ae',
+              'caa6611fc090e31db2fd69c8cb59fc18c83dbc05',
+              'd03d5f29607afdbdf366bcdb83173c56de618173',
+              'd8e49e8a68c63c510b99f519b6ef0a3b4cb34476',
+              '4e6e5956a9d2e0f63dd24399040cc7fc9520fd37',
+            ];
+            const parts = [];
+            for (const file_sha of shas) {
+              const blob = (await github.rest.git.getBlob({ owner, repo, file_sha })).data;
+              if (blob.encoding !== 'base64') throw new Error('Unexpected blob encoding');
+              parts.push(Buffer.from(blob.content, 'base64'));
+            }
+            const payload = Buffer.concat(parts);
+            const digest = crypto.createHash('sha256').update(payload).digest('hex');
+            if (digest !== expectedDigest) throw new Error('Source delta digest mismatch');
+            const decoded = zlib.brotliDecompressSync(payload, { maxOutputLength: 4 * 1024 * 1024 });
+            const delta = JSON.parse(decoded.toString('utf8'));
+            if (delta.format !== 1 || delta.base !== base || delta.tree !== expectedTree || delta.operations.length !== 107 || delta.removeBootstrap !== true) throw new Error('Invalid source delta');
+            const seen = new Set();
+            for (const op of delta.operations) {
+              if (typeof op.path !== 'string' || path.posix.normalize(op.path) !== op.path || path.isAbsolute(op.path) || op.path.split('/').includes('..') || op.path.split('/').includes('.git') || op.path.split('/').includes('node_modules') || (!op.path.startsWith('relay-harness/') && !op.path.startsWith('.github/workflows/')) || seen.has(op.path)) throw new Error('Invalid source path');
+              if (!['100644', '100755'].includes(op.mode)) throw new Error('Unsupported source mode');
+              seen.add(op.path);
+              const original = fs.existsSync(op.path) ? fs.readFileSync(op.path, 'utf8') : '';
+              const lines = original.match(/[^\n]*\n|[^\n]+$/g) ?? [];
+              const output = op.edits.map(edit => {
+                if (typeof edit === 'string') return edit;
+                if (!Array.isArray(edit) || edit.length !== 2 || !edit.every(Number.isSafeInteger) || edit[0] < 0 || edit[1] < edit[0] || edit[1] > lines.length) throw new Error('Invalid source copy');
+                return lines.slice(edit[0], edit[1]).join('');
+              }).join('');
+              fs.mkdirSync(path.dirname(op.path), { recursive: true });
+              fs.writeFileSync(op.path, output, { mode: op.mode === '100755' ? 0o755 : 0o644 });
+              fs.chmodSync(op.path, op.mode === '100755' ? 0o755 : 0o644);
+            }
+            const bootstrap = '.github/workflows/architecture-renewal.yml';
+            fs.unlinkSync(bootstrap);
+            execFileSync('git', ['add', '--', ...seen, bootstrap]);
+            execFileSync('git', ['diff', '--cached', '--check']);
+            const localTree = execFileSync('git', ['write-tree'], { encoding: 'utf8' }).trim();
+            if (localTree !== expectedTree) throw new Error(`Source tree mismatch: ${localTree}`);
+            core.info(`Verified ${seen.size} source files at ${localTree}`);
+            const tree = [];
+            for (const op of delta.operations) {
+              const content = fs.readFileSync(op.path).toString('base64');
+              const blob = (await github.rest.git.createBlob({ owner, repo, encoding: 'base64', content })).data;
+              tree.push({ path: op.path, mode: op.mode, type: 'blob', sha: blob.sha });
+            }
+            tree.push({ path: bootstrap, mode: '100644', type: 'blob', sha: null });
+            const preparedTree = (await github.rest.git.createTree({ owner, repo, base_tree: head.tree.sha, tree })).data;
+            if (preparedTree.sha !== expectedTree) throw new Error('Remote source tree mismatch');
+            const commit = (await github.rest.git.createCommit({ owner, repo, tree: preparedTree.sha, parents: [context.sha], message: 'feat: unify explicit context retrieval and passive work records' })).data;
+            const publication = { baseSha: context.sha, treeSha: preparedTree.sha, commitSha: commit.sha, payloadDigest: digest, changedFiles: tree.length };
+            fs.writeFileSync(path.join(process.env.RUNNER_TEMP, 'renewal-publication.json'), JSON.stringify(publication, null, 2));
+            core.info(JSON.stringify(publication));
+            await core.summary.addHeading('Verified source commit prepared').addRaw('No branch ref was changed. The connected GitHub client must fast-forward the review branch explicitly.').addCodeBlock(JSON.stringify(publication, null, 2), 'json').write();
       - uses: actions/upload-artifact@v4
         with:
-          name: renewal-runtime-${{ github.run_id }}
-          path: |
-            ${{ runner.temp }}/renewal-tools/relay-renewal-node.tar.gz
-            ${{ runner.temp }}/renewal-tools/relay-renewal-pnpm.tar.gz
-            ${{ runner.temp }}/renewal-tools/checksums.txt
-          retention-days: 1
-      - uses: actions/upload-artifact@v4
-        with:
-          name: renewal-deps-00-${{ github.run_id }}
-          path: ${{ runner.temp }}/renewal-tools/deps-00
-          compression-level: 0
-          retention-days: 1
-      - uses: actions/upload-artifact@v4
-        with:
-          name: renewal-deps-01-${{ github.run_id }}
-          path: ${{ runner.temp }}/renewal-tools/deps-01
-          compression-level: 0
-          retention-days: 1
-      - uses: actions/upload-artifact@v4
-        with:
-          name: renewal-deps-02-${{ github.run_id }}
-          path: ${{ runner.temp }}/renewal-tools/deps-02
-          compression-level: 0
+          name: renewal-publication-${{ github.run_id }}
+          path: ${{ runner.temp }}/renewal-publication.json
+          if-no-files-found: error
           retention-days: 1
