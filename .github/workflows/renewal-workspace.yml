@@ -1,0 +1,54 @@
+name: Renewal workspace preparation
+on:
+  push:
+    branches: ['work/renewal-build-20260919']
+    paths: ['.github/workflows/renewal-workspace.yml']
+permissions:
+  contents: read
+jobs:
+  prepare:
+    if: github.repository == 'jyqj/relay-harness' && github.ref == 'refs/heads/work/renewal-build-20260919'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: relay-harness/package.json
+          dest: ${{ runner.temp }}/setup-pnpm
+      - name: Install exact locked dependencies
+        working-directory: relay-harness
+        env:
+          RLH_TELEMETRY_DISABLED: '1'
+        run: pnpm install --frozen-lockfile
+      - name: Package tracked source without credentials or Git configuration
+        run: |
+          git ls-files -z | tar --null -T - -czf /tmp/renewal-source.tar.gz
+          find relay-harness -type d -name node_modules -prune -print0 | tar --null -T - -czf /tmp/renewal-dependencies.tar.gz
+          cp "$(command -v node)" /tmp/renewal-node
+          gzip /tmp/renewal-node
+          sha256sum /tmp/renewal-source.tar.gz /tmp/renewal-dependencies.tar.gz /tmp/renewal-node.gz
+      - uses: actions/upload-artifact@v4
+        with:
+          name: renewal-source
+          path: /tmp/renewal-source.tar.gz
+          compression-level: 0
+          retention-days: 1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: renewal-dependencies
+          path: /tmp/renewal-dependencies.tar.gz
+          compression-level: 0
+          retention-days: 1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: renewal-node
+          path: /tmp/renewal-node.gz
+          compression-level: 0
+          retention-days: 1
