@@ -1,0 +1,59 @@
+name: Architecture renewal
+
+on:
+  push:
+    branches: [feat/architecture-renewal-20260919]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: architecture-renewal-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: relay-harness/package.json
+          dest: ${{ runner.temp }}/setup-pnpm
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+      - name: Export tracked source before dependency installation
+        run: |
+          git archive --format=tar.gz -o "$RUNNER_TEMP/relay-renewal-source.tar.gz" HEAD
+          git rev-parse HEAD > "$RUNNER_TEMP/relay-renewal-revision.txt"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: renewal-source-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/relay-renewal-source.tar.gz
+            ${{ runner.temp }}/relay-renewal-revision.txt
+          retention-days: 1
+      - name: Install locked development dependencies
+        working-directory: relay-harness
+        run: pnpm install --frozen-lockfile
+      - name: Package offline development tools without repository credentials
+        run: |
+          find relay-harness -type d -name node_modules -prune -print0 > "$RUNNER_TEMP/relay-renewal-dependency-paths"
+          tar --null -czf "$RUNNER_TEMP/relay-renewal-dependencies.tar.gz" -T "$RUNNER_TEMP/relay-renewal-dependency-paths"
+          node_root="$(dirname "$(dirname "$(readlink -f "$(command -v node)")")")"
+          tar -C "$node_root" -czf "$RUNNER_TEMP/relay-renewal-node.tar.gz" bin lib include share
+          tar -C "$RUNNER_TEMP/setup-pnpm" -czf "$RUNNER_TEMP/relay-renewal-pnpm.tar.gz" node_modules
+          sha256sum "$RUNNER_TEMP"/relay-renewal-*.tar.gz
+      - uses: actions/upload-artifact@v4
+        with:
+          name: renewal-tools-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/relay-renewal-dependencies.tar.gz
+            ${{ runner.temp }}/relay-renewal-node.tar.gz
+            ${{ runner.temp }}/relay-renewal-pnpm.tar.gz
+          retention-days: 1
