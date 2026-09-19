@@ -1,0 +1,69 @@
+name: Renewal implementation validation
+on:
+  push:
+    branches: ['work/renewal-build-20260919']
+permissions:
+  contents: read
+concurrency:
+  group: renewal-implementation
+  cancel-in-progress: true
+jobs:
+  validate:
+    if: github.repository == 'jyqj/relay-harness' && github.ref == 'refs/heads/work/renewal-build-20260919'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: write
+    env:
+      RLH_TELEMETRY_DISABLED: '1'
+      RLH_COVERAGE_MAX_WORKERS: '2'
+      RLH_GATE_CONCURRENCY: '2'
+    defaults:
+      run:
+        working-directory: relay-harness
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: relay-harness/package.json
+          dest: ${{ runner.temp }}/setup-pnpm
+      - name: Apply reviewed source changes
+        run: |
+          if test -f ../.github/renewal/apply.py; then python3 ../.github/renewal/apply.py; fi
+      - name: Show architecture inventory
+        run: |
+          git ls-files '*standard*' '*agent.cordis.yml' '*tsdown.config*' '*work-results*' '*session-history*' '*navigation*' '*translation*' '*main-workbench*' | head -140
+          cat packages/context/context-engine/tsdown.config.ts 2>/dev/null || true
+          cat packages/context/code-context/tsdown.config.ts 2>/dev/null || true
+          cat packages/context/context-engine/tsconfig.json
+      - name: Install locked dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Apply generated metadata
+        run: |
+          if test -f ../.github/renewal/generate.mjs; then node ../.github/renewal/generate.mjs; fi
+      - name: Focused behavior tests
+        id: tests
+        run: pnpm exec vitest run packages/context/context-engine packages/context/code-context packages/host/work-results packages/client/ui-product-shell packages/client/connection packages/client/ui-layout packages/client/ui-sidebar packages/client/ui-surfaces --maxWorkers 2
+      - name: Build Host and Client
+        id: build
+        if: success() || failure()
+        run: pnpm run build:lib && pnpm run build:web
+      - name: Lint changed surfaces
+        id: lint
+        if: steps.build.outcome == 'success'
+        run: pnpm exec tsx scripts/run-oxlint.ts packages/context/context-engine packages/context/code-context packages/host/work-results packages/client/ui-product-shell packages/client/connection packages/client/ui-layout packages/client/ui-sidebar packages/client/ui-surfaces
+      - name: Retain validation evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: renewal-validation-${{ github.run_id }}
+          path: |
+            relay-harness/.renewal-results
+          if-no-files-found: ignore
+          retention-days: 3
