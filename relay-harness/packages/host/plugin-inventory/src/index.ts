@@ -1,18 +1,24 @@
-/** Read-only projection of the current Cordis Loader plugin entries. */
+/** Read-only projection of the current Cordis Loader plugin entries and effective capabilities. */
 
 import type { Context, FiberState } from '@relay-harness/cordis'
-import type {} from '@relay-harness/cordis-plugin-loader'
+import type { Entry } from '@relay-harness/cordis-plugin-loader'
+import type {} from '@relay-harness/rlh-tools'
 import { TypertRemoteService, Remote } from '@relay-harness/rlh-typert-protocol'
 // Typert-generated ./typert and ./remote artifacts import Zod at runtime.
 import type {} from 'zod'
 import type {
+  CapabilityComposedEntry,
+  CapabilityReport,
   PluginEntryId,
   PluginFiberPhase,
   PluginInventoryEntry,
   PluginInventorySnapshot,
 } from './types.ts'
+import { buildCapabilityReport } from './report.ts'
 
 export type * from './types.ts'
+export { buildCapabilityReport } from './report.ts'
+export { DEFAULT_CAPABILITY_CATALOG } from './catalog.ts'
 
 /** Brand an existing Loader-tree entry id at the owning boundary. */
 function pluginEntryId(value: string): PluginEntryId {
@@ -56,8 +62,7 @@ export class PluginInventoryGateway extends TypertRemoteService {
   @Remote('list')
   list(): PluginInventorySnapshot {
     const entries: PluginInventoryEntry[] = []
-    for (const entry of this.ctx.loader.entries()) {
-      if (entry.options.group) continue
+    for (const entry of currentLoaderEntries(this.ctx)) {
       entries.push({
         entryId: pluginEntryId(entry.id),
         moduleName: entry.options.name,
@@ -67,6 +72,40 @@ export class PluginInventoryGateway extends TypertRemoteService {
     }
     return { entries }
   }
+
+  /**
+   * Join the live Loader tree, the tool registry, and the shipped capability
+   * catalog into one effective-capability report. The composed bundle evidence
+   * is the mounted Loader state itself (config already evaluated), so every
+   * level is observable here — unlike the boot-free CLI dump, which reports
+   * healthy and session levels as unknown.
+   * @returns One report entry per catalog capability, in catalog order.
+   */
+  @Remote('capabilities')
+  capabilities(): CapabilityReport {
+    const composed: CapabilityComposedEntry[] = []
+    for (const entry of currentLoaderEntries(this.ctx)) {
+      composed.push({
+        entryId: entry.id,
+        moduleName: entry.options.name,
+        disabled: entry.disabled,
+        config: (entry.options as { config?: unknown }).config,
+      })
+    }
+    const tools = this.ctx.get('tools')
+    return buildCapabilityReport({
+      composed,
+      runtime: {
+        inventory: this.list(),
+        ...(tools === undefined ? {} : { toolNames: tools.schemas().map(schema => schema.name) }),
+      },
+    })
+  }
+}
+
+/** Current non-group Loader entries in Loader order. */
+function currentLoaderEntries(ctx: Context): readonly Entry[] {
+  return [...ctx.loader.entries()].filter(entry => !entry.options.group)
 }
 
 export default PluginInventoryGateway

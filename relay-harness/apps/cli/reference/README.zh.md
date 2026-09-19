@@ -38,6 +38,8 @@ rlh --profile web --patch ./extra.yml --dump-config
 
 `--dump-default-config` 只打印组合包各层；`--dump-config` 额外加上 profile 的 `cordis.patch.yml`、home 级的 `$RLH_HOME/cordis.patch.yml` 和 `--patch` overlay。两者都会打印注释，标明每行由哪个文件提供，以及哪些 overlay 修改过它；`!!js` 表达式保持未求值，找不到目标的 patch 会报告到 stderr。dump 操作不会运行应用的命令行参数提供方，因此展示的是解析任何应用参数之前的组合配置树；如果调用中包含应用参数，dump 会拒绝该调用。
 
+`--dump-capabilities` 把同一份组合包（含用户层与 `--patch` overlay）拼接成一份有效能力报告，每个级别给出 `yes`/`no`/`unknown` 判定及证据：assembled（已装配，存在于组合包中）、configured（已配置，能力所需的配置项，`!!js` 表达式按未满足处理）、healthy（当前健康）与 session-available（会话可用）。由于不执行启动，运行时级别一律报 `unknown`，折叠状态不会仅凭组合就宣称 `running`；完整报告请查询已启动 Host 的 `pluginInventory/capabilities` remote。
+
 ## 插件管理
 
 `rlh plugin --profile <name> <args...>` 在 profile 缺失时先初始化它（有随附模板的用模板，其他名称只装 `@relay-harness/rlh-base`），然后以 profile 目录为工作目录，把 `<args...>` 转发给 `pnpm`：`add`、`remove`、`why`、`update` 及其他所有 pnpm 子命令都照常可用；pnpm 必须在 PATH 上。相对路径 spec（`.`、`../plugin` 及其 `file:`/`link:` 形式）会先锚定到调用目录，因此在插件 checkout 中执行 `add .` 安装的是该 checkout，而不是 profile。每次成功运行后，系统都会根据当前安装状态更新 `rlh.profile.bundles`：如果某项依赖解析到的包在 manifest 中声明了 `"rlh": { "bundle": { "patch": "./cordis.patch.yml" } }`，该依赖就会加入配置层栈；如果某项依赖在 `update` 后获得该声明，也会随即激活。没有组合包声明的依赖仍作为普通依赖保留，并显示一次性警告；已移除的依赖则从配置层栈中删除。
@@ -64,7 +66,7 @@ rlh --profile tui
 
 ## Web 别名
 
-`rlh web` 是 `--profile web` 的硬编码别名。launcher 级的 `--patch`、`--dump-config`、`--dump-default-config` 和 `--skip-user-plugins` 由别名本身解析；其余 flag 属于 web 应用，由组合包中的普通提供方解析。`--skip-user-plugins` 以随附 bundle 模板启动、跳过 profile 与 home 用户层——Desktop 启动器依赖的正是这套 flag，以 `rlh web --skip-user-plugins --patch <files> --host <host> --port <port> --no-open` 拉起进程。`--host` 和 `--port` 覆盖承载它们的那些行的组合取值，可重复的 `--trusted-host` 通过 `ctx.webRuntime.trustedHosts` 提供本次调用的 authority（部署表达式会拼接自己的 authority），`--no-open` 则只对本次调用关闭默认浏览器交接。客户端插件 HMR（热模块替换）接收器始终挂载，在单独运行的 `pnpm run dev:web` watcher 重建客户端 bundle 之前保持空闲。
+`rlh web` 是 `--profile web` 的硬编码别名。launcher 级的 `--patch`、`--dump-config`、`--dump-default-config`、`--dump-capabilities` 和 `--skip-user-plugins` 由别名本身解析；其余 flag 属于 web 应用，由组合包中的普通提供方解析。`--skip-user-plugins` 以随附 bundle 模板启动、跳过 profile 与 home 用户层——Desktop 启动器依赖的正是这套 flag，以 `rlh web --skip-user-plugins --patch <files> --host <host> --port <port> --no-open` 拉起进程。`--host` 和 `--port` 覆盖承载它们的那些行的组合取值，可重复的 `--trusted-host` 通过 `ctx.webRuntime.trustedHosts` 提供本次调用的 authority（部署表达式会拼接自己的 authority），`--no-open` 则只对本次调用关闭默认浏览器交接。客户端插件 HMR（热模块替换）接收器始终挂载，在单独运行的 `pnpm run dev:web` watcher 重建客户端 bundle 之前保持空闲。
 
 ```sh
 rlh web

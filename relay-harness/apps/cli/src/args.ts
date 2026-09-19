@@ -40,6 +40,15 @@ interface DumpConfigInvocation {
   skipUserPlugins: boolean
 }
 
+/** Print the boot-free effective-capability report and exit without booting. */
+interface DumpCapabilitiesInvocation {
+  mode: 'dump-capabilities'
+  profile: string
+  patches: string[]
+  /** Whether the dump uses the shipped template instead of user layers. */
+  skipUserPlugins: boolean
+}
+
 /** Manage a profile's plugins: forward `args` to pnpm inside the profile directory. */
 interface PluginInvocation {
   mode: 'plugin'
@@ -49,13 +58,14 @@ interface PluginInvocation {
 }
 
 /** The resolved `rlh` invocation. Help, version, and errors exit inside {@link parseRlhArgs}. */
-export type RlhInvocation = ProfileInvocation | DumpConfigInvocation | PluginInvocation
+export type RlhInvocation = ProfileInvocation | DumpConfigInvocation | DumpCapabilitiesInvocation | PluginInvocation
 
 /** Launcher flags shared by the default command and the `web` alias. */
 interface BootOptions {
   patch?: string[]
   dumpConfig?: boolean
   dumpDefaultConfig?: boolean
+  dumpCapabilities?: boolean
   skipUserPlugins?: boolean
 }
 
@@ -89,6 +99,17 @@ function resolveBoot(program: Command, profile: string, options: BootOptions, ar
   const patches = options.patch ?? []
   const skipUserPlugins = options.skipUserPlugins === true
   if (patches.includes('')) program.error('error: --patch needs a path')
+  if (options.dumpCapabilities === true) {
+    if (options.dumpConfig === true || options.dumpDefaultConfig === true) {
+      program.error('error: --dump-capabilities is mutually exclusive with --dump-config and --dump-default-config')
+    }
+    // Same boot-free rule as the tree dumps: nothing was booted, so no app
+    // command-line provider ran and their flags cannot be shown.
+    if (args.length > 0) {
+      program.error(`error: --dump-capabilities takes no app arguments, got ${args.map(argument => JSON.stringify(argument)).join(' ')}`)
+    }
+    return { mode: 'dump-capabilities', profile, patches, skipUserPlugins }
+  }
   if (options.dumpConfig !== true && options.dumpDefaultConfig !== true) {
     return { mode: 'profile', profile, patches, args, skipUserPlugins }
   }
@@ -141,6 +162,7 @@ export function parseRlhArgs(argv: readonly string[], version: string): RlhInvoc
     .option('--patch <path>', 'extra patch-list overlay applied after the profile layer (repeatable)', collect)
     .option('--dump-config', 'print the composed profile tree and exit')
     .option('--dump-default-config', 'print the profile tree without its user layer or --patch overlays and exit')
+    .option('--dump-capabilities', 'print the composed profile\'s effective-capability report and exit without booting')
     .option('--skip-user-plugins', 'boot the shipped bundle template without profile or home user patches')
     .action((args: string[], options: BootOptions & { profile?: string }) => {
       // With the app owning -h, the launcher's own help is what a bare
@@ -159,8 +181,9 @@ export function parseRlhArgs(argv: readonly string[], version: string): RlhInvoc
     const parent = program.opts<BootOptions & { profile?: string }>()
     if (parent.profile !== undefined || parent.patch !== undefined
       || parent.dumpConfig !== undefined || parent.dumpDefaultConfig !== undefined
+      || parent.dumpCapabilities !== undefined
       || parent.skipUserPlugins !== undefined) {
-      program.error(`error: ${command} takes none of parent --profile, --patch, --dump-config, --dump-default-config, or --skip-user-plugins`)
+      program.error(`error: ${command} takes none of parent --profile, --patch, --dump-config, --dump-default-config, --dump-capabilities, or --skip-user-plugins`)
     }
   }
 
@@ -174,6 +197,7 @@ export function parseRlhArgs(argv: readonly string[], version: string): RlhInvoc
     .option('--patch <path>', 'extra patch-list overlay applied after the profile layer (repeatable)', collect)
     .option('--dump-config', 'print the composed web-profile tree (with the user layer and any --patch) and exit')
     .option('--dump-default-config', 'print the web profile\'s bundle layers (no user layer) and exit')
+    .option('--dump-capabilities', 'print the composed web profile\'s effective-capability report and exit without booting')
     .option('--skip-user-plugins', 'boot the shipped bundle template without profile or home user patches')
     .action((args: string[], options: BootOptions) => {
       rejectParentOptions('web')

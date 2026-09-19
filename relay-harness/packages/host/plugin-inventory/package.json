@@ -55,6 +55,7 @@
     "@relay-harness/cordis-plugin-loader": "workspace:^",
     "@relay-harness/rlh-brand": "workspace:^",
     "@relay-harness/rlh-invariants": "workspace:^",
+    "@relay-harness/rlh-tools": "workspace:^",
     "@relay-harness/rlh-typert-protocol": "workspace:^",
     "@relay-harness/cordis": "workspace:^"
   },
@@ -62,6 +63,7 @@
     "@relay-harness/cordis-plugin-loader": "workspace:^",
     "@relay-harness/rlh-brand": "workspace:^",
     "@relay-harness/rlh-invariants": "workspace:^",
+    "@relay-harness/rlh-tools": "workspace:^",
     "@relay-harness/rlh-typert-protocol": "workspace:^",
     "@relay-harness/cordis": "workspace:^"
   }

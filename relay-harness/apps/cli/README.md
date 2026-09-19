@@ -40,7 +40,7 @@ The tree composes over an empty root:
 
 Bundles named in `rlh.profile.bundles` resolve from the rlh installation first (`@relay-harness/rlh-base`, `@relay-harness/rlh-web-app`, `@relay-harness/rlh-headless`), then from the profile's own `node_modules`, where pnpm installs out-of-tree plugins.
 
-Use `--dump-default-config` and `--dump-config` to inspect the composed tree without booting it.
+Use `--dump-default-config` and `--dump-config` to inspect the composed tree without booting it, and `--dump-capabilities` for the composed effective-capability report (runtime levels report `unknown` because nothing boots).
 
 The [CLI behavior reference](reference/README.md) owns exact layer precedence, flags, shutdown behavior, deployment defaults, and source execution.
 
