@@ -126,28 +126,37 @@ export function apply(ctx: Context): void {
         onConnected: async (next) => {
           if (active !== loop || closed) return
           readiness.publish('synchronizing', true)
+          // oxlint-disable-next-line typescript/no-unnecessary-condition
           if (active !== loop || closed) return
           publishDescription(next)
           // A description subscriber may synchronously stop the loop. In that
           // case publishDescription(undefined) has already retracted this
           // generation, so do not leak its stale connected notification to
           // the consumer sink afterward.
+          // oxlint-disable-next-line typescript/no-unnecessary-condition
           if (active !== loop || closed || !Object.is(description, next)) return
           try {
             await sinks.onConnected?.(next)
           } catch (error) {
+            // oxlint-disable-next-line typescript/no-unnecessary-condition
             if (active === loop && !closed) readiness.publish('error')
             throw error
           }
+          // oxlint-disable-next-line typescript/no-unnecessary-condition
           if (active === loop && !closed) readiness.publish('ready')
         },
         onStateChange: (state) => {
           if (active !== loop || closed) return
           if (state === 'reconnecting') {
             readiness.publish('reconnecting')
+            // readiness.publish can synchronously re-enter start()/stop() and
+            // replace `active` or set `closed`; the re-checks below guard that
+            // reentrancy, which the type-aware linter cannot observe.
+            // oxlint-disable-next-line typescript/no-unnecessary-condition
             if (active !== loop || closed) return
             publishDescription(undefined)
           }
+          // oxlint-disable-next-line typescript/no-unnecessary-condition
           if (active === loop && !closed) sinks.onStateChange?.(state)
         },
       }, config ?? {})
@@ -160,6 +169,7 @@ export function apply(ctx: Context): void {
           if (active === loop) {
             active = undefined
             readiness.publish('stopped')
+            // oxlint-disable-next-line typescript/no-unnecessary-condition
             if (active === undefined) publishDescription(undefined)
           }
         },
@@ -168,7 +178,11 @@ export function apply(ctx: Context): void {
       active = loop
       previous?.stop()
       readiness.publish('connecting')
+      // previous?.stop() and readiness.publish can synchronously re-enter open()
+      // and replace `active`; the guard then correctly skips this superseded loop.
+      // oxlint-disable-next-line typescript/no-unnecessary-condition
       if (active === loop && !closed) publishDescription(undefined)
+      // oxlint-disable-next-line typescript/no-unnecessary-condition
       if (active === loop && !closed) controller.start()
       return loop
     },
