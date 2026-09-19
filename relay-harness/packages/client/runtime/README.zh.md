@@ -76,6 +76,10 @@ reason 为 `max-tokens` 的 `turn/end` 会在该轮位置投影出一个 `turn-m
 
 `ISessions.fork({sessionId, atSeq?, increaseTitle?})` 只在子会话摘要已能在本地寻址后才完成；该摘要携带源会话的谱系和 cwd，由调用方决定是否打开。`increaseTitle: true` 会在 client 端根据源会话的持久化标题重命名非空白子会话：尾部 `(N)` 或 `（N）` 递增并保留括号样式，其余标题追加 ` (1)`；源会话没有持久化标题或子会话为空白时跳过改名，改名失败时拒绝 promise 但保留已创建的子会话。该选项不会进入 Host fork 请求。即使响应为 `workspace-attach-failed`，其中仍会标识 Host 已发布的子会话，因此 `SessionManager` 会先将这一部分成功对账，再让 `SessionForkError` 到达调用方，避免重试创建重复的子会话。
 
+## 只读转录打开
+
+`ISessions.openHistory(sessionId)` 以不激活的方式打开既有会话的转录：它像 `open()` 一样写入当前选择，并在历史窗口安装完成后返回；该路径发出的唯一 RPC 是非激活的 `session.history` 读取——绝不调用 `session.create`，也没有 prompt 或队列流量。因此冷会话由持久化快照直接服务，在 Host 上保持未物化；只有 Host 已经在运行某会话时才会被动收到其直播事件，冷窗口在用户显式继续之前就是一份快照。不得激活冷会话的转录导航（ui-product-shell 的 Work、Library 与 record 源会话导航）走这条路径；需要创建或恢复会话的流程继续使用 `session.create`。
+
 ## 会话模型选择
 
 每个常驻 `Session` 都拥有一个 `modelSelection` 快照，其中包含当前模型选择、按提供方分组的目录、逐提供方失败记录，以及 `idle`／`loading`／`ready`／`selecting`／`error` 状态。历史记录会建立或刷新当前模型选择，打开选择器会刷新目录；选择失败会保留上一次模型选择和可用分组。目录与选择操作共用单调递增的代次，因此较旧响应无法覆盖较新的模型选择。重连重建会恢复 Host 报告的模型选择，同时不替换未变化的选择子结构。
