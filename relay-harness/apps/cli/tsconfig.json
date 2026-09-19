@@ -36,6 +36,9 @@
       "path": "../../packages/host/apiproxy"
     },
     {
+      "path": "../../packages/host/plugin-inventory"
+    },
+    {
       "path": "../../packages/host/webserver"
     },
     {

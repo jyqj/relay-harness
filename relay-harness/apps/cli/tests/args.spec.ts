@@ -73,6 +73,18 @@ describe('parseRlhArgs', () => {
       .toEqual({ mode: 'dump-config', profile: 'web', defaultOnly: true, patches: [], skipUserPlugins: false })
   })
 
+  it('routes the boot-free capability dump and rejects contradictions', () => {
+    expect(parse(['--profile', 'web', '--dump-capabilities']))
+      .toEqual({ mode: 'dump-capabilities', profile: 'web', patches: [], skipUserPlugins: false })
+    expect(parse(['web', '--dump-capabilities', '--patch', 'c.yml']))
+      .toEqual({ mode: 'dump-capabilities', profile: 'web', patches: ['c.yml'], skipUserPlugins: false })
+    expect(exitCode(['--profile', 'x', '--dump-capabilities', '--dump-config'])).toBe(1)
+    expect(exitCode(['--profile', 'x', '--dump-capabilities', '--dump-default-config'])).toBe(1)
+    // The capability dump observes no runtime either, so app arguments are rejected.
+    expect(exitCode(['--profile', 'x', '--dump-capabilities', 'task'])).toBe(1)
+    expect(exitCode(['web', '--dump-capabilities', '--dump-config'])).toBe(1)
+  })
+
   it('rejects missing profile, removed flags, and contradictory inputs', () => {
     expect(exitCode([])).toBe(1)
     expect(exitCode(['tui'])).toBe(1) // an app argument without --profile has no app to reach

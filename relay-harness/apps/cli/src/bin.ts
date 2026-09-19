@@ -81,6 +81,13 @@ switch (invocation.mode) {
     })
     break
   }
+  case 'dump-capabilities': {
+    await withoutSqliteExperimentalNotice(async () => {
+      const { runDumpCapabilities } = await import('./dump-config.ts')
+      runDumpCapabilities(invocation.profile, invocation.patches, invocation.skipUserPlugins)
+    })
+    break
+  }
   default:
     invocation satisfies never
     throw new Error(`rlh: unhandled invocation mode ${JSON.stringify(invocation)}`)
