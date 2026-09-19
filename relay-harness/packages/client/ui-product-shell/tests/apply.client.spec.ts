@@ -8,6 +8,7 @@ import { afterEach, expect, it, vi } from 'vitest'
 import { apply } from '../src/client/index.ts'
 import * as entrypoint from '../src/client/index.ts'
 import type { ProductModeRowInjected } from '../src/client/ProductModeRow.tsx'
+import type { RecordPageInjected } from '../src/client/RecordPage.tsx'
 import type { WorkPageInjected } from '../src/client/WorkPage.tsx'
 import type { LibraryPageInjected } from '../src/client/LibraryPage.tsx'
 import type { WorkVerifiedReview, WorkAcceptReceipt, WorkLibraryEntry, WorkLibraryPage } from '@relay-harness/rlh-host-work-results/types'
@@ -24,7 +25,7 @@ async function bench(install = true) {
   ctx.provide('sessions', { list: {
     getSnapshot: () => ({ current: undefined }),
     subscribe: (listener: () => void) => { listeners.add(listener); return () => { listeners.delete(listener) } },
-  } } as never)
+  }, subagentAddress: vi.fn(() => undefined), openHistory: vi.fn(), openSubagent: vi.fn() } as never)
   ctx.provide('connection', { readiness: connectionFixture().source } as never)
   const workResults = { open: vi.fn(), review: vi.fn(), inspect: vi.fn(), history: vi.fn(), accept: vi.fn(), list: vi.fn() }
   const getMode = vi.fn(async () => ({ ok: true, value: { mode: 'simple' } }))
@@ -162,6 +163,25 @@ it('connects registered file/settings actions and reloads mode on connection res
     await ctx.fiber.dispose()
     target.removeEventListener('rlhd-open-surface', onFiles)
   }
+})
+
+it('routes source-conversation opens through the read-only history path', async () => {
+  const { ctx, slots } = await bench()
+  const sessions = ctx.get('sessions') as unknown as {
+    subagentAddress: ReturnType<typeof vi.fn>
+    openHistory: ReturnType<typeof vi.fn>
+    openSubagent: ReturnType<typeof vi.fn>
+  }
+  const layout = ctx.get('layout') as unknown as { openMain: ReturnType<typeof vi.fn> }
+  const record = slots.entries('shell.page').find(entry => entry.options.key === 'record')!.inject!() as unknown as RecordPageInjected
+  record.openConversation('source-session' as never)
+  expect(sessions.openHistory.mock.calls).toEqual([['source-session']])
+  expect(layout.openMain.mock.calls).toEqual([['conversation']])
+  const address = { parentSessionId: 'parent', childSessionId: 'source-session', mode: 'continuable' } as const
+  sessions.subagentAddress.mockReturnValue(address)
+  record.openConversation('source-session' as never)
+  expect(sessions.openSubagent.mock.calls).toEqual([[address]])
+  expect(layout.openMain.mock.calls).toEqual([['conversation'], ['conversation']])
 })
 
 it('exports only the public plugin loading values', () => {

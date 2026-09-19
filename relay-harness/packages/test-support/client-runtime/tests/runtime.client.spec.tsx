@@ -230,6 +230,8 @@ describe('sessions', () => {
     expect(runtime.sessions.list.getSnapshot().byId['s1' as SessionId])
       .toMatchObject({ agentPreset: 'minimal' })
     runtime.sessions.open('s1' as SessionId)
+    // Read-only open shares the plain selection write and records its own verb.
+    await runtime.sessions.openHistory('s1' as SessionId)
     await runtime.flush()
     expect(runtime.sessions.list.getSnapshot().current).toBe('s1')
     expect(runtime.sessions.list.getSnapshot().currentAddress).toBeUndefined()
@@ -244,6 +246,7 @@ describe('sessions', () => {
       { method: 'setSubagentCatalogOpen', args: ['s2', true] },
       { method: 'refreshSubagents', args: ['s2'] },
       { method: 'open', args: ['s1'] },
+      { method: 'openHistory', args: ['s1'] },
       { method: 'clear', args: [] },
       { method: 'fork', args: [{ sessionId: 's1', atSeq: 7, increaseTitle: true }] },
     ])

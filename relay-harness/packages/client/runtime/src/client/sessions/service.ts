@@ -339,6 +339,27 @@ export class SessionRuntime implements ISessions {
   }
 
   /**
+   * Open an existing session's transcript read-only: select it as current and
+   * resolve once its history window is installed. The path issues only the
+   * non-activating history read — never `session.create` and no prompt or
+   * queue traffic — so a cold session serves its persistence snapshot and
+   * stays unmaterialized on the Host; live events arrive passively only while
+   * the Host already runs the session elsewhere. Continuation stays explicit:
+   * a composer send rides the live resolver like any prompt.
+   * @param id - listed session id (unknown ids fail loud, like {@link SessionRuntime.open}).
+   * @returns once the transcript window is installed (or the open failed into
+   *   the session's error state — the window surfaces it, not a throw).
+   */
+  async openHistory(id: SessionId): Promise<void> {
+    this.open(id)
+    const record = this.resolve(id)
+    /* v8 ignore next 3 -- defensive: open() validated the id against the list,
+     * so resolve always mints the scope here; kept so a future eligibility
+     * change cannot turn a read-only open into a crash. */
+    if (record !== undefined) await record.session.open()
+  }
+
+  /**
    * Open a healthy catalog child through its direct-parent address.
    * @param address - catalog-derived parent and child ids.
    */

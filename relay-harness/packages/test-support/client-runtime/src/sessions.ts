@@ -184,7 +184,7 @@ export class TestSessions implements ISessions {
 
   /** Calls observed on the service-level face, newest last. */
   readonly calls: {
-    method: 'open' | 'openSubagent' | 'setSubagentCatalogOpen' | 'refreshSubagents'
+    method: 'open' | 'openHistory' | 'openSubagent' | 'setSubagentCatalogOpen' | 'refreshSubagents'
       | 'clear' | 'search' | 'fork'
     args: unknown[]
   }[] = []
@@ -411,6 +411,22 @@ export class TestSessions implements ISessions {
       draft.current = id
       draft.currentAddress = undefined
     })
+  }
+
+  /**
+   * Read-only transcript open (production contract): recorded like `open`,
+   * then applied synchronously; the fixture double has no window promise to
+   * await, so the returned promise settles immediately.
+   * @param id - session id.
+   */
+  openHistory(id: SessionId): Promise<void> {
+    this.calls.push({ method: 'openHistory', args: [id] })
+    this.require(id)
+    this.list.update((draft) => {
+      draft.current = id
+      draft.currentAddress = undefined
+    })
+    return Promise.resolve()
   }
 
   /** Open an existing fixture through its catalog address. */

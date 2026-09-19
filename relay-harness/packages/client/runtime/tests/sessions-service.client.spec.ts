@@ -418,6 +418,27 @@ describe('cell (render-layer session kit)', () => {
   })
 })
 
+describe('read-only history open', () => {
+  it('openHistory stages the selection, awaits the window, and issues only session.history — never session.create', async () => {
+    const b = bench()
+    await feedList(b, [{ id: 's1' }, { id: 's2' }])
+    await b.svc.openHistory(sid('s1'))
+    expect(b.svc.list.getSnapshot().current).toBe(sid('s1'))
+    expect(b.api.callsOf('session.history').map(c => (c as { sessionId: SessionId }).sessionId)).toEqual(['s1'])
+    expect(b.api.callsOf('session.create')).toEqual([])
+    // A repeat open of the same transcript re-pulls nothing.
+    await b.svc.openHistory(sid('s1'))
+    expect(b.api.callsOf('session.history')).toHaveLength(1)
+  })
+
+  it('unknown ids fail loud like open()', async () => {
+    const b = bench()
+    await feedList(b, [{ id: 's1' }])
+    await expect(b.svc.openHistory(sid('missing'))).rejects.toThrow('sessions.select: unknown session missing')
+    expect(b.api.calls).toHaveLength(1) // only the list pull, no history/create
+  })
+})
+
 describe('slot-store scope prune hook', () => {
   it('notifies ctx.slots.pruneStoreScope when a scope dies (both teardown paths)', async () => {
     const b = bench()

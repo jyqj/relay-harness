@@ -50,9 +50,12 @@ export function apply(ctx: ClientContext): void {
   const work = new CurrentWorkProjection(ctx.sessions, connection.readiness)
   ctx.effect(() => () => { work.dispose() }, 'ui-product-shell: Work projection')
   ctx.effect(() => ctx.locale.register('productShell', { zh, en }), 'ui-product-shell: dictionaries')
+  // Work/Library/record source navigation opens the transcript read-only:
+  // the history read never activates a cold session — continuation is the
+  // composer's explicit send, which rides the live resolver.
   const openConversation = (sessionId: SessionId): void => {
     const address = ctx.sessions.subagentAddress(sessionId)
-    if (address === undefined) ctx.sessions.open(sessionId)
+    if (address === undefined) void ctx.sessions.openHistory(sessionId)
     else ctx.sessions.openSubagent(address)
     ctx.layout.openMain('conversation')
   }
