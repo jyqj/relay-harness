@@ -125,6 +125,7 @@
     "@relay-harness/rlh-session": "workspace:^",
     "@relay-harness/rlh-session-persistence": "workspace:^",
     "@relay-harness/rlh-session-projection": "workspace:^",
+    "@relay-harness/rlh-session-projection-cache": "workspace:^",
     "@relay-harness/rlh-session-query": "workspace:^",
     "@relay-harness/rlh-session-reference": "workspace:^",
     "@relay-harness/rlh-session-stats": "workspace:^",

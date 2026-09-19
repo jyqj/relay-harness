@@ -447,6 +447,9 @@ importers:
       '@relay-harness/rlh-session-projection':
         specifier: workspace:^
         version: link:../../packages/session/session-projection
+      '@relay-harness/rlh-session-projection-cache':
+        specifier: workspace:^
+        version: link:../../packages/session/session-projection-cache
       '@relay-harness/rlh-session-query':
         specifier: workspace:^
         version: link:../../packages/session-query/session-query
@@ -11320,6 +11323,9 @@ importers:
       '@relay-harness/rlh-agent-loop':
         specifier: workspace:^
         version: link:../../packages/core/agent-loop
+      '@relay-harness/rlh-agent-presets':
+        specifier: workspace:^
+        version: link:../../packages/preset/agent-presets
       '@relay-harness/rlh-agent-spine-demo':
         specifier: workspace:^
         version: link:../../packages/examples/agent-spine-demo
@@ -11332,6 +11338,9 @@ importers:
       '@relay-harness/rlh-app-boot':
         specifier: workspace:^
         version: link:../../packages/boot/app-boot
+      '@relay-harness/rlh-atomic-write':
+        specifier: workspace:^
+        version: link:../../packages/util/atomic-write
       '@relay-harness/rlh-attachment':
         specifier: workspace:^
         version: link:../../packages/attachment/attachment
@@ -11578,6 +11587,9 @@ importers:
       '@relay-harness/rlh-tool-call-timeout-policy':
         specifier: workspace:^
         version: link:../../packages/guard/timeout-policy
+      '@relay-harness/rlh-tool-context':
+        specifier: workspace:^
+        version: link:../../packages/context/tool-context
       '@relay-harness/rlh-tool-cordis':
         specifier: workspace:^
         version: link:../../packages/extensions/tool-cordis
