@@ -101,6 +101,54 @@ declare module '@relay-harness/rlh-session-projection/types' {
 /** Explicit passive address; unlike an Agent parameter this never invokes the live resolver. */
 export interface WorkReadRequest { readonly sessionId: import('@relay-harness/rlh-session/types').SessionId }
 
+/**
+ * How one execution relates to the addressed Work, read from durable session
+ * headers and the existing subagent catalog. An edge on this graph is
+ * descriptive only: {@link WorkExecutionRelationship.controlLink} carries the
+ * separate control observation, so a related execution never implies a control
+ * right over it.
+ */
+export type WorkRelationshipKind =
+  /** The Work's own root execution, or an in-process Job it started. */
+  | 'owned'
+  /** A session-backed subagent this Work (or the entry's direct parent) delegated for one terminal result. */
+  | 'delegated'
+  /** A session-backed continuable child holding a durable report channel back to its direct parent. */
+  | 'reports-to'
+  /** The Work's root Session itself was forked from a parent Session. */
+  | 'forked-from'
+
+/** Observed relationship edge of one execution toward the addressed Work. */
+export interface WorkExecutionRelationship {
+  readonly kind: WorkRelationshipKind
+  /** Counterparty Session of the edge; absent when the edge names no peer. */
+  readonly peerSessionId?: import('@relay-harness/rlh-session/types').SessionId
+  /**
+   * True only while the Host registry holds this exact execution live. Graph
+   * adjacency, a durable parent header, and a continuable descriptor never set
+   * it; only present residency does.
+   */
+  readonly controlLink: boolean
+}
+
+/**
+ * What recovery can honestly promise for one execution, derived only from
+ * observed state. Absent evidence stays `unknown`; nothing here is ever
+ * upgraded to a resume claim without evidence.
+ */
+export interface WorkExecutionRecovery {
+  /**
+   * Where the execution's recorded history lives: `persisted` in durable
+   * Session storage, `in-process` in the live Host process only, `unknown`
+   * without evidence.
+   */
+  readonly history: 'persisted' | 'in-process' | 'unknown'
+  /** Whether an explicit resume path exists; `unavailable` when none can exist, `unknown` without evidence. */
+  readonly resume: 'explicit' | 'unavailable' | 'unknown'
+  /** Whether the Host currently controls this execution in-process. */
+  readonly control: 'resident' | 'none'
+}
+
 /** One independently observed execution, not a second scheduler or authority graph. */
 export interface WorkExecutionEntry {
   readonly id: string
@@ -111,6 +159,10 @@ export interface WorkExecutionEntry {
   readonly activity: 'running' | 'stopping' | 'idle' | 'inactive' | 'unknown'
   readonly outcome?: 'completed' | 'killed' | 'failed'
   readonly recovery: 'resident' | 'explicit-resume' | 'history-only' | 'unknown'
+  /** Relationship edge toward the addressed Work; absent on partial observations. */
+  readonly relationship?: WorkExecutionRelationship
+  /** Detailed recovery promises; `recovery` stays the compact summary for existing consumers. */
+  readonly recoveryCapabilities?: WorkExecutionRecovery
 }
 
 /** Application view joining independently owned facts; no aggregate mutable Work state exists. */

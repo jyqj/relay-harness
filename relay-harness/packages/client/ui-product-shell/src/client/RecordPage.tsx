@@ -85,7 +85,7 @@ export function RecordPage({ active, useRoute, useConnection, inspect, history, 
       <section className={css.card}><h3>{t('work.activity.title')}</h3><p>{t('record.executionScope')}</p>
         <ul>{view.execution.entries.map(entry => <li key={`${entry.kind}:${entry.id}`}>
           <button type="button" disabled={!ready} onClick={() => { openRecord(entry.sessionId) }}>{entry.label}</button>
-          <span> · {entry.kind} · {entry.activity} · {entry.recovery}{entry.outcome === undefined ? '' : ` · ${entry.outcome}`}</span>
+          <span> · {entry.kind}{entry.relationship === undefined ? '' : ` · ${entry.relationship.kind}`} · {entry.activity} · {entry.recovery}{entry.recoveryCapabilities === undefined ? '' : ` · resume ${entry.recoveryCapabilities.resume}`}{entry.outcome === undefined ? '' : ` · ${entry.outcome}`}</span>
         </li>)}</ul>
         {view.execution.omitted > 0 ? <p>{t('record.omitted', { count: view.execution.omitted })}</p> : null}
       </section>

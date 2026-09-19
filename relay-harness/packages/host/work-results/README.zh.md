@@ -57,6 +57,8 @@
 
 `inspect({sessionId})` 分别返回 Goal、执行、待处理交互、记录审核和已注册上下文来源的观察。它使用 Session Query 与现有 Subagent 目录，不解析冷 Agent，也不申请租约。普通 fork 与委派保持区别。inactive 或不可用子执行不能被解释为成功。各领域时钟独立：`source.current` 只比较目标 Session 的日志切点与运行所有者；覆盖信息说明缺失的运行历史和执行展示上限。来源描述不是 provider 健康探测。
 
+每个执行条目还携带 `relationship` 与 `recoveryCapabilities`，由持久化 Session 头、目录描述符和 Job 状态推导。`relationship.kind` 取值为 `owned`、`delegated`、`reports-to` 或 `forked-from`；这条边不代表控制权，因为 `relationship.controlLink` 只在 Host 当前持有该执行时为真。`recoveryCapabilities` 只陈述恢复能诚实承诺的内容：`history` 取 `persisted`、`in-process` 或 `unknown`；`resume` 只在 continuable 描述符或普通冷 Session 上为 `explicit`，对 one-shot 子执行与 Job 为 `unavailable`，无证据时保持 `unknown`。恢复能力不查询激活租约存储，`resume: 'explicit'` 不承诺租约当前空闲；外部一次性 provider 不发布 session 描述符，因此不产生条目，也不作任何承诺。
+
 `history({sessionId, beforeSeq?, limit?, snapshot?})` 返回带精确事件位置的有界最终消息文本。前缀摘要绑定后续分页，后续追加可以继续，但替换、修复或前缀变化要求重新读取。它不宣称展示 reasoning、二进制内容或所有日志事件；限制输出页不等于限制底层持久化解码成本。
 
 `review({sessionId})` 只对已经存活的 Agent 执行原有持久化核验；冷记录明确报告 `runtime-unavailable`，不激活执行。旧 `get(agent)` 接口留给未迁移客户端，Product Shell 改用 `review`。现有确认仍绑定 Session 日志，不认证文件内容或测试。

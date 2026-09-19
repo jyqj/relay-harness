@@ -18,6 +18,8 @@ import Tools, { defineTool } from '@relay-harness/rlh-tools'
 import { createUserMessage } from '@relay-harness/rlh-llm'
 import { MockAdapter, textResponse, toolCallResponse } from '../../../core/agent-loop/tests/mock-adapter.ts'
 import type { Agent } from '@relay-harness/rlh-agent'
+import { SESSION_FORMAT_VERSION } from '@relay-harness/rlh-session'
+import SubagentRuntime, { SUBAGENT_DESCRIPTOR_VERSION } from '@relay-harness/rlh-subagent'
 import Questions from '@relay-harness/rlh-user-questions'
 import Approval from '@relay-harness/rlh-user-approval'
 import Projections from '@relay-harness/rlh-session-projection'
@@ -33,7 +35,7 @@ import { createApiProxy } from '@relay-harness/rlh-host-apiproxy'
 import type { SessionEvent } from '@relay-harness/rlh-session'
 import type { RpcResult } from '@relay-harness/rlh-host-apiproxy/api/rpc'
 import WorkResults from '../src/index.ts'
-import type { WorkAcceptReceipt, WorkLibraryPage, WorkAcceptRequest } from '../src/types.ts'
+import type { WorkAcceptReceipt, WorkLibraryPage, WorkAcceptRequest, WorkView } from '../src/types.ts'
 
 class RelayFixture extends TypertRemoteService {
   static inject = ['workResults']
@@ -55,7 +57,7 @@ async function fixture() {
   roots.push(root)
   const opened: string[] = []
   const plugins = { llm: Llm, sessions: Sessions, agents: Agents, loop: Loop, prompt: Prompt, tools: Tools, questions: Questions,
-    approval: Approval, projections: Projections, persistence: Persistence, query: Query, jobs: Jobs, typert: Typert,
+    approval: Approval, projections: Projections, persistence: Persistence, query: Query, jobs: Jobs, subagents: SubagentRuntime, typert: Typert,
     gateway: Gateway, web: WebServer, connection: Connection, deliverables: Deliverables, results: WorkResults, relay: RelayFixture,
     support: {
       inject: ['agents', 'sessions', 'userQuestions', 'sessionQuery'],
@@ -109,6 +111,27 @@ async function produce(ctx: Context, agent: Agent, path: string): Promise<void> 
     await agent.whenIdle()
     await ctx.sessions.flush(agent.session)
   } finally { tool(); adapter() }
+}
+
+/** Author one persisted cold subagent-child log directly against the persistence backend. */
+async function authorChild(ctx: Awaited<ReturnType<typeof fixture>>['ctx'], id: string, parentId: string, descriptor: object): Promise<string> {
+  const sessionId = SessionId(id)
+  await ctx.sessionPersistence.create({
+    version: SESSION_FORMAT_VERSION, id: sessionId, createdAt: 1,
+    parentSession: SessionId(parentId), origin: 'subagent',
+  })
+  await ctx.sessionPersistence.append(sessionId, [
+    { type: 'turn/start', seq: 0, time: 1, data: { turn: 1, trigger: { kind: 'message', source: { kind: 'user' } } } },
+    { type: 'user/message', seq: 1, time: 2, surfaceOp: 'append', data: createUserMessage({ content: [{ type: 'text', text: 'work' }], source: { kind: 'user' } }) },
+    { type: 'subagent/descriptor', seq: 2, time: 3, data: descriptor },
+    { type: 'turn/end', seq: 3, time: 4, data: { turn: 1, reason: { kind: 'completed' } } },
+  ] as SessionEvent[])
+  return id
+}
+
+/** One continuable or one-shot descriptor payload the projection fold accepts. */
+function descriptorPayload(mode: 'one-shot' | 'continuable', label: string): object {
+  return { version: SUBAGENT_DESCRIPTOR_VERSION, mode, provider: 'spawn', label }
 }
 
 describe('Work Results through a Loader and the real trusted HTTP Remote', () => {
@@ -381,6 +404,50 @@ it('reads a cold Work, review and final history through trusted HTTP without act
   expect(resume).not.toHaveBeenCalled()
   expect(ctx.agents.get(id)).toBeUndefined()
   expect((await post('history', { request: { sessionId: id, limit: 10000 } })).ok).toBe(false)
+})
+
+it('derives per-execution relationship and recovery capability facts without granting control or resume', async () => {
+  const { ctx, root, handle, post } = await fixture()
+  const parentId = handle.agent.id
+  const continuable = await authorChild(ctx, 'cold-continuable', parentId, descriptorPayload('continuable', 'reporter'))
+  const oneShot = await authorChild(ctx, 'cold-one-shot', parentId, descriptorPayload('one-shot', 'runner'))
+  const corrupt = await authorChild(ctx, 'cold-corrupt', parentId, { version: SUBAGENT_DESCRIPTOR_VERSION + 1, mode: 'continuable', provider: 'spawn', label: 'unrecognized' })
+  const live = await post<WorkView>('inspect', { request: { sessionId: parentId } })
+  expect(live.ok).toBe(true)
+  if (!live.ok) throw new Error(live.error.message)
+  const byId = new Map(live.value.execution.entries.map(entry => [entry.id, entry]))
+  expect(byId.get(parentId)?.relationship).toEqual({ kind: 'owned', controlLink: true })
+  expect(byId.get(parentId)?.recoveryCapabilities).toEqual({ history: 'persisted', resume: 'explicit', control: 'resident' })
+  expect(byId.get(continuable)?.relationship).toEqual({ kind: 'reports-to', peerSessionId: parentId, controlLink: false })
+  expect(byId.get(continuable)?.recoveryCapabilities).toEqual({ history: 'persisted', resume: 'explicit', control: 'none' })
+  expect(byId.get(oneShot)?.relationship).toEqual({ kind: 'delegated', peerSessionId: parentId, controlLink: false })
+  expect(byId.get(oneShot)?.recoveryCapabilities).toEqual({ history: 'persisted', resume: 'unavailable', control: 'none' })
+  // An unclassified child keeps relationship facts from its durable origin header but no recovery claim.
+  expect(byId.get(corrupt)?.relationship).toEqual({ kind: 'delegated', peerSessionId: parentId, controlLink: false })
+  expect(byId.get(corrupt)?.recoveryCapabilities).toEqual({ history: 'unknown', resume: 'unknown', control: 'none' })
+  expect(live.value.coverage.missing.some(reason => reason.startsWith('subagent-corrupt:'))).toBe(true)
+  // A Work whose own root carries a fork or delegation header names that edge and stays conservatively resumable.
+  for (const [id, meta, relationship, resume] of [
+    [SessionId('forked-work'), { parentSession: parentId }, { kind: 'forked-from', peerSessionId: parentId, controlLink: false }, 'explicit'],
+    [SessionId('delegated-work'), { parentSession: parentId, origin: 'subagent' as const }, { kind: 'delegated', peerSessionId: parentId, controlLink: false }, 'unknown'],
+  ] as const) {
+    const created = await ctx.agents.create({
+      sessionId: id, meta: { cwd: root, ...meta },
+      seed: [
+        { type: 'turn/start', seq: 0, time: 1, data: { turn: 1 } },
+        { type: 'turn/end', seq: 1, time: 2, data: { turn: 1, reason: { kind: 'completed' } } },
+      ] as SessionEvent[],
+      agentOptions: { provider: 'fixture', model: 'fixture' },
+    })
+    await ctx.sessions.flush(created.agent.session)
+    await created.dispose()
+    const view = await post<WorkView>('inspect', { request: { sessionId: id } })
+    if (!view.ok) throw new Error(`inspect ${id}: ${view.error.message}`)
+    expect(view.ok).toBe(true)
+    expect(view.value.execution.entries[0]?.relationship).toEqual(relationship)
+    expect(view.value.execution.entries[0]?.recoveryCapabilities)
+      .toEqual({ history: 'persisted', resume, control: 'none' })
+  }
 })
 
 it('uses the same persistence receipt through passive review without granting a new confirmation', async () => {

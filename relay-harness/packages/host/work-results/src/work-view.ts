@@ -8,6 +8,7 @@ import type {} from '@relay-harness/rlh-subagent'
 import type {} from '@relay-harness/rlh-context-engine'
 import { deliverablesProjection, workAcceptanceProjection } from './projection.ts'
 import { confirmationBlockers } from './confirmation-policy.ts'
+import { executionRecovery, executionRelationship } from './execution-facts.ts'
 import type { WorkView, WorkExecutionEntry, WorkHistoryPage, WorkHistoryRequest } from './types.ts'
 
 /** Read one Work without creating an Agent, arming a Goal, or claiming a child lease.
@@ -36,6 +37,15 @@ export async function readWorkView(ctx: Context, id: SessionId, maxExecutions: n
   const entries: WorkExecutionEntry[] = [{
     id, sessionId: id, kind: 'agent', label: id, activity: owner?.status ?? 'inactive',
     recovery: owner !== undefined ? 'resident' : snapshot.session.origin === 'subagent' ? 'unknown' : 'explicit-resume',
+    relationship: executionRelationship({
+      workSessionId: id, sessionId: id,
+      ...snapshot.session.parentSession === undefined ? {} : { parentSessionId: snapshot.session.parentSession },
+      ...snapshot.session.origin === undefined ? {} : { origin: snapshot.session.origin },
+    }, owner !== undefined),
+    recoveryCapabilities: executionRecovery({
+      evidence: 'session', resident: owner !== undefined,
+      ...snapshot.session.origin === undefined ? {} : { origin: snapshot.session.origin },
+    }),
   }]
   const jobs = owner === undefined ? [] : ctx.jobs.list(owner).filter(job => job.ownerSession === id)
   for (const job of jobs) entries.push({
@@ -43,6 +53,11 @@ export async function readWorkView(ctx: Context, id: SessionId, maxExecutions: n
     activity: job.status === 'running' || job.status === 'stopping' ? job.status : 'inactive',
     ...(job.status === 'completed' || job.status === 'killed' || job.status === 'failed' ? { outcome: job.status } : {}),
     recovery: job.status === 'running' || job.status === 'stopping' ? 'resident' : 'history-only',
+    relationship: executionRelationship({ workSessionId: id, sessionId: id },
+      job.status === 'running' || job.status === 'stopping'),
+    recoveryCapabilities: executionRecovery({
+      evidence: 'job', resident: job.status === 'running' || job.status === 'stopping',
+    }),
   })
   const subagents = ctx.get('subagents')
   if (subagents === undefined) missing.push('subagent-catalog-unavailable')
@@ -58,6 +73,14 @@ export async function readWorkView(ctx: Context, id: SessionId, maxExecutions: n
           recovery: live !== undefined ? 'resident'
             : child.kind === 'child' && child.mode === 'continuable' ? 'explicit-resume'
               : child.kind === 'child' ? 'history-only' : 'unknown',
+          relationship: executionRelationship({
+            workSessionId: id, sessionId: child.id, parentSessionId: child.parentId,
+            ...child.kind === 'child' ? { mode: child.mode } : {},
+          }, live !== undefined),
+          recoveryCapabilities: executionRecovery({
+            evidence: 'subagent', resident: live !== undefined,
+            ...child.kind === 'child' ? { mode: child.mode } : {},
+          }),
         })
       }
     } catch (error) {
