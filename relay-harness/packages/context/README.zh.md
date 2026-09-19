@@ -2,7 +2,7 @@
 
 [English](README.md) | 中文
 
-在不定义工具的情况下添加模型可见请求上下文的产品插件。`agent-instructions` 包含在默认 `rlh-agent-spine-demo` 组合包中，可通过组合包配置禁用。Base bundle 组合 `context-engine` 与 purpose-specific Session History provider；Web 再加入 Prompt Enhancement 的 Context Engine／LLM 适配器和文件引用发现。其余包需主动启用。
+请求上下文服务、provider 与显式 `retrieve_context` 工具消费者。`agent-instructions` 包含在默认 `rlh-agent-spine-demo` 组合包中，可通过组合包配置禁用。Base bundle 组合 `context-engine` 与 purpose-specific Session History provider；Web 再加入 Prompt Enhancement 的 Context Engine／LLM 适配器和文件引用发现。其余包需主动启用。
 
 | 包 | 职责 | ctx key |
 |---|---|---|
@@ -21,3 +21,7 @@
 | [`agent-instructions/`](agent-instructions/README.md) | 工作区指令上下文 | — |
 
 会话引用见 [docs/subsystems/session-reference.md](../../docs/subsystems/session-reference.md)，Prompt Enhancement 见 [docs/subsystems/prompt-enhancement.md](../../docs/subsystems/prompt-enhancement.md)；[`agent-instructions` 决策记录](../../.agents/notes/implemented/feature/2026-06-24-workspace-context.md)规定了其按 agent（智能体）/会话隔离与生命周期拆分。
+
+## Explicit retrieval consumer
+
+[`tool-context/`](tool-context/README.zh.md) 通过现有 Context Engine 提供 `retrieve_context`。主动检索与自动准备共享来源身份、允许范围、完整输出预算及普通工具结果日志。

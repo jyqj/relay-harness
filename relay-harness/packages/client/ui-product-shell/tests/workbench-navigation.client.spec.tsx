@@ -39,7 +39,7 @@ describe('work execution relationships', () => {
   it('does not imply success for inactive children and keeps failure and termination distinct', () => {
     const openConversation = vi.fn()
     render(<WorkActivity {...activityProps({
-      current: 'root', byId: { root: { displayTitle: 'Root', parentId: 'parent' }, child: { pendingInteraction: 'approval' } },
+      current: 'root', byId: { root: { displayTitle: 'Root', parentId: 'parent' }, child: { pendingInteraction: 'approval' }, 'running-child': { running: true } },
       subagentsByParent: { root: { entries: [
         { kind: 'child', id: 'child', label: 'Needs access', activity: 'running' },
         { kind: 'child', id: 'idle-child', label: 'Not running child', activity: 'inactive' },
@@ -65,11 +65,13 @@ describe('work execution relationships', () => {
 
   it('falls back to direct lineage only when no catalog is available', () => {
     render(<WorkActivity {...activityProps({ current: 'root', byId: {
-      root: { displayTitle: 'Root' }, child: { id: 'child', parentId: 'root', displayTitle: 'Lineage child', running: false },
+      root: { displayTitle: 'Root' }, child: { id: 'child', parentId: 'root', origin: 'subagent', displayTitle: 'Lineage child', running: false },
+      fork: { id: 'fork', parentId: 'root', displayTitle: 'Ordinary fork', running: true },
       unrelated: { id: 'unrelated', displayTitle: 'Unrelated', running: true },
     }, subagentsByParent: {}, jobsBySession: {} } as unknown as SessionListState)} />)
     expect(screen.getByRole('button', { name: 'Lineage child' })).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Unrelated' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Ordinary fork' })).toBeNull()
   })
 
   it('does not turn a missing selected Session into an empty successful execution', () => {

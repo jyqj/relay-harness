@@ -8,6 +8,8 @@ import type {} from '@relay-harness/rlh-client-ui-settings-general/client'
 import type {} from '@relay-harness/rlh-client-ui-conversation/client'
 import type {} from '@relay-harness/rlh-client-locale/client'
 import type {} from '@relay-harness/rlh-client-ui-layout/client'
+import { RecordPage, type RecordPageInjected } from './RecordPage.tsx'
+import { ProductRouteStore, parseProductRoute, productRouteHash, type ProductRoute } from './navigation.ts'
 import { ProductNavigation, type ProductNavigationInjected } from './ProductNavigation.tsx'
 import { WorkActivity, type WorkActivityInjected } from './WorkActivity.tsx'
 import { ProductShellService } from './mode.ts'
@@ -54,6 +56,45 @@ export function apply(ctx: ClientContext): void {
     else ctx.sessions.openSubagent(address)
     ctx.layout.openMain('conversation')
   }
+  const route = new ProductRouteStore()
+  let applyingRoute = false
+  const navigate = (next: ProductRoute, historyMode: 'push' | 'replace' | 'none' = 'push'): void => {
+    applyingRoute = true
+    try {
+      route.set(next)
+      ctx.layout.openMain(next.page)
+      if (typeof window !== 'undefined' && historyMode !== 'none') {
+        const hash = productRouteHash(next)
+        if (window.location.hash !== hash) window.history[historyMode === 'push' ? 'pushState' : 'replaceState'](null, '', window.location.pathname + window.location.search + hash)
+      }
+    } finally { applyingRoute = false }
+  }
+  const openRecord = (sessionId: SessionId): void => { navigate({ page: 'record', sessionId }) }
+  ctx.effect(() => {
+    const changed = (): void => {
+      if (applyingRoute) return
+      const page = ctx.layout.mainNavigation.getSnapshot().page
+      if (page === 'conversation' || page === 'work' || page === 'library') navigate({ page })
+    }
+    const off = ctx.layout.mainNavigation.subscribe(changed)
+    const restore = (): void => {
+      const next = parseProductRoute(window.location.hash)
+      navigate(next ?? { page: 'conversation' }, 'none')
+    }
+    if (typeof window !== 'undefined') {
+      const initial = parseProductRoute(window.location.hash)
+      if (initial !== undefined) navigate(initial, 'none')
+      window.addEventListener('popstate', restore)
+      window.addEventListener('hashchange', restore)
+    }
+    return () => {
+      off()
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('popstate', restore)
+        window.removeEventListener('hashchange', restore)
+      }
+    }
+  }, 'ui-product-shell: passive URL navigation')
   const openFiles = (): void => {
     const sessionId = ctx.sessions.list.getSnapshot().current
     if (sessionId === undefined) return
@@ -102,7 +143,7 @@ export function apply(ctx: ClientContext): void {
           if (!result.ok) throw new Error(result.error.message)
         },
         verifyWork: async (sessionId, signal) => {
-          const result = await ctx.remote.workResults.get(sessionId as SessionId, signal)
+          const result = await ctx.remote.workResults.review({ sessionId: sessionId as SessionId }, signal)
           if (!result.ok) throw new Error(result.error.message)
           return result.value
         },
@@ -117,7 +158,7 @@ export function apply(ctx: ClientContext): void {
       name: 'shell.page', key: 'library', locale: 'productShell',
       inject: (): LibraryPageInjected => ({
         hooks: { connection: connection.readiness },
-        openSource: entry => { openConversation(entry.sessionId) },
+        openSource: entry => { openRecord(entry.sessionId) },
         openFiles,
         openSettings: (section) => { ctx.settingsNavigation.open(section) },
         queryLibrary: async (request, signal) => {
@@ -132,9 +173,25 @@ export function apply(ctx: ClientContext): void {
       }),
     }, LibraryPage),
   ])
+  ctx.slots.inject('shell.page', () => ctx.slots.register({
+    name: 'shell.page', key: 'record', locale: 'productShell',
+    inject: (): RecordPageInjected => ({
+      hooks: { route, connection: connection.readiness }, openRecord, openConversation,
+      inspect: async (sessionId, signal) => {
+        const result = await ctx.remote.workResults.inspect({ sessionId }, signal)
+        if (!result.ok) throw new Error(result.error.message)
+        return result.value
+      },
+      history: async (request, signal) => {
+        const result = await ctx.remote.workResults.history(request, signal)
+        if (!result.ok) throw new Error(result.error.message)
+        return result.value
+      },
+    }),
+  }, RecordPage))
   ctx.slots.inject('work.activity', () => ctx.slots.register({
     name: 'work.activity', locale: 'productShell',
-    inject: (): WorkActivityInjected => ({ openConversation }),
+    inject: (): WorkActivityInjected => ({ openConversation: openRecord }),
   }, WorkActivity))
   ctx.slots.inject('settings.general.item', () => ctx.slots.register({
     name: 'settings.general.item', id: 'product-mode', order: 30, locale: 'productShell',

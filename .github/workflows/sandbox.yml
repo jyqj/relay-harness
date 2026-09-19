@@ -8,7 +8,7 @@ name: Sandbox
 on:
   workflow_call: {}
   push:
-    branches: [master]
+    branches: [main]
 
 concurrency:
   group: sandbox-${{ github.workflow }}-${{ github.ref }}

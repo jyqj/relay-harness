@@ -6,7 +6,7 @@ Two-sided BFF for Host Remote capabilities selected by this application. The Hos
 
 `createApiRemoteAgentResolver()` reuses live Agents, resumes ordinary cold sessions, deduplicates concurrent resumes, preserves the subagent ownership fence, and configures the same resolver for Typert `agent` and `session` lookups. The standard Web API Proxy supplies its Agent defaults and scope setup, then uses the returned resolver for legacy methods, so migrated and unmigrated methods share one policy implementation.
 
-The current Client assembly mounts the Goal Remote contribution and the read-only Host plugin inventory contribution (`pluginInventory/list`). Cordis effect ownership withdraws every contribution when this assembly unloads, while `@relay-harness/rlh-api-gateway/client` owns descriptor validation, traced namespace Services, direct and scoped methods, invocation, and cancellation. The Client entry consumes the shared `TypertClientRemote` interface through Cordis and does not import the concrete Gateway. It re-exports the Gateway Client face's declaration merges type-only, so a consumer reaching the forwarded-event vocabulary through this facade gains no runtime edge to the Gateway implementation.
+The Client assembly explicitly mounts the contributions selected in `src/client/index.ts`, including Goal, Work Results, Memory Center, Code Index Center, MCP/Skill inventory and Prompt Enhancement. Cordis effect ownership withdraws every contribution when this assembly unloads, while `@relay-harness/rlh-api-gateway/client` owns descriptor validation, traced namespace Services, direct and scoped methods, invocation, and cancellation. The Client entry consumes the shared `TypertClientRemote` interface through Cordis and does not import the concrete Gateway. It re-exports the Gateway Client face's declaration merges type-only, so a consumer reaching the forwarded-event vocabulary through this facade gains no runtime edge to the Gateway implementation.
 
 This package contains no transport or Host service discovery logic. Its Client face can be reused by Web or a future TUI that provides the same React-free `ctx.remote` contract.
 
@@ -39,3 +39,7 @@ No direct effect; mounted Host capabilities own any model-visible behavior they 
 - The capability set is fixed by explicit build-time value imports; the Client does not discover the Host's active Services or Remote definitions at runtime.
 - Additional capabilities require an explicit `/remote` value import and mount in this assembly.
 - The standard Web Host supplies resume defaults and Agent-scope setup from the legacy API Proxy until that remaining BFF configuration moves into `api-remotes`.
+
+## Passive Work queries
+
+The selected Work Results contribution includes `inspect`, `history` and `review` by Session id. These endpoints do not use the Agent lookup that resumes cold sessions. The complete selected contribution set is the value-import and mount list in `src/client/index.ts`; this facade does not dynamically discover every Host provider.

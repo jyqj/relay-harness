@@ -18,11 +18,11 @@ export function WorkActivity({ useSessions, openConversation, t }: WorkActivityP
   const current = state.byId[id]
   const catalog = state.subagentsByParent[id]
   const children = catalog === undefined
-    ? Object.values(state.byId).filter(child => child.parentId === id).map(child => ({ id: child.id, label: child.displayTitle, running: child.running }))
+    ? Object.values(state.byId).filter(child => child.parentId === id && child.origin === 'subagent').map(child => ({ id: child.id, label: child.displayTitle, running: child.running }))
     : catalog.entries.filter(entry => entry.kind === 'child').map(entry => ({
       id: entry.id,
       label: ('label' in entry ? entry.label : undefined) || state.byId[entry.id]?.displayTitle || String(entry.id),
-      running: entry.activity === 'running',
+      running: state.byId[entry.id]?.running === true,
     }))
   const jobs = state.jobsBySession[id] ?? []
   return <section className={css.card} aria-label={t('work.activity.title')}>

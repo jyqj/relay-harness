@@ -76,7 +76,7 @@ export function LibraryPage({ active: visible, useSessions, useConnection, openF
       setError(failure instanceof Error ? failure.message : String(failure))
     })
   }
-  const hasGaps = scan?.value.hadUnindexedResults === true || scan?.value.hadUnavailableSessions === true
+  const hasGaps = scan?.value.hadUnindexedResults === true || scan?.value.hadUnavailableSessions === true || (page?.coverage?.omittedSessions ?? 0) > 0
   return <section className={css.page} data-library-page>
     <header className={css.pageHeading}><div><p className={css.eyebrow}>{t('nav.library')}</p><h2>{t('library.title')}</h2><p>{t('library.description')}</p></div></header>
     <form className={css.librarySearch} onSubmit={(event) => { event.preventDefault(); if (ready) load(query) }}>
@@ -87,6 +87,7 @@ export function LibraryPage({ active: visible, useSessions, useConnection, openF
     {!ready ? <p role="status">{t('library.reconnecting')}</p> : null}
     {loading ? <p role="status">{t('library.loading')}</p> : null}
     {page !== null ? <p role="status">{t('library.coverage', { scanned: page.scannedSessions, total: page.totalSessions })} {page.next === null ? t(hasGaps ? 'library.endIncomplete' : 'library.complete') : t('library.partial')}</p> : null}
+    {(page?.coverage?.omittedSessions ?? 0) > 0 ? <p role="status">{t('library.omitted', { count: page?.coverage?.omittedSessions ?? 0 })}</p> : null}
     {page !== null && page.unindexedResults > 0 ? <p>{t('library.pageUnindexed', { count: page.unindexedResults })}</p> : null}
     {page !== null && page.unavailableSessions > 0 ? <p>{t('library.unavailable', { count: page.unavailableSessions })}</p> : null}
     {scan?.value.hadUnindexedResults && page?.unindexedResults === 0 ? <p>{t('library.priorUnindexed')}</p> : null}

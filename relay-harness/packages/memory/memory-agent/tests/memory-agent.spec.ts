@@ -231,18 +231,18 @@ describe('memory Agent Consumer', () => {
     expect(provider.committed).toEqual([])
   })
 
-  it('fails open when recall preparation fails', async () => {
+  it('fails open with a rejection trace when recall preparation fails', async () => {
     const { ctx, provider, session } = await harness()
     provider.failure = new Error('offline')
     const prepared = await prepare(ctx, session)
-    expect(prepared).toBeUndefined()
+    expect(prepared).toMatchObject({ messages: [], decisions: [{ contributorId: 'memory-agent', outcome: 'rejected', reasons: ['error', 'search_failed'] }] })
     await ctx.fiber.dispose()
   })
 
   it('aborts a prepared observation when contribution rendering fails before pending ownership', async () => {
     const { ctx, provider, session } = await harness()
     provider.poisonAfterPrepare = true
-    await expect(prepare(ctx, session)).resolves.toBeUndefined()
+    await expect(prepare(ctx, session)).resolves.toMatchObject({ messages: [], decisions: [{ outcome: 'rejected', reasons: ['error', 'search_failed'] }] })
     expect(provider.aborted).toEqual([
       expect.objectContaining({ reason: 'context-contribution-failed' }),
     ])

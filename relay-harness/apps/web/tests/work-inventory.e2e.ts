@@ -272,6 +272,16 @@ describe('web e2e: whole-session Work inventory', () => {
       filtered.push(await remoteValue<WorkLibraryPage>(await nextResponse))
     }
     expect(filtered.flatMap(value => value.entries)).toEqual([expect.objectContaining({ sessionId: OTHER_ID, path: 'other-source.txt' })])
+    await page.getByRole('button', { name: 'Open source record', exact: true }).click()
+    await page.getByRole('heading', { name: 'Source record', exact: true }).waitFor()
+    await page.getByText('OTHER_WORK_DONE', { exact: true }).waitFor()
+    expect(new URL(page.url()).hash).toBe(`#relay/record/${encodeURIComponent(OTHER_ID)}`)
+    expect(scaffold.ctx.agents.get(SessionId(OTHER_ID)) === undefined).toBe(true)
+    await page.reload({ waitUntil: 'load' })
+    await page.getByRole('heading', { name: 'Source record', exact: true }).waitFor()
+    await page.getByText('OTHER_WORK_DONE', { exact: true }).waitFor()
+    expect(scaffold.ctx.agents.get(SessionId(OTHER_ID)) === undefined).toBe(true)
+
     expect(await page.getByRole('button', { name: 'early.md', exact: true }).count()).toBe(0)
     expect(scaffold.ctx.agents.get(SessionId(OTHER_ID)) === undefined).toBe(true)
     expect(tripwire.pageErrors).toEqual([])

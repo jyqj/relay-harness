@@ -358,3 +358,58 @@ it('reports live confirmation reasons through the same trusted Remote used for c
   expect(refused.ok).toBe(false)
   expect(handle.agent.session.events.some(event => event.type === 'work/accepted')).toBe(false)
 })
+
+it('reads a cold Work, review and final history through trusted HTTP without activating an Agent', async () => {
+  const { ctx, handle, post } = await fixture()
+  await produce(ctx, handle.agent, 'passive.txt')
+  const id = handle.agent.id
+  await handle.dispose()
+  const resume = vi.spyOn(ctx.agents, 'resume')
+  const view = await post<import('../src/types.ts').WorkView>('inspect', { request: { sessionId: id } })
+  expect(view).toMatchObject({ ok: true, value: {
+    source: { resident: false, current: false }, goal: null, outputs: { paths: ['passive.txt'] },
+    execution: { activity: 'unknown' }, actions: { confirmRecord: { allowed: false, scope: 'session-log' } },
+  } })
+  const history = await post<import('../src/types.ts').WorkHistoryPage>('history', { request: { sessionId: id, limit: 2 } })
+  expect(history.ok).toBe(true)
+  if (history.ok) {
+    expect(history.value.rows).toHaveLength(2)
+    expect(history.value.nextBeforeSeq).not.toBeNull()
+    expect(history.value.rows.some(row => row.text.includes('Created the result.'))).toBe(true)
+  }
+  expect(await post('review', { request: { sessionId: id } })).toMatchObject({ ok: true, value: { current: false, confirmationBlockedBy: ['runtime-unavailable'] } })
+  expect(resume).not.toHaveBeenCalled()
+  expect(ctx.agents.get(id)).toBeUndefined()
+  expect((await post('history', { request: { sessionId: id, limit: 10000 } })).ok).toBe(false)
+})
+
+it('uses the same persistence receipt through passive review without granting a new confirmation', async () => {
+  const { handle, post } = await fixture()
+  const id = handle.agent.id
+  const revision = handle.agent.session.seq - 1
+  expect((await post('accept', { agentId: id, request: { reviewRevision: revision } })).ok).toBe(true)
+  expect(await post('review', { request: { sessionId: id } })).toMatchObject({ ok: true, value: { current: true, reviewRevision: revision, acceptedRevision: revision, confirmationBlockedBy: [] } })
+})
+
+it('enumerates Library metadata only on the first page and retains a Session inventory across path pages', async () => {
+  const { ctx, handle, post } = await fixture()
+  await produce(ctx, handle.agent, 'one.txt')
+  await produce(ctx, handle.agent, 'two.txt')
+  const listing = vi.spyOn(ctx.sessionQuery, 'listSessions')
+  const snapshots = vi.spyOn(ctx.sessionPersistence, 'listSnapshots')
+  const first = await post<WorkLibraryPage>('list', { request: { query: '.txt', limit: 1 } })
+  if (!first.ok || first.value.next === null) throw new Error('expected a continuation')
+  const count = listing.mock.calls.length
+  const snapshotCount = snapshots.mock.calls.length
+  const next = await post<WorkLibraryPage>('list', { request: { query: '.txt', limit: 1, ...first.value.next } })
+  expect(next.ok).toBe(true)
+  expect(listing).toHaveBeenCalledTimes(count)
+  expect(snapshots).toHaveBeenCalledTimes(snapshotCount)
+  expect(first.value.observedSessionIds).toEqual([handle.agent.id])
+  if (next.ok) {
+    expect(next.value.observedSessionIds).toEqual([handle.agent.id])
+    expect(next.value.entries[0]?.path).toBe('two.txt')
+    expect(next.value.entries[0]?.sourceThroughSeq).toBe(first.value.entries[0]?.sourceThroughSeq)
+    expect(next.value.coverage?.scope).toBe('observed-corpus')
+  }
+})

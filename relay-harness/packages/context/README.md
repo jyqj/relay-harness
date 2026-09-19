@@ -2,7 +2,7 @@
 
 English | [中文](README.zh.md)
 
-Product plugins that add model-visible request context without defining a tool. `agent-instructions` is included by the default `rlh-agent-spine-demo` bundle and can be disabled through bundle config. The base bundle composes `context-engine` and the purpose-specific Session History provider; Web adds Prompt Enhancement with its Context Engine and LLM adapters plus file-reference discovery. The remaining packages are opt-in.
+Request-context services, providers, and the explicit `retrieve_context` tool consumer. `agent-instructions` is included by the default `rlh-agent-spine-demo` bundle and can be disabled through bundle config. The base bundle composes `context-engine` and the purpose-specific Session History provider; Web adds Prompt Enhancement with its Context Engine and LLM adapters plus file-reference discovery. The remaining packages are opt-in.
 
 | Package | Role | ctx key |
 |---|---|---|
@@ -21,3 +21,7 @@ Product plugins that add model-visible request context without defining a tool. 
 | [`agent-instructions/`](agent-instructions/README.md) | Workspace-instruction context | — |
 
 Session references are documented in [docs/subsystems/session-reference.md](../../docs/subsystems/session-reference.md), Prompt Enhancement in [docs/subsystems/prompt-enhancement.md](../../docs/subsystems/prompt-enhancement.md); the [`agent-instructions` decision record](../../.agents/notes/implemented/feature/2026-06-24-workspace-context.md) owns its per-agent/session isolation and lifecycle split.
+
+## Explicit retrieval consumer
+
+[`tool-context/`](tool-context/README.md) exposes `retrieve_context` through the existing Context Engine. Source ids, permitted scope, complete output budgets and the ordinary tool-result log are shared across active retrieval and automatic preparation.

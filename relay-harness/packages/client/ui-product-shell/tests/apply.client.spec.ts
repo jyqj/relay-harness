@@ -26,7 +26,7 @@ async function bench(install = true) {
     subscribe: (listener: () => void) => { listeners.add(listener); return () => { listeners.delete(listener) } },
   } } as never)
   ctx.provide('connection', { readiness: connectionFixture().source } as never)
-  const workResults = { open: vi.fn(), get: vi.fn(), accept: vi.fn(), list: vi.fn() }
+  const workResults = { open: vi.fn(), review: vi.fn(), inspect: vi.fn(), history: vi.fn(), accept: vi.fn(), list: vi.fn() }
   const getMode = vi.fn(async () => ({ ok: true, value: { mode: 'simple' } }))
   const openSettings = vi.fn()
   ctx.provide('settingsNavigation', { open: openSettings } as never)
@@ -68,7 +68,7 @@ it('registers product navigation, switches suppression, and releases subscriptio
     await vi.waitFor(() => { expect(ctx.productShell.store.getSnapshot().status).toBe('ready') })
     expect(slots.entries('sidebar.primary').map(entry => entry.options.id)).toEqual(['product'])
     expect(slots.entries('sidebar.nav.tab')).toHaveLength(0)
-    expect(slots.entries('shell.page').map(entry => entry.options.key)).toEqual(['work', 'library'])
+    expect(slots.entries('shell.page').map(entry => entry.options.key)).toEqual(['work', 'library', 'record'])
     expect(slots.entries('settings.general.item').map(entry => entry.options.id)).toEqual(['product-mode'])
     expect(slots.entriesOfSlot('settings.section')).toEqual([])
     expect(slots.entries('settings.section')).toHaveLength(1)
@@ -98,7 +98,7 @@ it.each([false, true])('forwards registered Work and Library callbacks; remote f
   }
   const denied = { ok: false, error: { code: 'denied', message: 'fixture operation denied' } }
   workResults.open.mockResolvedValue(fails ? denied : { ok: true, value: undefined })
-  workResults.get.mockResolvedValue(fails ? denied : { ok: true, value: verified })
+  workResults.review.mockResolvedValue(fails ? denied : { ok: true, value: verified })
   workResults.accept.mockResolvedValue(fails ? denied : { ok: true, value: receipt })
   workResults.list.mockResolvedValue(fails ? denied : { ok: true, value: page })
   const controller = new AbortController()
@@ -122,7 +122,7 @@ it.each([false, true])('forwards registered Work and Library callbacks; remote f
     expect(workResults.open.mock.calls).toEqual([
       [{ sessionId: 'work-session', path: 'result.md' }], [{ sessionId: 'source-session', path: 'result.md' }],
     ])
-    expect(workResults.get).toHaveBeenCalledWith('work-session', controller.signal)
+    expect(workResults.review).toHaveBeenCalledWith({ sessionId: 'work-session' }, controller.signal)
     expect(workResults.accept).toHaveBeenCalledWith('work-session', { reviewRevision: 7 })
     expect(workResults.list).toHaveBeenCalledWith(request, controller.signal)
   } finally { await ctx.fiber.dispose() }

@@ -88,6 +88,18 @@ async function verifyWorkflowDiscovery() {
     if (/node \.\.\/scripts\//.test(text)) fail(`${name}: runtime command incorrectly escapes relay-harness`)
   }
   const ci = await readFile(resolve(workflowRoot, 'ci.yml'), 'utf8')
+  if (!/^    branches: \[main\]\s*$/m.test(ci)
+    || !ci.includes("github.ref == 'refs/heads/main'")) {
+    fail('CI must validate pushes to the main default branch')
+  }
+  for (const name of names) {
+    if (!/\.ya?ml$/.test(name)) continue
+    const active = (await readFile(resolve(workflowRoot, name), 'utf8'))
+      .split('\n').filter(line => !line.trimStart().startsWith('#')).join('\n')
+    if (/refs\/heads\/master|branches:\s*\[master\]|DOCS_REPOSITORY_REF:\s*master/.test(active)) {
+      fail(`${name}: stale default-branch reference`)
+    }
+  }
   if (!/working-directory:\s*relay-harness(?:\s|$)/.test(ci)) {
     fail('CI does not run from the relay-harness runtime root')
   }

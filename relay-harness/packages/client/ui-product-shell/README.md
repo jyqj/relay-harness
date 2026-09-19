@@ -6,7 +6,7 @@ Chat, Work, and Library occupy the main workspace. The product navigation contri
 
 ## Main workspace
 
-Chat remains mounted when another page is selected. Visited main pages also remain mounted and receive `active`; hidden pages cancel page-specific reads and ignore late replies without discarding unsent editor drafts. Main navigation is transient viewing state, independent from the selected Session, execution permissions, and persisted display density. Reload starts in Chat. Unknown or removed page keys fall back to Chat.
+Chat remains mounted when another page is selected. Visited main pages also remain mounted and receive `active`; hidden pages cancel page-specific reads and ignore late replies without discarding unsent editor drafts. Main navigation is viewing state, independent from execution permissions and persisted display density. Supported product routes survive reload through the URL; invalid source addresses remain explicit rather than selecting another Session. Removed plugin page keys still fall back to Chat.
 
 Work presents the current Session's goal, execution, synchronization, pending input, execution relationships, and recorded changes. The attention action opens that exact Session's existing conversation, where the established approval and question controls remain authoritative. It does not grant permissions or answer questions automatically. Direct-child navigation uses the existing subagent address when available, and a child can return to its parent. Background Jobs retain their separate status meanings; an inactive child is not displayed as successful. The page does not dispatch, retry, or cancel unsupported execution kinds.
 
@@ -14,7 +14,7 @@ Recorded changes come from the Host's whole-session `deliverables` projection ra
 
 ## Review and synchronization
 
-Execution, goal phase, pending input, and user confirmation are independent facts. A Goal is not required to review a closed Session record. Quiet, synchronized Work views read `workResults/get` before enabling confirmation. The Host returns every current eligibility blocker, including non-root Session, an open turn, queued input, pending interaction, or background work. Read failure leaves confirmation disabled with a recheck action. Those reasons explain the observation; the Host revalidates the actual mutation inside maintenance.
+Execution, goal phase, pending input, and user confirmation are independent facts. A Goal is not required to review a closed Session record. Quiet, synchronized Work views read `workResults/review` before enabling confirmation. The Host returns every current eligibility blocker, including non-root Session, an open turn, queued input, pending interaction, or background work. Read failure leaves confirmation disabled with a recheck action. Those reasons explain the observation; the Host revalidates the actual mutation inside maintenance.
 
 Confirmation binds a Session log prefix, not passing tests, file hashes, permissions, or completion of every child. Raw receipt projections never prove persistence. The displayed confirmation requires a verified current cut whose accepted revision matches the current projection. Work also requires a synchronized Connection and an open, non-removed history window before opening outputs or confirming a record. Disconnect, synchronization, history errors, and removal keep retained facts readable but unavailable for these operations. Verification and operation replies belong to the Session, handshake epoch, and active-page lifetime; switching any of them invalidates late replies. Reconnection never resends writes.
 
@@ -48,3 +48,9 @@ None. Display density does not alter model history or tool permissions.
 - Confirmation is transcript-bound. Artifact versions, automated test attestations, and whole-subagent-tree acceptance require separate domain support.
 - Library has no workspace filter, and native output opening remains limited by Host capabilities and authorization.
 - Product mode has no Host push event; local successful writes and reconnect reads update the browser.
+
+## Source records and URL navigation
+
+Library output sources and Work activity open the read-only `record` page instead of implicitly opening/resuming a conversation. `#relay/record/<encoded-session-id>` identifies that source; official conversation, Work and Library views also participate in browser history. Invalid routes stay invalid, and URL navigation never supplies authority or activates a Session. Only the explicit conversation action enters the existing interactive path; delegated records route through their owner.
+
+Record reads are bound to route, page activation and connection epoch. Hidden, disconnected or superseded reads are aborted and late completions cannot replace another source. History pages retain a prefix-bound snapshot. Goal phase, execution, recovery capability, source cut and coverage remain separate. This page is not a second task store, global approval inbox, content-version review system or provider-health dashboard. Live Work confirmation uses the non-activating `workResults/review` endpoint.

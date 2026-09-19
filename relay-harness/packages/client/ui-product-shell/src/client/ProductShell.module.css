@@ -50,3 +50,8 @@
 .deliverables li { padding: 8px; border: 1px solid var(--rlw-alias-border-l2); border-radius: 8px; }
 .deliverables button { white-space: normal; overflow-wrap: anywhere; }
 @media (max-width: 600px) { .page { gap: 16px; padding: 20px 16px; } .page h2 { font-size: 20px; } .card, .attention { padding: 16px; } }
+
+.historyText {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

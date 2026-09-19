@@ -4,6 +4,8 @@ import type { WorkLibraryEntry, WorkLibraryPage } from '@relay-harness/rlh-host-
 /** Results and observed gaps for one query and its accepted continuation pages. */
 export interface LibraryScan {
   readonly entries: readonly WorkLibraryEntry[]
+  /** Unique source identities actually observed, not the sum of page counters. */
+  readonly observedSessionIds: readonly string[]
   /** Counts remain local to this page; a Session can be scanned on multiple pages. */
   readonly page: WorkLibraryPage
   readonly hadUnindexedResults: boolean
@@ -21,6 +23,7 @@ export function mergeLibraryPage(previous: LibraryScan | null, page: WorkLibrary
   for (const entry of page.entries) entries.set(JSON.stringify([entry.sessionId, entry.path]), entry)
   return {
     entries: [...entries.values()],
+    observedSessionIds: [...new Set([...(previous?.observedSessionIds ?? []), ...(page.observedSessionIds ?? [])])],
     page,
     hadUnindexedResults: previous?.hadUnindexedResults === true || page.unindexedResults > 0,
     hadUnavailableSessions: previous?.hadUnavailableSessions === true || page.unavailableSessions > 0,

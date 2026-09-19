@@ -8,7 +8,8 @@
 import { createHash } from 'node:crypto'
 import { Buffer } from 'node:buffer'
 import type { Context } from '@relay-harness/cordis'
-import { ContextEngineError, EvidenceId, SourceId } from '@relay-harness/rlh-context-engine'
+import type {} from '@relay-harness/rlh-agent'
+import { ContextEngineError, ContextProviderError, fitContextContribution, EvidenceId, SourceId } from '@relay-harness/rlh-context-engine'
 import type {
   ContributedStepContext,
   Evidence,
@@ -18,6 +19,7 @@ import type {
 import { createUserMessage } from '@relay-harness/rlh-llm'
 import type { UserMessage } from '@relay-harness/rlh-llm'
 import { FsError } from '@relay-harness/rlh-fs'
+import type { FileSystem, FsTarget } from '@relay-harness/rlh-fs'
 import { parseFileMentions } from '@relay-harness/rlh-file-reference/grammar'
 import type { FileReferenceRecallFile } from '@relay-harness/rlh-file-reference/types'
 
@@ -68,7 +70,7 @@ type AdmittedFile =
  */
 export class FileReferenceContentContributor implements StepContextContributor {
   readonly id = 'file-reference-content'
-  readonly purposes = ['agent_step', 'prompt_enhancement'] as const
+  readonly purposes = ['agent_step', 'prompt_enhancement', 'tool_retrieval'] as const
 
   constructor(
     private readonly ctx: Context,
@@ -76,16 +78,21 @@ export class FileReferenceContentContributor implements StepContextContributor {
   ) {}
 
   async contribute(input: StepContextInput): Promise<ContributedStepContext | undefined> {
-    const mentions = collectDirectMentions(input.messages)
+    const modelRetrieval = input.purpose === 'tool_retrieval'
+    const mentions = modelRetrieval ? [...new Set(parseFileMentions(input.query ?? ''))] : collectDirectMentions(input.messages)
     if (mentions.length === 0) return undefined
-    const fs = this.ctx.get('fs')
+    const caller = modelRetrieval ? this.ctx.get('agents')?.get(input.caller.sessionId) : undefined
+    if (modelRetrieval && (caller === undefined || caller.id !== input.caller.agentId || caller.session.header.cwd !== input.cwd)) {
+      throw new ContextProviderError('error', 'hydration_unavailable')
+    }
+    const fs = modelRetrieval ? caller?.ctx.get('fs') : this.ctx.get('fs')
     if (fs === undefined) {
       throw new ContextEngineError(
         'file-reference-local: file-content injection requires a filesystem service',
         'CONTEXT_ENGINE_INVALID_CONTRIBUTOR',
       )
     }
-    const evidence: Evidence[] = []
+    const root = modelRetrieval ? await fs.resolve(input.cwd, { signal: input.signal }) : undefined
     const admitted: AdmittedFile[] = []
     let remainingBytes = this.config.maxTotalBytes
     for (const mention of mentions) {
@@ -95,6 +102,10 @@ export class FileReferenceContentContributor implements StepContextContributor {
       }
       try {
         const target = await fs.resolve(mention, { cwd: input.cwd, signal: input.signal })
+        if (root !== undefined && !fs.contains(root, target)) {
+          admitted.push({ path: mention, truncated: false, unavailable: 'outside current workspace' })
+          continue
+        }
         const info = await fs.stat(target, input.signal)
         if (info === undefined) {
           admitted.push({ path: mention, truncated: false, unavailable: 'missing' })
@@ -104,53 +115,63 @@ export class FileReferenceContentContributor implements StepContextContributor {
           admitted.push({ path: mention, truncated: false, unavailable: `not a regular file: ${info.type}` })
           continue
         }
-        const full = await fs.readText(target, input.signal)
-        const fullBytes = Buffer.byteLength(full)
-        const includedBytes = Math.min(fullBytes, this.config.maxFileBytes, remainingBytes)
-        const truncated = includedBytes < fullBytes
-        const text = sliceUtf8Bytes(full, includedBytes)
+        const cap = Math.min(this.config.maxFileBytes, remainingBytes)
+        const prefix = await readPrefix(fs, target, cap, input.signal)
+        const text = prefix.text
+        const finalTarget = await fs.resolve(mention, { cwd: input.cwd, signal: input.signal })
+        const after = await fs.stat(target, input.signal)
+        if (finalTarget.targetKey !== target.targetKey || after?.version !== info.version
+          || (root !== undefined && !fs.contains(root, finalTarget))) {
+          admitted.push({ path: mention, truncated: false, unavailable: 'source changed during read' })
+          continue
+        }
+        const includedBytes = Buffer.byteLength(text)
         remainingBytes -= includedBytes
-        const resolvedPath = target.displayPath
-        const revision = String(info.version)
-        admitted.push({ path: mention, resolvedPath, revision, bytes: includedBytes, truncated, text })
-        evidence.push({
-          evidenceId: EvidenceId(`file-reference:${resolvedPath}`),
-          resource: { sourceId: SourceId('file-reference-local'), key: resolvedPath, revision },
-          digest: createHash('sha256').update(text).digest('hex'),
-          truncated,
-          freshness: 'current',
-          verification: 'unverified',
-        })
+        admitted.push({ path: mention, resolvedPath: target.displayPath, revision: String(info.version),
+          bytes: includedBytes, truncated: info.size === undefined ? prefix.truncated : includedBytes < info.size, text })
       } catch (error: unknown) {
         if (input.signal.aborted) throw error
         admitted.push({ path: mention, truncated: false, unavailable: unavailableReason(error) })
       }
     }
-    const files: FileReferenceRecallFile[] = admitted.map((file) => {
-      if ('unavailable' in file) {
-        return { path: file.path, truncated: file.truncated, unavailable: file.unavailable }
-      }
+    const contribution = fitContextContribution(this.ctx, input.budget, bodyBytes => {
+      let remaining = bodyBytes
+      const selected: AdmittedFile[] = admitted.map(file => {
+        if ('unavailable' in file) return file
+        const text = sliceUtf8Bytes(file.text, remaining)
+        remaining -= Buffer.byteLength(text)
+        if (text === '' && file.text !== '') return { path: file.path, truncated: true, unavailable: 'context budget exceeded' }
+        return { ...file, text, bytes: Buffer.byteLength(text), truncated: file.truncated || text.length < file.text.length }
+      })
+      const files: FileReferenceRecallFile[] = selected.map(file => 'unavailable' in file
+        ? { path: file.path, truncated: file.truncated, unavailable: file.unavailable }
+        : { path: file.path, resolvedPath: file.resolvedPath, revision: file.revision, bytes: file.bytes, truncated: file.truncated })
+      const evidence: Evidence[] = selected.flatMap(file => 'unavailable' in file ? [] : [{
+        evidenceId: EvidenceId(`file-reference:${file.resolvedPath}`),
+        resource: { sourceId: SourceId('file-reference-local'), key: file.resolvedPath, revision: file.revision },
+        digest: createHash('sha256').update(file.text).digest('hex'), truncated: file.truncated,
+        freshness: 'current' as const, verification: 'unverified' as const,
+      }])
       return {
-        path: file.path,
-        resolvedPath: file.resolvedPath,
-        revision: file.revision,
-        bytes: file.bytes,
-        truncated: file.truncated,
+        message: createUserMessage({
+          source: { kind: 'file-reference', form: 'recall', version: 1, cwd: input.cwd, files },
+          content: [{ type: 'text', text: renderRecallPrompt(selected, modelRetrieval) }],
+        }), evidence,
+        coverage: {
+          searched: admitted.flatMap(file => 'unavailable' in file ? [] : [file.resolvedPath]),
+          notSearched: admitted.flatMap(file => 'unavailable' in file ? [`${file.path}: ${file.unavailable}`] : []),
+          completeness: 'bounded' as const,
+          rationale: 'explicit path reads with a stable filesystem revision; output may be byte- or context-budget truncated',
+        },
+        selection: {
+          priority: modelRetrieval ? 'provider' as const : 'explicit-reference' as const,
+          reasons: [modelRetrieval ? 'model_selected_paths' : 'direct_user_reference'],
+          dedupeKey: JSON.stringify(['file-reference', input.cwd, files]),
+        },
       }
-    })
-    const message = createUserMessage({
-      source: { kind: 'file-reference', form: 'recall', version: 1, cwd: input.cwd, files },
-      content: [{ type: 'text', text: renderRecallPrompt(admitted) }],
-    })
-    return {
-      message,
-      evidence,
-      selection: {
-        priority: 'explicit-reference',
-        reasons: ['direct_user_reference'],
-        dedupeKey: `file-reference:${mentions.join('\u0000')}`,
-      },
-    }
+    }, this.config.maxTotalBytes)
+    if (contribution === undefined) throw new ContextProviderError('declined', 'budget_exhausted')
+    return contribution
   }
 }
 
@@ -182,7 +203,7 @@ function collectDirectMentions(messages: readonly UserMessage[]): string[] {
  * @param files - one record per distinct mention, in mention order.
  * @returns the complete untrusted-snapshot prompt text.
  */
-function renderRecallPrompt(files: readonly AdmittedFile[]): string {
+function renderRecallPrompt(files: readonly AdmittedFile[], modelRetrieval = false): string {
   const blocks = files.map((file) => {
     const header = [`### ${file.path}`]
     if ('unavailable' in file) {
@@ -195,7 +216,10 @@ function renderRecallPrompt(files: readonly AdmittedFile[]): string {
     const fence = '`'.repeat(longestBacktickRun(file.text) + 1)
     return `${header.join('\n')}\n${fence}\n${file.text}\n${fence}`
   })
-  return `${RECALL_PROMPT_PREFIX}${blocks.join('\n')}${RECALL_PROMPT_SUFFIX}`
+  const prefix = modelRetrieval
+    ? RECALL_PROMPT_PREFIX.replace('the user explicitly\nreferenced with @ mentions in this step', 'the Agent selected within its current workspace')
+    : RECALL_PROMPT_PREFIX
+  return `${prefix}${blocks.join('\n')}${RECALL_PROMPT_SUFFIX}`
 }
 
 /**
@@ -234,4 +258,20 @@ function sliceUtf8Bytes(text: string, maxBytes: number): string {
  */
 function unavailableReason(error: unknown): string {
   return error instanceof FsError ? error.code : 'read failed'
+}
+
+/** Read a bounded prefix and close the backend iterator as soon as the byte cap is reached. */
+async function readPrefix(fs: FileSystem, target: FsTarget, cap: number, signal: AbortSignal): Promise<{ text: string; truncated: boolean }> {
+  let remaining = cap
+  let truncated = false
+  const parts: string[] = []
+  for await (const chunk of await fs.streamText(target, signal)) {
+    signal.throwIfAborted()
+    const text = sliceUtf8Bytes(chunk, remaining)
+    parts.push(text)
+    remaining -= Buffer.byteLength(text)
+    if (text.length < chunk.length || remaining === 0) { truncated = true; break }
+  }
+  signal.throwIfAborted()
+  return { text: parts.join(''), truncated }
 }

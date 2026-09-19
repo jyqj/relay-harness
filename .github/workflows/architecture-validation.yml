@@ -1,0 +1,104 @@
+name: Context and passive work
+
+on:
+  push:
+    branches: [main, feat/architecture-renewal-20260919]
+  pull_request:
+    paths:
+      - '.github/workflows/architecture-validation.yml'
+      - 'relay-harness/packages/context/**'
+      - 'relay-harness/packages/memory/**'
+      - 'relay-harness/packages/mcp/**'
+      - 'relay-harness/packages/index/**'
+      - 'relay-harness/packages/host/work-results/**'
+      - 'relay-harness/packages/client/ui-product-shell/**'
+      - 'relay-harness/examples/headless-agent/**'
+      - 'relay-harness/pnpm-lock.yaml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: context-passive-work-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: relay-harness
+
+env:
+  RLH_TELEMETRY_DISABLED: '1'
+  NODE_OPTIONS: '--max-old-space-size=5120'
+  RLH_OXLINT_THREADS: '2'
+
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: relay-harness/package.json
+          dest: ${{ runner.temp }}/setup-pnpm
+      - name: Install immutable workspace
+        run: pnpm install --frozen-lockfile
+      - name: Run context and passive-work regressions
+        run: >-
+          pnpm exec vitest run
+          packages/context/context-engine/tests
+          packages/context/tool-context/tests
+          packages/context/code-context/tests
+          packages/context/file-reference-local/tests
+          packages/context/session-history-context/tests
+          packages/mcp/mcp-catalog/tests
+          packages/memory/memory-agent/tests
+          packages/host/work-results/tests
+          packages/client/ui-product-shell/tests
+          scripts/ci-workflow.spec.ts
+      - name: Exercise real source Loader retrieval
+        run: pnpm exec vitest run --config vitest.snapshot.config.ts examples/headless-agent/tests/context-retrieval.snapshot.ts
+      - name: Build Host contracts and test-facing aggregate
+        run: |
+          pnpm exec tsc -b tsconfig.host.json
+          node node_modules/tsdown/dist/run.mjs --config-loader native --env.RLH_BUILD_FACE host
+      - name: Exercise installed-artifact Loader retrieval
+        env:
+          RLH_EXAMPLE_MODE: lib
+        run: pnpm exec vitest run --config vitest.snapshot.config.ts examples/headless-agent/tests/context-retrieval.snapshot.ts
+      - name: Build Client and production Web
+        run: |
+          pnpm exec tsc -b tsconfig.client.json
+          node node_modules/tsdown/dist/run.mjs --config-loader native --env.RLH_BUILD_FACE client
+          node packages/client/ui-user-terminal/scripts/copy-ghostty-assets.mjs
+          pnpm run build:web
+          node --import tsx/esm --input-type=module -e "import { writeClientBuildRecord, resolveClientBuildEnvironment } from './scripts/client-build-environment.ts'; writeClientBuildRecord(process.cwd(), resolveClientBuildEnvironment(process.env))"
+      - name: Install pinned Chromium
+        run: pnpm --filter @relay-harness/rlh-web-frontend exec playwright install --with-deps chromium
+      - name: Exercise real Host source records and confirmation
+        run: pnpm exec vitest run --config vitest.web.config.ts apps/web/tests/work-inventory.e2e.ts
+      - name: Native lint of changed feature families
+        if: ${{ !cancelled() }}
+        run: >-
+          node --import tsx/esm scripts/run-oxlint.ts
+          packages/context/context-engine
+          packages/context/tool-context
+          packages/context/code-context
+          packages/context/file-reference-local
+          packages/context/session-history-context
+          packages/host/work-results
+          packages/client/ui-product-shell
+      - name: Preserve browser evidence
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: context-passive-work-${{ github.run_id }}
+          path: relay-harness/test-results/
+          if-no-files-found: ignore
+          retention-days: 7

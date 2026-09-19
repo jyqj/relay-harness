@@ -342,6 +342,9 @@
       name: '@relay-harness/rlh-skill-badge'
       disabled: true
 
+    - id: tool-context
+      name: '@relay-harness/rlh-tool-context'
+
     - id: tool-skill
       name: '@relay-harness/rlh-tool-skill'
 

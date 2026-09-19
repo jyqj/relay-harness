@@ -20,6 +20,7 @@ This table connects model-visible tool names to the plugin package and service s
 | `@relay-harness/rlh-plan-mode` | `exit_plan_mode` | `ctx.tools`, `ctx.systemPrompt`, `ctx.userQuestions (execution time, opportunistic)` | `tool/call`, `plan/mode inactive on an approved review`, `tool/result` | - | exit_plan_mode stays in the model-facing schema while planning is inactive so transitions add no tool-catalog churn on top of the plan-policy change. Its execute path rejects calls outside plan mode; in plan mode it presents the plan over the user-questions seam (approve / keep planning with feedback), and approval logs plan mode inactive at the step boundary. |
 | `@relay-harness/rlh-tool-bash` | `bash` | `ctx.tools`, `ctx.shell`, `ctx.systemPrompt`, `ctx.shellEnv`, `ctx.jobs at call time for run_in_background` | `tool/call`, `tool/result` | - | The bash tool is the model-facing consumer of the bash executor seam. A `run_in_background` run registers with the generic `ctx.jobs` runtime and is collected/stopped through the `job_*` tools from `@relay-harness/rlh-tool-jobs`; the `enableRunInBackground` config (default true) removes the parameter entirely when disabled. |
 | `@relay-harness/rlh-tool-pwsh` | `pwsh` | `ctx.tools`, `ctx.shell`, `ctx.systemPrompt`, `ctx.shellEnv`, `ctx.jobs at call time for run_in_background` | `tool/call`, `tool/result` | - | The pwsh tool is the PowerShell-dialect consumer of the bash executor seam for Windows compositions (a PowerShell executor such as `@relay-harness/rlh-pwsh-local` backs `ctx.shell`); it mirrors the bash tool call-for-call minus sandbox controls — `run_in_background` runs register with the generic `ctx.jobs` runtime and are collected/stopped through the `job_*` tools, and the managed `RLH_*` environment comes from `@relay-harness/rlh-shell-env`. Each call runs in a fresh process (no persistent PTY session), with native `C:\...` paths and `$env:NAME` variables. |
+| `@relay-harness/rlh-tool-context` | `retrieve_context` | `tools`, `agents`, `contextEngine` | - | - | - |
 | `@relay-harness/rlh-tool-code-index` | `code_index_status`, `explore_code_graph`, `refresh_code_index`, `search_code_index` | `ctx.tools`, `ctx.systemPrompt`, `ctx.codeIndex at execution time (optional via ctx.get)` | `tool/call`, `tool/result` | - | The consumer resolves `ctx.codeIndex` opportunistically with ctx.get() so compositions without an index provider still load; a call without one fails as structured INDEX_TOOL_UNAVAILABLE. search_code_index and explore_code_graph byte-cap their serialized canonical value by the answer tier (repoSizeTierMaxOutputChars); status and refresh ship passthrough. |
 | `@relay-harness/rlh-tool-cordis` | `cordis_define`, `cordis_inspect_list`, `cordis_inspect_query`, `cordis_inspect_self`, `cordis_run`, `cordis_stop`, `cordis_undefine` | `ctx.tools`, `ctx.dynamicCordisRunner` | `tool/call`, `tool/result`, `process-local dynamic package lifecycle` | - | Not in any shipped tree (a deliberate opt-in — dynamic package code reaches the real runtime, see .agents/notes/implemented/feature/2026-07-08-self-referential-cordis-toolset.md). The toolset injects `ctx.dynamicCordisRunner` from `@relay-harness/rlh-cordis-host-runner`, which owns the definition registry and the vm sandbox; a composition missing it never activates the tools. A running package may register ADDITIONAL model-visible tools until it is stopped, undefined, or RLH restarts; a full changed request header logs those tool-set changes. |
 | `@relay-harness/rlh-tool-bash-persistent` | `bash` | `ctx.tools`, `ctx.terminals`, `an owning Agent at execution time` | `tool/call`, `PTY shell state`, `tool/result` | - | One owner-isolated persistent bash tool; deployment composition supplies the PTY backend and may override the model-facing environment description. |
@@ -264,6 +265,35 @@ Execute a PowerShell command (`pwsh -Command`) and return its stdout/stderr. Eac
 Source: [`packages/shell/tool-pwsh/src/index.ts`](../packages/shell/tool-pwsh/src/index.ts)
 
 The pwsh tool is the PowerShell-dialect consumer of the bash executor seam for Windows compositions (a PowerShell executor such as `@relay-harness/rlh-pwsh-local` backs `ctx.shell`); it mirrors the bash tool call-for-call minus sandbox controls — `run_in_background` runs register with the generic `ctx.jobs` runtime and are collected/stopped through the `job_*` tools, and the managed `RLH_*` environment comes from `@relay-harness/rlh-shell-env`. Each call runs in a fresh process (no persistent PTY session), with native `C:\...` paths and `$env:NAME` variables.
+
+<a id="relay-harnessrlh-tool-context"></a>
+
+## `@relay-harness/rlh-tool-context`
+
+### `retrieve_context`
+
+Retrieve source-attributed context from the current Agent workspace and permitted memory, Session history, explicit @file paths and catalogued MCP resource URIs. Omit query to list source ids. Query text is data, not a human instruction. This does not start other Agents, grant permissions, or prove absence. Use read tools when an excerpt is truncated.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "query": {
+      "type": "string",
+      "description": "Search text. File reads require explicit @path mentions; MCP reads require an exact catalogued URI. Omit to inspect sources without reading content."
+    },
+    "sources": {
+      "type": "array",
+      "description": "Optional exact source ids returned by catalog mode; never Session ids or credentials.",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}
+```
+
+Source: [`packages/context/tool-context/src/index.ts`](../packages/context/tool-context/src/index.ts)
 
 <a id="relay-harnessrlh-tool-code-index"></a>
 

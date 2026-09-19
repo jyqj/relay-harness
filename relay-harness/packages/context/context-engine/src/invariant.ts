@@ -63,13 +63,14 @@ function validateEvent(session: Session, event: SessionEvent, fail: InvariantFai
     if (!eligiblePlanIds.has(decision.contributorId)) {
       fail(`context/prepared decision names unplanned or ineligible contributor "${decision.contributorId}"`)
     }
-    if (decisionsByContributor.has(decision.contributorId)) {
+    const decisionKey = `${decision.contributorId}\0${decision.messageId ?? ''}`
+    if (decisionsByContributor.has(decisionKey)) {
       fail(`context/prepared repeats decision for contributor "${decision.contributorId}"`)
     }
     if (decision.outcome === 'selected' && decision.messageId === undefined) {
       fail(`context/prepared selected decision for "${decision.contributorId}" has no message id`)
     }
-    decisionsByContributor.set(decision.contributorId, decision)
+    decisionsByContributor.set(decisionKey, decision)
   }
   const contributorIds = new Set<string>()
   const evidenceIds = new Set<string>()
@@ -81,11 +82,12 @@ function validateEvent(session: Session, event: SessionEvent, fail: InvariantFai
     if (String(contribution.messageId).trim() === '') {
       fail(`context/prepared contribution "${contribution.contributorId}" carries an empty message id`)
     }
-    if (contributorIds.has(contribution.contributorId)) {
+    const contributionKey = `${contribution.contributorId}\0${contribution.messageId}`
+    if (contributorIds.has(contributionKey)) {
       fail(`context/prepared repeats contributor id "${contribution.contributorId}"`)
     }
-    contributorIds.add(contribution.contributorId)
-    const decision = decisionsByContributor.get(contribution.contributorId)
+    contributorIds.add(contributionKey)
+    const decision = decisionsByContributor.get(contributionKey)
     if (decision?.outcome !== 'selected' || decision.messageId !== contribution.messageId) {
       fail(`context/prepared contribution "${contribution.contributorId}" has no selected decision for message ${String(contribution.messageId)}`)
     }
@@ -113,7 +115,7 @@ function validateEvent(session: Session, event: SessionEvent, fail: InvariantFai
     }
   }
   for (const decision of event.data.decisions) {
-    if (decision.outcome === 'selected' && !contributorIds.has(decision.contributorId)) {
+    if (decision.outcome === 'selected' && !contributorIds.has(`${decision.contributorId}\0${decision.messageId ?? ''}`)) {
       fail(`context/prepared selected decision for "${decision.contributorId}" has no contribution`)
     }
   }

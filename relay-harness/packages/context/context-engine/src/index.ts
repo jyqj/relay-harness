@@ -11,10 +11,12 @@
 import { Context, Service } from '@relay-harness/cordis'
 import z from '@relay-harness/schemastery'
 import { deepFreeze, HarnessError } from '@relay-harness/rlh-llm'
-import type { ContentBlock, UserMessage } from '@relay-harness/rlh-llm'
 import { snapshotJsonValue } from '@relay-harness/rlh-session'
 import type {
   ContributedStepContext,
+  ContextContributionBatch,
+  ContextContributorDescription,
+  ContextRetrievalInput,
   ContextCandidateDecision,
   ContextCandidateSelection,
   ContextPrepareInput,
@@ -27,9 +29,15 @@ import type {
   StepContextContributor,
 } from './types.ts'
 
+import { measureContextMessage } from './budget.ts'
+export { contextMessageFits, fitContextContribution, measureContextMessage } from './budget.ts'
+
 export { EvidenceId, SourceId } from './brand.ts'
 export type {
   ContributedStepContext,
+  ContextContributionBatch,
+  ContextContributorDescription,
+  ContextRetrievalInput,
   ContextBudget,
   ContextCandidateDecision,
   ContextCandidateSelection,
@@ -143,6 +151,7 @@ interface Registration {
 interface Candidate {
   readonly registration: Registration
   readonly registrationOrder: number
+  readonly candidateOrder: number
   readonly contributed: ContributedStepContext
   readonly selection: ContextCandidateSelection
   readonly chars: number
@@ -151,7 +160,7 @@ interface Candidate {
 }
 
 type ContributorRun =
-  | { readonly kind: 'returned'; readonly value: ContributedStepContext | undefined }
+  | { readonly kind: 'returned'; readonly value: ContextContributionBatch | undefined }
   | { readonly kind: 'timeout' }
   | { readonly kind: 'disposed' }
   | { readonly kind: 'deadline' }
@@ -167,8 +176,8 @@ type ContributorRun =
  */
 function snapshotContribution(
   contributorId: string,
-  contribution: ContributedStepContext,
-): ContributedStepContext {
+  contribution: ContextContributionBatch,
+): ContextContributionBatch {
   const snapshot = snapshotJsonValue(contribution)
   if (snapshot === undefined) {
     throw new ContextEngineError(
@@ -246,10 +255,36 @@ export class ContextEngine extends Service implements ContextEngineService {
     }
   }
 
+  describeContributors(): readonly ContextContributorDescription[] {
+    return deepFreeze([...this.contributors.values()].map(({ contributor }) => ({
+      id: contributor.id,
+      purposes: [...(contributor.purposes ?? ['agent_step', 'prompt_enhancement'])],
+    })))
+  }
+
+  async retrieve(input: ContextRetrievalInput): Promise<PreparedStepContext> {
+    const query = input.query.trim()
+    if (query === '') throw new ContextEngineError('context retrieval query must not be empty', 'CONTEXT_ENGINE_INVALID_REQUEST')
+    for (const id of input.contributors ?? []) {
+      if (!this.contributors.has(id)) {
+        throw new ContextEngineError(`unknown context source: ${id}`, 'CONTEXT_ENGINE_UNKNOWN_SOURCE')
+      }
+    }
+    if (input.budget !== undefined) validateConfigValues(input.budget)
+    return this.prepare({ ...input, purpose: 'tool_retrieval', messages: [] }, input)
+  }
+
   async prepareStep(input: ContextPrepareInput): Promise<PreparedStepContext | undefined> {
+    const prepared = await this.prepare(input)
+    return prepared.contributions.length === 0
+      && prepared.decisions.every(decision => decision.reasons.length === 1 && decision.reasons[0] === 'declined')
+      ? undefined : prepared
+  }
+
+  private async prepare(input: ContextPrepareInput, retrieval?: ContextRetrievalInput): Promise<PreparedStepContext> {
     input.signal.throwIfAborted()
     const registrations = [...this.contributors.values()]
-    const plan = this.plan(input.purpose, registrations)
+    const plan = this.plan(input.purpose, registrations, retrieval)
     const candidates: Candidate[] = []
     const decisions: ContextCandidateDecision[] = []
     const operation = new AbortController()
@@ -269,7 +304,7 @@ export class ContextEngine extends Service implements ContextEngineService {
         if (entry?.eligible !== true || entry.budget === undefined) continue
         runs.set(order, operation.signal.aborted || Date.now() >= deadlineAt
           ? { kind: 'deadline' }
-          : await this.runContributor(registration, { ...input, signal }, entry.budget, operation.signal, deadlineAt))
+          : await this.runContributor(registration, { ...input, signal, ...(retrieval === undefined ? {} : { query: retrieval.query.trim() }) }, entry.budget, operation.signal, deadlineAt))
       }
     }
     try {
@@ -295,43 +330,50 @@ export class ContextEngine extends Service implements ContextEngineService {
         decisions.push({ contributorId: contributor.id, outcome: 'rejected', reasons: ['declined'] })
         continue
       }
-      const contributed = returned
-      const contributorEvidenceIds = new Set<string>()
-      for (const item of contributed.evidence ?? []) {
-        if (item.evidenceId.trim() === '' || contributorEvidenceIds.has(item.evidenceId)) {
-          throw new ContextEngineError(
-            `context-engine contributor "${contributor.id}" returned duplicate or empty evidence id "${item.evidenceId}"`,
-            'CONTEXT_ENGINE_INVALID_CONTRIBUTION',
-          )
+      const batch = contributionItems(returned)
+      if (batch.length === 0) {
+        decisions.push({ contributorId: contributor.id, outcome: 'rejected', reasons: ['declined'] })
+      }
+      const messageIds = new Set<string>()
+      for (const [candidateOrder, contributed] of batch.entries()) {
+        if (messageIds.has(contributed.message.id)) {
+          throw new ContextEngineError('a provider repeated a candidate message id', 'CONTEXT_ENGINE_INVALID_CONTRIBUTION')
         }
-        contributorEvidenceIds.add(item.evidenceId)
+        messageIds.add(contributed.message.id)
+        const contributorEvidenceIds = new Set<string>()
+        for (const item of contributed.evidence ?? []) {
+          if (item.evidenceId.trim() === '' || contributorEvidenceIds.has(item.evidenceId)) {
+            throw new ContextEngineError(
+              `context-engine contributor "${contributor.id}" returned duplicate or empty evidence id "${item.evidenceId}"`,
+              'CONTEXT_ENGINE_INVALID_CONTRIBUTION',
+            )
+          }
+          contributorEvidenceIds.add(item.evidenceId)
+        }
+        const selection: ContextCandidateSelection = contributed.selection ?? {
+          priority: 'provider', reasons: ['provider_candidate'],
+        }
+        if (selection.rank !== undefined && (!Number.isSafeInteger(selection.rank) || selection.rank < 0)) {
+          throw new ContextEngineError('candidate rank must be a non-negative safe integer', 'CONTEXT_ENGINE_INVALID_CONTRIBUTION')
+        }
+        const { chars, tokens } = measureContextMessage(this.ctx, contributed.message)
+        candidates.push({
+          registration, registrationOrder, candidateOrder, contributed, selection, chars, tokens,
+          dedupeKey: selection.dedupeKey ?? JSON.stringify([contributor.id, contributed.message.source, contributed.message.content]),
+        })
       }
-      const selection: ContextCandidateSelection = contributed.selection ?? {
-        priority: 'provider', reasons: ['provider_candidate'],
-      }
-      const chars = messageChars(contributed.message)
-      const tokens = estimateMessageTokens(this.ctx, contributed.message, chars)
-      candidates.push({
-        registration,
-        registrationOrder,
-        contributed,
-        selection,
-        chars,
-        tokens,
-        dedupeKey: selection.dedupeKey ?? JSON.stringify(contributed.message.content),
-      })
     }
     input.signal.throwIfAborted()
     const packed = packCandidates(candidates, plan, decisions)
     validateSelectedEvidenceIds(packed.contributions)
-    if (packed.contributions.length === 0 && decisions.every(decision => decision.reasons.length === 1 && decision.reasons[0] === 'declined')) {
-      return undefined
-    }
     return deepFreeze({ plan, decisions, ...packed })
   }
 
-  private plan(purpose: ContextPurpose, registrations: readonly Registration[]): ContextRetrievalPlan {
-    const totalBudget = { maxChars: this.config.maxChars, maxTokens: this.config.maxTokens }
+  private plan(purpose: ContextPurpose, registrations: readonly Registration[], retrieval?: ContextRetrievalInput): ContextRetrievalPlan {
+    const totalBudget = {
+      maxChars: Math.min(this.config.maxChars, retrieval?.budget?.maxChars ?? this.config.maxChars),
+      maxTokens: Math.min(this.config.maxTokens, retrieval?.budget?.maxTokens ?? this.config.maxTokens),
+    }
     const localBudget = {
       maxChars: Math.min(this.config.maxContributorChars, totalBudget.maxChars),
       maxTokens: Math.min(this.config.maxContributorTokens, totalBudget.maxTokens),
@@ -341,11 +383,13 @@ export class ContextEngine extends Service implements ContextEngineService {
       purpose,
       budget: totalBudget,
       contributors: registrations.map(({ contributor }) => {
-        const eligible = contributor.purposes === undefined || contributor.purposes.includes(purpose)
+        const requested = retrieval?.contributors === undefined || retrieval.contributors.includes(contributor.id)
+        const supported = contributor.purposes?.includes(purpose) ?? purpose !== 'tool_retrieval'
+        const eligible = requested && supported
         return {
           contributorId: contributor.id,
           eligible,
-          reason: eligible ? 'purpose_supported' as const : 'purpose_not_supported' as const,
+          reason: !requested ? 'not_requested' as const : supported ? 'purpose_supported' as const : 'purpose_not_supported' as const,
           ...eligible ? { budget: localBudget } : {},
         }
       }),
@@ -355,7 +399,7 @@ export class ContextEngine extends Service implements ContextEngineService {
   /** Bound one provider generation to the preparation, parent, registration, and local timeout. */
   private async runContributor(
     registration: Registration,
-    input: ContextPrepareInput,
+    input: ContextPrepareInput & { readonly query?: string },
     budget: Omit<ContributorContextBudget, 'deadlineAt'>,
     preparationSignal: AbortSignal,
     preparationDeadlineAt: number,
@@ -429,16 +473,20 @@ function packCandidates(
 ): Pick<PreparedStepContext, 'contributions' | 'messages' | 'evidence' | 'coverage'> {
   const ranked = [...candidates].sort((left, right) =>
     priorityRank(left.selection.priority) - priorityRank(right.selection.priority)
-    || left.registrationOrder - right.registrationOrder)
+    || (left.selection.rank ?? left.candidateOrder) - (right.selection.rank ?? right.candidateOrder)
+    || compareSourceIds(left.registration.contributor.id, right.registration.contributor.id)
+    || left.candidateOrder - right.candidateOrder)
+  const spent = new Map<string, { chars: number; tokens: number }>()
   const selected: Candidate[] = []
   const dedupeKeys = new Set<string>()
   let chars = 0
   let tokens = 0
   for (const candidate of ranked) {
     const local = plan.contributors[candidate.registrationOrder]?.budget
+    const previous = spent.get(candidate.registration.contributor.id) ?? { chars: 0, tokens: 0 }
     let reason: string | undefined
-    if (local !== undefined && candidate.chars > local.maxChars) reason = 'contributor_char_budget'
-    else if (local !== undefined && candidate.tokens > local.maxTokens) reason = 'contributor_token_budget'
+    if (local !== undefined && previous.chars + candidate.chars > local.maxChars) reason = 'contributor_char_budget'
+    else if (local !== undefined && previous.tokens + candidate.tokens > local.maxTokens) reason = 'contributor_token_budget'
     else if (dedupeKeys.has(candidate.dedupeKey)) reason = 'duplicate'
     else if (chars + candidate.chars > plan.budget.maxChars) reason = 'total_char_budget'
     else if (tokens + candidate.tokens > plan.budget.maxTokens) reason = 'total_token_budget'
@@ -447,12 +495,13 @@ function packCandidates(
       continue
     }
     selected.push(candidate)
+    spent.set(candidate.registration.contributor.id, { chars: previous.chars + candidate.chars, tokens: previous.tokens + candidate.tokens })
     dedupeKeys.add(candidate.dedupeKey)
     chars += candidate.chars
     tokens += candidate.tokens
     decisions.push(candidateDecision(candidate, 'selected', [
       ...candidate.selection.reasons,
-      candidate.selection.priority === 'explicit-reference' ? 'explicit_reference_priority' : 'registration_order',
+      candidate.selection.priority === 'explicit-reference' ? 'explicit_reference_priority' : 'source_rank',
       'within_budget',
     ]))
   }
@@ -468,7 +517,7 @@ function packCandidates(
     contributions,
     messages: contributions.map(contribution => contribution.message),
     evidence: contributions.flatMap(contribution => contribution.evidence),
-    coverage: contributions.flatMap(contribution => contribution.coverage === undefined ? [] : [contribution.coverage]),
+    coverage: candidates.flatMap(candidate => candidate.contributed.coverage === undefined ? [] : [candidate.contributed.coverage]),
   }
 }
 
@@ -492,27 +541,7 @@ function priorityRank(priority: ContextCandidateSelection['priority']): number {
   return priority === 'explicit-reference' ? 0 : 1
 }
 
-function messageChars(message: UserMessage): number {
-  return contentChars(message.content)
-}
-
-function contentChars(content: readonly ContentBlock[]): number {
-  let chars = 0
-  for (const block of content) {
-    if (block.type === 'text' || block.type === 'reasoning') chars += Array.from(block.text).length
-    else if (block.type === 'tool-call') chars += Array.from(block.name + block.arguments).length
-    else if (block.type === 'tool-result') chars += contentChars(block.content)
-    else chars += Array.from(JSON.stringify(block)).length
-  }
-  return chars
-}
-
-function estimateMessageTokens(ctx: Context, message: UserMessage, chars: number): number {
-  const meter = ctx.get('tokenMeter') as { estimateMessage(message: UserMessage): number } | undefined
-  return meter?.estimateMessage(message) ?? Math.ceil(chars / 4) + 4
-}
-
-function validateConfig(config: ResolvedConfig): void {
+function validateConfigValues(config: object): void {
   for (const [name, value] of Object.entries(config)) {
     if (!Number.isSafeInteger(value) || value <= 0) {
       throw new ContextEngineError(
@@ -521,12 +550,24 @@ function validateConfig(config: ResolvedConfig): void {
       )
     }
   }
+}
+
+function validateConfig(config: ResolvedConfig): void {
+  validateConfigValues(config)
   if (config.contributorTimeoutMs > MAX_CONTRIBUTOR_TIMEOUT_MS || config.prepareTimeoutMs > MAX_CONTRIBUTOR_TIMEOUT_MS) {
     throw new ContextEngineError(
       `context-engine timeouts must not exceed ${MAX_CONTRIBUTOR_TIMEOUT_MS}`,
       'CONTEXT_ENGINE_INVALID_CONFIG',
     )
   }
+}
+
+function contributionItems(batch: ContextContributionBatch): readonly ContributedStepContext[] {
+  return 'message' in batch ? [batch] : batch
+}
+
+function compareSourceIds(left: string, right: string): number {
+  return left < right ? -1 : left > right ? 1 : 0
 }
 
 export default ContextEngine

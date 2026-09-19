@@ -41,3 +41,7 @@ Provider 会保留 prepared handle，直到持久的最终 `turn/end`。complete
 - **召回 Consumer 不拥有提取策略** — `memory-agent` 只负责召回与结算；独立且显式开启的 `memory-extractor-llm` Consumer 创建自动版本。
 - **字符预算而非 tokenizer 预算** — 完整上限跨 Provider 确定，但不是精确模型 token 数。
 - **没有 cited-use signal**——Memory Center 会展示模型准入和后续 outcome，但 commit 仍不能证明 Assistant 在语义上依赖了每一个准入 item。
+
+## Explicit tool recall
+
+`tool_retrieval` 使用相同的 preset、子 Agent 和作用域门槛，以 `recordAccess: false` 只读检索已激活的受治理记忆。不创建或提交记忆使用事务，也不批准候选。记忆条目作为请求预算内可独立选择、带来源的观察返回。检索失败记录在 Context Engine 决策中，不悄悄解释为没有记忆。

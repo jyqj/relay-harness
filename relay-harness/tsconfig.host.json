@@ -202,6 +202,7 @@
     { "path": "./packages/schedule/schedule" },
     { "path": "./packages/context/time-context" },
     { "path": "./packages/context/context-engine" },
+    { "path": "./packages/context/tool-context" },
     { "path": "./packages/context/session-history-context" },
     { "path": "./packages/context/file-reference" },
     { "path": "./packages/context/file-reference-local" },
