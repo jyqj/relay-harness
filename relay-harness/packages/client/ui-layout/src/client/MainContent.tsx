@@ -26,7 +26,7 @@ export function MainContent({ useMainNavigation, useMainPages, renderSlot }: Mai
   const host = useRef<HTMLDivElement>(null)
   const lastRevision = useRef(navigation.revision)
   useEffect(() => {
-    setVisited(previous => {
+    setVisited((previous) => {
       const next = previous.filter(key => pages.includes(key))
       if (page !== 'conversation' && !next.includes(page)) next.push(page)
       return next.length === previous.length && next.every((key, index) => key === previous[index]) ? previous : next

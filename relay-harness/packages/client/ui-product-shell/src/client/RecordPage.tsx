@@ -57,7 +57,9 @@ export function RecordPage({ active, useRoute, useConnection, inspect, history, 
     const operation = controller.current
     if (operation === null || operation.signal.aborted) return
     setLoading(true); setError(null)
-    void history({ sessionId, beforeSeq, ...(pages[0] === undefined ? {} : { snapshot: pages[0].snapshot }) }, operation.signal).then(page => {
+    void history(
+      { sessionId, beforeSeq, ...(pages[0] === undefined ? {} : { snapshot: pages[0].snapshot }) }, operation.signal,
+    ).then((page) => {
       if (operation.signal.aborted || id !== generation.current) return
       if (page.throughSeq < beforeSeq - 1) { setError(t('record.changed')); setLoading(false); return }
       setPages(previous => [page, ...previous]); setLoading(false)

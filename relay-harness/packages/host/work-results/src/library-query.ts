@@ -142,7 +142,9 @@ export class LibraryQueries {
           const projection = this.ctx.sessionProjections.snapshot(live)
           const inventory = projection.values.deliverables
           if (inventory === undefined) throw new Error('deliverables projection unavailable')
-          row.result = { inventory: { paths: [...inventory.paths], unindexedResults: inventory.unindexedResults }, throughSeq: projection.asOfSeq }
+          row.result = {
+            inventory: { paths: [...inventory.paths], unindexedResults: inventory.unindexedResults }, throughSeq: projection.asOfSeq,
+          }
           return
         }
         const cache = this.ctx.get('sessionProjectionCache')
@@ -156,7 +158,10 @@ export class LibraryQueries {
         }
         const source = await this.ctx.sessionQuery.readSession(row.header.id)
         signal.throwIfAborted()
-        row.result = { inventory: source.events.reduce((value, event) => deliverablesProjection.apply(value, event), deliverablesProjection.init()), throughSeq: source.events.at(-1)?.seq ?? -1 }
+        row.result = {
+          inventory: source.events.reduce((value, event) => deliverablesProjection.apply(value, event), deliverablesProjection.init()),
+          throughSeq: source.events.at(-1)?.seq ?? -1,
+        }
       } catch (error) {
         if (signal.aborted) throw error
         row.result = { unavailable: true }

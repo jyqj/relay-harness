@@ -295,7 +295,7 @@ const TOOL_PACKAGES: ToolPackage[] = [
     pkg: '@relay-harness/rlh-tool-context', dir: 'tool-context',
     source: 'packages/context/tool-context/src/index.ts',
     requires: ['tools', 'agents', 'contextEngine'], writes: [],
-    mount: async ctx => {
+    mount: async (ctx) => {
       await ctx.plugin(SessionStore)
       await ctx.plugin(AgentRegistry)
       await ctx.plugin(ContextEngine)

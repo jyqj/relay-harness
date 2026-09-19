@@ -104,7 +104,7 @@ export function apply(ctx: ClientContext): void {
     name: 'sidebar.primary', id: 'product', locale: 'productShell',
     inject: (): ProductNavigationInjected => ({
       hooks: { mainNavigation: ctx.layout.mainNavigation, work },
-      openPage: page => { ctx.layout.openMain(page) },
+      openPage: (page) => { ctx.layout.openMain(page) },
     }),
   }, ProductNavigation))
 
@@ -135,7 +135,7 @@ export function apply(ctx: ClientContext): void {
       children: { 'work.activity': { kind: 'single', scope: 'root' } },
       inject: (): WorkPageInjected => ({
         hooks: { work },
-        openConversation: sessionId => { openConversation(sessionId as SessionId) },
+        openConversation: (sessionId) => { openConversation(sessionId as SessionId) },
         startWork: () => { ctx.layout.openMain('conversation'); ctx.workspaces.startSession() },
         openFiles,
         openDeliverable: async (sessionId, path) => {
@@ -158,7 +158,7 @@ export function apply(ctx: ClientContext): void {
       name: 'shell.page', key: 'library', locale: 'productShell',
       inject: (): LibraryPageInjected => ({
         hooks: { connection: connection.readiness },
-        openSource: entry => { openRecord(entry.sessionId) },
+        openSource: (entry) => { openRecord(entry.sessionId) },
         openFiles,
         openSettings: (section) => { ctx.settingsNavigation.open(section) },
         queryLibrary: async (request, signal) => {

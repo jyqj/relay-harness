@@ -16,7 +16,8 @@ describe('product navigation pages', () => {
     const openFiles = vi.fn()
     const openSettings = vi.fn()
     const page = {
-      active: true, renderSlot: () => null, openConversation: vi.fn(), startWork: vi.fn(), openSource: vi.fn(), useConnection: useReadyConnection,
+      active: true, renderSlot: () => null, openConversation: vi.fn(), startWork: vi.fn(), openSource: vi.fn(),
+      useConnection: useReadyConnection,
       expandSidebar: vi.fn(),
       useSessions: ((select: (value: unknown) => unknown) => select({ current: 's1' })) as never,
       useWorkspaces: unused,
@@ -53,7 +54,8 @@ describe('product navigation pages', () => {
       cwd: '/work',
     }
     const page = {
-      active: true, renderSlot: () => null, openConversation: vi.fn(), startWork: vi.fn(), openSource: vi.fn(), useConnection: useReadyConnection,
+      active: true, renderSlot: () => null, openConversation: vi.fn(), startWork: vi.fn(), openSource: vi.fn(),
+      useConnection: useReadyConnection,
       expandSidebar: vi.fn(),
       useSessions: unused,
       useWorkspaces: unused,
@@ -78,7 +80,13 @@ function workPage(summary: Partial<WorkSummary>, opener: WorkPageProps['openDeli
     sessionId: 's1', epoch: 1, availability: 'ready', goal: null, plan: null, jobs: { total: 0, running: 0, failed: 0, killed: 0 }, trajectoryRecords: 0,
     deliverables: ['out.md'], unindexedResults: 0, acceptance: null, approvals: 0, questions: 0, execution: 'idle', cwd: '/work', ...summary,
   }
-  return { active: true, renderSlot: () => null, openConversation: vi.fn(), startWork: vi.fn(), openSource: vi.fn(), useConnection: useReadyConnection, useWork: (select: (value: WorkSummary) => unknown) => select(work), openDeliverable: opener, openFiles: vi.fn(), verifyWork: vi.fn().mockResolvedValue({ ...work.acceptance, confirmationBlockedBy: [], verifiedThroughSeq: -1, current: true }), t } as unknown as WorkPageProps
+  return {
+    active: true, renderSlot: () => null, openConversation: vi.fn(), startWork: vi.fn(), openSource: vi.fn(),
+    useConnection: useReadyConnection, useWork: (select: (value: WorkSummary) => unknown) => select(work),
+    openDeliverable: opener, openFiles: vi.fn(),
+    verifyWork: vi.fn().mockResolvedValue({ ...work.acceptance, confirmationBlockedBy: [], verifiedThroughSeq: -1, current: true }),
+    t,
+  } as unknown as WorkPageProps
 }
 
 describe('Work interactions and status', () => {
@@ -160,7 +168,9 @@ describe('cross-session Library', () => {
       })
     const openLibraryOutput = vi.fn().mockResolvedValue(undefined)
     render(<LibraryPage {...{
-      active: true, renderSlot: () => null, openConversation: vi.fn(), startWork: vi.fn(), openSource: vi.fn(), useConnection: useReadyConnection, useSessions: ((select: (state: { current?: string }) => unknown) => select({})) as never,
+      active: true, renderSlot: () => null, openConversation: vi.fn(), startWork: vi.fn(), openSource: vi.fn(),
+      useConnection: useReadyConnection,
+      useSessions: ((select: (state: { current?: string }) => unknown) => select({})) as never,
       expandSidebar: vi.fn(), useWorkspaces: unused,
       queryLibrary, openLibraryOutput, openFiles: vi.fn(), openSettings: vi.fn(), t,
     } as LibraryPageProps} />)
@@ -178,7 +188,9 @@ describe('cross-session Library', () => {
 
 function libraryPage(queryLibrary: LibraryPageProps['queryLibrary']): LibraryPageProps {
   return {
-    active: true, renderSlot: () => null, openConversation: vi.fn(), startWork: vi.fn(), openSource: vi.fn(), useConnection: useReadyConnection, useSessions: ((select: (state: { current?: string }) => unknown) => select({})) as never,
+    active: true, renderSlot: () => null, openConversation: vi.fn(), startWork: vi.fn(), openSource: vi.fn(),
+    useConnection: useReadyConnection,
+    useSessions: ((select: (state: { current?: string }) => unknown) => select({})) as never,
     expandSidebar: vi.fn(), useWorkspaces: unused, queryLibrary,
     openLibraryOutput: vi.fn().mockResolvedValue(undefined), openFiles: vi.fn(), openSettings: vi.fn(), t,
   } as LibraryPageProps
@@ -190,7 +202,8 @@ const emptyLibraryPage = {
 
 describe('Work review readiness and independent facts', () => {
   it('makes a result without a Goal discoverable for review', async () => {
-    render(<WorkPage {...workPage({ acceptance: { reviewRevision: 8, acceptedRevision: null, reviewable: true } }, vi.fn())} acceptWork={vi.fn()} />)
+    render(<WorkPage
+      {...workPage({ acceptance: { reviewRevision: 8, acceptedRevision: null, reviewable: true } }, vi.fn())} acceptWork={vi.fn()} />)
     expect(await screen.findByText('work.reviewReady')).toBeTruthy()
     expect(screen.getByText('work.execution.idle')).toBeTruthy()
     expect(screen.getByText('work.scope')).toBeTruthy()
@@ -202,7 +215,9 @@ describe('Work review readiness and independent facts', () => {
   ] as const)('withholds review when execution or human input is unsettled (%j)', (facts) => {
     const acceptWork = vi.fn()
     const verifyWork = vi.fn()
-    render(<WorkPage {...workPage({ ...facts, acceptance: { reviewRevision: 8, acceptedRevision: null, reviewable: true } }, vi.fn())} acceptWork={acceptWork} verifyWork={verifyWork} />)
+    render(<WorkPage
+      {...workPage({ ...facts, acceptance: { reviewRevision: 8, acceptedRevision: null, reviewable: true } }, vi.fn())}
+      acceptWork={acceptWork} verifyWork={verifyWork} />)
     fireEvent.click(screen.getByRole('button', { name: 'work.acceptance.confirm' }))
     expect(acceptWork).not.toHaveBeenCalled()
     expect(verifyWork).not.toHaveBeenCalled()
@@ -296,10 +311,12 @@ describe('workbench actions', () => {
     expect(acceptWork).not.toHaveBeenCalled()
   })
 
-  it.each(['not-root', 'queued-input', 'background-job'] as const)('displays the Host reason %s and prevents an invalid confirmation', async reason => {
+  it.each(['not-root', 'queued-input', 'background-job'] as const)('displays the Host reason %s and prevents an invalid confirmation', async (reason) => {
     const acceptWork = vi.fn()
     const props = workPage({ acceptance: { reviewRevision: 4, acceptedRevision: null, reviewable: true } }, vi.fn())
-    const verifyWork = vi.fn().mockResolvedValue({ reviewRevision: 4, acceptedRevision: null, reviewable: true, current: true, verifiedThroughSeq: -1, confirmationBlockedBy: [reason] })
+    const verifyWork = vi.fn().mockResolvedValue({
+      reviewRevision: 4, acceptedRevision: null, reviewable: true, current: true, verifiedThroughSeq: -1, confirmationBlockedBy: [reason],
+    })
     render(<WorkPage {...props} acceptWork={acceptWork} verifyWork={verifyWork} />)
     expect(await screen.findByText(`work.confirm.blocked.${reason}`)).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'work.acceptance.confirm' }))
@@ -310,7 +327,9 @@ describe('workbench actions', () => {
 
   it('does not reuse a verified current record from a different log revision', async () => {
     const props = workPage({ acceptance: { reviewRevision: 5, acceptedRevision: null, reviewable: true } }, vi.fn())
-    const verifyWork = vi.fn().mockResolvedValue({ reviewRevision: 4, acceptedRevision: null, reviewable: true, current: true, verifiedThroughSeq: -1, confirmationBlockedBy: [] })
+    const verifyWork = vi.fn().mockResolvedValue({
+      reviewRevision: 4, acceptedRevision: null, reviewable: true, current: true, verifiedThroughSeq: -1, confirmationBlockedBy: [],
+    })
     render(<WorkPage {...props} verifyWork={verifyWork} />)
     expect(await screen.findByText('work.confirm.blocked.unverified')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'work.acceptance.confirm' }).hasAttribute('disabled')).toBe(true)

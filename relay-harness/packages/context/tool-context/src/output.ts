@@ -17,9 +17,9 @@ export const CONTEXT_OUTPUT_SCHEMA = {
         'ok',
         'partial',
         'empty',
-        'unavailable'
+        'unavailable',
       ],
-      required: true
+      required: true,
     },
     sources: {
       type: 'array',
@@ -29,18 +29,18 @@ export const CONTEXT_OUTPUT_SCHEMA = {
         properties: {
           id: {
             type: 'string',
-            required: true
+            required: true,
           },
           purposes: {
             type: 'array',
             items: {
-              type: 'string'
+              type: 'string',
             },
-            required: true
-          }
-        }
+            required: true,
+          },
+        },
       },
-      required: true
+      required: true,
     },
     observations: {
       type: 'array',
@@ -50,11 +50,11 @@ export const CONTEXT_OUTPUT_SCHEMA = {
         properties: {
           source: {
             type: 'string',
-            required: true
+            required: true,
           },
           text: {
             type: 'string',
-            required: true
+            required: true,
           },
           evidence: {
             type: 'array',
@@ -64,41 +64,41 @@ export const CONTEXT_OUTPUT_SCHEMA = {
               properties: {
                 id: {
                   type: 'string',
-                  required: true
+                  required: true,
                 },
                 sourceId: {
                   type: 'string',
-                  required: true
+                  required: true,
                 },
                 key: {
                   type: 'string',
-                  required: true
+                  required: true,
                 },
                 revision: {
-                  type: 'string'
+                  type: 'string',
                 },
                 digest: {
-                  type: 'string'
+                  type: 'string',
                 },
                 truncated: {
                   type: 'boolean',
-                  required: true
+                  required: true,
                 },
                 freshness: {
                   type: 'string',
-                  required: true
+                  required: true,
                 },
                 verification: {
                   type: 'string',
-                  required: true
-                }
-              }
+                  required: true,
+                },
+              },
             },
-            required: true
-          }
-        }
+            required: true,
+          },
+        },
       },
-      required: true
+      required: true,
     },
     coverage: {
       type: 'array',
@@ -109,27 +109,27 @@ export const CONTEXT_OUTPUT_SCHEMA = {
           searched: {
             type: 'array',
             items: {
-              type: 'string'
+              type: 'string',
             },
-            required: true
+            required: true,
           },
           notSearched: {
             type: 'array',
             items: {
-              type: 'string'
+              type: 'string',
             },
-            required: true
+            required: true,
           },
           completeness: {
             type: 'string',
-            required: true
+            required: true,
           },
           rationale: {
-            type: 'string'
-          }
-        }
+            type: 'string',
+          },
+        },
       },
-      required: true
+      required: true,
     },
     decisions: {
       type: 'array',
@@ -139,22 +139,22 @@ export const CONTEXT_OUTPUT_SCHEMA = {
         properties: {
           source: {
             type: 'string',
-            required: true
+            required: true,
           },
           outcome: {
             type: 'string',
-            required: true
+            required: true,
           },
           reasons: {
             type: 'array',
             items: {
-              type: 'string'
+              type: 'string',
             },
-            required: true
-          }
-        }
+            required: true,
+          },
+        },
       },
-      required: true
+      required: true,
     },
     omitted: {
       type: 'object',
@@ -162,24 +162,24 @@ export const CONTEXT_OUTPUT_SCHEMA = {
       properties: {
         observations: {
           type: 'integer',
-          required: true
+          required: true,
         },
         coverage: {
           type: 'integer',
-          required: true
+          required: true,
         },
         decisions: {
           type: 'integer',
-          required: true
+          required: true,
         },
         sources: {
           type: 'integer',
-          required: true
-        }
+          required: true,
+        },
       },
-      required: true
-    }
-  }
+      required: true,
+    },
+  },
 } as const satisfies ValueSchemaSpec
 
 /** JSON result accepted by the canonical tool output schema. */
@@ -214,7 +214,7 @@ export function packContextOutput(
       if (!contribution.message.content.every(block => block.type === 'text')) { output.omitted.observations += 1; continue }
       output.observations.push({
         source: contribution.contributorId,
-        text: contribution.message.content.flatMap(block => block.type === 'text' ? [block.text] : []).join('\n'),
+        text: contribution.message.content.map(block => block.text).join('\n'),
         evidence: contribution.evidence.map(item => ({
           id: item.evidenceId, sourceId: item.resource.sourceId, key: item.resource.key,
           ...(item.resource.revision === undefined ? {} : { revision: item.resource.revision }),

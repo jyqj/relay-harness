@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { confirmationBlockers, type ConfirmationFacts } from '../src/confirmation-policy.ts'
 
-const quiet: ConfirmationFacts = { root: true, reviewable: true, idle: true, queuedInput: false, approvals: 0, questions: 0, runningJobs: false }
+const quiet: ConfirmationFacts = {
+  root: true, reviewable: true, idle: true, queuedInput: false, approvals: 0, questions: 0, runningJobs: false,
+}
 describe('Host confirmation eligibility', () => {
   it('permits only a quiet root record without asserting tests or file content', () => {
     expect(confirmationBlockers(quiet)).toEqual([])
@@ -13,7 +15,9 @@ describe('Host confirmation eligibility', () => {
     expect(confirmationBlockers({ ...quiet, ...change })).toEqual([reason])
   })
   it('reports simultaneous constraints in deterministic order', () => {
-    expect(confirmationBlockers({ root: false, reviewable: false, idle: false, queuedInput: true, approvals: 2, questions: 3, runningJobs: true }))
+    expect(confirmationBlockers({
+      root: false, reviewable: false, idle: false, queuedInput: true, approvals: 2, questions: 3, runningJobs: true,
+    }))
       .toEqual(['not-root', 'turn-open', 'running', 'queued-input', 'approval', 'question', 'background-job'])
   })
 })

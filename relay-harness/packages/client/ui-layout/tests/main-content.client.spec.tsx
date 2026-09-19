@@ -12,11 +12,11 @@ let runtime: SlotTestRuntime | undefined
 afterEach(async () => { cleanup(); await runtime?.dispose(); runtime = undefined })
 function ConversationDraft() {
   const [value, setValue] = useState('')
-  return <input aria-label="Conversation draft" value={value} onChange={event => { setValue(event.target.value) }} />
+  return <input aria-label="Conversation draft" value={value} onChange={(event) => { setValue(event.target.value) }} />
 }
 function LibraryDraft() {
   const [value, setValue] = useState('')
-  return <input aria-label="Library query" value={value} onChange={event => { setValue(event.target.value) }} />
+  return <input aria-label="Library query" value={value} onChange={(event) => { setValue(event.target.value) }} />
 }
 async function bench() {
   runtime = await SlotTestRuntime.create()
@@ -45,10 +45,10 @@ describe('resident main pages', () => {
     act(() => { navigation.open('library') })
     fireEvent.change(screen.getByRole('textbox', { name: 'Library query' }), { target: { value: 'unsent query' } })
     act(() => { navigation.open('conversation') })
-    expect((screen.getByRole('textbox', { name: 'Conversation draft' }) as HTMLInputElement).value).toBe('unsent instructions')
+    expect(screen.getByRole('textbox', { name: 'Conversation draft' })).toHaveProperty('value', 'unsent instructions')
     expect(screen.queryByRole('textbox', { name: 'Library query' })).toBeNull()
     act(() => { navigation.open('library') })
-    expect((screen.getByRole('textbox', { name: 'Library query' }) as HTMLInputElement).value).toBe('unsent query')
+    expect(screen.getByRole('textbox', { name: 'Library query' })).toHaveProperty('value', 'unsent query')
     expect(document.activeElement?.getAttribute('data-main-page')).toBe('library')
   })
 

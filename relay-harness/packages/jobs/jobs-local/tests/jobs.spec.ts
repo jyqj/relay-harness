@@ -473,7 +473,7 @@ describe('LocalJobRegistry bounded stop', () => {
     const id = ctx.jobs.start(p.spec)
     ctx.jobs.kill(id, undefined, 'no longer needed')
 
-    await vi.waitFor(() => expect(ctx.jobs.get(id).status).toBe('control-lost-unknown'))
+    await vi.waitFor(() => { expect(ctx.jobs.get(id).status).toBe('control-lost-unknown') })
     expect(ctx.jobs.get(id)).toMatchObject({ reported: true })
     expect(ctx.jobs.get(id).finishedAt).toBeTypeOf('number')
     expect(ctx.jobs.get(id).detail).toContain('outcome unknown')
@@ -498,7 +498,7 @@ describe('LocalJobRegistry bounded stop', () => {
     ctx.jobs.kill(id)
     expect(terminates).toEqual([])
 
-    await vi.waitFor(() => expect(terminates).toHaveLength(1))
+    await vi.waitFor(() => { expect(terminates).toHaveLength(1) })
     expect(terminates[0]).toContain('grace')
     await tick()
     // The escalation window delivered the settlement before any abandonment.
@@ -512,9 +512,9 @@ describe('LocalJobRegistry bounded stop', () => {
     const id = ctx.jobs.start(p.spec)
     ctx.jobs.kill(id)
 
-    await vi.waitFor(() => expect(terminates).toHaveLength(1))
+    await vi.waitFor(() => { expect(terminates).toHaveLength(1) })
     expect(ctx.jobs.get(id).status).toBe('stopping') // still inside the escalation window
-    await vi.waitFor(() => expect(ctx.jobs.get(id).status).toBe('control-lost-unknown'))
+    await vi.waitFor(() => { expect(ctx.jobs.get(id).status).toBe('control-lost-unknown') })
     expect(ctx.jobs.get(id).detail).toContain('cancel and terminate')
   })
 
@@ -525,7 +525,7 @@ describe('LocalJobRegistry bounded stop', () => {
     const id = ctx.jobs.start(p.spec)
     ctx.jobs.kill(id)
 
-    await vi.waitFor(() => expect(ctx.jobs.get(id).status).toBe('control-lost-unknown'))
+    await vi.waitFor(() => { expect(ctx.jobs.get(id).status).toBe('control-lost-unknown') })
     expect(warn).toHaveBeenCalledWith(expect.stringContaining('terminate of'))
   })
 
@@ -537,7 +537,7 @@ describe('LocalJobRegistry bounded stop', () => {
     const p = producer()
     const id = ctx.jobs.start(p.spec)
     ctx.jobs.kill(id)
-    await vi.waitFor(() => expect(ctx.jobs.get(id).status).toBe('control-lost-unknown'))
+    await vi.waitFor(() => { expect(ctx.jobs.get(id).status).toBe('control-lost-unknown') })
 
     p.settle({ status: 'killed', detail: 'eventually stopped' })
     await tick()
@@ -552,7 +552,7 @@ describe('LocalJobRegistry bounded stop', () => {
     const p = producer()
     const id = ctx.jobs.start(p.spec)
     ctx.jobs.kill(id)
-    await vi.waitFor(() => expect(ctx.jobs.get(id).status).toBe('control-lost-unknown'))
+    await vi.waitFor(() => { expect(ctx.jobs.get(id).status).toBe('control-lost-unknown') })
 
     expect(ctx.jobs.kill(id)).toBe('already-finished')
     expect(await ctx.jobs.wait(id, 5_000)).toMatchObject({ status: 'control-lost-unknown', reported: true })
@@ -563,7 +563,7 @@ describe('LocalJobRegistry bounded stop', () => {
     const p = producer({ stopGraceMs: 15 })
     const id = ctx.jobs.start(p.spec)
     ctx.jobs.kill(id)
-    await vi.waitFor(() => expect(ctx.jobs.get(id).status).toBe('control-lost-unknown'))
+    await vi.waitFor(() => { expect(ctx.jobs.get(id).status).toBe('control-lost-unknown') })
 
     expect(() => ctx.jobs.start(producer({ stopGraceMs: 0 }).spec)).toThrow('invalid stopGraceMs')
     expect(() => ctx.jobs.start(producer({ stopGraceMs: 1.5 }).spec)).toThrow('invalid stopGraceMs')
@@ -612,7 +612,7 @@ describe('LocalJobRegistry bounded stop', () => {
     const p = producer()
     const id = ctx.jobs.start(p.spec)
     ctx.jobs.kill(id)
-    await vi.waitFor(() => expect(ctx.jobs.get(id).status).toBe('control-lost-unknown'))
+    await vi.waitFor(() => { expect(ctx.jobs.get(id).status).toBe('control-lost-unknown') })
 
     // The unconfirmed record still occupies the bucket: capacity is not silently reused.
     expect(() => ctx.jobs.start(producer().spec)).toThrow('background job limit reached')
@@ -627,9 +627,9 @@ describe('LocalJobRegistry bounded stop', () => {
     const secondId = ctx.jobs.start(second.spec)
 
     ctx.jobs.kill(firstId)
-    await vi.waitFor(() => expect(ctx.jobs.get(firstId).status).toBe('control-lost-unknown'))
+    await vi.waitFor(() => { expect(ctx.jobs.get(firstId).status).toBe('control-lost-unknown') })
     ctx.jobs.kill(secondId)
-    await vi.waitFor(() => expect(ctx.jobs.get(secondId).status).toBe('control-lost-unknown'))
+    await vi.waitFor(() => { expect(ctx.jobs.get(secondId).status).toBe('control-lost-unknown') })
     // The bucket may hold only one unconfirmed record: the oldest is dropped
     // with an explicit reconciliation marker, the newest stays unknown.
     expect(() => ctx.jobs.get(firstId)).toThrow(`unknown job ${firstId}`)

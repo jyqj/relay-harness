@@ -22,6 +22,7 @@ const JOB_STATUS_KEY = {
   completed: 'jobs.status.completed',
   killed: 'jobs.status.killed',
   failed: 'jobs.status.failed',
+  'control-lost-unknown': 'jobs.status.control-lost-unknown',
 } as const satisfies Record<JobView['status'], AgentsKey>
 
 /**

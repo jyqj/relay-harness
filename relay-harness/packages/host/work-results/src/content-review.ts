@@ -91,6 +91,9 @@ export const workContentReviewProjection: ProjectionDefinition<'workContentRevie
 export function contentCurrency(confirmed: WorkContentVersion, current: WorkContentVersion | undefined): WorkContentCurrency {
   const ref = confirmed.contentHash.digest
   if (current === undefined) return { ref, state: 'not-reverified' }
+  // Currency requires the SAME algorithm; `algorithm` is pinned to one literal today but the
+  // vocabulary widens, so this comparison guards future union growth rather than being dead.
+  // oxlint-disable-next-line typescript/no-unnecessary-condition
   if (current.contentHash.algorithm === confirmed.contentHash.algorithm
     && current.contentHash.digest === confirmed.contentHash.digest) return { ref, state: 'matches-confirmed' }
   return { ref, state: 'changed-unreviewed', current }
@@ -104,7 +107,10 @@ export function sameContentSubject(a: WorkContentReview, b: WorkContentReview): 
 }
 
 /** Read-side currency for the latest review without any fresh observation promise. */
-export function latestContentReviewRead(latest: WorkContentReview | null): { review: WorkContentReview | null; currency: WorkContentCurrency[] } {
+export function latestContentReviewRead(latest: WorkContentReview | null): {
+  review: WorkContentReview | null
+  currency: WorkContentCurrency[]
+} {
   if (latest === null) return { review: null, currency: [] }
   return { review: latest, currency: latest.contentVersionRefs.map(ref => ({ ref, state: 'not-reverified' as const })) }
 }

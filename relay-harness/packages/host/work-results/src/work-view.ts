@@ -126,7 +126,9 @@ export async function readWorkView(ctx: Context, id: SessionId, maxExecutions: n
  * @param maxChars - Total rendered text code-point allowance.
  * @returns A read-only page; tool, reasoning and binary content are not promoted to instructions.
  */
-export function readWorkHistory(id: SessionId, events: readonly SessionEvent[], request: WorkHistoryRequest, maxRows: number, maxChars: number): WorkHistoryPage {
+export function readWorkHistory(
+  id: SessionId, events: readonly SessionEvent[], request: WorkHistoryRequest, maxRows: number, maxChars: number,
+): WorkHistoryPage {
   const observedThroughSeq = events.at(-1)?.seq ?? -1
   const throughSeq = request.snapshot?.throughSeq ?? observedThroughSeq
   if (!Number.isSafeInteger(throughSeq) || throughSeq < -1 || throughSeq > observedThroughSeq) throw new Error('history observation changed; restart the read')

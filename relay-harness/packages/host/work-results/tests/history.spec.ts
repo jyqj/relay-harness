@@ -16,7 +16,9 @@ it('keeps older pages on the observed prefix across appends and rejects a replac
     const page = readWorkHistory(session.id, session.events, { sessionId: session.id, limit: 1 }, 5, 100)
     expect(page.rows.map(row => row.text)).toEqual(['second'])
     add('newer')
-    const older = readWorkHistory(session.id, session.events, { sessionId: session.id, snapshot: page.snapshot, beforeSeq: page.nextBeforeSeq ?? 0 }, 5, 100)
+    const older = readWorkHistory(
+      session.id, session.events, { sessionId: session.id, snapshot: page.snapshot, beforeSeq: page.nextBeforeSeq ?? 0 }, 5, 100,
+    )
     expect(older.rows.map(row => row.text)).toEqual(['first'])
     expect(older.snapshot).toEqual(page.snapshot)
     const replaced = [...structuredClone(session.events)]

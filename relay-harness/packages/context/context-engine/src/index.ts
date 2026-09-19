@@ -304,7 +304,11 @@ export class ContextEngine extends Service implements ContextEngineService {
         if (entry?.eligible !== true || entry.budget === undefined) continue
         runs.set(order, operation.signal.aborted || Date.now() >= deadlineAt
           ? { kind: 'deadline' }
-          : await this.runContributor(registration, { ...input, signal, ...(retrieval === undefined ? {} : { query: retrieval.query.trim() }) }, entry.budget, operation.signal, deadlineAt))
+          : await this.runContributor(
+            registration,
+            { ...input, signal, ...(retrieval === undefined ? {} : { query: retrieval.query.trim() }) },
+            entry.budget, operation.signal, deadlineAt,
+          ))
       }
     }
     try {
@@ -369,11 +373,17 @@ export class ContextEngine extends Service implements ContextEngineService {
     return deepFreeze({ plan, decisions, ...packed })
   }
 
-  private plan(input: ContextPrepareInput, registrations: readonly Registration[], retrieval?: ContextRetrievalInput): ContextRetrievalPlan {
+  private plan(
+    input: ContextPrepareInput, registrations: readonly Registration[], retrieval?: ContextRetrievalInput,
+  ): ContextRetrievalPlan {
     const purpose = input.purpose
     const totalBudget = {
-      maxChars: Math.min(this.config.maxChars, input.limits?.maxChars ?? this.config.maxChars, retrieval?.budget?.maxChars ?? this.config.maxChars),
-      maxTokens: Math.min(this.config.maxTokens, input.limits?.maxTokens ?? this.config.maxTokens, retrieval?.budget?.maxTokens ?? this.config.maxTokens),
+      maxChars: Math.min(
+        this.config.maxChars, input.limits?.maxChars ?? this.config.maxChars, retrieval?.budget?.maxChars ?? this.config.maxChars,
+      ),
+      maxTokens: Math.min(
+        this.config.maxTokens, input.limits?.maxTokens ?? this.config.maxTokens, retrieval?.budget?.maxTokens ?? this.config.maxTokens,
+      ),
     }
     const localBudget = {
       maxChars: Math.min(this.config.maxContributorChars, totalBudget.maxChars),
@@ -496,7 +506,9 @@ function packCandidates(
       continue
     }
     selected.push(candidate)
-    spent.set(candidate.registration.contributor.id, { chars: previous.chars + candidate.chars, tokens: previous.tokens + candidate.tokens })
+    spent.set(candidate.registration.contributor.id, {
+      chars: previous.chars + candidate.chars, tokens: previous.tokens + candidate.tokens,
+    })
     dedupeKeys.add(candidate.dedupeKey)
     chars += candidate.chars
     tokens += candidate.tokens

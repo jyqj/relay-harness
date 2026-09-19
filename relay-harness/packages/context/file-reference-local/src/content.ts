@@ -134,9 +134,9 @@ export class FileReferenceContentContributor implements StepContextContributor {
         admitted.push({ path: mention, truncated: false, unavailable: unavailableReason(error) })
       }
     }
-    const contribution = fitContextContribution(this.ctx, input.budget, bodyBytes => {
+    const contribution = fitContextContribution(this.ctx, input.budget, (bodyBytes) => {
       let remaining = bodyBytes
-      const selected: AdmittedFile[] = admitted.map(file => {
+      const selected: AdmittedFile[] = admitted.map((file) => {
         if ('unavailable' in file) return file
         const text = sliceUtf8Bytes(file.text, remaining)
         remaining -= Buffer.byteLength(text)
@@ -261,7 +261,9 @@ function unavailableReason(error: unknown): string {
 }
 
 /** Read a bounded prefix and close the backend iterator as soon as the byte cap is reached. */
-async function readPrefix(fs: FileSystem, target: FsTarget, cap: number, signal: AbortSignal): Promise<{ text: string; truncated: boolean }> {
+async function readPrefix(
+  fs: FileSystem, target: FsTarget, cap: number, signal: AbortSignal,
+): Promise<{ text: string; truncated: boolean }> {
   let remaining = cap
   let truncated = false
   const parts: string[] = []

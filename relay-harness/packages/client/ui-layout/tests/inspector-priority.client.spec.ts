@@ -22,7 +22,7 @@ describe('explicit inspector intent', () => {
     expect(instance.getSnapshot()).toMatchObject({ details: 0, surfaces: 0, narrowExpanded: false })
   })
 
-  it.each([320, 390, 768, 980, 1024, 1280, 1440, 1920])('keeps the chosen surface visible and within a %dpx frame', viewport => {
+  it.each([320, 390, 768, 980, 1024, 1280, 1440, 1920])('keeps the chosen surface visible and within a %dpx frame', (viewport) => {
     const result = computeColumns(viewport, viewport < 1024 ? 0 : 280, 360, 540, true)
     expect(result.surfaces).toBeGreaterThan(0)
     expect(result.details).toBe(0)
@@ -31,7 +31,9 @@ describe('explicit inspector intent', () => {
   })
 
   it('opening by toggle also dismisses tool details; closing does not resurrect them', () => {
-    const { actions, getSnapshot } = createLayoutStore().create()
+    const store = createLayoutStore().create()
+    const { actions } = store
+    const getSnapshot = (): ReturnType<typeof store.getSnapshot> => store.getSnapshot()
     actions.openDetails(); actions.toggleSurfaces()
     expect(getSnapshot()).toMatchObject({ surfaces: 540, details: 0 })
     actions.toggleSurfaces()

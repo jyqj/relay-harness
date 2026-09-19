@@ -233,15 +233,15 @@ export class McpCatalog extends Service {
       if (notSearched.length > 0) throw new ContextProviderError('error', 'hydration_failed')
       return undefined
     }
-    const contribution = fitContextContribution(this.ctx, input.budget, bodyChars => {
+    const contribution = fitContextContribution(this.ctx, input.budget, (bodyChars) => {
       let remainingChars = bodyChars
-      const selected = rendered.map(item => {
+      const selected = rendered.map((item) => {
         const content = Array.from(item.content).slice(0, remainingChars).join('')
         remainingChars -= Array.from(content).length
         return { ...item, content, truncated: item.truncated || content.length < item.content.length }
       }).filter(item => item.content !== '')
       if (selected.length === 0) return undefined
-      const selectedEvidence = selected.map(item => {
+      const selectedEvidence = selected.map((item) => {
         const original = evidence.find(record => record.resource.sourceId === `mcp:${item.serverName}` && record.resource.key === item.uri)
         if (original === undefined) throw new Error('MCP rendered resource has no acquisition evidence')
         return { ...original, digest: createHash('sha256').update(item.content).digest('hex'), truncated: item.truncated }

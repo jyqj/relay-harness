@@ -135,7 +135,9 @@ export class WorkResultsService extends TypertRemoteService {
     const cut = this.acceptance(agent.session)
     const through = agent.session.seq - 1
     const receipt = agent.session.events.findLast(event => event.type === 'work/accepted')
-    if (receipt === undefined) return { ...cut, confirmationBlockedBy: this.confirmationBlockedBy(agent), verifiedThroughSeq: -1, current: true }
+    if (receipt === undefined) {
+      return { ...cut, confirmationBlockedBy: this.confirmationBlockedBy(agent), verifiedThroughSeq: -1, current: true }
+    }
     if (!await this.ctx.sessions.flush(agent.session)) throw new Error('workResults persistence checkpoint is unavailable')
     this.userRequest(endpoint)
     signal.throwIfAborted()
@@ -146,7 +148,10 @@ export class WorkResultsService extends TypertRemoteService {
     const persisted = stored.events.find(event => event.seq === receipt.seq)
     if (persisted?.type !== 'work/accepted' || readAcceptedRevision(persisted.data) !== cut.acceptedRevision
       || (stored.events.at(-1)?.seq ?? -1) < through) throw new Error('workResults confirmation is not durably recorded')
-    return { ...cut, confirmationBlockedBy: this.confirmationBlockedBy(agent), verifiedThroughSeq: through, current: this.acceptance(agent.session).reviewRevision === cut.reviewRevision }
+    return {
+      ...cut, confirmationBlockedBy: this.confirmationBlockedBy(agent), verifiedThroughSeq: through,
+      current: this.acceptance(agent.session).reviewRevision === cut.reviewRevision,
+    }
   }
 
   /**
@@ -222,7 +227,8 @@ export class WorkResultsService extends TypertRemoteService {
       const source = await this.ctx.sessionQuery.readSession(request.sessionId)
       this.userRequest('contentReview')
       signal.throwIfAborted()
-      latest = source.events.reduce((state, event) => workContentReviewProjection.apply(state, event), workContentReviewProjection.init()).latest
+      latest = source.events
+        .reduce((state, event) => workContentReviewProjection.apply(state, event), workContentReviewProjection.init()).latest
     }
     this.userRequest('contentReview')
     return latestContentReviewRead(latest)

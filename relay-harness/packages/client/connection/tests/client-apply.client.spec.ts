@@ -472,7 +472,7 @@ describe('readiness across asynchronous synchronization', () => {
   it('waits for the connected consumer before publishing ready and invalidates identity on reconnect', async () => {
     ;(globalThis as Win).location = { hostname: 'localhost', search: '?fixture' }
     const handle = await mount()
-    const synchronization = Promise.withResolvers<void>()
+    const synchronization = Promise.withResolvers<undefined>()
     const phases: string[] = []
     const off = handle.readiness.subscribe(() => { phases.push(handle.readiness.getSnapshot().phase) })
     const loop = handle.start({ onConnected: () => synchronization.promise })
@@ -480,7 +480,7 @@ describe('readiness across asynchronous synchronization', () => {
       await vi.waitFor(() => { expect(handle.readiness.getSnapshot()).toEqual({ phase: 'synchronizing', epoch: 1 }) })
       expect(handle.hostDescription.getSnapshot()).toBeDefined()
       expect(phases).toEqual(['connecting', 'synchronizing'])
-      synchronization.resolve()
+      synchronization.resolve(undefined)
       await vi.waitFor(() => { expect(handle.readiness.getSnapshot().phase).toBe('ready') })
       loop.stop()
       expect(handle.readiness.getSnapshot()).toEqual({ phase: 'stopped', epoch: 1 })
@@ -488,13 +488,13 @@ describe('readiness across asynchronous synchronization', () => {
       try {
         await vi.waitFor(() => { expect(handle.readiness.getSnapshot()).toEqual({ phase: 'ready', epoch: 2 }) })
       } finally { again.stop() }
-    } finally { synchronization.resolve(); off(); loop.stop() }
+    } finally { synchronization.resolve(undefined); off(); loop.stop() }
   })
 
   it.each(['resolve', 'reject'] as const)('ignores an old synchronization %s after a replacement loop is ready', async (settlement) => {
     ;(globalThis as Win).location = { hostname: 'localhost', search: '?fixture' }
     const handle = await mount()
-    const old = Promise.withResolvers<void>()
+    const old = Promise.withResolvers<undefined>()
     const log = vi.spyOn(console, 'error').mockImplementation(() => undefined)
     const first = handle.start({ onConnected: () => old.promise })
     await vi.waitFor(() => { expect(handle.readiness.getSnapshot().phase).toBe('synchronizing') })
@@ -503,12 +503,12 @@ describe('readiness across asynchronous synchronization', () => {
       await vi.waitFor(() => { expect(handle.readiness.getSnapshot()).toEqual({ phase: 'ready', epoch: 2 }) })
       const current = handle.readiness.getSnapshot()
       if (settlement === 'reject') old.reject(new Error('old synchronization failed'))
-      else old.resolve()
+      else old.resolve(undefined)
       await new Promise(resolve => setTimeout(resolve, 0))
       first.stop()
       expect(handle.readiness.getSnapshot()).toBe(current)
       expect(handle.hostDescription.getSnapshot()).toBeDefined()
-    } finally { old.resolve(); first.stop(); replacement.stop(); log.mockRestore() }
+    } finally { old.resolve(undefined); first.stop(); replacement.stop(); log.mockRestore() }
   })
 
   it('exposes a synchronization failure without treating capabilities as successful hydration', async () => {
@@ -546,16 +546,18 @@ describe('readiness across asynchronous synchronization', () => {
     ;(globalThis as Win).location = { hostname: 'localhost', search: '?fixture' }
     const handle = await mount()
     const connected = vi.fn()
-    let loop: ReturnType<ConnectionHandle['start']> | undefined
+    // The observer may fire synchronously inside start() before the loop binding exists,
+    // so the loop lives in a holder that is safe to read before the assignment lands.
+    const loopRef: { loop?: ReturnType<ConnectionHandle['start']> } = {}
     const off = handle.readiness.subscribe(() => {
-      if (handle.readiness.getSnapshot().phase === 'synchronizing') loop?.stop()
+      if (handle.readiness.getSnapshot().phase === 'synchronizing') loopRef.loop?.stop()
     })
-    loop = handle.start({ onConnected: connected })
+    loopRef.loop = handle.start({ onConnected: connected })
     try {
       await vi.waitFor(() => { expect(handle.readiness.getSnapshot()).toEqual({ phase: 'stopped', epoch: 1 }) })
       expect(connected).not.toHaveBeenCalled()
       expect(handle.hostDescription.getSnapshot()).toBeUndefined()
-    } finally { off(); loop.stop() }
+    } finally { off(); loopRef.loop?.stop() }
   })
 
   it('stops the active stream and prevents pending hydration from publishing after plugin disposal', async () => {
@@ -564,12 +566,12 @@ describe('readiness across asynchronous synchronization', () => {
     const fork = ctx.plugin({ apply, inject: [] })
     await fork
     const handle = ctx.get('connection') as ConnectionHandle
-    const pending = Promise.withResolvers<void>()
+    const pending = Promise.withResolvers<undefined>()
     handle.start({ onConnected: () => pending.promise })
     await vi.waitFor(() => { expect(handle.readiness.getSnapshot().phase).toBe('synchronizing') })
     await ctx.fiber.dispose()
     expect(handle.readiness.getSnapshot().phase).toBe('stopped')
-    pending.resolve()
+    pending.resolve(undefined)
     await new Promise(resolve => setTimeout(resolve, 0))
     expect(handle.readiness.getSnapshot().phase).toBe('stopped')
     expect(handle.hostDescription.getSnapshot()).toBeUndefined()

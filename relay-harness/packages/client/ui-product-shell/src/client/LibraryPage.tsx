@@ -17,7 +17,10 @@ export interface LibraryPageInjected {
 export type LibraryPageProps = PropsRuntime<'shell.page'> & PropsLocale<'productShell'> & InjectFace<LibraryPageInjected>
 
 /** Search only execution-recorded outputs from existing Sessions, with explicit page coverage. */
-export function LibraryPage({ active: visible, useSessions, useConnection, openFiles, openSettings, queryLibrary, openLibraryOutput, openSource, t }: LibraryPageProps) {
+export function LibraryPage(
+  { active: visible, useSessions, useConnection, openFiles, openSettings, queryLibrary, openLibraryOutput, openSource, t }:
+  LibraryPageProps,
+) {
   const connection = useConnection(value => value)
   const ready = connection.phase === 'ready'
   const submittedQuery = useRef('')
@@ -76,7 +79,8 @@ export function LibraryPage({ active: visible, useSessions, useConnection, openF
       setError(failure instanceof Error ? failure.message : String(failure))
     })
   }
-  const hasGaps = scan?.value.hadUnindexedResults === true || scan?.value.hadUnavailableSessions === true || (page?.coverage?.omittedSessions ?? 0) > 0
+  const hasGaps = scan?.value.hadUnindexedResults === true || scan?.value.hadUnavailableSessions === true
+    || (page?.coverage?.omittedSessions ?? 0) > 0
   return <section className={css.page} data-library-page>
     <header className={css.pageHeading}><div><p className={css.eyebrow}>{t('nav.library')}</p><h2>{t('library.title')}</h2><p>{t('library.description')}</p></div></header>
     <form className={css.librarySearch} onSubmit={(event) => { event.preventDefault(); if (ready) load(query) }}>
@@ -105,10 +109,10 @@ export function LibraryPage({ active: visible, useSessions, useConnection, openF
     {!loading && entries.length === 0 && page !== null ? <p>{t('library.empty')}</p> : null}
     {page?.next !== null && page?.next !== undefined ? <button type="button" className={css.filesButton} disabled={loading || !currentScan || loadError !== null} onClick={() => { if (currentScan) load(submitted, page.next) }}>{t('library.more')}</button> : null}
     <section className={css.card}><h3>{t('library.resources.title')}</h3><p>{t('library.resources.scope')}</p>
-    <div className={css.libraryGrid}>
-      <button type="button" disabled={!ready || !hasSession} onClick={openFiles}>{t('library.files')}</button>
-      <button type="button" onClick={() => { openSettings('memory') }}>{t('library.memory')}</button>
-    </div></section>
+      <div className={css.libraryGrid}>
+        <button type="button" disabled={!ready || !hasSession} onClick={openFiles}>{t('library.files')}</button>
+        <button type="button" onClick={() => { openSettings('memory') }}>{t('library.memory')}</button>
+      </div></section>
     <section className={css.card}><h3>{t('library.capabilities.title')}</h3><p>{t('library.capabilities.scope')}</p><div className={css.libraryGrid}>
       <button type="button" onClick={() => { openSettings('skills') }}>{t('library.skills')}</button>
       <button type="button" onClick={() => { openSettings('mcp') }}>{t('library.mcp')}</button>

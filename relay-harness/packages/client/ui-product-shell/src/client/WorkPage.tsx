@@ -17,7 +17,10 @@ export interface WorkPageInjected {
 export type WorkPageProps = PropsRuntime<'shell.page'> & PropsRenderSlots<'work.activity'> & PropsLocale<'productShell'> & InjectFace<WorkPageInjected>
 
 /** Render attention, execution, and version-bound record confirmation in the main workspace. */
-export function WorkPage({ active, renderSlot, useWork, openConversation, startWork, openDeliverable, acceptWork, verifyWork, openFiles, t }: WorkPageProps) {
+export function WorkPage(
+  { active, renderSlot, useWork, openConversation, startWork, openDeliverable, acceptWork, verifyWork, openFiles, t }:
+  WorkPageProps,
+) {
   const blockerId = useId()
   const work = useWork(value => value)
   const request = useRef(0)
@@ -63,7 +66,8 @@ export function WorkPage({ active, renderSlot, useWork, openConversation, startW
       setVerificationError(error instanceof Error ? error.message : String(error))
     })
     return () => { controller.abort() }
-  }, [work.sessionId, work.epoch, work.availability, work.execution, reviewRevision, acceptedRevision, refresh, verifyWork, active, work.approvals, work.questions])
+  }, [work.sessionId, work.epoch, work.availability, work.execution, reviewRevision, acceptedRevision, refresh,
+    verifyWork, active, work.approvals, work.questions])
   const open = (path: string): void => {
     if (!active || work.availability !== 'ready') return
     const id = ++request.current
@@ -118,21 +122,25 @@ export function WorkPage({ active, renderSlot, useWork, openConversation, startW
   const receipt = work.acceptance
   const failedAcceptance = acceptanceError?.sessionId === work.sessionId && acceptanceError.revision === receipt?.reviewRevision
   const verified = verification?.sessionId === work.sessionId && verification.epoch === work.epoch ? verification.value : undefined
-  const supersededCut = superseded?.sessionId === work.sessionId && superseded.epoch === work.epoch && superseded.revision === receipt?.reviewRevision
+  const supersededCut = superseded?.sessionId === work.sessionId && superseded.epoch === work.epoch
+    && superseded.revision === receipt?.reviewRevision
   const accepted = work.availability === 'ready' && work.execution === 'idle' && receipt !== null && verified?.current === true && verified.reviewRevision === receipt.reviewRevision
-    && verified.acceptedRevision === receipt.reviewRevision && receipt.acceptedRevision === verified.acceptedRevision && !supersededCut && !failedAcceptance && !accepting
+    && verified.acceptedRevision === receipt.reviewRevision && receipt.acceptedRevision === verified.acceptedRevision
+    && !supersededCut && !failedAcceptance && !accepting
   const acceptanceLabel = accepting ? t('work.acceptance.saving') : checking ? t('work.acceptance.checking') : receipt === null ? t('work.acceptance.unavailable') : accepted ? t('work.acceptance.current')
     : receipt.acceptedRevision === null || failedAcceptance || verificationError !== null ? t('work.acceptance.unreviewed') : t('work.acceptance.stale')
   const currentReview = active && verified?.current === true && verified.reviewRevision === receipt?.reviewRevision
   const canAccept = currentReview && verified.confirmationBlockedBy.length === 0 && work.availability === 'ready'
-    && receipt?.reviewable === true && work.execution === 'idle' && work.approvals === 0 && work.questions === 0
+    // `receipt` is nullable here; the chain's `undefined` is the intended falsy for "no acceptance".
+    // oxlint-disable-next-line typescript/no-unnecessary-condition
+    && receipt?.reviewable && work.execution === 'idle' && work.approvals === 0 && work.questions === 0
   const blockedBy = !active || work.availability !== 'ready' ? t('work.confirm.blocked.unavailable')
     : work.approvals > 0 ? t('work.confirm.blocked.approval')
       : work.questions > 0 ? t('work.confirm.blocked.question')
         : work.execution !== 'idle' ? t('work.confirm.blocked.running')
-      : checking ? t('work.acceptance.checking')
-        : !currentReview ? t('work.confirm.blocked.unverified')
-          : verified.confirmationBlockedBy.map(reason => t(`work.confirm.blocked.${reason}`)).join(' · ')
+          : checking ? t('work.acceptance.checking')
+            : !currentReview ? t('work.confirm.blocked.unverified')
+              : verified.confirmationBlockedBy.map(reason => t(`work.confirm.blocked.${reason}`)).join(' · ')
   const openCurrentConversation = (): void => { if (work.sessionId !== undefined) openConversation(work.sessionId) }
   return <section className={css.page} data-work-page>
     <header className={css.pageHeading}>

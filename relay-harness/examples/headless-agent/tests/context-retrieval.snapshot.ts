@@ -15,7 +15,7 @@ it('retrieves real workspace evidence through the headless Loader and ordinary t
     binScript, libBinScript: binScript, binArgs: [configPath, 'go'],
     tsconfigPath: fileURLToPath(new URL('../../../tsconfig.json', import.meta.url)),
     env: { RLH_SNAPSHOT: 'replay' },
-    prepare: async cwd => { await writeFile(join(cwd, 'marker.ts'), 'export function spoolQuantaMarker() { return 42 }\n') },
+    prepare: async (cwd) => { await writeFile(join(cwd, 'marker.ts'), 'export function spoolQuantaMarker() { return 42 }\n') },
   })
   expect(result.stderr).toBe('')
   const records = result.stdout.trim().split('\n').map(line => JSON.parse(line) as { type: string; event?: SessionEvent; output?: string })

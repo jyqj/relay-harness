@@ -57,7 +57,8 @@ async function fixture() {
   roots.push(root)
   const opened: string[] = []
   const plugins = { llm: Llm, sessions: Sessions, agents: Agents, loop: Loop, prompt: Prompt, tools: Tools, questions: Questions,
-    approval: Approval, projections: Projections, persistence: Persistence, query: Query, jobs: Jobs, subagents: SubagentRuntime, typert: Typert,
+    approval: Approval, projections: Projections, persistence: Persistence, query: Query, jobs: Jobs,
+    subagents: SubagentRuntime, typert: Typert,
     gateway: Gateway, web: WebServer, connection: Connection, deliverables: Deliverables, results: WorkResults, relay: RelayFixture,
     support: {
       inject: ['agents', 'sessions', 'userQuestions', 'sessionQuery'],

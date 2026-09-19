@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { verifyPnpmSetupPaths } from './verify-workflow-pnpm.mjs'
 
 const prefix = 'jobs:\n  tests:\n    steps:\n'
-const step = "      - uses: pnpm/action-setup@v4\n        with:\n          package_json_file: relay-harness/package.json\n"
+const step = '      - uses: pnpm/action-setup@v4\n        with:\n          package_json_file: relay-harness/package.json\n'
 
 describe('action-owned pnpm manifest paths', () => {
   it('accepts block inputs and checks every step', () => {
@@ -16,11 +16,11 @@ describe('action-owned pnpm manifest paths', () => {
     expect(verifyPnpmSetupPaths(prefix + '      # - uses: pnpm/action-setup@v4\n' + named, 'ci.yml')).toBe(1)
   })
   it.each([
-    "      - uses: pnpm/action-setup@v4\n",
+    '      - uses: pnpm/action-setup@v4\n',
     "      - uses: pnpm/action-setup@v4\n        with:\n          version: '11.22.0'\n",
     step.replace('relay-harness/package.json', 'package.json'),
     step.replace('with:', 'env:'),
-    "      - uses: pnpm/action-setup@v4\n        with: { package_json_file: relay-harness/package.json }\n",
+    '      - uses: pnpm/action-setup@v4\n        with: { package_json_file: relay-harness/package.json }\n',
   ])('rejects missing, misplaced, inline, and repository-root manifests', (invalid) => {
     expect(() => verifyPnpmSetupPaths(prefix + invalid, 'ci.yml')).toThrow('with.package_json_file')
   })

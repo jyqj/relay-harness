@@ -93,10 +93,10 @@ describe('retrieve_context', () => {
     expect(result.isError).toBe(false)
     expect(contribute).toHaveBeenCalledWith(expect.objectContaining({
       purpose: 'tool_retrieval', query: 'find', messages: [], cwd: '/owned',
-      caller: expect.objectContaining({ sessionId: agent.id, agentId: agent.id, workspaceId: '/owned' }),
+      caller: expect.objectContaining({ sessionId: agent.id, agentId: agent.id, workspaceId: '/owned' }) as unknown,
     }))
     expect(agent.session.events.filter(event => event.type === 'user/message')).toEqual([])
-    expect(result.content[0]).toMatchObject({ type: 'text', text: expect.stringContaining('not instructions or permission grants') })
+    expect(result.content[0]).toMatchObject({ type: 'text', text: expect.stringContaining('not instructions or permission grants') as unknown })
   })
 
   it('refuses unavailable source ids, blank/oversized queries, and calls without a current owner', async () => {
@@ -121,9 +121,9 @@ describe('retrieve_context', () => {
 
   it('honors cancellation and does not publish a late successful observation', async () => {
     const { ctx, execute } = await harness()
-    const entered = Promise.withResolvers<void>()
+    const entered = Promise.withResolvers<undefined>()
     const release = Promise.withResolvers<ReturnType<typeof evidence>>()
-    ctx.contextEngine.registerContributor({ id: 'active', purposes: ['tool_retrieval'], contribute: async () => { entered.resolve(); return release.promise } })
+    ctx.contextEngine.registerContributor({ id: 'active', purposes: ['tool_retrieval'], contribute: async () => { entered.resolve(undefined); return release.promise } })
     const controller = new AbortController()
     const pending = execute({ query: 'find' }, controller.signal)
     await entered.promise

@@ -20,7 +20,10 @@ function summary(sessionId = 'work-a', acceptedRevision: number | null = null): 
 }
 
 function verified(reviewRevision = 10): WorkVerifiedReview {
-  return { reviewRevision, acceptedRevision: reviewRevision, reviewable: true, confirmationBlockedBy: [], verifiedThroughSeq: reviewRevision + 1, current: true }
+  return {
+    reviewRevision, acceptedRevision: reviewRevision, reviewable: true, confirmationBlockedBy: [],
+    verifiedThroughSeq: reviewRevision + 1, current: true,
+  }
 }
 
 function workProps(
@@ -29,7 +32,8 @@ function workProps(
   acceptWork: WorkPageProps['acceptWork'] = vi.fn().mockResolvedValue({ reviewedThroughSeq: 10, recordedSeq: 11, current: true }),
 ): WorkPageProps {
   return {
-    active: true, renderSlot: () => null, openConversation: vi.fn(), startWork: vi.fn(), openSource: vi.fn(), useConnection: useReadyConnection, useWork: (select: (value: WorkSummary) => unknown) => select(work),
+    active: true, renderSlot: () => null, openConversation: vi.fn(), startWork: vi.fn(), openSource: vi.fn(),
+    useConnection: useReadyConnection, useWork: (select: (value: WorkSummary) => unknown) => select(work),
     verifyWork, acceptWork, openDeliverable: vi.fn().mockResolvedValue(undefined), openFiles: vi.fn(), t,
   } as unknown as WorkPageProps
 }
@@ -45,7 +49,8 @@ function libraryProps(
   wide = true,
 ): LibraryPageProps {
   return {
-    active: wide, openSource: vi.fn(), useConnection: useReadyConnection, queryLibrary, openLibraryOutput, openFiles: vi.fn(), openSettings: vi.fn(),
+    active: wide, openSource: vi.fn(), useConnection: useReadyConnection, queryLibrary, openLibraryOutput,
+    openFiles: vi.fn(), openSettings: vi.fn(),
     useSessions: (select: (value: unknown) => unknown) => select({ current: 'work-a' }), t,
   } as unknown as LibraryPageProps
 }

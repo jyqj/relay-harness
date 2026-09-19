@@ -111,10 +111,11 @@ export const EXPECTED_PRIVILEGED_METHODS: readonly string[] = [
 /**
  * Reads the `/remote` import specifiers of a client-assembly source.
  * @param source - Full text of the module (typically api-remotes `client/index.ts`).
- * @returns Every `@relay-harness/.../remote` specifier of a default import mounted for runtime, in file order; type-only re-exports are ignored.
+ * @returns Every `@relay-harness/.../remote` specifier of a default import mounted for runtime,
+ * in file order; type-only re-exports are ignored.
  */
 export function extractRemoteImports(source: string): string[] {
-  return [...source.matchAll(/^import \w+ from '(@relay-harness\/[^']+\/remote)'$/gm)].map(match => match[1]!)
+  return [...source.matchAll(/^import \w+ from '(@relay-harness\/[^']+\/remote)'$/gm)].map(match => match[1] ?? '')
 }
 
 /**
@@ -123,7 +124,7 @@ export function extractRemoteImports(source: string): string[] {
  * @returns Every quoted `segment.method` key declared in the map, in file order.
  */
 export function extractRpcMethodKeys(source: string): string[] {
-  return [...source.matchAll(/'([a-zA-Z]+(?:\/[a-zA-Z]+|\.[a-zA-Z]+))':/g)].map(match => match[1]!)
+  return [...source.matchAll(/'([a-zA-Z]+(?:\/[a-zA-Z]+|\.[a-zA-Z]+))':/g)].map(match => match[1] ?? '')
 }
 
 /**
@@ -140,7 +141,7 @@ export function extractPrivilegedMethods(source: string): string[] {
   // Comments inside the literal carry prose apostrophes that would otherwise
   // be read as string delimiters; strip them before matching literals.
   const literal = source.slice(listStart, listEnd).replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '')
-  return [...literal.matchAll(/'([^']+)'/g)].map(match => match[1]!)
+  return [...literal.matchAll(/'([^']+)'/g)].map(match => match[1] ?? '')
 }
 
 /**
@@ -153,7 +154,8 @@ export function extractPrivilegedMethods(source: string): string[] {
  */
 export function computeDuplicatedDomains(remoteImports: readonly string[], wireMethods: readonly string[]): DuplicatedDomain[] {
   return REMOTE_WIRE_TABLE
-    .filter(entry => remoteImports.includes(entry.remoteImport) && wireMethods.some(method => entry.wirePrefixes.some(prefix => method.startsWith(prefix))))
+    .filter(entry => remoteImports.includes(entry.remoteImport)
+      && wireMethods.some(method => entry.wirePrefixes.some(prefix => method.startsWith(prefix))))
     .sort((a, b) => a.domain.localeCompare(b.domain))
 }
 

@@ -18,9 +18,15 @@ function summary(changes: Partial<WorkSummary> = {}): WorkSummary {
     acceptance: { reviewRevision: 8, acceptedRevision: 8, reviewable: true }, ...changes,
   }
 }
-const verified: WorkVerifiedReview = { reviewRevision: 8, acceptedRevision: 8, reviewable: true, current: true, confirmationBlockedBy: [], verifiedThroughSeq: 9 }
+const verified: WorkVerifiedReview = {
+  reviewRevision: 8, acceptedRevision: 8, reviewable: true, current: true, confirmationBlockedBy: [], verifiedThroughSeq: 9,
+}
 function workProps(work: WorkSummary, verifyWork: WorkPageProps['verifyWork'], acceptWork = vi.fn(), openDeliverable = vi.fn()): WorkPageProps {
-  return { active: true, renderSlot: () => null, openConversation: vi.fn(), startWork: vi.fn(), openSource: vi.fn(), useWork: (select: (value: WorkSummary) => unknown) => select(work), verifyWork, acceptWork, openDeliverable, openFiles: vi.fn(), t } as unknown as WorkPageProps
+  return {
+    active: true, renderSlot: () => null, openConversation: vi.fn(), startWork: vi.fn(), openSource: vi.fn(),
+    useWork: (select: (value: WorkSummary) => unknown) => select(work),
+    verifyWork, acceptWork, openDeliverable, openFiles: vi.fn(), t,
+  } as unknown as WorkPageProps
 }
 
 describe('Work generation-bound actions', () => {
@@ -31,7 +37,7 @@ describe('Work generation-bound actions', () => {
     const view = render(<WorkPage {...workProps(summary(), verifyWork)} />)
     view.rerender(<WorkPage {...workProps(summary({ epoch: 2 }), verifyWork)} />)
     expect(verifyWork).toHaveBeenCalledTimes(2)
-    expect(verifyWork.mock.calls[0]?.[1].aborted).toBe(true)
+    expect((verifyWork.mock.calls[0]?.[1] as { aborted: boolean } | undefined)?.aborted).toBe(true)
     await act(async () => { old.resolve(verified); await Promise.resolve() })
     expect(screen.queryByText('work.acceptance.current')).toBeNull()
     await act(async () => { current.resolve(verified); await Promise.resolve() })
@@ -110,7 +116,8 @@ const page: WorkLibraryPage = {
 }
 function libraryProps(connection: Readiness, queryLibrary: LibraryPageProps['queryLibrary'], opener = vi.fn()): LibraryPageProps {
   return {
-    active: true, renderSlot: () => null, openConversation: vi.fn(), startWork: vi.fn(), openSource: vi.fn(), useConnection: (select: (value: Readiness) => unknown) => select(connection),
+    active: true, renderSlot: () => null, openConversation: vi.fn(), startWork: vi.fn(), openSource: vi.fn(),
+    useConnection: (select: (value: Readiness) => unknown) => select(connection),
     useSessions: (select: (value: { current: string }) => unknown) => select({ current: 's1' }),
     queryLibrary, openLibraryOutput: opener, openFiles: vi.fn(), openSettings: vi.fn(), t,
   } as unknown as LibraryPageProps
@@ -138,7 +145,7 @@ describe('Library connection generations', () => {
     expect(query).toHaveBeenCalledTimes(2)
     view.rerender(<LibraryPage {...libraryProps({ phase: 'ready', epoch: 2 }, query, opener)} />)
     expect(query.mock.calls[2]?.[0]).toEqual({ query: 'submitted' })
-    expect((screen.getByRole('textbox') as HTMLInputElement).value).toBe('unsent changes')
+    expect(screen.getByRole('textbox')).toHaveProperty('value', 'unsent changes')
     expect(screen.queryByText('old.md')).toBeNull()
     await act(async () => { reload.resolve({ ...page, entries: [], next: null, unindexedResults: 0 }); await Promise.resolve() })
     expect(screen.queryByText('library.priorUnindexed')).toBeNull()
@@ -150,7 +157,7 @@ describe('Library connection generations', () => {
     const query = vi.fn().mockReturnValueOnce(old.promise).mockResolvedValue({ ...page, entries: [{ sessionId: 's2', path: 'fresh.md' }] })
     const view = render(<LibraryPage {...libraryProps({ phase: 'ready', epoch: 1 }, query)} />)
     view.rerender(<LibraryPage {...libraryProps({ phase: 'ready', epoch: 2 }, query)} />)
-    expect(query.mock.calls[0]?.[1].aborted).toBe(true)
+    expect((query.mock.calls[0]?.[1] as { aborted: boolean } | undefined)?.aborted).toBe(true)
     await screen.findByText('fresh.md')
     await act(async () => {
       if (settlement === 'resolve') old.resolve(page)
@@ -163,7 +170,7 @@ describe('Library connection generations', () => {
   })
 
   it('retires an in-flight native opener when connection readiness is lost', async () => {
-    const pending = Promise.withResolvers<void>()
+    const pending = Promise.withResolvers<undefined>()
     const open = vi.fn().mockReturnValueOnce(pending.promise).mockResolvedValue(undefined)
     const query = vi.fn().mockResolvedValue(page)
     const view = render(<LibraryPage {...libraryProps({ phase: 'ready', epoch: 1 }, query, open)} />)

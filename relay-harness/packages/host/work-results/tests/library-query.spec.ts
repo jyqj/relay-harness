@@ -22,7 +22,8 @@ async function harness(extraPersisted: readonly SessionId[] = [], overrides: Par
   await ctx.plugin(Object.assign((inner: Context) => {
     inner.sessionProjections.register(deliverablesProjection)
     inner.provide('sessionQuery', {
-      listSessions: async () => [...inner.sessions.list()].map(session => ({ header: structuredClone(session.header), live: true, persisted: false }))
+      listSessions: async () => [...inner.sessions.list()]
+        .map(session => ({ header: structuredClone(session.header), live: true, persisted: false }))
         .concat(extraPersisted.map(id => ({ header: { version: 0, id, createdAt: 1 }, live: false, persisted: true }))),
       readSession: async (id: SessionId) => { throw new Error(`no cold history for ${id}`) },
     } as never)

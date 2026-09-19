@@ -32,7 +32,9 @@ describe('primary workbench navigation', () => {
 })
 
 function activityProps(state: Partial<SessionListState>, openConversation = vi.fn()): WorkActivityProps {
-  return { t, openConversation, useSessions: (select: (value: Partial<SessionListState>) => unknown) => select(state) } as unknown as WorkActivityProps
+  return {
+    t, openConversation, useSessions: (select: (value: Partial<SessionListState>) => unknown) => select(state),
+  } as unknown as WorkActivityProps
 }
 
 describe('work execution relationships', () => {

@@ -678,9 +678,9 @@ export class LocalJobRegistry extends JobRegistry {
         job.stopTimer = undefined
         if (job.status === 'stopping') this.abandon(job)
       }, job.stopGraceMs)
-      job.stopTimer.unref?.()
+      job.stopTimer.unref()
     }, job.stopGraceMs)
-    job.stopTimer.unref?.()
+    job.stopTimer.unref()
   }
 
   /**

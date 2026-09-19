@@ -185,7 +185,7 @@ export class CodeContextContributor implements StepContextContributor {
     const groups = input.purpose === 'tool_retrieval' ? hydrated.map(candidate => [candidate]) : [hydrated]
     const contributions: ContributedStepContext[] = []
     for (const [rank, group] of groups.entries()) {
-      const contribution = fitContextContribution(this.ctx, input.budget, bodyChars => {
+      const contribution = fitContextContribution(this.ctx, input.budget, (bodyChars) => {
         const admitted = admitHits(group, { ...this.config, maxChars: bodyChars })
         if (admitted.length === 0) return undefined
         const hits: CodeContextRecallHit[] = admitted.map(({ hit, source, truncated }) => ({

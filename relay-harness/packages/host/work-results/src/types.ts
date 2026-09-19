@@ -176,13 +176,23 @@ export interface WorkView {
   readonly parentSessionId?: import('@relay-harness/rlh-session/types').SessionId
   readonly relation: 'root' | 'fork' | 'delegated'
   readonly source: { readonly throughSeq: number; readonly resident: boolean; readonly current: boolean }
-  readonly goal: { readonly id: string; readonly revision: number; readonly objective: string; readonly phase: string; readonly roundsStarted: number } | null
+  readonly goal: {
+    readonly id: string
+    readonly revision: number
+    readonly objective: string
+    readonly phase: string
+    readonly roundsStarted: number
+  } | null
   readonly execution: { readonly activity: 'running' | 'idle' | 'unknown'; readonly entries: readonly WorkExecutionEntry[]; readonly omitted: number }
   readonly attention: { readonly approvals: number; readonly questions: number; readonly available: boolean }
   readonly outputs: DeliverablesProjection
   readonly review: WorkAcceptanceProjection
   readonly actions: { readonly confirmRecord: { readonly allowed: boolean; readonly blockers: readonly string[]; readonly scope: 'session-log' } }
-  readonly capabilities: { readonly contextSources: readonly { readonly id: string; readonly purposes: readonly string[] }[]; readonly contextAvailable: boolean; readonly activationRequired: boolean }
+  readonly capabilities: {
+    readonly contextSources: readonly { readonly id: string; readonly purposes: readonly string[] }[]
+    readonly contextAvailable: boolean
+    readonly activationRequired: boolean
+  }
   readonly coverage: { readonly missing: readonly string[]; readonly scope: 'observed-session-and-descendants' }
 }
 
