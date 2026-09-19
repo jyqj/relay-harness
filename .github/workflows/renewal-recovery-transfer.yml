@@ -59,7 +59,9 @@ jobs:
             execFileSync('git',['archive','--format=tar.gz','-o',path.join(out,'source.tar.gz'),tree]);
             fs.writeFileSync(path.join(out,'source.tree'),tree+'\n');
             fs.writeFileSync(path.join(out,'delta.json'),JSON.stringify(delta));
-            fs.writeFileSync(path.join(out,'tree-entries.txt'),execFileSync('git',['ls-files','-s'],{encoding:'utf8'}));
+            fs.writeFileSync(path.join(out,'tree-entries.txt'),execFileSync('git',['ls-files','-s'],{encoding:'utf8',maxBuffer:32*1024*1024}));
+            const sums = ['source.tar.gz','source.tree','delta.json','tree-entries.txt'].map(name => crypto.createHash('sha256').update(fs.readFileSync(path.join(out,name))).digest('hex')+'  '+name).join('\n')+'\n';
+            fs.writeFileSync(path.join(out,'SHA256SUMS'),sums);
             core.info('Verified and exported source tree '+tree+'; no commits or refs changed.');
       - uses: actions/upload-artifact@v4
         with:
