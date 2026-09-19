@@ -36,12 +36,19 @@ export class DiscardedDraftRegistry {
     {}, { persist: { name: PERSIST_KEY } },
   )
 
-  /** Read the full tombstone table (inspection face). */
+  /**
+   * Read the full tombstone table (inspection face).
+   * @returns the retained tombstones keyed by Session id; empty when nothing was discarded.
+   */
   getSnapshot(): Entries {
     return this.store.getSnapshot()
   }
 
-  /** @param listener - change observer. @returns subscription disposer. */
+  /**
+   * Observe tombstone changes (discard, restore, localStorage reload).
+   * @param listener - change observer called after each committed store update.
+   * @returns the subscription disposer.
+   */
   subscribe(listener: () => void): () => void {
     return this.store.subscribe(listener)
   }

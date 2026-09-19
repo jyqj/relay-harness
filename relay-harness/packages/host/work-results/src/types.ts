@@ -290,12 +290,16 @@ export interface WorkContentReviewRequest {
   readonly checkRecordRefs: readonly string[]
 }
 
-/** Bounded read of final human/assistant/tool messages; does not repair or activate execution. */
 /** Revision-bound observation for paging; appends beyond throughSeq do not change it. */
 export interface WorkHistorySnapshot {
   readonly throughSeq: number
   readonly digest: string
 }
+
+/**
+ * Bounded read of final human/assistant/tool messages; does not repair or
+ * activate execution.
+ */
 export interface WorkHistoryRequest extends WorkReadRequest {
   readonly snapshot?: WorkHistorySnapshot
   readonly beforeSeq?: number

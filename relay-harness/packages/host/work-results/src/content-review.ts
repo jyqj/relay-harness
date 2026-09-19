@@ -99,14 +99,23 @@ export function contentCurrency(confirmed: WorkContentVersion, current: WorkCont
   return { ref, state: 'changed-unreviewed', current }
 }
 
-/** Whether a fresh submission repeats the latest recorded review's subject. */
+/**
+ * Whether a fresh submission repeats the latest recorded review's subject.
+ * @param a - the recorded review to compare against.
+ * @param b - the submitted review.
+ * @returns true when decision, versions and check records are identical, so the resubmission is a duplicate.
+ */
 export function sameContentSubject(a: WorkContentReview, b: WorkContentReview): boolean {
   const subject = (review: WorkContentReview) => JSON.stringify([review.decision, review.contentVersions,
     review.contentVersionRefs, review.checkRecords, review.checkRecordRefs])
   return subject(a) === subject(b)
 }
 
-/** Read-side currency for the latest review without any fresh observation promise. */
+/**
+ * Read-side currency for the latest review without any fresh observation promise.
+ * @param latest - the durable latest review, or null before the first one.
+ * @returns the review plus per-version currency; every confirmed version reads `not-reverified` until a fresh observation exists.
+ */
 export function latestContentReviewRead(latest: WorkContentReview | null): {
   review: WorkContentReview | null
   currency: WorkContentCurrency[]
