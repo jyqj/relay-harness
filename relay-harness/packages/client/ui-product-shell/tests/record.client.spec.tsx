@@ -11,7 +11,7 @@ const id = SessionId('source-one')
 function view(sessionId = id): WorkView {
   return {
     sessionId, relation: 'root', source: { throughSeq: 3, resident: false, current: false }, goal: null,
-    execution: { activity: 'unknown', entries: [{ id: sessionId, sessionId, kind: 'agent', label: 'Saved source', activity: 'inactive', recovery: 'explicit-resume' }], omitted: 0 },
+    execution: { activity: 'unknown', entries: [{ id: sessionId, sessionId, kind: 'agent', label: 'Saved source', activity: 'inactive', recovery: 'explicit-resume', relationship: { kind: 'owned', controlLink: false }, recoveryCapabilities: { history: 'persisted', resume: 'explicit', control: 'none' } }], omitted: 0 },
     attention: { approvals: 0, questions: 0, available: false }, outputs: { paths: [], unindexedResults: 0 },
     review: { reviewRevision: 3, acceptedRevision: null, reviewable: true },
     actions: { confirmRecord: { allowed: false, blockers: ['runtime-unavailable'], scope: 'session-log' } },
@@ -40,10 +40,27 @@ describe('passive record page', () => {
     const { props, inspect } = fixture()
     render(<RecordPage {...props} />)
     expect(await screen.findByText('Saved answer')).toBeTruthy()
+    expect(screen.getByText(/· owned ·/).textContent).toContain('resume explicit')
     expect(inspect).toHaveBeenCalledWith(id, expect.any(AbortSignal))
     expect(props.openConversation).not.toHaveBeenCalled()
     fireEvent.click(screen.getByRole('button', { name: 'work.openConversation' }))
     expect(props.openConversation).toHaveBeenCalledWith(id)
+  })
+
+  it('renders execution entries without relationship or recovery facts as plain rows', async () => {
+    const { props } = fixture()
+    const bare = view()
+    props.inspect = vi.fn().mockResolvedValue({
+      ...bare,
+      execution: { ...bare.execution, entries: [
+        { id: 'child', sessionId: SessionId('child-one'), kind: 'subagent', label: 'Child one', activity: 'inactive', recovery: 'history-only' },
+      ] },
+    } satisfies WorkView)
+    render(<RecordPage {...props} />)
+    const row = (await screen.findByText(/Child one/)).closest('li')
+    expect(row?.textContent).toContain('subagent')
+    expect(row?.textContent).not.toContain('owned')
+    expect(row?.textContent).not.toContain('resume')
   })
   it('binds older pages to the original observed prefix', async () => {
     const { props, read } = fixture()
