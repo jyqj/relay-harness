@@ -25,17 +25,41 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Package source and runtime dependencies only
         run: |
-          mkdir -p "$RUNNER_TEMP/renewal-export"
+          mkdir -p "$RUNNER_TEMP/renewal-export" "$RUNNER_TEMP/renewal-parts"
           git archive --format=tar HEAD | gzip > "$RUNNER_TEMP/renewal-export/source.tar.gz"
           git rev-parse HEAD > "$RUNNER_TEMP/renewal-export/source.commit"
           find relay-harness -type d -name node_modules -prune -print0 > "$RUNNER_TEMP/dependency-paths"
-          tar --null -T "$RUNNER_TEMP/dependency-paths" -czf "$RUNNER_TEMP/renewal-export/dependencies.tar.gz"
+          tar --null -T "$RUNNER_TEMP/dependency-paths" -czf "$RUNNER_TEMP/dependencies.tar.gz"
           cp "$(command -v node)" "$RUNNER_TEMP/renewal-export/node"
+          pnpm_root="$(dirname "$(dirname "$(readlink -f "$(command -v pnpm)")")")"
+          tar -C "$pnpm_root" -czf "$RUNNER_TEMP/renewal-export/pnpm.tar.gz" .
+          split -b 250M "$RUNNER_TEMP/dependencies.tar.gz" "$RUNNER_TEMP/renewal-parts/dependencies.part-"
           cd "$RUNNER_TEMP/renewal-export"
-          sha256sum source.tar.gz dependencies.tar.gz node > SHA256SUMS
+          sha256sum source.tar.gz node pnpm.tar.gz > SHA256SUMS
+          cd "$RUNNER_TEMP/renewal-parts"
+          sha256sum dependencies.part-* > "$RUNNER_TEMP/renewal-export/dependencies.SHA256SUMS"
       - uses: actions/upload-artifact@v4
         with:
-          name: renewal-workspace-${{ github.run_id }}
+          name: renewal-source-${{ github.run_id }}
           path: ${{ runner.temp }}/renewal-export/
+          retention-days: 1
+          compression-level: 0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: renewal-deps-a-${{ github.run_id }}
+          path: ${{ runner.temp }}/renewal-parts/dependencies.part-aa
+          retention-days: 1
+          compression-level: 0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: renewal-deps-b-${{ github.run_id }}
+          path: ${{ runner.temp }}/renewal-parts/dependencies.part-ab
+          retention-days: 1
+          compression-level: 0
+      - uses: actions/upload-artifact@v4
+        with:
+          name: renewal-deps-c-${{ github.run_id }}
+          path: ${{ runner.temp }}/renewal-parts/dependencies.part-ac
+          if-no-files-found: ignore
           retention-days: 1
           compression-level: 0
