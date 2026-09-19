@@ -84,6 +84,6 @@
 
 ## Retained Library observations
 
-第一页捕获有界、有序的 Session 语料观察。后续分页复用该观察和各来源首次捕获的产物目录，不在每页重新列出或 stat 全部语料。活 Session 使用已有投影；冷来源优先使用已有 projection cache，回退读取也不激活 Agent。活 Session 或产物变更使保留查询失效。外部冷存储变化不被全局监听：这是保留的观察，不是所有当前文件的不可变快照。重新查询或游标过期后取得新观察。
+第一页捕获有界、有序的 Session 语料观察。后续分页复用该观察和各来源首次捕获的产物目录，不在每页重新列出或 stat 全部语料。活 Session 使用已有投影；冷来源优先使用已有 projection cache，回退读取也不激活 Agent。失效保持精确：Session 创建或销毁、来自保留语料之外会话的结果，或实际改变已观察清单的结果（新增已捕获路径或未捕获的成功）会使保留查询失效；相同或失败的输出不会使有效分页失效。外部冷存储变化不被全局监听：这是保留的观察，不是所有当前文件的不可变快照。重新查询或游标过期后取得新观察。
 
 `maxLibraryQueries` 默认 8，`libraryQueryTtlMs` 默认 120000，`maxLibrarySessions` 默认 10000。被省略的 Session 会报告。`observedSessionIds` 支持跨路径分页去重覆盖统计，既有页计数仍只表示本页。`maxExecutionEntries` 默认 200，`maxHistoryRows` 默认 50，`maxHistoryChars` 默认 64000。所有新接口保留精确可信请求和 loopback 限制。

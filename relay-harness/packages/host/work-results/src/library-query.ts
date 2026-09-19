@@ -26,6 +26,8 @@ interface Query {
   readonly epoch: number
   readonly expiresAt: number
   readonly records: Observation[]
+  /** Index of `records` by source identity for constant-time invalidation checks. */
+  readonly bySession: Map<SessionId, Observation>
   readonly total: number
 }
 
@@ -37,8 +39,17 @@ export class LibraryQueries {
     const invalidate = (): void => { this.epoch += 1; this.queries.clear() }
     ctx.on('session/created', invalidate, { global: true })
     ctx.on('session/disposed', invalidate, { global: true })
-    ctx.on('session/event', (_session, event) => {
-      if (event.type === 'tool/result') invalidate()
+    ctx.on('session/event', (session, event) => {
+      if (event.type !== 'tool/result') return
+      // A result only invalidates when it comes from a Session outside a retained
+      // observation or actually changes an observed inventory; identical or failed
+      // outputs keep a still-valid page alive.
+      for (const query of this.queries.values()) {
+        const row = query.bySession.get(session.id)
+        if (row === undefined) { invalidate(); return }
+        if (row.result === undefined || !('inventory' in row.result)) continue
+        if (deliverablesProjection.apply(row.result.inventory, event) !== row.result.inventory) { invalidate(); return }
+      }
     }, { global: true })
     ctx.effect(() => () => { this.queries.clear() }, 'work-results: Library query observations')
   }
@@ -67,10 +78,13 @@ export class LibraryQueries {
       const records = await this.ctx.sessionQuery.listSessions(signal)
       signal.throwIfAborted()
       if (epoch !== this.epoch) throw changed()
+      const queryRecords = records.slice(0, this.config.maxLibrarySessions).map(record => ({ header: record.header }))
       query = {
         revision: randomUUID() as WorkLibraryRevision, query: text, epoch,
         expiresAt: Date.now() + this.config.libraryQueryTtlMs,
-        records: records.slice(0, this.config.maxLibrarySessions).map(record => ({ header: record.header })), total: records.length,
+        records: queryRecords,
+        bySession: new Map(queryRecords.map(record => [record.header.id, record])),
+        total: records.length,
       }
       while (this.queries.size >= this.config.maxLibraryQueries) {
         const oldest = this.queries.keys().next().value
