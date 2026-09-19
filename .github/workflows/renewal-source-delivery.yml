@@ -1,0 +1,36 @@
+name: Renewal source delivery
+on:
+  push:
+    branches: [feat/renewal-package-20260919-1329]
+    paths: ['.github/workflows/renewal-source-delivery.yml']
+permissions:
+  contents: read
+jobs:
+  source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24.20.0'
+      - name: Export tracked source and bounded toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/renewal-source"
+          git archive --format=tar HEAD | gzip -n > "$RUNNER_TEMP/renewal-source/source.tar.gz"
+          git rev-parse HEAD > "$RUNNER_TEMP/renewal-source/source.commit"
+          cp "$(command -v node)" "$RUNNER_TEMP/renewal-source/node"
+          manager="$(node -p 'JSON.parse(require("fs").readFileSync("relay-harness/package.json", "utf8")).packageManager.split("+")[0]')"
+          npm pack "$manager" --pack-destination "$RUNNER_TEMP/renewal-source"
+          cd "$RUNNER_TEMP/renewal-source"
+          sha256sum source.tar.gz source.commit node *.tgz > SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: renewal-source-bounded-${{ github.run_id }}
+          path: ${{ runner.temp }}/renewal-source/
+          compression-level: 6
+          retention-days: 1
