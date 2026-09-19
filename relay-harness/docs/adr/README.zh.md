@@ -12,5 +12,6 @@
 | [0004](0004-data-and-action-boundary.md) | 显式文件上下文、最小权限和本地状态 | 已接受 |
 | [0005](0005-adopt-ts-harness-runtime.md) | runtime root 下的 TypeScript Relay Harness 作为运行时 | 已接受 |
 | [0006](0006-local-context-engine.md) | 本地 Context Engine：索引与检索留在本机 | 已接受 |
+| [0007](0007-legacy-api-exit-conditions.md) | 过渡期 API 路径必须携带可校验的退出条件 | 已接受 |
 
 新 ADR 只用于跨模块、长期稳定且存在真实替代方案的决定。普通功能修改直接更新其权威设计文档。
