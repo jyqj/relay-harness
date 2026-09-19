@@ -1,3 +1,8 @@
+## Explicit retrieval and candidate batches
+
+`retrieve({ query, contributors?, budget?, cwd, caller, signal })` reuses the preparation pipeline with `purpose: 'tool_retrieval'` and no fabricated user messages. Providers must explicitly opt into that purpose; omitted `purposes` continues to mean only Agent-step and Prompt-Enhancement preparation. `describeContributors()` reports registration and supported purposes, not readiness or authorization. Request budgets can narrow deployment budgets but cannot raise them.
+
+A provider may return a single contribution or a batch. Selection retains independent message/evidence identities, cumulative per-source budgets, complete-message measurement, cancellation and registration-generation ownership. Equal-rank selection uses stable source ids rather than activation order; emission retains source order for request-prefix stability. Explicit human references outrank ordinary provider candidates. Coverage of inspected but omitted candidates remains visible. `fitContextContribution` measures framing as well as body text; providers rebuild digests and truncation metadata from the admitted body.
 # @relay-harness/rlh-context-engine
 
 English | [中文](README.zh.md)
@@ -46,8 +51,3 @@ Indirect and contributor-owned; contributed messages append after the claimed us
 - **Provider coverage is partial** — shipped file-reference, local-code-index, long-term-memory, Prompt-specific Session History, and MCP Resource contributors produce Evidence; general session-query and LSP providers remain deferred.
 - **Hydration policy remains provider-local** — the engine verifies JSON durability and evidence identity while each source provider owns current-source read, revision comparison, and content digest verification.
 
-## Explicit retrieval and candidate batches
-
-`retrieve({ query, contributors?, budget?, cwd, caller, signal })` reuses the preparation pipeline with `purpose: 'tool_retrieval'` and no fabricated user messages. Providers must explicitly opt into that purpose; omitted `purposes` continues to mean only Agent-step and Prompt-Enhancement preparation. `describeContributors()` reports registration and supported purposes, not readiness or authorization. Request budgets can narrow deployment budgets but cannot raise them.
-
-A provider may return a single contribution or a batch. Selection retains independent message/evidence identities, cumulative per-source budgets, complete-message measurement, cancellation and registration-generation ownership. Equal-rank selection uses stable source ids rather than activation order; emission retains source order for request-prefix stability. Explicit human references outrank ordinary provider candidates. Coverage of inspected but omitted candidates remains visible. `fitContextContribution` measures framing as well as body text; providers rebuild digests and truncation metadata from the admitted body.

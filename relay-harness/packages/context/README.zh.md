@@ -24,4 +24,4 @@
 
 ## Explicit retrieval consumer
 
-[`tool-context/`](tool-context/README.zh.md) 通过现有 Context Engine 提供 `retrieve_context`。主动检索与自动准备共享来源身份、允许范围、完整输出预算及普通工具结果日志。
+[`tool-context/`](tool-context/README.md) 通过现有 Context Engine 提供 `retrieve_context`。主动检索与自动准备共享来源身份、允许范围、完整输出预算及普通工具结果日志。

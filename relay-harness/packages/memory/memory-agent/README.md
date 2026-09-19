@@ -1,3 +1,6 @@
+## Explicit tool recall
+
+`tool_retrieval` uses the same preset/subagent/scope gates and performs a read-only search of active governed memories with `recordAccess: false`. It does not prepare or commit a memory-use transaction and does not approve a candidate. Entries are independently selectable, source-attributed observations within the request budget. Retrieval failures are classified in the Context Engine trace rather than silently described as no memory.
 # `@relay-harness/rlh-memory-agent`
 
 English | [中文](README.zh.md)
@@ -42,6 +45,3 @@ Recall is an append-only user-role suffix, so it preserves earlier reusable hist
 - **Character rather than tokenizer budget** — the complete bound is deterministic across providers, but it is not an exact model-token count.
 - **No cited-use signal** — the Memory Center shows model admission and downstream outcomes, but commit still cannot prove that the Assistant semantically relied on each admitted item.
 
-## Explicit tool recall
-
-`tool_retrieval` uses the same preset/subagent/scope gates and performs a read-only search of active governed memories with `recordAccess: false`. It does not prepare or commit a memory-use transaction and does not approve a candidate. Entries are independently selectable, source-attributed observations within the request budget. Retrieval failures are classified in the Context Engine trace rather than silently described as no memory.

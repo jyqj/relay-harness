@@ -1,3 +1,18 @@
+## Passive Work and history reads
+
+`inspect({sessionId})` 分别返回 Goal、执行、待处理交互、记录审核和已注册上下文来源的观察。它使用 Session Query 与现有 Subagent 目录，不解析冷 Agent，也不申请租约。普通 fork 与委派保持区别。inactive 或不可用子执行不能被解释为成功。各领域时钟独立：`source.current` 只比较目标 Session 的日志切点与运行所有者；覆盖信息说明缺失的运行历史和执行展示上限。来源描述不是 provider 健康探测。
+
+每个执行条目还携带 `relationship` 与 `recoveryCapabilities`，由持久化 Session 头、目录描述符和 Job 状态推导。`relationship.kind` 取值为 `owned`、`delegated`、`reports-to` 或 `forked-from`；这条边不代表控制权，因为 `relationship.controlLink` 只在 Host 当前持有该执行时为真。`recoveryCapabilities` 只陈述恢复能诚实承诺的内容：`history` 取 `persisted`、`in-process` 或 `unknown`；`resume` 只在 continuable 描述符或普通冷 Session 上为 `explicit`，对 one-shot 子执行与 Job 为 `unavailable`，无证据时保持 `unknown`。恢复能力不查询激活租约存储，`resume: 'explicit'` 不承诺租约当前空闲；外部一次性 provider 不发布 session 描述符，因此不产生条目，也不作任何承诺。
+
+`history({sessionId, beforeSeq?, limit?, snapshot?})` 返回带精确事件位置的有界最终消息文本。前缀摘要绑定后续分页，后续追加可以继续，但替换、修复或前缀变化要求重新读取。它不宣称展示 reasoning、二进制内容或所有日志事件；限制输出页不等于限制底层持久化解码成本。
+
+`review({sessionId})` 只对已经存活的 Agent 执行原有持久化核验；冷记录明确报告 `runtime-unavailable`，不激活执行。旧 `get(agent)` 接口留给未迁移客户端，Product Shell 改用 `review`。现有确认仍绑定 Session 日志，不认证文件内容或测试。
+
+## Retained Library observations
+
+第一页捕获有界、有序的 Session 语料观察。后续分页复用该观察和各来源首次捕获的产物目录，不在每页重新列出或 stat 全部语料。活 Session 使用已有投影；冷来源优先使用已有 projection cache，回退读取也不激活 Agent。失效保持精确：Session 创建或销毁、来自保留语料之外会话的结果，或实际改变已观察清单的结果（新增已捕获路径或未捕获的成功）会使保留查询失效；相同或失败的输出不会使有效分页失效。外部冷存储变化不被全局监听：这是保留的观察，不是所有当前文件的不可变快照。重新查询或游标过期后取得新观察。
+
+`maxLibraryQueries` 默认 8，`libraryQueryTtlMs` 默认 120000，`maxLibrarySessions` 默认 10000。被省略的 Session 会报告。`observedSessionIds` 支持跨路径分页去重覆盖统计，既有页计数仍只表示本页。`maxExecutionEntries` 默认 200，`maxHistoryRows` 默认 50，`maxHistoryChars` 默认 64000。所有新接口保留精确可信请求和 loopback 限制。
 # @relay-harness/rlh-host-work-results
 
 [English](README.md) | 中文
@@ -74,18 +89,3 @@
 - 资料库页面是有界观察，不是保留的不可变语料快照。不可用历史及旧版未捕获结果会被报告，并发的相关变化可能要求重试。
 - Host 客户端来源继承既有 loopback／浏览器信任边界，不是独立的身份认证或物理用户认证系统。
 
-## Passive Work and history reads
-
-`inspect({sessionId})` 分别返回 Goal、执行、待处理交互、记录审核和已注册上下文来源的观察。它使用 Session Query 与现有 Subagent 目录，不解析冷 Agent，也不申请租约。普通 fork 与委派保持区别。inactive 或不可用子执行不能被解释为成功。各领域时钟独立：`source.current` 只比较目标 Session 的日志切点与运行所有者；覆盖信息说明缺失的运行历史和执行展示上限。来源描述不是 provider 健康探测。
-
-每个执行条目还携带 `relationship` 与 `recoveryCapabilities`，由持久化 Session 头、目录描述符和 Job 状态推导。`relationship.kind` 取值为 `owned`、`delegated`、`reports-to` 或 `forked-from`；这条边不代表控制权，因为 `relationship.controlLink` 只在 Host 当前持有该执行时为真。`recoveryCapabilities` 只陈述恢复能诚实承诺的内容：`history` 取 `persisted`、`in-process` 或 `unknown`；`resume` 只在 continuable 描述符或普通冷 Session 上为 `explicit`，对 one-shot 子执行与 Job 为 `unavailable`，无证据时保持 `unknown`。恢复能力不查询激活租约存储，`resume: 'explicit'` 不承诺租约当前空闲；外部一次性 provider 不发布 session 描述符，因此不产生条目，也不作任何承诺。
-
-`history({sessionId, beforeSeq?, limit?, snapshot?})` 返回带精确事件位置的有界最终消息文本。前缀摘要绑定后续分页，后续追加可以继续，但替换、修复或前缀变化要求重新读取。它不宣称展示 reasoning、二进制内容或所有日志事件；限制输出页不等于限制底层持久化解码成本。
-
-`review({sessionId})` 只对已经存活的 Agent 执行原有持久化核验；冷记录明确报告 `runtime-unavailable`，不激活执行。旧 `get(agent)` 接口留给未迁移客户端，Product Shell 改用 `review`。现有确认仍绑定 Session 日志，不认证文件内容或测试。
-
-## Retained Library observations
-
-第一页捕获有界、有序的 Session 语料观察。后续分页复用该观察和各来源首次捕获的产物目录，不在每页重新列出或 stat 全部语料。活 Session 使用已有投影；冷来源优先使用已有 projection cache，回退读取也不激活 Agent。失效保持精确：Session 创建或销毁、来自保留语料之外会话的结果，或实际改变已观察清单的结果（新增已捕获路径或未捕获的成功）会使保留查询失效；相同或失败的输出不会使有效分页失效。外部冷存储变化不被全局监听：这是保留的观察，不是所有当前文件的不可变快照。重新查询或游标过期后取得新观察。
-
-`maxLibraryQueries` 默认 8，`libraryQueryTtlMs` 默认 120000，`maxLibrarySessions` 默认 10000。被省略的 Session 会报告。`observedSessionIds` 支持跨路径分页去重覆盖统计，既有页计数仍只表示本页。`maxExecutionEntries` 默认 200，`maxHistoryRows` 默认 50，`maxHistoryChars` 默认 64000。所有新接口保留精确可信请求和 loopback 限制。

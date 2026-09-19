@@ -1,3 +1,6 @@
+## Passive Work queries
+
+The selected Work Results contribution includes `inspect`, `history` and `review` by Session id. These endpoints do not use the Agent lookup that resumes cold sessions. The complete selected contribution set is the value-import and mount list in `src/client/index.ts`; this facade does not dynamically discover every Host provider.
 # @relay-harness/rlh-api-remotes
 
 English | [中文](README.zh.md)
@@ -40,6 +43,3 @@ No direct effect; mounted Host capabilities own any model-visible behavior they 
 - Additional capabilities require an explicit `/remote` value import and mount in this assembly.
 - The standard Web Host supplies resume defaults and Agent-scope setup from the legacy API Proxy until that remaining BFF configuration moves into `api-remotes`.
 
-## Passive Work queries
-
-The selected Work Results contribution includes `inspect`, `history` and `review` by Session id. These endpoints do not use the Agent lookup that resumes cold sessions. The complete selected contribution set is the value-import and mount list in `src/client/index.ts`; this facade does not dynamically discover every Host provider.

@@ -1,3 +1,6 @@
+## Passive Work queries
+
+已选择的 Work Results contribution 包含按 Session id 调用的 `inspect`、`history`、`review`，不经过恢复冷会话的 Agent lookup。完整 contribution 集合以 `src/client/index.ts` 的值导入与挂载清单为准；该 facade 不会动态发现全部 Host provider。
 # @relay-harness/rlh-api-remotes
 
 [English](README.md) | 中文
@@ -41,6 +44,3 @@ Client 组合明确挂载 `src/client/index.ts` 中选择的贡献，包含 Goal
 - 若要增加能力，必须显式导入相应的 `/remote` 值并在此组合中挂载。
 - 在剩余 BFF 配置迁移到 `api-remotes` 之前，标准 Web Host 仍从旧 API Proxy 提供恢复默认值与 Agent scope 设置。
 
-## Passive Work queries
-
-已选择的 Work Results contribution 包含按 Session id 调用的 `inspect`、`history`、`review`，不经过恢复冷会话的 Agent lookup。完整 contribution 集合以 `src/client/index.ts` 的值导入与挂载清单为准；该 facade 不会动态发现全部 Host provider。

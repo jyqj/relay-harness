@@ -1,3 +1,8 @@
+## Source records and URL navigation
+
+Library 的输出来源和 Work 活动打开只读 `record` 页，不再隐式打开或恢复对话。`#relay/record/<encoded-session-id>` 定位来源；官方 conversation、Work、Library 视图也参与浏览器历史。无效路由保持无效，URL 导航不授予权限、不激活 Session。只有显式进入对话的操作调用既有交互路径，委派记录通过其所有者进入。
+
+记录读取绑定路由、页面激活状态和连接 epoch。隐藏、断线或被替代的读取会取消，迟到结果不能覆盖其他来源。历史分页保留前缀绑定的观察。Goal 阶段、执行、恢复能力、来源切点和覆盖缺口分别显示。该页面不是第二套任务存储、全局审批 Inbox、内容版本验收系统或 provider 健康仪表盘。活 Work 的确认核验使用不激活执行的 `workResults/review`。
 # Client Product Shell
 
 [English](README.md) | 中文
@@ -32,7 +37,7 @@ Library 跨既有 Session 分页搜索执行记录的输出，不扫描设备文
 
 #### 模型看到什么
 
-此包不产生模型输入。产品导航与投影不提交模型请求；显式继续对话使用其既有输入路径。
+此包不产生模型输入。产品导航与投影读取既有 `session/queue` 与投影快照，不提交模型请求；显式继续对话使用其既有输入路径。
 
 #### Token 影响
 
@@ -49,8 +54,3 @@ Library 跨既有 Session 分页搜索执行记录的输出，不扫描设备文
 - Library 没有工作区筛选，原生输出打开仍受 Host 能力和授权约束。
 - 产品模式尚无 Host 推送事件；本地成功写入和重连读取更新浏览器。
 
-## Source records and URL navigation
-
-Library 的输出来源和 Work 活动打开只读 `record` 页，不再隐式打开或恢复对话。`#relay/record/<encoded-session-id>` 定位来源；官方 conversation、Work、Library 视图也参与浏览器历史。无效路由保持无效，URL 导航不授予权限、不激活 Session。只有显式进入对话的操作调用既有交互路径，委派记录通过其所有者进入。
-
-记录读取绑定路由、页面激活状态和连接 epoch。隐藏、断线或被替代的读取会取消，迟到结果不能覆盖其他来源。历史分页保留前缀绑定的观察。Goal 阶段、执行、恢复能力、来源切点和覆盖缺口分别显示。该页面不是第二套任务存储、全局审批 Inbox、内容版本验收系统或 provider 健康仪表盘。活 Work 的确认核验使用不激活执行的 `workResults/review`。

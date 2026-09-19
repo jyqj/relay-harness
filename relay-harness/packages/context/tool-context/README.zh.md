@@ -41,4 +41,9 @@
 
 ## Known Limitations and Deferred Work
 
-Token 使用现有计量器或其估算，不是精确 tokenizer。这是有界检索，不是穷尽性不存在证明。当前会话历史不会激活冷 Agent 或搜索无关 Session。工具不把召回内容提升为指令、不执行 MCP Prompt、不批准记忆、不认证工作，也不持久化第二份证据数据库。整消息 provider 与候选批次 provider 可以并存；排序是确定性的，不是学习得到的全局相关性模型。
+- Token 使用现有计量器或其估算，不是精确 tokenizer。
+- 这是有界检索，不是穷尽性不存在证明。
+- 当前会话历史不会激活冷 Agent 或搜索无关 Session。
+- 工具不把召回内容提升为指令、不执行 MCP Prompt、不批准记忆、不认证工作，也不持久化第二份证据数据库。
+- 整消息 provider 与候选批次 provider 可以并存；排序是确定性的，不是学习得到的全局相关性模型。
+- 模型无法提高自己的部署预算：query、context 与 output 上限属于 Host 配置，且检索只读，没有任何回到来源的写入路径。

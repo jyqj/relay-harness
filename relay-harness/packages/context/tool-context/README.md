@@ -41,4 +41,9 @@ The ordinary tool result is appended once to the Session log and reaches the nex
 
 ## Known Limitations and Deferred Work
 
-Token counts use the existing meter or its documented estimate, not an exact tokenizer. This is bounded retrieval, not exhaustive absence certification. Current-Session history does not activate cold Agents or search unrelated sessions. The tool does not promote recalled content into instructions, execute MCP prompts, approve memory, certify work, or persist a second evidence database. Whole-message providers remain valid alongside candidate-batch providers; ranking is deterministic, not a learned global relevance model.
+- Token counts use the existing meter or its documented estimate, not an exact tokenizer.
+- This is bounded retrieval, not exhaustive absence certification.
+- Current-Session history does not activate cold Agents or search unrelated sessions.
+- The tool does not promote recalled content into instructions, execute MCP prompts, approve memory, certify work, or persist a second evidence database.
+- Whole-message providers remain valid alongside candidate-batch providers; ranking is deterministic, not a learned global relevance model.
+- The model cannot raise its deployment budgets: query, context and output limits are Host configuration, and retrieval is query-only with no write path back into any source.

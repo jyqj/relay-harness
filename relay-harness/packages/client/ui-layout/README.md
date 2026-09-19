@@ -22,7 +22,7 @@ The theme presenter applies resolved palette variables, native `color-scheme`, d
 
 ## Model Experience
 
-None. Layout state, focus, and navigation do not enter model requests.
+None, as layout state, focus, and navigation do not enter model requests.
 
 #### KV Cache effect
 

@@ -1,3 +1,8 @@
+## Source records and URL navigation
+
+Library output sources and Work activity open the read-only `record` page instead of implicitly opening/resuming a conversation. `#relay/record/<encoded-session-id>` identifies that source; official conversation, Work and Library views also participate in browser history. Invalid routes stay invalid, and URL navigation never supplies authority or activates a Session. Only the explicit conversation action enters the existing interactive path; delegated records route through their owner.
+
+Record reads are bound to route, page activation and connection epoch. Hidden, disconnected or superseded reads are aborted and late completions cannot replace another source. History pages retain a prefix-bound snapshot. Goal phase, execution, recovery capability, source cut and coverage remain separate. This page is not a second task store, global approval inbox, content-version review system or provider-health dashboard. Live Work confirmation uses the non-activating `workResults/review` endpoint.
 # Client Product Shell
 
 English | [中文](README.zh.md)
@@ -32,7 +37,7 @@ Detailed view controls advanced configuration and diagnostics, not execution acc
 
 #### What the model sees
 
-Nothing from this package. Product navigation and projections do not submit a model request. Explicitly continuing a conversation uses its existing input path.
+Nothing from this package. Product navigation and projections read existing `session/queue` and projection snapshots without submitting a model request. Explicitly continuing a conversation uses its existing input path.
 
 #### Token effect
 
@@ -49,8 +54,3 @@ None. Display density does not alter model history or tool permissions.
 - Library has no workspace filter, and native output opening remains limited by Host capabilities and authorization.
 - Product mode has no Host push event; local successful writes and reconnect reads update the browser.
 
-## Source records and URL navigation
-
-Library output sources and Work activity open the read-only `record` page instead of implicitly opening/resuming a conversation. `#relay/record/<encoded-session-id>` identifies that source; official conversation, Work and Library views also participate in browser history. Invalid routes stay invalid, and URL navigation never supplies authority or activates a Session. Only the explicit conversation action enters the existing interactive path; delegated records route through their owner.
-
-Record reads are bound to route, page activation and connection epoch. Hidden, disconnected or superseded reads are aborted and late completions cannot replace another source. History pages retain a prefix-bound snapshot. Goal phase, execution, recovery capability, source cut and coverage remain separate. This page is not a second task store, global approval inbox, content-version review system or provider-health dashboard. Live Work confirmation uses the non-activating `workResults/review` endpoint.

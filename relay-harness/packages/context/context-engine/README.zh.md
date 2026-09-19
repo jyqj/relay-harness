@@ -1,3 +1,8 @@
+## Explicit retrieval and candidate batches
+
+`retrieve({ query, contributors?, budget?, cwd, caller, signal })` 以 `purpose: 'tool_retrieval'` 复用准备流程，不伪造用户消息。provider 必须明确支持此用途；省略 `purposes` 仍只表示 Agent step 与 Prompt Enhancement。`describeContributors()` 只报告注册与用途，不代表就绪或授权。请求预算只能缩小部署预算，不能提高上限。
+
+provider 可以返回单条贡献或候选批次。选择保留独立消息与证据身份、按来源累计的预算、完整消息计量、取消与注册代次所有权。同排名选择用稳定来源 id 而非激活顺序；输出仍保持来源顺序以稳定请求前缀。显式人类引用优先于普通候选。已检查但未纳入的候选仍保留覆盖信息。`fitContextContribution` 同时计量包装与正文；provider 从最终正文重新生成摘要和截断信息。
 # @relay-harness/rlh-context-engine
 
 [English](README.md) | 中文
@@ -46,8 +51,3 @@ planner 是确定性的，不调用模型。`StepContextContributor.purposes` �
 - **Provider 覆盖仍不完整** —— 发行的 file-reference、本地 code-index、长期记忆、Prompt 专用 Session History 与 MCP Resource contributor 会生成 Evidence；通用 session-query 与 LSP Provider 仍待实现。
 - **Hydration policy 仍由 Provider 所有** —— 引擎校验 JSON 持久性与 Evidence identity；各来源 Provider 拥有当前源读取、revision 对比及内容 digest 验证。
 
-## Explicit retrieval and candidate batches
-
-`retrieve({ query, contributors?, budget?, cwd, caller, signal })` 以 `purpose: 'tool_retrieval'` 复用准备流程，不伪造用户消息。provider 必须明确支持此用途；省略 `purposes` 仍只表示 Agent step 与 Prompt Enhancement。`describeContributors()` 只报告注册与用途，不代表就绪或授权。请求预算只能缩小部署预算，不能提高上限。
-
-provider 可以返回单条贡献或候选批次。选择保留独立消息与证据身份、按来源累计的预算、完整消息计量、取消与注册代次所有权。同排名选择用稳定来源 id 而非激活顺序；输出仍保持来源顺序以稳定请求前缀。显式人类引用优先于普通候选。已检查但未纳入的候选仍保留覆盖信息。`fitContextContribution` 同时计量包装与正文；provider 从最终正文重新生成摘要和截断信息。

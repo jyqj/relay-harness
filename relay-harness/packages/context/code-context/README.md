@@ -1,3 +1,8 @@
+## Active retrieval and allocated budgets
+
+The contributor also supports `tool_retrieval`. It resolves the exact live caller, refuses a filesystem different from the Host-local index's execution world, and returns independently selectable source-verified hits. Model-selected paths are not classified as explicit human instructions. Candidate deduplication includes workspace, chunk and content revision. Both automatic and active renderings fit the smaller provider/request character and token budgets including complete framing.
+
+A structured `query-embedding-unavailable` degradation with a declared `lexical` fallback may still contribute revalidated hits, with an explicit vector-coverage omission. Other degraded reads remain refused. A degraded zero-hit result never becomes an absence claim.
 # `@relay-harness/rlh-code-context`
 
 English | [中文](README.zh.md)
@@ -41,8 +46,3 @@ The recall message sits after the step's claimed user messages, so its content d
 - **Compaction checkpoints may re-index recall-derived text** — a checkpoint summary is a model-authored `user/message` under a plugin source, so it can restate recall-derived text and enter the session-query corpus; the `form: 'recall'` extraction skip covers only the recall messages themselves (the ADR 0006 rule-6 boundary stops at system-injected context, and a checkpoint summary sits on the assistant-reply side of it).
 - **Raw-text queries** — the query is the claimed direct user text verbatim, with no rewriting or extraction step; retrieval quality depends on the seam's tolerance for prose, and very long turns are passed through unshortened.
 
-## Active retrieval and allocated budgets
-
-The contributor also supports `tool_retrieval`. It resolves the exact live caller, refuses a filesystem different from the Host-local index's execution world, and returns independently selectable source-verified hits. Model-selected paths are not classified as explicit human instructions. Candidate deduplication includes workspace, chunk and content revision. Both automatic and active renderings fit the smaller provider/request character and token budgets including complete framing.
-
-A structured `query-embedding-unavailable` degradation with a declared `lexical` fallback may still contribute revalidated hits, with an explicit vector-coverage omission. Other degraded reads remain refused. A degraded zero-hit result never becomes an absence claim.

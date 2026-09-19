@@ -2,7 +2,7 @@
 
 Status: implemented
 
-English | [中文](2026-09-20-composer-draft-lifecycle.zh.md)
+[English](2026-09-20-composer-draft-lifecycle.md) | 中文
 
 ## Problem
 

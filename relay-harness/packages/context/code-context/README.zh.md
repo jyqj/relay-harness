@@ -1,3 +1,8 @@
+## Active retrieval and allocated budgets
+
+贡献者也支持 `tool_retrieval`。它解析精确存活调用者，拒绝与 Host 本地索引执行环境不同的文件系统，并返回可独立选择、经来源核验的命中。模型选择的路径不被视为显式人类指令。去重键包含工作区、chunk 和内容修订。自动与主动渲染都遵守 provider 与请求中较小的字符及 token 预算，包含完整包装。
+
+明确声明 `lexical` 回退的结构化 `query-embedding-unavailable` 降级，仍可贡献重新核验的命中，但必须说明向量覆盖缺失。其他降级读取仍被拒绝。降级后的零命中不会成为不存在声明。
 # `@relay-harness/rlh-code-context`
 
 [English](README.md) | 中文
@@ -41,8 +46,3 @@
 - **compaction checkpoint 可能重新索引 recall 衍生文本** — checkpoint 摘要是带 plugin source 的模型创作 `user/message`，可能复述 recall 衍生文本并进入 session-query 语料；`form: 'recall'` 的抽取跳过只覆盖 recall 消息本身（ADR 0006 第 6 条边界止于系统注入上下文，checkpoint 摘要位于 assistant 回复一侧）。
 - **原文即 query** — query 是逐字取用的直接用户文本，没有改写或抽取步骤；检索质量取决于 seam 对自然语言的容忍度，超长轮次也不做缩短。
 
-## Active retrieval and allocated budgets
-
-贡献者也支持 `tool_retrieval`。它解析精确存活调用者，拒绝与 Host 本地索引执行环境不同的文件系统，并返回可独立选择、经来源核验的命中。模型选择的路径不被视为显式人类指令。去重键包含工作区、chunk 和内容修订。自动与主动渲染都遵守 provider 与请求中较小的字符及 token 预算，包含完整包装。
-
-明确声明 `lexical` 回退的结构化 `query-embedding-unavailable` 降级，仍可贡献重新核验的命中，但必须说明向量覆盖缺失。其他降级读取仍被拒绝。降级后的零命中不会成为不存在声明。
