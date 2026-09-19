@@ -1,0 +1,41 @@
+name: Renewal workspace transfer
+on:
+  push:
+    branches: [feat/architecture-renewal-integrated]
+    paths: [.github/workflows/renewal-workspace-transfer.yml]
+permissions:
+  contents: read
+jobs:
+  workspace:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ffe9921273a87d763708a56eaa44202ad9d5fbaf
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: relay-harness/package.json
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+      - name: Install locked dependencies
+        working-directory: relay-harness
+        run: pnpm install --frozen-lockfile
+      - name: Package source and runtime dependencies only
+        run: |
+          mkdir -p "$RUNNER_TEMP/renewal-export"
+          git archive --format=tar HEAD | gzip > "$RUNNER_TEMP/renewal-export/source.tar.gz"
+          git rev-parse HEAD > "$RUNNER_TEMP/renewal-export/source.commit"
+          find relay-harness -type d -name node_modules -prune -print0 > "$RUNNER_TEMP/dependency-paths"
+          tar --null -T "$RUNNER_TEMP/dependency-paths" -czf "$RUNNER_TEMP/renewal-export/dependencies.tar.gz"
+          cp "$(command -v node)" "$RUNNER_TEMP/renewal-export/node"
+          cd "$RUNNER_TEMP/renewal-export"
+          sha256sum source.tar.gz dependencies.tar.gz node > SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: renewal-workspace-${{ github.run_id }}
+          path: ${{ runner.temp }}/renewal-export/
+          retention-days: 1
+          compression-level: 0
