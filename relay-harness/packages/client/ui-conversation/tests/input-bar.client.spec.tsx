@@ -95,6 +95,8 @@ interface BenchOptions {
   commandMenuOpen?: boolean
   busyEnter?: 'queue' | 'steer'
   toggleCommandMenu?: (selection: { start: number; end: number }) => void
+  /** Connection readiness (default true); false keeps submission inert. */
+  connected?: boolean
 }
 
 /** One pending queue row (the runtime snapshot shape, as the dock tests build it). */
@@ -142,6 +144,7 @@ function bench(over?: BenchOptions) {
       }
       : {}),
   })
+  const connected = createSnapshotStore(over?.connected ?? true)
   if (over?.draft !== undefined && over.draft !== '') shell.setDraft(over.draft)
   if (over?.attachments !== undefined) shell.addImages(over.attachments.map(attachment => attachment.id))
   const stop = vi.fn()
@@ -204,6 +207,7 @@ function bench(over?: BenchOptions) {
     useComposerResize: bindSnapshotSelector(createSnapshotStore(false)),
     useComposerResizeHeight: bindSnapshotSelector(createSnapshotStore(null)),
     useComposerResizeWidth: bindSnapshotSelector(createSnapshotStore(null)),
+    useConnected: bindSnapshotSelector(connected),
     setComposerResizeSize: () => {},
     stop,
     command: over?.command ?? (() => Promise.resolve(true)),
@@ -229,7 +233,7 @@ function bench(over?: BenchOptions) {
   const interruptButton = view.container.querySelector<HTMLButtonElement>('button[aria-label="停止生成"]')
   return {
     view, textarea, button, interruptButton, props, sink, shell, wiring: shell, session, stop, removeImage, slotCalls,
-    menuLauncher,
+    menuLauncher, connected,
     steerQueue: over?.steerQueue,
   }
 }
@@ -734,6 +738,22 @@ describe('running and lock semantics', () => {
     expect(textarea.disabled).toBe(true)
     expect(textarea.placeholder).toBe('会话不可用')
     expect((view.getByLabelText('命令') as HTMLButtonElement).disabled).toBe(true)
+  })
+
+  it('offline keeps the draft inert but intact: send disabled, Enter held, text retained', async () => {
+    const b = bench({ draft: 'keep me', connected: false })
+    expect(b.button.disabled).toBe(true)
+    fireEvent.keyDown(b.textarea, { key: 'Enter' })
+    expect(b.sink).not.toHaveBeenCalled()
+    expect(b.shell.snapshot.draft).toBe('keep me')
+    // Writable again (a later connection epoch): the same draft submits
+    // without retyping — an epoch change never wiped it.
+    act(() => { b.connected.set(true) })
+    const textarea = b.view.container.querySelector('textarea')!
+    expect((b.view.container.querySelector('button[aria-label="发送消息"]') as HTMLButtonElement).disabled).toBe(false)
+    fireEvent.keyDown(textarea, { key: 'Enter' })
+    await act(async () => { await new Promise(resolve => { setTimeout(resolve, 0) }) })
+    expect(b.sink).toHaveBeenCalledWith('keep me', [], 'queue', expect.any(AbortSignal))
   })
 
   it('idle primary sends and disables on empty draft', () => {

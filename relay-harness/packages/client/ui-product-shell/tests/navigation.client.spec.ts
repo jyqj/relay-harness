@@ -19,6 +19,21 @@ describe('product routes', () => {
     }
     expect(productRouteHash({ page: 'record', error: 'invalid-route' })).toBe('#relay/invalid')
   })
+  it('serializes object identity and view selection only — draft content has no route form', () => {
+    const draft = 'unsent draft /msg #relay/record/leak?x=1'
+    for (const hash of [
+      productRouteHash({ page: 'conversation' }),
+      productRouteHash({ page: 'work' }),
+      productRouteHash({ page: 'library' }),
+      productRouteHash({ page: 'record', sessionId: 's1' as never }),
+    ]) {
+      expect(hash).toMatch(/^#relay\/(conversation|work|library|record\/s1)$/)
+      expect(hash.includes(encodeURIComponent(draft))).toBe(false)
+    }
+    // Query- or fragment-bearing drafts never widen a page route: unknown
+    // suffixes parse as the explicit invalid-record state, not a page.
+    expect(parseProductRoute('#relay/work?draft=abc')).toEqual({ page: 'record', error: 'invalid-route' })
+  })
   it('owns only observable navigation state and withdraws listeners', () => {
     const store = new ProductRouteStore()
     let calls = 0

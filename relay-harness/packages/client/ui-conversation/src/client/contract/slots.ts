@@ -14,6 +14,7 @@ import type { MarkdownFileMentions } from '@relay-harness/rlh-client-ui-primitiv
 import type { MessageId } from '@relay-harness/rlh-client-connection/client'
 import type {} from '@relay-harness/rlh-client-ui-layout/client'
 import type { ComposerBlock } from './composer-blocks.ts'
+import type { DiscardedDraft } from '../input/drafts.ts'
 import type {
   ComposerKeyboard, DraftAttachmentId, EditSelection, InputActions, InputNotice, InputState,
 } from './input.ts'
@@ -546,9 +547,18 @@ export interface ConversationInjected {
   /**
    * Framework-bound sources. `composerBlock` is this session's block when a
    * plugin raised one; the reason is the blocker's own localized copy, which
-   * the root renders as the inert composer's placeholder.
+   * the root renders as the inert composer's placeholder. `discardedDraft`
+   * is the current session's discarded draft when a previous scope was
+   * disposed with unsent input.
    */
-  hooks: { composerBlock: ObservableSnapshot<ComposerBlock | undefined> }
+  hooks: {
+    composerBlock: ObservableSnapshot<ComposerBlock | undefined>
+    discardedDraft: ObservableSnapshot<DiscardedDraft | undefined>
+  }
+  /** Return a discarded draft to the composer (explicit restore; clears the tombstone). */
+  restoreDiscardedDraft: () => void
+  /** Drop a discarded draft for good (explicit discard). */
+  dismissDiscardedDraft: () => void
 }
 
 /** Business callbacks injected into the strict Session body seat. */
@@ -668,6 +678,8 @@ export interface ComposerBarInjected {
     composerResizeHeight: ObservableSnapshot<number | null>
     /** Last Host-remembered card width in CSS pixels (null = column width). */
     composerResizeWidth: ObservableSnapshot<number | null>
+    /** Connection readiness: false keeps submission inert without wiping the draft. */
+    connected: ObservableSnapshot<boolean>
   }
   /** Persist a finished drag so remounts restore the box. */
   setComposerResizeSize: (size: Partial<{ height: number; width: number }>) => void
