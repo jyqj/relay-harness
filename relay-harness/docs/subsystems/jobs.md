@@ -19,7 +19,7 @@ interface JobKindMap {
 }
 ```
 
-`JobStatus` is `'running' | 'stopping' | 'completed' | 'killed' | 'failed'`; producer-specific facts belong in `JobSnapshot.detail`.
+`JobStatus` is `'running' | 'stopping' | 'completed' | 'killed' | 'failed' | 'control-lost-unknown'`; producer-specific facts belong in `JobSnapshot.detail`. `control-lost-unknown` is the registry-declared record for a stop request the producer never confirmed: the record is closed, but the outcome of the work itself stays unknown.
 
 ## Producer contract
 
@@ -49,6 +49,14 @@ interface JobStart {
    */
   owner?: Agent
   /**
+   * Per-job override of the registry's bounded stop grace, in milliseconds: how
+   * long a stop request waits for {@link JobHooks.done} settlement before the
+   * registry escalates to {@link JobHooks.terminate} (one more grace) and then
+   * declares `control-lost-unknown`. Must be a positive safe integer; omission
+   * uses the implementation's configured default.
+   */
+  stopGraceMs?: number
+  /**
    * Start the work after preflight and synchronously return its hooks. Called
    * once; a throw leaves nothing registered, and the producer must clean up any
    * partially started resources.
@@ -67,6 +75,14 @@ interface JobHooks {
    * {@link done}; throws propagate. The optional reason is forwarded verbatim.
    */
   cancel(reason?: string): void
+  /**
+   * Optional harder stop the registry escalates to when {@link cancel} has not
+   * produced a {@link done} settlement within the stop grace. Same contract as
+   * `cancel` — synchronous, idempotent, throws propagate — but it may abandon
+   * graceful cleanup; the registry still bounds its wait and declares
+   * `control-lost-unknown` if `done` never settles.
+   */
+  terminate?(reason?: string): void
   /**
    * Resolves after the producer releases its resources, not merely when work
    * finishes. Must not reject; the runtime converts a rejection to `failed`.
@@ -125,7 +141,7 @@ interface JobSnapshot {
   detail?: string
   /** Epoch ms when the job was registered. */
   startedAt: number
-  /** Epoch ms when the job settled; absent while `running`/`stopping`. */
+  /** Epoch ms when the job settled; for `control-lost-unknown`, when the bounded stop gave up. Absent while `running`/`stopping`. */
   finishedAt?: number
   /**
    * True when a kill, read, wait, or teardown cancel has reported or committed
@@ -154,7 +170,7 @@ interface JobRead {
 
 ## Service behavior
 
-The abstract [`JobRegistry`](../../packages/jobs/jobs/src/index.ts) Service Definition specifies atomic `start`, caller-scoped `get` and `list`, `read`, `kill`, bounded `wait`, failure-isolated `onJobDone` and `onJobsChanged` listeners, and when `attachController` becomes available; [`LocalJobRegistry`](../../packages/jobs/jobs-local/src/index.ts) is the process-local Service Provider. Authorization compares owner sessions; owner cleanup and admission use the exact registered `Agent` instance. The local provider's positive-safe-integer `maxConcurrentJobsPerOwner` config defaults to `10` and counts `running` plus `stopping` records per exact owner, with one shared bucket for unowned jobs; terminal producer settlement releases capacity. See [`rlh-jobs`](../../packages/jobs/jobs/README.md) for the Service Definition contract, [`rlh-jobs-local`](../../packages/jobs/jobs-local/README.md) for the registry lifecycle and admission policy, and [`rlh-tool-jobs`](../../packages/jobs/tool-jobs/README.md) for the model-facing Consumer.
+The abstract [`JobRegistry`](../../packages/jobs/jobs/src/index.ts) Service Definition specifies atomic `start`, caller-scoped `get` and `list`, `read`, `kill`, bounded `wait`, failure-isolated `onJobDone` and `onJobsChanged` listeners, and when `attachController` becomes available; [`LocalJobRegistry`](../../packages/jobs/jobs-local/src/index.ts) is the process-local Service Provider. Authorization compares owner sessions; owner cleanup and admission use the exact registered `Agent` instance. The local provider's positive-safe-integer `maxConcurrentJobsPerOwner` config defaults to `10` and counts `running`, `stopping`, and `control-lost-unknown` records per exact owner, with one shared bucket for unowned jobs; terminal producer settlement releases capacity. A stop request that outlasts the bounded stop window (`stopGraceMs`, default `5000`, per-job overridable; escalation to an optional producer `terminate` hook) closes the record as `control-lost-unknown`, and at most `maxUnconfirmedJobsPerOwner` (default `5`) such records accumulate per bucket before the reconciliation drops the oldest. See [`rlh-jobs`](../../packages/jobs/jobs/README.md) for the Service Definition contract, [`rlh-jobs-local`](../../packages/jobs/jobs-local/README.md) for the registry lifecycle and admission policy, and [`rlh-tool-jobs`](../../packages/jobs/tool-jobs/README.md) for the model-facing Consumer.
 
 <!-- BEGIN GENERATED cordis-surface (gen-cordis-catalog.ts) — do not edit between markers -->
 

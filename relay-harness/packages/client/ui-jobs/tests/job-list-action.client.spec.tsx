@@ -120,17 +120,18 @@ describe('JobListAction rows', () => {
     expect(rowCells()[0]).toContain('signal: SIGTERM')
   })
 
-  it('renders every status word, including the stopping transition', () => {
+  it('renders every status word, including the stopping transition and the control-lost record', () => {
     render(<JobListAction {...props([
       job({ id: 'bash-1' as JobView['id'], label: 'a', status: 'running' }),
       job({ id: 'bash-2' as JobView['id'], label: 'b', status: 'stopping' }),
       job({ id: 'bash-3' as JobView['id'], label: 'c', status: 'completed', finishedAt: START }),
       job({ id: 'bash-4' as JobView['id'], label: 'd', status: 'killed', finishedAt: START }),
       job({ id: 'bash-5' as JobView['id'], label: 'e', status: 'failed', finishedAt: START }),
+      job({ id: 'bash-6' as JobView['id'], label: 'f', status: 'control-lost-unknown', finishedAt: START }),
     ])} />)
     fireEvent.click(screen.getByRole('button'))
     const words = rowCells().map(cells => cells[2])
-    expect(new Set(words)).toEqual(new Set(['运行中', '正在停止', '已完成', '已取消', '已失败']))
+    expect(new Set(words)).toEqual(new Set(['运行中', '正在停止', '已完成', '已取消', '已失败', '停止未确认，结果未知']))
   })
 })
 
