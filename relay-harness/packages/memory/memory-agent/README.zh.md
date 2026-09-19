@@ -30,7 +30,7 @@ Provider 会保留 prepared handle，直到持久的最终 `turn/end`。complete
 
 #### Token 影响
 
-有条件且受限。没有 active 候选可装入时不增加消息；否则完整召回消息最多为 `maxContextChars` 个 Unicode code point，并保留到 compaction 替换它为止。
+有条件且受限。没有 active 候选可装入时不增加消息。配额为 `maxContextChars` 再被请求预算收紧：`min(maxContextChars, budget.maxChars, max(0, (budget.maxTokens - 4) * 4))`。超出剩余配额的命中以 `budget_exhausted` 记录为 Context Engine trace 中的拒绝。召回消息保留到 compaction 替换它为止。
 
 #### KV 缓存影响
 

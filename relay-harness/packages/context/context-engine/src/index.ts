@@ -20,7 +20,6 @@ import type {
   ContextCandidateDecision,
   ContextCandidateSelection,
   ContextPrepareInput,
-  ContextPurpose,
   ContextRetrievalPlan,
   ContributorContextBudget,
   ContextEngineService,
@@ -283,15 +282,16 @@ export class ContextEngine extends Service implements ContextEngineService {
 
   private async prepare(input: ContextPrepareInput, retrieval?: ContextRetrievalInput): Promise<PreparedStepContext> {
     input.signal.throwIfAborted()
+    if (input.limits !== undefined) validateConfigValues(input.limits)
     const registrations = [...this.contributors.values()]
-    const plan = this.plan(input.purpose, registrations, retrieval)
+    const plan = this.plan(input, registrations, retrieval)
     const candidates: Candidate[] = []
     const decisions: ContextCandidateDecision[] = []
     const operation = new AbortController()
     const signal = AbortSignal.any([input.signal, this.lifetime.signal])
     signal.throwIfAborted()
-    const deadlineAt = Date.now() + this.config.prepareTimeoutMs
-    const timer = setTimeout(() => { operation.abort() }, this.config.prepareTimeoutMs)
+    const deadlineAt = Math.min(Date.now() + this.config.prepareTimeoutMs, input.deadlineAt ?? Number.POSITIVE_INFINITY)
+    const timer = setTimeout(() => { operation.abort() }, Math.max(0, deadlineAt - Date.now()))
     const runs = new Map<number, ContributorRun>()
     const pending = registrations.entries()
     const worker = async () => {
@@ -369,10 +369,11 @@ export class ContextEngine extends Service implements ContextEngineService {
     return deepFreeze({ plan, decisions, ...packed })
   }
 
-  private plan(purpose: ContextPurpose, registrations: readonly Registration[], retrieval?: ContextRetrievalInput): ContextRetrievalPlan {
+  private plan(input: ContextPrepareInput, registrations: readonly Registration[], retrieval?: ContextRetrievalInput): ContextRetrievalPlan {
+    const purpose = input.purpose
     const totalBudget = {
-      maxChars: Math.min(this.config.maxChars, retrieval?.budget?.maxChars ?? this.config.maxChars),
-      maxTokens: Math.min(this.config.maxTokens, retrieval?.budget?.maxTokens ?? this.config.maxTokens),
+      maxChars: Math.min(this.config.maxChars, input.limits?.maxChars ?? this.config.maxChars, retrieval?.budget?.maxChars ?? this.config.maxChars),
+      maxTokens: Math.min(this.config.maxTokens, input.limits?.maxTokens ?? this.config.maxTokens, retrieval?.budget?.maxTokens ?? this.config.maxTokens),
     }
     const localBudget = {
       maxChars: Math.min(this.config.maxContributorChars, totalBudget.maxChars),

@@ -184,13 +184,18 @@ async function contributeMemory(
         recordAccess: false,
       }, input.signal)))
       if (admissionClosed(input.signal, lifecycle)) return undefined
+      const allowance = recallAllowance(config, input.budget, candidates)
       if (input.purpose === 'tool_retrieval') {
-        return candidates.flatMap((candidate, rank) => {
-          const result = contributionOf(renderRecall([candidate], scope, config.maxContextChars, ctx, input.budget), config.candidateLimit)
+        const admitted = candidates.flatMap((candidate, rank) => {
+          const result = contributionOf(renderRecall([candidate], scope, allowance, ctx, input.budget), config.candidateLimit)
           return result === undefined ? [] : [{ ...result, selection: { priority: 'provider' as const, rank, reasons: ['governed_memory_lookup'] } }]
         })
+        declineUnfitHits(candidates, admitted.length > 0)
+        return admitted
       }
-      return contributionOf(renderRecall(candidates, scope, config.maxContextChars, ctx, input.budget), config.candidateLimit)
+      const rendered = renderRecall(candidates, scope, allowance, ctx, input.budget)
+      declineUnfitHits(candidates, rendered !== undefined)
+      return contributionOf(rendered, config.candidateLimit)
     }
 
     if (input.caller.step !== 1 || input.caller.turn === undefined) return undefined
@@ -209,9 +214,11 @@ async function contributeMemory(
       }))
       return undefined
     }
+    const recallCandidates = eligibleCandidates(prepared.candidates)
     const rendered = renderRecall(
-      eligibleCandidates(prepared.candidates), prepared.scope, config.maxContextChars, ctx, input.budget,
+      recallCandidates, prepared.scope, recallAllowance(config, input.budget, recallCandidates), ctx, input.budget,
     )
+    declineUnfitHits(recallCandidates, rendered !== undefined)
     const key = pendingKey(input.caller.sessionId, input.caller.turn)
     const replaced = pending.get(key)
     if (replaced !== undefined && replaced.prepared.handle !== prepared.handle) {
@@ -235,6 +242,8 @@ async function contributeMemory(
         )
       }
     }
+    // A classified decline is a planned outcome, not a retrieval failure: record it as-is.
+    if (error instanceof ContextProviderError) throw error
     if (!isAborted(input.signal)) {
       ctx.logger.warn(
         `memory-agent: ${input.purpose} retrieval failed for ${input.caller.sessionId}/${input.caller.turn ?? 'draft'}: ${errorMessage(error)}`,
@@ -283,6 +292,24 @@ function recallWasAdmitted(session: Session, pending: PendingTurn): boolean {
     && event.data.contributions.some(contribution => contribution.contributorId === name
       && contribution.messageId === pending.recallMessageId
       && contribution.messageEventSeqs.length > 0))
+}
+
+/**
+ * Effective recall allowance: the deployment cap clamped by the request's own character and
+ * estimated-token budget, with the framing overhead reserved before rendering. Throws a
+ * classified decline when hits exist but even the framing cannot fit.
+ */
+function recallAllowance(config: ResolvedConfig, budget: ContextBudget, hits: readonly MemorySearchHit[]): number {
+  const allowance = Math.min(config.maxContextChars, budget.maxChars, Math.max(0, (budget.maxTokens - 4) * 4))
+  if (hits.length > 0 && Array.from(renderRecallText([])).length + 1 > allowance) {
+    throw new ContextProviderError('declined', 'budget_exhausted')
+  }
+  return allowance
+}
+
+/** Decline with a stable reason when hits existed but the remaining request budget admitted none. */
+function declineUnfitHits(hits: readonly MemorySearchHit[], admitted: boolean): void {
+  if (hits.length > 0 && !admitted) throw new ContextProviderError('declined', 'budget_exhausted')
 }
 
 function renderRecall(
