@@ -13,7 +13,7 @@ AgentLoop 在 inbox 领取与提示词组装之间调用该 seam（见 [architec
 | `registerContributor(contributor)` | 原子保留唯一非空 contributor id；无效或重复注册不发布任何内容并抛出 `ContextEngineError`（`CONTEXT_ENGINE_INVALID_CONTRIBUTOR` / `CONTEXT_ENGINE_CONFLICT`）。返回只移除该注册的 disposer。 |
 | `prepareStep(input)` | 解析 purpose 资格与局部配额，以子 abort signal 和 deadline 运行每个合格 contributor，再让显式引用先于 Provider 发现结果参与预算选择与去重。选中消息仍保持注册顺序。不可变结果带 plan、decisions、带归属 contribution、消息、证据与覆盖。畸形 payload、空／候选内重复 Evidence id，或选中候选之间的重复 Evidence id 会原子失败。只有全部合格 contributor 都主动放弃且没有拒绝需要记录时才返回 `undefined`。 |
 
-planner 是确定性的，不调用模型。`StepContextContributor.purposes` 声明 Provider 资格；省略时支持全部 purpose。每个合格 Provider 都收到带局部字符／token 上限、timeout 与绝对 deadline 的 `StepContextInput.budget`。Provider 保留自己的检索算法，并应在该配额内裁剪。子 signal timeout 不会中止父请求，因此后续 Provider 仍会运行；超时或已释放注册代际的迟到结果会被忽略。父请求 signal 仍会原子中止整次准备。
+planner 是确定性的，不调用模型。`StepContextContributor.purposes` 声明 Provider 资格；省略时支持全部 purpose。每个合格 Provider 都收到带局部字符／token 上限、timeout 与绝对 deadline 的 `StepContextInput.budget`。Provider 保留自己的检索算法，并应在该配额内裁剪。子 signal timeout 不会中止父请求，因此后续 Provider 仍会运行；超时或已释放注册代际的迟到结果会被忽略。父请求 signal 仍会原子中止整次准备。请求只能收紧这些限制：`ContextPrepareInput.limits` 降低总配额，`ContextPrepareInput.deadlineAt` 封顶整次准备 deadline；两者都不能抬高部署配置。
 
 ## 配置
 

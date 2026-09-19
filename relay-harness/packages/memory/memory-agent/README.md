@@ -30,7 +30,7 @@ The first request of a qualifying turn contains the direct user message followed
 
 #### Token effect
 
-Conditional and capped. No message is added when no active candidate fits. Otherwise the complete recall message is at most `maxContextChars` Unicode code points and remains in history until compaction replaces it.
+Conditional and capped. No message is added when no active candidate fits. The allowance is `maxContextChars` tightened by the request budget: `min(maxContextChars, budget.maxChars, max(0, (budget.maxTokens - 4) * 4))`. Hits that exceed the remaining allowance decline with `budget_exhausted` in the Context Engine trace. The recall message remains in history until compaction replaces it.
 
 #### KV Cache effect
 

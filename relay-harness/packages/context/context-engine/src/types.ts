@@ -205,6 +205,10 @@ export interface ContextPrepareInput {
   readonly cwd: string
   /** Detached durable caller identity and policy metadata. */
   readonly caller: StepContextCaller
+  /** Request-local allowance ceiling; it can only lower the deployment budget, never raise it. */
+  readonly limits?: Partial<ContextBudget>
+  /** Wall-clock deadline for the complete preparation; the engine never extends a caller deadline. */
+  readonly deadlineAt?: number
 }
 
 /** Provider request derived from one Context preparation plan. */
