@@ -90,13 +90,24 @@ export function surfacesMaxForViewport(viewport: number): number {
  * @param sidebar - sidebar width preference in px (0 = closed).
  * @param details - details width preference in px (0 = closed).
  * @param surfaces - surfaces width preference in px (0 = closed).
+ * @param prioritizeInspector - Preserve a user-opened inspector even when the conversation must shrink.
  * @returns resolved widths; details 0 and surfaces 0 mean visually closed (never unmounted), while a closed sidebar keeps its compact rail.
  */
-export function computeColumns(viewport: number, sidebar: number, details: number, surfaces = 0): Columns {
+export function computeColumns(viewport: number, sidebar: number, details: number, surfaces = 0, prioritizeInspector = false): Columns {
   // The sidebar is fixed at its preference (or the rail) — it never concedes.
   const s = sidebar === 0 ? SIDEBAR_COLLAPSED : clampWidth(sidebar, SIDEBAR_MIN, SIDEBAR_MAX)
   const d0 = details === 0 ? 0 : clampWidth(details, DETAILS_MIN, DETAILS_MAX)
   const surf0 = surfaces === 0 ? 0 : clampWidth(surfaces, SURFACES_MIN, surfacesMaxForViewport(viewport))
+
+  // A user-opened inspector stays visible when there is no room for two full columns.
+  // The center may shrink; very narrow widths devote the available area to inspection.
+  if (prioritizeInspector && (surf0 > 0 || d0 > 0)) {
+    const available = Math.max(0, viewport - s)
+    const wanted = surf0 > 0 ? surf0 : d0
+    const floor = surf0 > 0 ? SURFACES_MIN : DETAILS_MIN
+    const width = available < floor + DETAILS_MIN ? available : Math.min(wanted, available - DETAILS_MIN)
+    return { sidebar: s, center: available - width, details: surf0 > 0 ? 0 : width, surfaces: surf0 > 0 ? width : 0 }
+  }
 
   // Step 1: everything fits at preferred widths.
   if (s + d0 + surf0 + CENTER_MIN <= viewport) {

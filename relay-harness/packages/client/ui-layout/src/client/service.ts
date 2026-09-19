@@ -8,6 +8,9 @@
  * details open/close from ui-conversation) — writes stay inside the store's
  * declared action set, delivered as the registration's bound actions.
  */
+import { MainNavigation } from './navigation.ts'
+import type { MainNavigationSnapshot } from './navigation.ts'
+import type { HostObservable } from '@relay-harness/rlh-client-ui-slots'
 import type { BoundActions } from '@relay-harness/rlh-client-ui-slots'
 import type { createLayoutStore } from './stores.ts'
 
@@ -21,6 +24,12 @@ export type PanelActions = BoundActions<ReturnType<typeof createLayoutStore>>
  * only).
  */
 export interface ILayout {
+  /** Current central page, independent from sidebar browsing and permissions. */
+  readonly mainNavigation: HostObservable<MainNavigationSnapshot>
+  /** Navigate the center column, dismiss inspectors and the narrow sidebar, and keep the selected Session.
+   * @param page - A registered shell.page key, or conversation.
+   */
+  openMain(page: string): void
   /** Toggle the sidebar panel (closed ⟷ contract default width). */
   toggleSidebar(): void
   /** Open the details panel (no-op when already open). */
@@ -45,6 +54,14 @@ export interface ILayout {
 
 /** Cross-plugin panel-action face (ctx.layout). */
 export class LayoutController implements ILayout {
+  readonly mainNavigation = new MainNavigation()
+  openMain(page: string): void {
+    // Navigation can precede the first root render; geometry exists only after attachPanels.
+    this.#panels?.closeDetails()
+    this.#panels?.closeSurfaces()
+    this.#panels?.closeNarrowSidebar()
+    this.mainNavigation.open(page)
+  }
   #panels: PanelActions | undefined
 
   /**

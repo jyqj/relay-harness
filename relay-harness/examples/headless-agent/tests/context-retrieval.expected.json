@@ -1,0 +1,11 @@
+{
+  "output": "CONTEXT_TOOL_OK",
+  "calls": [
+    "retrieve_context"
+  ],
+  "toolResults": 1,
+  "userMessages": [
+    "user"
+  ],
+  "contextTraces": 0
+}

@@ -177,7 +177,9 @@ function SurfacesBody({
   }, [key])
   useEffect(() => {
     const onOpen = (event: Event): void => {
-      const kind = (event as CustomEvent<{ kind?: string } | undefined>).detail?.kind
+      const detail = (event as CustomEvent<{ kind?: string; sessionId?: string } | undefined>).detail
+      if (detail?.sessionId !== undefined && detail.sessionId !== key) return
+      const kind = detail?.kind
       if (kind !== 'preview' && kind !== 'terminal' && kind !== 'files' && kind !== 'diff' && kind !== 'agents') {
         return
       }

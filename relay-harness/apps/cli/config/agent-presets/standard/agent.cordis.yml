@@ -162,6 +162,9 @@
 # latter applies a durable `standard` preset gate, so this preset only composes
 # the explicit memory-management tool while sharing recall across surfaces.
 
+- id: tool-context
+  name: '@relay-harness/rlh-tool-context'
+
 - id: tool-memory
   name: '@relay-harness/rlh-tool-memory'
   config:

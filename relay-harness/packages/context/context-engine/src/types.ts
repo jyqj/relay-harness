@@ -3,8 +3,7 @@
  * negative findings, knowledge-provider observability, and the step-context seam. Types only — the
  * {@link ContextEngineError} taxonomy and the branded id factories are runtime and live in
  * `index.ts` and `brand.ts`. The projected contracts live in the
- * [context-engine subsystem page](../../../docs/subsystems/context-engine.md); the design
- * authority is ADR-0006 in the Relay root repository (outside this repository).
+ * [context-engine subsystem page](../../../docs/subsystems/context-engine.md).
  * @module @relay-harness/rlh-context-engine/types
  */
 
@@ -143,7 +142,7 @@ export interface ProviderExplain {
 }
 
 /** Why context is being prepared; contributors use it to select purpose-specific retrieval and packing. */
-export type ContextPurpose = 'agent_step' | 'prompt_enhancement'
+export type ContextPurpose = 'agent_step' | 'prompt_enhancement' | 'tool_retrieval'
 
 /** Deterministic priority used when the total context budget cannot admit every candidate. */
 export type ContextSelectionPriority = 'explicit-reference' | 'provider'
@@ -209,7 +208,37 @@ export interface ContextPrepareInput {
 }
 
 /** Provider request derived from one Context preparation plan. */
+/** Explicit Agent retrieval over the same provider registry; identity is supplied by the host caller. */
+export interface ContextRetrievalInput {
+  /** Model-authored search text, not a direct human instruction. */
+  readonly query: string
+  /** Exact contributor ids to query; omission selects every explicitly tool-enabled provider. */
+  readonly contributors?: readonly string[]
+  /** Optional tighter whole-response context allowance. */
+  readonly budget?: ContextBudget
+  /** Current execution directory resolved by the caller, never from model JSON. */
+  readonly cwd: string
+  /** Detached caller identity captured from the executing Agent. */
+  readonly caller: StepContextCaller
+  /** Cancellation of the current tool execution. */
+  readonly signal: AbortSignal
+}
+
+/** Registry description, not a provider health report or a permission grant. */
+export interface ContextContributorDescription {
+  /** Registered source id accepted by explicit retrieval. */
+  readonly id: string
+  /** Purposes explicitly supported by this generation. */
+  readonly purposes: readonly ContextPurpose[]
+}
+
+/** One source may expose an indivisible observation or ranked independently packable observations. */
+export type ContextContributionBatch = ContributedStepContext | readonly ContributedStepContext[]
+
+/** One provider request with its allocated budget and optional explicit-tool query. */
 export interface StepContextInput extends ContextPrepareInput {
+  /** Present only for tool_retrieval; model-authored data must not be promoted to user authority. */
+  readonly query?: string
   /** Contributor-local allowance assigned by ContextEngine. */
   readonly budget: ContributorContextBudget
 }
@@ -220,7 +249,9 @@ export interface ContextCandidateSelection {
   readonly priority: ContextSelectionPriority
   /** Stable provider reasons explaining why this candidate was returned. */
   readonly reasons: readonly string[]
-  /** Optional provider identity for cross-provider duplicate suppression. */
+  /** Optional source-local relevance rank; lower ranks precede later candidates. */
+  readonly rank?: number
+  /** Optional canonical resource identity for cross-provider duplicate suppression. */
   readonly dedupeKey?: string
 }
 
@@ -256,7 +287,7 @@ export interface StepContextContributor {
    * @param input - the purpose, messages, abort signal, and cwd for the preparation.
    * @returns the contributed context, or `undefined` when this step needs none.
    */
-  contribute(input: StepContextInput): Promise<ContributedStepContext | undefined>
+  contribute(input: StepContextInput): Promise<ContextContributionBatch | undefined>
 }
 
 /** One deterministic provider read in the request plan. */
@@ -266,7 +297,7 @@ export interface ContextRetrievalPlanEntry {
   /** Whether this provider supports the request purpose. */
   readonly eligible: boolean
   /** Stable eligibility reason. */
-  readonly reason: 'purpose_supported' | 'purpose_not_supported'
+  readonly reason: 'purpose_supported' | 'purpose_not_supported' | 'not_requested'
   /** Local allowance when eligible. */
   readonly budget?: Omit<ContributorContextBudget, 'deadlineAt'>
 }
@@ -330,7 +361,7 @@ export interface PreparedStepContext {
   readonly messages: readonly UserMessage[]
   /** All evidence records from every contributing contributor, concatenated. */
   readonly evidence: readonly Evidence[]
-  /** All reported coverage records in contributor registration order. */
+  /** Inspected scopes from returned candidates, including observations omitted by packing. */
   readonly coverage: readonly CoverageRecord[]
 }
 
@@ -384,6 +415,15 @@ declare module '@relay-harness/rlh-session/types' {
  * `ctx.contextEngine`. Owns contributor registration, deterministic planning, and packing.
  */
 export interface ContextEngineService {
+  /** Describe registered sources without reading data or activating an Agent.
+   * @returns Immutable ids and supported purposes for the current registrations.
+   */
+  describeContributors(): readonly ContextContributorDescription[]
+  /** Retrieve explicit model-selected context without injecting or persisting a second transcript.
+   * @param input - Host-derived caller identity and a model-authored query.
+   * @returns Selected observations and a plan, including empty and rejected retrieval outcomes.
+   */
+  retrieve(input: ContextRetrievalInput): Promise<PreparedStepContext>
   /**
    * Register one step-context contributor.
    * @param contributor - the contributor with a unique non-empty id.

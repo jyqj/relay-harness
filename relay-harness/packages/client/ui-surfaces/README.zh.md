@@ -10,6 +10,8 @@ store 用 `sessionId` 做 key（`bySession`）。`open` 会 upsert 单例的 fil
 
 `/client` 导出表层只包含插件主体（`apply`／`inject`）、store 工厂及约定类型；SurfacesRoot、EmptyState 与 SurfaceTabs 仍由 slot 注册封装在包内。
 
+`rlhd-open-surface` 事件可以携带 Session 地址。带地址的请求仅在匹配当前 Session 时处理，否则忽略；不携带地址的既有平台操作保持原行为。打开 surfaces 请求布局拥有的检查区位置，关闭工具详情但不丢弃其挂载数据。
+
 ## 模型体验
 
 无。右边栏壳只拥有查看状态与布局列几何；这里没有任何内容进入模型请求。

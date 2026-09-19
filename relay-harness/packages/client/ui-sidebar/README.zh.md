@@ -16,6 +16,8 @@ New Session 会启动运行时的页面局部前端 Session Intent。运行时�
 
 `/client` 导出表层只包含插件主体（`apply`／`inject`）及约定类型；SidebarRoot、行组件和树派生仍由 slot 注册封装在包内。
 
+产品主导航占据可追加的 `sidebar.primary` slot，与可选区域标签独立。选择 Work 或 Library 不替换工作区浏览，也不隐藏新建会话。新建会话先打开 conversation 主区域，再调用既有工作区服务。
+
 ## 模型体验
 
 无。侧边栏渲染浏览器会话列表；这里没有任何内容进入模型请求。

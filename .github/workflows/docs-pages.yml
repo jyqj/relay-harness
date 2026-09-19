@@ -2,7 +2,7 @@ name: Deploy documentation
 
 on:
   push:
-    branches: [master]
+    branches: [main]
     paths:
       - '.github/workflows/docs-pages.yml'
       - 'relay-harness/scripts/verify-feature-status.mjs'
@@ -26,7 +26,7 @@ env:
   PRIMARY_NODE_VERSION: '24'
   # Projected source links target the public repository, whose history can
   # differ from this workflow's source repository.
-  DOCS_REPOSITORY_REF: master
+  DOCS_REPOSITORY_REF: main
   # CI runs must never report to the production telemetry endpoint baked
   # into apps/cli/cordis.yml (AppCLIEntry disables the row when set).
   RLH_TELEMETRY_DISABLED: '1'
@@ -49,6 +49,8 @@ jobs:
         run: node scripts/verify-feature-status.mjs
 
       - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: relay-harness/package.json
 
       - uses: actions/setup-node@v6
         with:

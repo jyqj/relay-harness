@@ -46,6 +46,21 @@
     },
     {
       "path": "../../util/brand"
+    },
+    {
+      "path": "../../goal/goal"
+    },
+    {
+      "path": "../../subagent/subagent"
+    },
+    {
+      "path": "../../context/context-engine"
+    },
+    {
+      "path": "../../session/session-projection-cache"
+    },
+    {
+      "path": "../../llm/llm"
     }
   ]
 }

@@ -2,15 +2,29 @@
 
 English | [中文](README.zh.md)
 
-Shared browser product shell for the Chat, Work, and Library navigation model. The browser entry exports only `apply` and `inject` as values; visibility policy remains internal.
+Chat, Work, and Library occupy the main workspace. The product navigation contributes to `sidebar.primary`, leaving workspace browsing, session search, and New Session available in all three views. Work and Library register keyed `shell.page` entries owned by [ui-layout](../ui-layout/README.md); neither replaces the conversation slot or declares a second conversation renderer.
 
-Simple Mode suppresses advanced model/preset/plugin/trajectory controls but keeps the Context Inspector provenance surface visible. Work reads existing Goal, Plan, Jobs, Trajectory, Deliverables, Approval, Question, and Session projections; Library opens the existing Files and governance Settings surfaces. Deliverable opening passes the source Session and exact execution-recorded path to the [Host](../../host/work-results/README.md) for inventory and path checks; the browser does not rewrite paths or impose the currently selected workspace as their root.
+## Main workspace
 
-Work's deliverable inventory comes from the Host's whole-session `deliverables` projection, never the loaded chat timeline. Missing capture in older successful results is shown as incomplete history; an absent projection is shown as unavailable. The trajectory counter explicitly counts loaded records. Running execution or jobs take precedence over a completed Goal; paused and blocked Goals remain visible. Equivalent Work facts retain snapshot identity during streaming. File-open failures stay in-page with retry and dismissal, and settlements from a previous Session cannot reopen the error.
+Chat remains mounted when another page is selected. Visited main pages also remain mounted and receive `active`; hidden pages cancel page-specific reads and ignore late replies without discarding unsent editor drafts. Main navigation is viewing state, independent from execution permissions and persisted display density. Supported product routes survive reload through the URL; invalid source addresses remain explicit rather than selecting another Session. Removed plugin page keys still fall back to Chat.
 
-Work separates execution status from explicit confirmation of a Session log prefix. Raw receipt projections trigger invalidation or verification but never prove persistence. Quiet views read `workResults/get`; its verified cut, successful acceptance response, cancellation, and late-response checks prevent an unsaved or superseded receipt from displaying as current. Library searches bounded pages through the Host and opens each row using its source Session identity, with explicit incomplete-history and continuation notices. The confirmation does not prove tests, file versions, permissions, or completion of every child.
+Work presents the current Session's goal, execution, synchronization, pending input, execution relationships, and recorded changes. The attention action opens that exact Session's existing conversation, where the established approval and question controls remain authoritative. It does not grant permissions or answer questions automatically. Direct-child navigation uses the existing subagent address when available, and a child can return to its parent. Background Jobs retain their separate status meanings; an inactive child is not displayed as successful. The page does not dispatch, retry, or cancel unsupported execution kinds.
 
-Mode reloads wait for locally admitted writes to settle before reading the Host, including when persistence rejects. This prevents a connection reset from publishing a pre-commit value over a pending choice. Mode operations belong to the plugin instance lifetime. Unloading blocks new operations immediately; disposal invalidates pending generations permanently. Late replies cannot publish mode changes or begin native mirroring after that lifetime ends.
+Recorded changes come from the Host's whole-session `deliverables` projection rather than the loaded chat page. They are tool-recorded paths, not verified final artifacts. Missing historical capture remains explicit. Opening sends the source Session and exact path to the [Host](../../host/work-results/README.md); the browser neither rewrites relative paths nor assumes the selected workspace owns a historical output. The Workspace files action includes the current Session address, and the surfaces receiver rejects a request for a different selected Session.
+
+## Review and synchronization
+
+Execution, goal phase, pending input, and user confirmation are independent facts. A Goal is not required to review a closed Session record. Quiet, synchronized Work views read `workResults/review` before enabling confirmation. The Host returns every current eligibility blocker, including non-root Session, an open turn, queued input, pending interaction, or background work. Read failure leaves confirmation disabled with a recheck action. Those reasons explain the observation; the Host revalidates the actual mutation inside maintenance.
+
+Confirmation binds a Session log prefix, not passing tests, file hashes, permissions, or completion of every child. Raw receipt projections never prove persistence. The displayed confirmation requires a verified current cut whose accepted revision matches the current projection. Work also requires a synchronized Connection and an open, non-removed history window before opening outputs or confirming a record. Disconnect, synchronization, history errors, and removal keep retained facts readable but unavailable for these operations. Verification and operation replies belong to the Session, handshake epoch, and active-page lifetime; switching any of them invalidates late replies. Reconnection never resends writes.
+
+## Library and display density
+
+Library searches bounded pages of execution-recorded outputs across existing Sessions, without scanning device files or activating cold owners. Each row opens its source output or explicitly navigates to its source conversation. Files and knowledge are distinguished from capabilities and connections, with copy stating which actions use the selected Session.
+
+Missing capture and unreadable-Session notices survive pagination. Numeric coverage remains per-page because a Session can span multiple pages; the final cursor does not erase earlier gaps. Failed-page retry preserves the submitted query and cursor; restart replaces the scan. Reconnection or reactivation reloads the submitted query from its first page while preserving the unsubmitted search draft. Previous-epoch rows remain disabled until the new scan returns. Read and native-open errors stay independent.
+
+Detailed view controls advanced configuration and diagnostics, not execution access. Persisted `simple` and `developer` values remain unchanged. Simple display suppresses model, preset, plugin, and trajectory controls but preserves evidence inspection. Mode reload waits for pending local writes; disposal invalidates generations and prevents late native mirroring.
 
 ## Model Experience
 
@@ -18,17 +32,25 @@ Mode reloads wait for locally admitted writes to settle before reading the Host,
 
 #### What the model sees
 
-Nothing from this package. `productMode`, Work, and Library are browser projections over existing Host and Session state.
+Nothing from this package. Product navigation and projections do not submit a model request. Explicitly continuing a conversation uses its existing input path.
 
 #### Token effect
 
-Zero tokens. Changing the product shell never appends a Session event or prepares model context.
+Zero tokens for viewing or navigation; no Session event is added by a view change.
 
 #### KV Cache effect
 
-None. The shell changes visible controls and navigation without changing a model request or cache prefix.
+None. Display density does not alter model history or tool permissions.
 
 ## Known Limitations and Deferred Work
 
-- The sidebar remains the current top-level navigation host; Work and Library are compact sidebar pages rather than independent center-column routes.
-- Product mode has no Host push event yet. Successful writes fold locally, and reconnect reloads the persisted value.
+- Work describes the selected Session and its direct execution relationships, not an exhaustive cross-workspace task inbox or durable independent Task entity.
+- Confirmation is transcript-bound. Artifact versions, automated test attestations, and whole-subagent-tree acceptance require separate domain support.
+- Library has no workspace filter, and native output opening remains limited by Host capabilities and authorization.
+- Product mode has no Host push event; local successful writes and reconnect reads update the browser.
+
+## Source records and URL navigation
+
+Library output sources and Work activity open the read-only `record` page instead of implicitly opening/resuming a conversation. `#relay/record/<encoded-session-id>` identifies that source; official conversation, Work and Library views also participate in browser history. Invalid routes stay invalid, and URL navigation never supplies authority or activates a Session. Only the explicit conversation action enters the existing interactive path; delegated records route through their owner.
+
+Record reads are bound to route, page activation and connection epoch. Hidden, disconnected or superseded reads are aborted and late completions cannot replace another source. History pages retain a prefix-bound snapshot. Goal phase, execution, recovery capability, source cut and coverage remain separate. This page is not a second task store, global approval inbox, content-version review system or provider-health dashboard. Live Work confirmation uses the non-activating `workResults/review` endpoint.

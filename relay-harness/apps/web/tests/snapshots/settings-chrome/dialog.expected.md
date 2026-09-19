@@ -54,6 +54,6 @@
   - button "排队发送":
     - text: 排队发送
     - img
-  - text: 开发者模式
+  - text: 详细视图
   - paragraph: 显示模型、Agent preset、插件、轨迹与原始工具诊断入口。
-  - switch "开发者模式" [checked]
+  - switch "详细视图" [checked]

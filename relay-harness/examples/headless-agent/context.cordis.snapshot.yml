@@ -1,0 +1,25 @@
+# A real headless composition with a scripted provider and real local retrieval.
+- id: base
+  name: '@relay-harness/cordis-plugin-include'
+  config:
+    path: ./cordis.yml
+    patches:
+      - id: llm-deepseek
+        name: '@relay-harness/rlh-llm-deepseek'
+        disabled: true
+      - insert:
+          - id: retrieval-snapshot-backend
+            name: './tests/fixtures/context-snapshot-backend.mjs'
+          - id: context-engine
+            name: '@relay-harness/rlh-context-engine'
+          - id: code-index
+            name: '@relay-harness/rlh-code-index-local'
+            config:
+              workspaceRoot: !!js process.cwd()
+              databasePath: ':memory:'
+          - id: code-context
+            name: '@relay-harness/rlh-code-context'
+            config:
+              maxHits: 2
+          - id: tool-context
+            name: '@relay-harness/rlh-tool-context'

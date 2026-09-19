@@ -43,7 +43,7 @@ export function apply(ctx: ClientContext): void {
   const injectProps = (): SidebarRootInjected => ({
     // The shell's New Session button rides the runtime's shared action
     // (current Session Workspace, then recent Workspace).
-    startSession: (workspaceId) => { ctx.workspaces.startSession(workspaceId) },
+    startSession: (workspaceId) => { ctx.layout.openMain('conversation'); ctx.workspaces.startSession(workspaceId) },
     toggleSidebar: () => { ctx.layout.toggleSidebar() },
     hooks: {
       navTabs: {
@@ -83,6 +83,7 @@ export function apply(ctx: ClientContext): void {
       // The shell owns geometry and optional region tabs; ui-workspace
       // registers the browsing region, ui-settings the foot trigger + panel.
       children: {
+        'sidebar.primary': { kind: 'list', scope: 'root' },
         'sidebar.brand.mark': { kind: 'single', scope: 'root' },
         'sidebar.brand.name': { kind: 'single', scope: 'root' },
         'sidebar.chat.label': { kind: 'single', scope: 'root' },

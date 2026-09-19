@@ -621,6 +621,9 @@ importers:
       node-addon-require-builtin:
         specifier: ^0.1.5
         version: 0.1.5
+      "@relay-harness/rlh-tool-context":
+        specifier: workspace:^
+        version: link:../../packages/context/tool-context
     devDependencies:
       '@relay-harness/rlh-host-frontend-static':
         specifier: workspace:^
@@ -637,6 +640,33 @@ importers:
       execa:
         specifier: ^10.0.1
         version: 10.0.1
+      "@relay-harness/rlh-agent":
+        specifier: workspace:^
+        version: link:../../packages/core/agent
+      "@relay-harness/rlh-host-apiproxy":
+        specifier: workspace:^
+        version: link:../../packages/host/apiproxy
+      "@relay-harness/rlh-host-webserver":
+        specifier: workspace:^
+        version: link:../../packages/host/webserver
+      "@relay-harness/rlh-llm":
+        specifier: workspace:^
+        version: link:../../packages/llm/llm
+      "@relay-harness/rlh-session":
+        specifier: workspace:^
+        version: link:../../packages/core/session
+      "@relay-harness/rlh-settings":
+        specifier: workspace:^
+        version: link:../../packages/settings/settings
+      "@relay-harness/rlh-subagent":
+        specifier: workspace:^
+        version: link:../../packages/subagent/subagent
+      "@relay-harness/rlh-system-prompt":
+        specifier: workspace:^
+        version: link:../../packages/core/system-prompt
+      "@relay-harness/rlh-tools":
+        specifier: workspace:^
+        version: link:../../packages/core/tools
 
   apps/desktop:
     devDependencies:
@@ -1046,6 +1076,18 @@ importers:
       '@relay-harness/rlh-workflow-worker-thread':
         specifier: workspace:*
         version: link:../packages/workflow/workflow-worker-thread
+      "@relay-harness/rlh-code-context":
+        specifier: workspace:*
+        version: link:../packages/context/code-context
+      "@relay-harness/rlh-code-index-local":
+        specifier: workspace:*
+        version: link:../packages/index/code-index-local
+      "@relay-harness/rlh-context-engine":
+        specifier: workspace:*
+        version: link:../packages/context/context-engine
+      "@relay-harness/rlh-tool-context":
+        specifier: workspace:*
+        version: link:../packages/context/tool-context
 
   native/landlock-run:
     devDependencies:
@@ -1767,6 +1809,9 @@ importers:
       '@relay-harness/rlh-workflow-worker-thread':
         specifier: workspace:^
         version: link:../../workflow/workflow-worker-thread
+      "@relay-harness/rlh-tool-context":
+        specifier: workspace:^
+        version: link:../../context/tool-context
     devDependencies:
       '@relay-harness/cordis':
         specifier: workspace:^
@@ -3540,9 +3585,15 @@ importers:
       '@relay-harness/rlh-client-runtime':
         specifier: workspace:^
         version: link:../runtime
+      '@relay-harness/rlh-client-ui-layout':
+        specifier: workspace:^
+        version: link:../ui-layout
       '@relay-harness/rlh-client-ui-conversation':
         specifier: workspace:^
         version: link:../ui-conversation
+      '@relay-harness/rlh-client-ui-primitives':
+        specifier: workspace:^
+        version: link:../ui-primitives
       '@relay-harness/rlh-client-ui-settings':
         specifier: workspace:^
         version: link:../ui-settings
@@ -7258,6 +7309,18 @@ importers:
       '@relay-harness/rlh-user-questions':
         specifier: workspace:^
         version: link:../../interaction/user-questions
+      "@relay-harness/rlh-goal":
+        specifier: workspace:^
+        version: link:../../goal/goal
+      "@relay-harness/rlh-subagent":
+        specifier: workspace:^
+        version: link:../../subagent/subagent
+      "@relay-harness/rlh-context-engine":
+        specifier: workspace:^
+        version: link:../../context/context-engine
+      "@relay-harness/rlh-session-projection-cache":
+        specifier: workspace:^
+        version: link:../../session/session-projection-cache
 
   packages/identity/anonymous-user-id:
     devDependencies:
@@ -11721,6 +11784,53 @@ importers:
       vitepress-plugin-mermaid:
         specifier: ^2.0.17
         version: 2.0.17(mermaid@11.17.0)(vitepress@1.6.4(@algolia/client-search@5.55.2)(@types/node@25.9.3)(@types/react@18.3.31)(lightningcss@1.33.0)(postcss@8.5.15)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(search-insights@2.17.3)(typescript@6.0.3))
+
+  packages/context/tool-context:
+    dependencies:
+      "@relay-harness/schemastery":
+        specifier: link:../../../vendor/schemastery
+        version: link:../../../vendor/schemastery
+    devDependencies:
+      "@relay-harness/cordis":
+        specifier: workspace:^
+        version: link:../../../vendor/cordis
+      "@relay-harness/rlh-agent":
+        specifier: workspace:^
+        version: link:../../core/agent
+      "@relay-harness/rlh-agent-loop":
+        specifier: workspace:^
+        version: link:../../core/agent-loop
+      "@relay-harness/rlh-agent-presets":
+        specifier: workspace:^
+        version: link:../../preset/agent-presets
+      "@relay-harness/rlh-code-context":
+        specifier: workspace:^
+        version: link:../code-context
+      "@relay-harness/rlh-code-index-local":
+        specifier: workspace:^
+        version: link:../../index/code-index-local
+      "@relay-harness/rlh-context-engine":
+        specifier: workspace:^
+        version: link:../context-engine
+      "@relay-harness/rlh-fs-local":
+        specifier: workspace:^
+        version: link:../../fs/fs-local
+      "@relay-harness/rlh-invariants":
+        specifier: workspace:^
+        version: link:../../runtime-diagnostics/invariants
+      "@relay-harness/rlh-llm":
+        specifier: workspace:^
+        version: link:../../llm/llm
+      "@relay-harness/rlh-session":
+        specifier: workspace:^
+        version: link:../../core/session
+      "@relay-harness/rlh-system-prompt":
+        specifier: workspace:^
+        version: link:../../core/system-prompt
+      "@relay-harness/rlh-tools":
+        specifier: workspace:^
+        version: link:../../core/tools
+
 
 packages:
 

@@ -30,3 +30,7 @@ Completed Session history changes the independent Prompt Enhancement request. It
 
 - Selection is deterministic recency packing, not semantic history retrieval. A later shared planner may rank exchanges while preserving this provider's durable admission rules.
 - The contributor includes text blocks only. Images, reasoning, tool calls, and tool results require separate purpose-specific evidence providers rather than lossy inline conversion here.
+
+## Explicit current-Session retrieval
+
+The `tool_retrieval` purpose searches bounded completed exchanges and checkpoints in the current resident Session using model-authored query terms. It does not wake another Agent, search a global corpus, or promote tool-supplied text into a user instruction. An empty result describes only that bounded current-Session scope. Complete rendering respects the allocated character/token budget. Ordinary `agent_step` still declines to avoid duplicating the transcript.

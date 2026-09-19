@@ -26,7 +26,7 @@ rlh web GUI 的浏览器侧：shell 启动、浏览器与宿主通信、共享 U
 | [`ui-diff/`](ui-diff/README.md) | 在 Diff surface 中展示工作区变更和 unified 差异块。 |
 | [`ui-agents-panel/`](ui-agents-panel/README.md) | 在 Agents surface 中列出当前会话的 subagent（子 agent）和后台任务。 |
 | [`ui-sidebar/`](ui-sidebar/README.md) | 展示工作区与会话导航。 |
-| [`ui-product-shell/`](ui-product-shell/README.md) | 组合 Chat、Work、Library 导航与持久 Simple/Developer mode。 |
+| [`ui-product-shell/`](ui-product-shell/README.md) | 组合中央 Chat、Work、Library 和独立显示密度。 |
 | [`ui-brand-official/`](ui-brand-official/README.md) | 使用官方名称和标记填充通用浏览器品牌 slot。 |
 | [`ui-titlebar/`](ui-titlebar/README.md) | 从标题栏切换终端抽屉和 surfaces 列。 |
 | [`ui-git/`](ui-git/README.md) | 向标题栏添加 commit、push 和变更请求操作。 |

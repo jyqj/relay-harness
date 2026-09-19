@@ -1157,6 +1157,7 @@ export class LocalCodeIndexRuntime {
         ...answer,
         degraded: true,
         readErrors: [...answer.readErrors, `query embedding failed (${queryEmbedFailure})`],
+        degradation: { code: 'query-embedding-unavailable', fallback: !answer.degraded && answer.readErrors.length === 0 ? 'lexical' : 'none' },
       }
     }
     return answer

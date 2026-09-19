@@ -6,7 +6,7 @@
 
 `createApiRemoteAgentResolver()` 会复用 live Agent、恢复普通冷会话、对并发恢复去重、保留 subagent ownership fence，并为 Typert `agent` 和 `session` lookup 配置同一个 resolver。标准 Web API Proxy 提供 Agent 默认值和 scope 设置，再将返回的 resolver 用于旧方法，使已迁移与未迁移方法共用同一份策略实现。
 
-当前 Client 组合挂载 Goal Remote 贡献和只读 Host 插件清单贡献（`pluginInventory/list`）。该组合卸载时，Cordis effect 的所有权机制会撤回所有贡献；`@relay-harness/rlh-api-gateway/client` 负责描述符校验、可追踪 namespace Service、直接与作用域方法、调用与取消。Client 入口通过 Cordis 消费共享的 `TypertClientRemote` 接口，不导入具体 Gateway；它只以 type-only 形式重新导出 Gateway Client face 的声明合并，因此消费端经由本外观取到转发事件词汇时，运行时不会多出一条通往 Gateway 实现的边。
+Client 组合明确挂载 `src/client/index.ts` 中选择的贡献，包含 Goal、Work Results、Memory Center、Code Index Center、MCP/Skill 清单和 Prompt Enhancement。该组合卸载时，Cordis effect 的所有权机制会撤回所有贡献；`@relay-harness/rlh-api-gateway/client` 负责描述符校验、可追踪 namespace Service、直接与作用域方法、调用与取消。Client 入口通过 Cordis 消费共享的 `TypertClientRemote` 接口，不导入具体 Gateway；它只以 type-only 形式重新导出 Gateway Client face 的声明合并，因此消费端经由本外观取到转发事件词汇时，运行时不会多出一条通往 Gateway 实现的边。
 
 本包不包含传输逻辑或 Host 服务发现逻辑。Web 或未来的 TUI 只要提供同一份不依赖 React 的 `ctx.remote` 约定，均可复用其 Client face。
 
@@ -40,3 +40,7 @@
 - 能力集合由构建时显式导入的值固定确定；Client 不会在运行时发现 Host 中已启用的服务或 Remote 定义。
 - 若要增加能力，必须显式导入相应的 `/remote` 值并在此组合中挂载。
 - 在剩余 BFF 配置迁移到 `api-remotes` 之前，标准 Web Host 仍从旧 API Proxy 提供恢复默认值与 Agent scope 设置。
+
+## Passive Work queries
+
+已选择的 Work Results contribution 包含按 Session id 调用的 `inspect`、`history`、`review`，不经过恢复冷会话的 Agent lookup。完整 contribution 集合以 `src/client/index.ts` 的值导入与挂载清单为准；该 facade 不会动态发现全部 Host provider。

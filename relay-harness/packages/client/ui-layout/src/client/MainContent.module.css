@@ -1,0 +1,5 @@
+.root { display: grid; grid-row: 1 / -1; grid-template-rows: subgrid; min-width: 0; min-height: 0; }
+.conversation { display: grid; grid-row: 1 / -1; grid-template-rows: subgrid; min-width: 0; min-height: 0; }
+.page { grid-row: 1 / -1; min-width: 0; min-height: 0; overflow: auto; padding-top: 48px; }
+.conversation[hidden], .page[hidden] { display: none; }
+.conversation:focus, .page:focus { outline: none; }

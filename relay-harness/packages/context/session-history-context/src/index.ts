@@ -123,7 +123,7 @@ declare module '@relay-harness/cordis' {
 /** Read-only Context Engine contributor over one caller Session's durable log. */
 export class SessionHistoryContextContributor implements StepContextContributor {
   readonly id = 'session-history'
-  readonly purposes = ['prompt_enhancement'] as const
+  readonly purposes = ['prompt_enhancement', 'tool_retrieval'] as const
 
   constructor(
     private readonly ctx: Context,
@@ -136,13 +136,27 @@ export class SessionHistoryContextContributor implements StepContextContributor 
    * @returns one untrusted recall message with evidence and coverage, or no contribution.
    */
   contribute(input: StepContextInput): Promise<ContributedStepContext | undefined> {
-    if (input.purpose !== 'prompt_enhancement') return Promise.resolve(undefined)
+    if (input.purpose !== 'prompt_enhancement' && input.purpose !== 'tool_retrieval') return Promise.resolve(undefined)
     input.signal.throwIfAborted()
     const session = this.ctx.sessions.get(input.caller.sessionId)
     if (session === undefined) return Promise.resolve(undefined)
     const units = collectHistoryUnits(session)
     if (units.length === 0) return Promise.resolve(undefined)
-    const selection = selectUnits(this.ctx, units, this.config)
+    const terms = input.purpose === 'tool_retrieval'
+      ? (input.query ?? '').toLocaleLowerCase().split(/[^\p{L}\p{N}_]+/u).filter(term => term.length > 1) : []
+    const matching = terms.length === 0 ? units : units.filter(unit => terms.some(term => unit.text.toLocaleLowerCase().includes(term)))
+    if (matching.length === 0) return Promise.resolve({
+      message: createUserMessage({ source: { kind: 'plugin', plugin: 'session-history' }, content: [{
+        type: 'text', text: 'No completed exchange in this Session matches the query terms. Other Sessions and failed or unfinished turns were not searched.',
+      }] }), evidence: [], coverage: {
+        searched: [String(session.id)], notSearched: ['other sessions', 'failed or unfinished turns'], completeness: 'bounded',
+      },
+    })
+    const selection = selectUnits(this.ctx, matching, {
+      ...this.config,
+      maxChars: Math.min(this.config.maxChars, input.budget.maxChars),
+      maxTokens: Math.min(this.config.maxTokens, input.budget.maxTokens),
+    })
     if (selection.units.length === 0) return Promise.resolve(undefined)
     input.signal.throwIfAborted()
     const message = historyMessage(selection.units)
@@ -150,7 +164,10 @@ export class SessionHistoryContextContributor implements StepContextContributor 
     return Promise.resolve({
       message,
       evidence,
-      coverage: historyCoverage(session, units, selection),
+      coverage: {
+        ...historyCoverage(session, matching, selection),
+        ...(input.purpose === 'tool_retrieval' ? { rationale: 'bounded lexical query over completed exchanges and checkpoints in the current Session only' } : {}),
+      },
     })
   }
 }
