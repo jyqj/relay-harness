@@ -35,7 +35,7 @@ import { createApiProxy } from '@relay-harness/rlh-host-apiproxy'
 import type { SessionEvent } from '@relay-harness/rlh-session'
 import type { RpcResult } from '@relay-harness/rlh-host-apiproxy/api/rpc'
 import WorkResults from '../src/index.ts'
-import type { WorkAcceptReceipt, WorkLibraryPage, WorkAcceptRequest, WorkView } from '../src/types.ts'
+import type { WorkAcceptReceipt, WorkLibraryPage, WorkAcceptRequest, WorkView, WorkContentReview, WorkContentReviewRead, WorkContentVersion } from '../src/types.ts'
 
 class RelayFixture extends TypertRemoteService {
   static inject = ['workResults']
@@ -479,4 +479,75 @@ it('enumerates Library metadata only on the first page and retains a Session inv
     expect(next.value.entries[0]?.sourceThroughSeq).toBe(first.value.entries[0]?.sourceThroughSeq)
     expect(next.value.coverage?.scope).toBe('observed-corpus')
   }
+})
+
+const FIXTURE_DIGEST = 'a'.repeat(64)
+
+function contentVersionFixture(): WorkContentVersion {
+  return {
+    execution: { sessionId: SessionId('reviewed-work') },
+    source: { sessionId: SessionId('reviewed-work'), throughSeq: 1 },
+    locator: 'report.md', contentHash: { algorithm: 'sha256', digest: FIXTURE_DIGEST }, observedAt: 1000,
+  }
+}
+
+function contentReviewRequest(decision: 'approved' | 'rejected' = 'approved') {
+  return {
+    decision,
+    contentVersions: [contentVersionFixture()],
+    contentVersionRefs: [FIXTURE_DIGEST],
+    checkRecords: [{
+      checkId: 'check-1', checker: { name: 'vitest', version: '1.0' }, contentVersionRefs: [FIXTURE_DIGEST],
+      exitCode: 0, verdict: 'pass' as const, evidence: 'host-captured' as const,
+    }],
+    checkRecordRefs: ['check-1'],
+  }
+}
+
+it('records a durable content review bound to versions, never to the log prefix', async () => {
+  const { ctx, handle, post } = await fixture()
+  const agent = handle.agent
+  const recorded = await post<WorkContentReview>('recordContentReview', { agentId: agent.id, request: contentReviewRequest() })
+  expect(recorded.ok).toBe(true)
+  if (!recorded.ok) throw new Error(recorded.error.message)
+  expect(recorded.value).toMatchObject({ decision: 'approved', actor: 'host-client', contentVersionRefs: [FIXTURE_DIGEST], checkRecordRefs: ['check-1'] })
+  expect(agent.session.events.filter(event => event.type === 'work/reviewed')).toHaveLength(1)
+  expect(agent.session.events.some(event => event.type === 'work/accepted')).toBe(false)
+  const stored = await ctx.sessionPersistence.readFrom(agent.id, 0)
+  expect(stored.events.find(event => event.type === 'work/reviewed')).toMatchObject({ data: { reviewId: recorded.value.reviewId } })
+  agent.session.append('turn/start', { turn: 2 })
+  const read = await post<WorkContentReviewRead>('contentReview', { request: { sessionId: agent.id } })
+  expect(read).toMatchObject({ ok: true, value: {
+    review: { reviewId: recorded.value.reviewId, decision: 'approved' },
+    currency: [{ ref: FIXTURE_DIGEST, state: 'not-reverified' }],
+  } })
+  expect(ctx.sessionProjections.snapshot(agent.session).values.workAcceptance?.acceptedRevision).toBeNull()
+})
+
+it('reuses the latest review only for a byte-identical resubmission and fails loud on an unresolved ref', async () => {
+  const { handle, post } = await fixture()
+  const agent = handle.agent
+  const first = await post<WorkContentReview>('recordContentReview', { agentId: agent.id, request: contentReviewRequest() })
+  const repeat = await post<WorkContentReview>('recordContentReview', { agentId: agent.id, request: contentReviewRequest() })
+  expect(first.ok && repeat.ok).toBe(true)
+  if (first.ok && repeat.ok) expect(repeat.value.reviewId).toBe(first.value.reviewId)
+  expect(agent.session.events.filter(event => event.type === 'work/reviewed')).toHaveLength(1)
+  expect((await post<WorkContentReview>('recordContentReview', { agentId: agent.id, request: contentReviewRequest('rejected') })).ok).toBe(true)
+  expect(agent.session.events.filter(event => event.type === 'work/reviewed')).toHaveLength(2)
+  const invalid = contentReviewRequest()
+  invalid.contentVersionRefs = ['b'.repeat(64)]
+  expect(await post('recordContentReview', { agentId: agent.id, request: invalid })).toMatchObject({ ok: false })
+  expect(agent.session.events.filter(event => event.type === 'work/reviewed')).toHaveLength(2)
+})
+
+it('reads a cold content review without activation and reports unverified currency', async () => {
+  const { ctx, handle, post } = await fixture()
+  const id = handle.agent.id
+  expect((await post('recordContentReview', { agentId: id, request: contentReviewRequest() })).ok).toBe(true)
+  await handle.dispose()
+  const resume = vi.spyOn(ctx.agents, 'resume')
+  const read = await post<WorkContentReviewRead>('contentReview', { request: { sessionId: id } })
+  expect(read).toMatchObject({ ok: true, value: { review: { decision: 'approved' }, currency: [{ ref: FIXTURE_DIGEST, state: 'not-reverified' }] } })
+  expect(resume).not.toHaveBeenCalled()
+  expect(ctx.agents.get(id)).toBeUndefined()
 })

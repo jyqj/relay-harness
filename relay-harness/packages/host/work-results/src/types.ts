@@ -89,12 +89,16 @@ declare module '@relay-harness/rlh-session/types' {
   interface SessionEventMap {
     /** User acceptance of an exact prior log prefix, never model verification. */
     'work/accepted': { readonly reviewedThroughSeq: number; readonly actor: 'host-client' }
+    /** Explicit user content review bound to versions and check records, never to a log prefix. */
+    'work/reviewed': WorkContentReview
   }
 }
 declare module '@relay-harness/rlh-session-projection/types' {
   interface SessionProjectionMap {
     /** User acceptance derived only from the source Session log. */
     workAcceptance: WorkAcceptanceProjection
+    /** Latest explicit content review derived only from the source Session log. */
+    workContentReviews: WorkContentReviewsProjection
   }
 }
 
@@ -180,6 +184,100 @@ export interface WorkView {
   readonly actions: { readonly confirmRecord: { readonly allowed: boolean; readonly blockers: readonly string[]; readonly scope: 'session-log' } }
   readonly capabilities: { readonly contextSources: readonly { readonly id: string; readonly purposes: readonly string[] }[]; readonly contextAvailable: boolean; readonly activationRequired: boolean }
   readonly coverage: { readonly missing: readonly string[]; readonly scope: 'observed-session-and-descendants' }
+}
+
+/** Observed content identity of one execution environment at one log cut. */
+export interface WorkContentExecution {
+  readonly sessionId: import('@relay-harness/rlh-session/types').SessionId
+  readonly cwd?: string
+}
+
+/** Authoritative Session cut anchoring one content observation. */
+export interface WorkContentSource {
+  readonly sessionId: import('@relay-harness/rlh-session/types').SessionId
+  /** Event sequence the bytes were read at. */
+  readonly throughSeq: number
+}
+
+/** What was actually read: environment, source, locator, hash and observation time. */
+export interface WorkContentVersion {
+  readonly execution: WorkContentExecution
+  readonly source: WorkContentSource
+  /** Execution-recorded locator the bytes were read from. */
+  readonly locator: string
+  readonly contentHash: { readonly algorithm: 'sha256'; readonly digest: string }
+  /** Non-negative epoch milliseconds when the bytes were read. */
+  readonly observedAt: number
+}
+
+/** How one check record's facts were established; capture strength rises left to right. */
+export type WorkCheckEvidence = 'agent-claimed' | 'host-captured' | 'user-reviewed'
+
+/** Opaque identity of one check record inside its owning review. */
+export type WorkCheckId = Branded<'work-check-record'>
+
+/** One checker execution attached to a content review; facts, not success claims. */
+export interface WorkCheckRecord {
+  readonly checkId: WorkCheckId
+  readonly checker: { readonly name: string; readonly version?: string; readonly configDigest?: string }
+  /** Content-version digests consumed; each must resolve in the owning review. */
+  readonly contentVersionRefs: readonly string[]
+  readonly exitCode?: number
+  readonly verdict: 'pass' | 'fail' | 'unknown'
+  /** Durable location of the checker's own output, when captured. */
+  readonly log?: { readonly sessionId: import('@relay-harness/rlh-session/types').SessionId; readonly seq: number }
+  readonly evidence: WorkCheckEvidence
+}
+
+/** The user decision a content review records. */
+export type WorkContentDecision = 'approved' | 'rejected'
+
+/** Opaque identity of one recorded content review. */
+export type WorkContentReviewId = Branded<'work-content-review'>
+
+/** A user decision bound to explicit content versions and check records — never to a log prefix. */
+export interface WorkContentReview {
+  readonly reviewId: WorkContentReviewId
+  readonly decision: WorkContentDecision
+  /** All observed versions this review carries. */
+  readonly contentVersions: readonly WorkContentVersion[]
+  /** Version digests the decision applies to; each must resolve in `contentVersions`. */
+  readonly contentVersionRefs: readonly string[]
+  readonly checkRecords: readonly WorkCheckRecord[]
+  /** Check ids the decision relies on; each must resolve in `checkRecords`. */
+  readonly checkRecordRefs: readonly string[]
+  readonly actor: 'host-client'
+  /** Non-negative epoch milliseconds when the Host recorded the review. */
+  readonly reviewedAt: number
+}
+
+/** Honest confirmed-vs-current state of one confirmed version. */
+export type WorkContentCurrency =
+  | { readonly ref: string; readonly state: 'matches-confirmed' }
+  | { readonly ref: string; readonly state: 'changed-unreviewed'; readonly current: WorkContentVersion }
+  | { readonly ref: string; readonly state: 'not-reverified' }
+
+/** Latest durable content review plus its read-side confirmed-vs-current comparison. */
+export interface WorkContentReviewRead {
+  readonly review: WorkContentReview | null
+  readonly currency: readonly WorkContentCurrency[]
+}
+
+/** Durable whole-log fold of explicit content reviews. */
+export interface WorkContentReviewsProjection {
+  /** Most recent content review, or null before the first one. */
+  readonly latest: WorkContentReview | null
+  /** Number of recorded content reviews. */
+  readonly total: number
+}
+
+/** Explicit content review submission; caller identity is established by the Host carrier. */
+export interface WorkContentReviewRequest {
+  readonly decision: WorkContentDecision
+  readonly contentVersions: readonly WorkContentVersion[]
+  readonly contentVersionRefs: readonly string[]
+  readonly checkRecords: readonly WorkCheckRecord[]
+  readonly checkRecordRefs: readonly string[]
 }
 
 /** Bounded read of final human/assistant/tool messages; does not repair or activate execution. */

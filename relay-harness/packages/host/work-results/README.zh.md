@@ -2,7 +2,7 @@
 
 [English](README.md) | 中文
 
-用于显式确认结果记录和跨会话发现产物的 Host 适配器。Session 日志仍是唯一持久权威；本包不创建 Work 数据库，也不改变 goal 的 phase。它拥有纯 `deliverables` 与 `workAcceptance` 投影，既有承载通道发布这些投影，`ui-product-shell` 负责消费。`ui-deliverables` 只拥有回复指导和逐轮呈现。
+用于显式确认结果记录和跨会话发现产物的 Host 适配器。Session 日志仍是唯一持久权威；本包不创建 Work 数据库，也不改变 goal 的 phase。它拥有纯 `deliverables`、`workAcceptance` 与 `workContentReviews` 投影，既有承载通道发布这些投影，`ui-product-shell` 负责消费。`ui-deliverables` 只拥有回复指导和逐轮呈现。
 
 `workResults/get` 还返回 `confirmationBlockedBy`，根据实时根会话身份、回合关闭状态、Agent 状态、排队输入、Host 审批／提问以及所属后台 Job 采样。读取时的原因仅供解释，不是授权或持久化证明。maintenance 保护的确认路径会再次应用同一纯策略，客户端不能把此前的可用读取转变成授权。
 
@@ -15,6 +15,12 @@
 `workResults/get` 在等待前捕获一个审阅切面，flush 已接受工作，并检查物理回执及覆盖该切面的存储尾部。它返回 `verifiedThroughSeq` 和该切面是否仍为当前切面，绝不把更晚的内存序号升级为持久性声明。原始投影不是持久化证明。客户端只在安静的审阅时点验证；流式变化使较早的确认失效，而不会逐 chunk 触发 flush。
 
 这些是既有可信 Host 客户端提交的确认，不是物理人点击的密码学证据。所有端点都按既有 Connection 策略限定为 loopback。确认不授予 agent 权限、不证明测试结果，也不证明文件未变化或子 agent 树已完成。
+
+## Content review
+
+`workResults/recordContentReview` 追加 `work/reviewed`：一个用户决定，绑定到显式的 `WorkContentVersion` 身份（执行环境、来源切点、定位符、实际读取字节的 sha-256 摘要、观察时间）和 `WorkCheckRecord` 事实（检查器身份、版本与配置摘要、消费的版本摘要、退出码与结论、持久化日志位置，以及证据级别 `agent-claimed` | `host-captured` | `user-reviewed`）。每个引用都必须在其所属事件内解析。持久化屏障与物理重读对齐既有回执路径；字节级相同的重复提交复用最新记录，并适用同样的可信请求限制。
+
+与 `work/accepted` 不同，该事件不命名日志前缀，记录确认策略保持不变：后续日志事实既不使内容审核失效，也不把它标记为过期。`workResults/contentReview` 读取最新审核并返回逐版本 currency。没有新的 Host 重读时，每个已确认版本都报告 `not-reverified`；持有新鲜 Host 侧观察的调用方应用纯比较，报告 `matches-confirmed` 或带当前观察身份的 `changed-unreviewed`。这是显式的当前与已确认分离，不是文件监听，也不是重验承诺。
 
 ## 资料库与原生打开
 
@@ -46,9 +52,24 @@
 
 已有模型可见前缀不变。
 
+### Explicit content review
+
+#### 模型看到什么
+
+不新增 prompt、工具或模型可见消息。`work/reviewed` 与 `work/accepted` 一样仅用于日志。
+
+#### Token 影响
+
+不增加模型 token。
+
+#### KV Cache 影响
+
+已有模型可见前缀不变。
+
 ## 已知限制与暂缓工作
 
 - 确认绑定 Session 日志前缀，而不是文件哈希。外部文件编辑不一定追加事件；恢复记账也可能在没有新模型轮次时保守地使回执失效。
+- 内容审核绑定声明的摘要，不是设备文件。读取 API 在真正重读之前报告 `not-reverified`；两次审核之间没有任何文件监听。
 - 原生打开要求文件对 Host 可见。远程执行环境需要自己的导出／定位适配器；本功能不下载或读取远程产物字节。
 - 资料库页面是有界观察，不是保留的不可变语料快照。不可用历史及旧版未捕获结果会被报告，并发的相关变化可能要求重试。
 - Host 客户端来源继承既有 loopback／浏览器信任边界，不是独立的身份认证或物理用户认证系统。
@@ -65,6 +86,6 @@
 
 ## Retained Library observations
 
-第一页捕获有界、有序的 Session 语料观察。后续分页复用该观察和各来源首次捕获的产物目录，不在每页重新列出或 stat 全部语料。活 Session 使用已有投影；冷来源优先使用已有 projection cache，回退读取也不激活 Agent。活 Session 或产物变更使保留查询失效。外部冷存储变化不被全局监听：这是保留的观察，不是所有当前文件的不可变快照。重新查询或游标过期后取得新观察。
+第一页捕获有界、有序的 Session 语料观察。后续分页复用该观察和各来源首次捕获的产物目录，不在每页重新列出或 stat 全部语料。活 Session 使用已有投影；冷来源优先使用已有 projection cache，回退读取也不激活 Agent。失效保持精确：Session 创建或销毁、来自保留语料之外会话的结果，或实际改变已观察清单的结果（新增已捕获路径或未捕获的成功）会使保留查询失效；相同或失败的输出不会使有效分页失效。外部冷存储变化不被全局监听：这是保留的观察，不是所有当前文件的不可变快照。重新查询或游标过期后取得新观察。
 
 `maxLibraryQueries` 默认 8，`libraryQueryTtlMs` 默认 120000，`maxLibrarySessions` 默认 10000。被省略的 Session 会报告。`observedSessionIds` 支持跨路径分页去重覆盖统计，既有页计数仍只表示本页。`maxExecutionEntries` 默认 200，`maxHistoryRows` 默认 50，`maxHistoryChars` 默认 64000。所有新接口保留精确可信请求和 loopback 限制。

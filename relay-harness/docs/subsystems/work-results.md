@@ -6,6 +6,8 @@ The [Work Results adapter](../../packages/host/work-results/README.md) owns log-
 
 Verified reads and successful confirmation replies require the corresponding persisted log prefix. Raw projections may invalidate displayed confirmation but cannot establish durability. Opening a captured output delegates authorization to the existing Host opener; source attribution does not grant access.
 
+Explicit content reviews are separate from log-prefix confirmation: a `work/reviewed` event binds a user decision to declared content-version digests and check records, never to a log prefix, and the read reports `not-reverified` currency until an actual re-read. Existing `work/accepted` semantics are unchanged.
+
 ## DeliverablesProjection
 
 ```ts type-equiv
@@ -115,6 +117,91 @@ interface WorkLibraryPage {
 interface WorkOpenRequest {
   readonly sessionId: import('@relay-harness/rlh-session/types').SessionId
   readonly path: string
+}
+```
+
+## WorkContentVersion
+
+```ts type-equiv
+/** What was actually read: environment, source, locator, hash and observation time. */
+interface WorkContentVersion {
+  readonly execution: WorkContentExecution
+  readonly source: WorkContentSource
+  /** Execution-recorded locator the bytes were read from. */
+  readonly locator: string
+  readonly contentHash: { readonly algorithm: 'sha256'; readonly digest: string }
+  /** Non-negative epoch milliseconds when the bytes were read. */
+  readonly observedAt: number
+}
+```
+
+## WorkCheckRecord
+
+```ts type-equiv
+/** One checker execution attached to a content review; facts, not success claims. */
+interface WorkCheckRecord {
+  readonly checkId: WorkCheckId
+  readonly checker: { readonly name: string; readonly version?: string; readonly configDigest?: string }
+  /** Content-version digests consumed; each must resolve in the owning review. */
+  readonly contentVersionRefs: readonly string[]
+  readonly exitCode?: number
+  readonly verdict: 'pass' | 'fail' | 'unknown'
+  /** Durable location of the checker's own output, when captured. */
+  readonly log?: { readonly sessionId: import('@relay-harness/rlh-session/types').SessionId; readonly seq: number }
+  readonly evidence: WorkCheckEvidence
+}
+```
+
+## WorkContentReview
+
+```ts type-equiv
+/** A user decision bound to explicit content versions and check records — never to a log prefix. */
+interface WorkContentReview {
+  readonly reviewId: WorkContentReviewId
+  readonly decision: WorkContentDecision
+  /** All observed versions this review carries. */
+  readonly contentVersions: readonly WorkContentVersion[]
+  /** Version digests the decision applies to; each must resolve in `contentVersions`. */
+  readonly contentVersionRefs: readonly string[]
+  readonly checkRecords: readonly WorkCheckRecord[]
+  /** Check ids the decision relies on; each must resolve in `checkRecords`. */
+  readonly checkRecordRefs: readonly string[]
+  readonly actor: 'host-client'
+  /** Non-negative epoch milliseconds when the Host recorded the review. */
+  readonly reviewedAt: number
+}
+```
+
+## WorkContentCurrency
+
+```ts type-equiv
+/** Honest confirmed-vs-current state of one confirmed version. */
+type WorkContentCurrency =
+  | { readonly ref: string; readonly state: 'matches-confirmed' }
+  | { readonly ref: string; readonly state: 'changed-unreviewed'; readonly current: WorkContentVersion }
+  | { readonly ref: string; readonly state: 'not-reverified' }
+```
+
+## WorkContentReviewRead
+
+```ts type-equiv
+/** Latest durable content review plus its read-side confirmed-vs-current comparison. */
+interface WorkContentReviewRead {
+  readonly review: WorkContentReview | null
+  readonly currency: readonly WorkContentCurrency[]
+}
+```
+
+## WorkContentReviewRequest
+
+```ts type-equiv
+/** Explicit content review submission; caller identity is established by the Host carrier. */
+interface WorkContentReviewRequest {
+  readonly decision: WorkContentDecision
+  readonly contentVersions: readonly WorkContentVersion[]
+  readonly contentVersionRefs: readonly string[]
+  readonly checkRecords: readonly WorkCheckRecord[]
+  readonly checkRecordRefs: readonly string[]
 }
 ```
 

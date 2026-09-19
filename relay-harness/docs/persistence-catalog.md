@@ -407,7 +407,7 @@ Source: [`packages/compaction/compaction/src/types.ts:33`](../packages/compactio
 'context/prepared': ContextPreparedEventData
 ```
 
-Source: [`packages/context/context-engine/src/types.ts:379`](../packages/context/context-engine/src/types.ts)
+Source: [`packages/context/context-engine/src/types.ts:410`](../packages/context/context-engine/src/types.ts)
 
 ### `feedback/*`
 
@@ -1129,4 +1129,15 @@ Source: [`packages/web/web-search-deepseek/src/provider.ts:83`](../packages/web/
 'work/accepted': { readonly reviewedThroughSeq: number; readonly actor: 'host-client' }
 ```
 
-Source: [`packages/host/work-results/src/types.ts:79`](../packages/host/work-results/src/types.ts)
+Source: [`packages/host/work-results/src/types.ts:91`](../packages/host/work-results/src/types.ts)
+
+<a id="workreviewed--log-only"></a>
+
+#### `work/reviewed` — log-only
+
+```ts persistence-catalog
+/** Explicit user content review bound to versions and check records, never to a log prefix. */
+'work/reviewed': WorkContentReview
+```
+
+Source: [`packages/host/work-results/src/types.ts:93`](../packages/host/work-results/src/types.ts)

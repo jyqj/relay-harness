@@ -2071,6 +2071,36 @@
       "source": "packages/host/work-results/src/types.ts"
     },
     {
+      "doc": "docs/subsystems/work-results.md",
+      "symbol": "WorkContentVersion",
+      "source": "packages/host/work-results/src/types.ts"
+    },
+    {
+      "doc": "docs/subsystems/work-results.md",
+      "symbol": "WorkCheckRecord",
+      "source": "packages/host/work-results/src/types.ts"
+    },
+    {
+      "doc": "docs/subsystems/work-results.md",
+      "symbol": "WorkContentReview",
+      "source": "packages/host/work-results/src/types.ts"
+    },
+    {
+      "doc": "docs/subsystems/work-results.md",
+      "symbol": "WorkContentCurrency",
+      "source": "packages/host/work-results/src/types.ts"
+    },
+    {
+      "doc": "docs/subsystems/work-results.md",
+      "symbol": "WorkContentReviewRead",
+      "source": "packages/host/work-results/src/types.ts"
+    },
+    {
+      "doc": "docs/subsystems/work-results.md",
+      "symbol": "WorkContentReviewRequest",
+      "source": "packages/host/work-results/src/types.ts"
+    },
+    {
       "doc": "docs/subsystems/core.md",
       "symbol": "PresetScopeLease",
       "source": "packages/preset/agent-presets/src/index.ts"
