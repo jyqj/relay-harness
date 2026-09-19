@@ -2,6 +2,9 @@ name: Renewal implementation validation
 on:
   push:
     branches: ['work/renewal-build-20260919']
+    paths:
+      - '.github/workflows/renewal-implementation.yml'
+      - '.github/renewal/trigger.txt'
 permissions:
   contents: read
 concurrency:
@@ -25,7 +28,7 @@ jobs:
       - uses: actions/checkout@v6
         with:
           persist-credentials: false
-          fetch-depth: 0
+          fetch-depth: 1
       - uses: actions/setup-node@v6
         with:
           node-version: '24'
@@ -33,37 +36,74 @@ jobs:
         with:
           package_json_file: relay-harness/package.json
           dest: ${{ runner.temp }}/setup-pnpm
+      - name: Install original locked dependencies
+        run: |
+          mkdir -p .renewal-results
+          set +e
+          pnpm install --frozen-lockfile > .renewal-results/install.log 2>&1
+          status=$?
+          tail -20 .renewal-results/install.log
+          exit "$status"
       - name: Apply reviewed source changes
+        id: apply
+        run: python3 ../.github/renewal/driver.py
+      - name: Reconcile only workspace lock entries
+        id: reconcile
         run: |
-          if test -f ../.github/renewal/apply.py; then python3 ../.github/renewal/apply.py; fi
-      - name: Show architecture inventory
-        run: |
-          git ls-files '*standard*' '*agent.cordis.yml' '*tsdown.config*' '*work-results*' '*session-history*' '*navigation*' '*translation*' '*main-workbench*' | head -140
-          cat packages/context/context-engine/tsdown.config.ts 2>/dev/null || true
-          cat packages/context/code-context/tsdown.config.ts 2>/dev/null || true
-          cat packages/context/context-engine/tsconfig.json
-      - name: Install locked dependencies
-        run: pnpm install --frozen-lockfile
-      - name: Apply generated metadata
+          cp pnpm-lock.yaml /tmp/renewal-original-lock.yaml
+          pnpm install --lockfile-only --ignore-scripts --offline > .renewal-results/lock.log 2>&1
+          pnpm install --frozen-lockfile --offline >> .renewal-results/lock.log 2>&1
+          tail -20 .renewal-results/lock.log
+      - name: Generate affected repository metadata
+        id: generate
         run: |
           if test -f ../.github/renewal/generate.mjs; then node ../.github/renewal/generate.mjs; fi
       - name: Focused behavior tests
         id: tests
-        run: pnpm exec vitest run packages/context/context-engine packages/context/code-context packages/host/work-results packages/client/ui-product-shell packages/client/connection packages/client/ui-layout packages/client/ui-sidebar packages/client/ui-surfaces --maxWorkers 2
+        if: success() || (failure() && steps.reconcile.outcome == 'success')
+        run: |
+          set +e
+          pnpm exec vitest run packages/context/context-engine packages/context/code-context packages/context/tool-context packages/memory/memory-agent packages/host/work-results packages/client/ui-product-shell packages/client/connection packages/client/ui-layout packages/client/ui-sidebar packages/client/ui-surfaces --maxWorkers 2 > .renewal-results/tests.log 2>&1
+          status=$?
+          tail -100 .renewal-results/tests.log
+          exit "$status"
       - name: Build Host and Client
         id: build
-        if: success() || failure()
-        run: pnpm run build:lib && pnpm run build:web
-      - name: Lint changed surfaces
+        if: success() || (failure() && steps.reconcile.outcome == 'success')
+        run: |
+          set +e
+          pnpm run build:lib > .renewal-results/build.log 2>&1 && pnpm run build:web >> .renewal-results/build.log 2>&1
+          status=$?
+          grep -n -E 'error TS|ERROR|Error:|error:' .renewal-results/build.log | head -65 || true
+          tail -20 .renewal-results/build.log
+          exit "$status"
+      - name: Lint affected surfaces
         id: lint
-        if: steps.build.outcome == 'success'
-        run: pnpm exec tsx scripts/run-oxlint.ts packages/context/context-engine packages/context/code-context packages/host/work-results packages/client/ui-product-shell packages/client/connection packages/client/ui-layout packages/client/ui-sidebar packages/client/ui-surfaces
-      - name: Retain validation evidence
+        if: success() || (failure() && steps.build.outcome == 'success')
+        run: |
+          set +e
+          pnpm exec tsx scripts/run-oxlint.ts packages/context/context-engine packages/context/code-context packages/context/tool-context packages/memory/memory-agent packages/host/work-results packages/client/ui-product-shell packages/client/connection packages/client/ui-layout packages/client/ui-sidebar packages/client/ui-surfaces > .renewal-results/lint.log 2>&1
+          status=$?
+          tail -100 .renewal-results/lint.log
+          exit "$status"
+      - name: Inspect source ownership and clean diff
+        if: always() && steps.apply.outcome == 'success'
+        run: |
+          git diff --stat
+          git diff --check
+          find packages -path '*/standard/agent.cordis.yml' -print
+          git ls-files '*main-workbench*' '*contract*' | head -30
+      - name: Materialize clean candidate Git objects without changing refs
+        if: always() && steps.reconcile.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if test -f ../.github/renewal/candidate.py; then python3 ../.github/renewal/candidate.py; fi
+      - name: Retain actual validation logs
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: renewal-validation-${{ github.run_id }}
-          path: |
-            relay-harness/.renewal-results
+          path: relay-harness/.renewal-results
           if-no-files-found: ignore
           retention-days: 3
