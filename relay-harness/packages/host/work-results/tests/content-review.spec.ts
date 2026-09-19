@@ -53,7 +53,10 @@ describe('explicit content reviews', () => {
     record(session, review({ reviewId: 'review-1' as WorkContentReviewId, decision: 'rejected' }))
     record(session, review({ reviewId: 'review-2' as WorkContentReviewId }))
     const restored = Session.fromRestore(session.id, structuredClone(session.events), structuredClone(session.header))
-    const folded = restored.events.reduce((state, event) => workContentReviewProjection.apply(state, event), workContentReviewProjection.init())
+    const folded = restored.events.reduce(
+      (state, event) => workContentReviewProjection.apply(state, event),
+      workContentReviewProjection.init(),
+    )
     expect(folded).toEqual({ latest: review({ reviewId: 'review-2' as WorkContentReviewId }), total: 2 })
     expect(host.sessionProjections.snapshot(session).values.workContentReviews).toEqual({ latest: review({ reviewId: 'review-2' as WorkContentReviewId }), total: 2 })
     expect(workContentReviewProjection.apply({ latest: null, total: 0 }, { type: 'turn/start', seq: 9, time: 1, data: { turn: 1 } } as never)).toEqual({ latest: null, total: 0 })

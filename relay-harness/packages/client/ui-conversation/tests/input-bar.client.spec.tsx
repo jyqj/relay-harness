@@ -752,7 +752,7 @@ describe('running and lock semantics', () => {
     const textarea = b.view.container.querySelector('textarea')!
     expect((b.view.container.querySelector('button[aria-label="发送消息"]') as HTMLButtonElement).disabled).toBe(false)
     fireEvent.keyDown(textarea, { key: 'Enter' })
-    await act(async () => { await new Promise(resolve => { setTimeout(resolve, 0) }) })
+    await act(async () => { await new Promise((resolve) => { setTimeout(resolve, 0) }) })
     expect(b.sink).toHaveBeenCalledWith('keep me', [], 'queue', expect.any(AbortSignal))
   })
 

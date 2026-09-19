@@ -91,10 +91,14 @@ describe('PluginInventoryGateway', () => {
   it('reports catalog capabilities with mounted-Loader evidence and no tool registry as unknown session', async () => {
     const { ctx, inventory } = await harness()
     ctx.loader.builtins['code-index-workspace-router'] = activePlugin
-    await ctx.loader.create({
+    // create()'s declared type omits `id`, but composed entries carry stable
+    // ids from cordis.yml and the capability catalog matches on them; pass one.
+    const withStableId = {
+      id: 'code-index-workspace-router',
       name: 'cordis:code-index-workspace-router',
       config: { watcherEnabled: true },
-    })
+    } as Parameters<typeof ctx.loader.create>[0]
+    await ctx.loader.create(withStableId)
     const entry = inventory.capabilities().capabilities.find(
       capability => capability.capabilityId === 'code-index',
     )

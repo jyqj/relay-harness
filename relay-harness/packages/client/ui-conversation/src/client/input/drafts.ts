@@ -57,12 +57,9 @@ export class DiscardedDraftRegistry {
     if (text === '') return
     const current = this.store.getSnapshot()
     if (current[sessionId]?.text === text) return
-    const next: Record<string, DiscardedDraft> = { ...current, [sessionId]: { text, at: Date.now() } }
-    const entries = Object.entries(next).sort(([, a], [, b]) => a.at - b.at)
-    if (entries.length > LIMIT) {
-      for (const [id] of entries.slice(0, entries.length - LIMIT)) delete next[id]
-    }
-    this.store.set(next)
+    const merged: Record<string, DiscardedDraft> = { ...current, [sessionId]: { text, at: Date.now() } }
+    const entries = Object.entries(merged).sort(([, a], [, b]) => a.at - b.at)
+    this.store.set(Object.fromEntries(entries.slice(Math.max(0, entries.length - LIMIT))))
   }
 
   /**
@@ -76,9 +73,7 @@ export class DiscardedDraftRegistry {
     const current = this.store.getSnapshot()
     const entry = current[sessionId]
     if (entry === undefined) return undefined
-    const next = { ...current }
-    delete next[sessionId]
-    this.store.set(next)
+    this.store.set(Object.fromEntries(Object.entries(current).filter(([id]) => id !== sessionId)))
     return entry.text
   }
 
@@ -89,9 +84,7 @@ export class DiscardedDraftRegistry {
   dismiss(sessionId: SessionId): void {
     const current = this.store.getSnapshot()
     if (current[sessionId] === undefined) return
-    const next = { ...current }
-    delete next[sessionId]
-    this.store.set(next)
+    this.store.set(Object.fromEntries(Object.entries(current).filter(([id]) => id !== sessionId)))
   }
 
   /**

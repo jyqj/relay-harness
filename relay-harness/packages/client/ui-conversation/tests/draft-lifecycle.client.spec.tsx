@@ -26,7 +26,7 @@ describe('DiscardedDraftRegistry', () => {
     registry.discard(sid('s1'), '')
     expect(registry.getSnapshot()).toEqual({})
     registry.discard(sid('s1'), 'unsent text')
-    expect(registry.getSnapshot()).toEqual({ s1: { text: 'unsent text', at: expect.any(Number) } })
+    expect(registry.getSnapshot()).toEqual({ s1: { text: 'unsent text', at: expect.any(Number) as number } })
     expect(registry.face(sid('s1')).getSnapshot()?.text).toBe('unsent text')
     expect(registry.face(sid('s2')).getSnapshot()).toBeUndefined()
     // Re-recording the same text keeps the original discard time.
@@ -41,7 +41,7 @@ describe('DiscardedDraftRegistry', () => {
     registry.discard(sid('s1'), 'again')
     registry.dismiss(sid('s1'))
     expect(registry.getSnapshot()).toEqual({})
-    expect(registry.dismiss(sid('s1'))).toBeUndefined()
+    expect(() => { registry.dismiss(sid('s1')) }).not.toThrow()
   })
 
   it('bounds retained tombstones by oldest discard time', () => {
@@ -94,7 +94,7 @@ describe('InputHub draft lifecycle at scope teardown', () => {
     const b = await bench()
     b.shell.setDraft('send me')
     b.shell.submit()
-    await act(async () => { await new Promise(resolve => { setTimeout(resolve, 0) }) })
+    await act(async () => { await new Promise((resolve) => { setTimeout(resolve, 0) }) })
     expect(b.prompt).toHaveBeenCalledWith([{ type: 'text', text: 'send me' }], 'queue', expect.any(AbortSignal))
     expect(b.shell.snapshot.draft).toBe('')
     await b.runtime.sessions.remove('s1')
