@@ -408,6 +408,42 @@ it('reads a cold Work, review and final history through trusted HTTP without act
   expect((await post('history', { request: { sessionId: id, limit: 10000 } })).ok).toBe(false)
 })
 
+it('serves a large cold history under the latency budget without activating an Agent', async () => {
+  const { ctx, root, handle, post } = await fixture()
+  // Local baseline (2026-09, M-series MacBook, `vitest run`, 1,200 seeded
+  // events, 3 runs): history over the persisted log ~30ms. The budget keeps
+  // ample headroom for CI load while failing loud on an activation or
+  // unbounded-read regression.
+  const HISTORY_BUDGET_MS = 500
+  const turns = 400
+  const seed: SessionEvent[] = []
+  let seq = 0
+  for (let turn = 1; turn <= turns; turn += 1) {
+    seed.push({ type: 'turn/start', seq: seq++, time: turn, data: { turn } })
+    seed.push({
+      type: 'user/message', seq: seq++, time: turn, surfaceOp: 'append',
+      data: createUserMessage({ content: [{ type: 'text', text: `turn ${turn} input` }], source: { kind: 'user' } }),
+    })
+    seed.push({ type: 'turn/end', seq: seq++, time: turn, data: { turn, reason: { kind: 'completed' } } })
+  }
+  const seeded = await ctx.agents.create({ sessionId: SessionId('large-cold-history'), meta: { cwd: root }, seed, agentOptions: { provider: 'fixture', model: 'fixture' } })
+  await ctx.sessions.flush(seeded.agent.session)
+  await seeded.dispose()
+  await handle.dispose()
+  const resume = vi.spyOn(ctx.agents, 'resume')
+  const started = performance.now()
+  const history = await post<import('../src/types.ts').WorkHistoryPage>('history', { request: { sessionId: SessionId('large-cold-history'), limit: 50 } })
+  const historyMs = performance.now() - started
+  expect(history.ok).toBe(true)
+  if (history.ok) {
+    expect(history.value.rows).toHaveLength(50)
+    expect(history.value.rows.at(-1)?.text).toContain(`turn ${turns} input`)
+  }
+  expect(resume).not.toHaveBeenCalled()
+  expect(ctx.agents.get(SessionId('large-cold-history'))).toBeUndefined()
+  expect(historyMs).toBeLessThan(HISTORY_BUDGET_MS)
+})
+
 it('derives per-execution relationship and recovery capability facts without granting control or resume', async () => {
   const { ctx, root, handle, post } = await fixture()
   const parentId = handle.agent.id

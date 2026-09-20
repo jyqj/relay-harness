@@ -108,3 +108,32 @@ describe('retained Library observations invalidate only on contributing changes'
     expect(page.coverage).toMatchObject({ scope: 'observed-corpus', omittedSessions: 0 })
   })
 })
+
+describe('Library pagination latency budgets', () => {
+  // Local baseline (2026-09, M-series MacBook, `vitest run`, 2,000 seeded
+  // sessions, 3 runs): first page ~3ms, retained-corpus continuation ~0.2ms.
+  // Budgets sit far above the baseline (GC/CI pauses are tens of ms) while a
+  // quadratic pass over the corpus would still exceed them.
+  const FIRST_PAGE_BUDGET_MS = 400
+  const CONTINUATION_BUDGET_MS = 200
+
+  it('serves a page and its retained-corpus continuation under generous budgets', async () => {
+    const { library } = await harness()
+    const seeded = 2_000
+    for (let index = 0; index < seeded; index += 1) {
+      const session = ctx!.sessions.create(SessionId(`perf-corpus-${index}`))
+      result(session, [`perf-${index}.txt`])
+    }
+    const started = performance.now()
+    const page = await firstPage(library)
+    const firstPageMs = performance.now() - started
+    expect(page.entries).toHaveLength(10)
+    const continuationStarted = performance.now()
+    const continued = await continueRead(library, page)
+    const continuationMs = performance.now() - continuationStarted
+    // The second page must serve from the retained corpus observation, not rescan.
+    expect(continued.coverage?.snapshotId).toBe(page.coverage!.snapshotId)
+    expect(firstPageMs).toBeLessThan(FIRST_PAGE_BUDGET_MS)
+    expect(continuationMs).toBeLessThan(CONTINUATION_BUDGET_MS)
+  })
+})

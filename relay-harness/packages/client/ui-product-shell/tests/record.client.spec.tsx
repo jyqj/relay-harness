@@ -99,6 +99,21 @@ describe('passive record page', () => {
     expect(inspect).not.toHaveBeenCalled()
     expect(props.openConversation).not.toHaveBeenCalled()
   })
+  it('marks loaded facts stale and read-only across a disconnect and re-reads on the next epoch', async () => {
+    const { props, state, inspect } = fixture()
+    const rendered = render(<RecordPage {...props} />)
+    await screen.findByText('Saved answer')
+    state.connection = { phase: 'reconnecting', epoch: 1 }
+    rendered.rerender(<RecordPage {...props} />)
+    expect(screen.getByRole('status').textContent).toBe('work.staleFacts')
+    expect(screen.getByRole('button', { name: 'record.refresh' }).hasAttribute('disabled')).toBe(true)
+    await waitFor(() => { expect(screen.queryByText('Saved answer')).toBeNull() })
+    expect(inspect).toHaveBeenCalledTimes(1)
+    state.connection = { phase: 'ready', epoch: 2 }
+    rendered.rerender(<RecordPage {...props} />)
+    expect(await screen.findByText('Saved answer')).toBeTruthy()
+    expect(inspect).toHaveBeenCalledTimes(2)
+  })
   it('renders a failed history page and retries only a read', async () => {
     const { props, read } = fixture()
     read.mockRejectedValueOnce(new Error('source unreadable'))
