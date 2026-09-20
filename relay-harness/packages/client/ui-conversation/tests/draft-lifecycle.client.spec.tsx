@@ -64,9 +64,13 @@ describe('DiscardedDraftRegistry', () => {
 })
 
 describe('InputHub draft lifecycle at scope teardown', () => {
+  type PromptResult =
+    | { ok: true; value: { accepted: true } }
+    | { ok: false; error: { code: 'internal'; message: string; details: Record<string, never> } }
+
   async function bench() {
     const runtime = await SlotTestRuntime.create()
-    const prompt = vi.fn(() => Promise.resolve({ ok: true as const, value: { accepted: true as const } }))
+    const prompt = vi.fn<() => Promise<PromptResult>>(() => Promise.resolve({ ok: true, value: { accepted: true } }))
     await runtime.sessions.add({
       id: 's1',
       session: { prompt, updateQueue: vi.fn(), cancel: vi.fn(), loadOlder: vi.fn() },
@@ -108,6 +112,39 @@ describe('InputHub draft lifecycle at scope teardown', () => {
     b.shell.setDraft('')
     await b.runtime.sessions.remove('s1')
     expect(b.registry.getSnapshot()).toEqual({})
+    await b.runtime.dispose()
+  })
+
+  it('a teardown during an in-flight submit defers the tombstone to the settle outcome', async () => {
+    const b = await bench()
+    const settled = Promise.withResolvers<PromptResult>()
+    b.prompt.mockImplementationOnce(() => settled.promise)
+    b.shell.setDraft('in-flight text')
+    b.shell.submit()
+    await act(async () => { await new Promise((resolve) => { setTimeout(resolve, 0) }) })
+    expect(b.prompt).toHaveBeenCalledTimes(1)
+    expect(b.shell.submitInFlight).toBe(true)
+    // The scope dies mid-submit: the tombstone waits for the Host's answer.
+    await b.runtime.sessions.remove('s1')
+    expect(b.registry.getSnapshot()).toEqual({})
+    // The Host accepted the send: the input was not unsent, so no tombstone.
+    settled.resolve({ ok: true, value: { accepted: true } })
+    await act(async () => { await new Promise((resolve) => { setTimeout(resolve, 0) }) })
+    expect(b.registry.getSnapshot()).toEqual({})
+    await b.runtime.dispose()
+  })
+
+  it('a failed in-flight submit at teardown still records the tombstone', async () => {
+    const b = await bench()
+    const settled = Promise.withResolvers<PromptResult>()
+    b.prompt.mockImplementationOnce(() => settled.promise)
+    b.shell.setDraft('failed in-flight text')
+    b.shell.submit()
+    await act(async () => { await new Promise((resolve) => { setTimeout(resolve, 0) }) })
+    await b.runtime.sessions.remove('s1')
+    settled.resolve({ ok: false, error: { code: 'internal', message: 'send failed', details: {} } })
+    await act(async () => { await new Promise((resolve) => { setTimeout(resolve, 0) }) })
+    expect(b.registry.face(sid('s1')).getSnapshot()?.text).toBe('failed in-flight text')
     await b.runtime.dispose()
   })
 })

@@ -124,10 +124,17 @@ export class InputHub implements SessionInputResolver {
         // Draft lifecycle: unsent input at scope teardown becomes a discarded
         // tombstone (surfaced on reopen) instead of vanishing. Workspace
         // switches carry or clear the draft first (carryDraft), so a live
-        // carry never lands here.
+        // carry never lands here. A submit still in flight defers to its
+        // settle outcome instead: the Host may have accepted the send, so the
+        // frozen draft becomes a tombstone only on a failed settle (an abort
+        // rejection reads as "may not have arrived").
         const unsent = projectClipboard(shell.snapshot)
+        if (shell.submitInFlight) {
+          shell.afterDisposeSubmitSettle((accepted) => {
+            if (!accepted && unsent !== '') this.drafts?.discard(id, unsent)
+          })
+        } else if (unsent !== '') this.drafts?.discard(id, unsent)
         shell.dispose()
-        if (unsent !== '') this.drafts?.discard(id, unsent)
         this.shells.delete(id)
         const conversation = this.rootCtx.get('conversation') as ConversationAttachmentFace | undefined
         for (const imageId of drafts) conversation?.releaseDraftImage(imageId)

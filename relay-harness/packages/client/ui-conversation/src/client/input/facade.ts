@@ -112,6 +112,10 @@ export class SessionInputShell implements SessionInput {
   private disposed = false
   /** Draft persistence mirror (chat store write; receives the clipboard projection, never display-only ranges). */
   private mirrorFn: ((text: string) => void) | undefined
+  /** Default-sink sends (machine path and image-only) awaiting the Host round-trip. */
+  private inFlightSinks = 0
+  /** Teardown-time callback deciding the discarded-draft tombstone from the settle outcome. */
+  private disposedSubmitSettle: ((accepted: boolean) => void) | undefined
 
   constructor(private readonly deps: SessionInputDeps) {
     this.state = createSnapshotStore<InputState>(this.compose())
@@ -226,16 +230,23 @@ export class SessionInputShell implements SessionInput {
         const controller = new AbortController()
         this.imageSendAbort = controller
         this.imageSendInFlight = true
-        void this.deps.defaultSink('', imageIds, mode, controller.signal).then((outcome) => {
+        void this.sinkPending(this.deps.defaultSink('', imageIds, mode, controller.signal)).then((outcome) => {
           this.imageSendInFlight = false
           this.imageSendAbort = undefined
-          if (this.disposed) return
+          if (this.disposed) {
+            this.settleAfterDispose(outcome.kind === 'success')
+            return
+          }
           if (outcome.kind === 'success') this.commitSend(imageIds)
           else if (outcome.text !== undefined) this.notify('error', outcome.text)
         }, (error: unknown) => {
           this.imageSendInFlight = false
           this.imageSendAbort = undefined
-          if (!this.disposed) this.notify('error', error instanceof Error ? error.message : String(error))
+          if (this.disposed) {
+            this.settleAfterDispose(false)
+            return
+          }
+          this.notify('error', error instanceof Error ? error.message : String(error))
         })
       }
       return
@@ -406,6 +417,22 @@ export class SessionInputShell implements SessionInput {
 
   // ---- wiring-layer extras (not on the frozen SessionInput face) ----
 
+  /** Whether a default-sink send is still awaiting the Host round-trip. */
+  get submitInFlight(): boolean {
+    return this.inFlightSinks > 0
+  }
+
+  /**
+   * Register the one callback that decides the discarded-draft tombstone when
+   * the scope tears down while a submit is in flight. The hub registers it
+   * before disposal; it is invoked once at settle with whether the Host
+   * accepted the send, so accepted input is no longer tombstoned as unsent.
+   * @param cb - settle observer receiving `true` on an accepted send.
+   */
+  afterDisposeSubmitSettle(cb: (accepted: boolean) => void): void {
+    this.disposedSubmitSettle = cb
+  }
+
   /** Teardown: abort any in-flight attempt (the image-only direct send included) and stop accepting async settlements. */
   dispose(): void {
     this.disposed = true
@@ -479,7 +506,7 @@ export class SessionInputShell implements SessionInput {
     const imageIds = [...this.imageIds]
     const occurrences = attempt.occurrences
     if (occurrences.length === 0) {
-      this.settleSubmit(attempt, this.deps.defaultSink(draft.trim(), imageIds, mode, attempt.signal), imageIds)
+      this.settleSubmit(attempt, this.sinkPending(this.deps.defaultSink(draft.trim(), imageIds, mode, attempt.signal)), imageIds)
       return
     }
     const inputTriggers = this.deps.inputTriggers?.()
@@ -503,7 +530,7 @@ export class SessionInputShell implements SessionInput {
           cursor = part.offset + part.length
         }
         out += draft.slice(cursor)
-        this.settleSubmit(attempt, this.deps.defaultSink(out.trim(), imageIds, mode, attempt.signal), imageIds)
+        this.settleSubmit(attempt, this.sinkPending(this.deps.defaultSink(out.trim(), imageIds, mode, attempt.signal)), imageIds)
       },
       (error: unknown) => {
         controller.abort()
@@ -514,6 +541,19 @@ export class SessionInputShell implements SessionInput {
     )
   }
 
+  /** Count a default-sink send as in flight until the Host round-trip settles. */
+  private sinkPending(pending: Promise<SubmitOutcome>): Promise<SubmitOutcome> {
+    this.inFlightSinks += 1
+    return pending.finally(() => { this.inFlightSinks -= 1 })
+  }
+
+  /** Report one submit settle that landed after disposal; invoked once. */
+  private settleAfterDispose(accepted: boolean): void {
+    const cb = this.disposedSubmitSettle
+    this.disposedSubmitSettle = undefined
+    cb?.(accepted)
+  }
+
   /** Settle one admission attempt; successful sends consume only their captured images. */
   private settleSubmit(
     attempt: SubmitAttempt,
@@ -522,7 +562,11 @@ export class SessionInputShell implements SessionInput {
   ): void {
     pending.then(
       (outcome) => {
-        if (this.dead(attempt)) return
+        if (this.disposed) {
+          this.settleAfterDispose(outcome.kind === 'success')
+          return
+        }
+        if (attempt.signal.aborted) return
         if (outcome.kind === 'success' && imageIds.length > 0) {
           const submitted = new Set(imageIds)
           this.imageIds = this.imageIds.filter(id => !submitted.has(id))
@@ -535,7 +579,11 @@ export class SessionInputShell implements SessionInput {
         }))
       },
       (error: unknown) => {
-        if (this.dead(attempt)) return
+        if (this.disposed) {
+          this.settleAfterDispose(false)
+          return
+        }
+        if (attempt.signal.aborted) return
         this.run(this.core.dispatch({
           type: 'submit-settled',
           attempt,

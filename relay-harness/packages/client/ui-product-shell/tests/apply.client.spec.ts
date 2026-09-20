@@ -25,7 +25,7 @@ async function bench(install = true) {
   ctx.provide('sessions', { list: {
     getSnapshot: () => ({ current: undefined }),
     subscribe: (listener: () => void) => { listeners.add(listener); return () => { listeners.delete(listener) } },
-  }, subagentAddress: vi.fn(() => undefined), openHistory: vi.fn(), openSubagent: vi.fn() } as never)
+  }, subagentAddress: vi.fn(() => undefined), openHistory: vi.fn(() => Promise.resolve()), openSubagent: vi.fn() } as never)
   ctx.provide('connection', { readiness: connectionFixture().source } as never)
   const workResults = { open: vi.fn(), review: vi.fn(), inspect: vi.fn(), history: vi.fn(), accept: vi.fn(), list: vi.fn() }
   const getMode = vi.fn(async () => ({ ok: true, value: { mode: 'simple' } }))
@@ -182,6 +182,17 @@ it('routes source-conversation opens through the read-only history path', async 
   record.openConversation('source-session' as never)
   expect(sessions.openSubagent.mock.calls).toEqual([[address]])
   expect(layout.openMain.mock.calls).toEqual([['conversation'], ['conversation']])
+  // A stale record link addressing an unknown session: the rejection is
+  // logged, never unhandled.
+  sessions.subagentAddress.mockReturnValue(undefined)
+  const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+  sessions.openHistory.mockRejectedValueOnce(new Error('sessions.select: unknown session gone'))
+  record.openConversation('gone-session' as never)
+  await vi.waitFor(() => {
+    expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('gone-session'), expect.any(Error))
+  })
+  errorSpy.mockRestore()
+  expect(layout.openMain.mock.calls).toEqual([['conversation'], ['conversation'], ['conversation']])
 })
 
 it('exports only the public plugin loading values', () => {

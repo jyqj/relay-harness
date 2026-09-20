@@ -55,8 +55,13 @@ export function apply(ctx: ClientContext): void {
   // composer's explicit send, which rides the live resolver.
   const openConversation = (sessionId: SessionId): void => {
     const address = ctx.sessions.subagentAddress(sessionId)
-    if (address === undefined) void ctx.sessions.openHistory(sessionId)
-    else ctx.sessions.openSubagent(address)
+    // A stale record link can address an unknown session; the rejection is
+    // logged, never unhandled — the transcript stays where it is.
+    if (address === undefined) {
+      ctx.sessions.openHistory(sessionId).catch((error: unknown) => {
+        console.error(`[ui-product-shell] history navigation failed for session ${sessionId}:`, error)
+      })
+    } else ctx.sessions.openSubagent(address)
     ctx.layout.openMain('conversation')
   }
   const route = new ProductRouteStore()

@@ -314,8 +314,11 @@ export function apply(ctx: Context): void {
       },
       restoreDiscardedDraft: () => {
         if (sessionId === undefined) return
+        // Binding check BEFORE restore: a missing binding must not destroy the
+        // retained text — the tombstone stays for a later, bound attempt.
+        if (sessions.binding(sessionId) === undefined) return
         const text = discardedDrafts.restore(sessionId)
-        if (text === undefined || sessions.binding(sessionId) === undefined) return
+        if (text === undefined) return
         inputHub.shell(sessionId).setDraft(text)
       },
       dismissDiscardedDraft: () => {
