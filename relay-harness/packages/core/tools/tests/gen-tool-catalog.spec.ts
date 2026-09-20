@@ -32,7 +32,7 @@ describe('gen-tool-catalog collectToolCatalog', () => {
       'interrupt_agent', 'interrupt_agent', 'job_kill', 'job_list', 'job_output',
       'list_agents', 'list_agents', 'lsp', 'memory_forget', 'memory_read', 'memory_remember',
       'memory_search', 'memory_update', 'pwsh', 'pwsh', 'ralph',
-      'read', 'read_image', 'refresh_code_index', 'report', 'run_code', 'schedule_create', 'schedule_delete',
+      'read', 'read_image', 'refresh_code_index', 'report', 'retrieve_context', 'run_code', 'schedule_create', 'schedule_delete',
       'schedule_list', 'search_code_index', 'send_message', 'send_message', 'session_event_read', 'session_event_search',
       'session_event_trace', 'session_search', 'session_trace', 'skill', 'spawn_teammate',
       'str_replace_editor', 'subagent', 'team_task_create',
