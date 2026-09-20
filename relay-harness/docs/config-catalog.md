@@ -1239,7 +1239,7 @@ export interface Config {
 }
 ```
 
-Source: [`packages/jobs/jobs-local/src/index.ts:45`](../packages/jobs/jobs-local/src/index.ts)
+Source: [`packages/jobs/jobs-local/src/index.ts:52`](../packages/jobs/jobs-local/src/index.ts)
 
 <a id="relay-harnessrlh-llm-circuit-breaker"></a>
 
