@@ -41,6 +41,13 @@ const DEFAULT_STOP_GRACE_MS = 5_000
 /** Default maximum number of `control-lost-unknown` records retained in one owner bucket. */
 const DEFAULT_MAX_UNCONFIRMED_JOBS_PER_OWNER = 5
 
+/**
+ * Node clamps a `setTimeout` delay above 2^31-1 ms to 1 ms. The bounded-stop
+ * timers cap their arm delay here so a huge configured grace stays huge
+ * (days), not near-immediate.
+ */
+const MAX_STOP_TIMER_MS = 2_147_483_647
+
 /** Configuration for the process-local job registry. */
 export interface Config {
   /**
@@ -660,6 +667,7 @@ export class LocalJobRegistry extends JobRegistry {
    */
   private armStopWatch(job: TrackedTask): void {
     if (job.stopTimer !== undefined || isClosed(job.status)) return
+    const graceMs = Math.min(job.stopGraceMs, MAX_STOP_TIMER_MS)
     job.stopTimer = setTimeout(() => {
       job.stopTimer = undefined
       if (isClosed(job.status) || job.status !== 'stopping') return
@@ -668,7 +676,7 @@ export class LocalJobRegistry extends JobRegistry {
         return
       }
       try {
-        job.terminate(`stop grace of ${job.stopGraceMs}ms elapsed without settlement`)
+        job.terminate(`stop grace of ${graceMs}ms elapsed without settlement`)
       } catch (error: unknown) {
         this.selfCtx.logger.warn(
           `jobs: terminate of ${job.id} threw during bounded-stop escalation; continuing the bounded wait: ${String(error)}`,
@@ -677,9 +685,9 @@ export class LocalJobRegistry extends JobRegistry {
       job.stopTimer = setTimeout(() => {
         job.stopTimer = undefined
         if (job.status === 'stopping') this.abandon(job)
-      }, job.stopGraceMs)
+      }, graceMs)
       job.stopTimer.unref()
-    }, job.stopGraceMs)
+    }, graceMs)
     job.stopTimer.unref()
   }
 

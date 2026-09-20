@@ -1,5 +1,5 @@
 import { Context } from '@relay-harness/cordis'
-import ContextEngine, { type PreparedStepContext } from '@relay-harness/rlh-context-engine'
+import ContextEngine, { type ContextBudget, type PreparedStepContext } from '@relay-harness/rlh-context-engine'
 import { createAssistantMessage, createUserMessage } from '@relay-harness/rlh-llm'
 import LongTermMemory, { MemoryId, MemoryTurnHandle } from '@relay-harness/rlh-memory'
 import type {
@@ -31,8 +31,19 @@ class FakeMemory extends LongTermMemory {
   aborted: AbortMemoryTurnInput[] = []
   failure: Error | undefined
   candidateContent = 'Use explicit file context for referenced files.'
+  /** Per-hit candidate contents; ids follow `memory-1`, `memory-2`, … */
+  hitContents: string[] | undefined
   searches: SearchMemoryInput[] = []
   poisonAfterPrepare = false
+
+  private hits(): MemorySearchHit[] {
+    const contents = this.hitContents ?? [this.candidateContent]
+    return contents.map((content, index) => ({
+      entry: { ...entry(content), id: MemoryId(`memory-${index + 1}`) },
+      score: 0.9,
+      matchedBy: ['fts_unicode'],
+    }))
+  }
 
   prepare(input: PrepareMemoryTurnInput): Promise<PreparedMemoryTurn> {
     if (this.failure !== undefined) return Promise.reject(this.failure)
@@ -46,11 +57,9 @@ class FakeMemory extends LongTermMemory {
       sessionId: input.sessionId,
       turn: input.turn,
       query: input.query,
-      candidates: [{
-        entry: candidate,
-        score: 0.9,
-        matchedBy: ['fts_unicode'],
-      }],
+      candidates: this.poisonAfterPrepare
+        ? [{ entry: candidate, score: 0.9, matchedBy: ['fts_unicode'] }]
+        : this.hits(),
     }
     this.prepared.push(prepared)
     return Promise.resolve(prepared)
@@ -93,11 +102,7 @@ class FakeMemory extends LongTermMemory {
 
   search(input: SearchMemoryInput): Promise<MemorySearchHit[]> {
     this.searches.push(input)
-    return Promise.resolve([{
-      entry: entry(this.candidateContent),
-      score: 0.9,
-      matchedBy: ['fts_unicode'],
-    }])
+    return Promise.resolve(this.hits())
   }
 }
 
@@ -134,13 +139,20 @@ async function harness(config: MemoryAgent.Config = {}): Promise<{
   return { ctx, provider: ctx.longTermMemory as FakeMemory, session }
 }
 
-async function prepare(ctx: Context, session: Session, turn = 1, origin?: 'subagent') {
+async function prepare(
+  ctx: Context,
+  session: Session,
+  turn = 1,
+  origin?: 'subagent',
+  budget?: ContextBudget,
+) {
   const message = createUserMessage({ source: { kind: 'user' }, content: [{ type: 'text', text: 'How should files be referenced?' }] })
   return ctx.contextEngine.prepareStep({
     purpose: 'agent_step',
     messages: [message],
     signal: new AbortController().signal,
     cwd: '/workspace',
+    ...(budget === undefined ? {} : { limits: budget }),
     caller: {
       sessionId: session.id,
       agentId: session.id,
@@ -339,5 +351,83 @@ describe('memory Agent Consumer', () => {
     })
     await ctx.fiber.dispose()
     expect(provider.committed[0]?.recalledMemoryIds).toEqual([])
+  })
+})
+
+describe('recall budget and classified decline', () => {
+  function recallText(prepared: PreparedStepContext): string {
+    const block = prepared.messages[0]?.content[0]
+    if (block?.type !== 'text') throw new Error('expected a recall text block')
+    return block.text
+  }
+
+  it('a normal budget renders recall fully and never declines', async () => {
+    const { ctx, session } = await harness()
+    const prepared = await prepare(ctx, session)
+    if (prepared === undefined) throw new Error('expected prepared context')
+    expect(prepared.messages).toHaveLength(1)
+    expect(recallText(prepared)).toContain('Use explicit file context for referenced files.')
+    expect(prepared.decisions.filter(decision => decision.outcome === 'rejected')).toEqual([])
+    await ctx.fiber.dispose()
+  })
+
+  it('a tight request budget clamps the rendered size to the min() allowance', async () => {
+    const { ctx, provider, session } = await harness()
+    provider.hitContents = ['ok', 'x'.repeat(3000)]
+    // allowance = min(maxContextChars 3200, budget.maxChars 1000, (maxTokens-4)*4)
+    // = 1000 code points: hit 1 fits (its full render is 496), hit 2 (3659) does not.
+    const prepared = await prepare(ctx, session, 1, undefined, { maxChars: 1000, maxTokens: 16_000 })
+    if (prepared === undefined) throw new Error('expected prepared context')
+    expect(prepared.messages).toHaveLength(1)
+    const text = recallText(prepared)
+    expect(Array.from(text).length).toBeLessThanOrEqual(1000)
+    expect(text).toContain('"ok"')
+    expect(text).not.toContain('memory-2')
+    expect(prepared.decisions.filter(decision => decision.outcome === 'rejected')).toEqual([])
+    await ctx.fiber.dispose()
+  })
+
+  it('pins the token leg: an allowance under one hit declines instead of clipping', async () => {
+    const { ctx, session } = await harness()
+    // allowance = (100 - 4) * 4 = 384: the framing (331) fits, the one-hit
+    // render (496) does not, so the hits decline as a class.
+    const prepared = await prepare(ctx, session, 1, undefined, { maxChars: 16_000, maxTokens: 100 })
+    expect(prepared).toMatchObject({
+      messages: [],
+      decisions: [{ contributorId: 'memory-agent', outcome: 'rejected', reasons: ['declined', 'budget_exhausted'] }],
+    })
+    await ctx.fiber.dispose()
+  })
+
+  it('hits that cannot fit the remaining budget decline as budget_exhausted, not search failure', async () => {
+    const { ctx, provider, session } = await harness()
+    // allowance = min(3200, 200, 384) = 200: even the framing cannot fit.
+    const prepared = await prepare(ctx, session, 1, undefined, { maxChars: 200, maxTokens: 100 })
+    expect(prepared).toMatchObject({
+      messages: [],
+      decisions: [{ contributorId: 'memory-agent', outcome: 'rejected', reasons: ['declined', 'budget_exhausted'] }],
+    })
+    expect(provider.prepared).toHaveLength(1)
+    expect(provider.aborted).toEqual([expect.objectContaining({ reason: 'context-contribution-failed' })])
+    await ctx.fiber.dispose()
+  })
+
+  it('prompt enhancement classifies the same decline while the search itself succeeded', async () => {
+    const { ctx, provider, session } = await harness()
+    const message = createUserMessage({ source: { kind: 'user' }, content: [{ type: 'text', text: 'Improve my request' }] })
+    const prepared = await ctx.contextEngine.prepareStep({
+      purpose: 'prompt_enhancement',
+      messages: [message],
+      signal: new AbortController().signal,
+      cwd: '/workspace',
+      limits: { maxChars: 200, maxTokens: 100 },
+      caller: { sessionId: session.id, agentId: session.id, workspaceId: '/workspace' },
+    })
+    expect(prepared).toMatchObject({
+      messages: [],
+      decisions: [{ contributorId: 'memory-agent', outcome: 'rejected', reasons: ['declined', 'budget_exhausted'] }],
+    })
+    expect(provider.searches).toHaveLength(1)
+    await ctx.fiber.dispose()
   })
 })
