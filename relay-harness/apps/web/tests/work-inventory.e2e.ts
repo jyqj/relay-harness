@@ -163,10 +163,15 @@ describe('web e2e: whole-session Work inventory', () => {
     await page.screenshot({ path: 'test-results/workbench/library-1440.png', fullPage: true })
     await nav.getByRole('button', { name: 'Work', exact: true }).click()
     await page.getByRole('button', { name: 'Workspace files', exact: true }).click()
-    // The actual frame, not a mocked layout callback, must allocate the opened inspector.
-    await expect.poll(() => page.locator('[data-surfaces-collapsed]').count()).toBe(0)
-    const grid = await page.locator('[data-sidebar-collapsed], [data-details-collapsed]').first().evaluate(element => getComputedStyle(element).gridTemplateColumns)
-    expect(Number.parseFloat(grid.split(' ').at(-1) ?? '0')).toBeGreaterThan(0)
+    // The actual frame, not a mocked layout callback, must allocate the opened
+    // inspector. The frame animates grid-template-columns on the shared 300ms
+    // collapse curve, so the computed width is polled until the tracks resolve;
+    // a mocked layout callback would never move off zero.
+    const frame = page.locator('[data-sidebar-collapsed], [data-details-collapsed]').first()
+    await expect.poll(async () => {
+      const grid = await frame.evaluate(element => getComputedStyle(element).gridTemplateColumns)
+      return Number.parseFloat(grid.split(' ').at(-1) ?? '0')
+    }, { timeout: 15_000 }).toBeGreaterThan(0)
     await nav.getByRole('button', { name: 'Chat', exact: true }).click()
     expect(await composer.isVisible()).toBe(true)
     expect(tripwire.pageErrors).toEqual([])
@@ -273,12 +278,15 @@ describe('web e2e: whole-session Work inventory', () => {
     }
     expect(filtered.flatMap(value => value.entries)).toEqual([expect.objectContaining({ sessionId: OTHER_ID, path: 'other-source.txt' })])
     await page.getByRole('button', { name: 'Open source record', exact: true }).click()
-    await page.getByRole('heading', { name: 'Source record', exact: true }).waitFor()
+    // The record page's heading is the selected source's Session id; its
+    // 'Source record' title renders as the header eyebrow, so the id heading
+    // is what proves THIS source opened (and survives a reload).
+    await page.getByRole('heading', { name: OTHER_ID }).waitFor()
     await page.getByText('OTHER_WORK_DONE', { exact: true }).waitFor()
     expect(new URL(page.url()).hash).toBe(`#relay/record/${encodeURIComponent(OTHER_ID)}`)
     expect(scaffold.ctx.agents.get(SessionId(OTHER_ID)) === undefined).toBe(true)
     await page.reload({ waitUntil: 'load' })
-    await page.getByRole('heading', { name: 'Source record', exact: true }).waitFor()
+    await page.getByRole('heading', { name: OTHER_ID }).waitFor()
     await page.getByText('OTHER_WORK_DONE', { exact: true }).waitFor()
     expect(scaffold.ctx.agents.get(SessionId(OTHER_ID)) === undefined).toBe(true)
 
