@@ -160,6 +160,11 @@ export function apply(ctx: ClientContext): void {
           if (!result.ok) throw new Error(result.error.message)
           return result.value
         },
+        contentReview: async (sessionId, signal) => {
+          const result = await ctx.remote.workResults.contentReview({ sessionId: sessionId as SessionId }, signal)
+          if (!result.ok) throw new Error(result.error.message)
+          return result.value
+        },
       }),
     }, WorkPage),
     ctx.slots.register({

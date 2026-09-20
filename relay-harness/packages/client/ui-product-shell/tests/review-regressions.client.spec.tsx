@@ -34,7 +34,8 @@ function workProps(
   return {
     active: true, renderSlot: () => null, openConversation: vi.fn(), startWork: vi.fn(), openSource: vi.fn(),
     useConnection: useReadyConnection, useWork: (select: (value: WorkSummary) => unknown) => select(work),
-    verifyWork, acceptWork, openDeliverable: vi.fn().mockResolvedValue(undefined), openFiles: vi.fn(), t,
+    verifyWork, acceptWork, openDeliverable: vi.fn().mockResolvedValue(undefined),
+    contentReview: vi.fn().mockResolvedValue({ review: null, currency: [] }), openFiles: vi.fn(), t,
   } as unknown as WorkPageProps
 }
 

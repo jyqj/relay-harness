@@ -23,6 +23,8 @@ Execution, goal phase, pending input, and user confirmation are independent fact
 
 Confirmation binds a Session log prefix, not passing tests, file hashes, permissions, or completion of every child. Raw receipt projections never prove persistence. The displayed confirmation requires a verified current cut whose accepted revision matches the current projection. Work also requires a synchronized Connection and an open, non-removed history window before opening outputs or confirming a record. Disconnect, synchronization, history errors, and removal keep retained facts readable but unavailable for these operations. Verification and operation replies belong to the Session, handshake epoch, and active-page lifetime; switching any of them invalidates late replies. Reconnection never resends writes.
 
+The Work page also shows the latest recorded content review as a read-only badge fed by `workResults/contentReview`: the displayed state is the worst per-version currency (`matches-confirmed`, `changed-unreviewed`, or `not-reverified`), and no badge appears before the first review or when the read fails. Recording a content review is not part of this page.
+
 ## Library and display density
 
 Library searches bounded pages of execution-recorded outputs across existing Sessions, without scanning device files or activating cold owners. Each row opens its source output or explicitly navigates to its source conversation. Files and knowledge are distinguished from capabilities and connections, with copy stating which actions use the selected Session.
