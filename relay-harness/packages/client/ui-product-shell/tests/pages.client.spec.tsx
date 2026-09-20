@@ -61,6 +61,7 @@ describe('product navigation pages', () => {
       useWorkspaces: unused,
       useWork: (select: (value: WorkSummary) => unknown) => select(summary),
       openDeliverable,
+      contentReview: vi.fn().mockResolvedValue({ review: null, currency: [] }),
       openFiles: vi.fn(),
       t,
     } as unknown as WorkPageProps
@@ -83,7 +84,7 @@ function workPage(summary: Partial<WorkSummary>, opener: WorkPageProps['openDeli
   return {
     active: true, renderSlot: () => null, openConversation: vi.fn(), startWork: vi.fn(), openSource: vi.fn(),
     useConnection: useReadyConnection, useWork: (select: (value: WorkSummary) => unknown) => select(work),
-    openDeliverable: opener, openFiles: vi.fn(),
+    openDeliverable: opener, contentReview: vi.fn().mockResolvedValue({ review: null, currency: [] }), openFiles: vi.fn(),
     verifyWork: vi.fn().mockResolvedValue({ ...work.acceptance, confirmationBlockedBy: [], verifiedThroughSeq: -1, current: true }),
     t,
   } as unknown as WorkPageProps

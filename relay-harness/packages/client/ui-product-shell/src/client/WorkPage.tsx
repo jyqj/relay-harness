@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import type { InjectFace, PropsLocale, PropsRenderSlots, PropsRuntime } from '@relay-harness/rlh-client-ui-slots'
 import type {} from '@relay-harness/rlh-client-ui-layout/client'
-import type { WorkAcceptReceipt, WorkVerifiedReview } from '@relay-harness/rlh-host-work-results/types'
+import type { WorkAcceptReceipt, WorkContentReviewRead, WorkVerifiedReview } from '@relay-harness/rlh-host-work-results/types'
 import type { WorkSummary } from './work-projection.ts'
 import css from './ProductShell.module.css'
 
@@ -10,6 +10,8 @@ export interface WorkPageInjected {
   openDeliverable: (sessionId: string, path: string) => Promise<void>
   acceptWork: (sessionId: string, reviewRevision: number) => Promise<WorkAcceptReceipt>
   verifyWork: (sessionId: string, signal: AbortSignal) => Promise<WorkVerifiedReview>
+  /** Read-only latest content review plus per-version currency; submission stays out of this page. */
+  contentReview: (sessionId: string, signal: AbortSignal) => Promise<WorkContentReviewRead>
   openFiles: () => void
   openConversation: (sessionId: string) => void
   startWork: () => void
@@ -18,7 +20,7 @@ export type WorkPageProps = PropsRuntime<'shell.page'> & PropsRenderSlots<'work.
 
 /** Render attention, execution, and version-bound record confirmation in the main workspace. */
 export function WorkPage(
-  { active, renderSlot, useWork, openConversation, startWork, openDeliverable, acceptWork, verifyWork, openFiles, t }:
+  { active, renderSlot, useWork, openConversation, startWork, openDeliverable, acceptWork, verifyWork, contentReview, openFiles, t }:
   WorkPageProps,
 ) {
   const blockerId = useId()
@@ -68,6 +70,24 @@ export function WorkPage(
     return () => { controller.abort() }
   }, [work.sessionId, work.epoch, work.availability, work.execution, reviewRevision, acceptedRevision, refresh,
     verifyWork, active, work.approvals, work.questions])
+  const [contentReviewState, setContentReviewState] = useState<{ sessionId: string; epoch: number; value: WorkContentReviewRead } | null>(null)
+  useEffect(() => {
+    const sessionId = work.sessionId
+    if (!active || sessionId === undefined || work.availability !== 'ready') {
+      setContentReviewState(null)
+      return
+    }
+    const controller = new AbortController()
+    void (async () => contentReview(sessionId, controller.signal))().then((value) => {
+      if (controller.signal.aborted) return
+      setContentReviewState({ sessionId, epoch: work.epoch, value })
+    }, () => {
+      // A failed read renders no content-review state rather than a fabricated one.
+      if (controller.signal.aborted) return
+      setContentReviewState(null)
+    })
+    return () => { controller.abort() }
+  }, [work.sessionId, work.epoch, work.availability, active, contentReview, refresh])
   const open = (path: string): void => {
     if (!active || work.availability !== 'ready') return
     const id = ++request.current
@@ -122,6 +142,13 @@ export function WorkPage(
   const receipt = work.acceptance
   const failedAcceptance = acceptanceError?.sessionId === work.sessionId && acceptanceError.revision === receipt?.reviewRevision
   const verified = verification?.sessionId === work.sessionId && verification.epoch === work.epoch ? verification.value : undefined
+  const contentRead = contentReviewState?.sessionId === work.sessionId && contentReviewState.epoch === work.epoch
+    ? contentReviewState.value : undefined
+  // The worst currency state is the honest aggregate: one stale version makes the whole review stale.
+  const contentState = contentRead === undefined || contentRead.review === null ? undefined
+    : contentRead.currency.some(entry => entry.state === 'changed-unreviewed') ? 'changed-unreviewed'
+      : contentRead.currency.some(entry => entry.state === 'not-reverified') ? 'not-reverified'
+        : contentRead.currency.length > 0 ? 'matches-confirmed' : undefined
   const supersededCut = superseded?.sessionId === work.sessionId && superseded.epoch === work.epoch
     && superseded.revision === receipt?.reviewRevision
   const accepted = work.availability === 'ready' && work.execution === 'idle' && receipt !== null && verified?.current === true && verified.reviewRevision === receipt.reviewRevision
@@ -177,6 +204,7 @@ export function WorkPage(
         <span className={css.badge}>{acceptanceLabel}</span>
       </div>
       {receipt !== null ? <p>{t('work.confirm.revision', { revision: receipt.reviewRevision })}</p> : null}
+      {contentState !== undefined ? <p>{t('work.contentReview')}: <span className={css.badge}>{t(`work.contentReview.${contentState}`)}</span></p> : null}
       {canAccept && !accepted && !accepting && !checking ? <p role="status">{t('work.reviewReady')}</p> : null}
       {blockedBy !== '' ? <p id={blockerId} role="status">{blockedBy}</p> : null}
       <div className={css.actions}>

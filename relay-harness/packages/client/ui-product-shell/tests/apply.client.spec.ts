@@ -27,7 +27,7 @@ async function bench(install = true) {
     subscribe: (listener: () => void) => { listeners.add(listener); return () => { listeners.delete(listener) } },
   }, subagentAddress: vi.fn(() => undefined), openHistory: vi.fn(() => Promise.resolve()), openSubagent: vi.fn() } as never)
   ctx.provide('connection', { readiness: connectionFixture().source } as never)
-  const workResults = { open: vi.fn(), review: vi.fn(), inspect: vi.fn(), history: vi.fn(), accept: vi.fn(), list: vi.fn() }
+  const workResults = { open: vi.fn(), review: vi.fn(), inspect: vi.fn(), history: vi.fn(), accept: vi.fn(), list: vi.fn(), contentReview: vi.fn() }
   const getMode = vi.fn(async () => ({ ok: true, value: { mode: 'simple' } }))
   const openSettings = vi.fn()
   ctx.provide('settingsNavigation', { open: openSettings } as never)
@@ -102,6 +102,7 @@ it.each([false, true])('forwards registered Work and Library callbacks; remote f
   workResults.review.mockResolvedValue(fails ? denied : { ok: true, value: verified })
   workResults.accept.mockResolvedValue(fails ? denied : { ok: true, value: receipt })
   workResults.list.mockResolvedValue(fails ? denied : { ok: true, value: page })
+  workResults.contentReview.mockResolvedValue(fails ? denied : { ok: true, value: { review: null, currency: [] } })
   const controller = new AbortController()
   const request = { query: 'result', sessionOffset: 3, pathOffset: 2, limit: 5 }
   try {
@@ -109,6 +110,7 @@ it.each([false, true])('forwards registered Work and Library callbacks; remote f
       work.openDeliverable('work-session', 'result.md'),
       work.verifyWork('work-session', controller.signal),
       work.acceptWork('work-session', 7),
+      work.contentReview('work-session', controller.signal),
       library.queryLibrary(request, controller.signal),
       library.openLibraryOutput(entry),
     ]
@@ -118,13 +120,14 @@ it.each([false, true])('forwards registered Work and Library callbacks; remote f
         expect(outcome).toMatchObject({ status: 'rejected', reason: { message: 'fixture operation denied' } })
       }
     } else {
-      expect(await Promise.all(calls)).toEqual([undefined, verified, receipt, page, undefined])
+      expect(await Promise.all(calls)).toEqual([undefined, verified, receipt, { review: null, currency: [] }, page, undefined])
     }
     expect(workResults.open.mock.calls).toEqual([
       [{ sessionId: 'work-session', path: 'result.md' }], [{ sessionId: 'source-session', path: 'result.md' }],
     ])
     expect(workResults.review).toHaveBeenCalledWith({ sessionId: 'work-session' }, controller.signal)
     expect(workResults.accept).toHaveBeenCalledWith('work-session', { reviewRevision: 7 })
+    expect(workResults.contentReview).toHaveBeenCalledWith({ sessionId: 'work-session' }, controller.signal)
     expect(workResults.list).toHaveBeenCalledWith(request, controller.signal)
   } finally { await ctx.fiber.dispose() }
 })

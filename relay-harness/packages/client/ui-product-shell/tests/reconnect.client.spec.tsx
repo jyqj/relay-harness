@@ -25,7 +25,8 @@ function workProps(work: WorkSummary, verifyWork: WorkPageProps['verifyWork'], a
   return {
     active: true, renderSlot: () => null, openConversation: vi.fn(), startWork: vi.fn(), openSource: vi.fn(),
     useWork: (select: (value: WorkSummary) => unknown) => select(work),
-    verifyWork, acceptWork, openDeliverable, openFiles: vi.fn(), t,
+    verifyWork, acceptWork, openDeliverable, contentReview: vi.fn().mockResolvedValue({ review: null, currency: [] }),
+    openFiles: vi.fn(), t,
   } as unknown as WorkPageProps
 }
 
