@@ -26,6 +26,7 @@ import Projections from '@relay-harness/rlh-session-projection'
 import Persistence from '@relay-harness/rlh-session-persistence-jsonl'
 import Query from '@relay-harness/rlh-session-query-sqlite'
 import Jobs from '@relay-harness/rlh-jobs-local'
+import type { JobOutcome } from '@relay-harness/rlh-jobs'
 import Typert from '@relay-harness/rlh-typert-registry'
 import Gateway from '@relay-harness/rlh-api-gateway'
 import WebServer from '@relay-harness/rlh-host-webserver'
@@ -449,6 +450,30 @@ it('derives per-execution relationship and recovery capability facts without gra
     expect(view.value.execution.entries[0]?.recoveryCapabilities)
       .toEqual({ history: 'persisted', resume, control: 'none' })
   }
+})
+
+it('reports a control-lost-unknown job as uncertain, never inactive or history-only', async () => {
+  const { ctx, handle, post } = await fixture()
+  ctx.jobs.attachController('work-results-test')
+  const id = ctx.jobs.start({
+    kind: 'bash', label: 'sleep 60', owner: handle.agent, stopGraceMs: 10,
+    // A producer that never settles: the bounded stop must close the record as
+    // control-lost-unknown while the work itself may still run.
+    run: () => ({ cancel() {}, done: new Promise<JobOutcome>(() => {}) }),
+  })
+  ctx.jobs.kill(id, handle.agent, 'no longer needed')
+  await vi.waitFor(() => { expect(ctx.jobs.get(id, handle.agent).status).toBe('control-lost-unknown') })
+  const view = await post<WorkView>('inspect', { request: { sessionId: handle.agent.id } })
+  expect(view).toMatchObject({ ok: true })
+  if (!view.ok) throw new Error(view.error.message)
+  const job = view.value.execution.entries.find(entry => entry.kind === 'job')
+  expect(job).toMatchObject({
+    activity: 'unknown', recovery: 'unknown',
+    relationship: { controlLink: false },
+    recoveryCapabilities: { control: 'none' },
+  })
+  expect(job?.outcome).toBeUndefined()
+  expect(view.value.execution.activity).toBe('unknown')
 })
 
 it('uses the same persistence receipt through passive review without granting a new confirmation', async () => {

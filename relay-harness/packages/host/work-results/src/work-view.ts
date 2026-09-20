@@ -48,17 +48,25 @@ export async function readWorkView(ctx: Context, id: SessionId, maxExecutions: n
     }),
   }]
   const jobs = owner === undefined ? [] : ctx.jobs.list(owner).filter(job => job.ownerSession === id)
-  for (const job of jobs) entries.push({
-    id: job.id, sessionId: id, kind: 'job', label: job.label,
-    activity: job.status === 'running' || job.status === 'stopping' ? job.status : 'inactive',
-    ...(job.status === 'completed' || job.status === 'killed' || job.status === 'failed' ? { outcome: job.status } : {}),
-    recovery: job.status === 'running' || job.status === 'stopping' ? 'resident' : 'history-only',
-    relationship: executionRelationship({ workSessionId: id, sessionId: id },
-      job.status === 'running' || job.status === 'stopping'),
-    recoveryCapabilities: executionRecovery({
-      evidence: 'job', resident: job.status === 'running' || job.status === 'stopping',
-    }),
-  })
+  for (const job of jobs) {
+    const live = job.status === 'running' || job.status === 'stopping'
+    const closed = job.status === 'completed' || job.status === 'killed' || job.status === 'failed'
+    // A `control-lost-unknown` job's outcome is unknown and its work may still
+    // be running (job contract): report `unknown`, never `inactive` or
+    // `history-only`, and the aggregate below then reports `unknown` too.
+    entries.push({
+      id: job.id, sessionId: id, kind: 'job', label: job.label,
+      activity: job.status === 'running' || job.status === 'stopping'
+        ? job.status
+        : closed ? 'inactive' : 'unknown',
+      ...(job.status === 'completed' || job.status === 'killed' || job.status === 'failed'
+        ? { outcome: job.status }
+        : {}),
+      recovery: live ? 'resident' : closed ? 'history-only' : 'unknown',
+      relationship: executionRelationship({ workSessionId: id, sessionId: id }, live),
+      recoveryCapabilities: executionRecovery({ evidence: 'job', resident: live }),
+    })
+  }
   const subagents = ctx.get('subagents')
   if (subagents === undefined) missing.push('subagent-catalog-unavailable')
   else {
