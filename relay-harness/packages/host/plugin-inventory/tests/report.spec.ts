@@ -155,6 +155,20 @@ describe('buildCapabilityReport', () => {
     expect(find(disabledInLoader, 'code-index').healthy.status).toBe('no')
   })
 
+  it('refuses healthy yes on partial inventory evidence: every assembled row must be accounted for', () => {
+    const report = buildCapabilityReport({
+      composed: webSearchRows('KEY'),
+      runtime: runtime({
+        inventory: [inventoryEntry({ entryId: 'web-search-deepseek' })],
+        toolNames: ['web_search'],
+      }),
+    })
+    const webSearch = find(report, 'web-search')
+    expect(webSearch.healthy.status).toBe('unknown')
+    expect(webSearch.healthy.reason).toContain('tool-web')
+    expect(webSearch.effective).toBe('standby')
+  })
+
   it('marks session-available no when the composed toolset lacks the capability tools', () => {
     const report = buildCapabilityReport({
       composed: webSearchRows('DEEPSEEK_API_KEY'),

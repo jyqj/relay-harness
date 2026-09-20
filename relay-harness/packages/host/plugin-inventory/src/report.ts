@@ -88,11 +88,22 @@ function healthyLevel(
       : level('no', 'bundle composition', `entry "${disabledRow.entryId}" is disabled in the composed bundle, so its fiber can never activate`)
   }
   const entries: PluginInventoryEntry[] = []
+  const unmatched: CapabilityComposedEntry[] = []
   for (const row of rows) {
     const entry = runtime.inventory.entries.find(
       candidate => candidate.entryId === row.entryId || candidate.moduleName === row.moduleName,
     )
-    if (entry !== undefined) entries.push(entry)
+    if (entry === undefined) unmatched.push(row)
+    else entries.push(entry)
+  }
+  // A healthy 'yes' needs every assembled row accounted for in the Loader
+  // inventory: a row the dump never observed is partial evidence, not health.
+  if (unmatched.length > 0) {
+    return level(
+      'unknown',
+      'plugin inventory',
+      `no Loader entry matches assembled row "${unmatched[0]?.entryId}" (${unmatched.length} of ${rows.length} assembled rows unaccounted for)`,
+    )
   }
   if (entries.length === 0) {
     return level('unknown', 'plugin inventory: no Loader entry matches the assembled rows')
