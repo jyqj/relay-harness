@@ -89,6 +89,62 @@ describe('legacy API exit guard', () => {
     expect(extractPrivilegedMethods(source)).toEqual(['host.openPath'])
     expect(extractPrivilegedMethods('const PRIVILEGED_METHODS = new Set()')).toEqual([])
   })
+
+  it('extracts remote imports across default, named, aliased, and combined spellings', () => {
+    const source = [
+      'import goalsRemote from \'@relay-harness/rlh-goal/remote\'',
+      'import { default as skills } from \'@relay-harness/rlh-host-skill-inventory/remote\'',
+      'import { goals as aliased } from \'@relay-harness/rlh-goal/remote\'',
+      'import workResults, { inspect } from \'@relay-harness/rlh-host-work-results/remote\'',
+      'import * as namespace from \'@relay-harness/rlh-goal/remote\'',
+      'import type { GoalsRemote } from \'@relay-harness/rlh-goal/remote\'',
+      'export { carried } from \'@relay-harness/rlh-goal/remote\'',
+      'import plain from \'@relay-harness/rlh-goal\'',
+    ].join('\n')
+    expect(extractRemoteImports(source)).toEqual([
+      '@relay-harness/rlh-goal/remote',
+      '@relay-harness/rlh-host-skill-inventory/remote',
+      '@relay-harness/rlh-goal/remote',
+      '@relay-harness/rlh-host-work-results/remote',
+      '@relay-harness/rlh-goal/remote',
+    ])
+  })
+
+  it('extracts wire keys with digits and underscores', () => {
+    expect(extractRpcMethodKeys([
+      'export interface RpcMethodMap {',
+      "  'goal_v2.create': GoalsApi['create']",
+      "  'mcpServers/list_v1': McpApi['list']",
+      '}',
+    ].join('\n'))).toEqual(['goal_v2.create', 'mcpServers/list_v1'])
+  })
+
+  it('fails the allowlist check when an allowlisted wire key survives only inside a comment', () => {
+    const lineCommented = [
+      'export interface RpcMethodMap {',
+      "  'session.list': SessionsApi['list']",
+      "  // 'goal.create': GoalsApi['create'] — commented out during the migration",
+      '}',
+    ].join('\n')
+    const blockCommented = [
+      'export interface RpcMethodMap {',
+      '/*',
+      "  'goal.create': GoalsApi['create']",
+      '*/',
+      "  'skill.read': SkillsApi['read']",
+      '}',
+    ].join('\n')
+    for (const source of [lineCommented, blockCommented]) {
+      expect(extractRpcMethodKeys(source)).not.toContain('goal.create')
+      const violations = evaluateExitState({
+        remoteImports: ['@relay-harness/rlh-goal/remote'],
+        wireMethods: extractRpcMethodKeys(source),
+        privilegedMethods: EXPECTED_PRIVILEGED_METHODS,
+      })
+      expect(violations).toContainEqual(
+        'allowlist domain goals: no apiproxy wire methods remain; remove the entry (domain migrated)')
+    }
+  })
 })
 
 function liveState(): { remoteImports: string[]; wireMethods: string[]; privilegedMethods: readonly string[] } {

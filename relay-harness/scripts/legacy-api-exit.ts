@@ -111,20 +111,25 @@ export const EXPECTED_PRIVILEGED_METHODS: readonly string[] = [
 /**
  * Reads the `/remote` import specifiers of a client-assembly source.
  * @param source - Full text of the module (typically api-remotes `client/index.ts`).
- * @returns Every `@relay-harness/.../remote` specifier of a default import mounted for runtime,
- * in file order; type-only re-exports are ignored.
+ * @returns Every `@relay-harness/.../remote` specifier of a runtime import —
+ * default, named, aliased, and default-plus-named spellings — in file order;
+ * `import type` declarations and type-only re-exports are ignored.
  */
 export function extractRemoteImports(source: string): string[] {
-  return [...source.matchAll(/^import \w+ from '(@relay-harness\/[^']+\/remote)'$/gm)].map(match => match[1] ?? '')
+  return [...source.matchAll(/^import (?!type\b)[\w${}, *]+?from '(@relay-harness\/[^']+\/remote)'$/gm)]
+    .map(match => match[1] ?? '')
 }
 
 /**
  * Reads the wire method keys of an `RpcMethodMap` source file.
  * @param source - Full text of the map module (typically apiproxy `api/rpc-map.ts`).
- * @returns Every quoted `segment.method` key declared in the map, in file order.
+ * @returns Every quoted `segment.method` key declared in the map, in file
+ * order. Comments are stripped first, so a key that only survives inside a
+ * comment is not extracted.
  */
 export function extractRpcMethodKeys(source: string): string[] {
-  return [...source.matchAll(/'([a-zA-Z]+(?:\/[a-zA-Z]+|\.[a-zA-Z]+))':/g)].map(match => match[1] ?? '')
+  const stripped = source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '')
+  return [...stripped.matchAll(/'([a-zA-Z0-9_$]+(?:\/[a-zA-Z0-9_$]+|\.[a-zA-Z0-9_$]+))':/g)].map(match => match[1] ?? '')
 }
 
 /**
