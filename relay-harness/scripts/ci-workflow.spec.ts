@@ -8,6 +8,14 @@ const repositoryRoot = resolve(root, '..')
 const runnerPrivatePnpmDestination = '${{ runner.temp }}/setup-pnpm'
 
 describe('CI workflow', () => {
+  it('runs the complete keyless suite on the actual default branch', () => {
+    const workflow = loadWorkflow('.github/workflows/ci.yml')
+    expect(workflowEvent(workflow, 'push')).toMatchObject({ branches: ['main'] })
+    const main = workflowJob(workflow, 'main-keyless')
+    expect(main.if).toBe("github.event_name == 'push' && github.ref == 'refs/heads/main'")
+    expect(main.steps).toEqual(expect.arrayContaining([expect.objectContaining({ run: 'pnpm run check:ci' })]))
+  })
+
   it('installs the pinned Electron binary explicitly before either desktop smoke', () => {
     const desktop = workflowJob(loadWorkflow('.github/workflows/desktop-smoke.yml'), 'desktop-smoke')
     if (!Array.isArray(desktop.steps)) throw new TypeError('desktop smoke must declare executable steps')
@@ -115,8 +123,8 @@ describe('CI workflow', () => {
     ))
     expect(nativeCommandSteps.map(step => step.run)).toContain('pnpm run check:ci:windows-complete')
 
-    // wine-apt-cache: master-only, seeds the Wine apt cache.
-    expect(wineAptCache.if).toBe("github.event_name == 'push' && github.ref == 'refs/heads/master'")
+    // wine-apt-cache: main-only, seeds the Wine apt cache.
+    expect(wineAptCache.if).toBe("github.event_name == 'push' && github.ref == 'refs/heads/main'")
     expect(wineAptCache['runs-on']).toBe('ubuntu-latest')
 
     // serial-windows remains explicit but inert until a runner is registered.
@@ -136,7 +144,7 @@ describe('CI workflow', () => {
     expect(aggregate['runs-on']).toBe('ubuntu-latest')
   })
 
-  it('exempts push from cancellation, so one master merge does not cancel the running drill', () => {
+  it('exempts push from cancellation, so one main merge does not cancel the running drill', () => {
     const workflow = loadWorkflow('.github/workflows/ci.yml')
     if (!isRecord(workflow.jobs) || !isRecord(workflow.concurrency)) {
       throw new TypeError('CI workflow must define jobs and a workflow-level concurrency block')
@@ -145,12 +153,12 @@ describe('CI workflow', () => {
     // Cancellation applies to the whole superseded RUN, so this has to be
     // decided at workflow level and gated on the event: a job-level group
     // cannot exempt its job from its run being cancelled. Only push is exempt —
-    // a drill takes longer than the interval between master merges. The negated
+    // a drill takes longer than the interval between main merges. The negated
     // form is load-bearing: `== 'pull_request'` would also stop cancelling
     // workflow_dispatch, and a re-dispatched runner benchmark holds up to 12
-    // larger runners for 15 minutes in this same group on master. The
+    // larger runners for 15 minutes in this same group on main. The
     // expression is evaluated against the NEWLY TRIGGERED run, so a dispatch on
-    // master still cancels a mid-flight drill; the runbook records that bound.
+    // main still cancels a mid-flight drill; the runbook records that bound.
     expect(workflow.concurrency['cancel-in-progress']).toBe("${{ github.event_name != 'push' }}")
 
     // Unsupported self-hosted drills remain explicitly disabled rather than
@@ -162,7 +170,7 @@ describe('CI workflow', () => {
       expect(job.if).toBe(false)
     }
 
-    // What bounds the cost of exempting push: a master push may only carry the
+    // What bounds the cost of exempting push: a main push may only carry the
     // cache seeder and the two drills. Any job reachable on push would start
     // accumulating uncancelled runs, so the set is pinned here.
     //
@@ -186,10 +194,10 @@ describe('CI workflow', () => {
       })
       .map(([name]) => name)
       .sort()
-    expect(pushReachable).toEqual(['master-keyless', 'repository-governance', 'wine-apt-cache'])
+    expect(pushReachable).toEqual(['main-keyless', 'repository-governance', 'wine-apt-cache'])
 
     // Why workflow_dispatch must keep cancelling: each benchmark fans out to a
-    // dozen larger runners at once, in this same group on master. If it stopped
+    // dozen larger runners at once, in this same group on main. If it stopped
     // cancelling, a re-dispatch would queue ahead of a drill instead of
     // replacing the stale measurement.
     for (const name of ['larger-runner-benchmark', 'consolidated-runner-benchmark']) {

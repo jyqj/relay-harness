@@ -11,10 +11,13 @@ import type { JobId } from './brand.ts'
 export { JobId } from './brand.ts'
 
 /**
- * Task lifecycle: `running`, optionally `stopping`, then exactly one terminal
- * status. Producer-specific facts belong in {@link JobSnapshot.detail}.
+ * Task lifecycle: `running`, optionally `stopping`, then exactly one closed
+ * status — the three producer-confirmed terminal statuses, or
+ * `control-lost-unknown` when a bounded stop elapsed without producer
+ * confirmation (the outcome of the work itself is then unknown).
+ * Producer-specific facts belong in {@link JobSnapshot.detail}.
  */
-export type JobStatus = 'running' | 'stopping' | 'completed' | 'killed' | 'failed'
+export type JobStatus = 'running' | 'stopping' | 'completed' | 'killed' | 'failed' | 'control-lost-unknown'
 
 /**
  * Producer-defined job kinds. Plugins extend this map by declaration merging;
@@ -61,6 +64,14 @@ export interface JobStart {
    */
   owner?: Agent
   /**
+   * Per-job override of the registry's bounded stop grace, in milliseconds: how
+   * long a stop request waits for {@link JobHooks.done} settlement before the
+   * registry escalates to {@link JobHooks.terminate} (one more grace) and then
+   * declares `control-lost-unknown`. Must be a positive safe integer; omission
+   * uses the implementation's configured default.
+   */
+  stopGraceMs?: number
+  /**
    * Start the work after preflight and synchronously return its hooks. Called
    * once; a throw leaves nothing registered, and the producer must clean up any
    * partially started resources.
@@ -75,6 +86,14 @@ export interface JobHooks {
    * {@link done}; throws propagate. The optional reason is forwarded verbatim.
    */
   cancel(reason?: string): void
+  /**
+   * Optional harder stop the registry escalates to when {@link cancel} has not
+   * produced a {@link done} settlement within the stop grace. Same contract as
+   * `cancel` — synchronous, idempotent, throws propagate — but it may abandon
+   * graceful cleanup; the registry still bounds its wait and declares
+   * `control-lost-unknown` if `done` never settles.
+   */
+  terminate?(reason?: string): void
   /**
    * Resolves after the producer releases its resources, not merely when work
    * finishes. Must not reject; the runtime converts a rejection to `failed`.
@@ -115,7 +134,7 @@ export interface JobSnapshot {
   detail?: string
   /** Epoch ms when the job was registered. */
   startedAt: number
-  /** Epoch ms when the job settled; absent while `running`/`stopping`. */
+  /** Epoch ms when the job settled; for `control-lost-unknown`, when the bounded stop gave up. Absent while `running`/`stopping`. */
   finishedAt?: number
   /**
    * True when a kill, read, wait, or teardown cancel has reported or committed

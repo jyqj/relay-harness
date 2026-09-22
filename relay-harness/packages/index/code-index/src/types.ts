@@ -150,6 +150,8 @@ export interface SearchResult {
   readonly truncated: boolean
   /** True when any lane degraded (`readErrors` non-empty); callers must not cache. */
   readonly degraded: boolean
+  /** Optional fallback proven by the provider after the remaining lanes completed. */
+  readonly degradation?: { readonly code: 'query-embedding-unavailable'; readonly fallback: 'lexical' | 'none' }
   /** Per-operation failure strings from lanes or readers that recovered partially. */
   readonly readErrors: readonly string[]
 }

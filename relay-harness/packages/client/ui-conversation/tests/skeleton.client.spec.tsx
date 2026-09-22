@@ -104,6 +104,12 @@ function mount(
     viewTabsChrome?: boolean
     /** Render the resident shell with no current session (cold start). */
     noSession?: boolean
+    /** Discarded-draft tombstone surfaced for the current session. */
+    discardedDraft?: { text: string; at: number }
+    /** Explicit restore of the discarded draft. */
+    restoreDiscardedDraft?: () => void
+    /** Explicit discard of the retained draft. */
+    dismissDiscardedDraft?: () => void
   } = {},
 ) {
   const root = sid('root')
@@ -217,6 +223,7 @@ function mount(
           useComposerResize={sel => sel(false)}
           useComposerResizeHeight={sel => sel(null)}
           useComposerResizeWidth={sel => sel(null)}
+          useConnected={sel => sel(true)}
           setComposerResizeSize={() => {}}
           stop={stop}
           command={() => Promise.resolve(true)}
@@ -253,6 +260,9 @@ function mount(
     useWorkspaces: bindSnapshotSelector(workspaces),
     useProjection: (() => undefined),
     useComposerBlock: select => select(options.composerBlock),
+    useDiscardedDraft: select => select(options.discardedDraft),
+    restoreDiscardedDraft: options.restoreDiscardedDraft ?? (() => {}),
+    dismissDiscardedDraft: options.dismissDiscardedDraft ?? (() => {}),
     useInput,
     inputActions,
     renderSlot,
@@ -288,6 +298,32 @@ describe('Hero chrome', () => {
 })
 
 describe('ConversationRoot resident composer', () => {
+  it('surfaces a discarded draft as a notice with explicit restore/discard, never as live input', () => {
+    const restore = vi.fn()
+    const dismiss = vi.fn()
+    const b = mount(conversationSnapshot(), undefined, undefined, {
+      discardedDraft: { text: 'kept words', at: 1 },
+      restoreDiscardedDraft: restore,
+      dismissDiscardedDraft: dismiss,
+    })
+    const notice = b.view.container.querySelector('[data-discarded-draft]')!
+    expect(notice).toBeTruthy()
+    expect(notice.textContent).toContain('kept words')
+    // The tombstone is announced, not seeded: the composer holds its own
+    // draft, never the discarded text.
+    const box = b.view.getByRole('textbox') as HTMLTextAreaElement
+    expect(box.value).not.toBe('kept words')
+    fireEvent.click(b.view.getByRole('button', { name: '恢复到输入框' }))
+    expect(restore).toHaveBeenCalledOnce()
+    fireEvent.click(b.view.getByRole('button', { name: '丢弃' }))
+    expect(dismiss).toHaveBeenCalledOnce()
+  })
+
+  it('keeps the composer clean when no discarded draft exists', () => {
+    const b = mount(conversationSnapshot())
+    expect(b.view.container.querySelector('[data-discarded-draft]')).toBeNull()
+  })
+
   it('renders the composer inert with the blocker\u2019s own reason', () => {
     const b = mount(conversationSnapshot(), undefined, undefined, {
       composerBlock: { reason: 'select a model first' },

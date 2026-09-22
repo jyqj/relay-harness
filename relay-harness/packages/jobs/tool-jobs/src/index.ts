@@ -74,7 +74,7 @@ const PUBLIC_TASK_SCHEMA = {
     status: {
       type: 'string',
       required: true,
-      enum: ['running', 'stopping', 'completed', 'killed', 'failed'],
+      enum: ['running', 'stopping', 'completed', 'killed', 'failed', 'control-lost-unknown'],
     },
     detail: { type: 'string' },
     startedAt: { type: 'integer', required: true },

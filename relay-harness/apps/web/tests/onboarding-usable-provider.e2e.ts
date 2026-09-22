@@ -54,7 +54,7 @@ describe.skipIf(MODE === 'record')('web e2e: another usable provider ends first-
     await settings.waitFor({ timeout: 10_000 })
     // The onboarding step no longer navigates into Settings on dismissal, so
     // enter the Models section explicitly before exercising its normal cards.
-    const developerMode = settings.getByRole('switch', { name: '开发者模式' })
+    const developerMode = settings.getByRole('switch', { name: '详细视图' })
     expect(await developerMode.isChecked()).toBe(false)
     await developerMode.check()
     await expect.poll(() => developerMode.isEnabled()).toBe(true)

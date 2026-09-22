@@ -8,7 +8,8 @@
  */
 
 import { createHash } from 'node:crypto'
-import type { Context } from '@relay-harness/cordis'
+import { Context } from '@relay-harness/cordis'
+import type {} from '@relay-harness/rlh-agent'
 import type {
   EpochPair,
   CodeIndex,
@@ -19,9 +20,10 @@ import type {
   SearchRequest,
   SearchResult,
 } from '@relay-harness/rlh-code-index'
-import { ContextEngineError, ContextProviderError, EvidenceId, SourceId } from '@relay-harness/rlh-context-engine'
+import { ContextEngineError, ContextProviderError, EvidenceId, SourceId, contextMessageFits, fitContextContribution } from '@relay-harness/rlh-context-engine'
 import type {
   ContributedStepContext,
+  ContextContributionBatch,
   CoverageRecord,
   Evidence,
   StepContextContributor,
@@ -92,17 +94,28 @@ interface AdmittedHit {
  */
 export class CodeContextContributor implements StepContextContributor {
   readonly id = 'code-index-recall'
-  readonly purposes = ['agent_step', 'prompt_enhancement'] as const
+  readonly purposes = ['agent_step', 'prompt_enhancement', 'tool_retrieval'] as const
 
   constructor(
     private readonly ctx: Context,
     private readonly config: CodeContextConfig,
   ) {}
 
-  async contribute(input: StepContextInput): Promise<ContributedStepContext | undefined> {
-    const direct = collectDirectUserInput(input.messages)
+  contribute(input: StepContextInput & { purpose: 'agent_step' | 'prompt_enhancement' }): Promise<ContributedStepContext | undefined>
+  contribute(input: StepContextInput): Promise<ContextContributionBatch | undefined>
+  async contribute(input: StepContextInput): Promise<ContextContributionBatch | undefined> {
+    const direct = input.purpose === 'tool_retrieval'
+      ? { text: input.query ?? '', mentions: [...new Set(parseFileMentions(input.query ?? ''))] }
+      : collectDirectUserInput(input.messages)
     if (direct.text.trim().length < this.config.minQueryChars) return undefined
-    const codeIndex = this.ctx.get('codeIndex')
+    const caller = input.purpose === 'tool_retrieval' ? this.ctx.get('agents')?.get(input.caller.sessionId) : undefined
+    if (input.purpose === 'tool_retrieval' && (caller === undefined || caller.id !== input.caller.agentId
+      || caller.session.header.cwd !== input.cwd || caller.ctx[Context.isolate].fs !== this.ctx[Context.isolate].fs)) {
+      // Cordis traces one provider through distinct proxies; its public isolation key identifies the execution realm.
+      // A host-local index cannot identify files in a different filesystem realm by cwd alone.
+      throw new ContextProviderError('degraded', 'hydration_unavailable')
+    }
+    const codeIndex = caller?.ctx.get('codeIndex') ?? this.ctx.get('codeIndex')
     if (codeIndex === undefined) {
       throw new ContextEngineError(
         'code-context: code-index recall injection requires a code-index provider,'
@@ -125,11 +138,13 @@ export class CodeContextContributor implements StepContextContributor {
       if (input.signal.aborted) throw error
       throw new ContextProviderError('error', 'search_failed')
     }
-    if (result.degraded || result.readErrors.length > 0) {
+    const lexicalFallback = result.degradation?.code === 'query-embedding-unavailable' && result.degradation.fallback === 'lexical'
+    if ((result.degraded || result.readErrors.length > 0) && !lexicalFallback) {
       throw new ContextProviderError('degraded', 'search_degraded')
     }
     if (result.hits.length === 0) {
-      return {
+      if (lexicalFallback) throw new ContextProviderError('degraded', 'search_degraded')
+      const empty: ContributedStepContext = {
         message: createUserMessage({
           source: recallSource(input.cwd, direct.text, [], result.epochs, result.epochs),
           content: [{ type: 'text', text: NO_HITS_PROMPT }],
@@ -137,6 +152,8 @@ export class CodeContextContributor implements StepContextContributor {
         evidence: [],
         coverage: boundedCoverage(direct.text, []),
       }
+      if (!contextMessageFits(this.ctx, empty.message, input.budget)) throw new ContextProviderError('declined', 'budget_exhausted')
+      return empty
     }
     let hydration: HydrateChunksResult
     try {
@@ -165,35 +182,39 @@ export class CodeContextContributor implements StepContextContributor {
       })
     }
     if (hydrated.length === 0) throw new ContextProviderError('degraded', 'hydration_unavailable')
-    const admitted = admitHits(hydrated, this.config)
-    if (admitted.length === 0) throw new ContextProviderError('declined', 'budget_exhausted')
-    const hits: CodeContextRecallHit[] = admitted.map(({ hit, source, truncated }) => ({
-      chunkId: hit.chunkId,
-      filePath: hit.filePath,
-      language: source.language,
-      contentHash: source.contentHash,
-      startLine: hit.startLine,
-      endLine: hit.endLine,
-      score: hit.score,
-      scoreTrace: hit.scoreTrace.map(component => ({ ...component })),
-      parserTier: source.parserTier,
-      parserConfidence: source.parserConfidence,
-      truncated,
-    }))
-    const message = createUserMessage({
-      source: recallSource(input.cwd, direct.text, hits, result.epochs, hydration.epochs),
-      content: [{ type: 'text', text: renderRecallPrompt(admitted, result.hits.length, rejected.length) }],
-    })
-    return {
-      message,
-      evidence: admittedEvidence(admitted, result.epochs, hydration.epochs),
-      coverage: boundedCoverage(direct.text, rejected),
-      selection: {
-        priority: direct.mentions.length > 0 ? 'explicit-reference' : 'provider',
-        reasons: direct.mentions.length > 0 ? ['direct_user_reference'] : ['provider_ranked_recall'],
-        dedupeKey: `code-index:${admitted.map(({ hit }) => hit.chunkId).join(',')}`,
-      },
+    const groups = input.purpose === 'tool_retrieval' ? hydrated.map(candidate => [candidate]) : [hydrated]
+    const contributions: ContributedStepContext[] = []
+    for (const [rank, group] of groups.entries()) {
+      const contribution = fitContextContribution(this.ctx, input.budget, (bodyChars) => {
+        const admitted = admitHits(group, { ...this.config, maxChars: bodyChars })
+        if (admitted.length === 0) return undefined
+        const hits: CodeContextRecallHit[] = admitted.map(({ hit, source, truncated }) => ({
+          chunkId: hit.chunkId, filePath: hit.filePath, language: source.language, contentHash: source.contentHash,
+          startLine: hit.startLine, endLine: hit.endLine, score: hit.score,
+          scoreTrace: hit.scoreTrace.map(component => ({ ...component })),
+          parserTier: source.parserTier, parserConfidence: source.parserConfidence, truncated,
+        }))
+        const explicitUser = input.purpose !== 'tool_retrieval' && direct.mentions.length > 0
+        const fallbackNotice = lexicalFallback
+          ? '\nVector query unavailable; these source-verified lexical results are partial recall.\n' : ''
+        return {
+          message: createUserMessage({
+            source: recallSource(input.cwd, direct.text, hits, result.epochs, hydration.epochs),
+            content: [{ type: 'text', text: renderRecallPrompt(admitted, result.hits.length, rejected.length) + fallbackNotice }],
+          }),
+          evidence: admittedEvidence(admitted, result.epochs, hydration.epochs),
+          coverage: boundedCoverage(direct.text, [...rejected, ...(lexicalFallback ? ['vector-query-unavailable'] : [])]),
+          selection: {
+            priority: explicitUser ? 'explicit-reference' : 'provider', rank,
+            reasons: explicitUser ? ['direct_user_reference'] : ['provider_ranked_recall'],
+            dedupeKey: JSON.stringify(['code-index', input.cwd, admitted.map(({ source }) => [source.chunkId, source.contentHash])]),
+          },
+        }
+      }, this.config.maxChars)
+      if (contribution !== undefined) contributions.push(contribution)
     }
+    if (contributions.length === 0) throw new ContextProviderError('declined', 'budget_exhausted')
+    return input.purpose === 'tool_retrieval' ? contributions : contributions[0]
   }
 }
 

@@ -118,6 +118,17 @@ Generated from source by `scripts/gen-cordis-catalog.ts` (verified fresh by `pnp
 `ctx.contextEngine`. Owns contributor registration, deterministic planning, and packing.
 
 ```ts cordis-catalog
+/** Describe registered sources without reading data or activating an Agent.
+ * @returns Immutable ids and supported purposes for the current registrations.
+ */
+describeContributors(): readonly ContextContributorDescription[]
+
+/** Retrieve explicit model-selected context without injecting or persisting a second transcript.
+ * @param input - Host-derived caller identity and a model-authored query.
+ * @returns Selected observations and a plan, including empty and rejected retrieval outcomes.
+ */
+retrieve(input: ContextRetrievalInput): Promise<PreparedStepContext>
+
 /**
  * Register one step-context contributor.
  * @param contributor - the contributor with a unique non-empty id.
@@ -133,7 +144,7 @@ registerContributor(contributor: StepContextContributor): () => void
 prepareStep(input: ContextPrepareInput): Promise<PreparedStepContext | undefined>
 ```
 
-Source: [`packages/context/context-engine/src/types.ts:386`](../../packages/context/context-engine/src/types.ts)
+Source: [`packages/context/context-engine/src/types.ts:421`](../../packages/context/context-engine/src/types.ts)
 
 <a id="ctxsessionhistorycontext--sessionhistorycontext"></a>
 

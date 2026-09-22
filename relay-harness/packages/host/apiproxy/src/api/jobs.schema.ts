@@ -26,6 +26,7 @@ export const taskViewSchema = z.object({
     z.literal('completed'),
     z.literal('killed'),
     z.literal('failed'),
+    z.literal('control-lost-unknown'),
   ]),
   detail: z.string().optional(),
   startedAt: z.number().int().nonnegative(),

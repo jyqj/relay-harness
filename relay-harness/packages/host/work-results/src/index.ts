@@ -1,5 +1,5 @@
 /** User-only Work acceptance and Library adapter over canonical Session logs. */
-import { createHash, randomUUID } from 'node:crypto'
+import { randomUUID } from 'node:crypto'
 import { realpath } from 'node:fs/promises'
 import { isAbsolute, resolve } from 'node:path'
 import type { Context } from '@relay-harness/cordis'
@@ -13,10 +13,16 @@ import type {} from '@relay-harness/rlh-api-gateway'
 import type {} from '@relay-harness/rlh-host-apiproxy'
 import { RpcId } from '@relay-harness/rlh-host-apiproxy/api'
 import { Remote, TypertRemoteService } from '@relay-harness/rlh-typert-protocol'
+import { LibraryQueries } from './library-query.ts'
+import { readWorkView, readWorkHistory } from './work-view.ts'
+import { confirmationBlockers } from './confirmation-policy.ts'
 import { deliverablesProjection, workAcceptanceProjection, readAcceptedRevision } from './projection.ts'
+import { latestContentReviewRead, readContentReview, sameContentSubject, workContentReviewProjection } from './content-review.ts'
 import type {
   WorkAcceptanceProjection, WorkVerifiedReview, WorkAcceptRequest, WorkAcceptReceipt,
-  WorkLibraryRequest, WorkLibraryPage, WorkLibraryEntry, WorkOpenRequest, WorkLibraryRevision,
+  WorkLibraryRequest, WorkLibraryPage, WorkOpenRequest,
+  WorkReadRequest, WorkView, WorkHistoryRequest, WorkHistoryPage,
+  WorkContentReview, WorkContentReviewRead, WorkContentReviewRequest, WorkContentReviewsProjection,
 } from './types.ts'
 
 export type * from './types.ts'
@@ -31,6 +37,18 @@ export interface Config {
   readonly maxResultsPerPage?: number
   /** Row limit used when the request omits one. */
   readonly defaultResultsPerPage?: number
+  /** Bounded execution rows in passive Work reads. */
+  readonly maxExecutionEntries?: number
+  /** Maximum text-message history rows returned per read. */
+  readonly maxHistoryRows?: number
+  /** Complete historical message text code-point allowance per read. */
+  readonly maxHistoryChars?: number
+  /** Maximum retained Library corpus observations. */
+  readonly maxLibraryQueries?: number
+  /** Lifespan of an opaque Library continuation in milliseconds. */
+  readonly libraryQueryTtlMs?: number
+  /** Maximum Session headers retained per Library observation; omissions are reported. */
+  readonly maxLibrarySessions?: number
 }
 
 /** Stateless business adapter; accepted versions and file inventories remain log projections. */
@@ -40,8 +58,15 @@ export class WorkResultsService extends TypertRemoteService {
     scanSessionsPerPage: z.natural().min(1).max(100).default(20),
     maxResultsPerPage: z.natural().min(1).max(500).default(100),
     defaultResultsPerPage: z.natural().min(1).max(500).default(50),
+    maxExecutionEntries: z.natural().min(1).max(1000).default(200),
+    maxHistoryRows: z.natural().min(1).max(200).default(50),
+    maxHistoryChars: z.natural().min(1).default(64000),
+    maxLibraryQueries: z.natural().min(1).default(8),
+    libraryQueryTtlMs: z.natural().min(1).default(120000),
+    maxLibrarySessions: z.natural().min(1).default(10000),
   })
   private readonly config: Required<Config>
+  private readonly library: LibraryQueries
 
   constructor(ctx: Context, config: Config) {
     super(ctx, 'workResults')
@@ -49,6 +74,49 @@ export class WorkResultsService extends TypertRemoteService {
     if (this.config.defaultResultsPerPage > this.config.maxResultsPerPage) throw new Error('workResults defaultResultsPerPage exceeds maxResultsPerPage')
     ctx.sessionProjections.register(deliverablesProjection)
     ctx.sessionProjections.register(workAcceptanceProjection)
+    ctx.sessionProjections.register(workContentReviewProjection)
+    this.library = new LibraryQueries(ctx, this.config)
+  }
+
+  /** Read independent Work facts without resolving or resuming a live Agent.
+   * @param request - Exact source Session address.
+   * @param signal - Trusted request cancellation.
+   * @returns Orthogonal goal, execution, coverage and action observations.
+   */
+  @Remote('inspect') async inspect(request: WorkReadRequest, signal: AbortSignal): Promise<WorkView> {
+    this.userRequest('inspect')
+    const view = await readWorkView(this.ctx, request.sessionId, this.config.maxExecutionEntries, signal)
+    this.userRequest('inspect')
+    return view
+  }
+
+  /** Read final message text without recovering execution or claiming a lease.
+   * @param request - Source Session and bounded backward page.
+   * @param signal - Trusted request cancellation.
+   * @returns An immutable source cut, not a live conversation.
+   */
+  @Remote('history') async history(request: WorkHistoryRequest, signal: AbortSignal): Promise<WorkHistoryPage> {
+    this.userRequest('history')
+    const source = await this.ctx.sessionQuery.readSession(request.sessionId)
+    this.userRequest('history')
+    signal.throwIfAborted()
+    return readWorkHistory(request.sessionId, source.events, request, this.config.maxHistoryRows, this.config.maxHistoryChars)
+  }
+
+  /** Verify a record without the Remote Agent resolver's implicit activation.
+   * @param request - Exact Session identity.
+   * @param signal - Request cancellation across persistence reads.
+   * @returns The existing receipt semantics; a cold Session explicitly cannot be confirmed.
+   */
+  @Remote('review') async review(request: WorkReadRequest, signal: AbortSignal): Promise<WorkVerifiedReview> {
+    this.userRequest('review')
+    const agent = this.ctx.agents.get(request.sessionId)
+    if (agent !== undefined) return this.verifyReview(agent, signal, 'review')
+    const source = await this.ctx.sessionQuery.readSession(request.sessionId)
+    this.userRequest('review')
+    signal.throwIfAborted()
+    const cut = source.events.reduce((state, event) => workAcceptanceProjection.apply(state, event), workAcceptanceProjection.init())
+    return { ...cut, confirmationBlockedBy: ['runtime-unavailable'], verifiedThroughSeq: -1, current: false }
   }
 
   /**
@@ -58,23 +126,32 @@ export class WorkResultsService extends TypertRemoteService {
    * @returns the captured review cut and only its physically verified receipt.
    */
   @Remote('get') async get(agent: Agent, signal: AbortSignal): Promise<WorkVerifiedReview> {
-    this.userRequest('get')
+    return this.verifyReview(agent, signal, 'get')
+  }
+
+  private async verifyReview(agent: Agent, signal: AbortSignal, endpoint: 'get' | 'review'): Promise<WorkVerifiedReview> {
+    this.userRequest(endpoint)
     this.assertLive(agent)
     const cut = this.acceptance(agent.session)
     const through = agent.session.seq - 1
     const receipt = agent.session.events.findLast(event => event.type === 'work/accepted')
-    if (receipt === undefined) return { ...cut, verifiedThroughSeq: -1, current: true }
+    if (receipt === undefined) {
+      return { ...cut, confirmationBlockedBy: this.confirmationBlockedBy(agent), verifiedThroughSeq: -1, current: true }
+    }
     if (!await this.ctx.sessions.flush(agent.session)) throw new Error('workResults persistence checkpoint is unavailable')
-    this.userRequest('get')
+    this.userRequest(endpoint)
     signal.throwIfAborted()
     this.assertLive(agent)
     const stored = await this.ctx.sessionPersistence.readFrom(agent.id, receipt.seq, signal)
-    this.userRequest('get')
+    this.userRequest(endpoint)
     this.assertLive(agent)
     const persisted = stored.events.find(event => event.seq === receipt.seq)
     if (persisted?.type !== 'work/accepted' || readAcceptedRevision(persisted.data) !== cut.acceptedRevision
       || (stored.events.at(-1)?.seq ?? -1) < through) throw new Error('workResults confirmation is not durably recorded')
-    return { ...cut, verifiedThroughSeq: through, current: this.acceptance(agent.session).reviewRevision === cut.reviewRevision }
+    return {
+      ...cut, confirmationBlockedBy: this.confirmationBlockedBy(agent), verifiedThroughSeq: through,
+      current: this.acceptance(agent.session).reviewRevision === cut.reviewRevision,
+    }
   }
 
   /**
@@ -126,53 +203,73 @@ export class WorkResultsService extends TypertRemoteService {
    */
   @Remote('list') async list(request: WorkLibraryRequest, signal: AbortSignal): Promise<WorkLibraryPage> {
     this.userRequest('list')
+    const result = await this.library.read(request, signal)
+    this.userRequest('list')
+    return result
+  }
+
+  /**
+   * Read the latest explicit content review with its confirmed-vs-current comparison.
+   * @param request - exact source Session address.
+   * @param signal - cancellation through the non-activating source read.
+   * @returns The latest review and per-version currency; the Host performs no fresh
+   * re-reads, so every confirmed version reads `not-reverified` until a caller with a
+   * fresh observation applies {@link contentCurrency}.
+   */
+  @Remote('contentReview') async contentReview(request: WorkReadRequest, signal: AbortSignal): Promise<WorkContentReviewRead> {
+    this.userRequest('contentReview')
+    const agent = this.ctx.agents.get(request.sessionId)
+    let latest: WorkContentReview | null
+    if (agent !== undefined) {
+      this.assertLive(agent)
+      latest = this.contentReviews(agent.session).latest
+    } else {
+      const source = await this.ctx.sessionQuery.readSession(request.sessionId)
+      this.userRequest('contentReview')
+      signal.throwIfAborted()
+      latest = source.events
+        .reduce((state, event) => workContentReviewProjection.apply(state, event), workContentReviewProjection.init()).latest
+    }
+    this.userRequest('contentReview')
+    return latestContentReviewRead(latest)
+  }
+
+  /**
+   * Record an explicit user content review bound to versions and check records, never to a log prefix.
+   * @param agent - exact live Session receiving the durable `work/reviewed` event.
+   * @param request - decision, observed content versions and check records.
+   * @param signal - trusted carrier cancellation through the durability barrier.
+   * @returns the recorded review; a byte-identical resubmission reuses the latest record.
+   */
+  @Remote('recordContentReview') async recordContentReview(agent: Agent, request: WorkContentReviewRequest, signal: AbortSignal): Promise<WorkContentReview> {
+    this.userRequest('recordContentReview')
     signal.throwIfAborted()
-    const query = request.query?.trim().toLocaleLowerCase() ?? ''
-    if (query.length > 500) throw new Error('workResults query exceeds 500 characters')
-    let sessionOffset = this.offset(request.sessionOffset)
-    let pathOffset = this.offset(request.pathOffset)
-    const limit = request.limit ?? this.config.defaultResultsPerPage
-    if (!Number.isSafeInteger(limit) || limit < 1 || limit > this.config.maxResultsPerPage) throw new Error('workResults invalid result limit')
-    const records = await this.ctx.sessionQuery.listSessions(signal)
-    this.userRequest('list')
-    const corpusRevision = await this.libraryRevision(records, query, signal)
-    this.userRequest('list')
-    if ((sessionOffset > 0 || pathOffset > 0) && request.corpusRevision !== corpusRevision) throw new Error('workResults Library changed; restart the search')
-    const entries: WorkLibraryEntry[] = []
-    let scannedSessions = 0
-    let unindexedResults = 0
-    let unavailableSessions = 0
-    while (sessionOffset < records.length && scannedSessions < this.config.scanSessionsPerPage) {
-      const record = records[sessionOffset]
-      if (record === undefined) break
-      let snapshot: Awaited<ReturnType<typeof this.ctx.sessionQuery.readSession>>
-      try { snapshot = await this.ctx.sessionQuery.readSession(record.header.id) } catch {
-        this.userRequest('list')
-        unavailableSessions += 1
-        scannedSessions += 1
-        sessionOffset += 1
-        pathOffset = 0
-        continue
-      }
-      this.userRequest('list')
-      scannedSessions += 1
-      const inventory = snapshot.events.reduce((state, event) => deliverablesProjection.apply(state, event), deliverablesProjection.init())
-      unindexedResults += inventory.unindexedResults
-      while (pathOffset < inventory.paths.length) {
-        const path = inventory.paths[pathOffset++]
-        if (path === undefined || !path.toLocaleLowerCase().includes(query)) continue
-        entries.push({ sessionId: snapshot.session.id, path, ...snapshot.session.cwd === undefined ? {} : { cwd: snapshot.session.cwd } })
-        if (entries.length === limit) break
-      }
-      if (pathOffset >= inventory.paths.length) { sessionOffset += 1; pathOffset = 0 }
-      if (entries.length === limit) break
-    }
-    if (corpusRevision !== await this.libraryRevision(await this.ctx.sessionQuery.listSessions(signal), query, signal)) throw new Error('workResults Library changed during the scan; restart the search')
-    this.userRequest('list')
-    return {
-      entries, scannedSessions, totalSessions: records.length, unindexedResults, unavailableSessions,
-      next: sessionOffset < records.length ? { sessionOffset, pathOffset, corpusRevision } : null,
-    }
+    this.assertLive(agent)
+    // Host-stamped fields; caller-supplied facts are validated by the same durable decoder.
+    const candidate = readContentReview({
+      reviewId: randomUUID(), decision: request.decision, contentVersions: request.contentVersions,
+      contentVersionRefs: request.contentVersionRefs, checkRecords: request.checkRecords,
+      checkRecordRefs: request.checkRecordRefs, actor: 'host-client', reviewedAt: Date.now(),
+    })
+    return agent.runMaintenance(async (maintenanceSignal) => {
+      if (!await this.ctx.sessions.flush(agent.session)) throw new Error('workResults persistence checkpoint is unavailable')
+      this.userRequest('recordContentReview')
+      signal.throwIfAborted()
+      maintenanceSignal.throwIfAborted()
+      this.assertLive(agent)
+      const latestEvent = agent.session.events.findLast(event => event.type === 'work/reviewed')
+      const prior = latestEvent === undefined ? null : readContentReview(latestEvent.data)
+      const recordedSeq = latestEvent !== undefined && prior !== null && sameContentSubject(prior, candidate)
+        ? latestEvent.seq
+        : agent.session.append('work/reviewed', candidate).seq
+      if (!await this.ctx.sessions.flush(agent.session)) throw new Error('workResults persistence checkpoint is unavailable')
+      this.userRequest('recordContentReview')
+      const stored = await this.ctx.sessionPersistence.readFrom(agent.id, recordedSeq, signal)
+      this.userRequest('recordContentReview')
+      const persisted = stored.events.find(event => event.seq === recordedSeq)
+      if (persisted?.type !== 'work/reviewed') throw new Error('workResults content review is not durably recorded')
+      return readContentReview(persisted.data)
+    })
   }
 
   /**
@@ -229,13 +326,23 @@ export class WorkResultsService extends TypertRemoteService {
 
   private assertReviewable(agent: Agent, revision: number): void {
     this.assertLive(agent)
-    if (!this.ctx.agents.roots().includes(agent)) throw new Error('workResults only accepts a root Work')
-    const pending = this.ctx.hostInteractions.pendingFor(agent.id)
-    if (!this.acceptance(agent.session).reviewable || agent.status !== 'idle' || agent.inbox.hasPending || pending.approvals > 0 || pending.questions > 0
-      || this.ctx.jobs.list(agent).some(job => job.ownerSession === agent.id && (job.status === 'running' || job.status === 'stopping'))) {
-      throw new Error('workResults cannot accept while work or human interactions remain pending')
-    }
+    const blockers = this.confirmationBlockedBy(agent)
+    if (blockers.includes('not-root')) throw new Error('workResults only accepts a root Work')
+    if (blockers.length > 0) throw new Error('workResults cannot accept while work or human interactions remain pending')
     if (!Number.isSafeInteger(revision) || revision < 0 || this.acceptance(agent.session).reviewRevision !== revision) throw new Error('workResults review revision changed; refresh before accepting')
+  }
+
+  private confirmationBlockedBy(agent: Agent): WorkVerifiedReview['confirmationBlockedBy'] {
+    const pending = this.ctx.hostInteractions.pendingFor(agent.id)
+    return confirmationBlockers({
+      root: this.ctx.agents.roots().includes(agent),
+      reviewable: this.acceptance(agent.session).reviewable,
+      idle: agent.status === 'idle',
+      queuedInput: agent.inbox.hasPending,
+      approvals: pending.approvals,
+      questions: pending.questions,
+      runningJobs: this.ctx.jobs.list(agent).some(job => job.ownerSession === agent.id && (job.status === 'running' || job.status === 'stopping')),
+    })
   }
 
   private acceptance(session: Session): WorkAcceptanceProjection {
@@ -244,20 +351,13 @@ export class WorkResultsService extends TypertRemoteService {
     return value
   }
 
-  private async libraryRevision(records: Awaited<ReturnType<Context['sessionQuery']['listSessions']>>, query: string, signal: AbortSignal): Promise<WorkLibraryRevision> {
-    const persisted = new Map((await this.ctx.sessionPersistence.listSnapshots(signal)).map(row => [row.header.id, row.revision]))
-    const stamps = records.map((record) => {
-      const live = this.ctx.sessions.get(record.header.id)
-      return [record.header.id, live === undefined ? ['stored', persisted.get(record.header.id)] : ['live', live.header.createdAt, this.ctx.sessionProjections.snapshot(live).values.deliverables]]
-    })
-    return createHash('sha256').update(JSON.stringify([query, stamps])).digest('hex') as WorkLibraryRevision
+  private contentReviews(session: Session): WorkContentReviewsProjection {
+    const value = this.ctx.sessionProjections.snapshot(session).values.workContentReviews
+    if (value === undefined) throw new Error('workResults content review projection is unavailable')
+    return value
   }
 
-  private offset(value: number | undefined): number {
-    const offset = value ?? 0
-    if (!Number.isSafeInteger(offset) || offset < 0) throw new Error('workResults invalid pagination offset')
-    return offset
-  }
+
 }
 
 export default WorkResultsService

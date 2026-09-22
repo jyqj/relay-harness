@@ -224,6 +224,21 @@ describe('step-context seam', () => {
     expect(trace.seq).toBeLessThan(agent.session.events.find(event => event.type === 'request/header')!.seq)
   })
 
+  it('supplies no per-request budget ceiling or deadline; the engine Config owns preparation bounds', async () => {
+    const adapter = new MockAdapter([textResponse('ok')])
+    const ctx = await harness(adapter)
+    const engine = new ScriptedEngine(ctx, undefined)
+    const agent = ctx.agentLoop.create(SessionId('unwired-budget-seam'), { provider: 'mock', model: 'mock' })
+
+    send(agent, 'hello')
+    await waitForIdle(ctx, agent)
+
+    expect(engine.calls).toHaveLength(1)
+    expect('limits' in engine.calls[0]!).toBe(false)
+    expect('deadlineAt' in engine.calls[0]!).toBe(false)
+    expect(requestTexts(adapter)).toEqual([['hello']])
+  })
+
   it('leaves the request unchanged when the engine declines or is absent', async () => {
     const declining = new MockAdapter([textResponse('ok')])
     const decliningCtx = await harness(declining)

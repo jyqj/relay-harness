@@ -61,7 +61,7 @@ describe('web e2e: plan chip click area at the narrow viewport', () => {
     // which is what made the reported overlap measurable.
     scaffold = await launchWebScaffold({ replayFixture: FIXTURE, replayProvidersOnly: true })
     scaffold.ctx.on('session/event', (_session, event: SessionEvent) => { sessionEvents.push(event) })
-    // The model-seat geometry is an explicit Developer Mode surface.
+    // The model-seat geometry is an explicit Detailed view surface.
     await scaffold.ctx.productMode.set({ mode: 'developer' })
     browser = await chromium.launch()
     page = await newEnglishPage(browser, VIEWPORT.height)

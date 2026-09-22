@@ -648,6 +648,18 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     description: '`ctx.contextEngine`. Owns contributor registration, deterministic planning, and packing.',
     methods: [
       {
+        signature: 'describeContributors(): readonly ContextContributorDescription[]',
+        description: 'Describe registered sources without reading data or activating an Agent.',
+        parameters: [],
+        returns: 'Immutable ids and supported purposes for the current registrations.',
+      },
+      {
+        signature: 'retrieve(input: ContextRetrievalInput): Promise<PreparedStepContext>',
+        description: 'Retrieve explicit model-selected context without injecting or persisting a second transcript.',
+        parameters: [{ name: 'input', description: 'Host-derived caller identity and a model-authored query.' }],
+        returns: 'Selected observations and a plan, including empty and rejected retrieval outcomes.',
+      },
+      {
         signature: 'registerContributor(contributor: StepContextContributor): () => void',
         description: 'Register one step-context contributor.',
         parameters: [{ name: 'contributor', description: 'the contributor with a unique non-empty id.' }],
@@ -1019,7 +1031,7 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
   {
     key: 'jobs',
     summary: 'Abstract background job registry.',
-    description: 'Abstract background job registry. Subclass, implement the abstract methods, and load the subclass as a plugin — it registers as `ctx.jobs` (one implementation per context; loading a second throws, which is cordis\' standard duplicate-service behavior).\n\nImplementations must honor these semantics:\n\n- Registrations outlive producer and controller fibers. Owner and service disposal cancel live work and await compliant producers; a throwing teardown cancel force-fails only the record. Teardown cancellation also marks the record reported, because a record its owner is being destroyed for has no reader left.\n- Owned-job access is fenced by the owner\'s session id. Ids are predictable, so authorization — not secrecy — is the boundary.\n- Settlement is first-wins: one terminal record, released waiters, and one round of contained listener notification, even against a late producer outcome. Completion is announced last, after the record is committed and every other observer of the settlement has seen it, because a reporter may open a model turn synchronously.\n- Terminal records are retained only until they are reported — their completion notice deliverable — plus an implementation-configured grace window, subject to a per-owner cap. Implementations prune at registry entry points, never drop an unreported terminal record (completion notices are at-least-once), and a pruned id reads as an unknown job.\n- start refuses work while no attached job controller serves the spec\'s owner, so a producer cannot start work that owner cannot collect or stop. One registry serves every composition in the process, so this question — and completion-listener delivery — is owner-relative rather than process-wide: registrations made from an unscoped context serve every owner, and registrations made under an agent composition\'s scope serve exactly the agents composed under it.',
+    description: 'Abstract background job registry. Subclass, implement the abstract methods, and load the subclass as a plugin — it registers as `ctx.jobs` (one implementation per context; loading a second throws, which is cordis\' standard duplicate-service behavior).\n\nImplementations must honor these semantics:\n\n- Registrations outlive producer and controller fibers. Owner and service disposal cancel live work and await producers only for a bounded stop window: a producer that has not settled after the grace (and one escalation to JobHooks.terminate when the producer provides it) is recorded as `control-lost-unknown` — never as a producer-confirmed terminal — and teardown proceeds. A throwing teardown cancel force-fails only the record. Teardown cancellation also marks the record reported, because a record its owner is being destroyed for has no reader left.\n- Owned-job access is fenced by the owner\'s session id. Ids are predictable, so authorization — not secrecy — is the boundary.\n- Settlement is first-wins: one terminal record, released waiters, and one round of contained listener notification, even against a late producer outcome. Completion is announced last, after the record is committed and every other observer of the settlement has seen it, because a reporter may open a model turn synchronously.\n- Terminal records are retained only until they are reported — their completion notice deliverable — plus an implementation-configured grace window, subject to a per-owner cap. Implementations prune at registry entry points, never drop an unreported terminal record (completion notices are at-least-once), and a pruned id reads as an unknown job.\n- start refuses work while no attached job controller serves the spec\'s owner, so a producer cannot start work that owner cannot collect or stop. One registry serves every composition in the process, so this question — and completion-listener delivery — is owner-relative rather than process-wide: registrations made from an unscoped context serve every owner, and registrations made under an agent composition\'s scope serve exactly the agents composed under it.',
     methods: [
       {
         signature: 'abstract start(spec: JobStart): JobId',
@@ -1047,7 +1059,7 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
       },
       {
         signature: 'abstract kill(id: JobId, caller?: Agent, reason?: string): \'requested\' | \'already-finished\'',
-        description: 'Request cancellation, then mark the job stopping and reported. A producer throw propagates without changing job state. Throws for an unknown or foreign job.',
+        description: 'Request cancellation, then mark the job stopping and reported. A producer throw propagates without changing job state. If the producer does not settle within the bounded stop grace, the stop protocol escalates to JobHooks.terminate when the producer provides one and otherwise records `control-lost-unknown` — the record never claims a terminal the producer did not confirm. Throws for an unknown or foreign job.',
         parameters: [{ name: 'id', description: 'job to cancel.' }, { name: 'caller', description: 'killing agent checked against the owner.' }, { name: 'reason', description: 'logged reason forwarded to the producer.' }],
         returns: '`requested` for live work, otherwise `already-finished`.',
       },
@@ -2839,6 +2851,24 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     description: 'Stateless business adapter; accepted versions and file inventories remain log projections.',
     methods: [
       {
+        signature: '@Remote(\'inspect\') async inspect(request: WorkReadRequest, signal: AbortSignal): Promise<WorkView>',
+        description: 'Read independent Work facts without resolving or resuming a live Agent.',
+        parameters: [{ name: 'request', description: 'Exact source Session address.' }, { name: 'signal', description: 'Trusted request cancellation.' }],
+        returns: 'Orthogonal goal, execution, coverage and action observations.',
+      },
+      {
+        signature: '@Remote(\'history\') async history(request: WorkHistoryRequest, signal: AbortSignal): Promise<WorkHistoryPage>',
+        description: 'Read final message text without recovering execution or claiming a lease.',
+        parameters: [{ name: 'request', description: 'Source Session and bounded backward page.' }, { name: 'signal', description: 'Trusted request cancellation.' }],
+        returns: 'An immutable source cut, not a live conversation.',
+      },
+      {
+        signature: '@Remote(\'review\') async review(request: WorkReadRequest, signal: AbortSignal): Promise<WorkVerifiedReview>',
+        description: 'Verify a record without the Remote Agent resolver\'s implicit activation.',
+        parameters: [{ name: 'request', description: 'Exact Session identity.' }, { name: 'signal', description: 'Request cancellation across persistence reads.' }],
+        returns: 'The existing receipt semantics; a cold Session explicitly cannot be confirmed.',
+      },
+      {
         signature: '@Remote(\'get\') async get(agent: Agent, signal: AbortSignal): Promise<WorkVerifiedReview>',
         description: 'Read the exact review prefix without changing goal or task state.',
         parameters: [{ name: 'agent', description: 'addressed live agent resolved by the existing Remote lookup.' }, { name: 'signal', description: 'cancellation through the captured durability verification.' }],
@@ -2855,6 +2885,18 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         description: 'Scan a bounded page of existing Session logs without activating any agent.',
         parameters: [{ name: 'request', description: 'filename query, pagination position, and result bound.' }, { name: 'signal', description: 'cancellation between bounded non-activating reads.' }],
         returns: 'source-attributed outputs and explicit scan/incomplete-history coverage.',
+      },
+      {
+        signature: '@Remote(\'contentReview\') async contentReview(request: WorkReadRequest, signal: AbortSignal): Promise<WorkContentReviewRead>',
+        description: 'Read the latest explicit content review with its confirmed-vs-current comparison.',
+        parameters: [{ name: 'request', description: 'exact source Session address.' }, { name: 'signal', description: 'cancellation through the non-activating source read.' }],
+        returns: 'The latest review and per-version currency; the Host performs no fresh re-reads, so every confirmed version reads `not-reverified` until a caller with a fresh observation applies {@link contentCurrency}.',
+      },
+      {
+        signature: '@Remote(\'recordContentReview\') async recordContentReview(agent: Agent, request: WorkContentReviewRequest, signal: AbortSignal): Promise<WorkContentReview>',
+        description: 'Record an explicit user content review bound to versions and check records, never to a log prefix.',
+        parameters: [{ name: 'agent', description: 'exact live Session receiving the durable `work/reviewed` event.' }, { name: 'request', description: 'decision, observed content versions and check records.' }, { name: 'signal', description: 'trusted carrier cancellation through the durability barrier.' }],
+        returns: 'the recorded review; a byte-identical resubmission reuses the latest record.',
       },
       {
         signature: '@Remote(\'open\') async open(request: WorkOpenRequest, signal: AbortSignal): Promise<void>',
@@ -3679,7 +3721,15 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'ContextCandidateSelection',
-    declaration: 'export interface ContextCandidateSelection {\n    readonly priority: ContextSelectionPriority;\n    readonly reasons: readonly string[];\n    readonly dedupeKey?: string;\n}',
+    declaration: 'export interface ContextCandidateSelection {\n    readonly priority: ContextSelectionPriority;\n    readonly reasons: readonly string[];\n    readonly rank?: number;\n    readonly dedupeKey?: string;\n}',
+  },
+  {
+    name: 'ContextContributionBatch',
+    declaration: 'export type ContextContributionBatch = ContributedStepContext | readonly ContributedStepContext[];',
+  },
+  {
+    name: 'ContextContributorDescription',
+    declaration: 'export interface ContextContributorDescription {\n    readonly id: string;\n    readonly purposes: readonly ContextPurpose[];\n}',
   },
   {
     name: 'ContextFormed',
@@ -3687,11 +3737,15 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'ContextPrepareInput',
-    declaration: 'export interface ContextPrepareInput {\n    readonly purpose: ContextPurpose;\n    readonly messages: readonly UserMessage[];\n    readonly signal: AbortSignal;\n    readonly cwd: string;\n    readonly caller: StepContextCaller;\n}',
+    declaration: 'export interface ContextPrepareInput {\n    readonly purpose: ContextPurpose;\n    readonly messages: readonly UserMessage[];\n    readonly signal: AbortSignal;\n    readonly cwd: string;\n    readonly caller: StepContextCaller;\n    readonly limits?: Partial<ContextBudget>;\n    readonly deadlineAt?: number;\n}',
   },
   {
     name: 'ContextPurpose',
-    declaration: 'export type ContextPurpose = \'agent_step\' | \'prompt_enhancement\';',
+    declaration: 'export type ContextPurpose = \'agent_step\' | \'prompt_enhancement\' | \'tool_retrieval\';',
+  },
+  {
+    name: 'ContextRetrievalInput',
+    declaration: 'export interface ContextRetrievalInput {\n    readonly query: string;\n    readonly contributors?: readonly string[];\n    readonly budget?: ContextBudget;\n    readonly cwd: string;\n    readonly caller: StepContextCaller;\n    readonly signal: AbortSignal;\n}',
   },
   {
     name: 'ContextRetrievalPlan',
@@ -3699,7 +3753,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'ContextRetrievalPlanEntry',
-    declaration: 'export interface ContextRetrievalPlanEntry {\n    readonly contributorId: string;\n    readonly eligible: boolean;\n    readonly reason: \'purpose_supported\' | \'purpose_not_supported\';\n    readonly budget?: Omit<ContributorContextBudget, \'deadlineAt\'>;\n}',
+    declaration: 'export interface ContextRetrievalPlanEntry {\n    readonly contributorId: string;\n    readonly eligible: boolean;\n    readonly reason: \'purpose_supported\' | \'purpose_not_supported\' | \'not_requested\';\n    readonly budget?: Omit<ContributorContextBudget, \'deadlineAt\'>;\n}',
   },
   {
     name: 'ContextSelectionPriority',
@@ -3804,6 +3858,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'CredentialRef',
     declaration: 'export type CredentialRef = Branded<\'CredentialRef\'>;',
+  },
+  {
+    name: 'DeliverablesProjection',
+    declaration: 'export interface DeliverablesProjection {\n    readonly paths: readonly string[];\n    readonly unindexedResults: number;\n}',
   },
   {
     name: 'DetectMemoryConflictsInput',
@@ -4219,7 +4277,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'JobHooks',
-    declaration: 'export interface JobHooks {\n    cancel(reason?: string): void;\n    done: Promise<JobOutcome>;\n    readOutput?(): string;\n}',
+    declaration: 'export interface JobHooks {\n    cancel(reason?: string): void;\n    terminate?(reason?: string): void;\n    done: Promise<JobOutcome>;\n    readOutput?(): string;\n}',
   },
   {
     name: 'JobId',
@@ -4251,11 +4309,11 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'JobStart',
-    declaration: 'export interface JobStart {\n    kind: JobKind;\n    label: string;\n    outputLimitBytes?: number;\n    owner?: Agent;\n    run(): JobHooks;\n}',
+    declaration: 'export interface JobStart {\n    kind: JobKind;\n    label: string;\n    outputLimitBytes?: number;\n    owner?: Agent;\n    stopGraceMs?: number;\n    run(): JobHooks;\n}',
   },
   {
     name: 'JobStatus',
-    declaration: 'export type JobStatus = \'running\' | \'stopping\' | \'completed\' | \'killed\' | \'failed\';',
+    declaration: 'export type JobStatus = \'running\' | \'stopping\' | \'completed\' | \'killed\' | \'failed\' | \'control-lost-unknown\';',
   },
   {
     name: 'JsonSchemaNode',
@@ -5027,7 +5085,7 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'SearchResult',
-    declaration: 'export interface SearchResult {\n    readonly query: string;\n    readonly tier: RepoSizeTier;\n    readonly hits: readonly SearchHit[];\n    readonly candidateCount: number;\n    readonly epochs: EpochPair;\n    readonly truncated: boolean;\n    readonly degraded: boolean;\n    readonly readErrors: readonly string[];\n}',
+    declaration: 'export interface SearchResult {\n    readonly query: string;\n    readonly tier: RepoSizeTier;\n    readonly hits: readonly SearchHit[];\n    readonly candidateCount: number;\n    readonly epochs: EpochPair;\n    readonly truncated: boolean;\n    readonly degraded: boolean;\n    readonly degradation?: {\n        readonly code: \'query-embedding-unavailable\';\n        readonly fallback: \'lexical\' | \'none\';\n    };\n    readonly readErrors: readonly string[];\n}',
   },
   {
     name: 'SearchResultView',
@@ -5439,11 +5497,11 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   },
   {
     name: 'StepContextContributor',
-    declaration: 'export interface StepContextContributor {\n    readonly id: string;\n    readonly purposes?: readonly ContextPurpose[];\n    contribute(input: StepContextInput): Promise<ContributedStepContext | undefined>;\n}',
+    declaration: 'export interface StepContextContributor {\n    readonly id: string;\n    readonly purposes?: readonly ContextPurpose[];\n    contribute(input: StepContextInput): Promise<ContextContributionBatch | undefined>;\n}',
   },
   {
     name: 'StepContextInput',
-    declaration: 'export interface StepContextInput extends ContextPrepareInput {\n    readonly budget: ContributorContextBudget;\n}',
+    declaration: 'export interface StepContextInput extends ContextPrepareInput {\n    readonly query?: string;\n    readonly budget: ContributorContextBudget;\n}',
   },
   {
     name: 'StorageBackend',
@@ -6058,6 +6116,70 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface WorkAcceptRequest {\n    readonly reviewRevision: number;\n}',
   },
   {
+    name: 'WorkCheckEvidence',
+    declaration: 'export type WorkCheckEvidence = \'agent-claimed\' | \'host-captured\' | \'user-reviewed\';',
+  },
+  {
+    name: 'WorkCheckId',
+    declaration: 'export type WorkCheckId = Branded<\'work-check-record\'>;',
+  },
+  {
+    name: 'WorkCheckRecord',
+    declaration: 'export interface WorkCheckRecord {\n    readonly checkId: WorkCheckId;\n    readonly checker: {\n        readonly name: string;\n        readonly version?: string;\n        readonly configDigest?: string;\n    };\n    readonly contentVersionRefs: readonly string[];\n    readonly exitCode?: number;\n    readonly verdict: \'pass\' | \'fail\' | \'unknown\';\n    readonly log?: {\n        readonly sessionId: import(\'@relay-harness/rlh-session/types\').SessionId;\n        readonly seq: number;\n    };\n    readonly evidence: WorkCheckEvidence;\n}',
+  },
+  {
+    name: 'WorkConfirmationBlocker',
+    declaration: 'export type WorkConfirmationBlocker = \'not-root\' | \'turn-open\' | \'running\' | \'queued-input\' | \'approval\' | \'question\' | \'background-job\' | \'runtime-unavailable\';',
+  },
+  {
+    name: 'WorkContentCurrency',
+    declaration: 'export type WorkContentCurrency = {\n    readonly ref: string;\n    readonly state: \'matches-confirmed\';\n} | {\n    readonly ref: string;\n    readonly state: \'changed-unreviewed\';\n    readonly current: WorkContentVersion;\n} | {\n    readonly ref: string;\n    readonly state: \'not-reverified\';\n};',
+  },
+  {
+    name: 'WorkContentDecision',
+    declaration: 'export type WorkContentDecision = \'approved\' | \'rejected\';',
+  },
+  {
+    name: 'WorkContentExecution',
+    declaration: 'export interface WorkContentExecution {\n    readonly sessionId: import(\'@relay-harness/rlh-session/types\').SessionId;\n    readonly cwd?: string;\n}',
+  },
+  {
+    name: 'WorkContentReview',
+    declaration: 'export interface WorkContentReview {\n    readonly reviewId: WorkContentReviewId;\n    readonly decision: WorkContentDecision;\n    readonly contentVersions: readonly WorkContentVersion[];\n    readonly contentVersionRefs: readonly string[];\n    readonly checkRecords: readonly WorkCheckRecord[];\n    readonly checkRecordRefs: readonly string[];\n    readonly actor: \'host-client\';\n    readonly reviewedAt: number;\n}',
+  },
+  {
+    name: 'WorkContentReviewId',
+    declaration: 'export type WorkContentReviewId = Branded<\'work-content-review\'>;',
+  },
+  {
+    name: 'WorkContentReviewRead',
+    declaration: 'export interface WorkContentReviewRead {\n    readonly review: WorkContentReview | null;\n    readonly currency: readonly WorkContentCurrency[];\n}',
+  },
+  {
+    name: 'WorkContentReviewRequest',
+    declaration: 'export interface WorkContentReviewRequest {\n    readonly decision: WorkContentDecision;\n    readonly contentVersions: readonly WorkContentVersion[];\n    readonly contentVersionRefs: readonly string[];\n    readonly checkRecords: readonly WorkCheckRecord[];\n    readonly checkRecordRefs: readonly string[];\n}',
+  },
+  {
+    name: 'WorkContentSource',
+    declaration: 'export interface WorkContentSource {\n    readonly sessionId: import(\'@relay-harness/rlh-session/types\').SessionId;\n    readonly throughSeq: number;\n}',
+  },
+  {
+    name: 'WorkContentVersion',
+    declaration: 'export interface WorkContentVersion {\n    readonly execution: WorkContentExecution;\n    readonly source: WorkContentSource;\n    readonly locator: string;\n    readonly contentHash: {\n        readonly algorithm: \'sha256\';\n        readonly digest: string;\n    };\n    readonly observedAt: number;\n}',
+  },
+  {
+    name: 'WorkExecutionEntry',
+    declaration: 'export interface WorkExecutionEntry {\n    readonly id: string;\n    readonly sessionId: import(\'@relay-harness/rlh-session/types\').SessionId;\n    readonly parentSessionId?: import(\'@relay-harness/rlh-session/types\').SessionId;\n    readonly kind: \'agent\' | \'subagent\' | \'job\';\n    readonly label: string;\n    readonly activity: \'running\' | \'stopping\' | \'idle\' | \'inactive\' | \'unknown\';\n    readonly outcome?: \'completed\' | \'killed\' | \'failed\';\n    readonly recovery: \'resident\' | \'explicit-resume\' | \'history-only\' | \'unknown\';\n    readonly relationship?: WorkExecutionRelationship;\n    readonly recoveryCapabilities?: WorkExecutionRecovery;\n}',
+  },
+  {
+    name: 'WorkExecutionRecovery',
+    declaration: 'export interface WorkExecutionRecovery {\n    readonly history: \'persisted\' | \'in-process\' | \'unknown\';\n    readonly resume: \'explicit\' | \'unavailable\' | \'unknown\';\n    readonly control: \'resident\' | \'none\';\n}',
+  },
+  {
+    name: 'WorkExecutionRelationship',
+    declaration: 'export interface WorkExecutionRelationship {\n    readonly kind: WorkRelationshipKind;\n    readonly peerSessionId?: import(\'@relay-harness/rlh-session/types\').SessionId;\n    readonly controlLink: boolean;\n}',
+  },
+  {
     name: 'WorkflowActiveRunSnapshot',
     declaration: 'export interface WorkflowActiveRunSnapshot extends WorkflowRunInfo {\n    readonly startedAt: number;\n    readonly lastProgressAt: number;\n    readonly phase?: string;\n    readonly agentsStarted: number;\n    readonly activeAgents: number;\n}',
   },
@@ -6110,12 +6232,28 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export type WorkflowStopReason = \'completed\' | \'cancelled\' | \'error\';',
   },
   {
+    name: 'WorkHistoryPage',
+    declaration: 'export interface WorkHistoryPage {\n    readonly sessionId: import(\'@relay-harness/rlh-session/types\').SessionId;\n    readonly throughSeq: number;\n    readonly rows: readonly WorkHistoryRow[];\n    readonly nextBeforeSeq: number | null;\n    readonly scope: \'text-messages-only\';\n    readonly snapshot: WorkHistorySnapshot;\n}',
+  },
+  {
+    name: 'WorkHistoryRequest',
+    declaration: 'export interface WorkHistoryRequest extends WorkReadRequest {\n    readonly snapshot?: WorkHistorySnapshot;\n    readonly beforeSeq?: number;\n    readonly limit?: number;\n}',
+  },
+  {
+    name: 'WorkHistoryRow',
+    declaration: 'export interface WorkHistoryRow {\n    readonly seq: number;\n    readonly kind: \'user\' | \'assistant\' | \'tool\';\n    readonly text: string;\n    readonly truncated: boolean;\n}',
+  },
+  {
+    name: 'WorkHistorySnapshot',
+    declaration: 'export interface WorkHistorySnapshot {\n    readonly throughSeq: number;\n    readonly digest: string;\n}',
+  },
+  {
     name: 'WorkLibraryEntry',
-    declaration: 'export interface WorkLibraryEntry {\n    readonly sessionId: import(\'@relay-harness/rlh-session/types\').SessionId;\n    readonly path: string;\n    readonly cwd?: string;\n}',
+    declaration: 'export interface WorkLibraryEntry {\n    readonly sourceThroughSeq?: number;\n    readonly sessionId: import(\'@relay-harness/rlh-session/types\').SessionId;\n    readonly path: string;\n    readonly cwd?: string;\n}',
   },
   {
     name: 'WorkLibraryPage',
-    declaration: 'export interface WorkLibraryPage {\n    readonly entries: readonly WorkLibraryEntry[];\n    readonly scannedSessions: number;\n    readonly totalSessions: number;\n    readonly unindexedResults: number;\n    readonly unavailableSessions: number;\n    readonly next: {\n        readonly sessionOffset: number;\n        readonly pathOffset: number;\n        readonly corpusRevision: WorkLibraryRevision;\n    } | null;\n}',
+    declaration: 'export interface WorkLibraryPage {\n    readonly observedSessionIds?: readonly import(\'@relay-harness/rlh-session/types\').SessionId[];\n    readonly coverage?: {\n        readonly scope: \'observed-corpus\';\n        readonly snapshotId: WorkLibraryRevision;\n        readonly omittedSessions: number;\n    };\n    readonly entries: readonly WorkLibraryEntry[];\n    readonly scannedSessions: number;\n    readonly totalSessions: number;\n    readonly unindexedResults: number;\n    readonly unavailableSessions: number;\n    readonly next: {\n        readonly sessionOffset: number;\n        readonly pathOffset: number;\n        readonly corpusRevision: WorkLibraryRevision;\n    } | null;\n}',
   },
   {
     name: 'WorkLibraryRequest',
@@ -6130,8 +6268,20 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface WorkOpenRequest {\n    readonly sessionId: import(\'@relay-harness/rlh-session/types\').SessionId;\n    readonly path: string;\n}',
   },
   {
+    name: 'WorkReadRequest',
+    declaration: 'export interface WorkReadRequest {\n    readonly sessionId: import(\'@relay-harness/rlh-session/types\').SessionId;\n}',
+  },
+  {
+    name: 'WorkRelationshipKind',
+    declaration: 'export type WorkRelationshipKind = \'owned\' | \'delegated\' | \'reports-to\' | \'forked-from\';',
+  },
+  {
     name: 'WorkVerifiedReview',
-    declaration: 'export interface WorkVerifiedReview extends WorkAcceptanceProjection {\n    readonly verifiedThroughSeq: number;\n    readonly current: boolean;\n}',
+    declaration: 'export interface WorkVerifiedReview extends WorkAcceptanceProjection {\n    readonly confirmationBlockedBy: readonly WorkConfirmationBlocker[];\n    readonly verifiedThroughSeq: number;\n    readonly current: boolean;\n}',
+  },
+  {
+    name: 'WorkView',
+    declaration: 'export interface WorkView {\n    readonly sessionId: import(\'@relay-harness/rlh-session/types\').SessionId;\n    readonly cwd?: string;\n    readonly parentSessionId?: import(\'@relay-harness/rlh-session/types\').SessionId;\n    readonly relation: \'root\' | \'fork\' | \'delegated\';\n    readonly source: {\n        readonly throughSeq: number;\n        readonly resident: boolean;\n        readonly current: boolean;\n    };\n    readonly goal: {\n        readonly id: string;\n        readonly revision: number;\n        readonly objective: string;\n        readonly phase: string;\n        readonly roundsStarted: number;\n    } | null;\n    readonly execution: {\n        readonly activity: \'running\' | \'idle\' | \'unknown\';\n        readonly entries: readonly WorkExecutionEntry[];\n        readonly omitted: number;\n    };\n    readonly attention: {\n        readonly approvals: number;\n        readonly questions: number;\n        readonly available: boolean;\n    };\n    readonly outputs: DeliverablesProjection;\n    readonly review: WorkAcceptanceProjection;\n    readonly actions: {\n        readonly confirmRecord: {\n            readonly allowed: boolean;\n            readonly blockers: readonly string[];\n            readonly scope: \'session-log\';\n        };\n    };\n    readonly capabilities: {\n        readonly contextSources: readonly {\n            readonly id: string;\n            readonly purposes: readonly string[];\n        }[];\n        readonly contextAvailable: boolean;\n        readonly activationRequired: boolean /* …truncated — full shape in source */',
   },
 ]
 

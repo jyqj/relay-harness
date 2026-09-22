@@ -48,7 +48,7 @@ describe.skipIf(MODE === 'record')('web e2e: declared reasoning efforts reach th
         },
       },
     })
-    // The model seat is an explicit Developer Mode surface.
+    // The model seat is an explicit Detailed view surface.
     await scaffold.ctx.productMode.set({ mode: 'developer' })
     browser = await chromium.launch()
     page = await browser.newPage({ viewport: { width: 1680, height: 1000 }, locale: ZH_BROWSER_LOCALE })

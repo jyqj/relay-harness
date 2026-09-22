@@ -58,7 +58,7 @@ describe('rlh-base bundle', () => {
       .toBe('never')
     expect(rows.find(row => row.id === 'permission')?.config?.['presets']).toMatchObject({
       'workspace-write': { name: 'Standard', approval: 'ask' },
-      'danger-full-access': { name: 'Developer Mode', approval: 'never' },
+      'danger-full-access': { name: 'Full access (high risk)', approval: 'never' },
     })
     expect(rows.find(row => row.id === 'memory-agent')?.config).toMatchObject({
       agentPresets: ['standard'],

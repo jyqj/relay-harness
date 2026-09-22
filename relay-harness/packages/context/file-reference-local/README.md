@@ -1,3 +1,6 @@
+## Model-selected references
+
+For explicit tool retrieval, file mentions come from `query` as untrusted model data. Reads use the exact live caller's filesystem, canonical workspace containment, bounded UTF-8 streaming, and target/version rechecks. A remote target key is never interpreted as a local path. Complete rendering fits the assigned character/token budget; included byte counts and digests describe the actual admitted text. Automatic user-mentioned references retain their existing purpose and authority.
 # `@relay-harness/rlh-file-reference-local`
 
 English | [中文](README.zh.md)
@@ -63,3 +66,4 @@ The recall message sits after the step's claimed user messages, so its content d
 - **Bounded advisory index** — very large workspaces may omit paths after `maxEntries`, and excluded or unreadable directories do not appear.
 - **No ignore-file semantics** — `.gitignore` and other project ignore files do not influence discovery; only configured directory basenames are excluded.
 - **Text-only snapshots** — binary mentions are recorded as `unavailable: FS_NOT_TEXT`, and injected content is not re-read after the step begins; the model still uses `read` for fresh or full contents.
+

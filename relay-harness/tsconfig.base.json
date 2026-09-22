@@ -29,6 +29,8 @@
     // not declaration path aliases, keep each package/vendor source compiled
     // under its own tsconfig boundary.
     "paths": {
+      "@relay-harness/rlh-tool-context": ["./packages/context/tool-context/src/index.ts"],
+      "@relay-harness/rlh-tool-context/invariant": ["./packages/context/tool-context/src/invariant.ts"],
       "@relay-harness/cordis": ["./vendor/cordis/src"],
       "@relay-harness/cosmokit": ["./vendor/cosmokit/src"],
       "@relay-harness/schemastery": ["./vendor/schemastery/src"],

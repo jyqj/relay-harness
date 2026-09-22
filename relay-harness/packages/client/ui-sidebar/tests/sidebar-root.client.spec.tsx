@@ -62,6 +62,7 @@ function mountShell({
       ) => {
         if (key === 'sidebar.brand.mark') return brandMark
         if (key === 'sidebar.brand.name') return brandName
+        if (key === 'sidebar.primary') return null
         if (key === 'sidebar.chat.label') return opts?.fallback
         if (key === 'sidebar.settings') {
           settingsOwner = owner

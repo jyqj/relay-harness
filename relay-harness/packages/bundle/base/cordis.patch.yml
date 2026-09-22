@@ -294,7 +294,7 @@
             sandbox: workspace-write
             approval: ask
           danger-full-access:
-            name: Developer Mode
+            name: Full access (high risk)
             description: Unrestricted host access without approval prompts.
             sandbox: danger-full-access
             approval: never
@@ -341,6 +341,9 @@
     - id: skill-badge
       name: '@relay-harness/rlh-skill-badge'
       disabled: true
+
+    - id: tool-context
+      name: '@relay-harness/rlh-tool-context'
 
     - id: tool-skill
       name: '@relay-harness/rlh-tool-skill'

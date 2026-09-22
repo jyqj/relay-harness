@@ -1,3 +1,6 @@
+## Explicit tool reads
+
+工具检索用途读取模型查询中明确指出、已登记的精确 URI，不把该查询当作人类直接指令。它复用已有代次、有界读取和内容验证规则，完整渲染预算包含 JSON 转义，截断后重新计算证据摘要。全部读取失败会返回分类的 provider 错误，不会成为成功的空搜索。资源读取不会执行 Prompt 或安装服务器。
 # @relay-harness/rlh-mcp-catalog
 
 [English](README.md) | 中文
@@ -28,3 +31,4 @@ Resource revision 只影响显式包含它的请求。
 
 - Resource template 已进入 catalog，但 template expansion 仍由 caller 拥有。
 - Remote server 是未签名外部 authority；catalog health 只证明连接性，不证明内容可信。
+

@@ -18,12 +18,15 @@ import Tools, { defineTool } from '@relay-harness/rlh-tools'
 import { createUserMessage } from '@relay-harness/rlh-llm'
 import { MockAdapter, textResponse, toolCallResponse } from '../../../core/agent-loop/tests/mock-adapter.ts'
 import type { Agent } from '@relay-harness/rlh-agent'
+import { SESSION_FORMAT_VERSION } from '@relay-harness/rlh-session'
+import SubagentRuntime, { SUBAGENT_DESCRIPTOR_VERSION } from '@relay-harness/rlh-subagent'
 import Questions from '@relay-harness/rlh-user-questions'
 import Approval from '@relay-harness/rlh-user-approval'
 import Projections from '@relay-harness/rlh-session-projection'
 import Persistence from '@relay-harness/rlh-session-persistence-jsonl'
 import Query from '@relay-harness/rlh-session-query-sqlite'
 import Jobs from '@relay-harness/rlh-jobs-local'
+import type { JobOutcome } from '@relay-harness/rlh-jobs'
 import Typert from '@relay-harness/rlh-typert-registry'
 import Gateway from '@relay-harness/rlh-api-gateway'
 import WebServer from '@relay-harness/rlh-host-webserver'
@@ -33,7 +36,7 @@ import { createApiProxy } from '@relay-harness/rlh-host-apiproxy'
 import type { SessionEvent } from '@relay-harness/rlh-session'
 import type { RpcResult } from '@relay-harness/rlh-host-apiproxy/api/rpc'
 import WorkResults from '../src/index.ts'
-import type { WorkAcceptReceipt, WorkLibraryPage, WorkAcceptRequest } from '../src/types.ts'
+import type { WorkAcceptReceipt, WorkLibraryPage, WorkAcceptRequest, WorkView, WorkContentReview, WorkContentReviewRead, WorkContentVersion } from '../src/types.ts'
 
 class RelayFixture extends TypertRemoteService {
   static inject = ['workResults']
@@ -55,7 +58,8 @@ async function fixture() {
   roots.push(root)
   const opened: string[] = []
   const plugins = { llm: Llm, sessions: Sessions, agents: Agents, loop: Loop, prompt: Prompt, tools: Tools, questions: Questions,
-    approval: Approval, projections: Projections, persistence: Persistence, query: Query, jobs: Jobs, typert: Typert,
+    approval: Approval, projections: Projections, persistence: Persistence, query: Query, jobs: Jobs,
+    subagents: SubagentRuntime, typert: Typert,
     gateway: Gateway, web: WebServer, connection: Connection, deliverables: Deliverables, results: WorkResults, relay: RelayFixture,
     support: {
       inject: ['agents', 'sessions', 'userQuestions', 'sessionQuery'],
@@ -109,6 +113,27 @@ async function produce(ctx: Context, agent: Agent, path: string): Promise<void> 
     await agent.whenIdle()
     await ctx.sessions.flush(agent.session)
   } finally { tool(); adapter() }
+}
+
+/** Author one persisted cold subagent-child log directly against the persistence backend. */
+async function authorChild(ctx: Awaited<ReturnType<typeof fixture>>['ctx'], id: string, parentId: string, descriptor: object): Promise<string> {
+  const sessionId = SessionId(id)
+  await ctx.sessionPersistence.create({
+    version: SESSION_FORMAT_VERSION, id: sessionId, createdAt: 1,
+    parentSession: SessionId(parentId), origin: 'subagent',
+  })
+  await ctx.sessionPersistence.append(sessionId, [
+    { type: 'turn/start', seq: 0, time: 1, data: { turn: 1, trigger: { kind: 'message', source: { kind: 'user' } } } },
+    { type: 'user/message', seq: 1, time: 2, surfaceOp: 'append', data: createUserMessage({ content: [{ type: 'text', text: 'work' }], source: { kind: 'user' } }) },
+    { type: 'subagent/descriptor', seq: 2, time: 3, data: descriptor },
+    { type: 'turn/end', seq: 3, time: 4, data: { turn: 1, reason: { kind: 'completed' } } },
+  ] as SessionEvent[])
+  return id
+}
+
+/** One continuable or one-shot descriptor payload the projection fold accepts. */
+function descriptorPayload(mode: 'one-shot' | 'continuable', label: string): object {
+  return { version: SUBAGENT_DESCRIPTOR_VERSION, mode, provider: 'spawn', label }
 }
 
 describe('Work Results through a Loader and the real trusted HTTP Remote', () => {
@@ -340,4 +365,251 @@ describe('Work Results through a Loader and the real trusted HTTP Remote', () =>
     expect(agent.session.events.some(event => event.type === 'work/accepted')).toBe(false)
     flush.mockRestore()
   })
+})
+
+it('reports live confirmation reasons through the same trusted Remote used for confirmation', async () => {
+  const { handle, post } = await fixture()
+  const eligible = await post<import('../src/types.ts').WorkVerifiedReview>('get', { agentId: handle.agent.id })
+  expect(eligible.ok).toBe(true)
+  if (!eligible.ok) throw new Error(eligible.error.message)
+  expect(eligible.value.confirmationBlockedBy).toEqual([])
+  expect(eligible.value.acceptedRevision).toBeNull()
+  handle.agent.session.append('turn/start', { turn: 2 })
+  const blocked = await post<import('../src/types.ts').WorkVerifiedReview>('get', { agentId: handle.agent.id })
+  expect(blocked.ok).toBe(true)
+  if (!blocked.ok) throw new Error(blocked.error.message)
+  expect(blocked.value.confirmationBlockedBy).toContain('turn-open')
+  const refused = await post('accept', { agentId: handle.agent.id, request: { reviewRevision: blocked.value.reviewRevision } })
+  expect(refused.ok).toBe(false)
+  expect(handle.agent.session.events.some(event => event.type === 'work/accepted')).toBe(false)
+})
+
+it('reads a cold Work, review and final history through trusted HTTP without activating an Agent', async () => {
+  const { ctx, handle, post } = await fixture()
+  await produce(ctx, handle.agent, 'passive.txt')
+  const id = handle.agent.id
+  await handle.dispose()
+  const resume = vi.spyOn(ctx.agents, 'resume')
+  const view = await post<import('../src/types.ts').WorkView>('inspect', { request: { sessionId: id } })
+  expect(view).toMatchObject({ ok: true, value: {
+    source: { resident: false, current: false }, goal: null, outputs: { paths: ['passive.txt'] },
+    execution: { activity: 'unknown' }, actions: { confirmRecord: { allowed: false, scope: 'session-log' } },
+  } })
+  const history = await post<import('../src/types.ts').WorkHistoryPage>('history', { request: { sessionId: id, limit: 2 } })
+  expect(history.ok).toBe(true)
+  if (history.ok) {
+    expect(history.value.rows).toHaveLength(2)
+    expect(history.value.nextBeforeSeq).not.toBeNull()
+    expect(history.value.rows.some(row => row.text.includes('Created the result.'))).toBe(true)
+  }
+  expect(await post('review', { request: { sessionId: id } })).toMatchObject({ ok: true, value: { current: false, confirmationBlockedBy: ['runtime-unavailable'] } })
+  expect(resume).not.toHaveBeenCalled()
+  expect(ctx.agents.get(id)).toBeUndefined()
+  expect((await post('history', { request: { sessionId: id, limit: 10000 } })).ok).toBe(false)
+})
+
+it('serves a large cold history under the latency budget without activating an Agent', async () => {
+  const { ctx, root, handle, post } = await fixture()
+  // Local baseline (2026-09, M-series MacBook, `vitest run`, 1,200 seeded
+  // events, 3 runs): history over the persisted log ~30ms. The budget keeps
+  // ample headroom for CI load while failing loud on an activation or
+  // unbounded-read regression.
+  const HISTORY_BUDGET_MS = 500
+  const turns = 400
+  const seed: SessionEvent[] = []
+  let seq = 0
+  for (let turn = 1; turn <= turns; turn += 1) {
+    seed.push({ type: 'turn/start', seq: seq++, time: turn, data: { turn } })
+    seed.push({
+      type: 'user/message', seq: seq++, time: turn, surfaceOp: 'append',
+      data: createUserMessage({ content: [{ type: 'text', text: `turn ${turn} input` }], source: { kind: 'user' } }),
+    })
+    seed.push({ type: 'turn/end', seq: seq++, time: turn, data: { turn, reason: { kind: 'completed' } } })
+  }
+  const seeded = await ctx.agents.create({ sessionId: SessionId('large-cold-history'), meta: { cwd: root }, seed, agentOptions: { provider: 'fixture', model: 'fixture' } })
+  await ctx.sessions.flush(seeded.agent.session)
+  await seeded.dispose()
+  await handle.dispose()
+  const resume = vi.spyOn(ctx.agents, 'resume')
+  const started = performance.now()
+  const history = await post<import('../src/types.ts').WorkHistoryPage>('history', { request: { sessionId: SessionId('large-cold-history'), limit: 50 } })
+  const historyMs = performance.now() - started
+  expect(history.ok).toBe(true)
+  if (history.ok) {
+    expect(history.value.rows).toHaveLength(50)
+    expect(history.value.rows.at(-1)?.text).toContain(`turn ${turns} input`)
+  }
+  expect(resume).not.toHaveBeenCalled()
+  expect(ctx.agents.get(SessionId('large-cold-history'))).toBeUndefined()
+  expect(historyMs).toBeLessThan(HISTORY_BUDGET_MS)
+})
+
+it('derives per-execution relationship and recovery capability facts without granting control or resume', async () => {
+  const { ctx, root, handle, post } = await fixture()
+  const parentId = handle.agent.id
+  const continuable = await authorChild(ctx, 'cold-continuable', parentId, descriptorPayload('continuable', 'reporter'))
+  const oneShot = await authorChild(ctx, 'cold-one-shot', parentId, descriptorPayload('one-shot', 'runner'))
+  const corrupt = await authorChild(ctx, 'cold-corrupt', parentId, { version: SUBAGENT_DESCRIPTOR_VERSION + 1, mode: 'continuable', provider: 'spawn', label: 'unrecognized' })
+  const live = await post<WorkView>('inspect', { request: { sessionId: parentId } })
+  expect(live.ok).toBe(true)
+  if (!live.ok) throw new Error(live.error.message)
+  const byId = new Map(live.value.execution.entries.map(entry => [entry.id, entry]))
+  expect(byId.get(parentId)?.relationship).toEqual({ kind: 'owned', controlLink: true })
+  expect(byId.get(parentId)?.recoveryCapabilities).toEqual({ history: 'persisted', resume: 'explicit', control: 'resident' })
+  expect(byId.get(continuable)?.relationship).toEqual({ kind: 'reports-to', peerSessionId: parentId, controlLink: false })
+  expect(byId.get(continuable)?.recoveryCapabilities).toEqual({ history: 'persisted', resume: 'explicit', control: 'none' })
+  expect(byId.get(oneShot)?.relationship).toEqual({ kind: 'delegated', peerSessionId: parentId, controlLink: false })
+  expect(byId.get(oneShot)?.recoveryCapabilities).toEqual({ history: 'persisted', resume: 'unavailable', control: 'none' })
+  // An unclassified child keeps relationship facts from its durable origin header but no recovery claim.
+  expect(byId.get(corrupt)?.relationship).toEqual({ kind: 'delegated', peerSessionId: parentId, controlLink: false })
+  expect(byId.get(corrupt)?.recoveryCapabilities).toEqual({ history: 'unknown', resume: 'unknown', control: 'none' })
+  expect(live.value.coverage.missing.some(reason => reason.startsWith('subagent-corrupt:'))).toBe(true)
+  // A Work whose own root carries a fork or delegation header names that edge and stays conservatively resumable.
+  for (const [id, meta, relationship, resume] of [
+    [SessionId('forked-work'), { parentSession: parentId }, { kind: 'forked-from', peerSessionId: parentId, controlLink: false }, 'explicit'],
+    [SessionId('delegated-work'), { parentSession: parentId, origin: 'subagent' as const }, { kind: 'delegated', peerSessionId: parentId, controlLink: false }, 'unknown'],
+  ] as const) {
+    const created = await ctx.agents.create({
+      sessionId: id, meta: { cwd: root, ...meta },
+      seed: [
+        { type: 'turn/start', seq: 0, time: 1, data: { turn: 1 } },
+        { type: 'turn/end', seq: 1, time: 2, data: { turn: 1, reason: { kind: 'completed' } } },
+      ] as SessionEvent[],
+      agentOptions: { provider: 'fixture', model: 'fixture' },
+    })
+    await ctx.sessions.flush(created.agent.session)
+    await created.dispose()
+    const view = await post<WorkView>('inspect', { request: { sessionId: id } })
+    if (!view.ok) throw new Error(`inspect ${id}: ${view.error.message}`)
+    expect(view.ok).toBe(true)
+    expect(view.value.execution.entries[0]?.relationship).toEqual(relationship)
+    expect(view.value.execution.entries[0]?.recoveryCapabilities)
+      .toEqual({ history: 'persisted', resume, control: 'none' })
+  }
+})
+
+it('reports a control-lost-unknown job as uncertain, never inactive or history-only', async () => {
+  const { ctx, handle, post } = await fixture()
+  ctx.jobs.attachController('work-results-test')
+  const id = ctx.jobs.start({
+    kind: 'bash', label: 'sleep 60', owner: handle.agent, stopGraceMs: 10,
+    // A producer that never settles: the bounded stop must close the record as
+    // control-lost-unknown while the work itself may still run.
+    run: () => ({ cancel() {}, done: new Promise<JobOutcome>(() => {}) }),
+  })
+  ctx.jobs.kill(id, handle.agent, 'no longer needed')
+  await vi.waitFor(() => { expect(ctx.jobs.get(id, handle.agent).status).toBe('control-lost-unknown') })
+  const view = await post<WorkView>('inspect', { request: { sessionId: handle.agent.id } })
+  expect(view).toMatchObject({ ok: true })
+  if (!view.ok) throw new Error(view.error.message)
+  const job = view.value.execution.entries.find(entry => entry.kind === 'job')
+  expect(job).toMatchObject({
+    activity: 'unknown', recovery: 'unknown',
+    relationship: { controlLink: false },
+    recoveryCapabilities: { control: 'none' },
+  })
+  expect(job?.outcome).toBeUndefined()
+  expect(view.value.execution.activity).toBe('unknown')
+})
+
+it('uses the same persistence receipt through passive review without granting a new confirmation', async () => {
+  const { handle, post } = await fixture()
+  const id = handle.agent.id
+  const revision = handle.agent.session.seq - 1
+  expect((await post('accept', { agentId: id, request: { reviewRevision: revision } })).ok).toBe(true)
+  expect(await post('review', { request: { sessionId: id } })).toMatchObject({ ok: true, value: { current: true, reviewRevision: revision, acceptedRevision: revision, confirmationBlockedBy: [] } })
+})
+
+it('enumerates Library metadata only on the first page and retains a Session inventory across path pages', async () => {
+  const { ctx, handle, post } = await fixture()
+  await produce(ctx, handle.agent, 'one.txt')
+  await produce(ctx, handle.agent, 'two.txt')
+  const listing = vi.spyOn(ctx.sessionQuery, 'listSessions')
+  const snapshots = vi.spyOn(ctx.sessionPersistence, 'listSnapshots')
+  const first = await post<WorkLibraryPage>('list', { request: { query: '.txt', limit: 1 } })
+  if (!first.ok || first.value.next === null) throw new Error('expected a continuation')
+  const count = listing.mock.calls.length
+  const snapshotCount = snapshots.mock.calls.length
+  const next = await post<WorkLibraryPage>('list', { request: { query: '.txt', limit: 1, ...first.value.next } })
+  expect(next.ok).toBe(true)
+  expect(listing).toHaveBeenCalledTimes(count)
+  expect(snapshots).toHaveBeenCalledTimes(snapshotCount)
+  expect(first.value.observedSessionIds).toEqual([handle.agent.id])
+  if (next.ok) {
+    expect(next.value.observedSessionIds).toEqual([handle.agent.id])
+    expect(next.value.entries[0]?.path).toBe('two.txt')
+    expect(next.value.entries[0]?.sourceThroughSeq).toBe(first.value.entries[0]?.sourceThroughSeq)
+    expect(next.value.coverage?.scope).toBe('observed-corpus')
+  }
+})
+
+const FIXTURE_DIGEST = 'a'.repeat(64)
+
+function contentVersionFixture(): WorkContentVersion {
+  return {
+    execution: { sessionId: SessionId('reviewed-work') },
+    source: { sessionId: SessionId('reviewed-work'), throughSeq: 1 },
+    locator: 'report.md', contentHash: { algorithm: 'sha256', digest: FIXTURE_DIGEST }, observedAt: 1000,
+  }
+}
+
+function contentReviewRequest(decision: 'approved' | 'rejected' = 'approved') {
+  return {
+    decision,
+    contentVersions: [contentVersionFixture()],
+    contentVersionRefs: [FIXTURE_DIGEST],
+    checkRecords: [{
+      checkId: 'check-1', checker: { name: 'vitest', version: '1.0' }, contentVersionRefs: [FIXTURE_DIGEST],
+      exitCode: 0, verdict: 'pass' as const, evidence: 'host-captured' as const,
+    }],
+    checkRecordRefs: ['check-1'],
+  }
+}
+
+it('records a durable content review bound to versions, never to the log prefix', async () => {
+  const { ctx, handle, post } = await fixture()
+  const agent = handle.agent
+  const recorded = await post<WorkContentReview>('recordContentReview', { agentId: agent.id, request: contentReviewRequest() })
+  expect(recorded.ok).toBe(true)
+  if (!recorded.ok) throw new Error(recorded.error.message)
+  expect(recorded.value).toMatchObject({ decision: 'approved', actor: 'host-client', contentVersionRefs: [FIXTURE_DIGEST], checkRecordRefs: ['check-1'] })
+  expect(agent.session.events.filter(event => event.type === 'work/reviewed')).toHaveLength(1)
+  expect(agent.session.events.some(event => event.type === 'work/accepted')).toBe(false)
+  const stored = await ctx.sessionPersistence.readFrom(agent.id, 0)
+  expect(stored.events.find(event => event.type === 'work/reviewed')).toMatchObject({ data: { reviewId: recorded.value.reviewId } })
+  agent.session.append('turn/start', { turn: 2 })
+  const read = await post<WorkContentReviewRead>('contentReview', { request: { sessionId: agent.id } })
+  expect(read).toMatchObject({ ok: true, value: {
+    review: { reviewId: recorded.value.reviewId, decision: 'approved' },
+    currency: [{ ref: FIXTURE_DIGEST, state: 'not-reverified' }],
+  } })
+  expect(ctx.sessionProjections.snapshot(agent.session).values.workAcceptance?.acceptedRevision).toBeNull()
+})
+
+it('reuses the latest review only for a byte-identical resubmission and fails loud on an unresolved ref', async () => {
+  const { handle, post } = await fixture()
+  const agent = handle.agent
+  const first = await post<WorkContentReview>('recordContentReview', { agentId: agent.id, request: contentReviewRequest() })
+  const repeat = await post<WorkContentReview>('recordContentReview', { agentId: agent.id, request: contentReviewRequest() })
+  expect(first.ok && repeat.ok).toBe(true)
+  if (first.ok && repeat.ok) expect(repeat.value.reviewId).toBe(first.value.reviewId)
+  expect(agent.session.events.filter(event => event.type === 'work/reviewed')).toHaveLength(1)
+  expect((await post<WorkContentReview>('recordContentReview', { agentId: agent.id, request: contentReviewRequest('rejected') })).ok).toBe(true)
+  expect(agent.session.events.filter(event => event.type === 'work/reviewed')).toHaveLength(2)
+  const invalid = contentReviewRequest()
+  invalid.contentVersionRefs = ['b'.repeat(64)]
+  expect(await post('recordContentReview', { agentId: agent.id, request: invalid })).toMatchObject({ ok: false })
+  expect(agent.session.events.filter(event => event.type === 'work/reviewed')).toHaveLength(2)
+})
+
+it('reads a cold content review without activation and reports unverified currency', async () => {
+  const { ctx, handle, post } = await fixture()
+  const id = handle.agent.id
+  expect((await post('recordContentReview', { agentId: id, request: contentReviewRequest() })).ok).toBe(true)
+  await handle.dispose()
+  const resume = vi.spyOn(ctx.agents, 'resume')
+  const read = await post<WorkContentReviewRead>('contentReview', { request: { sessionId: id } })
+  expect(read).toMatchObject({ ok: true, value: { review: { decision: 'approved' }, currency: [{ ref: FIXTURE_DIGEST, state: 'not-reverified' }] } })
+  expect(resume).not.toHaveBeenCalled()
+  expect(ctx.agents.get(id)).toBeUndefined()
 })

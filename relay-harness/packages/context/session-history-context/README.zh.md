@@ -1,3 +1,6 @@
+## Explicit current-Session retrieval
+
+`tool_retrieval` 使用模型查询词检索当前存活 Session 中有界的已完成交互和 checkpoint，不唤醒其他 Agent、不搜索全局语料，也不把工具文本提升为用户指令。空结果仅描述该有界当前会话范围。完整渲染遵守分配的字符/token 预算。普通 `agent_step` 仍不贡献，避免重复对话。
 # @relay-harness/rlh-session-history-context
 
 [English](README.md) | 中文
@@ -30,3 +33,4 @@ Base bundle 只组合一次该 provider。Web Prompt Enhancement 适配器通过
 
 - 当前选择是确定性的 recency packing，而非语义历史检索。后续共享 Planner 可以在保留该 provider 持久准入规则的前提下排序 exchange。
 - Contributor 只纳入文本 block。图片、reasoning、工具调用和工具结果应由独立 purpose-specific Evidence provider 处理，而不是在这里做有损内联转换。
+

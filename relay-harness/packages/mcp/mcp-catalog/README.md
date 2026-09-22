@@ -1,3 +1,6 @@
+## Explicit tool reads
+
+The tool-retrieval purpose hydrates exact catalogued URIs named in a model query, without treating the query as direct human instruction. It shares the existing generation, bounded read and content validation rules. Complete rendering includes JSON escaping in the request budget and updates evidence digests after truncation. An all-failed read produces a classified provider failure, not an empty successful search. Resource reads never invoke a Prompt or install a server.
 # @relay-harness/rlh-mcp-catalog
 
 English | [中文](README.zh.md)
@@ -28,3 +31,4 @@ Resource revisions affect only requests that explicitly include them.
 
 - Resource templates are catalogued but template expansion remains caller-owned.
 - Remote servers are unsigned external authorities; catalog health proves connectivity, not content trust.
+

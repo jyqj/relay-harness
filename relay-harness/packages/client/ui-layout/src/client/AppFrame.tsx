@@ -26,7 +26,7 @@ import css from './AppFrame.module.css'
 /** Full composed props: runtime share + child-slot render share + store share. */
 export type AppFrameProps =
   & PropsRuntime<'root'>
-  & PropsRenderSlots<'sidebar' | 'conversation' | 'details' | 'surfaces' | 'shell.overlay' | 'shell.titlebar.trailing' | 'shell.terminalDrawer'>
+  & PropsRenderSlots<'sidebar' | 'shell.main' | 'details' | 'surfaces' | 'shell.overlay' | 'shell.titlebar.trailing' | 'shell.terminalDrawer'>
   & PropsStore<ReturnType<typeof createLayoutStore>>
 
 /** Center column grid item (session-body building block). */
@@ -285,6 +285,7 @@ export function AppFrame({
     sidebarPreference,
     detailsSession === undefined ? 0 : panels.details,
     panels.surfaces,
+    true,
   )
   const colsRef = useRef(cols)
   colsRef.current = cols
@@ -380,7 +381,7 @@ export function AppFrame({
             the shell's own pending rendering. The conversation
             is session-maybe; the strict details entry naturally renders
             empty while no session is current. */}
-        <CenterColumn>{renderSlot('conversation', {})}</CenterColumn>
+        <CenterColumn>{renderSlot('shell.main', {})}</CenterColumn>
         <TerminalDrawerTrack>{renderSlot('shell.terminalDrawer', {})}</TerminalDrawerTrack>
         <DetailsColumn>{renderSlot('details', {})}</DetailsColumn>
         <SurfacesColumn>{renderSlot('surfaces', {})}</SurfacesColumn>

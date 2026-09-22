@@ -35,6 +35,7 @@ function dotState(status: JobView['status']): StateDotState {
     case 'completed': return 'done'
     case 'killed': return 'warning'
     case 'failed': return 'error'
+    case 'control-lost-unknown': return 'warning'
     /* v8 ignore next -- closed wire status union */
     default: return assertNever(status)
   }
@@ -48,6 +49,7 @@ function statusLabel(status: JobView['status'], t: TranslateNS<typeof NS>): stri
     case 'completed': return t('status.completed')
     case 'killed': return t('status.killed')
     case 'failed': return t('status.failed')
+    case 'control-lost-unknown': return t('status.control-lost-unknown')
     /* v8 ignore next -- closed wire status union */
     default: return assertNever(status)
   }

@@ -5,6 +5,8 @@ import { dirname, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { promisify } from 'node:util'
 
+import { verifyWorkflowPnpm } from './verify-workflow-pnpm.mjs'
+
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const REPOSITORY_ROOT = resolve(ROOT, '..')
 const STATUS = resolve(ROOT, 'docs/feature-status.json')
@@ -86,6 +88,18 @@ async function verifyWorkflowDiscovery() {
     if (/node \.\.\/scripts\//.test(text)) fail(`${name}: runtime command incorrectly escapes relay-harness`)
   }
   const ci = await readFile(resolve(workflowRoot, 'ci.yml'), 'utf8')
+  if (!/^    branches: \[main\]\s*$/m.test(ci)
+    || !ci.includes("github.ref == 'refs/heads/main'")) {
+    fail('CI must validate pushes to the main default branch')
+  }
+  for (const name of names) {
+    if (!/\.ya?ml$/.test(name)) continue
+    const active = (await readFile(resolve(workflowRoot, name), 'utf8'))
+      .split('\n').filter(line => !line.trimStart().startsWith('#')).join('\n')
+    if (/refs\/heads\/master|branches:\s*\[master\]|DOCS_REPOSITORY_REF:\s*master/.test(active)) {
+      fail(`${name}: stale default-branch reference`)
+    }
+  }
   if (!/working-directory:\s*relay-harness(?:\s|$)/.test(ci)) {
     fail('CI does not run from the relay-harness runtime root')
   }
@@ -227,6 +241,7 @@ async function verifyRootMarkdownLinks() {
 export async function main() {
   await verifyFeatures()
   await verifyWorkflowDiscovery()
+  await verifyWorkflowPnpm(resolve(REPOSITORY_ROOT, '.github/workflows'))
   await verifyDocsAuthority()
   await verifyRootMarkdownLinks()
   console.log('feature-status: PASS')

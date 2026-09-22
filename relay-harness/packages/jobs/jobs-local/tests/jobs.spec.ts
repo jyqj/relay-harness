@@ -60,7 +60,7 @@ function producer(overrides: Partial<Omit<JobStart, 'run'> & JobHooks> = {}) {
   let settle!: (outcome: JobOutcome) => void
   let reject!: (error: unknown) => void
   const cancels: (string | undefined)[] = []
-  const { kind = 'bash', label = 'sleep 60', owner, outputLimitBytes, ...hookOverrides } = overrides
+  const { kind = 'bash', label = 'sleep 60', owner, outputLimitBytes, stopGraceMs, ...hookOverrides } = overrides
   const hooks: JobHooks = {
     cancel(reason) { cancels.push(reason) },
     done: new Promise<JobOutcome>((res, rej) => { settle = res; reject = rej }),
@@ -71,6 +71,7 @@ function producer(overrides: Partial<Omit<JobStart, 'run'> & JobHooks> = {}) {
     label,
     ...owner !== undefined ? { owner } : {},
     ...outputLimitBytes !== undefined ? { outputLimitBytes } : {},
+    ...stopGraceMs !== undefined ? { stopGraceMs } : {},
     run: () => hooks,
   }
   return { spec, settle, reject, cancels }
@@ -442,6 +443,199 @@ describe('LocalJobRegistry.kill', () => {
 
     broken = false
     expect(ctx.jobs.kill(id)).toBe('already-finished')
+  })
+})
+
+describe('LocalJobRegistry bounded stop', () => {
+  const sleep = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms))
+
+  it('records killed normally when the producer settles within the grace window', async () => {
+    const ctx = await harness({ stopGraceMs: 30 })
+    const seen: JobSnapshot[] = []
+    ctx.jobs.onJobDone(snapshot => void seen.push(snapshot))
+    const p = producer()
+    const id = ctx.jobs.start(p.spec)
+    expect(ctx.jobs.kill(id)).toBe('requested')
+    p.settle({ status: 'killed' })
+    await tick()
+    expect(ctx.jobs.get(id)).toMatchObject({ status: 'killed' })
+    await sleep(80) // past the grace: no control-lost record may replace the settlement
+    expect(seen).toHaveLength(1)
+    expect(seen[0]).toMatchObject({ status: 'killed' })
+  })
+
+  it('closes an unconfirmed stop as control-lost-unknown after one grace when no terminate hook exists', async () => {
+    const ctx = await harness({ stopGraceMs: 20 })
+    const warn = vi.spyOn(ctx.logger, 'warn').mockImplementation(() => {})
+    const seen: JobSnapshot[] = []
+    ctx.jobs.onJobDone(snapshot => void seen.push(snapshot))
+    const p = producer()
+    const id = ctx.jobs.start(p.spec)
+    ctx.jobs.kill(id, undefined, 'no longer needed')
+
+    await vi.waitFor(() => { expect(ctx.jobs.get(id).status).toBe('control-lost-unknown') })
+    expect(ctx.jobs.get(id)).toMatchObject({ reported: true })
+    expect(ctx.jobs.get(id).finishedAt).toBeTypeOf('number')
+    expect(ctx.jobs.get(id).detail).toContain('outcome unknown')
+    // The unknown record announces exactly like a settlement: one contained round.
+    expect(seen).toHaveLength(1)
+    expect(seen[0]).toMatchObject({ id, status: 'control-lost-unknown' })
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('control lost for job'))
+    // A read of the closed record marks reported and never fakes final output.
+    expect(ctx.jobs.read(id)).toMatchObject({ text: '', snapshot: { status: 'control-lost-unknown' } })
+  })
+
+  it('escalates to the terminate hook after the grace and records killed when it settles', async () => {
+    const ctx = await harness({ stopGraceMs: 25 })
+    const terminates: (string | undefined)[] = []
+    const p = producer({
+      terminate(reason) {
+        terminates.push(reason)
+        p.settle({ status: 'killed', detail: 'terminated' })
+      },
+    })
+    const id = ctx.jobs.start(p.spec)
+    ctx.jobs.kill(id)
+    expect(terminates).toEqual([])
+
+    await vi.waitFor(() => { expect(terminates).toHaveLength(1) })
+    expect(terminates[0]).toContain('grace')
+    await tick()
+    // The escalation window delivered the settlement before any abandonment.
+    expect(ctx.jobs.get(id)).toMatchObject({ status: 'killed', detail: 'terminated' })
+  })
+
+  it('abandons after a second grace when the terminate hook also never settles', async () => {
+    const ctx = await harness({ stopGraceMs: 25 })
+    const terminates: (string | undefined)[] = []
+    const p = producer({ terminate(reason) { terminates.push(reason) } })
+    const id = ctx.jobs.start(p.spec)
+    ctx.jobs.kill(id)
+
+    await vi.waitFor(() => { expect(terminates).toHaveLength(1) })
+    expect(ctx.jobs.get(id).status).toBe('stopping') // still inside the escalation window
+    await vi.waitFor(() => { expect(ctx.jobs.get(id).status).toBe('control-lost-unknown') })
+    expect(ctx.jobs.get(id).detail).toContain('cancel and terminate')
+  })
+
+  it('contains a throwing terminate escalation and still abandons within the bound', async () => {
+    const ctx = await harness({ stopGraceMs: 15 })
+    const warn = vi.spyOn(ctx.logger, 'warn').mockImplementation(() => {})
+    const p = producer({ terminate() { throw new Error('terminate boom') } })
+    const id = ctx.jobs.start(p.spec)
+    ctx.jobs.kill(id)
+
+    await vi.waitFor(() => { expect(ctx.jobs.get(id).status).toBe('control-lost-unknown') })
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('terminate of'))
+  })
+
+  it('ignores a late producer settlement after the record closed as control-lost-unknown', async () => {
+    const ctx = await harness({ stopGraceMs: 15 })
+    const warn = vi.spyOn(ctx.logger, 'warn').mockImplementation(() => {})
+    const seen: JobSnapshot[] = []
+    ctx.jobs.onJobDone(snapshot => void seen.push(snapshot))
+    const p = producer()
+    const id = ctx.jobs.start(p.spec)
+    ctx.jobs.kill(id)
+    await vi.waitFor(() => { expect(ctx.jobs.get(id).status).toBe('control-lost-unknown') })
+
+    p.settle({ status: 'killed', detail: 'eventually stopped' })
+    await tick()
+    // First-wins: the confirmed record stays unknown; the late outcome is logged.
+    expect(ctx.jobs.get(id)).toMatchObject({ status: 'control-lost-unknown' })
+    expect(seen).toHaveLength(1)
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('already closed as control-lost-unknown'))
+  })
+
+  it('an unknown job reads as already-finished to kill and wait', async () => {
+    const ctx = await harness({ stopGraceMs: 15 })
+    const p = producer()
+    const id = ctx.jobs.start(p.spec)
+    ctx.jobs.kill(id)
+    await vi.waitFor(() => { expect(ctx.jobs.get(id).status).toBe('control-lost-unknown') })
+
+    expect(ctx.jobs.kill(id)).toBe('already-finished')
+    expect(await ctx.jobs.wait(id, 5_000)).toMatchObject({ status: 'control-lost-unknown', reported: true })
+  })
+
+  it('per-job stopGraceMs overrides the configured default, and invalid values fail loud', async () => {
+    const ctx = await harness({ stopGraceMs: 60_000 })
+    const p = producer({ stopGraceMs: 15 })
+    const id = ctx.jobs.start(p.spec)
+    ctx.jobs.kill(id)
+    await vi.waitFor(() => { expect(ctx.jobs.get(id).status).toBe('control-lost-unknown') })
+
+    expect(() => ctx.jobs.start(producer({ stopGraceMs: 0 }).spec)).toThrow('invalid stopGraceMs')
+    expect(() => ctx.jobs.start(producer({ stopGraceMs: 1.5 }).spec)).toThrow('invalid stopGraceMs')
+  })
+
+  it('owner teardown completes without producer settlement, leaving the unknown record dropped', async () => {
+    const ctx = await harness({ stopGraceMs: 15 })
+    const warn = vi.spyOn(ctx.logger, 'warn').mockImplementation(() => {})
+    const owner = stubAgent(ctx, 'owner')
+    ctx.agents.register(owner)
+    const p = producer({ owner })
+    ctx.jobs.start(p.spec)
+
+    const drain = disposeAgentScope(owner)
+    let drained = false
+    void drain.then(() => { drained = true })
+    await tick()
+    expect(drained).toBe(false) // teardown waits for the bounded window, not for the producer
+
+    await drain
+    expect(drained).toBe(true)
+    expect(p.cancels).toEqual(['owner disposed'])
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('control lost for job'))
+    expect(ctx.jobs.list(owner)).toEqual([])
+  })
+
+  it('service disposal completes without producer settlement', async () => {
+    const ctx = new Context()
+    await ctx.plugin(AgentRegistry)
+    const fiber = await ctx.plugin(LocalJobRegistry, { stopGraceMs: 15 })
+    ctx.jobs.attachController('test-controller')
+    const p = producer()
+    ctx.jobs.start(p.spec)
+
+    let disposed = false
+    const disposal = fiber.dispose().then(() => { disposed = true })
+    await tick()
+    expect(disposed).toBe(false)
+
+    await disposal
+    expect(disposed).toBe(true)
+  })
+
+  it('an unknown job keeps holding admission capacity instead of releasing it silently', async () => {
+    const ctx = await harness({ stopGraceMs: 15, maxConcurrentJobsPerOwner: 1 })
+    const p = producer()
+    const id = ctx.jobs.start(p.spec)
+    ctx.jobs.kill(id)
+    await vi.waitFor(() => { expect(ctx.jobs.get(id).status).toBe('control-lost-unknown') })
+
+    // The unconfirmed record still occupies the bucket: capacity is not silently reused.
+    expect(() => ctx.jobs.start(producer().spec)).toThrow('background job limit reached')
+  })
+
+  it('reconciles capacity by dropping the oldest unconfirmed record beyond the cap', async () => {
+    const ctx = await harness({ stopGraceMs: 15, maxConcurrentJobsPerOwner: 5, maxUnconfirmedJobsPerOwner: 1 })
+    const warn = vi.spyOn(ctx.logger, 'warn').mockImplementation(() => {})
+    const first = producer()
+    const firstId = ctx.jobs.start(first.spec)
+    const second = producer()
+    const secondId = ctx.jobs.start(second.spec)
+
+    ctx.jobs.kill(firstId)
+    await vi.waitFor(() => { expect(ctx.jobs.get(firstId).status).toBe('control-lost-unknown') })
+    ctx.jobs.kill(secondId)
+    await vi.waitFor(() => { expect(ctx.jobs.get(secondId).status).toBe('control-lost-unknown') })
+    // The bucket may hold only one unconfirmed record: the oldest is dropped
+    // with an explicit reconciliation marker, the newest stays unknown.
+    expect(() => ctx.jobs.get(firstId)).toThrow(`unknown job ${firstId}`)
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('reconciled its capacity'))
+    // Capacity moves with the explicit drop, not silently.
+    expect(() => ctx.jobs.start(producer().spec)).not.toThrow()
   })
 })
 

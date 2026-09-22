@@ -16,6 +16,7 @@ export const zh = {
   'jobs.status.completed': '已完成',
   'jobs.status.killed': '已终止',
   'jobs.status.failed': '失败',
+  'jobs.status.control-lost-unknown': '停止未确认，结果未知',
 } satisfies Record<string, string>
 
 /** The agents namespace key union. */
@@ -37,6 +38,7 @@ export const en = {
   'jobs.status.completed': 'completed',
   'jobs.status.killed': 'killed',
   'jobs.status.failed': 'failed',
+  'jobs.status.control-lost-unknown': 'stop unconfirmed, outcome unknown',
 } satisfies Record<AgentsKey, string>
 
 /** Dictionary namespace owned by this plugin. */

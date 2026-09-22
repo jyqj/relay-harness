@@ -11,6 +11,8 @@ import { WebApiClient } from './web-api-client.ts'
 import { createWebConnectionRpc } from './rpc.ts'
 import { isLoopbackHostname } from '../loopback-hostname.ts'
 import type { ClientConnectionRpc } from '../rpc.ts'
+import { ConnectionReadiness, type ConnectionReadinessSource } from './readiness.ts'
+export type { ConnectionReadinessSource, ConnectionReadinessSnapshot } from './readiness.ts'
 
 // ---- Contract re-exports (browser-safe apiproxy channels + core types) ----
 export type {
@@ -64,6 +66,8 @@ export interface ConnectionHandle {
   readonly isLoopback: boolean
   /** Generation-scoped Host facts, including the account home and native path-open capability. */
   readonly hostDescription: HostDescriptionSource
+  /** Host handshake and consumer hydration state; a description alone does not imply readiness. */
+  readonly readiness: ConnectionReadinessSource
   /** Generic logical RPC channels over the same Connection transport. */
   readonly rpc: ClientConnectionRpc
   /**
@@ -90,6 +94,7 @@ export function apply(ctx: Context): void {
   const api: IApiClient = fixtureClient ?? new WebApiClient()
   const rpc = fixtureClient?.rpc ?? createWebConnectionRpc()
   let active: { stop(): void } | undefined
+  const readiness = new ConnectionReadiness()
   let description: HostDescription | undefined
   const descriptionListeners = new Set<() => void>()
   const publishDescription = (next: HostDescription | undefined): void => {
@@ -114,22 +119,45 @@ export function apply(ctx: Context): void {
       },
     },
     rpc,
+    readiness,
     start(sinks, config) {
-      active?.stop()
       const controller = new ConnectionController(api, {
         ...sinks,
-        onConnected: (next) => {
+        onConnected: async (next) => {
+          if (active !== loop || closed) return
+          readiness.publish('synchronizing', true)
+          // oxlint-disable-next-line typescript/no-unnecessary-condition
+          if (active !== loop || closed) return
           publishDescription(next)
           // A description subscriber may synchronously stop the loop. In that
           // case publishDescription(undefined) has already retracted this
           // generation, so do not leak its stale connected notification to
           // the consumer sink afterward.
-          if (!Object.is(description, next)) return
-          return sinks.onConnected?.(next)
+          // oxlint-disable-next-line typescript/no-unnecessary-condition
+          if (active !== loop || closed || !Object.is(description, next)) return
+          try {
+            await sinks.onConnected?.(next)
+          } catch (error) {
+            // oxlint-disable-next-line typescript/no-unnecessary-condition
+            if (active === loop && !closed) readiness.publish('error')
+            throw error
+          }
+          // oxlint-disable-next-line typescript/no-unnecessary-condition
+          if (active === loop && !closed) readiness.publish('ready')
         },
         onStateChange: (state) => {
-          if (state === 'reconnecting') publishDescription(undefined)
-          sinks.onStateChange?.(state)
+          if (active !== loop || closed) return
+          if (state === 'reconnecting') {
+            readiness.publish('reconnecting')
+            // readiness.publish can synchronously re-enter start()/stop() and
+            // replace `active` or set `closed`; the re-checks below guard that
+            // reentrancy, which the type-aware linter cannot observe.
+            // oxlint-disable-next-line typescript/no-unnecessary-condition
+            if (active !== loop || closed) return
+            publishDescription(undefined)
+          }
+          // oxlint-disable-next-line typescript/no-unnecessary-condition
+          if (active === loop && !closed) sinks.onStateChange?.(state)
         },
       }, config ?? {})
       let closed = false
@@ -140,14 +168,25 @@ export function apply(ctx: Context): void {
           controller.stop()
           if (active === loop) {
             active = undefined
-            publishDescription(undefined)
+            readiness.publish('stopped')
+            // oxlint-disable-next-line typescript/no-unnecessary-condition
+            if (active === undefined) publishDescription(undefined)
           }
         },
       }
+      const previous = active
       active = loop
-      controller.start()
+      previous?.stop()
+      readiness.publish('connecting')
+      // previous?.stop() and readiness.publish can synchronously re-enter open()
+      // and replace `active`; the guard then correctly skips this superseded loop.
+      // oxlint-disable-next-line typescript/no-unnecessary-condition
+      if (active === loop && !closed) publishDescription(undefined)
+      // oxlint-disable-next-line typescript/no-unnecessary-condition
+      if (active === loop && !closed) controller.start()
       return loop
     },
   }
   ctx.provide('connection', handle)
+  ctx.effect(() => () => { active?.stop() }, 'connection: active stream lifetime')
 }

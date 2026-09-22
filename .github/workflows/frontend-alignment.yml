@@ -1,0 +1,80 @@
+name: Frontend alignment
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/frontend-alignment.yml'
+      - 'relay-harness/packages/client/**'
+      - 'relay-harness/packages/host/work-results/**'
+      - 'relay-harness/packages/api/**'
+      - 'relay-harness/package.json'
+      - 'relay-harness/pnpm-lock.yaml'
+      - 'relay-harness/vitest*.ts'
+      - 'relay-harness/apps/web/tests/work-inventory.e2e.ts'
+      - 'relay-harness/scripts/verify-workflow-pnpm*'
+      - 'relay-harness/scripts/verify-feature-status.mjs'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: frontend-alignment-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: relay-harness
+
+env:
+  RLH_TELEMETRY_DISABLED: '1'
+
+jobs:
+  product-shell:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: relay-harness/package.json
+          dest: ${{ runner.temp }}/setup-pnpm
+      - name: Install immutable workspace
+        run: pnpm install --frozen-lockfile
+      - name: Run product shell regressions
+        run: pnpm exec vitest run packages/client/ui-product-shell/tests packages/client/connection/tests packages/client/runtime/tests scripts/verify-workflow-pnpm.spec.ts
+
+  work-browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: relay-harness/package.json
+          dest: ${{ runner.temp }}/setup-pnpm
+      - name: Install immutable workspace
+        run: pnpm install --frozen-lockfile
+      - name: Install pinned Chromium
+        run: pnpm --filter @relay-harness/rlh-web-frontend exec playwright install --with-deps chromium
+      - name: Build Host and Client through the ESM TypeScript hook
+        run: |
+          pnpm exec tsc -b tsconfig.host.json
+          node --import tsx/esm node_modules/tsdown/dist/run.mjs --config-loader native --env.RLH_BUILD_FACE host
+          pnpm exec tsc -b tsconfig.client.json
+          node --import tsx/esm node_modules/tsdown/dist/run.mjs --config-loader native --env.RLH_BUILD_FACE client
+          node packages/client/ui-user-terminal/scripts/copy-ghostty-assets.mjs
+          pnpm run build:web
+          node --import tsx/esm --input-type=module -e "import { writeClientBuildRecord, resolveClientBuildEnvironment } from './scripts/client-build-environment.ts'; writeClientBuildRecord(process.cwd(), resolveClientBuildEnvironment(process.env))"
+      - name: Exercise assembled Work and Library
+        run: pnpm exec vitest run --config vitest.web.config.ts apps/web/tests/work-inventory.e2e.ts

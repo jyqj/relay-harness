@@ -49,6 +49,8 @@ import { CodeIndex } from '@relay-harness/rlh-code-index'
 import type { GraphExploreRequest, GraphExploreResult, HydrateChunksRequest, HydrateChunksResult, IndexStatusReport, RefreshOptions, RefreshSummary, SearchRequest, SearchResult } from '@relay-harness/rlh-code-index'
 import * as ToolCordis from '@relay-harness/rlh-tool-cordis'
 import * as ToolCodeIndex from '@relay-harness/rlh-tool-code-index'
+import ContextEngine from '@relay-harness/rlh-context-engine'
+import * as ToolContext from '@relay-harness/rlh-tool-context'
 import * as ToolFs from '@relay-harness/rlh-tool-fs'
 import * as ToolFsSearch from '@relay-harness/rlh-tool-fs-search'
 import * as ToolStrReplaceEditor from '@relay-harness/rlh-tool-str-replace-editor'
@@ -288,6 +290,17 @@ const TOOL_PACKAGES: ToolPackage[] = [
     },
     note:
       'The pwsh tool is the PowerShell-dialect consumer of the bash executor seam for Windows compositions (a PowerShell executor such as `@relay-harness/rlh-pwsh-local` backs `ctx.shell`); it mirrors the bash tool call-for-call minus sandbox controls — `run_in_background` runs register with the generic `ctx.jobs` runtime and are collected/stopped through the `job_*` tools, and the managed `RLH_*` environment comes from `@relay-harness/rlh-shell-env`. Each call runs in a fresh process (no persistent PTY session), with native `C:\\...` paths and `$env:NAME` variables.',
+  },
+  {
+    pkg: '@relay-harness/rlh-tool-context', dir: 'tool-context',
+    source: 'packages/context/tool-context/src/index.ts',
+    requires: ['tools', 'agents', 'contextEngine'], writes: [],
+    mount: async (ctx) => {
+      await ctx.plugin(SessionStore)
+      await ctx.plugin(AgentRegistry)
+      await ctx.plugin(ContextEngine)
+      await ctx.plugin(ToolContext)
+    },
   },
   {
     pkg: '@relay-harness/rlh-tool-code-index',

@@ -68,6 +68,7 @@ function mountBar(shell: SessionInputShell, over?: { running?: boolean; disabled
     useComposerResize: sel => sel(false),
     useComposerResizeHeight: sel => sel(null),
     useComposerResizeWidth: sel => sel(null),
+    useConnected: sel => sel(true),
     setComposerResizeSize: () => {},
     renderSlot: (() => null) as InputBarProps['renderSlot'],
     stop: vi.fn(),

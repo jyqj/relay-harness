@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [master]
+    branches: [main]
   pull_request:
   workflow_dispatch:
     inputs:
@@ -16,15 +16,15 @@ on:
           - consolidated-runner-benchmark
 
 # Cancel a superseded run on every event EXCEPT push. A push run carries the two
-# self-hosted standby drills, which take longer than the interval between master
+# self-hosted standby drills, which take longer than the interval between main
 # merges, so cancelling supersedes a drill before it reaches a verdict and the
 # lane yields no readiness evidence. Must be decided here: cancellation applies
 # to the whole superseded run, so a job-level group cannot exempt its job.
 # Negated rather than `== 'pull_request'` so workflow_dispatch keeps cancelling:
 # a re-dispatched runner benchmark holds up to 12 larger runners for 15 minutes
-# and shares this group with the drills on master, so queueing it would delay
+# and shares this group with the drills on main, so queueing it would delay
 # them. The guarantee is narrow — evaluated against the newly triggered run, so a
-# dispatch on master still cancels a mid-flight drill, and a newer pending push
+# dispatch on main still cancels a mid-flight drill, and a newer pending push
 # displaces an older one. Bounds and rationale:
 # .agents/notes/implemented/process/2026-07-26-ci-failover-runbook.md
 concurrency:
@@ -58,9 +58,9 @@ jobs:
       - name: Verify root workflow discovery and shipped feature claims
         run: node scripts/verify-feature-status.mjs
 
-  master-keyless:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
-    name: master / keyless complete
+  main-keyless:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    name: main / keyless complete
     runs-on: ubuntu-latest
     env:
       RLH_GATE_CONCURRENCY: '2'
@@ -73,6 +73,7 @@ jobs:
           persist-credentials: false
       - uses: pnpm/action-setup@v4
         with:
+          package_json_file: relay-harness/package.json
           dest: ${{ runner.temp }}/setup-pnpm
       - uses: actions/setup-node@v6
         with:
@@ -96,8 +97,8 @@ jobs:
 
   # TODO(hosted-serial-ci): Re-enable the one remaining disabled hosted serial
   # reference job (serial-macos) before release. The self-hosted standby lane
-  # below remains active on every master push. Re-enabling serial-macos does not
-  # restore a Linux hosted-cache producer: decide whether to add a master seeder
+  # below remains active on every main push. Re-enabling serial-macos does not
+  # restore a Linux hosted-cache producer: decide whether to add a main seeder
   # or remove the restore-only steps if cold starts become a concern.
 
   # Three enterprise jobs isolate coverage, static analysis, and the
@@ -112,7 +113,7 @@ jobs:
   # three onto the in-house
   # vm-backup pool and re-running the failed jobs is the entire switch —
   # see .agents/notes/implemented/process/2026-07-26-ci-failover-runbook.md. The
-  # in-house pool's readiness is re-proven on every master push by the
+  # in-house pool's readiness is re-proven on every main push by the
   # serial-linux-selfhosted standby lane below. The Windows failover switch is
   # the separate RLH_CI_FAILOVER_WINDOWS variable on the windows-native job below.
   node-24:
@@ -130,6 +131,7 @@ jobs:
 
       - uses: pnpm/action-setup@v4
         with:
+          package_json_file: relay-harness/package.json
           dest: ${{ runner.temp }}/setup-pnpm
 
       - uses: actions/setup-node@v6
@@ -180,6 +182,7 @@ jobs:
 
       - uses: pnpm/action-setup@v4
         with:
+          package_json_file: relay-harness/package.json
           dest: ${{ runner.temp }}/setup-pnpm
 
       - uses: actions/setup-node@v6
@@ -240,6 +243,7 @@ jobs:
 
       - uses: pnpm/action-setup@v4
         with:
+          package_json_file: relay-harness/package.json
           dest: ${{ runner.temp }}/setup-pnpm
 
       - uses: actions/setup-node@v6
@@ -255,7 +259,7 @@ jobs:
           echo "path=$store_path" >> "$GITHUB_OUTPUT"
 
       # Pull requests restore the pnpm store and Playwright caches without paying
-      # compression and upload on the required path. No master job saves these
+      # compression and upload on the required path. No main job saves these
       # hosted cache keys, so each restore-keys fallback hits the matching archived
       # entry until it evicts, after which the store is cold. Skipped under failover
       # — the self-hosted VM's persistent store is already warm.
@@ -328,6 +332,7 @@ jobs:
 
       - uses: pnpm/action-setup@v4
         with:
+          package_json_file: relay-harness/package.json
           dest: ${{ runner.temp }}/setup-pnpm
 
       - uses: actions/setup-node@v6
@@ -396,6 +401,7 @@ jobs:
 
       - uses: pnpm/action-setup@v4
         with:
+          package_json_file: relay-harness/package.json
           dest: ${{ runner.temp }}/setup-pnpm
 
       - uses: actions/setup-node@v6
@@ -469,7 +475,7 @@ jobs:
   # pull-request runs are scoped to their own merge ref and help nobody
   # else. Runs in seconds when the image version already has a cache.
   wine-apt-cache:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     name: wine apt cache
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -521,6 +527,7 @@ jobs:
 
       - uses: pnpm/action-setup@v4
         with:
+          package_json_file: relay-harness/package.json
           dest: ${{ runner.temp }}/setup-pnpm
 
       - uses: actions/setup-node@v6
@@ -539,7 +546,7 @@ jobs:
         shell: pwsh
         run: pnpm run check:ci:windows-complete
 
-  # Hot-standby drill for the in-house self-hosted pool: every master move
+  # Hot-standby drill for the in-house self-hosted pool: every main move
   # re-runs the complete unsharded aggregate on the persistent 64-core VM,
   # continuously proving that environment can take over a required lane if
   # the hosted pools degrade (the switch is then setting the writer-manageable
@@ -567,6 +574,7 @@ jobs:
 
       - uses: pnpm/action-setup@v4
         with:
+          package_json_file: relay-harness/package.json
           dest: ${{ runner.temp }}/setup-pnpm
 
       - uses: actions/setup-node@v6
@@ -609,6 +617,7 @@ jobs:
 
       - uses: pnpm/action-setup@v4
         with:
+          package_json_file: relay-harness/package.json
           dest: ${{ runner.temp }}/setup-pnpm
 
       - uses: actions/setup-node@v6
@@ -627,7 +636,7 @@ jobs:
           RLH_SNAPSHOT_MAX_CONCURRENCY: '1'
         run: pnpm run check:ci
 
-  # Hot-standby drill for the in-house self-hosted Windows pool: every master
+  # Hot-standby drill for the in-house self-hosted Windows pool: every main
   # move re-runs the complete unsharded Windows gate inventory on the persistent
   # VM, continuously proving that environment can take over the required
   # `windows` lane if the hosted pool degrades (the switch is setting the
@@ -654,6 +663,7 @@ jobs:
 
       - uses: pnpm/action-setup@v4
         with:
+          package_json_file: relay-harness/package.json
           dest: ${{ runner.temp }}/setup-pnpm
 
       - uses: actions/setup-node@v6
@@ -742,6 +752,7 @@ jobs:
 
       - uses: pnpm/action-setup@v4
         with:
+          package_json_file: relay-harness/package.json
           dest: ${{ runner.temp }}/setup-pnpm
 
       # The benchmark's Windows lanes deliberately skip the store cache like
@@ -833,6 +844,7 @@ jobs:
 
       - uses: pnpm/action-setup@v4
         with:
+          package_json_file: relay-harness/package.json
           dest: ${{ runner.temp }}/setup-pnpm
 
       # Unlike the larger-runner suite, both platforms cache the store here:

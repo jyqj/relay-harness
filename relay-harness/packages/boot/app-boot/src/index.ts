@@ -355,43 +355,38 @@ export interface ConfigDumpLayer {
   patches: PatchOptions[]
 }
 
+/** One composed row's provenance: the file that contributed it and every layer that changed it. */
+export interface ConfigDumpProvenance {
+  /** Source label of the file that contributed the row. */
+  origin: string
+  /** Labels of the layers whose patches changed the row, in application order. */
+  patchedBy: string[]
+}
+
 /**
- * Compose the effective entry list exactly as `boot()` would mount it: parse
- * the base config file with the include's entry-list dialect, apply every
- * layer's patches as ONE flattened list through the include's own patch
- * algorithm (`applyEntryPatches`) — the same single call `boot()` makes, so
- * even patch-visibility corner cases (a later layer targeting a group child a
- * plain config replacement introduced, which the single-pass id index never
- * sees) compose identically — then render the result as YAML in the same
- * dialect (`!!js` expressions print verbatim, unevaluated).
- *
- * Every run of rows from the same file and patch layers is preceded by a `# ==` comment
- * naming the file that contributed the rows and any layers that patched them,
- * so the output stays a loadable YAML document while showing which section
- * comes from which file. The file and patch labels are derived from single-call prefix
- * snapshots (base + layers 1..k), diffed positionally: the patch algorithm
- * only rewrites rows in place or appends, so a top-level index identifies one
- * row across snapshots, and a layer whose addition changes the row (config
- * replacement, disable, group insert) is listed as having patched it.
- *
- * A patch that matches no row is reported through `warn` with its layer
- * label, mirroring the Loader's boot-time warning. Earlier layers' patches
- * see an identical preceding state in every snapshot that includes them, so
- * each snapshot's warning list extends the previous one and the new tail
- * belongs to the added layer.
+ * Compose the effective entry list exactly as `boot()` would mount it — the
+ * same single-pass patch composition {@link renderConfigDump} renders — and
+ * report each row's provenance. The file and patch labels are derived from
+ * single-call prefix snapshots (base + layers 1..k), diffed positionally: the
+ * patch algorithm only rewrites rows in place or appends, so a top-level index
+ * identifies one row across snapshots, and a layer whose addition changes the
+ * row (config replacement, disable, group insert) is listed as having patched
+ * it. A patch that matches no row is reported through `warn` with its layer
+ * label, mirroring the Loader's boot-time warning.
  * @param binName - the diagnostic prefix on read/parse errors.
  * @param absoluteConfigPath - the base config file `boot()` would include.
  * @param layers - overlay layers in application order (later wins).
  * @param warn - sink for skipped-patch diagnostics; defaults to stderr.
- * @returns the composed entry list rendered as a YAML document with
- * source comment separators.
+ * @returns the composed entry rows (index-aligned with `provenance`) and each
+ *   row's provenance.
+ * @throws when the base config is unreadable, unparsable, or not an entry list.
  */
-export function renderConfigDump(
+export function composeEntriesWithProvenance(
   binName: string,
   absoluteConfigPath: string,
   layers: ConfigDumpLayer[],
   warn: (line: string) => void = line => void process.stderr.write(`${line}\n`),
-): string {
+): { composed: EntryOptions[]; provenance: ConfigDumpProvenance[] } {
   let content: string
   try {
     content = readFileSync(absoluteConfigPath, 'utf8')
@@ -429,7 +424,7 @@ export function renderConfigDump(
   }
   let previous = base
   let previousWarnings: string[] = []
-  const provenance: { origin: string; patchedBy: string[] }[] = base.map(() => ({ origin: baseLabel, patchedBy: [] }))
+  const provenance: ConfigDumpProvenance[] = base.map(() => ({ origin: baseLabel, patchedBy: [] }))
   let composed = base
   for (let count = 1; count <= layers.length; count += 1) {
     const layer = layers[count - 1]
@@ -448,6 +443,37 @@ export function renderConfigDump(
     previous = composed
     previousWarnings = warnings
   }
+  return { composed, provenance }
+}
+
+/**
+ * Compose the effective entry list exactly as `boot()` would mount it: parse
+ * the base config file with the include's entry-list dialect, apply every
+ * layer's patches as ONE flattened list through the include's own patch
+ * algorithm (`applyEntryPatches`) — the same single call `boot()` makes, so
+ * even patch-visibility corner cases (a later layer targeting a group child a
+ * plain config replacement introduced, which the single-pass id index never
+ * sees) compose identically — then render the result as YAML in the same
+ * dialect (`!!js` expressions print verbatim, unevaluated).
+ *
+ * Every run of rows from the same file and patch layers is preceded by a `# ==` comment
+ * naming the file that contributed the rows and any layers that patched them,
+ * so the output stays a loadable YAML document while showing which section
+ * comes from which file.
+ * @param binName - the diagnostic prefix on read/parse errors.
+ * @param absoluteConfigPath - the base config file `boot()` would include.
+ * @param layers - overlay layers in application order (later wins).
+ * @param warn - sink for skipped-patch diagnostics; defaults to stderr.
+ * @returns the composed entry list rendered as a YAML document with
+ * source comment separators.
+ */
+export function renderConfigDump(
+  binName: string,
+  absoluteConfigPath: string,
+  layers: ConfigDumpLayer[],
+  warn: (line: string) => void = line => void process.stderr.write(`${line}\n`),
+): string {
+  const { composed, provenance } = composeEntriesWithProvenance(binName, absoluteConfigPath, layers, warn)
   return groupedDump(composed, provenance)
 }
 

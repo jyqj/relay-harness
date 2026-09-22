@@ -202,6 +202,8 @@ export function SidebarRoot({
         </Tooltip>
       </div>
 
+      {renderSlot('sidebar.primary', { wide })}
+
       {navTabs.length > 0 && (
         <div className={css.tabList} role="tablist" aria-label={t('tab.navigation')}>
           <button

@@ -25,8 +25,9 @@ export interface JobView {
   kind: string
   /** Producer-supplied one-line label: the command, or the delegation description. */
   label: string
-  /** Current lifecycle state. */
-  status: 'running' | 'stopping' | 'completed' | 'killed' | 'failed'
+  /** Current lifecycle state. `control-lost-unknown` marks a stop request the producer never
+  * confirmed: the outcome of the work is unknown. */
+  status: 'running' | 'stopping' | 'completed' | 'killed' | 'failed' | 'control-lost-unknown'
   /** Kind-specific status detail ('exit code: 3'), present once the producer supplied one. */
   detail?: string
   /** Epoch ms when the task was registered. */

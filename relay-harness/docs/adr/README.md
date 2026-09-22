@@ -12,5 +12,6 @@ This directory retains only decisions that independently constrain the current d
 | [0004](0004-data-and-action-boundary.md) | Explicit file context, least privilege, and local state | Accepted |
 | [0005](0005-adopt-ts-harness-runtime.md) | TypeScript Relay Harness under the runtime root | Accepted |
 | [0006](0006-local-context-engine.md) | Local Context Engine: indexing and retrieval stay local | Accepted |
+| [0007](0007-legacy-api-exit-conditions.md) | Transitional API paths carry checkable exit conditions | Accepted |
 
 A new ADR is reserved for a durable cross-module decision with real alternatives. Ordinary feature changes update their authoritative design document directly.

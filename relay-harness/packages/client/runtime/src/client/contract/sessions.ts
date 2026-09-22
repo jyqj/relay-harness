@@ -44,6 +44,17 @@ export interface ISessions {
    */
   open(id: SessionId): void
   /**
+   * Open an existing session's transcript read-only: select it as current and
+   * resolve once its history window is installed. The path issues only the
+   * non-activating history read — never `session.create` and no prompt or
+   * queue traffic — so a cold session serves its persistence snapshot and
+   * stays unmaterialized on the Host. Continuation stays explicit: a composer
+   * send rides the live resolver like any prompt.
+   * @param id - session id (must exist in the list; unknown ids fail loud).
+   * @returns once the transcript window is installed.
+   */
+  openHistory(id: SessionId): Promise<void>
+  /**
    * Open a healthy catalog child through its exact direct-parent address.
    * @param address - catalog-derived parent and child ids.
    */

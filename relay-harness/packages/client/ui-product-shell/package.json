@@ -1,6 +1,6 @@
 {
   "name": "@relay-harness/rlh-client-ui-product-shell",
-  "description": "Shared Chat, Work, and Library navigation with Host-persisted Simple/Developer mode policy",
+  "description": "Main-area workbench, output library, and independent display-density policy",
   "version": "0.1.0-rc.8",
   "publishConfig": {
     "access": "public"
@@ -45,7 +45,8 @@
         "@relay-harness/rlh-client-ui-settings",
         "@relay-harness/rlh-client-ui-settings-general",
         "@relay-harness/rlh-client-ui-conversation",
-        "@relay-harness/rlh-client-locale"
+        "@relay-harness/rlh-client-locale",
+        "@relay-harness/rlh-client-ui-layout"
       ],
       "platform": "web"
     }
@@ -64,7 +65,8 @@
     "@relay-harness/rlh-client-ui-settings-general": "workspace:^",
     "@relay-harness/rlh-client-ui-sidebar": "workspace:^",
     "@relay-harness/rlh-invariants": "workspace:^",
-    "@relay-harness/rlh-host-work-results": "workspace:^"
+    "@relay-harness/rlh-host-work-results": "workspace:^",
+    "@relay-harness/rlh-client-ui-layout": "workspace:^"
   },
   "devDependencies": {
     "@relay-harness/cordis": "workspace:^",
@@ -81,6 +83,8 @@
     "@types/react": "~18.3.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "@relay-harness/rlh-host-work-results": "workspace:^"
+    "@relay-harness/rlh-host-work-results": "workspace:^",
+    "@relay-harness/rlh-client-ui-layout": "workspace:^",
+    "@relay-harness/rlh-client-ui-primitives": "workspace:^"
   }
 }

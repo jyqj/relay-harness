@@ -4,7 +4,9 @@
  * snapshots, never live state.
  *
  * Registrations outlive producer and controller fibers. Agent or service
- * disposal cancels live work and awaits compliant producers; a throwing
+ * disposal cancels live work and awaits producers only for the bounded stop
+ * window: a producer that never settles is recorded `control-lost-unknown`
+ * (never a producer-confirmed terminal) and teardown proceeds; a throwing
  * teardown cancel force-fails only the record and reports a possible orphan.
  * @module @relay-harness/rlh-jobs-local
  */
@@ -33,6 +35,19 @@ const DEFAULT_TERMINAL_RETENTION_MS = 60_000
 /** Default maximum number of retained terminal records in one owner bucket. */
 const DEFAULT_MAX_TERMINAL_RECORDS = 100
 
+/** Default grace period between a stop request and the bounded-stop escalation or abandonment. */
+const DEFAULT_STOP_GRACE_MS = 5_000
+
+/** Default maximum number of `control-lost-unknown` records retained in one owner bucket. */
+const DEFAULT_MAX_UNCONFIRMED_JOBS_PER_OWNER = 5
+
+/**
+ * Node clamps a `setTimeout` delay above 2^31-1 ms to 1 ms. The bounded-stop
+ * timers cap their arm delay here so a huge configured grace stays huge
+ * (days), not near-immediate.
+ */
+const MAX_STOP_TIMER_MS = 2_147_483_647
+
 /** Configuration for the process-local job registry. */
 export interface Config {
   /**
@@ -51,6 +66,21 @@ export interface Config {
    * drops the oldest-finished beyond it. Omission defaults to 100.
    */
   maxTerminalRecords?: number
+  /**
+   * Bounded stop window in milliseconds: how long a stop request waits for
+   * producer settlement before escalating to `JobHooks.terminate` (one more
+   * window) or — without a terminate hook — recording `control-lost-unknown`.
+   * A per-job `JobStart.stopGraceMs` overrides it. Omission defaults to 5_000.
+   */
+  stopGraceMs?: number
+  /**
+   * Maximum `control-lost-unknown` records kept per exact owner or in the
+   * shared unowned bucket. Unknown jobs keep occupying admission capacity, so
+   * beyond this cap the reconciliation drops the oldest-finished unknown
+   * record (releasing its capacity explicitly) and warns; the work itself may
+   * still be running. Omission defaults to 5.
+   */
+  maxUnconfirmedJobsPerOwner?: number
 }
 
 /** The registry's mutable per-job record (never handed out — see {@link LocalJobRegistry.snapshot}). */
@@ -62,6 +92,7 @@ interface TrackedTask {
   /** Exact lifecycle owner; session-id authorization is derived from it. */
   owner: Agent | undefined
   cancel: (reason?: string) => void
+  terminate: ((reason?: string) => void) | undefined
   readOutput: (() => string) | undefined
   status: JobStatus
   detail: string | undefined
@@ -77,11 +108,35 @@ interface TrackedTask {
   waiters: number
   /** Removable resolvers for live waits; timeout/abort unregister before the job settles. */
   waitResolvers: Set<() => void>
+  /** This job's bounded stop window: the per-job override or the configured default. */
+  stopGraceMs: number
+  /**
+   * The armed bounded-stop timer (grace wait or post-escalation wait), if any.
+   * At most one is armed; settlement clears it.
+   */
+  stopTimer: ReturnType<typeof setTimeout> | undefined
 }
 
-/** True for the three terminal {@link JobStatus} values. */
+/** True for the three producer-confirmed terminal {@link JobStatus} values. */
 function isTerminal(status: JobStatus): boolean {
   return status === 'completed' || status === 'killed' || status === 'failed'
+}
+
+/**
+ * True for every closed {@link JobStatus}: the producer-confirmed terminals
+ * plus `control-lost-unknown`, the registry-declared record that stop
+ * confirmation never arrived. A closed record is immutable — first-wins — and
+ * releases waiters, but only a producer-confirmed terminal is prunable by
+ * retention, because dropping an unknown record would silently release the
+ * capacity its possibly-still-running work holds.
+ */
+function isClosed(status: JobStatus): boolean {
+  return isTerminal(status) || status === 'control-lost-unknown'
+}
+
+/** True for the `control-lost-unknown` record: closed, but never producer-confirmed. */
+function isUnconfirmed(status: JobStatus): boolean {
+  return status === 'control-lost-unknown'
 }
 
 /**
@@ -112,6 +167,15 @@ class JobLayer implements ScopeLayer {
  * Sweeps run at `start()`/`list()` time only, never on a timer; an unreported
  * terminal record is never pruned, so completion notices stay at-least-once,
  * and a pruned id reads as `unknown job <id>` from every access path.
+ *
+ * Bounded stop contract: a stop request waits {@link Config.stopGraceMs}
+ * (per-job `JobStart.stopGraceMs` override) for producer settlement, escalates
+ * to `JobHooks.terminate` for one more window when the producer provides it,
+ * and then closes the record as `control-lost-unknown` — the outcome of the
+ * work itself stays unknown. An unknown record keeps occupying admission
+ * capacity (its work may still run) and is never retention-pruned; at most
+ * {@link Config.maxUnconfirmedJobsPerOwner} accumulate per bucket, and the
+ * reconciliation drops the oldest-finished, releasing its capacity explicitly.
  */
 export class LocalJobRegistry extends JobRegistry {
   static Config: z<Config> = z.object({
@@ -130,6 +194,16 @@ export class LocalJobRegistry extends JobRegistry {
       .min(1)
       .max(Number.MAX_SAFE_INTEGER)
       .default(DEFAULT_MAX_TERMINAL_RECORDS),
+    stopGraceMs: z.number()
+      .step(1)
+      .min(1)
+      .max(Number.MAX_SAFE_INTEGER)
+      .default(DEFAULT_STOP_GRACE_MS),
+    maxUnconfirmedJobsPerOwner: z.number()
+      .step(1)
+      .min(1)
+      .max(Number.MAX_SAFE_INTEGER)
+      .default(DEFAULT_MAX_UNCONFIRMED_JOBS_PER_OWNER),
   })
 
   /** Schemastery-defaulted active-job limit. */
@@ -138,6 +212,10 @@ export class LocalJobRegistry extends JobRegistry {
   private readonly terminalRetentionMs: number
   /** Schemastery-defaulted per-bucket cap on retained terminal records. */
   private readonly maxTerminalRecords: number
+  /** Schemastery-defaulted bounded stop window. */
+  private readonly stopGraceMs: number
+  /** Schemastery-defaulted per-bucket cap on retained unconfirmed records. */
+  private readonly maxUnconfirmedJobsPerOwner: number
   private store = new Map<JobId, TrackedTask>()
   private counters = new Map<string, number>()
   /**
@@ -166,6 +244,8 @@ export class LocalJobRegistry extends JobRegistry {
     this.maxConcurrentJobsPerOwner = resolved.maxConcurrentJobsPerOwner
     this.terminalRetentionMs = resolved.terminalRetentionMs
     this.maxTerminalRecords = resolved.maxTerminalRecords
+    this.stopGraceMs = resolved.stopGraceMs
+    this.maxUnconfirmedJobsPerOwner = resolved.maxUnconfirmedJobsPerOwner
     this.selfCtx = ctx
     ctx.effect(() => () => this.disposeAll(), 'jobs teardown')
   }
@@ -180,6 +260,10 @@ export class LocalJobRegistry extends JobRegistry {
     if (spec.outputLimitBytes !== undefined
       && (!Number.isSafeInteger(spec.outputLimitBytes) || spec.outputLimitBytes <= 0)) {
       throw new Error(`invalid outputLimitBytes: expected a positive safe integer, got ${JSON.stringify(spec.outputLimitBytes)}`)
+    }
+    if (spec.stopGraceMs !== undefined
+      && (!Number.isSafeInteger(spec.stopGraceMs) || spec.stopGraceMs <= 0)) {
+      throw new Error(`invalid stopGraceMs: expected a positive safe integer, got ${JSON.stringify(spec.stopGraceMs)}`)
     }
     if (spec.owner !== undefined) this.ensureOwnerCleanup(spec.owner)
 
@@ -204,6 +288,7 @@ export class LocalJobRegistry extends JobRegistry {
       outputLimitBytes: spec.outputLimitBytes,
       owner: spec.owner,
       cancel: hooks.cancel.bind(hooks),
+      terminate: hooks.terminate?.bind(hooks),
       readOutput: hooks.readOutput?.bind(hooks),
       status: 'running',
       detail: undefined,
@@ -215,6 +300,8 @@ export class LocalJobRegistry extends JobRegistry {
       markSettled,
       waiters: 0,
       waitResolvers: new Set(),
+      stopGraceMs: spec.stopGraceMs ?? this.stopGraceMs,
+      stopTimer: undefined,
     }
     this.store.set(id, job)
 
@@ -251,15 +338,15 @@ export class LocalJobRegistry extends JobRegistry {
     this.assertAccess(job, caller)
     const text = job.readOutput !== undefined
       ? job.readOutput()
-      : isTerminal(job.status) ? job.output ?? '' : ''
-    if (isTerminal(job.status)) job.reported = true
+      : isClosed(job.status) ? job.output ?? '' : ''
+    if (isClosed(job.status)) job.reported = true
     return { text, snapshot: this.snapshot(job) }
   }
 
   kill(id: JobId, caller?: Agent, reason?: string): 'requested' | 'already-finished' {
     const job = this.expect(id)
     this.assertAccess(job, caller)
-    if (isTerminal(job.status)) {
+    if (isClosed(job.status)) {
       job.reported = true
       return 'already-finished'
     }
@@ -267,6 +354,7 @@ export class LocalJobRegistry extends JobRegistry {
     job.cancel(reason)
     job.status = 'stopping'
     job.reported = true
+    this.armStopWatch(job)
     this.notifyChanged(job.owner)
     return 'requested'
   }
@@ -277,7 +365,7 @@ export class LocalJobRegistry extends JobRegistry {
     if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) {
       throw new Error(`invalid wait timeout: expected a positive number of milliseconds, got ${JSON.stringify(timeoutMs)}`)
     }
-    if (!isTerminal(job.status)) {
+    if (!isClosed(job.status)) {
       if (signal?.aborted) throw new Error('wait aborted')
       // Abort removes the waiter synchronously so same-tick settlement cannot
       // suppress a notice for a wait that will reject.
@@ -318,7 +406,7 @@ export class LocalJobRegistry extends JobRegistry {
         uncount()
       }
     }
-    if (isTerminal(job.status)) job.reported = true
+    if (isClosed(job.status)) job.reported = true
     return this.snapshot(job)
   }
 
@@ -362,11 +450,16 @@ export class LocalJobRegistry extends JobRegistry {
       .some(layer => !layer.controllers.isEmpty())
   }
 
-  /** Count authoritative active records for one exact owner or the shared unowned bucket. */
+  /**
+   * Count authoritative active records for one exact owner or the shared
+   * unowned bucket. A `control-lost-unknown` record keeps counting: its work
+   * may still be running, so its admission capacity is not silently released.
+   */
   private activeTaskCount(owner: Agent | undefined): number {
     let count = 0
     for (const job of this.store.values()) {
-      if (job.owner === owner && (job.status === 'running' || job.status === 'stopping')) count += 1
+      if (job.owner === owner
+        && (job.status === 'running' || job.status === 'stopping' || isUnconfirmed(job.status))) count += 1
     }
     return count
   }
@@ -501,17 +594,116 @@ export class LocalJobRegistry extends JobRegistry {
 
   /**
    * Record the first terminal outcome, release waiters, then announce
-   * completion. First-wins preserves a teardown force-failure against late
-   * producer settlement. Pending waits mark the job reported before listeners
-   * run. Completion is announced last because a reporter may open a model turn
-   * synchronously: every other observer of this settlement must already have
-   * seen the committed record.
+   * completion. First-wins preserves a teardown force-failure or a
+   * control-lost record against late producer settlement. Pending waits mark
+   * the job reported before listeners run. Completion is announced last
+   * because a reporter may open a model turn synchronously: every other
+   * observer of this settlement must already have seen the committed record.
    */
   private settle(job: TrackedTask, outcome: JobOutcome): void {
-    if (isTerminal(job.status)) return
-    job.status = outcome.status
-    job.detail = outcome.detail
-    job.output = outcome.output
+    if (isClosed(job.status)) {
+      if (isUnconfirmed(job.status)) {
+        this.selfCtx.logger.warn(
+          `jobs: job ${job.id} producer settled with ${outcome.status} after its record was already closed as control-lost-unknown; the late outcome is logged only`,
+        )
+      }
+      return
+    }
+    this.commit(job, outcome.status, outcome.detail, outcome.output)
+  }
+
+  /**
+   * Close a job whose bounded stop elapsed without producer confirmation: the
+   * record becomes `control-lost-unknown` — never a producer-confirmed
+   * terminal — so every reader can distinguish "stop requested, outcome
+   * unknown" from `killed`. The work itself may still be running, and the
+   * record keeps occupying admission capacity until the unconfirmed-cap
+   * reconciliation explicitly drops it. The armed stop timer, if any, has just
+   * fired and is cleared.
+   */
+  private abandon(job: TrackedTask): void {
+    if (isClosed(job.status)) return
+    const detail = job.terminate !== undefined
+      ? `stop requested but unconfirmed: cancel and terminate did not settle the producer within ${job.stopGraceMs}ms each; outcome unknown, work may still be running`
+      : `stop requested but unconfirmed: cancel did not settle the producer within ${job.stopGraceMs}ms and no terminate hook exists; outcome unknown, work may still be running`
+    this.selfCtx.logger.warn(`jobs: control lost for job ${job.id}: ${detail}`)
+    this.commit(job, 'control-lost-unknown', detail, undefined)
+    this.reconcileUnconfirmed(job.owner)
+  }
+
+  /**
+   * Keep at most {@link Config.maxUnconfirmedJobsPerOwner} unconfirmed records
+   * in one bucket. Beyond the cap, the oldest-finished unknown record is
+   * dropped and its capacity explicitly reconciled; the drop is loud (warn)
+   * and the pruned id reads as `unknown job <id>` afterward. Called only from
+   * {@link abandon}, so the cap is enforced exactly when it would be exceeded.
+   */
+  private reconcileUnconfirmed(owner: Agent | undefined): void {
+    for (;;) {
+      let count = 0
+      let oldest: TrackedTask | undefined
+      for (const job of this.store.values()) {
+        if (job.owner !== owner || !isUnconfirmed(job.status)) continue
+        count += 1
+        if (oldest === undefined || (job.finishedAt ?? 0) < (oldest.finishedAt ?? 0)) oldest = job
+      }
+      if (count <= this.maxUnconfirmedJobsPerOwner || oldest === undefined) return
+      this.store.delete(oldest.id)
+      this.selfCtx.logger.warn(
+        `jobs: unconfirmed-job cap (${this.maxUnconfirmedJobsPerOwner}) exceeded for this owner; dropped the oldest control-lost-unknown record ${oldest.id} and reconciled its capacity — its work may still be running`,
+      )
+      // Removal is the one visible-set change no per-job record carries.
+      this.notifyChanged(owner)
+    }
+  }
+
+  /**
+   * Arm the bounded stop protocol for a freshly requested stop: after this
+   * job's grace, an unsettled stop escalates to `JobHooks.terminate` when the
+   * producer provides one (one more grace) and otherwise closes the record as
+   * `control-lost-unknown`. A second stop request on a job whose watch is
+   * already armed is a no-op — the running watch already bounds this stop.
+   * Settlement clears the timer, so a compliant producer never pays it.
+   */
+  private armStopWatch(job: TrackedTask): void {
+    if (job.stopTimer !== undefined || isClosed(job.status)) return
+    const graceMs = Math.min(job.stopGraceMs, MAX_STOP_TIMER_MS)
+    job.stopTimer = setTimeout(() => {
+      job.stopTimer = undefined
+      if (isClosed(job.status) || job.status !== 'stopping') return
+      if (job.terminate === undefined) {
+        this.abandon(job)
+        return
+      }
+      try {
+        job.terminate(`stop grace of ${graceMs}ms elapsed without settlement`)
+      } catch (error: unknown) {
+        this.selfCtx.logger.warn(
+          `jobs: terminate of ${job.id} threw during bounded-stop escalation; continuing the bounded wait: ${String(error)}`,
+        )
+      }
+      job.stopTimer = setTimeout(() => {
+        job.stopTimer = undefined
+        if (job.status === 'stopping') this.abandon(job)
+      }, graceMs)
+      job.stopTimer.unref()
+    }, graceMs)
+    job.stopTimer.unref()
+  }
+
+  /**
+   * Commit the first closed outcome, release waiters, then announce. Clears
+   * the armed stop timer so a settlement the producer did confirm cancels the
+   * pending escalation or abandonment.
+   */
+  private commit(job: TrackedTask, status: JobStatus, detail: string | undefined, output: string | undefined): void {
+    if (job.stopTimer !== undefined) {
+      clearTimeout(job.stopTimer)
+      job.stopTimer = undefined
+    }
+    job.status = status
+    job.detail = detail
+    job.output = output
     job.finishedAt = Date.now()
     if (job.waiters > 0) job.reported = true
     const snapshot = this.snapshot(job)
@@ -557,7 +749,12 @@ export class LocalJobRegistry extends JobRegistry {
     this.ownerCleanups.set(owner, detach)
   }
 
-  /** Cancel, await terminal records, and drop every job owned by one exact agent lifecycle. */
+  /**
+   * Cancel, await records for at most the bounded stop window, and drop every
+   * job owned by one exact agent lifecycle. The armed stop watches close every
+   * unconfirmed record as `control-lost-unknown` within two grace periods, so
+   * a producer that ignores cancellation cannot stall its owner's disposal.
+   */
   private async disposeOwned(owner: Agent): Promise<void> {
     const owned = [...this.store.values()].filter(job => job.owner === owner)
     this.cancelForTeardown(owned, 'owner disposed')
@@ -569,8 +766,10 @@ export class LocalJobRegistry extends JobRegistry {
   }
 
   /**
-   * Close listeners, cancel live jobs, await settlement, and detach owner
-   * effects. Throwing cancels are force-failed to avoid teardown deadlock.
+   * Close listeners, cancel live jobs, await records for at most the bounded
+   * stop window, and detach owner effects. Throwing cancels are force-failed
+   * and producers that ignore cancellation are closed as
+   * `control-lost-unknown`, so neither can deadlock teardown.
    */
   private async disposeAll(): Promise<void> {
     // The flag is the whole guard: each layer entry's undo belongs to the fiber
@@ -594,13 +793,15 @@ export class LocalJobRegistry extends JobRegistry {
   }
 
   /**
-   * Cancel jobs during teardown with per-job containment. A throwing cancel
-   * force-fails the record and reports a possible orphan; a cancel that returns
-   * without settling remains indistinguishable from a slow stop and may stall.
+   * Cancel jobs during teardown with per-job containment and arm each stop's
+   * bounded watch. A throwing cancel force-fails the record and reports a
+   * possible orphan; a cancel that returns without settling is closed as
+   * `control-lost-unknown` when the bounded stop window elapses, so teardown
+   * awaits at most two grace periods per job.
    */
   private cancelForTeardown(jobs: TrackedTask[], reason: string): void {
     for (const job of jobs) {
-      if (isTerminal(job.status)) continue
+      if (isClosed(job.status)) continue
       // Teardown cancellation is a kill without a caller, so it claims the
       // terminal report the same way `kill()` does. Nothing will read a notice
       // for a job whose owner or service is being destroyed, and a waking
@@ -615,6 +816,7 @@ export class LocalJobRegistry extends JobRegistry {
         // Teardown reaches settlement only after the producer releases, which a
         // slow stop can defer; announcing the transition here is what keeps an
         // observer from showing `running` for that whole window.
+        this.armStopWatch(job)
         this.notifyChanged(job.owner)
       } catch (error: unknown) {
         const detail = `cancel threw during teardown; work may be orphaned: ${String(error)}`

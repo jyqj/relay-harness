@@ -7,9 +7,11 @@
 import { createHash } from 'node:crypto'
 import type { Context } from '@relay-harness/cordis'
 import z from '@relay-harness/schemastery'
-import { EvidenceId, SourceId } from '@relay-harness/rlh-context-engine'
+import { contextMessageFits, ContextProviderError, EvidenceId, SourceId } from '@relay-harness/rlh-context-engine'
 import type {
   ContributedStepContext,
+  ContextContributionBatch,
+  ContextBudget,
   Evidence,
   StepContextContributor,
   StepContextInput,
@@ -141,7 +143,7 @@ export function apply(ctx: Context, config: Config = {}): void {
 
   const contributor: StepContextContributor = {
     id: name,
-    purposes: ['agent_step', 'prompt_enhancement'],
+    purposes: ['agent_step', 'prompt_enhancement', 'tool_retrieval'],
     contribute: input => contributeMemory(ctx, resolved, pending, lifecycle, track, input),
   }
   ctx.effect(() => ctx.contextEngine.registerContributor(contributor), 'memoryAgent.contextContributor')
@@ -165,15 +167,15 @@ async function contributeMemory(
   lifecycle: { readonly closing: boolean },
   track: <T>(promise: Promise<T>) => Promise<T>,
   input: StepContextInput,
-): Promise<ContributedStepContext | undefined> {
+): Promise<ContextContributionBatch | undefined> {
   if (!eligibleCaller(input, config) || admissionClosed(input.signal, lifecycle)) return undefined
-  const query = directUserText(input.messages)
+  const query = input.purpose === 'tool_retrieval' ? input.query?.trim() : directUserText(input.messages)
   if (query === undefined) return undefined
   const provider = ctx.longTermMemory
   const scope = memoryScope(input, config)
   let unownedPrepared: PreparedMemoryTurn | undefined
   try {
-    if (input.purpose === 'prompt_enhancement') {
+    if (input.purpose === 'prompt_enhancement' || input.purpose === 'tool_retrieval') {
       const candidates = eligibleCandidates(await track(provider.search({
         scope,
         query,
@@ -182,7 +184,18 @@ async function contributeMemory(
         recordAccess: false,
       }, input.signal)))
       if (admissionClosed(input.signal, lifecycle)) return undefined
-      return contributionOf(renderRecall(candidates, scope, config.maxContextChars), config.candidateLimit)
+      const allowance = recallAllowance(config, input.budget, candidates)
+      if (input.purpose === 'tool_retrieval') {
+        const admitted = candidates.flatMap((candidate, rank) => {
+          const result = contributionOf(renderRecall([candidate], scope, allowance, ctx, input.budget), config.candidateLimit)
+          return result === undefined ? [] : [{ ...result, selection: { priority: 'provider' as const, rank, reasons: ['governed_memory_lookup'] } }]
+        })
+        declineUnfitHits(candidates, admitted.length > 0)
+        return admitted
+      }
+      const rendered = renderRecall(candidates, scope, allowance, ctx, input.budget)
+      declineUnfitHits(candidates, rendered !== undefined)
+      return contributionOf(rendered, config.candidateLimit)
     }
 
     if (input.caller.step !== 1 || input.caller.turn === undefined) return undefined
@@ -201,9 +214,11 @@ async function contributeMemory(
       }))
       return undefined
     }
+    const recallCandidates = eligibleCandidates(prepared.candidates)
     const rendered = renderRecall(
-      eligibleCandidates(prepared.candidates), prepared.scope, config.maxContextChars,
+      recallCandidates, prepared.scope, recallAllowance(config, input.budget, recallCandidates), ctx, input.budget,
     )
+    declineUnfitHits(recallCandidates, rendered !== undefined)
     const key = pendingKey(input.caller.sessionId, input.caller.turn)
     const replaced = pending.get(key)
     if (replaced !== undefined && replaced.prepared.handle !== prepared.handle) {
@@ -227,12 +242,15 @@ async function contributeMemory(
         )
       }
     }
+    // A classified decline is a planned outcome, not a retrieval failure: record it as-is.
+    if (error instanceof ContextProviderError) throw error
     if (!isAborted(input.signal)) {
       ctx.logger.warn(
         `memory-agent: ${input.purpose} retrieval failed for ${input.caller.sessionId}/${input.caller.turn ?? 'draft'}: ${errorMessage(error)}`,
       )
     }
-    return undefined
+    if (input.signal.aborted) throw error
+    throw new ContextProviderError('error', 'search_failed')
   }
 }
 
@@ -276,16 +294,37 @@ function recallWasAdmitted(session: Session, pending: PendingTurn): boolean {
       && contribution.messageEventSeqs.length > 0))
 }
 
+/**
+ * Effective recall allowance: the deployment cap clamped by the request's own character and
+ * estimated-token budget, with the framing overhead reserved before rendering. Throws a
+ * classified decline when hits exist but even the framing cannot fit.
+ */
+function recallAllowance(config: ResolvedConfig, budget: ContextBudget, hits: readonly MemorySearchHit[]): number {
+  const allowance = Math.min(config.maxContextChars, budget.maxChars, Math.max(0, (budget.maxTokens - 4) * 4))
+  if (hits.length > 0 && Array.from(renderRecallText([])).length + 1 > allowance) {
+    throw new ContextProviderError('declined', 'budget_exhausted')
+  }
+  return allowance
+}
+
+/** Decline with a stable reason when hits existed but the remaining request budget admitted none. */
+function declineUnfitHits(hits: readonly MemorySearchHit[], admitted: boolean): void {
+  if (hits.length > 0 && !admitted) throw new ContextProviderError('declined', 'budget_exhausted')
+}
+
 function renderRecall(
   candidates: readonly MemorySearchHit[],
   scope: MemoryScope,
   maxChars: number,
+  ctx: Context,
+  budget: ContextBudget,
 ): RenderedRecall | undefined {
   const retained: MemorySearchHit[] = []
   let text = renderRecallText(retained)
   for (const candidate of candidates) {
     const proposed = renderRecallText([...retained, candidate])
-    if (Array.from(proposed).length > maxChars) break
+    if (Array.from(proposed).length > maxChars || !contextMessageFits(ctx,
+      createUserMessage({ source: { kind: 'plugin', plugin: name }, content: [{ type: 'text', text: proposed }] }), budget)) continue
     retained.push(candidate)
     text = proposed
   }

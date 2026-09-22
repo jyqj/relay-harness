@@ -31,7 +31,7 @@ async function harness(): Promise<{
 }
 
 describe('PluginInventoryGateway', () => {
-  it('publishes one direct list method under the pluginInventory namespace', async () => {
+  it('publishes direct list and capabilities methods under the pluginInventory namespace', async () => {
     const { inventory } = await harness()
     expect(inventory.typertRemote).toMatchObject({
       serviceKey: 'pluginInventory',
@@ -39,6 +39,7 @@ describe('PluginInventoryGateway', () => {
     })
     expect(remoteMethods(inventory)).toEqual([
       { method: 'list', invocation: { kind: 'direct' } },
+      { method: 'capabilities', invocation: { kind: 'direct' } },
     ])
   })
 
@@ -85,5 +86,31 @@ describe('PluginInventoryGateway', () => {
 
     await ctx.loader.remove(pendingId)
     expect(inventory.list().entries.some(entry => entry.entryId === pendingId)).toBe(false)
+  })
+
+  it('reports catalog capabilities with mounted-Loader evidence and no tool registry as unknown session', async () => {
+    const { ctx, inventory } = await harness()
+    ctx.loader.builtins['code-index-workspace-router'] = activePlugin
+    // create()'s declared type omits `id`, but composed entries carry stable
+    // ids from cordis.yml and the capability catalog matches on them; pass one.
+    const withStableId = {
+      id: 'code-index-workspace-router',
+      name: 'cordis:code-index-workspace-router',
+      config: { watcherEnabled: true },
+    } as Parameters<typeof ctx.loader.create>[0]
+    await ctx.loader.create(withStableId)
+    const entry = inventory.capabilities().capabilities.find(
+      capability => capability.capabilityId === 'code-index',
+    )
+    expect(entry).toBeDefined()
+    expect(entry?.assembled.status).toBe('yes')
+    expect(entry?.assembled.evidence).toContain('code-index-workspace-router')
+    // The mounted config carries no embedding section: configured must not
+    // leak into the folded state, and the capability stays installed.
+    expect(entry?.configured.status).toBe('no')
+    expect(entry?.configured.reason).toContain('embedding')
+    expect(entry?.effective).toBe('installed')
+    // The test harness mounts no tools service, so the session level is unknown.
+    expect(entry?.sessionAvailable.status).toBe('unknown')
   })
 })

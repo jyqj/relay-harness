@@ -78,7 +78,7 @@ function mountFrame() {
   const renderSlot = ((key: string, owner: object) => {
     slotCalls.push({ key, props: owner })
     if (key === 'sidebar') return <div data-testid="sidebar-content" />
-    if (key === 'conversation') return <div data-testid="center-content" />
+    if (key === 'shell.main') return <div data-testid="center-content" />
     if (key === 'details') return <div data-testid="details-content" />
     if (key === 'surfaces') return <div data-testid="surfaces-content" />
     if (key === 'shell.terminalDrawer') return <div data-testid="terminal-drawer-content" />
@@ -212,10 +212,10 @@ describe('AppFrame', () => {
     expect(getByTestId('center-content')).toBeTruthy()
     expect(getByTestId('details-content')).toBeTruthy()
     const keys = slotCalls.map(c => c.key)
-    expect(keys).toContain('conversation')
+    expect(keys).toContain('shell.main')
     expect(keys).toContain('details')
     expect(keys).not.toContain('conversation.empty')
-    expect(slotCalls.find(c => c.key === 'conversation')!.props).toEqual({})
+    expect(slotCalls.find(c => c.key === 'shell.main')!.props).toEqual({})
     expect(slotCalls.find(c => c.key === 'details')!.props).toEqual({})
   })
 
@@ -225,7 +225,7 @@ describe('AppFrame', () => {
     selectedSession.current = undefined
     const { slotCalls, getByTestId } = mountFrame()
     expect(getByTestId('center-content')).toBeTruthy()
-    expect(slotCalls.map(c => c.key)).toContain('conversation')
+    expect(slotCalls.map(c => c.key)).toContain('shell.main')
   })
 
   it('renders both column occupants before baselines settle (no loading gate)', () => {
@@ -233,7 +233,7 @@ describe('AppFrame', () => {
     // pending rendering — both occupants mount from first paint.
     baselinesReady.current = false
     const { slotCalls } = mountFrame()
-    expect(slotCalls.map(c => c.key)).toContain('conversation')
+    expect(slotCalls.map(c => c.key)).toContain('shell.main')
     expect(slotCalls.map(c => c.key)).toContain('details')
   })
 
@@ -300,13 +300,13 @@ describe('AppFrame', () => {
   })
 
   it('drag base is the rendered (concession-clamped) width, not the preference', () => {
-    frameWidth = 1250 // step-2 squeeze: details renders 330 while preference is 360
+    frameWidth = 1250 // step-2 squeeze: details remains visible at its 360px preference
     const { frame, instance } = mountFrame()
     act(() => { instance.actions.openDetails() })
-    expect(tracks(frame)).toEqual([280, 330])
+    expect(tracks(frame)).toEqual([280, 360])
     const handles = frame.querySelectorAll('[class*="handle"]')
     drag(handles[1]!, 920, 930) // shrink by 10 from the rendered width
-    expect(instance.getSnapshot().details).toBe(320)
+    expect(instance.getSnapshot().details).toBe(350)
   })
 
   it('details column stays mounted at zero width', () => {
@@ -331,7 +331,7 @@ describe('AppFrame', () => {
     act(() => { instance.actions.openDetails() })
     frameWidth = 1250
     act(() => { fireResize?.(); vi.advanceTimersByTime(20) })
-    expect(tracks(frame)).toEqual([280, 330])
+    expect(tracks(frame)).toEqual([280, 360])
     frameWidth = 1920
     act(() => { fireResize?.(); vi.advanceTimersByTime(20) })
     expect(tracks(frame)).toEqual([280, 360])
@@ -444,13 +444,13 @@ describe('AppFrame — titlebar density and conversation reserve', () => {
     expect(frame.style.getPropertyValue('--rlhd-titlebar-conversation-reserve')).toBe('0px')
   })
 
-  it('collapses to cozy when an open surfaces column pins the center below 720', () => {
+  it('uses compact chrome when the chosen surface leaves a narrow conversation', () => {
     frameWidth = 1280
     const { frame, instance, slotCalls } = mountFrame()
     act(() => { instance.actions.openSurfaces() })
-    expect(frame.getAttribute('data-titlebar-density')).toBe('cozy')
+    expect(frame.getAttribute('data-titlebar-density')).toBe('compact')
     expect(slotCalls.filter(c => c.key === 'shell.titlebar.trailing').at(-1)?.props).toEqual({
-      surfaces: 540, terminalDrawer: 0, density: 'cozy',
+      surfaces: 540, terminalDrawer: 0, density: 'compact',
     })
   })
 
@@ -876,6 +876,6 @@ describe('AppFrame — unmount with an in-flight resize frame', () => {
     act(() => { instance.actions.openDetails() })
     frameWidth = 1250
     act(() => { fireResize?.(); fireResize?.(); vi.advanceTimersByTime(20) })
-    expect(tracks(frame)).toEqual([280, 330])
+    expect(tracks(frame)).toEqual([280, 360])
   })
 })

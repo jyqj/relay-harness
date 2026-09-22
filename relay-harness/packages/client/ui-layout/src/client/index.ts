@@ -10,6 +10,7 @@
 import type { ClientContext } from '@relay-harness/rlh-client-runtime/client'
 import type {} from '@relay-harness/rlh-client-ui-theme/client'
 import type { PanelActions } from './service.ts'
+import { MainContent, type MainContentInjected } from './MainContent.tsx'
 import { AppFrame } from './AppFrame.tsx'
 import { createLayoutStore } from './stores.ts'
 import { LayoutController } from './service.ts'
@@ -24,6 +25,7 @@ export type { TitlebarDensity }
 // OwnerShare contracts below are the render-side halves registrants compose
 // against; the frame components and the store factory are package-internal.
 export { LayoutController } from './service.ts'
+export type { MainNavigationSnapshot } from './navigation.ts'
 export type { ILayout } from './service.ts'
 
 declare module '@relay-harness/cordis' {
@@ -35,6 +37,10 @@ declare module '@relay-harness/cordis' {
 
 declare module '@relay-harness/rlh-client-ui-slots' {
   interface SlotMap {
+    /** Resident center-column host. Its owner declares conversation and shell.page. */
+    'shell.main': { kind: 'single'; scope: 'root' }
+    /** Full central page contributed by a product plugin, never a sidebar region. */
+    'shell.page': { kind: 'keyed'; scope: 'root'; owner: { active: boolean } }
     // The 'root' entry itself is the runtime's built-in slot (declared
     // there); these are the frame's children, declared by the same
     // register() call that contributes AppFrame. Session owners never pass
@@ -175,7 +181,7 @@ export function apply(ctx: ClientContext): void {
       name: 'root',
       children: {
         'sidebar': { kind: 'single', scope: 'root' },
-        'conversation': { kind: 'single', scope: 'session-maybe' },
+        'shell.main': { kind: 'single', scope: 'root' },
         'details': { kind: 'single', scope: 'session' },
         'surfaces': { kind: 'single', scope: 'session-maybe' },
         'shell.overlay': { kind: 'list', scope: 'root' },
@@ -198,6 +204,33 @@ export function apply(ctx: ClientContext): void {
       void disposeService()
     }
   }, 'ui-layout: service + root registration')
+
+  let pageVersion = -1
+  let pages: readonly string[] = []
+  const main: MainContentInjected = {
+    hooks: {
+      mainNavigation: layout.mainNavigation,
+      mainPages: {
+        getSnapshot: () => {
+          const version = ctx.slots.getVersion('shell.page')
+          if (version !== pageVersion) {
+            pageVersion = version
+            pages = ctx.slots.entriesOfSlot('shell.page').map(entry => entry.options.key as string)
+          }
+          return pages
+        },
+        subscribe: listener => ctx.slots.subscribe('shell.page', listener),
+      },
+    },
+  }
+  ctx.slots.inject('shell.main', () => ctx.slots.register({
+    name: 'shell.main',
+    children: {
+      conversation: { kind: 'single', scope: 'session-maybe' },
+      'shell.page': { kind: 'keyed', scope: 'root' },
+    },
+    inject: () => main,
+  }, MainContent))
 
   // Theme presentation: pure DOM writes from resolved snapshots — initial
   // state through the getter once, then event-driven only; no React path.

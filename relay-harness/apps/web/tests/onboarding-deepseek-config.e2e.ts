@@ -98,7 +98,7 @@ describe.skipIf(MODE === 'record')('web e2e: first-run DeepSeek credential setup
     await page.getByRole('button', { name: '设置', exact: true }).click()
     const settings = page.getByRole('dialog', { name: '设置' })
     await settings.waitFor({ timeout: 10_000 })
-    const developerMode = settings.getByRole('switch', { name: '开发者模式' })
+    const developerMode = settings.getByRole('switch', { name: '详细视图' })
     expect(await developerMode.isChecked()).toBe(false)
     await developerMode.check()
     await expect.poll(() => developerMode.isEnabled()).toBe(true)

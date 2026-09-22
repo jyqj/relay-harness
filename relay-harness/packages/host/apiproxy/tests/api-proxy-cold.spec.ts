@@ -762,6 +762,68 @@ describe('degenerate composition (no persistence, no factory)', () => {
   })
 })
 
+describe('read-only history without activation', () => {
+  it('serves a cold session through persistence inspection and never creates or resumes an Agent', async () => {
+    const ctx = new Context()
+    await ctx.plugin(TypertRegistry)
+    await ctx.plugin(SessionStore)
+    await ctx.plugin(AgentRegistry)
+    await ctx.plugin(UserQuestionService)
+    const sessionId = sid('session-cold-history')
+    const meta = header(sessionId, 1000)
+    const stored: StoredPrefix<never> = {
+      meta,
+      events: [
+        { type: 'turn/start', seq: 0, time: 1, data: { turn: 1 } },
+        {
+          type: 'user/message', seq: 1, time: 2,
+          data: createUserMessage({ content: [{ type: 'text', text: 'recorded work' }], source: { kind: 'user' } }),
+          surfaceOp: 'append',
+        },
+      ] as SessionEvent[],
+      revision: SessionPersistenceRevision('readonly-history-test:1'),
+    }
+    const backend: PersistenceBackend<never> = {
+      name: 'readonly-history-test',
+      loadStored: id => Promise.resolve(id === sessionId ? structuredClone(stored) : undefined),
+      readStoredRevision: id => Promise.resolve(
+        id === sessionId ? SessionPersistenceRevision('readonly-history-test:1') : undefined,
+      ),
+      appendBatch: () => Promise.resolve(),
+      commitRepair: () => Promise.resolve(),
+      list: () => Promise.resolve([structuredClone(meta)]),
+    }
+    const coordinator = new PersistenceCoordinator(ctx, backend)
+    ctx.provide('sessionPersistence', {
+      list: (signal?: AbortSignal) => backend.list(signal),
+      inspect: (id: SessionId, signal?: AbortSignal) => coordinator.inspect(id, signal),
+      locate: () => undefined,
+    } as never)
+    const resume = vi.spyOn(ctx.agents, 'resume')
+    const create = vi.spyOn(ctx.agents, 'create')
+    const api = createApiProxy(ctx, { defaultModelSelection: () => ({ provider: 'p', model: 'm' }), cwd: '/tmp' })
+
+    // The tail page (baseline-bearing) and a backward page both ride the same
+    // inspection path; neither may materialize the session.
+    const tail = await api.sessions.history(request({ sessionId, maxMessages: 10 }))
+    expect(tail.result.ok).toBe(true)
+    if (tail.result.ok) {
+      // Persistence repairs the stored open turn with a synthesized turn/end.
+      expect(tail.result.value.events.map(entry => entry.event.type))
+        .toEqual(['turn/start', 'user/message', 'turn/end'])
+      expect(tail.result.value.hasMore).toBe(false)
+    }
+    const older = await api.sessions.history(request({ sessionId, beforeSeq: 1, maxMessages: 10 }))
+    expect(older.result.ok).toBe(true)
+
+    expect(resume).not.toHaveBeenCalled()
+    expect(create).not.toHaveBeenCalled()
+    expect(ctx.sessions.get(sessionId)).toBeUndefined()
+    expect(ctx.agents.get(sessionId)).toBeUndefined()
+    await ctx.fiber.dispose()
+  })
+})
+
 describe('sessions.prompt synchronous rejection', () => {
   it('maps a synchronous send throw (disposed/invalid input) to agent-busy with the reason attached', async () => {
     const ctx = new Context()

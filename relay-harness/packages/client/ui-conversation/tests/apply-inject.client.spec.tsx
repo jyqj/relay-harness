@@ -45,7 +45,7 @@ function sessionFakeFor() {
   } satisfies SessionBehaviorOverrides
 }
 
-async function bench() {
+async function bench(seedDrafts?: Record<string, { text: string; at: number }>) {
   const runtime = await SlotTestRuntime.create()
   runtime.provide('connection', { api: { settings: {} }, isLoopback: false })
   // The plugin injects both; these specs exercise no settings path.
@@ -62,6 +62,11 @@ async function bench() {
   const locale = new LocaleRuntime(runtime.ctx)
   runtime.provide('locale', locale)
   runtime.slots.installLocale(locale)
+  // Seeded tombstones must land before mount: the registry loads its persisted
+  // state once at construction (apply time).
+  if (seedDrafts !== undefined) {
+    localStorage.setItem('rlh.conversation.drafts.discarded', JSON.stringify(seedDrafts))
+  }
 
   // The AppFrame role: the conversation-package slots must be declared by a
   // live entry before apply can contribute into them.
@@ -350,6 +355,29 @@ describe('conversation slot inject API', () => {
     off()
     off2()
     unsub()
+    await b.runtime.dispose()
+  })
+})
+
+describe('discarded-draft restore', () => {
+  it('restoring with a missing binding retains the tombstone; a bound restore clears it through the composer', async () => {
+    localStorage.clear()
+    const b = await bench({
+      ghost: { text: 'ghost draft', at: 1 },
+      [ROOT]: { text: 'root draft', at: 2 },
+    })
+    const ghost = 'ghost' as SessionId
+    const ghostResident = b.residentApi(ghost)
+    expect(ghostResident.hooks.discardedDraft.getSnapshot()?.text).toBe('ghost draft')
+    ghostResident.restoreDiscardedDraft()
+    // No binding for the ghost session: the retained text survives untouched.
+    expect(ghostResident.hooks.discardedDraft.getSnapshot()?.text).toBe('ghost draft')
+    expect(b.inputApi(ROOT).state.getSnapshot().draft).toBe('')
+    // A bound session restores through the composer and clears the entry.
+    const resident = b.residentApi(ROOT)
+    resident.restoreDiscardedDraft()
+    expect(b.inputApi(ROOT).state.getSnapshot().draft).toBe('root draft')
+    expect(resident.hooks.discardedDraft.getSnapshot()).toBeUndefined()
     await b.runtime.dispose()
   })
 })

@@ -10,6 +10,8 @@ Declared children are all `single` + `session-maybe`: `surfaces.browser` (owner 
 
 The `/client` exports are the plugin body (`apply`/`inject`), the store factory, and the contract types only; SurfacesRoot, EmptyState, and SurfaceTabs remain package-internal behind the slot registration.
 
+The `rlhd-open-surface` event accepts an optional Session address. Addressed requests are ignored unless they match the current Session; legacy platform gestures without an address retain their existing behavior. Opening surfaces requests the layout-owned inspector position, dismissing tool details without discarding their mounted data.
+
 ## Model Experience
 
 None, as the surfaces shell only owns viewing state and layout column geometry; nothing here reaches a model request.

@@ -80,7 +80,7 @@ flowchart LR
   cfg --> plugin_rlh_base_pwsh_sandbox
   plugin_rlh_base_approval["approval<br/>@relay-harness/rlh-user-approval"]
   cfg --> plugin_rlh_base_approval
-  plugin_rlh_base_permission["permission<br/>Developer Mode"]
+  plugin_rlh_base_permission["permission<br/>Full access (high risk)"]
   cfg --> plugin_rlh_base_permission
   plugin_rlh_base_shell_env["shell-env<br/>@relay-harness/rlh-shell-env"]
   cfg --> plugin_rlh_base_shell_env
@@ -106,6 +106,8 @@ flowchart LR
   cfg --> plugin_rlh_base_skill_filesystem
   plugin_rlh_base_skill_badge["skill-badge<br/>@relay-harness/rlh-skill-badge"]
   cfg --> plugin_rlh_base_skill_badge
+  plugin_rlh_base_tool_context["tool-context<br/>@relay-harness/rlh-tool-context"]
+  cfg --> plugin_rlh_base_tool_context
   plugin_rlh_base_tool_skill["tool-skill<br/>@relay-harness/rlh-tool-skill"]
   cfg --> plugin_rlh_base_tool_skill
   plugin_rlh_base_commands["commands<br/>@relay-harness/rlh-commands"]
@@ -224,7 +226,7 @@ flowchart LR
 | `bash-sandbox` | `@relay-harness/rlh-bash-sandbox` |
 | `pwsh-sandbox` | `@relay-harness/rlh-pwsh-sandbox` |
 | `approval` | `@relay-harness/rlh-user-approval` |
-| `permission` | `Developer Mode` |
+| `permission` | `Full access (high risk)` |
 | `shell-env` | `@relay-harness/rlh-shell-env` |
 | `tool-bash` | `@relay-harness/rlh-tool-bash` |
 | `tool-pwsh` | `@relay-harness/rlh-tool-pwsh` |
@@ -237,6 +239,7 @@ flowchart LR
 | `skill` | `@relay-harness/rlh-skill` |
 | `skill-filesystem` | `@relay-harness/rlh-skill-filesystem` |
 | `skill-badge` | `@relay-harness/rlh-skill-badge` |
+| `tool-context` | `@relay-harness/rlh-tool-context` |
 | `tool-skill` | `@relay-harness/rlh-tool-skill` |
 | `commands` | `@relay-harness/rlh-commands` |
 | `command-feedback` | `@relay-harness/rlh-command-feedback` |

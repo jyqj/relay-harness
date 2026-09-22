@@ -102,6 +102,29 @@ describe('prompt-enhancement-context-engine', () => {
     })
   })
 
+  it('delegates preparation without a caller budget ceiling or deadline; the engine Config owns the bounds', async () => {
+    const prepareStep = vi.fn((_input: ContextPrepareInput) => Promise.resolve(undefined))
+    const b = providerFrom({ prepareStep })
+    const fiber = b.ctx.plugin(plugin)
+    await fiber.await()
+    const agent = {
+      id: 'agent-1',
+      ctx: b.ctx.extend(),
+      session: { id: 'session-1', header: { cwd: '/workspace' }, events: [] },
+    } as unknown as Agent
+
+    const result = await b.registered()!.prepare({
+      purpose: 'prompt_enhancement', agent, draft: 'fix the parser', signal: new AbortController().signal,
+    })
+
+    expect(prepareStep).toHaveBeenCalledTimes(1)
+    const input = prepareStep.mock.calls[0]![0]
+    expect('limits' in input).toBe(false)
+    expect('deadlineAt' in input).toBe(false)
+    expect(result.messages).toEqual([])
+    expect(result.trace).toEqual({ purpose: 'prompt_enhancement', contributions: [] })
+  })
+
   it('fails loud when the target Agent scope has no Context Engine', async () => {
     const b = providerFrom({ prepareStep: vi.fn() })
     await b.ctx.plugin(plugin)

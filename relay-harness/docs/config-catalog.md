@@ -712,7 +712,7 @@ export interface Config {
 }
 ```
 
-Source: [`packages/context/context-engine/src/index.ts:110`](../packages/context/context-engine/src/index.ts)
+Source: [`packages/context/context-engine/src/index.ts:117`](../packages/context/context-engine/src/index.ts)
 
 <a id="relay-harnessrlh-cordis-host-runner"></a>
 
@@ -1099,10 +1099,22 @@ export interface Config {
   readonly maxResultsPerPage?: number
   /** Row limit used when the request omits one. */
   readonly defaultResultsPerPage?: number
+  /** Bounded execution rows in passive Work reads. */
+  readonly maxExecutionEntries?: number
+  /** Maximum text-message history rows returned per read. */
+  readonly maxHistoryRows?: number
+  /** Complete historical message text code-point allowance per read. */
+  readonly maxHistoryChars?: number
+  /** Maximum retained Library corpus observations. */
+  readonly maxLibraryQueries?: number
+  /** Lifespan of an opaque Library continuation in milliseconds. */
+  readonly libraryQueryTtlMs?: number
+  /** Maximum Session headers retained per Library observation; omissions are reported. */
+  readonly maxLibrarySessions?: number
 }
 ```
 
-Source: [`packages/host/work-results/src/index.ts:27`](../packages/host/work-results/src/index.ts)
+Source: [`packages/host/work-results/src/index.ts:33`](../packages/host/work-results/src/index.ts)
 
 <a id="relay-harnessrlh-invariants"></a>
 
@@ -1209,10 +1221,25 @@ export interface Config {
    * drops the oldest-finished beyond it. Omission defaults to 100.
    */
   maxTerminalRecords?: number
+  /**
+   * Bounded stop window in milliseconds: how long a stop request waits for
+   * producer settlement before escalating to `JobHooks.terminate` (one more
+   * window) or — without a terminate hook — recording `control-lost-unknown`.
+   * A per-job `JobStart.stopGraceMs` overrides it. Omission defaults to 5_000.
+   */
+  stopGraceMs?: number
+  /**
+   * Maximum `control-lost-unknown` records kept per exact owner or in the
+   * shared unowned bucket. Unknown jobs keep occupying admission capacity, so
+   * beyond this cap the reconciliation drops the oldest-finished unknown
+   * record (releasing its capacity explicitly) and warns; the work itself may
+   * still be running. Omission defaults to 5.
+   */
+  maxUnconfirmedJobsPerOwner?: number
 }
 ```
 
-Source: [`packages/jobs/jobs-local/src/index.ts:37`](../packages/jobs/jobs-local/src/index.ts)
+Source: [`packages/jobs/jobs-local/src/index.ts:52`](../packages/jobs/jobs-local/src/index.ts)
 
 <a id="relay-harnessrlh-llm-circuit-breaker"></a>
 
@@ -1842,7 +1869,7 @@ export interface Config {
 }
 ```
 
-Source: [`packages/memory/memory-agent/src/index.ts:61`](../packages/memory/memory-agent/src/index.ts)
+Source: [`packages/memory/memory-agent/src/index.ts:63`](../packages/memory/memory-agent/src/index.ts)
 
 <a id="relay-harnessrlh-memory-extractor-llm"></a>
 
@@ -3219,6 +3246,32 @@ export interface Config {
 ```
 
 Source: [`packages/index/tool-code-index/src/index.ts:105`](../packages/index/tool-code-index/src/index.ts)
+
+<a id="relay-harnessrlh-tool-context"></a>
+
+## `@relay-harness/rlh-tool-context`
+
+Requires: `tools` · `agents` · `contextEngine`
+
+```ts config-catalog
+/** Separate retrieval and final wire budgets reserve room for provenance without trusting provider size estimates. */
+export interface Config {
+  /** Maximum model-authored query code points. */
+  maxQueryChars?: number
+  /** Complete messages admitted by the shared Context Engine. */
+  maxContextChars?: number
+  /** Estimated token allowance for admitted context messages. */
+  maxContextTokens?: number
+  /** Complete tool result, including evidence, diagnostics and JSON escaping. */
+  maxOutputChars?: number
+  /** Estimated token allowance for the complete tool result. */
+  maxOutputTokens?: number
+  /** Optional deployment allowlist of contributor ids; omission keeps explicitly tool-enabled sources. */
+  contributors?: string[]
+}
+```
+
+Source: [`packages/context/tool-context/src/index.ts:19`](../packages/context/tool-context/src/index.ts)
 
 <a id="relay-harnessrlh-tool-fs"></a>
 

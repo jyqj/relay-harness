@@ -1,3 +1,6 @@
+## Explicit tool recall
+
+`tool_retrieval` uses the same preset/subagent/scope gates and performs a read-only search of active governed memories with `recordAccess: false`. It does not prepare or commit a memory-use transaction and does not approve a candidate. Entries are independently selectable, source-attributed observations within the request budget. Retrieval failures are classified in the Context Engine trace rather than silently described as no memory.
 # `@relay-harness/rlh-memory-agent`
 
 English | [中文](README.zh.md)
@@ -30,7 +33,7 @@ The first request of a qualifying turn contains the direct user message followed
 
 #### Token effect
 
-Conditional and capped. No message is added when no active candidate fits. Otherwise the complete recall message is at most `maxContextChars` Unicode code points and remains in history until compaction replaces it.
+Conditional and capped. No message is added when no active candidate fits. The allowance is `maxContextChars` tightened by the request budget: `min(maxContextChars, budget.maxChars, max(0, (budget.maxTokens - 4) * 4))`. Hits that exceed the remaining allowance decline with `budget_exhausted` in the Context Engine trace. The recall message remains in history until compaction replaces it.
 
 #### KV Cache effect
 
@@ -41,3 +44,4 @@ Recall is an append-only user-role suffix, so it preserves earlier reusable hist
 - **No extraction policy in the recall Consumer** — `memory-agent` only recalls and settles; the independent, explicitly enabled `memory-extractor-llm` Consumer creates automatic revisions.
 - **Character rather than tokenizer budget** — the complete bound is deterministic across providers, but it is not an exact model-token count.
 - **No cited-use signal** — the Memory Center shows model admission and downstream outcomes, but commit still cannot prove that the Assistant semantically relied on each admitted item.
+

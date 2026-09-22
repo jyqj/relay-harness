@@ -1,3 +1,8 @@
+## Explicit retrieval and candidate batches
+
+`retrieve({ query, contributors?, budget?, cwd, caller, signal })` 以 `purpose: 'tool_retrieval'` 复用准备流程，不伪造用户消息。provider 必须明确支持此用途；省略 `purposes` 仍只表示 Agent step 与 Prompt Enhancement。`describeContributors()` 只报告注册与用途，不代表就绪或授权。请求预算只能缩小部署预算，不能提高上限。
+
+provider 可以返回单条贡献或候选批次。选择保留独立消息与证据身份、按来源累计的预算、完整消息计量、取消与注册代次所有权。同排名选择用稳定来源 id 而非激活顺序；输出仍保持来源顺序以稳定请求前缀。显式人类引用优先于普通候选。已检查但未纳入的候选仍保留覆盖信息。`fitContextContribution` 同时计量包装与正文；provider 从最终正文重新生成摘要和截断信息。
 # @relay-harness/rlh-context-engine
 
 [English](README.md) | 中文
@@ -13,7 +18,7 @@ AgentLoop 在 inbox 领取与提示词组装之间调用该 seam（见 [architec
 | `registerContributor(contributor)` | 原子保留唯一非空 contributor id；无效或重复注册不发布任何内容并抛出 `ContextEngineError`（`CONTEXT_ENGINE_INVALID_CONTRIBUTOR` / `CONTEXT_ENGINE_CONFLICT`）。返回只移除该注册的 disposer。 |
 | `prepareStep(input)` | 解析 purpose 资格与局部配额，以子 abort signal 和 deadline 运行每个合格 contributor，再让显式引用先于 Provider 发现结果参与预算选择与去重。选中消息仍保持注册顺序。不可变结果带 plan、decisions、带归属 contribution、消息、证据与覆盖。畸形 payload、空／候选内重复 Evidence id，或选中候选之间的重复 Evidence id 会原子失败。只有全部合格 contributor 都主动放弃且没有拒绝需要记录时才返回 `undefined`。 |
 
-planner 是确定性的，不调用模型。`StepContextContributor.purposes` 声明 Provider 资格；省略时支持全部 purpose。每个合格 Provider 都收到带局部字符／token 上限、timeout 与绝对 deadline 的 `StepContextInput.budget`。Provider 保留自己的检索算法，并应在该配额内裁剪。子 signal timeout 不会中止父请求，因此后续 Provider 仍会运行；超时或已释放注册代际的迟到结果会被忽略。父请求 signal 仍会原子中止整次准备。
+planner 是确定性的，不调用模型。`StepContextContributor.purposes` 声明 Provider 资格；省略时支持全部 purpose。每个合格 Provider 都收到带局部字符／token 上限、timeout 与绝对 deadline 的 `StepContextInput.budget`。Provider 保留自己的检索算法，并应在该配额内裁剪。子 signal timeout 不会中止父请求，因此后续 Provider 仍会运行；超时或已释放注册代际的迟到结果会被忽略。父请求 signal 仍会原子中止整次准备。请求只能收紧这些限制：`ContextPrepareInput.limits` 降低总配额，`ContextPrepareInput.deadlineAt` 封顶整次准备 deadline；两者都不能抬高部署配置。
 
 ## 配置
 
@@ -45,3 +50,4 @@ planner 是确定性的，不调用模型。`StepContextContributor.purposes` �
 - **整消息打包** —— Provider 在局部配额内自行裁剪／hydrate；引擎会拒绝超大 contribution，而不会切开 Provider 自有的消息／Evidence 对应关系。
 - **Provider 覆盖仍不完整** —— 发行的 file-reference、本地 code-index、长期记忆、Prompt 专用 Session History 与 MCP Resource contributor 会生成 Evidence；通用 session-query 与 LSP Provider 仍待实现。
 - **Hydration policy 仍由 Provider 所有** —— 引擎校验 JSON 持久性与 Evidence identity；各来源 Provider 拥有当前源读取、revision 对比及内容 digest 验证。
+

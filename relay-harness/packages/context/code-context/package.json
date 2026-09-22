@@ -40,7 +40,8 @@
     "@relay-harness/rlh-context-engine": "workspace:^",
     "@relay-harness/rlh-file-reference": "workspace:^",
     "@relay-harness/rlh-invariants": "workspace:^",
-    "@relay-harness/rlh-llm": "workspace:^"
+    "@relay-harness/rlh-llm": "workspace:^",
+    "@relay-harness/rlh-agent": "workspace:^"
   },
   "devDependencies": {
     "@relay-harness/cordis": "workspace:^",

@@ -192,7 +192,7 @@ describe('FileReferenceContentContributor', () => {
     const contributed = await step(ctx, root, [userMessage('@u.txt')])
     const source = contributed!.messages[0]!.source
     if (source.kind !== 'file-reference') throw new Error('unreachable')
-    expect(source.files[0]).toMatchObject({ path: 'u.txt', bytes: 3, truncated: true })
+    expect(source.files[0]).toMatchObject({ path: 'u.txt', bytes: Buffer.byteLength('é'), truncated: true })
     const text = promptText(contributed!.messages[0]!)
     expect(text).toContain('é')
     expect(text).not.toContain('�')

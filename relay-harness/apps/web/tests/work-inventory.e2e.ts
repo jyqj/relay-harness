@@ -1,5 +1,5 @@
 /** Keyless assembled Work regression over a durable inventory older than the initial history page. */
-import { mkdtemp, realpath, rm, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, realpath, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { Browser, Page, Response } from 'playwright'
@@ -59,7 +59,7 @@ function fixture(options: { id?: string; title?: string; path?: string; turns?: 
 
 /** Navigate through the shipped sidebar instead of materializing the target Agent in a fixture. */
 async function selectSeed(page: Page, id: string, marker: string): Promise<void> {
-  await page.getByRole('tab', { name: 'Chat', exact: true }).click()
+  await page.getByRole('navigation', { name: 'Primary navigation' }).getByRole('button', { name: 'Chat', exact: true }).click()
   const toggle = page.getByRole('button', { name: 'Search sessions', exact: true })
   if (await toggle.getAttribute('aria-expanded') !== 'true') await toggle.click()
   await page.getByRole('textbox', { name: 'Search sessions...', exact: true }).fill(`${id} Task 1`)
@@ -105,6 +105,17 @@ describe('web e2e: whole-session Work inventory', () => {
     page = await newEnglishPage(browser)
     await page.setViewportSize({ width: 1280, height: 900 })
     tripwire = watchConsole(page)
+    await page.addInitScript(() => {
+      const Native = window.WebSocket
+      const sockets: WebSocket[] = []
+      ;(window as unknown as { __workTestSockets: WebSocket[] }).__workTestSockets = sockets
+      window.WebSocket = class extends Native {
+        constructor(url: string | URL, protocols?: string | string[]) {
+          super(url, protocols)
+          sockets.push(this)
+        }
+      }
+    })
     await page.goto(scaffold.baseUrl, { waitUntil: 'load' })
     await page.waitForSelector('[class*="frame"]', { timeout: 30_000 })
     await selectSeed(page, ID, LAST)
@@ -122,13 +133,57 @@ describe('web e2e: whole-session Work inventory', () => {
     }
   })
 
+  it('uses the main area while keeping navigation and unsent drafts in place', async () => {
+    await page.setViewportSize({ width: 1440, height: 1000 })
+    await selectSeed(page, ID, LAST)
+    const nav = page.getByRole('navigation', { name: 'Primary navigation' })
+    const composer = page.locator('[data-main-page="conversation"] textarea:enabled').last()
+    await composer.fill('Unsent workbench draft')
+    await nav.getByRole('button', { name: 'Work', exact: true }).click()
+    const work = page.locator('[data-work-page]')
+    await work.waitFor()
+    expect(await nav.isVisible()).toBe(true)
+    expect(await page.getByRole('button', { name: 'Search sessions', exact: true }).isVisible()).toBe(true)
+    expect(await composer.isVisible()).toBe(false)
+    const workBox = await work.boundingBox()
+    const navBox = await nav.boundingBox()
+    expect(workBox?.x).toBeGreaterThanOrEqual((navBox?.x ?? 0) + (navBox?.width ?? 0))
+    expect(workBox?.width).toBeGreaterThan(700)
+    await mkdir('test-results/workbench', { recursive: true })
+    await page.screenshot({ path: 'test-results/workbench/work-1440.png', fullPage: true })
+    await nav.getByRole('button', { name: 'Library', exact: true }).click()
+    const search = page.getByRole('textbox', { name: 'Search output filenames', exact: true })
+    await search.fill('Unsubmitted library draft')
+    await nav.getByRole('button', { name: 'Chat', exact: true }).click()
+    expect(await composer.inputValue()).toBe('Unsent workbench draft')
+    await composer.fill('')
+    await nav.getByRole('button', { name: 'Library', exact: true }).click()
+    expect(await search.inputValue()).toBe('Unsubmitted library draft')
+    await search.fill('')
+    await page.screenshot({ path: 'test-results/workbench/library-1440.png', fullPage: true })
+    await nav.getByRole('button', { name: 'Work', exact: true }).click()
+    await page.getByRole('button', { name: 'Workspace files', exact: true }).click()
+    // The actual frame, not a mocked layout callback, must allocate the opened
+    // inspector. The frame animates grid-template-columns on the shared 300ms
+    // collapse curve, so the computed width is polled until the tracks resolve;
+    // a mocked layout callback would never move off zero.
+    const frame = page.locator('[data-sidebar-collapsed], [data-details-collapsed]').first()
+    await expect.poll(async () => {
+      const grid = await frame.evaluate(element => getComputedStyle(element).gridTemplateColumns)
+      return Number.parseFloat(grid.split(' ').at(-1) ?? '0')
+    }, { timeout: 15_000 }).toBeGreaterThan(0)
+    await nav.getByRole('button', { name: 'Chat', exact: true }).click()
+    expect(await composer.isVisible()).toBe(true)
+    expect(tripwire.pageErrors).toEqual([])
+  }, 90_000)
+
   it('shows an older-than-page output after reload and handles Host refusal through the real carrier', async () => {
     await selectSeed(page, ID, LAST)
     expect(await page.getByText('Done 1', { exact: true }).count()).toBe(0)
-    await page.getByRole('tab', { name: 'Work', exact: true }).click()
+    await page.getByRole('navigation', { name: 'Primary navigation' }).getByRole('button', { name: 'Work', exact: true }).click()
     await page.getByRole('button', { name: 'early.md', exact: true }).waitFor()
     await page.reload({ waitUntil: 'load' })
-    await page.getByRole('tab', { name: 'Work', exact: true }).click()
+    await page.getByRole('navigation', { name: 'Primary navigation' }).getByRole('button', { name: 'Work', exact: true }).click()
     await page.getByRole('button', { name: 'early.md', exact: true }).waitFor({ timeout: 15_000 })
     expect(await page.getByRole('button', { name: 'early.md', exact: true }).ariaSnapshot()).toBe('- button "early.md"')
     const open = vi.spyOn(scaffold.ctx.apiProxy.host, 'openPath').mockImplementation(async request => ({
@@ -147,11 +202,46 @@ describe('web e2e: whole-session Work inventory', () => {
     expect(tripwire.pageErrors).toEqual([])
   }, 90_000)
 
+  it('withdraws review on a real downlink loss and rehydrates before enabling the unchanged result', async () => {
+    await selectSeed(page, ID, LAST)
+    await page.getByRole('navigation', { name: 'Primary navigation' }).getByRole('button', { name: 'Work', exact: true }).click()
+    const confirm = page.getByRole('button', { name: 'Confirm current result', exact: true })
+    await expect.poll(() => confirm.isEnabled()).toBe(true)
+    const before = await scaffold.ctx.sessionPersistence.readFrom(SessionId(ID), 0)
+    const client = await page.context().newCDPSession(page)
+    try {
+      await client.send('Network.enable')
+      await client.send('Network.emulateNetworkConditions', {
+        offline: true, latency: 0, downloadThroughput: -1, uploadThroughput: -1,
+      })
+      // Existing sockets must end as well as new HTTP requests failing. This
+      // exercises the real carrier rather than a component fixture source.
+      await page.evaluate(() => {
+        const sockets = (window as unknown as { __workTestSockets: WebSocket[] }).__workTestSockets
+        for (const socket of sockets) socket.close()
+      })
+      await page.getByText('Disconnected', { exact: true }).waitFor({ timeout: 15_000 })
+      expect(await confirm.isEnabled()).toBe(false)
+      expect(await page.getByRole('button', { name: 'early.md', exact: true }).isEnabled()).toBe(false)
+      expect(await confirm.ariaSnapshot()).toMatchInlineSnapshot('"- button \"Confirm current result\" [disabled]"')
+    } finally {
+      await client.send('Network.emulateNetworkConditions', {
+        offline: false, latency: 0, downloadThroughput: -1, uploadThroughput: -1,
+      })
+      await client.detach()
+    }
+    await expect.poll(() => confirm.isEnabled(), { timeout: 30_000 }).toBe(true)
+    expect(await page.getByRole('button', { name: 'early.md', exact: true }).isEnabled()).toBe(true)
+    const after = await scaffold.ctx.sessionPersistence.readFrom(SessionId(ID), 0)
+    expect(after.events.filter(event => event.type === 'work/accepted')).toEqual(before.events.filter(event => event.type === 'work/accepted'))
+    expect(tripwire.pageErrors).toEqual([])
+  }, 90_000)
+
   it('queries and pages cross-session outputs without activating their owners, and preserves the selected source on open', async () => {
     expect(scaffold.ctx.agents.get(SessionId(OTHER_ID)) === undefined).toBe(true)
     expect(scaffold.ctx.agents.get(SessionId(ACCEPT_ID)) === undefined).toBe(true)
     const firstResponse = page.waitForResponse(response => new URL(response.url()).pathname === '/api/workResults/list')
-    await page.getByRole('tab', { name: 'Library', exact: true }).click()
+    await page.getByRole('navigation', { name: 'Primary navigation' }).getByRole('button', { name: 'Library', exact: true }).click()
     const pages = [await remoteValue<WorkLibraryPage>(await firstResponse)]
     while (pages.at(-1)?.next !== null && pages.length < 10) {
       const nextResponse = page.waitForResponse(response => new URL(response.url()).pathname === '/api/workResults/list')
@@ -187,6 +277,19 @@ describe('web e2e: whole-session Work inventory', () => {
       filtered.push(await remoteValue<WorkLibraryPage>(await nextResponse))
     }
     expect(filtered.flatMap(value => value.entries)).toEqual([expect.objectContaining({ sessionId: OTHER_ID, path: 'other-source.txt' })])
+    await page.getByRole('button', { name: 'Open source record', exact: true }).click()
+    // The record page's heading is the selected source's Session id; its
+    // 'Source record' title renders as the header eyebrow, so the id heading
+    // is what proves THIS source opened (and survives a reload).
+    await page.getByRole('heading', { name: OTHER_ID }).waitFor()
+    await page.getByText('OTHER_WORK_DONE', { exact: true }).waitFor()
+    expect(new URL(page.url()).hash).toBe(`#relay/record/${encodeURIComponent(OTHER_ID)}`)
+    expect(scaffold.ctx.agents.get(SessionId(OTHER_ID)) === undefined).toBe(true)
+    await page.reload({ waitUntil: 'load' })
+    await page.getByRole('heading', { name: OTHER_ID }).waitFor()
+    await page.getByText('OTHER_WORK_DONE', { exact: true }).waitFor()
+    expect(scaffold.ctx.agents.get(SessionId(OTHER_ID)) === undefined).toBe(true)
+
     expect(await page.getByRole('button', { name: 'early.md', exact: true }).count()).toBe(0)
     expect(scaffold.ctx.agents.get(SessionId(OTHER_ID)) === undefined).toBe(true)
     expect(tripwire.pageErrors).toEqual([])
@@ -197,7 +300,7 @@ describe('web e2e: whole-session Work inventory', () => {
     // live resolution must happen through the shipped client/Remote path.
     expect(scaffold.ctx.agents.get(SessionId(ACCEPT_ID)) === undefined).toBe(true)
     await selectSeed(page, ACCEPT_ID, ACCEPT_LAST)
-    await page.getByRole('tab', { name: 'Work', exact: true }).click()
+    await page.getByRole('navigation', { name: 'Primary navigation' }).getByRole('button', { name: 'Work', exact: true }).click()
     const accepted = page.waitForResponse(response => new URL(response.url()).pathname === '/api/workResults/accept')
     await page.getByRole('button', { name: 'Confirm current result', exact: true }).click()
     const receipt = await remoteValue<WorkAcceptReceipt>(await accepted)
@@ -209,13 +312,15 @@ describe('web e2e: whole-session Work inventory', () => {
       expect.objectContaining({ seq: receipt.recordedSeq, data: { reviewedThroughSeq: receipt.reviewedThroughSeq, actor: 'host-client' } }),
     ])
     await page.reload({ waitUntil: 'load' })
-    await page.getByRole('tab', { name: 'Work', exact: true }).click()
+    await page.getByRole('navigation', { name: 'Primary navigation' }).getByRole('button', { name: 'Work', exact: true }).click()
     await page.getByText('Current transcript confirmed', { exact: true }).waitFor({ timeout: 15_000 })
+    await page.getByRole('button', { name: 'Continue conversation', exact: true }).click()
     const settled = scaffold.whenTurnSettled(30_000)
     await page.locator('textarea:enabled').last().fill('Record another result after my confirmation.')
     await page.getByRole('button', { name: 'Send message', exact: true }).click()
     expect(await settled).toBe(ACCEPT_ID)
     await page.getByText(NEW_REPLY, { exact: true }).waitFor({ timeout: 15_000 })
+    await page.getByRole('navigation', { name: 'Primary navigation' }).getByRole('button', { name: 'Work', exact: true }).click()
     await page.getByText('Results changed; confirm again', { exact: true }).waitFor({ timeout: 15_000 })
     const changed = await scaffold.ctx.sessionPersistence.readFrom(SessionId(ACCEPT_ID), 0)
     expect(changed.events.filter(event => event.type === 'work/accepted')).toHaveLength(1)

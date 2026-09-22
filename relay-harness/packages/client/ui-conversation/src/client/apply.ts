@@ -4,6 +4,7 @@ import { resolveSlotLabel, type BoundActions } from '@relay-harness/rlh-client-u
 import {
   resolveWorkspacePath, type ISessions, type SessionId,
 } from '@relay-harness/rlh-client-runtime/client'
+import type { ConnectionReadinessSource } from '@relay-harness/rlh-client-connection/client'
 // Type-only: the ctx.settingsScope Context merge. Cross-plugin collaboration
 // goes through the service, never a value import (client bundle purity gate).
 import type {} from '@relay-harness/rlh-client-ui-settings/client'
@@ -22,6 +23,7 @@ import { ConversationController, UnsupportedImageMediaTypeError } from './servic
 import type { IConversation } from './service.ts'
 import { ComposerBlockRegistry } from './input/blocks.ts'
 import type { ComposerBlock } from './contract/composer-blocks.ts'
+import { DiscardedDraftRegistry, type DiscardedDraft } from './input/drafts.ts'
 import { InputHub } from './input/hub.ts'
 import { ComposerSubmissionPolicy } from './input/submission-policy.ts'
 import { InputBar } from './skeleton/InputBar.tsx'
@@ -85,6 +87,11 @@ const ABSENT_MENU_LAUNCHER = {
 /** No session, therefore the composer beam stays on; same one-identity rule as above. */
 const ABSENT_BEAM = {
   getSnapshot: (): boolean => true,
+  subscribe: () => () => {},
+}
+/** No session, therefore no discarded draft can be addressed; same one-identity rule as above. */
+const ABSENT_DISCARDED = {
+  getSnapshot: (): DiscardedDraft | undefined => undefined,
   subscribe: () => () => {},
 }
 
@@ -224,13 +231,30 @@ export function apply(ctx: Context): void {
 
   // The per-session input machine registry (SessionInputResolver face; published as
   // ctx.conversation.input by the service below sharing this one instance).
-  const inputHub = new InputHub(ctx, t)
+  // The discarded-draft registry rides the same fiber: tombstones outlive
+  // session scopes so a disposed session's unsent input is surfaced, not lost.
+  const discardedDrafts = new DiscardedDraftRegistry()
+  const inputHub = new InputHub(ctx, t, discardedDrafts)
 
   // The composer-block registry: a plugin that knows a session cannot send —
   // ui-model-selection, when no adapter serves the session's route — raises a block
   // here, and the bar reads its own session's store. It cannot flow the other
   // way: this package must not import the plugins that would know.
   const composerBlocks = new ComposerBlockRegistry()
+
+  // Connection readiness flattened to composer writability. A connection
+  // epoch change never wipes the draft (user input); while the target is not
+  // writable again, submission stays inert (send button + Enter) instead of
+  // failing at the sink. A composition without a readiness face (object-layer
+  // boots) stays ready — the composer must not lock down on absence.
+  const connection = ctx.get('connection') as { readiness?: ConnectionReadinessSource } | undefined
+  const connected = {
+    getSnapshot: () => {
+      const phase = connection?.readiness?.getSnapshot().phase
+      return phase === undefined ? true : phase === 'ready'
+    },
+    subscribe: (fn: () => void) => connection?.readiness?.subscribe(fn) ?? (() => {}),
+  }
 
   // The input machine feeds every session-scope slot
   // component through the standard provide channel — the 'input' hook plus
@@ -284,7 +308,22 @@ export function apply(ctx: Context): void {
       'conversation.hero.agentPreset': { kind: 'single', scope: 'root' },
     },
     inject: (sessionId: SessionId | undefined): ConversationInjected => ({
-      hooks: { composerBlock: sessionId === undefined ? ABSENT_BLOCK : composerBlocks.storeFor(sessionId) },
+      hooks: {
+        composerBlock: sessionId === undefined ? ABSENT_BLOCK : composerBlocks.storeFor(sessionId),
+        discardedDraft: sessionId === undefined ? ABSENT_DISCARDED : discardedDrafts.face(sessionId),
+      },
+      restoreDiscardedDraft: () => {
+        if (sessionId === undefined) return
+        // Binding check BEFORE restore: a missing binding must not destroy the
+        // retained text — the tombstone stays for a later, bound attempt.
+        if (sessions.binding(sessionId) === undefined) return
+        const text = discardedDrafts.restore(sessionId)
+        if (text === undefined) return
+        inputHub.shell(sessionId).setDraft(text)
+      },
+      dismissDiscardedDraft: () => {
+        if (sessionId !== undefined) discardedDrafts.dismiss(sessionId)
+      },
       selectWorkspace: async (workspaceId) => {
         const nextId = await workspaces.connectWorkspace(workspaceId)
         if (sessionId !== undefined) carryDraft(sessionId, nextId)
@@ -372,6 +411,7 @@ export function apply(ctx: Context): void {
             composerResize: submissionPolicy.composerResize,
             composerResizeHeight: submissionPolicy.composerResizeHeight,
             composerResizeWidth: submissionPolicy.composerResizeWidth,
+            connected,
           },
           setComposerResizeSize: (size) => { submissionPolicy.setComposerResizeSize(size) },
         }
@@ -436,6 +476,7 @@ export function apply(ctx: Context): void {
           composerResize: submissionPolicy.composerResize,
           composerResizeHeight: submissionPolicy.composerResizeHeight,
           composerResizeWidth: submissionPolicy.composerResizeWidth,
+          connected,
         },
         setComposerResizeSize: (size) => { submissionPolicy.setComposerResizeSize(size) },
       }

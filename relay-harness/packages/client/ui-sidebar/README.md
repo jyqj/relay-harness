@@ -16,6 +16,8 @@ The foot is the `sidebar.settings` seat: the sidebar renders only the bottom-pin
 
 The `/client` exports are the plugin body (`apply`/`inject`) plus the contract types only; SidebarRoot, the row components, and the tree derivation remain package-internal behind the slot registration.
 
+Primary product navigation occupies the additive `sidebar.primary` slot, independently from the optional region tabs. Selecting Work or Library does not replace workspace browsing or hide New Session. The New Session action opens the conversation main area before delegating to the existing workspace service.
+
 ## Model Experience
 
 None, as the sidebar renders the browser session list; nothing here reaches a model request.
