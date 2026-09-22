@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, render, screen } from '@testing-library/react'
-import type { WorkContentCurrency, WorkContentReviewRead } from '@relay-harness/rlh-host-work-results/types'
+import type { WorkContentCurrency, WorkContentReviewId, WorkContentReviewRead } from '@relay-harness/rlh-host-work-results/types'
 import { WorkPage, type WorkPageProps } from '../src/client/WorkPage.tsx'
 import type { WorkSummary } from '../src/client/work-projection.ts'
 
@@ -21,25 +21,29 @@ function workProps(work: WorkSummary, contentReview: WorkPageProps['contentRevie
   return {
     active: true, renderSlot: () => null, openConversation: vi.fn(), startWork: vi.fn(), openSource: vi.fn(),
     useWork: (select: (value: WorkSummary) => unknown) => select(work),
-    verifyWork: vi.fn().mockResolvedValue({ reviewRevision: 8, acceptedRevision: 8, reviewable: true, current: true, confirmationBlockedBy: [], verifiedThroughSeq: 9 }),
+    verifyWork: vi.fn().mockResolvedValue({ reviewRevision: 8, acceptedRevision: 8, reviewable: true, current: true,
+      confirmationBlockedBy: [], verifiedThroughSeq: 9 }),
     acceptWork: vi.fn(), openDeliverable: vi.fn(), contentReview, openFiles: vi.fn(), t,
   } as unknown as WorkPageProps
 }
 
-function read(currency: readonly WorkContentCurrency[], review: WorkContentReviewRead['review'] = { reviewId: 'r1' as never, decision: 'approved' as const }): WorkContentReviewRead {
+function read(currency: readonly WorkContentCurrency[], review: WorkContentReviewRead['review'] = {
+  reviewId: 'r1' as WorkContentReviewId, decision: 'approved', contentVersions: [], contentVersionRefs: [],
+  checkRecords: [], checkRecordRefs: [], actor: 'host-client', reviewedAt: 0,
+}): WorkContentReviewRead {
   return { review, currency }
 }
 
 describe('Work content-review badge', () => {
   it.each([
-    { currency: [{ ref: 'a', state: 'matches-confirmed' }], expected: 'work.contentReview.matches-confirmed' },
+    { currency: [{ ref: 'a', state: 'matches-confirmed' }] as WorkContentCurrency[], expected: 'work.contentReview.matches-confirmed' },
     {
-      currency: [{ ref: 'a', state: 'matches-confirmed' }, { ref: 'b', state: 'changed-unreviewed', current: {} as never }],
+      currency: [{ ref: 'a', state: 'matches-confirmed' }, { ref: 'b', state: 'changed-unreviewed', current: {} as never }] as WorkContentCurrency[],
       expected: 'work.contentReview.changed-unreviewed',
     },
-    { currency: [{ ref: 'a', state: 'not-reverified' }], expected: 'work.contentReview.not-reverified' },
+    { currency: [{ ref: 'a', state: 'not-reverified' }] as WorkContentCurrency[], expected: 'work.contentReview.not-reverified' },
     {
-      currency: [{ ref: 'a', state: 'not-reverified' }, { ref: 'b', state: 'changed-unreviewed', current: {} as never }],
+      currency: [{ ref: 'a', state: 'not-reverified' }, { ref: 'b', state: 'changed-unreviewed', current: {} as never }] as WorkContentCurrency[],
       expected: 'work.contentReview.changed-unreviewed',
     },
   ])('aggregates $expected as the worst per-version currency state', async ({ currency, expected }) => {

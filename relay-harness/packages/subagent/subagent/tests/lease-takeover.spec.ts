@@ -20,7 +20,7 @@ import type { SessionEvent } from '@relay-harness/rlh-session'
 import JsonlSessionPersistence from '@relay-harness/rlh-session-persistence-jsonl'
 import * as SubagentSpawn from '@relay-harness/rlh-subagent-spawn-in-process'
 import { MockAdapter, textResponse } from '../../../core/agent-loop/tests/mock-adapter.ts'
-import SubagentRuntime, { SubagentActivationLeaseStore } from '../src/index.ts'
+import SubagentRuntime, { SubagentActivationLease, SubagentActivationLeaseStore } from '../src/index.ts'
 
 /** Adapter whose single response holds the child's model call open until released. */
 class GatedAdapter extends LlmAdapter {
@@ -51,7 +51,7 @@ async function bootOwner(root: string, leasePath: string, gate?: Promise<undefin
     activationLeasePath: leasePath, activationLeaseMs: 5_000, activationLeaseRenewMs: 25,
   })
   await ctx.plugin(SubagentSpawn, { providerName: 'spawn' })
-  const adapter: LlmAdapter = gate === undefined
+  const adapter: MockAdapter | GatedAdapter = gate === undefined
     ? new MockAdapter([textResponse('successor result')])
     : new GatedAdapter(gate)
   ctx.llm.registerAdapter(['mock'], adapter)
@@ -105,9 +105,10 @@ describe('activation-lease takeover across owner instances', () => {
     await vi.waitFor(() => { expect(old.adapter.requests).toHaveLength(1) })
 
     const contender = new SubagentActivationLeaseStore(leasePath)
-    let successor: ReturnType<SubagentActivationLeaseStore['acquire']> | undefined
+    let acquired: SubagentActivationLease | undefined
     try {
-      successor = contender.acquire(childId, 5_000, Date.now() + 120_000)
+      const successor = contender.acquire(childId, 5_000, Date.now() + 120_000)
+      acquired = successor
       expect(successor.fence).toBe(2)
 
       // The old instance's durable write is rejected at the persistence fence:
@@ -128,7 +129,7 @@ describe('activation-lease takeover across owner instances', () => {
 
       // The successor proceeds through the real activation path and commits durably.
       successor.release()
-      successor = undefined
+      acquired = undefined
       const next = await bootOwner(root, leasePath)
       parkParent(next)
       await next.ctx.subagents.followup(next.parent, childId, message('successor work'), {
@@ -147,7 +148,7 @@ describe('activation-lease takeover across owner instances', () => {
       const afterTeardown = await next.ctx.sessionPersistence.readFrom(childId, 0)
       expect(userTexts(afterTeardown.events)).toContain('successor work')
     } finally {
-      try { successor?.release() } catch { /* A takeover already fenced this owner. */ }
+      try { acquired?.release() } catch { /* A takeover already fenced this owner. */ }
       hold.resolve(undefined)
       contender.close()
     }

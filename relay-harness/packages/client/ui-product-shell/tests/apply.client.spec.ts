@@ -27,7 +27,8 @@ async function bench(install = true) {
     subscribe: (listener: () => void) => { listeners.add(listener); return () => { listeners.delete(listener) } },
   }, subagentAddress: vi.fn(() => undefined), openHistory: vi.fn(() => Promise.resolve()), openSubagent: vi.fn() } as never)
   ctx.provide('connection', { readiness: connectionFixture().source } as never)
-  const workResults = { open: vi.fn(), review: vi.fn(), inspect: vi.fn(), history: vi.fn(), accept: vi.fn(), list: vi.fn(), contentReview: vi.fn() }
+  const workResults = { open: vi.fn(), review: vi.fn(), inspect: vi.fn(), history: vi.fn(), accept: vi.fn(),
+    list: vi.fn(), contentReview: vi.fn() }
   const getMode = vi.fn(async () => ({ ok: true, value: { mode: 'simple' } }))
   const openSettings = vi.fn()
   ctx.provide('settingsNavigation', { open: openSettings } as never)

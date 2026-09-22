@@ -70,7 +70,11 @@ export function WorkPage(
     return () => { controller.abort() }
   }, [work.sessionId, work.epoch, work.availability, work.execution, reviewRevision, acceptedRevision, refresh,
     verifyWork, active, work.approvals, work.questions])
-  const [contentReviewState, setContentReviewState] = useState<{ sessionId: string; epoch: number; value: WorkContentReviewRead } | null>(null)
+  const [contentReviewState, setContentReviewState] = useState<{
+    sessionId: string
+    epoch: number
+    value: WorkContentReviewRead
+  } | null>(null)
   useEffect(() => {
     const sessionId = work.sessionId
     if (!active || sessionId === undefined || work.availability !== 'ready') {
